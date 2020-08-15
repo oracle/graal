@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.agent.jdk8.lambda;
 
 import static jdk.internal.org.objectweb.asm.Opcodes.ASM5;
 
-import com.oracle.svm.hosted.NativeImageClassLoader;
+import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent;
 
 import jdk.internal.org.objectweb.asm.ClassVisitor;
@@ -57,7 +57,7 @@ public class LambdaMetaFactoryRewriteVisitor extends ClassVisitor {
 
     private boolean instrumentationSupported() {
         if (NativeImageBytecodeInstrumentationAgent.getJavaVersion() == 8) {
-            return className != null && loader instanceof NativeImageClassLoader;
+            return className != null && NativeImageSystemClassLoader.singleton().isNativeImageClassLoader(loader);
         } else {
             return false;
         }

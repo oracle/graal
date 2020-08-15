@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,14 +38,13 @@ import com.oracle.objectfile.ElementImpl;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
-import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.RelocationMethod;
 import com.oracle.objectfile.ObjectFile.RelocationRecord;
 import com.oracle.objectfile.ObjectFile.Symbol;
-import com.oracle.objectfile.pecoff.PECoffObjectFile.PECoffSection;
-import com.oracle.objectfile.pecoff.PECoff.IMAGE_RELOCATION;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
+import com.oracle.objectfile.pecoff.PECoff.IMAGE_RELOCATION;
+import com.oracle.objectfile.pecoff.PECoffObjectFile.PECoffSection;
 
 @SuppressWarnings("unchecked")
 public class PECoffRelocationTable extends ObjectFile.Element {
@@ -75,11 +74,6 @@ public class PECoffRelocationTable extends ObjectFile.Element {
         }
 
         @Override
-        public RelocationKind getKind() {
-            return t.getKind();
-        }
-
-        @Override
         public long getOffset() {
             return offset;
         }
@@ -87,12 +81,6 @@ public class PECoffRelocationTable extends ObjectFile.Element {
         @Override
         public Symbol getReferencedSymbol() {
             return sym;
-        }
-
-        @Override
-        public int getRelocatedByteSize() {
-            /* All PECoff relocation kinds work on a fixed size of relocation site. */
-            return t.getRelocatedByteSize();
         }
 
         @Override

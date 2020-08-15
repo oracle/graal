@@ -161,9 +161,8 @@ def gate_body(args, tasks):
                         "-Dpolyglot.engine.CompileImmediately=true",
                         "-Dpolyglot.engine.BackgroundCompilation=false",
                         "-Dpolyglot.engine.TraceCompilation=true",
+                        "-Dpolyglot.log.file={0}".format(compiler_log_file),
                         "-Dgraalvm.locatorDisabled=true",
-                        "-Dgraal.PrintCompilation=true",
-                        "-Dgraal.LogFile={0}".format(compiler_log_file),
                         "truffle"])
                     if exists(compiler_log_file):
                         remove(compiler_log_file)

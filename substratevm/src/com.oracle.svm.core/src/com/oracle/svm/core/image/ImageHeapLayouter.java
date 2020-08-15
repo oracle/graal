@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.image;
 
+import java.nio.ByteBuffer;
+
 /**
  * This class is responsible for computing and storing the layout of the native image heap. A native
  * image heap consist of multiple {@link ImageHeapPartition}s. Every object in the native image heap
@@ -46,4 +48,11 @@ public interface ImageHeapLayouter {
      * address must not change anymore.
      */
     ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize);
+
+    /**
+     * Based on the layout decided during an earlier call to {@link #layout}, fill the image heap in
+     * the supplied buffer with additional data structures, if any. At this time, the buffer already
+     * contains the laid out objects, which are not meant to be modified in this step.
+     */
+    void writeMetadata(ByteBuffer imageHeapBytes);
 }

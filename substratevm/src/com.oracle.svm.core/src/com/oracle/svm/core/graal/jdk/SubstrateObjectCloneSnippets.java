@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
 
 import java.util.Map;
 
+import com.oracle.svm.core.jdk.IdentityHashCodeSupport;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -49,6 +50,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
+import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
 
@@ -126,6 +128,16 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             assert primitiveDataSize >= 0;
             ArraycopySnippets.primitiveCopyForward(thisObj, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(primitiveDataSize));
             curOffset += primitiveDataSize;
+
+            // reset hash code and monitor to uninitialized values
+            int hashCodeOffset = IdentityHashCodeSupport.getHashCodeOffset(result);
+            if (hashCodeOffset != 0) {
+                ObjectAccess.writeInt(result, hashCodeOffset, 0, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
+            }
+            int monitorOffset = hub.getMonitorOffset();
+            if (monitorOffset != 0) {
+                BarrieredAccess.writeObject(result, monitorOffset, null);
+            }
 
             assert curOffset == objectSize;
             return result;

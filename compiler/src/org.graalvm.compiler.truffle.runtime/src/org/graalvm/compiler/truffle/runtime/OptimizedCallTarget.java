@@ -48,6 +48,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
@@ -57,6 +58,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -162,7 +164,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @CompilationFinal private volatile ReturnProfile returnProfile;
     @CompilationFinal private Class<? extends Throwable> profiledExceptionType;
 
-    private static final class ArgumentsProfile {
+    public static final class ArgumentsProfile {
         private static final String ARGUMENT_TYPES_ASSUMPTION_NAME = "Profiled Argument Types";
         private static final Class<?>[] EMPTY_ARGUMENT_TYPES = new Class<?>[0];
         private static final ArgumentsProfile INVALID = new ArgumentsProfile();
@@ -181,9 +183,20 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             this.assumption = createValidAssumption(assumptionName);
             this.types = types;
         }
+
+        public OptimizedAssumption getAssumption() {
+            return assumption;
+        }
+
+        /**
+         * The returned array is read-only.
+         */
+        public Class<?>[] getTypes() {
+            return types;
+        }
     }
 
-    private static final class ReturnProfile {
+    public static final class ReturnProfile {
         private static final String RETURN_TYPE_ASSUMPTION_NAME = "Profiled Return Type";
         private static final ReturnProfile INVALID = new ReturnProfile();
 
@@ -200,6 +213,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             assert type != null;
             this.assumption = createValidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
             this.type = type;
+        }
+
+        public OptimizedAssumption getAssumption() {
+            return assumption;
+        }
+
+        public Class<?> getType() {
+            return type;
         }
     }
 
@@ -343,12 +364,18 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
+    @TruffleBoundary
     public final Object call(Object... args) {
-        Node encapsulatingNode = NodeUtil.pushEncapsulatingNode(null);
+        // Use the encapsulating node as call site and clear it inside as we cross the call boundary
+        EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
+        Node prev = encapsulating.set(null);
         try {
-            return callIndirect(encapsulatingNode, args);
+            return callIndirect(prev, args);
+        } catch (Throwable t) {
+            GraalRuntimeAccessor.LANGUAGE.onThrowable(prev, null, t, null);
+            throw rethrow(t);
         } finally {
-            NodeUtil.popEncapsulatingNode(encapsulatingNode);
+            encapsulating.set(prev);
         }
     }
 
@@ -434,12 +461,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
         int intCallCount = this.callCount;
         this.callCount = intCallCount == Integer.MAX_VALUE ? intCallCount : ++intCallCount;
-        int intAndLoopCallCount = callAndLoopCount;
-        this.callAndLoopCount = intAndLoopCallCount == Integer.MAX_VALUE ? intAndLoopCallCount : ++intAndLoopCallCount;
+        int intLoopCallCount = this.callAndLoopCount;
+        this.callAndLoopCount = intLoopCallCount == Integer.MAX_VALUE ? intLoopCallCount : ++intLoopCallCount;
 
         // Check if call target is hot enough to compile
-        if (intCallCount >= engine.firstTierCallThreshold //
-                        && intAndLoopCallCount >= engine.firstTierCallAndLoopThreshold //
+        if (intCallCount >= engine.callThresholdInInterpreter //
+                        && intLoopCallCount >= engine.callAndLoopThresholdInInterpreter //
                         && !compilationFailed //
                         && !isSubmittedForCompilation()) {
             return compile(!engine.multiTier);
@@ -464,16 +491,22 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // This should be private but can't be. GR-19397
     public final boolean firstTierCall() {
         // this is partially evaluated so the second part should fold to a constant.
-        int firstTierCallThreshold = ++callCount;
-        if (firstTierCallThreshold >= engine.lastTierCallThreshold && !isSubmittedForCompilation() && !compilationFailed) {
-            return lastTierCompile(this);
+        int firstTierCallCount = this.callCount;
+        this.callCount = firstTierCallCount == Integer.MAX_VALUE ? firstTierCallCount : ++firstTierCallCount;
+        int firstTierLoopCallCount = this.callAndLoopCount;
+        this.callAndLoopCount = firstTierLoopCallCount == Integer.MAX_VALUE ? firstTierLoopCallCount : ++firstTierLoopCallCount;
+        if (firstTierCallCount >= engine.callThresholdInFirstTier //
+                        && firstTierLoopCallCount >= engine.callAndLoopThresholdInFirstTier //
+                        && !compilationFailed //
+                        && !isSubmittedForCompilation()) {
+            return lastTierCompile();
         }
         return false;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private static boolean lastTierCompile(OptimizedCallTarget callTarget) {
-        return callTarget.compile(true);
+    @TruffleBoundary
+    private boolean lastTierCompile() {
+        return compile(true);
     }
 
     private Object executeRootNode(VirtualFrame frame) {
@@ -590,6 +623,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     public final boolean isSubmittedForCompilation() {
         return compilationTask != null;
+    }
+
+    public final void waitForCompilation() {
+        CancellableCompileTask task = compilationTask;
+        if (task != null) {
+            runtime().finishCompilation(this, task, false);
+        }
     }
 
     /**
@@ -770,9 +810,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final String toString() {
         CompilerAsserts.neverPartOfCompilation();
         String superString = rootNode.toString();
-        if (isValid()) {
-            superString += " <opt>";
-        }
         if (sourceCallTarget != null) {
             superString += " <split-" + Integer.toHexString(hashCode()) + ">";
         }
@@ -816,7 +853,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
         CompilerAsserts.neverPartOfCompilation();
         invalidate(newNode, reason);
-        /* Notify compiled method that have inlined this call target that the tree changed. */
+        /*
+         * Notify compiled method that have inlined this call target that the tree changed. It also
+         * ensures that compiled code that might be installed by currently running compilation task
+         * that can no longer be cancelled is invalidated.
+         */
         invalidateNodeRewritingAssumption();
         return false;
     }
@@ -871,13 +912,27 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return visitor.nodeCount;
     }
 
-    public final Map<String, Object> getDebugProperties(TruffleInlining inlining) {
+    public final Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        GraalTruffleRuntimeListener.addASTSizeProperty(this, inlining, properties);
-        String callsThreshold = String.format("%7d/%5d", getCallCount(), engine.firstTierCallThreshold);
-        String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(), engine.firstTierCallAndLoopThreshold);
-        properties.put("Calls/Thres", callsThreshold);
-        properties.put("CallsAndLoop/Thres", loopsThreshold);
+        GraalTruffleRuntimeListener.addASTSizeProperty(this, properties);
+        String callsThresholdInInterpreter = String.format("%7d/%5d", getCallCount(), engine.callThresholdInInterpreter);
+        String loopsThresholdInInterpreter = String.format("%7d/%5d", getCallAndLoopCount(), engine.callAndLoopThresholdInInterpreter);
+        if (engine.multiTier) {
+            if (isValidLastTier()) {
+                String callsThresholdInFirstTier = String.format("%7d/%5d", getCallCount(), engine.callThresholdInFirstTier);
+                String loopsThresholdInFirstTier = String.format("%7d/%5d", getCallCount(), engine.callAndLoopThresholdInFirstTier);
+                properties.put("Tier", "Last");
+                properties.put("Calls/Thres", callsThresholdInFirstTier);
+                properties.put("CallsAndLoop/Thres", loopsThresholdInFirstTier);
+            } else {
+                properties.put("Tier", "First");
+                properties.put("Calls/Thres", callsThresholdInInterpreter);
+                properties.put("CallsAndLoop/Thres", loopsThresholdInInterpreter);
+            }
+        } else {
+            properties.put("Calls/Thres", callsThresholdInInterpreter);
+            properties.put("CallsAndLoop/Thres", loopsThresholdInInterpreter);
+        }
         return properties;
     }
 
@@ -1058,7 +1113,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return castArguments;
     }
 
-    private ArgumentsProfile getInitializedArgumentsProfile() {
+    protected final ArgumentsProfile getInitializedArgumentsProfile() {
         if (argumentsProfile == null) {
             /*
              * We always need an assumption. If this method is called before the profile was
@@ -1070,15 +1125,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
 
         return argumentsProfile;
-    }
-
-    protected final Class<?>[] getProfiledArgumentTypes() {
-        ArgumentsProfile argumentsProfile = getInitializedArgumentsProfile();
-        if (argumentsProfile.assumption.isValid()) {
-            return argumentsProfile.types;
-        } else {
-            return null;
-        }
     }
 
     // endregion
@@ -1116,7 +1162,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return result;
     }
 
-    private ReturnProfile getInitializedReturnProfile() {
+    protected final ReturnProfile getInitializedReturnProfile() {
         if (returnProfile == null) {
             /*
              * We always need an assumption. If this method is called before the profile was
@@ -1128,15 +1174,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
 
         return returnProfile;
-    }
-
-    protected final Class<?> getProfiledReturnType() {
-        ReturnProfile returnProfile = getInitializedReturnProfile();
-        if (returnProfile.assumption.isValid()) {
-            return returnProfile.type;
-        } else {
-            return null;
-        }
     }
 
     // endregion
@@ -1165,19 +1202,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // endregion
-
-    protected List<OptimizedAssumption> getProfiledTypesAssumptions() {
-        List<OptimizedAssumption> result = new ArrayList<>();
-        ArgumentsProfile argumentsProfile = getInitializedArgumentsProfile();
-        if (argumentsProfile.assumption.isValid()) {
-            result.add(argumentsProfile.assumption);
-        }
-        ReturnProfile returnProfile = getInitializedReturnProfile();
-        if (returnProfile.assumption.isValid()) {
-            result.add(returnProfile.assumption);
-        }
-        return result;
-    }
 
     private static Class<?> classOf(Object arg) {
         return arg != null ? arg.getClass() : null;

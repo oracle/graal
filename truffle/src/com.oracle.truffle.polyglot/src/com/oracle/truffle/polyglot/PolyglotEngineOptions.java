@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,4 +68,10 @@ final class PolyglotEngineOptions {
                     "This allows invalid sharing between contexts. " +
                     "For testing purposes only.")//
     static final OptionKey<Boolean> UseConservativeContextReferences = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Enables specialization statistics for nodes generated with Truffle DSL and prints the result on exit. " +
+                    "In order for this flag to be functional -Atruffle.dsl.GenerateSpecializationStatistics=true needs to be set at build time." + //
+                    "Enabling this flag and the compiler option has major implications on the performance and footprint of the interpreter." + //
+                    "Do not use in production environments.")//
+    static final OptionKey<Boolean> SpecializationStatistics = new OptionKey<>(false);
 }

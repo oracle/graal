@@ -58,8 +58,13 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
         store.executeWithTarget(ptr, llvmValue);
     }
 
+    /**
+     * @param ptr
+     * @param type
+     * @param value
+     * @see #execute(LLVMPointer, LLVMInteropType, Object)
+     */
     @Specialization
-    @SuppressWarnings("unused")
     static void doStructured(LLVMPointer ptr, LLVMInteropType.Structured type, Object value) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }

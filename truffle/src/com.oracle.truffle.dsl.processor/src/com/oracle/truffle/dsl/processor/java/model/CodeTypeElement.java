@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 
 public class CodeTypeElement extends CodeElement<Element> implements TypeElement {
@@ -264,7 +265,7 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
         copy.getTypeParameters().addAll(typeElement.getTypeParameters());
         copy.getImplements().addAll(typeElement.getInterfaces());
         copy.getAnnotationMirrors().addAll(typeElement.getAnnotationMirrors());
-        copy.getEnclosedElements().addAll(typeElement.getEnclosedElements());
+        copy.getEnclosedElements().addAll(CompilerFactory.getCompiler(typeElement).getEnclosedElementsInDeclarationOrder(typeElement));
         return copy;
     }
 

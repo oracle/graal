@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnknownSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.aarch64.LinuxAArch64Syscall;
 
 final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<LinuxAArch64Syscall> {
@@ -48,7 +48,7 @@ final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<Linux
             case SYS_exit_group: // TODO: implement difference to SYS_exit
                 return new LLVMSyscallExitNode();
             default:
-                return new LLVMUnknownSyscallNode(syscall);
+                return new LLVMNativeSyscallNode(syscall);
         }
     }
 }

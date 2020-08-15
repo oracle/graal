@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.code.amd64;
 
 import java.util.function.Consumer;
 
+import com.oracle.objectfile.ObjectFile;
 import org.graalvm.compiler.asm.Assembler.CodeAnnotation;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
 import org.graalvm.compiler.code.CompilationResult;
@@ -110,10 +111,10 @@ public class AMD64HostedPatcher extends CompilationResult.CodeAnnotation impleme
              * the relocation site, we want to subtract n bytes from our addend.
              */
             long addend = (annotation.nextInstructionPosition - annotation.operandPosition);
-            relocs.addPCRelativeRelocationWithAddend((int) siteOffset, annotation.operandSize, addend, ref);
+            relocs.addRelocationWithAddend((int) siteOffset, ObjectFile.RelocationKind.getPCRelative(annotation.operandSize), addend, ref);
         } else if (ref instanceof ConstantReference) {
             assert SubstrateOptions.SpawnIsolates.getValue() : "Inlined object references must be base-relative";
-            relocs.addDirectRelocationWithoutAddend((int) siteOffset, annotation.operandSize, ref);
+            relocs.addRelocationWithoutAddend((int) siteOffset, ObjectFile.RelocationKind.getDirect(annotation.operandSize), ref);
         } else {
             throw VMError.shouldNotReachHere("Unknown type of reference in code");
         }

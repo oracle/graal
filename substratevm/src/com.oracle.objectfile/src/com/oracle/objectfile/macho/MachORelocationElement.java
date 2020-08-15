@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -250,11 +250,6 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
     }
 
     @Override
-    public RelocationKind getKind() {
-        return kind;
-    }
-
-    @Override
     public long getOffset() {
         return sectionOffset;
     }
@@ -264,11 +259,6 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
         // assert extern;
         // FIXME: what about the !extern case?
         return sym;
-    }
-
-    @Override
-    public int getRelocatedByteSize() {
-        return 1 << log2length;
     }
 
     @Override
@@ -292,7 +282,10 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
 
     private boolean isPCRelative() {
         switch (kind) {
-            case PC_RELATIVE:
+            case PC_RELATIVE_1:
+            case PC_RELATIVE_2:
+            case PC_RELATIVE_4:
+            case PC_RELATIVE_8:
             case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
                 return true;
             default:
@@ -304,22 +297,27 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
         switch (getRelocatedSection().getOwner().cpuType) {
             case X86_64:
                 switch (kind) {
-                    case DIRECT:
+                    case DIRECT_1:
+                    case DIRECT_2:
+                    case DIRECT_4:
+                    case DIRECT_8:
                         return X86_64Reloc.UNSIGNED.getValue();
-                    case PC_RELATIVE:
+                    case PC_RELATIVE_1:
+                    case PC_RELATIVE_2:
+                    case PC_RELATIVE_4:
+                    case PC_RELATIVE_8:
                         return X86_64Reloc.SIGNED.getValue();
-                    case PROGRAM_BASE:
-                        throw new IllegalArgumentException("Mach-O does not support PROGRAM_BASE relocations");
                     default:
                     case UNKNOWN:
                         throw new IllegalArgumentException("unknown relocation kind: " + kind);
                 }
             case ARM64:
                 switch (kind) {
-                    case DIRECT:
+                    case DIRECT_1:
+                    case DIRECT_2:
+                    case DIRECT_4:
+                    case DIRECT_8:
                         return ARM64Reloc.UNSIGNED.getValue();
-                    case PC_RELATIVE:
-                        return ARM64Reloc.BRANCH26.getValue();
                     case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
                         return ARM64Reloc.PAGE21.getValue();
                     case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:

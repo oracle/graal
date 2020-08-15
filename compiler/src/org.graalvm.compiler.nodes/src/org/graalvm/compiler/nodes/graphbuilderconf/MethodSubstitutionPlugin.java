@@ -108,12 +108,6 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
         this.originalIsStatic = parameters.length == 0 || parameters[0] != InvocationPlugin.Receiver.class;
     }
 
-    @Override
-    public boolean inlineOnly() {
-        // Conservatively assume MacroNodes may be used in a substitution
-        return true;
-    }
-
     /**
      * Gets the substitute method, resolving it first if necessary.
      */

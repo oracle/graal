@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -50,7 +49,7 @@ public abstract class LLVMPosixCallNode extends LLVMNode {
         this.signature = signature;
     }
 
-    protected TruffleObject createFunction() {
+    protected Object createFunction() {
         LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
         NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
         return nfiContextExtension.getNativeFunction(context, "__sulong_posix_" + name, signature);
@@ -65,7 +64,7 @@ public abstract class LLVMPosixCallNode extends LLVMNode {
 
     @Specialization
     protected Object doCall(Object[] args,
-                    @Cached("createFunction()") TruffleObject function,
+                    @Cached("createFunction()") Object function,
                     @CachedLibrary("function") InteropLibrary nativeExecute) {
         try {
             return nativeExecute.execute(function, args);

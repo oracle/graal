@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,7 +49,13 @@ public abstract class LLVMMemMove {
             this.memMove = memMove;
         }
 
-        @SuppressWarnings("unused")
+        /**
+         * @param dest @NodeChild
+         * @param source @NodeChild
+         * @param length @NodeChild
+         * @param isVolatile @NodeChild
+         * @see LLVMMemMoveI64
+         */
         @Specialization
         protected Object doVoid(LLVMPointer dest, LLVMPointer source, long length, boolean isVolatile) {
             memMove.executeWithTarget(dest, source, length);

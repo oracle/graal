@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.nio.ByteBuffer;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -32,6 +36,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
@@ -192,6 +197,10 @@ public final class FirstObjectTable {
         UnsignedWord startOffset = start.subtract(memory);
         /* The argument "end" is just past the real end of the object, so back it up one byte. */
         UnsignedWord endOffset = end.subtract(1).subtract(memory);
+        setTableForObjectAtLocation(table, startOffset, endOffset);
+    }
+
+    private static void setTableForObjectAtLocation(Pointer table, UnsignedWord startOffset, UnsignedWord endOffset) {
         UnsignedWord startIndex = memoryOffsetToIndex(startOffset);
         UnsignedWord endIndex = memoryOffsetToIndex(endOffset);
         UnsignedWord startMemoryOffset = indexToMemoryOffset(startIndex);
@@ -240,6 +249,17 @@ public final class FirstObjectTable {
             }
             unbiasedExponent += 1;
         }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static void setTableInBufferForObject(ByteBuffer buffer, int bufferTableOffset, UnsignedWord startOffset, UnsignedWord endOffset) {
+        UnsignedWord actualEndOffset = endOffset.subtract(1); // methods wants offset of last byte
+        setTableForObjectAtLocation(new HostedByteBufferPointer(buffer, bufferTableOffset), startOffset, actualEndOffset);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static void initializeTableInBuffer(ByteBuffer buffer, int bufferTableOffset, UnsignedWord tableSize) {
+        doInitializeTableToLimit(new HostedByteBufferPointer(buffer, bufferTableOffset), tableSize);
     }
 
     /**
@@ -396,16 +416,16 @@ public final class FirstObjectTable {
          * The table doesn't really need to be initialized, but if I'm making assertions, then I
          * should initialize the entries to the uninitialized value.
          */
-        assert initializeTableToIndexForAsserts(table, indexLimit);
+        assert doInitializeTableToLimit(table, indexLimit);
         return table;
     }
 
-    private static void initializeTableToLimitForAsserts(Pointer table, Pointer tableLimit) {
+    private static void doInitializeTableToLimit(Pointer table, Pointer tableLimit) {
         UnsignedWord indexLimit = FirstObjectTable.tableOffsetToIndex(tableLimit.subtract(table));
-        initializeTableToIndexForAsserts(table, indexLimit);
+        doInitializeTableToLimit(table, indexLimit);
     }
 
-    private static boolean initializeTableToIndexForAsserts(Pointer table, UnsignedWord indexLimit) {
+    private static boolean doInitializeTableToLimit(Pointer table, UnsignedWord indexLimit) {
         for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
             initializeEntryAtIndex(table, index);
         }
@@ -540,11 +560,11 @@ public final class FirstObjectTable {
         }
 
         public static void initializeTableToLimitForAsserts(Pointer table, Pointer tableLimit) {
-            FirstObjectTable.initializeTableToLimitForAsserts(table, tableLimit);
+            FirstObjectTable.doInitializeTableToLimit(table, tableLimit);
         }
 
         public static void initializeTableToIndexForAsserts(Pointer table, UnsignedWord indexLimit) {
-            FirstObjectTable.initializeTableToIndexForAsserts(table, indexLimit);
+            FirstObjectTable.doInitializeTableToLimit(table, indexLimit);
         }
 
         public static void setTableForObject(Pointer table, Pointer memory, Pointer start, Pointer end) {

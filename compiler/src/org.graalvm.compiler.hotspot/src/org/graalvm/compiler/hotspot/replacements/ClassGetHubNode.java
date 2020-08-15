@@ -37,6 +37,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
@@ -94,7 +95,8 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
         } else {
             if (clazz.isConstant() && !clazz.isNullConstant()) {
                 if (metaAccess != null) {
-                    ResolvedJavaType exactType = constantReflection.asJavaType(clazz.asJavaConstant());
+                    ResolvedJavaType exactType = constantReflection.asJavaType(clazz.asConstant());
+                    assert exactType != null : classGetHubNode.toString(Verbosity.Debugger);
                     if (exactType.isPrimitive()) {
                         return ConstantNode.forConstant(stamp, JavaConstant.NULL_POINTER, metaAccess);
                     } else {

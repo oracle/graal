@@ -131,10 +131,11 @@ sulong-ruby-downstream-test: {
     timelimit: "45:00"
 }
 
-sulong-gate-asm-parser: ${sulong-gateCommon} ${linux-amd64} {
+sulong-gate-generated-sources: ${sulong-gateCommon} ${linux-amd64} {
   run: [
-    ["mx", "create-parsers"]
-    ["git", "diff", "--exit-code", "projects/"]
+    ["mx", "build", "--dependencies", "LLVM_TOOLCHAIN"]
+    ["mx", "create-generated-sources"]
+    ["git", "diff", "--exit-code", "."]
   ]
 }
 
@@ -165,7 +166,7 @@ sulong-test-toolchain: [
 builds += [
   ${sulong-gateStyle} { name: gate-sulong-style, run: [[mx, gate, --tags, "style"]] }
   ${sulong-gateStyle} ${jdt} { name: gate-sulong-fullbuild, run: [[mx, gate, --tags, "fullbuild"]] }
-  ${sulong-gate-asm-parser} { name: gate-sulong-asm-parser }
+  ${sulong-gate-generated-sources} { name: gate-sulong-generated-sources }
   ${sulong-gateTestLLVMorg-linux} ${requireGCC} { name: gate-sulong-misc, run: [
     [mx, gate, --tags, "build,sulongMisc"]
   ] ${sulong-test-toolchain} }

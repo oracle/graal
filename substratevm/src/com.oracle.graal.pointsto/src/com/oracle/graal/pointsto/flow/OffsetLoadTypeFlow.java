@@ -180,6 +180,18 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
         protected abstract AbstractUnsafeLoadTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows);
 
         @Override
+        public void initClone(BigBang bb) {
+            /*
+             * Unsafe load type flow models unsafe reads from both instance and static fields. From
+             * an analysis stand point for static fields the base doesn't matter. An unsafe load can
+             * read from any of the static fields marked for unsafe access.
+             */
+            for (AnalysisField field : bb.getUniverse().getUnsafeAccessedStaticFields()) {
+                field.getStaticFieldFlow().addUse(bb, this);
+            }
+        }
+
+        @Override
         public void onObservedUpdate(BigBang bb) {
             /* Only a clone should be updated */
             assert this.isClone();

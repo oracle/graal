@@ -56,7 +56,7 @@ import com.oracle.svm.core.thread.VMThreads;
 final class HeapChunkProvider {
     /**
      * The head of the linked list of unused aligned chunks. Chunks are chained using
-     * {@link Header#getNext()}.
+     * {@link HeapChunk#getNext}.
      */
     private final UninterruptibleUtils.AtomicPointer<AlignedHeader> unusedAlignedChunks = new UninterruptibleUtils.AtomicPointer<>();
 
@@ -110,8 +110,8 @@ final class HeapChunkProvider {
             initializeChunk(result, chunkSize);
             resetAlignedHeapChunk(result);
         }
-        assert result.getTop().equal(AlignedHeapChunk.getObjectsStart(result));
-        assert result.getEnd().equal(HeapChunk.asPointer(result).add(chunkSize));
+        assert HeapChunk.getTopOffset(result).equal(AlignedHeapChunk.getObjectsStartOffset());
+        assert HeapChunk.getEndOffset(result).equal(chunkSize);
 
         if (HeapPolicy.getZapProducedHeapChunks()) {
             zap(result, HeapPolicy.getProducedHeapChunkZapWord());
@@ -180,7 +180,7 @@ final class HeapChunkProvider {
         }
         log().string("  old list top: ").hex(unusedAlignedChunks.get()).string("  list bytes ").signed(bytesInUnusedAlignedChunks.get()).newline();
 
-        chunk.setNext(unusedAlignedChunks.get());
+        HeapChunk.setNext(chunk, unusedAlignedChunks.get());
         unusedAlignedChunks.set(chunk);
         bytesInUnusedAlignedChunks.addAndGet(HeapPolicy.getAlignedHeapChunkSize());
 
@@ -216,9 +216,9 @@ final class HeapChunkProvider {
             if (result.isNull()) {
                 return WordFactory.nullPointer();
             } else {
-                AlignedHeader next = result.getNext();
+                AlignedHeader next = HeapChunk.getNext(result);
                 if (unusedAlignedChunks.compareAndSet(result, next)) {
-                    result.setNext(WordFactory.nullPointer());
+                    HeapChunk.setNext(result, WordFactory.nullPointer());
                     return result;
                 }
             }
@@ -265,15 +265,15 @@ final class HeapChunkProvider {
 
     /** Initialize the immutable state of a chunk. */
     private static void initializeChunk(Header<?> that, UnsignedWord chunkSize) {
-        that.setEnd(HeapChunk.asPointer(that).add(chunkSize));
+        HeapChunk.setEndOffset(that, chunkSize);
     }
 
     /** Reset the mutable state of a chunk. */
     private static void resetChunkHeader(Header<?> chunk, Pointer objectsStart) {
-        chunk.setTop(objectsStart);
-        chunk.setSpace(null);
-        chunk.setNext(WordFactory.nullPointer());
-        chunk.setPrevious(WordFactory.nullPointer());
+        HeapChunk.setTopPointer(chunk, objectsStart);
+        HeapChunk.setSpace(chunk, null);
+        HeapChunk.setNext(chunk, WordFactory.nullPointer());
+        HeapChunk.setPrevious(chunk, WordFactory.nullPointer());
     }
 
     private static void resetAlignedHeapChunk(AlignedHeader chunk) {
@@ -290,8 +290,8 @@ final class HeapChunkProvider {
     }
 
     private static void zap(Header<?> chunk, WordBase value) {
-        Pointer start = chunk.getTop();
-        Pointer limit = chunk.getEnd();
+        Pointer start = HeapChunk.getTopPointer(chunk);
+        Pointer limit = HeapChunk.getEndPointer(chunk);
         log().string("  zap chunk: ").hex(chunk).string("  start: ").hex(start).string("  limit: ").hex(limit).string("  value: ").hex(value).newline();
         for (Pointer p = start; p.belowThan(limit); p = p.add(FrameAccess.wordSize())) {
             p.writeWord(0, value);
@@ -306,8 +306,8 @@ final class HeapChunkProvider {
         if (traceHeapChunks) {
             if (unusedAlignedChunks.get().isNonNull()) {
                 log.newline().string("aligned chunks:").redent(true);
-                for (AlignedHeapChunk.AlignedHeader aChunk = unusedAlignedChunks.get(); aChunk.isNonNull(); aChunk = aChunk.getNext()) {
-                    log.newline().hex(aChunk).string(" (").hex(AlignedHeapChunk.getObjectsStart(aChunk)).string("-").hex(aChunk.getTop()).string(")");
+                for (AlignedHeapChunk.AlignedHeader aChunk = unusedAlignedChunks.get(); aChunk.isNonNull(); aChunk = HeapChunk.getNext(aChunk)) {
+                    log.newline().hex(aChunk).string(" (").hex(AlignedHeapChunk.getObjectsStart(aChunk)).string("-").hex(HeapChunk.getTopPointer(aChunk)).string(")");
                 }
                 log.redent(false);
             }
@@ -319,7 +319,7 @@ final class HeapChunkProvider {
     boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
         boolean continueVisiting = true;
         MemoryWalker.HeapChunkAccess<AlignedHeapChunk.AlignedHeader> access = AlignedHeapChunk.getMemoryWalkerAccess();
-        for (AlignedHeapChunk.AlignedHeader aChunk = unusedAlignedChunks.get(); continueVisiting && aChunk.isNonNull(); aChunk = aChunk.getNext()) {
+        for (AlignedHeapChunk.AlignedHeader aChunk = unusedAlignedChunks.get(); continueVisiting && aChunk.isNonNull(); aChunk = HeapChunk.getNext(aChunk)) {
             continueVisiting = visitor.visitHeapChunk(aChunk, access);
         }
         return continueVisiting;
@@ -336,7 +336,7 @@ final class HeapChunkProvider {
     }
 
     boolean slowlyFindPointer(Pointer p) {
-        for (AlignedHeader chunk = unusedAlignedChunks.get(); chunk.isNonNull(); chunk = chunk.getNext()) {
+        for (AlignedHeader chunk = unusedAlignedChunks.get(); chunk.isNonNull(); chunk = HeapChunk.getNext(chunk)) {
             Pointer chunkPtr = HeapChunk.asPointer(chunk);
             if (p.aboveOrEqual(chunkPtr) && p.belowThan(chunkPtr.add(HeapPolicy.getAlignedHeapChunkSize()))) {
                 return true;
@@ -353,7 +353,7 @@ final class HeapChunkProvider {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void freeAlignedChunkList(AlignedHeader first) {
         for (AlignedHeader chunk = first; chunk.isNonNull();) {
-            AlignedHeader next = chunk.getNext();
+            AlignedHeader next = HeapChunk.getNext(chunk);
             freeAlignedChunk(chunk);
             chunk = next;
         }
@@ -362,7 +362,7 @@ final class HeapChunkProvider {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void freeUnalignedChunkList(UnalignedHeader first) {
         for (UnalignedHeader chunk = first; chunk.isNonNull();) {
-            UnalignedHeader next = chunk.getNext();
+            UnalignedHeader next = HeapChunk.getNext(chunk);
             freeUnalignedChunk(chunk);
             chunk = next;
         }
@@ -380,6 +380,6 @@ final class HeapChunkProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord unalignedChunkSize(UnalignedHeader chunk) {
-        return chunk.getEnd().subtract(HeapChunk.asPointer(chunk));
+        return HeapChunk.getEndOffset(chunk);
     }
 }

@@ -29,7 +29,7 @@
 from __future__ import print_function
 import os
 from os.path import join, exists, getmtime, basename, dirname, isdir
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from argparse import ArgumentParser, RawDescriptionHelpFormatter, REMAINDER
 import re
 import stat
 import zipfile
@@ -47,6 +47,7 @@ import mx_sdk_vm
 import mx
 import mx_gate
 from mx_gate import Task
+from mx import SafeDirectoryUpdater
 
 import mx_unittest
 from mx_unittest import unittest
@@ -106,67 +107,6 @@ if jdk.javaCompliance < '1.8':
 #: JDK9 or later is being used (checked above).
 isJDK8 = jdk.javaCompliance < '1.9'
 
-class SafeDirectoryUpdater(object):
-    """
-    Multi-thread safe context manager for creating/updating a directory.
-
-    :Example:
-    # Compiles `sources` into `dst` with javac. If multiple threads/processes are
-    # performing this compilation concurrently, the contents of `dst`
-    # will reflect the complete results of one of the compilations
-    # from the perspective of other threads/processes.
-    with SafeDirectoryUpdater(dst) as sdu:
-        mx.run([jdk.javac, '-d', sdu.directory, sources])
-
-    """
-    def __init__(self, directory, create=False):
-        """
-
-        :param directory: the target directory that will be created/updated within the context.
-                          The working copy of the directory is accessed via `self.directory`
-                          within the context.
-        """
-
-        self.target = directory
-        self.workspace = None
-        self.directory = None
-        self.create = create
-
-    def __enter__(self):
-        parent = dirname(self.target)
-        self.workspace = tempfile.mkdtemp(dir=parent)
-        self.directory = join(self.workspace, basename(self.target))
-        if self.create:
-            mx.ensure_dir_exists(self.directory)
-        self.target_timestamp = mx.TimeStampFile(self.target)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type is not None:
-            mx.rmtree(self.workspace)
-            raise
-
-        # Try delete the target directory if it existed prior to creating
-        # self.workspace and has not been modified in between.
-        if self.target_timestamp.timestamp is not None and self.target_timestamp.timestamp == mx.TimeStampFile(self.target).timestamp:
-            old_target = join(self.workspace, 'to_delete_' + basename(self.target))
-            try:
-                os.rename(self.target, old_target)
-            except:
-                # Silently assume another process won the race to rename dst_jdk_dir
-                pass
-
-        # Try atomically move self.directory to self.target
-        try:
-            os.rename(self.directory, self.target)
-        except:
-            if not exists(self.target):
-                raise
-            else:
-                # Silently assume another process won the race to create self.target
-                pass
-
-        mx.rmtree(self.workspace)
 
 def _check_jvmci_version(jdk):
     """
@@ -628,6 +568,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
         'scalariform':1,
         'scalatest':  1,
         'scalaxb':    1,
+        'specs':      1,
         'tmt':        1,
         'actors':     1,
     }
@@ -876,6 +817,10 @@ def _parseVmArgs(args, addDefaultArgs=True):
     if not any(a.startswith('-Dgraal.PrintGraph=') for a in args):
         argsPrefix.append('-Dgraal.PrintGraph=Network')
 
+    # Likewise, one can assume that objdump is safe to access when using mx.
+    if not any(a.startswith('-Dgraal.ObjdumpExecutables=') for a in args):
+        argsPrefix.append('-Dgraal.ObjdumpExecutables=objdump,gobjdump')
+
     return argsPrefix + args
 
 def _check_bootstrap_config(args):
@@ -951,17 +896,94 @@ def get_graaljdk():
         graaljdk = _graaljdk_override
     return graaljdk
 
+def collate_metrics(args):
+    """
+    collates files created by the AggregatedMetricsFile option for one or more executions
+
+    The collated results file will have rows of the format:
+
+    <name>;<value1>;<value2>;...;<valueN>;<unit>
+
+    where <value1> is from the first <filename>, <value2> is from the second
+    <filename> etc. 0 is inserted for missing values.
+
+    """
+    parser = ArgumentParser(prog='mx collate-metrics')
+    parser.add_argument('filenames', help='per-execution values passed to AggregatedMetricsFile',
+                        nargs=REMAINDER, metavar='<path>')
+    args = parser.parse_args(args)
+
+    results = {}
+    units = {}
+
+    filename_index = 0
+    for filename in args.filenames:
+        if not filename.endswith('.csv'):
+            mx.abort('Cannot collate metrics from non-CSV files: ' + filename)
+
+        # Keep in sync with org.graalvm.compiler.debug.GlobalMetrics.print(OptionValues)
+        abs_filename = join(os.getcwd(), filename)
+        directory = dirname(abs_filename)
+        rootname = basename(filename)[0:-len('.csv')]
+        isolate_metrics_re = re.compile(rootname + r'@\d+\.csv')
+        for entry in os.listdir(directory):
+            m = isolate_metrics_re.match(entry)
+            if m:
+                isolate_metrics = join(directory, entry)
+                with open(isolate_metrics) as fp:
+                    line_no = 1
+                    for line in fp.readlines():
+                        values = line.strip().split(';')
+                        if len(values) != 3:
+                            mx.abort('{}:{}: invalid line: {}'.format(isolate_metrics, line_no, line))
+                        if len(values) != 3:
+                            mx.abort('{}:{}: expected 3 semicolon separated values: {}'.format(isolate_metrics, line_no, line))
+                        name, metric, unit = values
+
+                        series = results.get(name, None)
+                        if series is None:
+                            series = [0 for _ in range(filename_index)] + [int(metric)]
+                            results[name] = series
+                        else:
+                            while len(series) < filename_index + 1:
+                                series.append(0)
+                            assert len(series) == filename_index + 1, '{}, {}'.format(name, series)
+                            series[filename_index] += int(metric)
+                        if units.get(name, unit) != unit:
+                            mx.abort('{}:{}: inconsistent units for {}: {} != {}'.format(isolate_metrics, line_no, name, unit, units.get(name)))
+                        units[name] = unit
+        filename_index += 1
+
+    if args.filenames:
+        collated_filename = args.filenames[0][:-len('.csv')] + '.collated.csv'
+        with open(collated_filename, 'w') as fp:
+            for n, series in sorted(results.items()):
+                while len(series) < len(args.filenames):
+                    series.append(0)
+                print(n +';' + ';'.join((str(v) for v in series)) + ';' + units[n], file=fp)
+        mx.log('Collated metrics into ' + collated_filename)
+
 def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
     graaljdk = get_graaljdk()
-    args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
+    vm_args = _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
+    args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + vm_args
     add_exports = join(graaljdk.home, '.add_exports')
     if exists(add_exports):
         args = ['@' + add_exports] + args
     _check_bootstrap_config(args)
     cmd = get_vm_prefix() + [graaljdk.java] + ['-server'] + args
     map_file = join(graaljdk.home, 'proguard.map')
+
     with StdoutUnstripping(args, out, err, mapFiles=[map_file]) as u:
-        return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, cwd=cwd, env=env)
+        try:
+            return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, cwd=cwd, env=env)
+        finally:
+            # Collate AggratedMetricsFile
+            for a in vm_args:
+                if a.startswith('-Dgraal.AggregatedMetricsFile='):
+                    metrics_file = a[len('-Dgraal.AggregatedMetricsFile='):]
+                    if metrics_file:
+                        collate_metrics([metrics_file])
 
 _JVMCI_JDK_TAG = 'jvmci'
 
@@ -1026,7 +1048,7 @@ class GraalArchiveParticipant:
                         services = self.services.setdefault(int(version), {})
                         services.setdefault(service, []).append(provider)
             return True
-        elif arcname.endswith('_OptionDescriptors.class'):
+        elif arcname.endswith('_OptionDescriptors.class') and not arcname.startswith('META-INF/'):
             if self.isTest:
                 mx.warn('@Option defined in test code will be ignored: ' + arcname)
             else:
@@ -1251,7 +1273,10 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
 
         vm_name = 'Server VM Graal'
         for d in _graal_config().jvmci_dists:
-            s = ':' + d.suite.name + '_' + d.suite.version()
+            version = d.suite.version()
+            s = ':' + d.suite.name
+            if version:
+                s += '_' + d.suite.version()
             if s not in vm_name:
                 vm_name = vm_name + s
 
@@ -1319,10 +1344,12 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         with open(join(tmp_dst_jdk_dir, 'release.jvmci'), 'w') as fp:
             for d in _graal_config().jvmci_dists:
                 s = d.suite
-                print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
+                if s.vc:
+                    print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
             for d in _graal_config().boot_dists + _graal_config().truffle_dists:
                 s = d.suite
-                print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
+                if s.vc:
+                    print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
 
         assert exists(jvmlib), jvmlib + ' does not exist'
         out = mx.LinesOutputCapture()
@@ -1423,6 +1450,7 @@ mx.update_commands(_suite, {
     'vm': [run_vm, '[-options] class [args...]'],
     'jaotc': [mx_jaotc.run_jaotc, '[-options] class [args...]'],
     'jaotc-test': [mx_jaotc.jaotc_test, ''],
+    'collate-metrics': [collate_metrics, 'filename'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],

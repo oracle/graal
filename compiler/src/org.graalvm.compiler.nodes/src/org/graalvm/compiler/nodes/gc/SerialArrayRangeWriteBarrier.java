@@ -40,4 +40,8 @@ public final class SerialArrayRangeWriteBarrier extends ArrayRangeWriteBarrier {
         super(TYPE, address, length, elementStride);
     }
 
+    @Override
+    public Kind getKind() {
+        return Kind.POST_BARRIER;
+    }
 }

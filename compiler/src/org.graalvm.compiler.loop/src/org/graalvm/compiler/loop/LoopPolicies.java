@@ -43,7 +43,7 @@ public interface LoopPolicies {
 
     boolean shouldFullUnroll(LoopEx loop);
 
-    boolean shouldPartiallyUnroll(LoopEx loop);
+    boolean shouldPartiallyUnroll(LoopEx loop, CoreProviders providers);
 
     boolean shouldTryUnswitch(LoopEx loop);
 

@@ -1,8 +1,9 @@
+# Language Implementations
+
 This page is intended to keep track of the growing number of Truffle language implementations and experiments.
+The following language implementations exist already:
 
-## Language implementations
-
-* [Graal.js](https://github.com/graalvm/graaljs), an ECMAScript 2017 compliant JavaScript implementation. *
+* [Graal.js](https://github.com/graalvm/graaljs), an ECMAScript 2020 compliant JavaScript implementation. *
 * [FastR](https://github.com/graalvm/fastr), an implementation of GNU R. *
 * [TruffleRuby](https://github.com/graalvm/truffleruby), an implementation of Ruby. *
 * [Sulong](https://github.com/oracle/graal/tree/master/sulong), an LLVM bitcode interpreter. *
@@ -10,8 +11,8 @@ This page is intended to keep track of the growing number of Truffle language im
 * [TruffleSOM](https://github.com/SOM-st/TruffleSOM), a SOM Smalltalk implementation.
 * [SOMns](https://github.com/smarr/SOMns), a Newspeak implementation for Concurrency Research.
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language implementation to demonstrate Truffle features.
-* [TruffleSqueak](https://github.com/hpi-swa/trufflesqueak/), a Squeak/Smalltalk bytecode interpreter with support for the Smalltalk programming environment.
-* [TRegex](https://github.com/oracle/graal/tree/master/regex), a generic regular expression engine (internal, for use by other languages only). * 
+* [TruffleSqueak](https://github.com/hpi-swa/trufflesqueak/), a Squeak/Smalltalk VM implementation and polyglot programming environment.
+* [TRegex](https://github.com/oracle/graal/tree/master/regex), a generic regular expression engine (internal, for use by other languages only). *
 * [Yatta](https://yatta-lang.org/), the reference implementation of a minimalistic, strongly dynamically typed, parallel and non-blocking, polyglot, strict, functional programming language.
 
 \* Shipped as part of [GraalVM](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
@@ -19,7 +20,6 @@ This page is intended to keep track of the growing number of Truffle language im
 ## Experiments
 
 * [ZipPy](https://github.com/securesystemslab/zippy), a Python implementation.
-* [TruffleSqueak](https://github.com/timfel/trufflesqueak), an experimental Squeak interpreter.
 * [Mumbler](https://github.com/cesquivias/mumbler), an experimental Lisp programming language.
 * [LuaTruffle](https://github.com/lucasallan/LuaTruffle), an implementation of the Lua language.
 * [hextruffe](https://bitbucket.org/hexafraction/truffles), an implementation of Hex.
@@ -34,6 +34,6 @@ This page is intended to keep track of the growing number of Truffle language im
 * [shen-truffle](https://github.com/ragnard/shen-truffle), a port of the Shen programming language.
 * [bf](https://github.com/chumer/bf/), an experimental Brainfuck programming language implementation.
 * [brainfuck-jvm](https://github.com/mthmulders/brainfuck-jvm), another Brainfuck language implementation.
-* [Heap Language](https://github.com/jaroslavtulach/heapdump) tutorial showing embedding of Truffle languages via interop
+* [Heap Language](https://github.com/jaroslavtulach/heapdump) tutorial showing embedding of Truffle languages via interoperability.
 
-Feel free to submit a [pull request](https://help.github.com/articles/using-pull-requests/) to add/remove from this list.
+Submit a [pull request](https://help.github.com/articles/using-pull-requests/) to add/remove from this list.

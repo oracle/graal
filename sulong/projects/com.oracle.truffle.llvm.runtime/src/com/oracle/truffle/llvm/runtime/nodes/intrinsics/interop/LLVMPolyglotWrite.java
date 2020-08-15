@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -89,9 +89,14 @@ public final class LLVMPolyglotWrite {
             }
         }
 
+        /**
+         * @param value @NodeChild
+         * @param id @NodeChild
+         * @param v @NodeChild
+         * @see LLVMPolyglotPutMember
+         */
         @Fallback
         @TruffleBoundary
-        @SuppressWarnings("unused")
         public Object fallback(Object value, Object id, Object v) {
             throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }
@@ -132,9 +137,14 @@ public final class LLVMPolyglotWrite {
             return null;
         }
 
+        /**
+         * @param value @NodeChild
+         * @param id @NodeChild
+         * @param v @NodeChild
+         * @see LLVMPolyglotSetArrayElement
+         */
         @Fallback
         @TruffleBoundary
-        @SuppressWarnings("unused")
         public Object fallback(Object value, Object id, Object v) {
             throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }

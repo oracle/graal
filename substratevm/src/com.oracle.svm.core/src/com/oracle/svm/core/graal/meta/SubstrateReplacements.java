@@ -36,6 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.Snippet;
@@ -204,7 +205,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
         try (DebugContext debug = openDebugContext("SVMSnippet_", method, options)) {
             StructuredGraph result = new StructuredGraph.Builder(options, debug).method(method).trackNodeSourcePosition(trackNodeSourcePosition).setIsSubstitution(true).build();
             PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers, null, snippetInvocationPlugins, new InlineInvokePlugin[0], parameterPlugin, null,
-                            null, null) {
+                            null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>()) {
 
                 private IntrinsicContext intrinsic = new IntrinsicContext(method, null, providers.getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING, false);
 
@@ -317,7 +318,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
-    public boolean hasSubstitution(ResolvedJavaMethod method, int callerBci) {
+    public boolean hasSubstitution(ResolvedJavaMethod method) {
         // This override keeps graphBuilderPlugins from being reached during image generation.
         return false;
     }

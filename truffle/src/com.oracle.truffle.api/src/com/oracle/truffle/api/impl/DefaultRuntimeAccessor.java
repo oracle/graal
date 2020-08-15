@@ -40,15 +40,12 @@
  */
 package com.oracle.truffle.api.impl;
 
-import java.io.OutputStream;
-
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 
 final class DefaultRuntimeAccessor extends Accessor {
@@ -73,11 +70,6 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public IndirectCallNode createUncachedIndirectCall() {
-            return DefaultIndirectCallNode.createUncached();
-        }
-
-        @Override
         public void onLoopCount(Node source, int iterations) {
             // do nothing
         }
@@ -90,7 +82,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public boolean isGuestCallStackFrame(StackTraceElement e) {
             String methodName = e.getMethodName();
-            return (methodName.startsWith(DefaultCallTarget.CALL_BOUNDARY_METHOD_PREFIX)) && e.getClassName().equals(DefaultCallTarget.class.getName());
+            return (methodName.equals(DefaultCallTarget.CALL_BOUNDARY_METHOD)) && e.getClassName().equals(DefaultCallTarget.class.getName());
         }
 
         @Override
@@ -109,11 +101,6 @@ final class DefaultRuntimeAccessor extends Accessor {
 
         @Override
         public void onEngineClosed(Object runtimeData) {
-        }
-
-        @Override
-        public OutputStream getConfiguredLogStream() {
-            return null;
         }
 
         @Override
@@ -136,10 +123,20 @@ final class DefaultRuntimeAccessor extends Accessor {
             return args;
         }
 
+        @Override
+        public void flushCompileQueue(Object runtimeData) {
+            // default runtime has no compile queue.
+        }
+
         @SuppressWarnings("unchecked")
         @Override
         public <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
             return (T) value;
+        }
+
+        @Override
+        public boolean inFirstTier() {
+            return false;
         }
 
         @Override

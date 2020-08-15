@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -720,6 +720,19 @@ public class ElementUtils {
 
     public static boolean isPrimitive(TypeMirror mirror) {
         return mirror != null && mirror.getKind().isPrimitive();
+    }
+
+    public static boolean isFinal(TypeMirror mirror) {
+        if (isPrimitive(mirror) || isVoid(mirror)) {
+            return true;
+        }
+        if (mirror.getKind() == TypeKind.DECLARED) {
+            Element element = ((DeclaredType) mirror).asElement();
+            if (element.getKind().isClass() && element.getModifiers().contains(Modifier.FINAL)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static List<String> getQualifiedSuperTypeNames(TypeElement element) {

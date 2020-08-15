@@ -61,10 +61,8 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
 
     public abstract LLVMPointer execute();
 
-    @SuppressWarnings("unused")
     @Specialization(guards = {"descriptor.isAlias()"})
-    LLVMPointer doAliasAccess(
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+    LLVMPointer doAliasAccess(@CachedContext(LLVMLanguage.class) LLVMContext context) {
         CompilerAsserts.partialEvaluationConstant(descriptor);
         LLVMSymbol target = ((LLVMAlias) descriptor).getTarget();
         while (target.isAlias()) {

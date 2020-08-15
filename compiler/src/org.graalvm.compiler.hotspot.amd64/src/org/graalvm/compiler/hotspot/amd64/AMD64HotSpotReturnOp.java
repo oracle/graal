@@ -118,6 +118,7 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueBlockEndOp implemen
             }
         }
         masm.ret(0);
+        crb.frameContext.returned(crb);
     }
 
 }

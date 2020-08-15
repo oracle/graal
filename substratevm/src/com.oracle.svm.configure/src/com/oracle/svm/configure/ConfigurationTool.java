@@ -72,6 +72,15 @@ public class ConfigurationTool {
             }
             Iterator<String> argsIter = Arrays.asList(args).iterator();
             String first = argsIter.next();
+
+            if (first.equals("command-file")) {
+                argsIter = handleCommandFile(argsIter);
+                if (!argsIter.hasNext()) {
+                    throw new UsageException("No arguments provided in the command file.");
+                }
+                first = argsIter.next();
+            }
+
             switch (first) {
                 case "generate":
                     generate(argsIter, false);
@@ -108,6 +117,24 @@ public class ConfigurationTool {
 
     private static URI requirePathUri(String current, String value) {
         return requirePath(current, value).toUri();
+    }
+
+    private static Iterator<String> handleCommandFile(Iterator<String> args) {
+        if (!args.hasNext()) {
+            throw new UsageException("Path to a command file must be provided.");
+        }
+        Path filePath = Paths.get(args.next());
+
+        if (args.hasNext()) {
+            throw new UsageException("Too many arguments to command-file passed. Expected a single argument: <path to a command file>.");
+        }
+
+        try {
+            List<String> lines = Files.readAllLines(filePath);
+            return lines.iterator();
+        } catch (IOException e) {
+            throw new UsageException("Failed to read the command file at " + filePath + ". Check if the file exists, you have the required permissions and that the file is actually a text file.");
+        }
     }
 
     @SuppressWarnings("fallthrough")

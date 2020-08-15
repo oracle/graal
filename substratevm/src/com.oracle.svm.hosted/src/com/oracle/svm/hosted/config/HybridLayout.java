@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.hosted.config;
 
-import java.lang.reflect.Modifier;
+import org.graalvm.collections.Pair;
+import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -35,7 +37,6 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.core.common.NumUtil;
 
 /**
  * Defines the layout for a hybrid class.
@@ -48,11 +49,11 @@ import org.graalvm.compiler.core.common.NumUtil;
 public class HybridLayout<T> {
 
     public static boolean isHybrid(ResolvedJavaType clazz) {
-        return clazz.getAnnotation(Hybrid.class) != null;
+        return ImageSingletons.lookup(HybridLayoutSupport.class).isHybrid(clazz);
     }
 
     public static boolean isHybridField(ResolvedJavaField field) {
-        return field.getAnnotation(Hybrid.Array.class) != null || field.getAnnotation(Hybrid.Bitset.class) != null;
+        return ImageSingletons.lookup(HybridLayoutSupport.class).isHybridField(field);
     }
 
     private final ObjectLayout layout;
@@ -66,27 +67,10 @@ public class HybridLayout<T> {
 
     public HybridLayout(HostedInstanceClass hybridClass, ObjectLayout layout) {
         this.layout = layout;
-
-        assert hybridClass.getAnnotation(Hybrid.class) != null;
-        assert Modifier.isFinal(hybridClass.getModifiers());
-
-        HostedField foundArrayField = null;
-        HostedField foundBitsetField = null;
-        for (HostedField field : hybridClass.getInstanceFields(true)) {
-            if (field.getAnnotation(Hybrid.Array.class) != null) {
-                assert foundArrayField == null : "must have exactly one hybrid array field";
-                assert field.getType().isArray();
-                foundArrayField = field;
-            }
-            if (field.getAnnotation(Hybrid.Bitset.class) != null) {
-                assert foundBitsetField == null : "must have at most one hybrid bitset field";
-                assert !field.getType().isArray();
-                foundBitsetField = field;
-            }
-        }
-        assert foundArrayField != null : "must have exactly one hybrid array field";
-        arrayField = foundArrayField;
-        bitsetField = foundBitsetField;
+        HybridLayoutSupport utils = ImageSingletons.lookup(HybridLayoutSupport.class);
+        Pair<HostedField, HostedField> arrayAndBitsetFields = utils.findHybridFields(hybridClass);
+        arrayField = arrayAndBitsetFields.getLeft();
+        bitsetField = arrayAndBitsetFields.getRight();
         instanceSize = hybridClass.getInstanceSize();
     }
 

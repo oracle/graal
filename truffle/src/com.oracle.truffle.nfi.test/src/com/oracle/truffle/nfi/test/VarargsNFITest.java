@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -70,14 +69,14 @@ public class VarargsNFITest extends NFITest {
 
     abstract static class FormatNode extends Node {
 
-        protected final String execute(TruffleObject formatString, Object... args) {
+        protected final String execute(Object formatString, Object... args) {
             return executeImpl(formatString, args);
         }
 
-        protected abstract String executeImpl(TruffleObject formatString, Object[] args);
+        protected abstract String executeImpl(Object formatString, Object[] args);
 
         @Specialization(limit = "3")
-        String doFormat(TruffleObject formatString, Object[] args,
+        String doFormat(Object formatString, Object[] args,
                         @CachedLibrary("formatString") InteropLibrary interop,
                         @CachedLibrary(limit = "1") InteropLibrary num) {
             assert args[0] == null && args[1] == null;
@@ -107,7 +106,7 @@ public class VarargsNFITest extends NFITest {
 
     public static class SimpleFormatRoot extends NFITestRootNode {
 
-        private final TruffleObject formatString;
+        private final Object formatString;
         @Child FormatNode printf = FormatNodeGen.create();
 
         public SimpleFormatRoot() {
@@ -128,7 +127,7 @@ public class VarargsNFITest extends NFITest {
 
     private static final class FormatSpec {
 
-        final TruffleObject formatString;
+        final Object formatString;
         final Object[] args;
 
         final String expectedRet;

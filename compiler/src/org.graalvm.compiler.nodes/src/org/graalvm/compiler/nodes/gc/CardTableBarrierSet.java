@@ -158,8 +158,10 @@ public class CardTableBarrierSet implements BarrierSet {
     public boolean isMatchingBarrier(FixedAccessNode n, WriteBarrier barrier) {
         if (n instanceof ReadNode) {
             return false;
-        } else if (n instanceof WriteNode || n instanceof LoweredAtomicReadAndWriteNode || n instanceof AbstractCompareAndSwapNode || n instanceof ArrayRangeWrite) {
+        } else if (n instanceof WriteNode || n instanceof LoweredAtomicReadAndWriteNode || n instanceof AbstractCompareAndSwapNode) {
             return barrier instanceof SerialWriteBarrier && matches(n, (SerialWriteBarrier) barrier);
+        } else if (n instanceof ArrayRangeWrite) {
+            return barrier instanceof SerialArrayRangeWriteBarrier && matches((ArrayRangeWrite) n, (SerialArrayRangeWriteBarrier) barrier);
         } else {
             throw GraalError.shouldNotReachHere("Unexpected node: " + n.getClass());
         }
@@ -169,7 +171,7 @@ public class CardTableBarrierSet implements BarrierSet {
         if (needsWriteBarrier(write)) {
             StructuredGraph graph = write.asNode().graph();
             SerialArrayRangeWriteBarrier serialArrayRangeWriteBarrier = graph.add(new SerialArrayRangeWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
-            graph.addAfterFixed(write.asNode(), serialArrayRangeWriteBarrier);
+            graph.addAfterFixed(write.postBarrierInsertionPosition(), serialArrayRangeWriteBarrier);
         }
     }
 

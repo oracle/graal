@@ -89,7 +89,7 @@ public class StringTable implements Iterable<StringEntry> {
      */
     public int debugStringIndex(String string) {
         StringEntry stringEntry = table.get(string);
-        assert stringEntry != null;
+        assert stringEntry != null : "\"" + string + "\" not in string table";
         if (stringEntry == null) {
             return -1;
         }

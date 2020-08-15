@@ -30,6 +30,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.EnumSet;
 import java.util.Set;
+import jdk.vm.ci.services.Services;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.libgraal.jni.JNI.JArray;
@@ -317,10 +318,41 @@ public final class JNIUtil {
         if (classLoader.isNull()) {
             throw new IllegalArgumentException("ClassLoader must be non null.");
         }
-        JNI.JMethodID findClassId = findMethod(env, JNIUtil.GetObjectClass(env, classLoader), false, false, METHOD_LOAD_CLASS);
+        trace(1, "LIBGRAAL->HS: findClass");
+        JNI.JMethodID findClassId = findMethod(env, JNIUtil.GetObjectClass(env, classLoader), false, false, METHOD_LOAD_CLASS[0], METHOD_LOAD_CLASS[1]);
         JNI.JValue params = StackValue.get(1, JNI.JValue.class);
         params.addressOf(0).setJObject(JNIUtil.createHSString(env, binaryName.replace('/', '.')));
         return (JNI.JClass) env.getFunctions().getCallObjectMethodA().call(env, classLoader, findClassId, params);
+    }
+
+    /**
+     * Finds a class in HotSpot heap using JNI.
+     *
+     * @param env the {@code JNIEnv}
+     * @param classLoader the class loader to find class in or {@link WordFactory#nullPointer() NULL
+     *            pointer}.
+     * @param binaryName the class binary name
+     * @param required if {@code true} the {@link JNIExceptionWrapper} is thrown when the class is
+     *            not found. If {@code false} the {@code NULL pointer} is returned when the class is
+     *            not found.
+     */
+    public static JNI.JClass findClass(JNI.JNIEnv env, JNI.JObject classLoader, String binaryName, boolean required) {
+        Class<? extends Throwable> allowedException = null;
+        try {
+            if (classLoader.isNonNull()) {
+                allowedException = required ? null : ClassNotFoundException.class;
+                return findClass(env, classLoader, binaryName);
+            } else {
+                allowedException = required ? null : NoClassDefFoundError.class;
+                return findClass(env, binaryName);
+            }
+        } finally {
+            if (allowedException != null) {
+                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env, allowedException);
+            } else {
+                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+            }
+        }
     }
 
     /**
@@ -334,7 +366,7 @@ public final class JNIUtil {
         if (clazz.isNull()) {
             throw new InternalError("No such class " + CLASS_SERVICES);
         }
-        JNI.JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_JVMCI_CLASS_LOADER);
+        JNI.JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_JVMCI_CLASS_LOADER[0], METHOD_GET_JVMCI_CLASS_LOADER[1]);
         if (getClassLoaderId.isNonNull()) {
             return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
         }
@@ -344,17 +376,21 @@ public final class JNIUtil {
         if (clazz.isNull()) {
             throw new InternalError("No such class " + ClassLoader.class.getName());
         }
-        getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_PLATFORM_CLASS_LOADER);
+        getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_PLATFORM_CLASS_LOADER[0], METHOD_GET_PLATFORM_CLASS_LOADER[1]);
         if (getClassLoaderId.isNonNull()) {
             return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
         }
         return WordFactory.nullPointer();
     }
 
-    private static JNI.JMethodID findMethod(JNI.JNIEnv env, JNI.JClass clazz, boolean staticMethod, boolean optional, String[] descriptor) {
-        assert descriptor.length == 2;
+    public static JNI.JMethodID findMethod(JNI.JNIEnv env, JNI.JClass clazz, boolean staticMethod, String methodName, String methodSignature) {
+        return findMethod(env, clazz, staticMethod, false, methodName, methodSignature);
+    }
+
+    private static JNI.JMethodID findMethod(JNI.JNIEnv env, JNI.JClass clazz, boolean staticMethod, boolean optional,
+                    String methodName, String methodSignature) {
         JNI.JMethodID result;
-        try (CTypeConversion.CCharPointerHolder name = toCString(descriptor[0]); CTypeConversion.CCharPointerHolder sig = toCString(descriptor[1])) {
+        try (CTypeConversion.CCharPointerHolder name = toCString(methodName); CTypeConversion.CCharPointerHolder sig = toCString(methodSignature)) {
             result = staticMethod ? GetStaticMethodID(env, clazz, name.get(), sig.get()) : GetMethodID(env, clazz, name.get(), sig.get());
             if (optional) {
                 JNIExceptionWrapper.wrapAndThrowPendingJNIException(env, NoSuchMethodError.class);
@@ -369,19 +405,19 @@ public final class JNIUtil {
 
     private static Integer traceLevel;
 
-    private static final String JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME = "JNI_LIBGRAAL_TRACE_LEVEL";
+    private static final String JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME = "JNI_LIBGRAAL_TRACE_LEVEL";
 
     /**
      * Checks if JNI calls are verbose.
      */
     private static int traceLevel() {
         if (traceLevel == null) {
-            String var = System.getenv(JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME);
+            String var = Services.getSavedProperties().get(JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME);
             if (var != null) {
                 try {
                     traceLevel = Integer.parseInt(var);
                 } catch (NumberFormatException e) {
-                    TTY.printf("Invalid value for %s: %s%n", JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME, e);
+                    TTY.printf("Invalid value for %s: %s%n", JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME, e);
                     traceLevel = 0;
                 }
             } else {

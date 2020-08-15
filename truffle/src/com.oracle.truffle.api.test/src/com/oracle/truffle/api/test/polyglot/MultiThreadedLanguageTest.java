@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -655,6 +655,22 @@ public class MultiThreadedLanguageTest {
             throw seenError.get();
         }
         Assert.assertTrue(seenInterrupt.get());
+    }
+
+    @Test
+    public void testMultiThreadedAccessExceptionThrownToCreator() throws Throwable {
+        try (Context context = Context.newBuilder(MultiThreadedLanguage.ID).allowCreateThread(true).build()) {
+            MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
+                return req.singleThreaded;
+            };
+            eval(context, (env) -> {
+                AbstractPolyglotTest.assertFails(() -> env.createThread(() -> {
+                }), IllegalStateException.class, (ise) -> {
+                    assertTrue(ise.getMessage().contains("Multi threaded access requested by thread"));
+                });
+                return null;
+            });
+        }
     }
 
     /*

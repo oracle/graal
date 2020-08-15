@@ -259,8 +259,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
     private static ValueNode createInvoke(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind kind, FrameStateBuilder state, int bci, ValueNode... args) {
         ValueNode formerPendingException = kit.getAndClearPendingException();
 
-        int exceptionEdgeBci = kit.bci();
-        InvokeWithExceptionNode invoke = kit.startInvokeWithException(invokeMethod, kind, state, bci, exceptionEdgeBci, args);
+        InvokeWithExceptionNode invoke = kit.startInvokeWithException(invokeMethod, kind, state, bci, args);
 
         kit.noExceptionPart(); // no new exception was thrown, restore the formerly pending one
         kit.setPendingException(formerPendingException);

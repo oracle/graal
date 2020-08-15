@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import java.io.OutputStream;
-
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -34,7 +32,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -44,11 +41,6 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     GraalRuntimeSupport(Object permission) {
         super(permission);
-    }
-
-    @Override
-    public IndirectCallNode createUncachedIndirectCall() {
-        return OptimizedIndirectCallNode.createUncached();
     }
 
     @Override
@@ -109,11 +101,6 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public OutputStream getConfiguredLogStream() {
-        return TruffleDebugOptions.getConfiguredLogStream();
-    }
-
-    @Override
     public String getSavedProperty(String key) {
         return Services.getSavedProperties().get(key);
     }
@@ -163,6 +150,24 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     @SuppressWarnings({"unchecked"})
     public <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
         return OptimizedCallTarget.unsafeCast(value, type, condition, nonNull, exact);
+    }
+
+    @Override
+    public boolean inFirstTier() {
+        return GraalCompilerDirectives.inFirstTier();
+    }
+
+    @Override
+    public void flushCompileQueue(Object runtimeData) {
+        EngineData engine = (EngineData) runtimeData;
+        BackgroundCompileQueue queue = GraalTruffleRuntime.getRuntime().getCompileQueue();
+        // compile queue might be null if no call target was yet created
+        if (queue != null) {
+            for (OptimizedCallTarget target : queue.getQueuedTargets(engine)) {
+                target.cancelCompilation("Polyglot engine was closed.");
+            }
+        }
+
     }
 
 }

@@ -128,7 +128,4 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
     public boolean canDeoptimize() {
         return true;
     }
-
-    @NodeIntrinsic
-    public static native void register(Object thisObj);
 }

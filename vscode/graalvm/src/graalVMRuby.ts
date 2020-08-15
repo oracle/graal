@@ -12,26 +12,15 @@ import * as path from 'path';
 import { registerLanguageServer } from './graalVMLanguageServer';
 
 export const RUBY_LANGUAGE_SERVER_GEM_NAME: string = 'solargraph';
-const INSTALL_GRAALVM_RUBY_COMPONENT: string = 'Install GraalVM Ruby Component';
 const INSTALL_RUBY_LANGUAGE_SERVER: string = 'Install Ruby Language Server';
 
 export function rubyConfig(graalVMHome: string) {
     const executable: string = path.join(graalVMHome, 'bin', 'ruby');
-    if (!fs.existsSync(executable)) {
-        vscode.window.showInformationMessage('Ruby component is not installed in your GraalVM.', INSTALL_GRAALVM_RUBY_COMPONENT).then(value => {
-            switch (value) {
-                case INSTALL_GRAALVM_RUBY_COMPONENT:
-                    vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent', 'ruby');
-                    const watcher:fs.FSWatcher = fs.watch(path.join(graalVMHome, 'bin'), () => {
-                        setConfig('interpreter.commandPath', executable);
-                        watcher.close();
-                    });
-                    break;
-            }
-        });
-    } else {
-        setConfig('interpreter.commandPath', executable);
-    }
+    if (fs.existsSync(executable)) {
+		setConfig('interpreter.commandPath', executable);
+		return true;
+	}
+	return false;
 }
 
 function setConfig(section: string, path:string) {

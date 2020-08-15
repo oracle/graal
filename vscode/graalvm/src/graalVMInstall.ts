@@ -49,19 +49,20 @@ export async function installGraalVMComponent(componentId: string): Promise<void
         vscode.window.showErrorMessage("Cannot find GraalVM installation. Please check the 'graalvm.home' setting");
         return;
     }
+    const executablePath = utils.findExecutable('gu', graalVMHome);
+    if (!executablePath) {
+        vscode.window.showErrorMessage("Cannot find runtime 'gu' within your GraalVM installation");
+        return;
+    }
     try {
-        if (!componentId) {
-            componentId = await selectAvailableComponent(graalVMHome);
+        const componentIds = componentId ? [componentId] : await selectAvailableComponents(graalVMHome);
+        let terminal: vscode.Terminal | undefined = vscode.window.activeTerminal;
+        if (!terminal) {
+            terminal = vscode.window.createTerminal();
         }
-        const executablePath = utils.findExecutable('gu', graalVMHome);
-        if (executablePath) {
-            let terminal: vscode.Terminal | undefined = vscode.window.activeTerminal;
-            if (!terminal) {
-                terminal = vscode.window.createTerminal();
-            }
-            terminal.show();
-            terminal.sendText(`${executablePath.replace(/(\s+)/g, '\\$1')} install ${componentId}`);
-        }
+        terminal.show();
+        const exec = executablePath.replace(/(\s+)/g, '\\$1');
+        terminal.sendText(componentIds.map(id => `${exec} install ${id}`).join(';'));
     } catch (err) {
         vscode.window.showErrorMessage(err.message);
     }
@@ -283,38 +284,51 @@ function addGraalVMInfo(folder: string, vms: vscode.QuickPickItem[]) {
     }
 }
 
-async function selectAvailableComponent(graalVMHome: string): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
+async function selectAvailableComponents(graalVMHome: string): Promise<string[]> {
+    return new Promise<string[]>((resolve, reject) => {
         const executablePath = utils.findExecutable('gu', graalVMHome);
         if (executablePath) {
             cp.execFile(executablePath, ['available'], async (error, stdout, _stderr) => {
                 if (error) {
                     reject(error);
                 } else {
-                    const components: vscode.QuickPickItem[] = [];
-                    let header: boolean = true;
-                    stdout.split('\n').forEach(line => {
-                        if (header) {
-                            if (line.startsWith('-----')) {
-                                header = false;
-                            }
+                    const available: vscode.QuickPickItem[] = processsGUOutput(stdout);
+                    cp.execFile(executablePath, ['list'], async (error, stdout, _stderr) => {
+                        if (error) {
+                            reject(error);
                         } else {
-                            const info: string[] | null = line.match(/\S+/g);
-                            if (info && info.length >= 3) {
-                                components.push({ label: info[0], detail: info[2] });
+                            const installed: vscode.QuickPickItem[] = processsGUOutput(stdout);
+                            const components = available.filter(availableItem => !installed.find(installedItem => installedItem.label === availableItem.label));
+                            const selected: vscode.QuickPickItem[] | undefined = components.length > 0 ? await vscode.window.showQuickPick(components, { placeHolder: 'Select GraalVM components to install', canPickMany: true }) : undefined;
+                            if (selected) {
+                                resolve(selected.map(component => component.label));
+                            } else {
+                                reject(new Error('No GraalVM component to install.'));
                             }
                         }
                     });
-                    const selected: vscode.QuickPickItem | undefined = components.length > 0 ? await vscode.window.showQuickPick(components, { placeHolder: 'Select GraalVM component to install' }) : undefined;
-                    if (selected) {
-                        resolve(selected.label);
-                    } else {
-                        reject(new Error('No GraalVM component to install.'));
-                    }
                 }
             });
         } else {
             reject(new Error("Cannot find 'gu' within your GraalVM installation."));
         }
     });
+}
+
+function processsGUOutput(stdout: string): vscode.QuickPickItem[] {
+    const components: vscode.QuickPickItem[] = [];
+    let header: boolean = true;
+    stdout.split('\n').forEach(line => {
+        if (header) {
+            if (line.startsWith('-----')) {
+                header = false;
+            }
+        } else {
+            const info: string[] | null = line.match(/\S+/g);
+            if (info && info.length >= 3) {
+                components.push({ label: info[0], detail: info.slice(2, info.length - 1).join(' ') });
+            }
+        }
+    });
+    return components;
 }

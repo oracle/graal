@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,9 +60,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.library.LibraryExport.DelegateExport;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.utilities.FinalBitSet;
 
 import sun.misc.Unsafe;
@@ -258,9 +258,9 @@ public abstract class LibraryFactory<T extends Library> {
      * <p>
      * Whenever the limit is reached for a node and the uncached version is in use, the current
      * enclosing node will be available to the uncached library export of the library using
-     * {@link NodeUtil#getCurrentEncapsulatingNode()}.
+     * {@link EncapsulatingNodeReference}.
      *
-     * @see NodeUtil#getCurrentEncapsulatingNode()
+     * @see EncapsulatingNodeReference
      * @see CachedLibrary
      * @since 19.0
      */

@@ -93,7 +93,6 @@ import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.ExecutableNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -161,8 +160,6 @@ public abstract class Accessor {
         public abstract void setRootNodeBits(RootNode root, int bits);
 
         public abstract Lock getLock(Node node);
-
-        public abstract void clearPolyglotEngine(RootNode rootNode);
 
         public abstract void applyPolyglotEngine(RootNode from, RootNode to);
 
@@ -437,7 +434,7 @@ public abstract class Accessor {
 
         public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
 
-        public abstract String getPreinitializedRelativePathInLanguageHome(TruffleFile truffleFile);
+        public abstract String getRelativePathInLanguageHome(TruffleFile truffleFile);
 
         public abstract void onSourceCreated(Source source);
 
@@ -466,6 +463,10 @@ public abstract class Accessor {
         public abstract Object getInternalFileSystemContext(Object polyglotContextImpl);
 
         public abstract Map<String, Collection<? extends FileTypeDetector>> getEngineFileTypeDetectors(Object engineFileSystemContext);
+
+        public abstract boolean isHostToGuestRootNode(RootNode rootNode);
+
+        public abstract AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError;
 
     }
 
@@ -717,8 +718,6 @@ public abstract class Accessor {
             }
         }
 
-        public abstract IndirectCallNode createUncachedIndirectCall();
-
         /**
          * Reports the execution count of a loop.
          *
@@ -747,8 +746,6 @@ public abstract class Accessor {
 
         public abstract void onEngineClosed(Object runtimeData);
 
-        public abstract OutputStream getConfiguredLogStream();
-
         public abstract String getSavedProperty(String key);
 
         public abstract void reportPolymorphicSpecialize(Node source);
@@ -761,6 +758,10 @@ public abstract class Accessor {
 
         @SuppressWarnings({"unchecked"})
         public abstract <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact);
+
+        public abstract boolean inFirstTier();
+
+        public abstract void flushCompileQueue(Object runtimeData);
 
     }
 

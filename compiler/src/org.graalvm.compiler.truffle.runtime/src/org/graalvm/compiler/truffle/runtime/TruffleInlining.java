@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import static org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.runtime;
 
 import java.net.URI;
@@ -39,7 +37,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerOptions;
@@ -53,9 +53,12 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public class TruffleInlining implements Iterable<TruffleInliningDecision>, TruffleInliningPlan {
 
+    // Legacy inlining related
     private final List<TruffleInliningDecision> callSites;
-
+    // Language-agnostic inlining related
     private final List<CompilableTruffleAST> targets = new ArrayList<>();
+    private int callCount = -1;
+    private int inlinedCallCount = -1;
 
     protected TruffleInlining(List<TruffleInliningDecision> callSites) {
         this.callSites = callSites;
@@ -201,17 +204,11 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
         return callSites;
     }
 
-    public int getInlinedNodeCount() {
-        int sum = 0;
-        for (TruffleInliningDecision callSite : getCallSites()) {
-            if (callSite.shouldInline()) {
-                sum += callSite.getProfile().getDeepNodeCount();
-            }
-        }
-        return sum;
-    }
-
+    @Override
     public int countCalls() {
+        if (callCount != -1) {
+            return callCount;
+        }
         int sum = 0;
         for (TruffleInliningDecision callSite : getCallSites()) {
             sum += callSite.shouldInline() ? callSite.countCalls() + 1 : 1;
@@ -219,7 +216,11 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
         return sum;
     }
 
+    @Override
     public int countInlinedCalls() {
+        if (inlinedCallCount != -1) {
+            return inlinedCallCount;
+        }
         int sum = 0;
         for (TruffleInliningDecision callSite : getCallSites()) {
             if (callSite.shouldInline()) {
@@ -227,6 +228,16 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
             }
         }
         return sum;
+    }
+
+    @Override
+    public void setInlinedCallCount(int count) {
+        inlinedCallCount = count;
+    }
+
+    @Override
+    public void setCallCount(int count) {
+        callCount = count;
     }
 
     public final List<TruffleInliningDecision> getCallSites() {

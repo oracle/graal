@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,7 +80,8 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private final boolean generateFactory;
 
     private TypeMirror frameType;
-    private boolean reflectable;
+    private boolean generateIntrospection;
+    private boolean generateStatistics;
 
     private boolean reportPolymorphism;
     private boolean isUncachable;
@@ -100,6 +101,14 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.thisExecution.getChild().setNode(this);
         this.generateFactory = generateFactory;
         this.generateUncached = generateUncached;
+    }
+
+    public void setGenerateStatistics(boolean generateStatistics) {
+        this.generateStatistics = generateStatistics;
+    }
+
+    public boolean isGenerateStatistics() {
+        return generateStatistics;
     }
 
     public Map<CacheExpression, String> getSharedCaches() {
@@ -156,12 +165,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return thisExecution;
     }
 
-    public boolean isReflectable() {
-        return reflectable;
+    public boolean isGenerateIntrospection() {
+        return generateIntrospection;
     }
 
-    public void setReflectable(boolean reflectable) {
-        this.reflectable = reflectable;
+    public void setGenerateIntrospection(boolean reflectable) {
+        this.generateIntrospection = reflectable;
     }
 
     public boolean isFallbackReachable() {

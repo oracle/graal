@@ -70,8 +70,9 @@ public final class PointerUtils {
      * @param multiple The multiple against which the Pointer should be verified.
      * @return true if that Pointer is a multiple, false otherwise.
      */
+    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
     public static boolean isAMultiple(PointerBase that, UnsignedWord multiple) {
-        return that.equal(PointerUtils.roundDown(that, multiple));
+        return UnsignedUtils.isAMultiple((UnsignedWord) that, multiple);
     }
 
     /**

@@ -43,7 +43,6 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.StructObject;
 import com.oracle.truffle.tck.TruffleRunner;
@@ -53,7 +52,7 @@ import com.oracle.truffle.tck.TruffleRunner.Inject;
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
 public final class NameBasedInteropTest extends InteropTestBase {
 
-    private static TruffleObject testLibrary;
+    private static Object testLibrary;
 
     @BeforeClass
     public static void loadTestBitcode() {

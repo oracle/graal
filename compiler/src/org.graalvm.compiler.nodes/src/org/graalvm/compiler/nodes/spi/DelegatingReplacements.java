@@ -94,6 +94,11 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
+    public boolean isEncodingSnippets() {
+        return delegate.isEncodingSnippets();
+    }
+
+    @Override
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         delegate.registerSnippet(method, original, receiver, trackNodeSourcePosition, options);
     }
@@ -126,8 +131,8 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public boolean hasSubstitution(ResolvedJavaMethod method, int invokeBci) {
-        return delegate.hasSubstitution(method, invokeBci);
+    public boolean hasSubstitution(ResolvedJavaMethod method) {
+        return delegate.hasSubstitution(method);
     }
 
     @Override

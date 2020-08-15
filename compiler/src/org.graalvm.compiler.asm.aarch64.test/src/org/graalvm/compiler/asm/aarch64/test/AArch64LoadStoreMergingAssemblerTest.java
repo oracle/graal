@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -68,42 +68,46 @@ public class AArch64LoadStoreMergingAssemblerTest extends GraalTest {
         }
 
         void emitScaledImmLdr(int size, Register rt, Register base, int imm12) {
-            AArch64Address address = AArch64Address.createScaledImmediateAddress(base, imm12);
+            int scaleAmount = size / 8;
+            AArch64Address address = AArch64Address.createImmediateAddress(size, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, base, imm12 * scaleAmount);
             masm2.ldr(size, rt, address);
         }
 
         void emitUnscaledImmLdr(int size, Register rt, Register base, int imm9) {
-            AArch64Address address1 = AArch64Address.createUnscaledImmediateAddress(base, imm9);
+            AArch64Address address1 = AArch64Address.createImmediateAddress(size, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, base, imm9);
             masm2.ldr(size, rt, address1);
         }
 
         void emitScaledImmStr(int size, Register rt, Register base, int imm12) {
-            AArch64Address address = AArch64Address.createScaledImmediateAddress(base, imm12);
+            int scaleAmount = size / 8;
+            AArch64Address address = AArch64Address.createImmediateAddress(size, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, base, imm12 * scaleAmount);
             masm2.str(size, rt, address);
         }
 
         void emitUnscaledImmStr(int size, Register rt, Register base, int imm9) {
-            AArch64Address address1 = AArch64Address.createUnscaledImmediateAddress(base, imm9);
+            AArch64Address address1 = AArch64Address.createImmediateAddress(size, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, base, imm9);
             masm2.str(size, rt, address1);
         }
 
         void emitScaledLdp(int size, Register rt1, Register rt2, Register base, int imm7) {
-            AArch64Address mergeAddress = AArch64Address.createScaledImmediateAddress(base, imm7);
+            int scaleAmount = size / 8;
+            AArch64Address mergeAddress = AArch64Address.createImmediateAddress(size, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, base, imm7 * scaleAmount);
             masm1.ldp(size, rt1, rt2, mergeAddress);
         }
 
         void emitScaledStp(int size, Register rt1, Register rt2, Register base, int imm7) {
-            AArch64Address mergeAddress = AArch64Address.createScaledImmediateAddress(base, imm7);
+            int scaleAmount = size / 8;
+            AArch64Address mergeAddress = AArch64Address.createImmediateAddress(size, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, base, imm7 * scaleAmount);
             masm1.stp(size, rt1, rt2, mergeAddress);
         }
 
         void emitUnscaledLdp(int size, Register rt1, Register rt2, Register base, int imm) {
-            AArch64Address mergeAddress = AArch64Address.createUnscaledImmediateAddress(base, imm);
+            AArch64Address mergeAddress = AArch64Address.createImmediateAddress(size, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, base, imm);
             masm1.ldp(size, rt1, rt2, mergeAddress);
         }
 
         void emitUnscaledStp(int size, Register rt1, Register rt2, Register base, int imm) {
-            AArch64Address mergeAddress = AArch64Address.createUnscaledImmediateAddress(base, imm);
+            AArch64Address mergeAddress = AArch64Address.createImmediateAddress(size, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, base, imm);
             masm1.stp(size, rt1, rt2, mergeAddress);
         }
 

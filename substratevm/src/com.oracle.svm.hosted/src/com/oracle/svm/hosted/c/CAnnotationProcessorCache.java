@@ -76,9 +76,16 @@ public final class CAnnotationProcessorCache {
 
         @Option(help = "Exit image generation after C Annotation Processor Cache creation.")//
         public static final HostedOptionKey<Boolean> ExitAfterCAPCache = new HostedOptionKey<>(false);
+
+        @Option(help = "Output query code for target platform without executing it")//
+        public static final HostedOptionKey<Boolean> ExitAfterQueryCodeGeneration = new HostedOptionKey<>(false);
+
+        @Option(help = "Directory where query code for target platform should be output")//
+        public static final HostedOptionKey<String> QueryCodeDir = new HostedOptionKey<>("");
     }
 
     private File cache;
+    private File query;
 
     public CAnnotationProcessorCache() {
         if ((Options.UseCAPCache.getValue() || Options.NewCAPCache.getValue())) {
@@ -101,6 +108,23 @@ public final class CAnnotationProcessorCache {
             } else if (Options.NewCAPCache.getValue()) {
                 clearCache();
             }
+        }
+
+        if (Options.QueryCodeDir.hasBeenSet()) {
+            Path queryPath = FileSystems.getDefault().getPath(Options.QueryCodeDir.getValue()).toAbsolutePath();
+            query = queryPath.toFile();
+            if (!query.exists()) {
+                try {
+                    query = Files.createDirectories(queryPath).toFile();
+                } catch (IOException e) {
+                    throw UserError.abort("Could not create query code directory: " + e.getMessage());
+                }
+            } else if (!query.isDirectory()) {
+                throw UserError.abort("Path to query code directory is not a directory");
+            }
+        } else if (Options.ExitAfterQueryCodeGeneration.hasBeenSet()) {
+            throw UserError.abort("Query code directory wasn't specified, use  " +
+                            SubstrateOptionsParser.commandArgument(CAnnotationProcessorCache.Options.QueryCodeDir, "PATH") + " option.");
         }
     }
 

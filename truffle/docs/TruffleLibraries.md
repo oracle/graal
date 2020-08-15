@@ -1,12 +1,12 @@
-# Truffle Library Tutorial
+# Truffle Library Guide
 
-*tl;dr* Truffle Libraries allow language implementations to use polymorphic dispatch for receiver types with support for implementation-specific caching/profiling and automatic support for uncached dispatch. Truffle Libraries enable modularity and encapsulation for representation types in Truffle language implementations. Read this tutorial first before using it.
+Truffle Libraries allow language implementations to use polymorphic dispatch for receiver types with support for implementation-specific caching/profiling and automatic support for uncached dispatch. Truffle Libraries enable modularity and encapsulation for representation types in Truffle language implementations. Read this guide first before using it.
 
 ## Getting Started
 
-This tutorial provides a trace through a use-case on how to use Truffle Libraries. The full API documentation can be found in the [javadoc](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/package-summary.html). This document assumes prior knowledge of Truffle APIs and the use of `@Specialization` with the `@Cached` annotation.
+This tutorial provides a trace through a use-case on how to use Truffle Libraries. The full API documentation can be found in the [Javadoc](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/package-summary.html). This document assumes prior knowledge of Truffle APIs and the use of `@Specialization` with the `@Cached` annotation.
 
-## Motivating Example
+### Motivating Example
 
 When implementing arrays in Truffle Languages it is often necessary to use multiple representations for efficiency. For example, if the array is constructed from an arithmetic sequence of integers (e.g., `range(from: 1, step: 2, length: 3)`), then it is best represented using the `start`, `stride` and `length` instead of materializing the full array. Of course, when an array element is written then the array needs to be materialized. In this example we are going to implement an array implementation with two representations:
 
@@ -15,13 +15,13 @@ When implementing arrays in Truffle Languages it is often necessary to use multi
 
 To keep the example simple we will only support `int` values and we will ignore index bounds error handling. We will also just implement the read operation and not the typically more complicated write operation.
 
-To make the example more interesting, we will implement an optimization that will let the compiler allow to constant fold sequenced array accesses even if the array receiver value is not constant. Let's assume we have the following code snippet `range(start, stride, length)[2]`. In this snippet, the variables `start` and `stride` are not known to be constant values, therefore, equivalent code to `start + stride * 2` gets compiled. However, if the `start` and `stride` values are known to always be the same then the compiler could constant-fold the entire operation. This optimization requires the use of caching, we will see later how this works.
+To make the example more interesting, we will implement an optimization that will let the compiler allow to constant fold sequenced array accesses even if the array receiver value is not constant. Assume we have the following code snippet `range(start, stride, length)[2]`. In this snippet, the variables `start` and `stride` are not known to be constant values, therefore, equivalent code to `start + stride * 2` gets compiled. However, if the `start` and `stride` values are known to always be the same then the compiler could constant-fold the entire operation. This optimization requires the use of caching, we will see later how this works.
 
 In the dynamic array implementation of Graal.js, we use 20 different representations. There are representations for constant, zero-based, contiguous, holes and sparse arrays. Some representations are further specialized for the types `byte`, `int`, `double`, `JSObject` and `Object`. The source code can be found [here](https://github.com/graalvm/graaljs/tree/master/graal-js/src/com.oracle.truffle.js/src/com/oracle/truffle/js/runtime/array/dyn). Note that currently, JS arrays don't use Truffle Libraries yet.
 
 In the following sections, we discuss multiple implementation strategies for the array representations, ultimately describing how Truffle Libraries can be used to achieve this.
 
-### Strategy 1: Specialization per representation
+### Strategy 1: Specialization per Representation
 
 For this strategy, we will start by declaring classes for the two representations `BufferArray` and `SequenceArray`.
 
@@ -65,7 +65,7 @@ abstract class ArrayReadNode extends ExpressionNode {
 ```
 The array read node specifies two specializations for the buffer version and the sequence. As mentioned before we are going to ignore error bounds checks for simplicity.
 
-Now let's try to make the array read specialize on the constant-ness of values of the sequence in order to allow the `range(start, stride, length)[2]` example fold if start and stride are constant. To find out whether start and stride are constants we need to profile their value. To profile these values we need to add another specialization to the array read operation like this:
+Now try to make the array read specialize on the constant-ness of values of the sequence in order to allow the `range(start, stride, length)[2]` example fold if start and stride are constant. To find out whether start and stride are constants we need to profile their value. To profile these values we need to add another specialization to the array read operation like this:
 
 ```java
 @NodeChild @NodeChild
@@ -329,23 +329,23 @@ ArrayLibrary.getUncached().readArray(array, index);
 
 The runnable source code for strategy 3 can be found [here](https://github.com/oracle/graal/tree/master/truffle/src/com.oracle.truffle.api.library.test/src/com/oracle/truffle/api/library/test/examples/ArrayStrategy3.java).
 
-## Conclusion
+### Conclusion
 
 In this tutorial, we have learned that with Truffle Libraries we no longer need to compromise the modularity of representation types by creating a specialization per representation (Strategy 1) and the profiling is no longer blocked by interface calls (Strategy 2). With Truffle Libraries we now support polymorphic dispatch with type encapsulation but don't lose the capability of using profiling/caching techniques in representation types.
 
 
-## What to do next?
+### What to do next?
 
 * Run and debug all the examples [here](https://github.com/oracle/graal/tree/master/truffle/src/com.oracle.truffle.api.library.test/src/com/oracle/truffle/api/library/test/examples/).
 
-* Read the interop migration guide, as an example of Truffle libraries usage [here](https://github.com/oracle/graal/blob/master/truffle/docs/InteropMigration.md).
+* Read the interoperability migration guide, as an example of Truffle libraries usage [here](InteropMigration.md).
 
 * Read the Truffle Library reference documentation [here](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/package-summary.html).
 
 
 ## FAQ
 
-### Are there known limitations?
+### Are there any known limitations?
 
 * Library exports currently cannot explicitly invoke their `super` implementation. This makes reflective implementations currently infeasible. See the example [here](https://github.com/oracle/graal/tree/master/truffle/src/com.oracle.truffle.api.library.test/src/com/oracle/truffle/api/library/test/examples/ReflectiveCallExample.java).
 * Boxing elimination for return values is currently not supported. A message can only have one generic return type. Support for this is planned.

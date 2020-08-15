@@ -69,4 +69,9 @@ public @interface Option {
      * Specifies the stability of the option.
      */
     OptionStability stability() default OptionStability.EXPERIMENTAL;
+
+    /**
+     * Deprecated option.
+     */
+    boolean deprecated() default false;
 }

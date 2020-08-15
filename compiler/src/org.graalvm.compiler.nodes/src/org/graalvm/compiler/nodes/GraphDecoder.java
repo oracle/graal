@@ -46,8 +46,10 @@ import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.util.TypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -460,6 +462,9 @@ public class GraphDecoder {
             return result;
         }
     }
+
+    private static final TimerKey MakeSuccessorStubsTimer = DebugContext.timer("PartialEvaluation-MakeSuccessorStubs").doc("Time spent in making successor stubs for the PE.");
+    private static final TimerKey ReadPropertiesTimer = DebugContext.timer("PartialEvaluation-ReadProperties").doc("Time spent in reading node properties in the PE.");
 
     protected final Architecture architecture;
     /** The target graph where decoded nodes are added to. */
@@ -1253,23 +1258,26 @@ public class GraphDecoder {
         return false;
     }
 
+    @SuppressWarnings({"unused", "try"})
     protected void readProperties(MethodScope methodScope, Node node) {
-        NodeSourcePosition position = (NodeSourcePosition) readObject(methodScope);
-        Fields fields = node.getNodeClass().getData();
-        for (int pos = 0; pos < fields.getCount(); pos++) {
-            if (fields.getType(pos).isPrimitive()) {
-                long primitive = methodScope.reader.getSV();
-                fields.setRawPrimitive(node, pos, primitive);
-            } else {
-                Object value = readObject(methodScope);
-                fields.putObject(node, pos, value);
+        try (DebugCloseable a = ReadPropertiesTimer.start(debug)) {
+            NodeSourcePosition position = (NodeSourcePosition) readObject(methodScope);
+            Fields fields = node.getNodeClass().getData();
+            for (int pos = 0; pos < fields.getCount(); pos++) {
+                if (fields.getType(pos).isPrimitive()) {
+                    long primitive = methodScope.reader.getSV();
+                    fields.setRawPrimitive(node, pos, primitive);
+                } else {
+                    Object value = readObject(methodScope);
+                    fields.putObject(node, pos, value);
+                }
             }
-        }
-        if (graph.trackNodeSourcePosition() && position != null) {
-            NodeSourcePosition callerBytecodePosition = methodScope.getCallerBytecodePosition(position);
-            node.setNodeSourcePosition(callerBytecodePosition);
-            if (node instanceof DeoptimizingGuard) {
-                ((DeoptimizingGuard) node).addCallerToNoDeoptSuccessorPosition(callerBytecodePosition.getCaller());
+            if (graph.trackNodeSourcePosition() && position != null) {
+                NodeSourcePosition callerBytecodePosition = methodScope.getCallerBytecodePosition(position);
+                node.setNodeSourcePosition(callerBytecodePosition);
+                if (node instanceof DeoptimizingGuard) {
+                    ((DeoptimizingGuard) node).addCallerToNoDeoptSuccessorPosition(callerBytecodePosition.getCaller());
+                }
             }
         }
     }
@@ -1470,30 +1478,33 @@ public class GraphDecoder {
      * successor list, but no properties or edges are loaded yet. That is done when the successor is
      * on top of the worklist in {@link #processNextNode}.
      */
+    @SuppressWarnings({"unused", "try"})
     protected void makeSuccessorStubs(MethodScope methodScope, LoopScope loopScope, Node node, boolean updatePredecessors) {
-        Edges edges = node.getNodeClass().getSuccessorEdges();
-        for (int index = 0; index < edges.getDirectCount(); index++) {
-            if (skipDirectEdge(node, edges, index)) {
-                continue;
+        try (DebugCloseable a = MakeSuccessorStubsTimer.start(debug)) {
+            Edges edges = node.getNodeClass().getSuccessorEdges();
+            for (int index = 0; index < edges.getDirectCount(); index++) {
+                if (skipDirectEdge(node, edges, index)) {
+                    continue;
+                }
+                int orderId = readOrderId(methodScope);
+                Node value = makeStubNode(methodScope, loopScope, orderId);
+                edges.initializeNode(node, index, value);
+                if (updatePredecessors && value != null) {
+                    edges.update(node, null, value);
+                }
             }
-            int orderId = readOrderId(methodScope);
-            Node value = makeStubNode(methodScope, loopScope, orderId);
-            edges.initializeNode(node, index, value);
-            if (updatePredecessors && value != null) {
-                edges.update(node, null, value);
-            }
-        }
-        for (int index = edges.getDirectCount(); index < edges.getCount(); index++) {
-            int size = methodScope.reader.getSVInt();
-            if (size != -1) {
-                NodeList<Node> nodeList = new NodeSuccessorList<>(node, size);
-                edges.initializeList(node, index, nodeList);
-                for (int idx = 0; idx < size; idx++) {
-                    int orderId = readOrderId(methodScope);
-                    Node value = makeStubNode(methodScope, loopScope, orderId);
-                    nodeList.initialize(idx, value);
-                    if (updatePredecessors && value != null) {
-                        edges.update(node, null, value);
+            for (int index = edges.getDirectCount(); index < edges.getCount(); index++) {
+                int size = methodScope.reader.getSVInt();
+                if (size != -1) {
+                    NodeList<Node> nodeList = new NodeSuccessorList<>(node, size);
+                    edges.initializeList(node, index, nodeList);
+                    for (int idx = 0; idx < size; idx++) {
+                        int orderId = readOrderId(methodScope);
+                        Node value = makeStubNode(methodScope, loopScope, orderId);
+                        nodeList.initialize(idx, value);
+                        if (updatePredecessors && value != null) {
+                            edges.update(node, null, value);
+                        }
                     }
                 }
             }
