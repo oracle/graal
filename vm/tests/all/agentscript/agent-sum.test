@@ -2,5 +2,9 @@
 21
 > js --insight=agent-summul.js --experimental-options agent-sum.js 
 720
+> js --insight=agent-summul2.js --experimental-options agent-sum.js
+720
 > js --insight=agent-sumneg.js --experimental-options agent-sum.js
 -21
+> js --insight=agent-summul2.js --experimental-options agent-fib.js
+Three is the result 80
