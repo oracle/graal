@@ -138,6 +138,9 @@ final class EventContextObject implements TruffleObject {
             throw AgentExecutionNode.returnNow(obj.context, args);
         }
         if ("returnValue".equals(member)) {
+            if (args.length == 0 || !(args[0] instanceof VariablesObject)) {
+                return NullObject.nullCheck(null);
+            }
             VariablesObject vars = (VariablesObject) args[0];
             return vars.getReturnValue();
         }

@@ -24,12 +24,14 @@
  */
 package org.graalvm.tools.insight.test;
 
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import static org.graalvm.tools.insight.test.InsightObjectFactory.createConfig;
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -630,8 +632,8 @@ public class InsightObjectTest {
 
     @Test
     public void changeReturnValue() throws Exception {
-        try (Context c = AgentObjectFactory.newContext()) {
-            Value agent = AgentObjectFactory.createAgentObject(c);
+        try (Context c = InsightObjectFactory.newContext()) {
+            Value agent = InsightObjectFactory.createAgentObject(c);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -662,8 +664,8 @@ public class InsightObjectTest {
 
     @Test
     public void doubleReturnValue() throws Exception {
-        try (Context c = AgentObjectFactory.newContext()) {
-            Value agent = AgentObjectFactory.createAgentObject(c);
+        try (Context c = InsightObjectFactory.newContext()) {
+            Value agent = InsightObjectFactory.createAgentObject(c);
             InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
@@ -689,6 +691,44 @@ public class InsightObjectTest {
                 Assert.assertArrayEquals("6 and 7", new String[]{"6", "7"}, constants);
                 int mul = Integer.parseInt(constants[0]) * Integer.parseInt(constants[1]);
                 ctx.returnNow(mul);
+            };
+            agentAPI.on("return", return42, createConfig(true, false, false, "meaning.*", null));
+            Value fourtyTwo = c.eval(sampleScript);
+            agentAPI.off("return", return42);
+
+            assertEquals(42, fourtyTwo.asInt());
+        }
+    }
+
+    @Test
+    public void wrongReturnValueCall() throws Exception {
+        try (Context c = InsightObjectFactory.newContext()) {
+            Value agent = InsightObjectFactory.createAgentObject(c);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(meaning,\n" +
+                "    EXPRESSION(\n" +
+                "      CONSTANT(6),\n" +
+                "      CONSTANT(7)\n" +
+                "    )\n" +
+                "  ),\n" +
+                "  CALL(meaning)\n" +
+                ")",
+                "sample.px"
+            ).build();
+            // @formatter:on
+
+            final InsightAPI.OnEventHandler return42 = (ctx, frame) -> {
+                try {
+                    ctx.returnValue(Collections.emptyMap());
+                } catch (RuntimeException ex) {
+                    assertTrue("Expecting TruffleException: " + ex, ex instanceof TruffleException);
+                }
+                ctx.returnNow(42);
             };
             agentAPI.on("return", return42, createConfig(true, false, false, "meaning.*", null));
             Value fourtyTwo = c.eval(sampleScript);
