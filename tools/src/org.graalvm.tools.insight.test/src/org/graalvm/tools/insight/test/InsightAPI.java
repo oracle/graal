@@ -181,7 +181,9 @@ public interface InsightAPI {
             /** Immediatelly exits the current handler and returns to the
              * caller. Calling this method aborts execution of the current
              * handler. It bypasses language sematics and immediatelly
-             * returns the provided value to the caller.
+             * returns the provided value to the caller. If there are multiple
+             * calls to {@code returnNow} (from different handlers) the
+             * first call defines the return value.
              *
              * @param value the value to return to the caller
              * @since 0.7
