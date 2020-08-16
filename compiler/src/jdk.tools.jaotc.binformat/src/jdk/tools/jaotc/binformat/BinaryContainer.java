@@ -472,6 +472,14 @@ public final class BinaryContainer implements SymbolTable {
         return "_aot_verify_oop_count_address";
     }
 
+    public static String getVerifyOopBitsSymbolName() {
+        return "_aot_verify_oop_bits";
+    }
+
+    public static String getVerifyOopMaskSymbolName() {
+        return "_aot_verify_oop_mask";
+    }
+
     public int getCodeSegmentSize() {
         return codeSegmentSize;
     }
@@ -525,6 +533,8 @@ public final class BinaryContainer implements SymbolTable {
         createGotSymbol(getInlineContiguousAllocationSupportedSymbolName());
         createGotSymbol(getVerifyOopsSymbolName());
         createGotSymbol(getVerifyOopCountAddressSymbolName());
+        createGotSymbol(getVerifyOopBitsSymbolName());
+        createGotSymbol(getVerifyOopMaskSymbolName());
 
         for (HashMap.Entry<String, String> entry : functionNamesToAOTSymbols.entrySet()) {
             createGotSymbol(entry.getValue());

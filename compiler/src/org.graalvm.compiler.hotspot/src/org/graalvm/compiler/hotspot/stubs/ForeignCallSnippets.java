@@ -95,7 +95,7 @@ public class ForeignCallSnippets implements Snippets {
             if (object != null) {
                 GuardingNode anchorNode = SnippetAnchorNode.anchor();
                 // make sure object is 'reasonable'
-                if (!oop.and(WordFactory.unsigned(verifyOopMask(INJECTED_VMCONFIG))).equal(WordFactory.unsigned(verifyOopBits(INJECTED_VMCONFIG)))) {
+                if (!oop.and(WordFactory.unsigned(GraalHotSpotVMConfigNode.verifyOopMask())).equal(WordFactory.unsigned(GraalHotSpotVMConfigNode.verifyOopBits()))) {
                     fatal("oop not in heap: %p", oop.rawValue());
                 }
 
