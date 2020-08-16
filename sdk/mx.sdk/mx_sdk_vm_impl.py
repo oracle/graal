@@ -460,7 +460,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         break
                 libjli_symlink = {
                     'source_type': 'link',
-                    'path': '../Home/lib/jli/libjli.dylib'
+                    'path': '../Home/jre/lib/jli/libjli.dylib' if _src_jdk_version == 8 else '../Home/lib/jli/libjli.dylib'
                 }
                 _incl_list.append((base_dir + '/Contents/MacOS/libjli.dylib', libjli_symlink))
                 _excl_list.append(join(_src_jdk_dir, 'Contents', 'MacOS', 'libjli.dylib'))
