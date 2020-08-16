@@ -940,6 +940,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
                         checkForMissingRequiredValue(markId, jdk13JvmciBackport);
                         break;
                     case VERIFY_OOPS:
+                    case VERIFY_OOP_BITS:
+                    case VERIFY_OOP_MASK:
                     case VERIFY_OOP_COUNT_ADDRESS:
                         checkForMissingRequiredValue(markId, verifyOopsMarkSupported);
                         break;
