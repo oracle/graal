@@ -575,10 +575,20 @@ public final class ClassfileParser {
             // implicitly by the Java virtual machine; the value of their
             // access_flags item is ignored except for the settings of the
             // ACC_STRICT flag.
-            methodFlags &= (ACC_STRICT | ACC_STATIC);
+            if (majorVersion < JAVA_7_VERSION) {
+                // Backwards compatibility.
+                methodFlags = ACC_STATIC;
+            } else if ((methodFlags & ACC_STATIC) == ACC_STATIC) {
+                methodFlags &= (ACC_STRICT | ACC_STATIC);
+            } else {
+                throw ConstantPool.classFormatError("Method <clinit> is not static.");
+            }
             // extraFlags = INITIALIZER | methodFlags;
             isClinit = true;
         } else if (name.equals(Name._init_)) {
+            if (isInterface) {
+                throw ConstantPool.classFormatError("Method <init> is not valid in an interface.");
+            }
             isInit = true;
         }
 
@@ -586,8 +596,25 @@ public final class ClassfileParser {
 
         verifyMethodFlags(methodFlags, isInterface, isInit, isClinit, majorVersion);
 
-        pool.utf8At(signatureIndex).validateSignature();
+        /*
+         * A method is a class or interface initialization method if all of the following are true:
+         *
+         * It has the special name <clinit>.
+         *
+         * It is void (§4.3.3). (checked earlier)
+         *
+         * In a class file whose version number is 51.0 or above, the method has its ACC_STATIC flag
+         * set and takes no arguments (§4.6).
+         */
+        // Checks for void method if init or clinit.
+        pool.utf8At(signatureIndex).validateSignature(isInit || isClinit);
         final Symbol<Signature> signature = Signatures.check(pool.symbolAt(signatureIndex, "method descriptor"));
+        if (isClinit && majorVersion >= JAVA_7_VERSION) {
+            // Checks clinit takes no arguments.
+            if (!signature.equals(Signature._void)) {
+                throw ConstantPool.classFormatError("Method <clinit> has invalid signature: " + signature);
+            }
+        }
 
         if (Signatures.slotsForParameters(context.getSignatures().parsed(signature)) + (isStatic ? 0 : 1) > 255) {
             throw ConstantPool.classFormatError("Too many arguments in method signature: " + signature);
