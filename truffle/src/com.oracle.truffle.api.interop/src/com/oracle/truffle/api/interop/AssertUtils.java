@@ -163,7 +163,6 @@ final class AssertUtils {
         if (receiver == null) {
             throw new NullPointerException(violationPre(receiver));
         }
-        assert validArgument(receiver, receiver);
         return true;
     }
 
