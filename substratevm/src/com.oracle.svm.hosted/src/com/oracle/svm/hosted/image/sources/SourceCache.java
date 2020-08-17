@@ -74,7 +74,7 @@ public abstract class SourceCache {
      * Create some flavour of source cache.
      */
     protected SourceCache() {
-        basePath = SubstrateOptions.getDebugInfoSourceCacheRoot().resolve(getType().getSubdir());
+        basePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
         srcRoots = new ArrayList<>();
         initSrcRoots();
     }

@@ -28,9 +28,7 @@ package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 
-import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -72,11 +70,6 @@ public class ClassEntry {
      * a list of the same dirs.
      */
     private LinkedList<DirEntry> localDirs;
-    /**
-     * A {@link java.util.Set Set} of directories containing the source files of the compiled code
-     * in this class.
-     */
-    private HashSet<String> cachePaths;
     /**
      * index of debug_info section compilation unit for this class.
      */
@@ -127,10 +120,9 @@ public class ClassEntry {
         this.linePrologueSize = -1;
         this.totalSize = -1;
         this.includesDeoptTarget = false;
-        this.cachePaths = new HashSet<>();
     }
 
-    public void addPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize, StringTable stringTable) {
+    public void addPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         if (primaryIndex.get(primary) == null) {
             PrimaryEntry primaryEntry = new PrimaryEntry(primary, frameSizeInfos, frameSize, this);
             primaryEntries.add(primaryEntry);
@@ -141,13 +133,10 @@ public class ClassEntry {
                 /* deopt targets should all come after normal methods */
                 assert includesDeoptTarget == false;
             }
-            addCachePath(primary, stringTable);
         }
-        assert primary.getCachePath() == null || primary.getCachePath().toString().isEmpty() || cachePaths.contains(primary.getCachePath().toString()) : primary.getCachePath().toString() +
-                        " missing from cache path of " + className;
     }
 
-    public void addSubRange(Range subrange, FileEntry subFileEntry, StringTable stringTable) {
+    public void addSubRange(Range subrange, FileEntry subFileEntry) {
         Range primary = subrange.getPrimary();
         /*
          * the subrange should belong to a primary range
@@ -170,15 +159,6 @@ public class ClassEntry {
                 localDirs.add(dirEntry);
                 localDirsIndex.put(dirEntry, localDirs.size());
             }
-            addCachePath(subrange, stringTable);
-        }
-    }
-
-    private void addCachePath(Range subrange, StringTable stringTable) {
-        Path cachePath = subrange.getCachePath();
-        if (cachePath != null && !cachePath.toString().isEmpty()) {
-            cachePaths.add(cachePath.toString());
-            stringTable.uniqueDebugString(getCachePathsString());
         }
     }
 
@@ -298,12 +278,11 @@ public class ClassEntry {
         return includesDeoptTarget;
     }
 
-    /**
-     * The compilation directories in which to look for source files as a colon ({@code :})
-     * separated {@link String}.
-     */
-    public String getCachePathsString() {
-        return String.join(":", cachePaths);
+    public String getCachePath() {
+        if (fileEntry != null) {
+            return fileEntry.getCachePath();
+        } else {
+            return "";
+        }
     }
-
 }

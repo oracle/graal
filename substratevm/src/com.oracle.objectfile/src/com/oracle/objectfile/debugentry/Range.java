@@ -36,7 +36,7 @@ import java.nio.file.Paths;
  */
 
 public class Range {
-    private final Path cachePath;
+    private final String cachePath;
     private String fileName;
     private Path filePath;
     private String className;
@@ -80,7 +80,7 @@ public class Range {
          */
         this.fileName = (fileName == null ? null : stringTable.uniqueDebugString(fileName));
         this.filePath = filePath;
-        this.cachePath = cachePath;
+        this.cachePath = (cachePath == null ? "" : stringTable.uniqueDebugString(cachePath.toString()));
         this.className = stringTable.uniqueString(className);
         this.methodName = stringTable.uniqueString(methodName);
         this.paramNames = stringTable.uniqueString(paramNames);
@@ -177,7 +177,7 @@ public class Range {
     /**
      * Get the compilation directory in which to look for source files as a {@link String}.
      */
-    public Path getCachePath() {
+    public String getCachePath() {
         return cachePath;
     }
 }
