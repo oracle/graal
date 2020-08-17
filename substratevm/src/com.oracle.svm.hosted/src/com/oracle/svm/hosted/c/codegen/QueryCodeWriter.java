@@ -203,8 +203,8 @@ public class QueryCodeWriter extends InfoTreeVisitor {
             registerElementForCurrentLine(fieldInfo.getParent().getAnnotatedElement());
             writer.indents().appendln("{");
             writer.indent();
-            String init = " = { 0 }";
-            writer.indents().appendln(fieldInfo.getParent().getName() + " " + tempVar + init + ";");
+            writer.indents().appendln(fieldInfo.getParent().getName() + " " + tempVar + ";");
+            writer.indents().appendln("memset(&" + tempVar + ", 0x0, sizeof(" + tempVar + "));");
             printIsUnsigned(fieldInfo.getSignednessInfo(), isUnsigned(tempVar + "." + fieldInfo.getName()));
             writer.outdent();
             writer.indents().appendln("}");
