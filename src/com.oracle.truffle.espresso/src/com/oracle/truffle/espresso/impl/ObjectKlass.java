@@ -522,6 +522,9 @@ public final class ObjectKlass extends Klass {
         if (nestMembers == null) {
             return false;
         }
+        if (!this.sameRuntimePackage(k)) {
+            return false;
+        }
         RuntimeConstantPool pool = getConstantPool();
         for (int index : nestMembers.getClasses()) {
             if (k.getName().equals(pool.classAt(index).getName(pool))) {
@@ -894,6 +897,7 @@ public final class ObjectKlass extends Klass {
                         if (m.getDeclaringKlass() == this) {
                             m.checkLoadingConstraints(this.getDefiningClassLoader(), interfKlass.getDefiningClassLoader());
                         } else {
+                            m.checkLoadingConstraints(interfKlass.getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
                             m.checkLoadingConstraints(this.getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
                         }
                     }
