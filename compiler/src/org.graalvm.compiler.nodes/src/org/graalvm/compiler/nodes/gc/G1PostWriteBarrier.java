@@ -50,4 +50,9 @@ public class G1PostWriteBarrier extends ObjectWriteBarrier {
     public boolean alwaysNull() {
         return alwaysNull;
     }
+
+    @Override
+    public Kind getKind() {
+        return Kind.POST_BARRIER;
+    }
 }

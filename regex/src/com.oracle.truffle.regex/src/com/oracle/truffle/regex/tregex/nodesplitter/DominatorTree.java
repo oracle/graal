@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.nodesplitter;
 
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-
 import java.util.ArrayList;
 import java.util.Arrays;
+
+import com.oracle.truffle.regex.tregex.util.Exceptions;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
  * Dominance algorithm as described in "A Simple, Fast Dominance Algorithm" by Keith D. Cooper,
@@ -163,7 +164,7 @@ final class DominatorTree {
                     }
                 }
                 if (selectedPredecessor == null) {
-                    throw new IllegalStateException();
+                    throw Exceptions.shouldNotReachHere();
                 }
                 int newIDom = selectedPredecessor.getPostOrderIndex();
                 for (GraphNode p : b.getPredecessors()) {

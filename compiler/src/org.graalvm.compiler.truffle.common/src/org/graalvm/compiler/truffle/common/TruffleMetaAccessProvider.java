@@ -27,7 +27,7 @@ package org.graalvm.compiler.truffle.common;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
- * A provider for {@link TruffleCallNode}s.
+ * An interface for communication between the compiler and runtime for Inlining related information.
  */
 public interface TruffleMetaAccessProvider {
 
@@ -53,4 +53,26 @@ public interface TruffleMetaAccessProvider {
      * {@link #addTargetToDequeue(CompilableTruffleAST) added}.
      */
     void dequeueTargets();
+
+    /**
+     * Sets how many calls in total are in the related compilation unit. Includes both calls that
+     * were inlined and calls that were not (ie. remained calls after inlining).
+     */
+    void setCallCount(int count);
+
+    /**
+     * @return How many calls in total are in the related compilation unit. Includes both calls that
+     *         were inlined and calls that were not (ie. remained calls after inlining).
+     */
+    int countCalls();
+
+    /**
+     * Sets how many calls in total were inlined into the compilation unit.
+     */
+    void setInlinedCallCount(int count);
+
+    /**
+     * @return How many calls in total were inlined into the compilation unit.
+     */
+    int countInlinedCalls();
 }

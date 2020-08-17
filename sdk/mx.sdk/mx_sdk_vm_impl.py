@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -458,12 +458,12 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         _incl_list.append((base_dir + '/Contents/Info.plist', plist_src))
                         _excl_list.append(orig_info_plist)
                         break
-                if _src_jdk_version != 8:
-                    libjli_symlink = {
-                        'source_type': 'link',
-                        'path': '../Home/lib/jli/libjli.dylib'
-                    }
-                    _incl_list.append((base_dir + '/Contents/MacOS/libjli.dylib', libjli_symlink))
+                libjli_symlink = {
+                    'source_type': 'link',
+                    'path': '../Home/jre/lib/jli/libjli.dylib' if _src_jdk_version == 8 else '../Home/lib/jli/libjli.dylib'
+                }
+                _incl_list.append((base_dir + '/Contents/MacOS/libjli.dylib', libjli_symlink))
+                _excl_list.append(join(_src_jdk_dir, 'Contents', 'MacOS', 'libjli.dylib'))
             return _incl_list, _excl_list
 
         svm_component = get_component('svm', stage1=True)
@@ -817,7 +817,10 @@ x-GraalVM-Component-Distribution=bundled
             catalog = _release_catalog()
         else:
             snapshot_catalog = _snapshot_catalog()
-            catalog = "{}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir)) if snapshot_catalog else None
+            if snapshot_catalog and _suite.vc:
+                catalog = "{}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir))
+            else:
+                catalog = None
         if catalog:
             _metadata_dict['component_catalog'] = quote(catalog)
 
@@ -1263,7 +1266,8 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
                 build_args += [
                     '--features=org.graalvm.home.HomeFinderFeature',
-                    '-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home)
+                    '-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home),
+                    '--install-exit-handlers'
                 ]
 
                 for language, path in sorted(image_config.relative_home_paths.items()):

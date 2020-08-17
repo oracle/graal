@@ -108,8 +108,7 @@ public class TypeInitializerGraph {
      * A type initializer is initially unsafe only if it was marked by the user as such.
      */
     private Safety initialTypeInitializerSafety(AnalysisType t) {
-        return classInitializationSupport.specifiedInitKindFor(t.getJavaClass()) == InitKind.RUN_TIME ? Safety.UNSAFE
-                        : Safety.SAFE;
+        return classInitializationSupport.canBeProvenSafe(t.getJavaClass()) ? Safety.SAFE : Safety.UNSAFE;
     }
 
     boolean isUnsafe(AnalysisType type) {
@@ -135,7 +134,7 @@ public class TypeInitializerGraph {
 
     private void addInterfaceDependencies(AnalysisType t, AnalysisType[] interfaces) {
         for (AnalysisType anInterface : interfaces) {
-            if (ClassInitializationFeature.declaresDefaultMethods(anInterface)) {
+            if (anInterface.declaresDefaultMethods()) {
                 addDependency(t, anInterface);
             }
             addInterfaceDependencies(t, anInterface.getInterfaces());

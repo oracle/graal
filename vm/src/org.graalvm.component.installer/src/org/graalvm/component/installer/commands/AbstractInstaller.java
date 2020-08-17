@@ -77,6 +77,14 @@ public abstract class AbstractInstaller implements Closeable {
         this.fileOps = fops;
     }
 
+    public Archive getArchive() {
+        return archive;
+    }
+
+    public boolean isComplete() {
+        return archive != null;
+    }
+
     public boolean isAllowUpgrades() {
         return allowUpgrades;
     }

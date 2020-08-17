@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -238,7 +238,10 @@ public abstract class TruffleLanguage<C> {
     @CompilationFinal Object polyglotLanguageInstance;
 
     /**
-     * Constructor to be called by subclasses.
+     * Constructor to be called by subclasses. Language should not create any {@link RootNode}s in
+     * its constructor. The RootNodes created in the language constructor are not associated with a
+     * Context and they don't respect Context's engine options. The needed RootNodes can be created
+     * in the {@link #createContext(Env)}.
      *
      * @since 0.8 or earlier
      */
@@ -1688,9 +1691,14 @@ public abstract class TruffleLanguage<C> {
          * uncaught exception if one of the initialized language contexts don't support execution on
          * this thread.
          * <p>
-         * The language that created and started the thread is responsible to complete all running
-         * or waiting threads when the context is {@link TruffleLanguage#disposeContext(Object)
-         * disposed}.
+         * The language that created and started the thread is responsible to stop and join it
+         * during the {@link TruffleLanguage#finalizeContext(Object) finalizeContext}, otherwise an
+         * {@link AssertionError} is thrown. It's not safe to use the
+         * {@link ExecutorService#awaitTermination(long, java.util.concurrent.TimeUnit)} to detect
+         * Thread termination as the polyglot thread may be cancelled before executing the executor
+         * worker.<br/>
+         * A typical implementation looks like:
+         * {@link TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext}
          * <p>
          * The {@link TruffleContext} can be either an inner context created by
          * {@link #newContextBuilder()}.{@link TruffleContext.Builder#build() build()}, or the
@@ -1893,7 +1901,7 @@ public abstract class TruffleLanguage<C> {
          */
         public Object asHostObject(Object value) {
             if (!isHostObject(value)) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new ClassCastException();
             }
             try {
@@ -2147,6 +2155,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * @throws IllegalStateException if polyglot context associated with this environment is not
+         *             entered
          * @since 0.8 or earlier
          * @deprecated use {@link #parseInternal(Source, String...)} or
          *             {@link #parsePublic(Source, String...)} instead.
@@ -2189,6 +2199,8 @@ public abstract class TruffleLanguage<C> {
          * @param argumentNames the names of {@link CallTarget#call(java.lang.Object...)} arguments
          *            that can be referenced from the source
          * @return the call target representing the parsed result
+         * @throws IllegalStateException if polyglot context associated with this environment is not
+         *             entered
          * @see #parsePublic(Source, String...)
          * @since 19.2
          */
@@ -2230,6 +2242,8 @@ public abstract class TruffleLanguage<C> {
          * @param argumentNames the names of {@link CallTarget#call(java.lang.Object...)} arguments
          *            that can be referenced from the source
          * @return the call target representing the parsed result
+         * @throws IllegalStateException if polyglot context associated with this environment is not
+         *             entered
          * @see #parseInternal(Source, String...)
          * @since 19.2
          */

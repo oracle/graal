@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,19 +43,11 @@ import java.nio.file.StandardOpenOption;
  * {@link Registration#fileTypeDetectors()}.
  */
 public class LLVMFileDetector implements TruffleFile.FileTypeDetector {
-    private static final long BC_MAGIC_WORD = 0xdec04342L; // 'BC' c0de
-    private static final long WRAPPER_MAGIC_WORD = 0x0B17C0DEL;
-    private static final long ELF_MAGIC_WORD = 0x464C457FL;
 
     @Override
     public String findMimeType(TruffleFile file) throws IOException {
         long magicWord = readMagicWord(file);
-        if (magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD) {
-            return LLVMLanguage.LLVM_BITCODE_MIME_TYPE;
-        } else if (magicWord == ELF_MAGIC_WORD) {
-            return LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE;
-        }
-        return null;
+        return Magic.get(magicWord).mimeType;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -73,16 +75,24 @@ import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 /*
  * Java host language implementation.
  */
-class HostLanguage extends TruffleLanguage<HostContext> {
+final class HostLanguage extends TruffleLanguage<HostContext> {
+
+    @CompilationFinal private volatile PolyglotEngineImpl internalEngine;
+
+    HostToGuestCodeCache getHostToGuestCache() {
+        return internalEngine.getHostToGuestCodeCache();
+    }
 
     static final class HostContext {
 
-        volatile PolyglotLanguageContext internalContext;
+        @CompilationFinal volatile PolyglotLanguageContext internalContext;
         final Map<String, Class<?>> classCache = new HashMap<>();
         private volatile Iterable<Scope> topScopes;
         private volatile HostClassLoader classloader;
+        private final HostLanguage language;
 
-        HostContext() {
+        HostContext(HostLanguage language) {
+            this.language = language;
         }
 
         @TruffleBoundary
@@ -180,6 +190,15 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             }
             getClassloader().addClasspathRoot(classpathEntry);
         }
+
+        void initializeInternal(PolyglotLanguageContext hostContext) {
+            this.internalContext = hostContext;
+            PolyglotEngineImpl engine = this.language.internalEngine;
+            if (engine != null) {
+                assert engine == hostContext.getEngine();
+            }
+            this.language.internalEngine = hostContext.getEngine();
+        }
     }
 
     @SuppressWarnings("serial")
@@ -203,8 +222,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             try {
                 assert !lib.hasLanguage(value) || lib.getLanguage(value) != HostLanguage.class;
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(e);
+                throw shouldNotReachHere(e);
             }
             wrapped = ToHostNode.convertToObject(value, context.internalContext, lib);
         } else {
@@ -249,7 +267,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
     @Override
     protected HostContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-        return new HostContext();
+        return new HostContext(this);
     }
 
     @Override

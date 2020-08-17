@@ -43,6 +43,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.asm.amd64.AsmParseException;
 import com.oracle.truffle.llvm.asm.amd64.InlineAssemblyParser;
+import com.oracle.truffle.llvm.parser.StackManager;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
@@ -1167,7 +1168,7 @@ public class BasicNodeFactory implements NodeFactory {
     private LLVMInlineAssemblyRootNode getLazyUnsupportedInlineRootNode(String asmExpression, AsmParseException e) {
         LLVMInlineAssemblyRootNode assemblyRoot;
         String message = asmExpression + ": " + e.getMessage();
-        assemblyRoot = new LLVMInlineAssemblyRootNode(context.getLanguage(), new FrameDescriptor(),
+        assemblyRoot = new LLVMInlineAssemblyRootNode(context.getLanguage(), StackManager.createRootFrame(),
                         Collections.singletonList(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, message)), Collections.emptyList(), null);
         return assemblyRoot;
     }
@@ -1606,6 +1607,10 @@ public class BasicNodeFactory implements NodeFactory {
         String typeSuffix = getTypeSuffix(intrinsicName);
         if (typeSuffix != null) {
             intrinsicName = intrinsicName.substring(0, intrinsicName.length() - typeSuffix.length());
+        }
+
+        if ("llvm.prefetch".equals(intrinsicName)) {
+            return LLVMPrefetchNodeGen.create(args[1], args[2], args[3], args[4]);
         }
 
         if ("llvm.is.constant".equals(intrinsicName)) {

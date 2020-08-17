@@ -118,23 +118,23 @@ public final class AlignedHeapChunk {
         Pointer result = WordFactory.nullPointer();
         UnsignedWord available = HeapChunk.availableObjectMemory(that);
         if (size.belowOrEqual(available)) {
-            result = that.getTop();
+            result = HeapChunk.getTopPointer(that);
             Pointer newTop = result.add(size);
-            HeapChunk.setTopCarefully(that, newTop);
+            HeapChunk.setTopPointerCarefully(that, newTop);
         }
         return result;
     }
 
     static UnsignedWord getCommittedObjectMemory(AlignedHeader that) {
-        return that.getEnd().subtract(getObjectsStart(that));
+        return HeapChunk.getEndOffset(that).subtract(getObjectsStartOffset());
     }
 
     static AlignedHeader getEnclosingChunk(Object obj) {
         Pointer ptr = Word.objectToUntrackedPointer(obj);
-        return getEnclosingChunkFromPointer(ptr);
+        return getEnclosingChunkFromObjectPointer(ptr);
     }
 
-    static AlignedHeader getEnclosingChunkFromPointer(Pointer ptr) {
+    static AlignedHeader getEnclosingChunkFromObjectPointer(Pointer ptr) {
         return (AlignedHeader) PointerUtils.roundDown(ptr, HeapPolicy.getAlignedHeapChunkAlignment());
     }
 
@@ -145,14 +145,14 @@ public final class AlignedHeapChunk {
     }
 
     private static UnsignedWord getCardTableIndexLimitForCurrentTop(AlignedHeader that) {
-        UnsignedWord memorySize = that.getTop().subtract(getObjectsStart(that));
+        UnsignedWord memorySize = HeapChunk.getTopOffset(that).subtract(getObjectsStartOffset());
         return CardTable.indexLimitForMemorySize(memorySize);
     }
 
     @AlwaysInline("GC performance")
     static void setUpRememberedSetForObject(AlignedHeader that, Object obj) {
         assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
-        assert !that.getSpace().isYoungSpace();
+        assert !HeapChunk.getSpace(that).isYoungSpace();
         /*
          * The card remembered set table should already be clean, but the first object table needs
          * to be set up.
@@ -186,7 +186,7 @@ public final class AlignedHeapChunk {
      */
     public static void dirtyCardForObject(Object object, boolean verifyOnly) {
         Pointer objectPointer = Word.objectToUntrackedPointer(object);
-        AlignedHeader chunk = getEnclosingChunkFromPointer(objectPointer);
+        AlignedHeader chunk = getEnclosingChunkFromObjectPointer(objectPointer);
         Pointer cardTableStart = getCardTableStart(chunk);
         UnsignedWord index = getObjectIndex(chunk, objectPointer);
         if (verifyOnly) {
@@ -303,7 +303,7 @@ public final class AlignedHeapChunk {
     private static boolean verifyObjectHeaders(AlignedHeader that) {
         Log trace = Log.noopLog().string("[AlignedHeapChunk.verifyObjectHeaders: ").string("  that: ").hex(that);
         Pointer current = getObjectsStart(that);
-        while (current.belowThan(that.getTop())) {
+        while (current.belowThan(HeapChunk.getTopPointer(that))) {
             trace.newline().string("  current: ").hex(current);
             UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(current);
             if (!ObjectHeaderImpl.isAlignedHeader(current, header)) {
@@ -325,13 +325,13 @@ public final class AlignedHeapChunk {
         /* Only chunks in the old from space have a remembered set. */
         HeapImpl heap = HeapImpl.getHeapImpl();
         OldGeneration oldGen = heap.getOldGeneration();
-        if (that.getSpace() == oldGen.getFromSpace()) {
-            if (!CardTable.verify(getCardTableStart(that), getFirstObjectTableStart(that), getObjectsStart(that), that.getTop())) {
+        if (HeapChunk.getSpace(that) == oldGen.getFromSpace()) {
+            if (!CardTable.verify(getCardTableStart(that), getFirstObjectTableStart(that), getObjectsStart(that), HeapChunk.getTopPointer(that))) {
                 Log verifyLog = heap.getHeapVerifier().getWitnessLog().string("[AlignedHeapChunk.verifyRememberedSet:");
                 verifyLog.string("  card table fails to verify").string("]").newline();
                 return false;
             }
-            if (!FirstObjectTable.verify(getFirstObjectTableStart(that), getObjectsStart(that), that.getTop())) {
+            if (!FirstObjectTable.verify(getFirstObjectTableStart(that), getObjectsStart(that), HeapChunk.getTopPointer(that))) {
                 Log verifyLog = heap.getHeapVerifier().getWitnessLog().string("[AlignedHeapChunk.verifyRememberedSet:");
                 verifyLog.string("  first object table fails to verify").string("]").newline();
                 return false;
@@ -348,7 +348,7 @@ public final class AlignedHeapChunk {
         Pointer cardTableStart = getCardTableStart(that);
         Pointer fotStart = getFirstObjectTableStart(that);
         Pointer objectsStart = getObjectsStart(that);
-        Pointer objectsLimit = that.getTop();
+        Pointer objectsLimit = HeapChunk.getTopPointer(that);
         UnsignedWord memorySize = objectsLimit.subtract(objectsStart);
         UnsignedWord indexLimit = CardTable.indexLimitForMemorySize(memorySize);
         trace.string("  objectsStart: ").hex(objectsStart).string("  objectsLimit: ").hex(objectsLimit).string("  indexLimit: ").unsigned(indexLimit);

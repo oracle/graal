@@ -1,71 +1,43 @@
 # GraalVM LLVM Runtime
 
-The GraalVM LLVM runtime can execute programming languages that can be transformed
-to LLVM bitcode on GraalVM. This includes languages like C/C++, Fortran, and others.
-To execute a program, you have to compile the program to LLVM bitcode with an LLVM
-front end such as `clang`.
+The GraalVM LLVM runtime can execute programming languages that can be transformed to LLVM bitcode. This includes languages like C/C++, Fortran and others.
 
-## Running LLVM bitcode programs on GraalVM
+In contrast to static compilation that is normally used for LLVM based
+languages, GraalVM implementation of the `lli` tool first interprets the bitcode and then dynamically compiles the
+hot parts of the program using the GraalVM compiler. This allows seamless
+interoperability with the dynamic languages supported by GraalVM.
 
+### Running LLVM bitcode programs on GraalVM
+
+The syntax to execute programs in LLVM bitcode format with GraalVM is:
 ```
-$GRAALVM_HOME/bin/lli [options] <bitcode file> [program args]
+lli [LLI Options] [GraalVM Options] [Polyglot Options] <bitcode file> [program args]
 ```
+where `<bitcode file>` is a [compiled program with embedded LLVM bitcode](Compiling.md). See [LLI Command Options](Options.md) or use `lli --help` for documentation of the options.
 
-Where `<bitcode file>` is a compiled program with embedded LLVM bitcode.
-Note: LLVM bitcode is platform dependent. The program must be compiled for
-the appropriate platform.
+Note: LLVM bitcode is platform dependent. The program must be compiled to
+bitcode for an appropriate platform.
 
-## Compiling to LLVM bitcode format
+### Compiling to LLVM bitcode format
 
 GraalVM can execute C/C++, Fortran, and other programs that can be compiled to
 LLVM bitcode. For that, GraalVM needs the binaries to be compiled with embedded
-bitcode.
+bitcode. The [Compiling](Compiling.md) guide provides information on the expected
+file format and on compiling to bitcode.
 
-GraalVM comes with a pre-built LLVM toolchain for producing binaries with embedded
-bitcode from C/C++ code. This can be installed with:
+### Quick Start
+GraalVM comes with a pre-built LLVM toolchain for compiling C/C++ to LLVM bitcode.
+It is used as follows:
 
-```
+```shell
+# install the toolchain (only needed once)
 $GRAALVM_HOME/bin/gu install llvm-toolchain
+# get the path to the toolchain
+export LLVM_TOOLCHAIN=$($GRAALVM_HOME/bin/lli --print-toolchain-path)
+# compile a C file using the bundled `clang`
+$TOOLCHAIN_PATH/clang example.c -o example
+# run the result on GraalVM
+$GRAALVM_HOME/bin/lli example
 ```
 
-The path to the LLVM toolchain can be found with:
-
-```
-$GRAALVM_HOME/bin/lli --print-toolchain-path
-```
-
-In the following we assume that the `TOOLCHAIN_PATH` environment variable is set
-to this path.
-
-As a first step, you have to compile the program to LLVM bitcode
-using an LLVM frontend such as `clang`.
-
-Let's compile `test.c`
-
-```c
-#include <stdio.h>
-
-int main() {
-  printf("Hello from Sulong!");
-  return 0;
-}
-```
-
-to a binary with embedded bitcode:
-
-```
-$TOOLCHAIN_PATH/clang test.c -o test
-```
-
-You can then run `test` on GraalVM as follows:
-
-```
-$GRAALVM_HOME/bin/lli test
-```
-
-## Debugging
-
-GraalVM supports debugging programs with the Chrome Inspector. To enable debugging,
-use the `lli --inspect` flag.
-
-See [DEBUGGING](DEBUGGING.md) for more information.
+See the [Compiling](Compiling.md) guide for more details.

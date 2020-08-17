@@ -48,6 +48,10 @@ public final class StringUTF16 implements AbstractString {
         this.str = new String(str);
     }
 
+    public StringUTF16(String str) {
+        this.str = str;
+    }
+
     @Override
     public int encodedLength() {
         return str.length();
@@ -60,6 +64,21 @@ public final class StringUTF16 implements AbstractString {
     @Override
     public String toString() {
         return str;
+    }
+
+    @Override
+    public Object content() {
+        return str;
+    }
+
+    @Override
+    public StringUTF16 substring(int start, int end) {
+        return new StringUTF16(str.substring(start, end));
+    }
+
+    @Override
+    public boolean regionMatches(int offset, AbstractString other, int ooffset, int encodedLength) {
+        return str.regionMatches(offset, ((StringUTF16) other).str, ooffset, encodedLength);
     }
 
     @Override

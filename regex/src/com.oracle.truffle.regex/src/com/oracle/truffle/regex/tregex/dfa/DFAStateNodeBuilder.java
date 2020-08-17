@@ -52,7 +52,9 @@ import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -180,23 +182,22 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
     }
 
     /**
-     * Returns {@code true} iff the union of the
-     * {@link DFAStateTransitionBuilder#getMatcherBuilder()} of all transitions in this state is
-     * equal to {@link CodePointSet#getFull()}.
+     * Returns {@code true} iff the union of the {@link DFAStateTransitionBuilder#getCodePointSet()}
+     * of all transitions in this state is equal to {@link Encoding#getFullSet()}.
      */
     public boolean coversFullCharSpace(CompilationBuffer compilationBuffer) {
         IntArrayBuffer indicesBuf = compilationBuffer.getIntRangesBuffer1();
         indicesBuf.ensureCapacity(getSuccessors().length);
         int[] indices = indicesBuf.getBuffer();
         Arrays.fill(indices, 0, getSuccessors().length, 0);
-        int nextLo = CodePointSet.MIN_VALUE;
+        int nextLo = compilationBuffer.getEncoding().getMinValue();
         while (true) {
             int i = findNextLo(indices, nextLo);
             if (i < 0) {
                 return false;
             }
-            CodePointSet ranges = getSuccessors()[i].getMatcherBuilder();
-            if (ranges.getHi(indices[i]) == CodePointSet.MAX_VALUE) {
+            CodePointSet ranges = getSuccessors()[i].getCodePointSet();
+            if (ranges.getHi(indices[i]) == compilationBuffer.getEncoding().getMaxValue()) {
                 return true;
             }
             nextLo = ranges.getHi(indices[i]) + 1;
@@ -206,7 +207,7 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
 
     private int findNextLo(int[] indices, int findLo) {
         for (int i = 0; i < getSuccessors().length; i++) {
-            CodePointSet ranges = getSuccessors()[i].getMatcherBuilder();
+            CodePointSet ranges = getSuccessors()[i].getCodePointSet();
             if (indices[i] == ranges.size()) {
                 continue;
             }
@@ -220,7 +221,7 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
     @Override
     public DFAStateTransitionBuilder[] getPredecessors() {
         if (super.getPredecessors() == NODE_SPLIT_TAINTED) {
-            throw new IllegalStateException(NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG);
+            throw Exceptions.shouldNotReachHere(NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG);
         }
         return super.getPredecessors();
     }
@@ -370,6 +371,7 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
         }
     }
 
+    @TruffleBoundary
     @Override
     protected boolean hasTransitionToUnAnchoredFinalState(boolean forward) {
         throw new UnsupportedOperationException();

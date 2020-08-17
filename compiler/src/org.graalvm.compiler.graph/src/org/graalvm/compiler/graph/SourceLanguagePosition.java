@@ -51,4 +51,8 @@ public interface SourceLanguagePosition {
 
     /** Mimics GraphLocations operation. */
     String getLanguage();
+
+    int getNodeId();
+
+    String getNodeClassName();
 }

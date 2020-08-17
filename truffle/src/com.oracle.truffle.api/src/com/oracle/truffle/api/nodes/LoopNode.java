@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -153,8 +153,10 @@ public abstract class LoopNode extends Node {
      *
      * @param frame the current execution frame or null if the repeating node does not require a
      *            frame
-     * @return a value different than {@link RepeatingNode#CONTINUE_LOOP_STATUS}, which can be used
-     *         in a language-specific way (for example, to encode structured jumps)
+     * @return a value <code>v</code> returned by
+     *         {@link RepeatingNode#executeRepeating(VirtualFrame) execute} satisfying
+     *         {@link RepeatingNode#shouldContinue shouldContinue(v)}<code> == false</code>, which
+     *         can be used in a language-specific way (for example, to encode structured jumps)
      * @since 19.3
      */
     public Object execute(VirtualFrame frame) {

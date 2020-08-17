@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -246,7 +246,7 @@ final class OptionValuesImpl implements OptionValues {
     }
 
     private static RuntimeException failExperimental(String key) {
-        final String message = String.format("Option '%s' is experimental and must be enabled with allowExperimentalOptions(). ", key) +
+        final String message = String.format("Option '%s' is experimental and must be enabled with allowExperimentalOptions(boolean) in Context.Builder or Engine.Builder. ", key) +
                         "Do not use experimental options in production environments.";
         return PolyglotEngineException.illegalArgument(message);
     }

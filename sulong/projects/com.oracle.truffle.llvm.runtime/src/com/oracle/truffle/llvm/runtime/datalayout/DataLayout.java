@@ -29,9 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.datalayout;
 
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
-import java.util.List;
 
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutParser.DataTypeSpecification;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -51,17 +51,24 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
  */
 public final class DataLayout {
 
-    private final List<DataTypeSpecification> dataLayout;
+    private final ArrayList<DataTypeSpecification> dataLayout;
+    private final ByteOrder byteOrder;
 
     private final IdentityHashMap<Type, Long> sizeCache = new IdentityHashMap<>();
     private final IdentityHashMap<Type, Integer> alignmentCache = new IdentityHashMap<>();
 
-    public DataLayout() {
+    public DataLayout(ByteOrder byteOrder) {
         this.dataLayout = new ArrayList<>();
+        this.byteOrder = byteOrder;
     }
 
     public DataLayout(String layout) {
-        this.dataLayout = DataLayoutParser.parseDataLayout(layout);
+        this.dataLayout = new ArrayList<>();
+        this.byteOrder = DataLayoutParser.parseDataLayout(layout, dataLayout);
+    }
+
+    public ByteOrder getByteOrder() {
+        return byteOrder;
     }
 
     public long getSize(Type type) throws TypeOverflowException {
@@ -95,7 +102,10 @@ public final class DataLayout {
     }
 
     public DataLayout merge(DataLayout other) {
-        DataLayout result = new DataLayout();
+        if (other.byteOrder != byteOrder) {
+            throw new IllegalStateException("Multiple bitcode files with incompatible byte order are used: " + this.toString() + " vs. " + other.toString());
+        }
+        DataLayout result = new DataLayout(byteOrder);
         for (DataTypeSpecification otherEntry : other.dataLayout) {
             DataTypeSpecification thisEntry;
             if (otherEntry.getType() == DataLayoutType.POINTER || otherEntry.getType() == DataLayoutType.INTEGER_WIDTHS) {

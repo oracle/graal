@@ -89,5 +89,9 @@ public class AArch64LibCHelper {
         @AllowNarrowingCast
         @CField
         boolean fA53MAC();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fDMBATOMICS();
     }
 }

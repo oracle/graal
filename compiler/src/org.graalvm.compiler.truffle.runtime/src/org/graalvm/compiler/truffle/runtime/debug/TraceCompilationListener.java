@@ -58,7 +58,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     private static Map<String, Object> defaultProperties(OptimizedCallTarget target) {
         Map<String, Object> properties = new LinkedHashMap<>();
-        properties.putAll(target.getDebugProperties(null));
+        properties.putAll(target.getDebugProperties());
         properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
         return properties;
     }
@@ -148,11 +148,12 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
         int dispatchedCalls = calls - inlinedCalls;
         Map<String, Object> properties = new LinkedHashMap<>();
-        GraalTruffleRuntimeListener.addASTSizeProperty(target, inliningDecision, properties);
+        GraalTruffleRuntimeListener.addASTSizeProperty(target, properties);
         properties.put("Time", String.format("%5.0f(%4.0f+%-4.0f)ms", //
                         (timeCompilationFinished - compilation.timeCompilationStarted) / 1e6, //
                         (compilation.timePartialEvaluationFinished - compilation.timeCompilationStarted) / 1e6, //
                         (timeCompilationFinished - compilation.timePartialEvaluationFinished) / 1e6));
+        properties.put("Tier", target.isValidLastTier() ? "Last" : "First");
         properties.put("DirectCallNodes", String.format("I %4d/D %4d", inlinedCalls, dispatchedCalls));
         properties.put("GraalNodes", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
         properties.put("CodeSize", result.getTargetCodeSize());

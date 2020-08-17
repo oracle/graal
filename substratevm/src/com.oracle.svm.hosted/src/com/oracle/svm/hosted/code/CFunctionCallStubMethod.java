@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.debug.DebugContext;
@@ -36,9 +37,12 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.Signature;
 
 /**
  * Call stub for invoking C functions via methods annotated with {@link CFunction}.
@@ -86,5 +90,22 @@ public final class CFunctionCallStubMethod extends CCallStubMethod {
     @Override
     protected ValueNode createTargetAddressNode(HostedGraphKit kit, HostedProviders providers, List<ValueNode> arguments) {
         return kit.unique(new CGlobalDataLoadAddressNode(linkage));
+    }
+
+    @Override
+    protected JavaType[] getParameterTypesForLoad(ResolvedJavaMethod method) {
+        return method.toParameterTypes(); // include a potential receiver
+    }
+
+    @Override
+    protected Signature adaptSignatureAndConvertArguments(HostedProviders providers, NativeLibraries nativeLibraries,
+                    HostedGraphKit kit, ResolvedJavaMethod method, JavaType returnType, JavaType[] paramTypes, List<ValueNode> arguments) {
+        JavaType[] adaptedParamTypes = paramTypes;
+        if (method.hasReceiver()) {
+            // For non-static methods, we ignore the receiver.
+            arguments.remove(0);
+            adaptedParamTypes = Arrays.copyOfRange(adaptedParamTypes, 1, adaptedParamTypes.length);
+        }
+        return super.adaptSignatureAndConvertArguments(providers, nativeLibraries, kit, method, returnType, adaptedParamTypes, arguments);
     }
 }

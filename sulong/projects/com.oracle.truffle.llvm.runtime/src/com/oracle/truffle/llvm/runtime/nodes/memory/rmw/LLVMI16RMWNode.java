@@ -54,7 +54,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI16(address, value, (a, b) -> b);
+            return language.getLLVMMemory().getAndOpI16(this, address, value, (a, b) -> b);
         }
 
         @Specialization
@@ -74,7 +74,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI16(address, value, (a, b) -> ((short) (a + b)));
+            return language.getLLVMMemory().getAndOpI16(this, address, value, (a, b) -> ((short) (a + b)));
         }
 
         @Specialization
@@ -94,7 +94,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI16(address, value, (a, b) -> ((short) (a - b)));
+            return language.getLLVMMemory().getAndOpI16(this, address, value, (a, b) -> ((short) (a - b)));
         }
 
         @Specialization
@@ -114,7 +114,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI16(address, value, (a, b) -> ((short) (a & b)));
+            return language.getLLVMMemory().getAndOpI16(this, address, value, (a, b) -> ((short) (a & b)));
         }
 
         @Specialization
@@ -134,7 +134,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI16(address, value, (a, b) -> ((short) ~(a & b)));
+            return language.getLLVMMemory().getAndOpI16(this, address, value, (a, b) -> ((short) ~(a & b)));
         }
 
         @Specialization
@@ -154,7 +154,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI16(address, value, (a, b) -> ((short) (a | b)));
+            return language.getLLVMMemory().getAndOpI16(this, address, value, (a, b) -> ((short) (a | b)));
         }
 
         @Specialization
@@ -174,7 +174,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI16(address, value, (a, b) -> ((short) (a ^ b)));
+            return language.getLLVMMemory().getAndOpI16(this, address, value, (a, b) -> ((short) (a ^ b)));
         }
 
         @Specialization

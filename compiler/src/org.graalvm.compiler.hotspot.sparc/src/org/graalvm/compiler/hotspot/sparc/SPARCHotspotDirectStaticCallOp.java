@@ -24,7 +24,11 @@
  */
 package org.graalvm.compiler.hotspot.sparc;
 
+import static jdk.vm.ci.sparc.SPARC.l7;
+import static jdk.vm.ci.sparc.SPARC.sp;
+
 import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -33,6 +37,7 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.sparc.SPARCCall.DirectCallOp;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
@@ -46,16 +51,22 @@ final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
     public static final SizeEstimate SIZE = SizeEstimate.create(8);
 
     private final InvokeKind invokeKind;
+    private final GraalHotSpotVMConfig config;
 
-    SPARCHotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind) {
+    SPARCHotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, GraalHotSpotVMConfig config) {
         super(TYPE, SIZE, target, result, parameters, temps, state);
         assert invokeKind.isDirect();
         this.invokeKind = invokeKind;
+        this.config = config;
     }
 
     @Override
     public void emitCallPrefixCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         crb.recordMark(invokeKind == InvokeKind.Static ? HotSpotMarkId.INVOKESTATIC : HotSpotMarkId.INVOKESPECIAL);
+        if (config.supportsMethodHandleDeoptimizationEntry() && config.isMethodHandleCall((HotSpotResolvedJavaMethod) callTarget) && invokeKind != InvokeKind.Static) {
+            crb.setNeedsMHDeoptHandler();
+            masm.mov(sp, l7);
+        }
     }
 
     @Override

@@ -52,37 +52,28 @@ launcher_args=()
 # Maybe some of those arguments where not really intended for the launcher but were application arguments
 
 process_vm_arg() {
-    local prefix=$1 # vm or jvm
-    local vm_arg="$2"
-    if [[ "$vm_arg" == "cp" ]]; then
-        >&2 echo "'--${prefix}.cp' argument must be of the form '--${prefix}.cp=<classpath>', not two separate arguments."
+    local vm_arg="$1"
+    if [[ "$vm_arg" == "cp" || "$vm_arg" == "classpath" ]]; then
+        >&2 echo "'--vm.${vm_arg}' argument must be of the form '--vm.${vm_arg}=CLASSPATH', not two separate arguments."
         exit 1
-    fi
-    if [[ "$vm_arg" == "classpath" ]]; then
-        >&2 echo "'--${prefix}.classpath' argument must be of the form '--${prefix}.classpath=<classpath>', not two separate arguments."
-        exit 1
-    fi
-    if [[ "$vm_arg" == "cp="* ]]; then
-        local custom_cp=${vm_arg#cp=}
-    elif [[ "$vm_arg" == "classpath="* ]]; then
-        local custom_cp=${vm_arg#classpath=}
-    fi
-    if [[ -z "${custom_cp+x}" ]]; then
-        jvm_args+=("-$vm_arg")
-    else
-        IFS=: read -ra custom_cp_a <<< "${custom_cp}"
-        for e in "${custom_cp_a[@]}"; do
+    elif [[ "$vm_arg" == "cp="* || "$vm_arg" == "classpath="* ]]; then
+        local prefix="${vm_arg%%=*}" # cp or classpath
+        local classpath="${vm_arg#${prefix}=}"
+        IFS=: read -ra classpath_array <<< "$classpath"
+        for e in "${classpath_array[@]}"; do
             absolute_cp+=("$e")
         done
+    else
+        jvm_args+=("-$vm_arg")
     fi
 }
 
 process_arg() {
     if [[ "$1" == --jvm.* ]]; then
         >&2 echo "'--jvm.*' options are deprecated, use '--vm.*' instead."
-        process_vm_arg jvm "${1#--jvm.}"
+        process_vm_arg "${1#--jvm.}"
     elif [[ "$1" == --vm.* ]]; then
-        process_vm_arg vm "${1#--vm.}"
+        process_vm_arg "${1#--vm.}"
     elif [[ "$1" == --native || "$1" == --native.* ]]; then
         >&2 echo "The native version of '$(basename "$source")' does not exist: cannot use '$1'."
         if [[ $(basename "$source") == polyglot ]]; then
@@ -101,9 +92,9 @@ process_arg() {
 # Those can be specified as the `option_vars` argument of the LauncherConfig constructor.
 for var in <option_vars>; do
     read -ra opts <<< "${!var}"
-    for opt in ${opts[@]}; do
-        [[ "$opt" == --vm.* ]] && process_vm_arg vm "${opt#--vm.}"
-        [[ "$opt" == --jvm.* ]] && process_vm_arg jvm "${opt#--jvm.}"
+    for opt in "${opts[@]}"; do
+        [[ "$opt" == --vm.* ]] && process_vm_arg "${opt#--vm.}"
+        [[ "$opt" == --jvm.* ]] && process_vm_arg "${opt#--jvm.}"
     done
 done
 

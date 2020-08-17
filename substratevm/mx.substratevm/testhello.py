@@ -30,11 +30,11 @@
 # Assumes you have already executed
 #
 # $ javac hello/Hello.java
-# $ mx native-image -H:GenerateDebugInfo=1 hello.hello
+# $ mx native-image -g hello.hello
 #
 # Run test
 #
-# gdb -d /path/to/sources/src -d /path/to/sources/graal -d /path/to/sources/jdk -x testhello.py /path/to/hello
+# gdb -x testhello.py /path/to/hello
 #
 # exit status 0 means all is well 1 means test failed
 #

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1224,10 +1224,13 @@ public class SLInspectDebugTest {
         // Test regular expression produced by Chrome Inspector's 'Blackbox Script' action.
         assertTrue(debugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("^file://.*/BlackboxTest\\.sl$")}));
         debugger.disable();
-        tester.finish();
+        debugger = null;
 
+        truffleFile = null;
         context.leave();
         context.close();
+        context = null;
+        tester.finish();
     }
 
     @Test
@@ -1763,7 +1766,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":10}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n"));
-        tester.finishErr();
+        String error = tester.finishErr();
+        assertTrue(error, error.startsWith("Type error at SLThrow.sl"));
     }
 
     @Test

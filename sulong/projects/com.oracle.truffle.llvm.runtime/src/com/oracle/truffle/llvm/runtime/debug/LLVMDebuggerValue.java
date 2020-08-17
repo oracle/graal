@@ -142,7 +142,7 @@ public abstract class LLVMDebuggerValue implements TruffleObject {
     }
 
     @ExportMessage
-    @SuppressWarnings({"unused", "static-method"})
+    @SuppressWarnings("static-method")
     public final boolean hasLanguage() {
         return true;
     }

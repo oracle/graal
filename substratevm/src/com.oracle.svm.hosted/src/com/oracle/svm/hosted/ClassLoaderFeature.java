@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,25 +27,33 @@ package com.oracle.svm.hosted;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.util.VMError;
 
 @AutomaticFeature
 public class ClassLoaderFeature implements Feature {
 
+    private static final NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
+
+    private static boolean needsReplacement(ClassLoader loader) {
+        if (loader == nativeImageSystemClassLoader) {
+            return true;
+        }
+        if (nativeImageSystemClassLoader.isNativeImageClassLoader(loader)) {
+            return true;
+        }
+        return false;
+    }
+
+    private Object runtimeClassLoaderObjectReplacer(Object replaceCandidate) {
+        if (replaceCandidate instanceof ClassLoader) {
+            if (needsReplacement(((ClassLoader) replaceCandidate))) {
+                return nativeImageSystemClassLoader.defaultSystemClassLoader;
+            }
+        }
+        return replaceCandidate;
+    }
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(object -> {
-            if (object instanceof NativeImageClassLoader || object instanceof NativeImageSystemClassLoader) {
-                /*
-                 * Unwrap the original AppClassLoader from the NativeImageClassLoader and
-                 * NativeImageSystemClassLoader
-                 */
-                ClassLoader parent = ((ClassLoader) object).getParent();
-                VMError.guarantee(parent != null);
-                return parent;
-            }
-
-            return object;
-        });
+        access.registerObjectReplacer(this::runtimeClassLoaderObjectReplacer);
     }
 }

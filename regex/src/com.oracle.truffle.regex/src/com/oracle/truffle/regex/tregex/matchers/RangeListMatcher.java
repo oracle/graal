@@ -74,13 +74,10 @@ public abstract class RangeListMatcher extends InvertibleCharMatcher {
 
     @Specialization
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public boolean match(int c, boolean compactString) {
+    public boolean match(int c) {
         for (int i = 0; i < ranges.length; i += 2) {
             final int lo = ranges[i];
             final int hi = ranges[i + 1];
-            if (compactString && lo > 255) {
-                return result(false);
-            }
             if (isSingleChar(lo, hi)) {
                 // do simple equality checks on ranges that contain a single character
                 if (lo == c) {

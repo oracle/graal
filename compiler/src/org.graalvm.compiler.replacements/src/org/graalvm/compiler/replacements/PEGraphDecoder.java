@@ -39,9 +39,8 @@ import java.util.Formatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -54,6 +53,7 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -157,6 +157,12 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     private static final Object CACHED_NULL_VALUE = new Object();
 
+    private static final TimerKey InvocationPluginTimer = DebugContext.timer("PartialEvaluation-InvocationPlugin").doc("Time spent in invocation plugins.");
+
+    private static final TimerKey TryInlineTimer = DebugContext.timer("PartialEvaluation-TryInline").doc("Time spent in trying to inline an invoke.");
+
+    private static final TimerKey TrySimplifyCallTarget = DebugContext.timer("PartialEvaluation-TrySimplifyCallTarget").doc("Time spent in trying to simplify a call target.");
+
     public static class Options {
         @Option(help = "Maximum inlining depth during partial evaluation before reporting an infinite recursion")//
         public static final OptionKey<Integer> InliningDepthError = new OptionKey<>(1000);
@@ -230,9 +236,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 callerBytecodePosition = invokePosition;
             }
             if (position != null) {
-                return position.addCaller(caller.resolveSourceLanguagePosition(), callerBytecodePosition);
+                return position.addCaller(resolveSourceLanguagePosition(), callerBytecodePosition);
             }
-            final SourceLanguagePosition pos = caller.resolveSourceLanguagePosition();
+            final SourceLanguagePosition pos = resolveSourceLanguagePosition();
             if (pos != null && callerBytecodePosition != null) {
                 return new NodeSourcePosition(pos, callerBytecodePosition.getCaller(), callerBytecodePosition.getMethod(), callerBytecodePosition.getBCI());
             }
@@ -288,6 +294,16 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public String getLanguage() {
+            throw new IllegalStateException(getClass().getSimpleName() + " should not be reachable.");
+        }
+
+        @Override
+        public int getNodeId() {
+            throw new IllegalStateException(getClass().getSimpleName() + " should not be reachable.");
+        }
+
+        @Override
+        public String getNodeClassName() {
             throw new IllegalStateException(getClass().getSimpleName() + " should not be reachable.");
         }
     }
@@ -650,7 +666,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
-    protected static class SpecialCallTargetCacheKey {
+    public static class SpecialCallTargetCacheKey {
         private final InvokeKind invokeKind;
         private final ResolvedJavaMethod targetMethod;
         private final ResolvedJavaType contextType;
@@ -683,23 +699,24 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     private final InlineInvokePlugin[] inlineInvokePlugins;
     private final ParameterPlugin parameterPlugin;
     private final NodePlugin[] nodePlugins;
-    private final EconomicMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache;
-    private final EconomicMap<ResolvedJavaMethod, Object> invocationPluginCache;
+    private final ConcurrentHashMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache;
+    private final ConcurrentHashMap<ResolvedJavaMethod, Object> invocationPluginCache;
     private final ResolvedJavaMethod peRootForInlining;
     protected final SourceLanguagePositionProvider sourceLanguagePositionProvider;
 
     public PEGraphDecoder(Architecture architecture, StructuredGraph graph, CoreProviders providers, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
-                    InlineInvokePlugin[] inlineInvokePlugins,
-                    ParameterPlugin parameterPlugin,
-                    NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider) {
+                    InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
+                    NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
+                    ConcurrentHashMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache,
+                    ConcurrentHashMap<ResolvedJavaMethod, Object> invocationPluginCache) {
         super(architecture, graph, providers, true);
         this.loopExplosionPlugin = loopExplosionPlugin;
         this.invocationPlugins = invocationPlugins;
         this.inlineInvokePlugins = inlineInvokePlugins;
         this.parameterPlugin = parameterPlugin;
         this.nodePlugins = nodePlugins;
-        this.specialCallTargetCache = EconomicMap.create(Equivalence.DEFAULT);
-        this.invocationPluginCache = EconomicMap.create(Equivalence.DEFAULT);
+        this.specialCallTargetCache = specialCallTargetCache;
+        this.invocationPluginCache = invocationPluginCache;
         this.peRootForInlining = peRootForInlining;
         this.sourceLanguagePositionProvider = sourceLanguagePositionProvider;
     }
@@ -852,30 +869,34 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         return super.handleInvoke(methodScope, loopScope, invokeData);
     }
 
+    @SuppressWarnings({"unused", "try"})
     protected MethodCallTargetNode trySimplifyCallTarget(PEMethodScope methodScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
-        // attempt to devirtualize the call
-        ResolvedJavaMethod specialCallTarget = getSpecialCallTarget(invokeData, callTarget);
-        if (specialCallTarget != null) {
-            callTarget.setTargetMethod(specialCallTarget);
-            callTarget.setInvokeKind(InvokeKind.Special);
+        try (DebugCloseable a = TrySimplifyCallTarget.start(debug)) {
+            // attempt to devirtualize the call
+            ResolvedJavaMethod specialCallTarget = getSpecialCallTarget(invokeData, callTarget);
+            if (specialCallTarget != null) {
+                callTarget.setTargetMethod(specialCallTarget);
+                callTarget.setInvokeKind(InvokeKind.Special);
+                return callTarget;
+            }
+            if (callTarget.invokeKind().isInterface()) {
+                Invoke invoke = invokeData.invoke;
+                ResolvedJavaType contextType = methodScope.method.getDeclaringClass();
+                return MethodCallTargetNode.tryDevirtualizeInterfaceCall(callTarget.receiver(), callTarget.targetMethod(), null, graph.getAssumptions(), contextType, callTarget, invoke.asNode());
+            }
             return callTarget;
         }
-        if (callTarget.invokeKind().isInterface()) {
-            Invoke invoke = invokeData.invoke;
-            ResolvedJavaType contextType = methodScope.method.getDeclaringClass();
-            return MethodCallTargetNode.tryDevirtualizeInterfaceCall(callTarget.receiver(), callTarget.targetMethod(), null, graph.getAssumptions(), contextType, callTarget, invoke.asNode());
-        }
-        return callTarget;
     }
 
     protected LoopScope trySimplifyInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
-        if (tryInvocationPlugin(methodScope, loopScope, invokeData, callTarget)) {
+        final boolean invocationPluginTriggered = tryInvocationPlugin(methodScope, loopScope, invokeData, callTarget);
+        if (invocationPluginTriggered) {
             /*
              * The invocation plugin handled the call, so decoding continues in the calling method.
              */
             return loopScope;
         }
-        LoopScope inlineLoopScope = tryInline(methodScope, loopScope, invokeData, callTarget);
+        final LoopScope inlineLoopScope = tryInline(methodScope, loopScope, invokeData, callTarget);
         if (inlineLoopScope != null) {
             /*
              * We can inline the call, so decoding continues in the inlined method.
@@ -900,118 +921,123 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         SpecialCallTargetCacheKey key = new SpecialCallTargetCacheKey(callTarget.invokeKind(), callTarget.targetMethod(), invokeData.contextType, callTarget.receiver().stamp(NodeView.DEFAULT));
-        Object specialCallTarget = specialCallTargetCache.get(key);
-        if (specialCallTarget == null) {
-            specialCallTarget = MethodCallTargetNode.devirtualizeCall(key.invokeKind, key.targetMethod, key.contextType, graph.getAssumptions(),
-                            key.receiverStamp);
-            if (specialCallTarget == null) {
-                specialCallTarget = CACHED_NULL_VALUE;
+        Object specialCallTarget = specialCallTargetCache.computeIfAbsent(key, k -> {
+            Object target = MethodCallTargetNode.devirtualizeCall(k.invokeKind, k.targetMethod, k.contextType, graph.getAssumptions(),
+                            k.receiverStamp);
+            if (target == null) {
+                target = CACHED_NULL_VALUE;
             }
-            specialCallTargetCache.put(key, specialCallTarget);
-        }
+            return target;
+        });
 
         return specialCallTarget == CACHED_NULL_VALUE ? null : (ResolvedJavaMethod) specialCallTarget;
     }
 
+    @SuppressWarnings({"unused", "try"})
     protected boolean tryInvocationPlugin(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
-        if (invocationPlugins == null || invocationPlugins.isEmpty()) {
-            return false;
-        }
-
-        Invoke invoke = invokeData.invoke;
-
-        ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-        if (loopScope.methodScope.encodedGraph.isCallToOriginal(targetMethod)) {
-            return false;
-        }
-
-        InvocationPlugin invocationPlugin = getInvocationPlugin(targetMethod);
-        if (invocationPlugin == null) {
-            return false;
-        }
-
-        if (loopScope.methodScope.encodedGraph.isCallToOriginal(targetMethod)) {
-            return false;
-        }
-
-        ValueNode[] arguments = callTarget.arguments().toArray(new ValueNode[0]);
-        FixedWithNextNode invokePredecessor = (FixedWithNextNode) invoke.asNode().predecessor();
-
-        /*
-         * Remove invoke from graph so that invocation plugin can append nodes to the predecessor.
-         */
-        invoke.asNode().replaceAtPredecessor(null);
-
-        PEMethodScope inlineScope = new PEMethodScope(graph, methodScope, loopScope, null, targetMethod, invokeData, methodScope.inliningDepth + 1, loopExplosionPlugin, arguments);
-
-        JavaType returnType = targetMethod.getSignature().getReturnType(methodScope.method.getDeclaringClass());
-        PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, invokePredecessor, callTarget.invokeKind(), returnType);
-        InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(graphBuilderContext);
-
-        if (invocationPlugin.execute(graphBuilderContext, targetMethod, invocationPluginReceiver.init(targetMethod, arguments), arguments)) {
-
-            if (graphBuilderContext.invokeConsumed) {
-                /* Nothing to do. */
-            } else if (graphBuilderContext.lastInstr != null) {
-                if (graphBuilderContext.lastInstr instanceof DeoptBciSupplier && !BytecodeFrame.isPlaceholderBci(invokeData.invoke.bci()) &&
-                                BytecodeFrame.isPlaceholderBci(((DeoptBciSupplier) graphBuilderContext.lastInstr).bci())) {
-                    ((DeoptBciSupplier) graphBuilderContext.lastInstr).setBci(invokeData.invoke.bci());
-                }
-                registerNode(loopScope, invokeData.invokeOrderId, graphBuilderContext.pushedNode, true, true);
-                invoke.asNode().replaceAtUsages(graphBuilderContext.pushedNode);
-                graphBuilderContext.lastInstr.setNext(nodeAfterInvoke(methodScope, loopScope, invokeData, AbstractBeginNode.prevBegin(graphBuilderContext.lastInstr)));
-                deleteInvoke(invoke);
-            } else {
-                assert graphBuilderContext.pushedNode == null : "Why push a node when the invoke does not return anyway?";
-                invoke.asNode().replaceAtUsages(null);
-                deleteInvoke(invoke);
+        try (DebugCloseable a = InvocationPluginTimer.start(debug)) {
+            if (invocationPlugins == null || invocationPlugins.isEmpty()) {
+                return false;
             }
-            return true;
 
-        } else {
-            /* Intrinsification failed, restore original state: invoke is in Graph. */
-            invokePredecessor.setNext(invoke.asNode());
-            return false;
+            Invoke invoke = invokeData.invoke;
+
+            ResolvedJavaMethod targetMethod = callTarget.targetMethod();
+            if (loopScope.methodScope.encodedGraph.isCallToOriginal(targetMethod)) {
+                return false;
+            }
+
+            InvocationPlugin invocationPlugin = getInvocationPlugin(targetMethod);
+            if (invocationPlugin == null) {
+                return false;
+            }
+
+            if (loopScope.methodScope.encodedGraph.isCallToOriginal(targetMethod)) {
+                return false;
+            }
+
+            ValueNode[] arguments = callTarget.arguments().toArray(new ValueNode[0]);
+            FixedWithNextNode invokePredecessor = (FixedWithNextNode) invoke.asNode().predecessor();
+
+            /*
+             * Remove invoke from graph so that invocation plugin can append nodes to the
+             * predecessor.
+             */
+            invoke.asNode().replaceAtPredecessor(null);
+
+            PEMethodScope inlineScope = new PEMethodScope(graph, methodScope, loopScope, null, targetMethod, invokeData, methodScope.inliningDepth + 1, loopExplosionPlugin, arguments);
+
+            JavaType returnType = targetMethod.getSignature().getReturnType(methodScope.method.getDeclaringClass());
+            PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, invokePredecessor, callTarget.invokeKind(), returnType);
+            InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(graphBuilderContext);
+
+            if (invocationPlugin.execute(graphBuilderContext, targetMethod, invocationPluginReceiver.init(targetMethod, arguments), arguments)) {
+
+                if (graphBuilderContext.invokeConsumed) {
+                    /* Nothing to do. */
+                } else if (graphBuilderContext.lastInstr != null) {
+                    if (graphBuilderContext.lastInstr instanceof DeoptBciSupplier && !BytecodeFrame.isPlaceholderBci(invokeData.invoke.bci()) &&
+                                    BytecodeFrame.isPlaceholderBci(((DeoptBciSupplier) graphBuilderContext.lastInstr).bci())) {
+                        ((DeoptBciSupplier) graphBuilderContext.lastInstr).setBci(invokeData.invoke.bci());
+                    }
+                    registerNode(loopScope, invokeData.invokeOrderId, graphBuilderContext.pushedNode, true, true);
+                    invoke.asNode().replaceAtUsages(graphBuilderContext.pushedNode);
+                    graphBuilderContext.lastInstr.setNext(nodeAfterInvoke(methodScope, loopScope, invokeData, AbstractBeginNode.prevBegin(graphBuilderContext.lastInstr)));
+                    deleteInvoke(invoke);
+                } else {
+                    assert graphBuilderContext.pushedNode == null : "Why push a node when the invoke does not return anyway?";
+                    invoke.asNode().replaceAtUsages(null);
+                    deleteInvoke(invoke);
+                }
+                return true;
+
+            } else {
+                /* Intrinsification failed, restore original state: invoke is in Graph. */
+                invokePredecessor.setNext(invoke.asNode());
+                return false;
+            }
         }
     }
 
     private InvocationPlugin getInvocationPlugin(ResolvedJavaMethod targetMethod) {
-        Object invocationPlugin = invocationPluginCache.get(targetMethod);
-        if (invocationPlugin == null) {
-            invocationPlugin = invocationPlugins.lookupInvocation(targetMethod);
-            if (invocationPlugin == null) {
-                invocationPlugin = CACHED_NULL_VALUE;
+        Object invocationPlugin = invocationPluginCache.computeIfAbsent(targetMethod, method -> {
+            Object plugin = invocationPlugins.lookupInvocation(targetMethod);
+            if (plugin == null) {
+                plugin = CACHED_NULL_VALUE;
             }
-            invocationPluginCache.put(targetMethod, invocationPlugin);
-        }
+            return plugin;
+        });
 
         return invocationPlugin == CACHED_NULL_VALUE ? null : (InvocationPlugin) invocationPlugin;
     }
 
+    @SuppressWarnings({"unused", "try"})
     protected LoopScope tryInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
-        if (!callTarget.invokeKind().isDirect()) {
-            return null;
-        }
+        try (DebugCloseable a = TryInlineTimer.start(debug)) {
+            if (!callTarget.invokeKind().isDirect()) {
+                return null;
+            }
 
-        ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-        if (targetMethod.hasNeverInlineDirective()) {
-            return null;
-        }
+            ResolvedJavaMethod targetMethod = callTarget.targetMethod();
+            if (targetMethod.hasNeverInlineDirective()) {
+                return null;
+            }
 
-        ValueNode[] arguments = callTarget.arguments().toArray(new ValueNode[0]);
-        GraphBuilderContext graphBuilderContext = new PENonAppendGraphBuilderContext(methodScope, invokeData.invoke);
+            ValueNode[] arguments = callTarget.arguments().toArray(new ValueNode[0]);
+            GraphBuilderContext graphBuilderContext = new PENonAppendGraphBuilderContext(methodScope, invokeData.invoke);
 
-        for (InlineInvokePlugin plugin : inlineInvokePlugins) {
-            InlineInfo inlineInfo = plugin.shouldInlineInvoke(graphBuilderContext, targetMethod, arguments);
-            if (inlineInfo != null) {
-                if (inlineInfo.allowsInlining()) {
-                    return doInline(methodScope, loopScope, invokeData, inlineInfo, arguments);
-                } else {
-                    return null;
+            for (InlineInvokePlugin plugin : inlineInvokePlugins) {
+                InlineInfo inlineInfo = plugin.shouldInlineInvoke(graphBuilderContext, targetMethod, arguments);
+                if (inlineInfo != null) {
+                    if (inlineInfo.allowsInlining()) {
+                        return doInline(methodScope, loopScope, invokeData, inlineInfo, arguments);
+                    } else {
+                        return null;
+                    }
                 }
             }
+            return null;
         }
-        return null;
     }
 
     protected LoopScope doInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, InlineInfo inlineInfo, ValueNode[] arguments) {

@@ -29,6 +29,7 @@ import static java.lang.Thread.currentThread;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.management.RuntimeMXBean;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -40,6 +41,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import jdk.vm.ci.code.VirtualObject;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -52,7 +55,6 @@ import jdk.vm.ci.services.Services;
  * JDK 8 version of {@link GraalServices}.
  */
 public final class GraalServices {
-
     private GraalServices() {
     }
 
@@ -448,5 +450,34 @@ public final class GraalServices {
             throw new InternalError("Unexpected java.vm.version value: " + vmVersion);
         }
         return Integer.parseInt(matcher.group(1));
+    }
+
+    private static final Method constantPoolLookupReferencedType;
+
+    static {
+        Method lookupReferencedType = null;
+        Class<?> constantPool = ConstantPool.class;
+        try {
+            lookupReferencedType = constantPool.getDeclaredMethod("lookupReferencedType", Integer.TYPE, Integer.TYPE);
+        } catch (NoSuchMethodException e) {
+        }
+        constantPoolLookupReferencedType = lookupReferencedType;
+    }
+
+    public static JavaType lookupReferencedType(ConstantPool constantPool, int cpi, int opcode) {
+        if (constantPoolLookupReferencedType != null) {
+            try {
+                return (JavaType) constantPoolLookupReferencedType.invoke(constantPool, cpi, opcode);
+            } catch (Error e) {
+                throw e;
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
+        throw new InternalError("This JVMCI version doesn't support ConstantPool.lookupReferencedType()");
+    }
+
+    public static boolean hasLookupReferencedType() {
+        return constantPoolLookupReferencedType != null;
     }
 }

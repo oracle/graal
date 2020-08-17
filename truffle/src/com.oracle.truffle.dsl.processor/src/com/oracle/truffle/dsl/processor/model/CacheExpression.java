@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,6 +72,7 @@ public final class CacheExpression extends MessageContainer {
     private boolean mergedLibrary;
     private boolean guardForNull;
     private boolean isWeakReference;
+    private boolean adopt = true;
 
     private TypeMirror languageType;
     private TypeMirror referenceType;
@@ -199,6 +200,24 @@ public final class CacheExpression extends MessageContainer {
         return isType(types.CachedLibrary);
     }
 
+    public boolean isCachedLibraryManuallyDispatched() {
+        return isType(types.CachedLibrary);
+    }
+
+    public String getCachedLibraryExpression() {
+        if (!isCachedLibrary()) {
+            return null;
+        }
+        return ElementUtils.getAnnotationValue(String.class, getMessageAnnotation(), "value", false);
+    }
+
+    public String getCachedLibraryLimit() {
+        if (!isCachedLibrary()) {
+            return null;
+        }
+        return ElementUtils.getAnnotationValue(String.class, getMessageAnnotation(), "limit", false);
+    }
+
     public boolean isCachedContext() {
         return isType(types.CachedContext);
     }
@@ -305,6 +324,14 @@ public final class CacheExpression extends MessageContainer {
 
     public boolean isWeakReference() {
         return isWeakReference;
+    }
+
+    public boolean isAdopt() {
+        return adopt;
+    }
+
+    public void setAdopt(boolean adopt) {
+        this.adopt = adopt;
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -123,7 +123,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     @Snippet
     public Object allocateArray(DynamicHub hub,
                     int length,
-                    @ConstantParameter int headerSize,
+                    @ConstantParameter int arrayBaseOffset,
                     @ConstantParameter int log2ElementSize,
                     @ConstantParameter boolean fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
@@ -131,7 +131,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean supportsBulkZeroing,
                     @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedHub = checkHub(hub);
-        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), length, headerSize, log2ElementSize, fillContents, getArrayZeroingStartOffset(),
+        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), length, arrayBaseOffset, log2ElementSize, fillContents,
                         emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -151,10 +151,10 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         DynamicHub checkedArrayHub = getCheckedArrayHub(elementType);
 
         int layoutEncoding = checkedArrayHub.getLayoutEncoding();
-        int headerSize = getArrayHeaderSize(layoutEncoding);
+        int arrayBaseOffset = getArrayBaseOffset(layoutEncoding);
         int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
 
-        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedArrayHub), WordFactory.nullPointer(), length, headerSize, log2ElementSize, fillContents, getArrayZeroingStartOffset(),
+        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedArrayHub), WordFactory.nullPointer(), length, arrayBaseOffset, log2ElementSize, fillContents,
                         emitMemoryBarrier, false, supportsBulkZeroing, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -339,13 +339,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         return ConfigurationValues.getObjectLayout().getAlignment();
     }
 
-    protected static int getArrayHeaderSize(int layoutEncoding) {
+    protected static int getArrayBaseOffset(int layoutEncoding) {
         return (int) LayoutEncoding.getArrayBaseOffset(layoutEncoding).rawValue();
-    }
-
-    @Fold
-    protected static int getArrayZeroingStartOffset() {
-        return ConfigurationValues.getObjectLayout().getArrayZeroingStartOffset();
     }
 
     private static Word encodeAsTLABObjectHeader(DynamicHub hub) {
@@ -486,14 +481,14 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 SharedType type = (SharedType) node.elementType().getArrayClass();
                 DynamicHub hub = type.getHub();
                 int layoutEncoding = hub.getLayoutEncoding();
-                int headerSize = getArrayHeaderSize(layoutEncoding);
+                int arrayBaseOffset = getArrayBaseOffset(layoutEncoding);
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
                 ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.addConst("headerSize", headerSize);
+                args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
                 args.addConst("fillContents", node.fillContents());
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());

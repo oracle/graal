@@ -148,15 +148,15 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ValueNode createInvokeWithExceptionAndUnwind(Class<?> declaringClass, String name, InvokeKind invokeKind, ValueNode... args) {
-        return createInvokeWithExceptionAndUnwind(findMethod(declaringClass, name, invokeKind == InvokeKind.Static), invokeKind, frameState, bci(), bci(), args);
+        return createInvokeWithExceptionAndUnwind(findMethod(declaringClass, name, invokeKind == InvokeKind.Static), invokeKind, frameState, bci(), args);
     }
 
     public ValueNode createJavaCallWithException(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
-        return startInvokeWithException(targetMethod, kind, frameState, bci(), bci(), arguments);
+        return startInvokeWithException(targetMethod, kind, frameState, bci(), arguments);
     }
 
     public ValueNode createJavaCallWithExceptionAndUnwind(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
-        return createInvokeWithExceptionAndUnwind(targetMethod, kind, frameState, bci(), bci(), arguments);
+        return createInvokeWithExceptionAndUnwind(targetMethod, kind, frameState, bci(), arguments);
     }
 
     public ConstantNode createConstant(Constant value, JavaKind kind) {

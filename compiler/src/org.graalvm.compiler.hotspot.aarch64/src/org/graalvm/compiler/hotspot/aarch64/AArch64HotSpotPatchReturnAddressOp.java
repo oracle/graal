@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,8 +56,7 @@ final class AArch64HotSpotPatchReturnAddressOp extends AArch64LIRInstruction {
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         final int frameSize = crb.frameMap.frameSize();
         // LR is saved in the {fp, lr} pair above the frame
-        AArch64Address lrAddress = AArch64Address.createUnscaledImmediateAddress(sp,
-                        frameSize + crb.target.wordSize);
+        AArch64Address lrAddress = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, sp, frameSize + crb.target.wordSize);
         masm.str(64, asRegister(address), lrAddress);
     }
 }

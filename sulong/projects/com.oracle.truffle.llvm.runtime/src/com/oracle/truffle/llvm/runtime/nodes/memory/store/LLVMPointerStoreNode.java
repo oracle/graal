@@ -49,14 +49,14 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
     protected void doAddress(LLVMNativePointer addr, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putPointer(addr, toNative.executeWithTarget(value));
+        language.getLLVMMemory().putPointer(this, addr, toNative.executeWithTarget(value));
     }
 
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected void doAddress(long addr, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putPointer(addr, toNative.executeWithTarget(value));
+        language.getLLVMMemory().putPointer(this, addr, toNative.executeWithTarget(value));
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
@@ -65,7 +65,7 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
-        doTruffleObject(getReceiver.execute(addr), value, toPointer, nativeWrite);
+        doManaged(getReceiver.execute(addr), value, toPointer, nativeWrite);
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
@@ -74,11 +74,11 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
-        doTruffleObject(getReceiver.execute(addr), value, toPointer, nativeWrite);
+        doManaged(getReceiver.execute(addr), value, toPointer, nativeWrite);
     }
 
     @Specialization(limit = "3")
-    protected void doTruffleObject(LLVMManagedPointer address, Object value,
+    protected void doManaged(LLVMManagedPointer address, Object value,
                     @Cached LLVMToPointerNode toPointer,
                     @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writePointer(address.getObject(), address.getOffset(), toPointer.executeWithTarget(value));

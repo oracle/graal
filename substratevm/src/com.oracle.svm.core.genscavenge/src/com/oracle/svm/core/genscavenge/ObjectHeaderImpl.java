@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -53,17 +54,16 @@ import com.oracle.svm.core.util.VMError;
  * reference without a shift. This limits the address space where all hubs must be placed to 32/64
  * bits but due to the object alignment, the 3 least-significant bits can be reserved for the GC.
  *
- * Image heap objects are not marked explicitly and have the same header as an aligned object
- * without a remembered set. So, in places where it is necessary to explicitly distinguish image
- * heap objects, it is necessary to call {@link Heap#isInImageHeap}. Usually, image heap objects
- * must be treated specially anyways as they neither have a {@link HeapChunk} nor a {@link Space}.
+ * Image heap objects are not marked explicitly, but must be treated differently in some regards. In
+ * places where it is necessary to distinguish image heap objects, it is necessary to call
+ * {@link Heap#isInImageHeap}.
  */
 public final class ObjectHeaderImpl extends ObjectHeader {
     // @formatter:off
-    //                                Name                            Value                         // In hex:
-    private static final UnsignedWord UNALIGNED_BIT                 = WordFactory.unsigned(0b001);  // 0 or 8.
-    private static final UnsignedWord REMEMBERED_SET_BIT            = WordFactory.unsigned(0b010);  // 0 or 8.
-    private static final UnsignedWord FORWARDED_BIT                 = WordFactory.unsigned(0b100);  // 4 or c.
+    //                                Name                            Value
+    private static final UnsignedWord UNALIGNED_BIT                 = WordFactory.unsigned(0b001);
+    private static final UnsignedWord REMEMBERED_SET_BIT            = WordFactory.unsigned(0b010);
+    private static final UnsignedWord FORWARDED_BIT                 = WordFactory.unsigned(0b100);
 
     private static final int RESERVED_BITS_MASK                     = 0b111;
     private static final UnsignedWord MASK_HEADER_BITS              = WordFactory.unsigned(RESERVED_BITS_MASK);
@@ -164,19 +164,29 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind) {
+    public void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind, boolean isArray) {
         assert heapKind == HeapKind.Unmanaged || heapKind == HeapKind.ImageHeap;
         // Headers in unmanaged memory or image heap don't need any GC-specific bits set
         Word objectHeader = encodeAsObjectHeader(hub, false, false);
-        initializeHeaderOfNewObject(objectPointer, objectHeader);
+        initializeHeaderOfNewObject(objectPointer, objectHeader, isArray);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub) {
+    public static void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub, boolean isArray) {
         if (getReferenceSize() == Integer.BYTES) {
             objectPointer.writeInt(getHubOffset(), (int) encodedHub.rawValue(), LocationIdentity.INIT_LOCATION);
         } else {
             objectPointer.writeWord(getHubOffset(), encodedHub, LocationIdentity.INIT_LOCATION);
+        }
+        /**
+         * In arrays the identity hashcode is considered part of the object header. This is done to
+         * allow for optimized array element initialization. Previously, an additional
+         * ArrayZeroingOffset parameter was part of the {@link ObjectLayout} and allowed the
+         * hashcode to be separate from the header. Unfortunately, this was not compatible with
+         * other optimization passes, which expected the zeroing to start at the array elements.
+         */
+        if (isArray) {
+            objectPointer.writeInt(ConfigurationValues.getObjectLayout().getArrayIdentityHashcodeOffset(), 0, LocationIdentity.INIT_LOCATION);
         }
     }
 
@@ -239,9 +249,23 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Override
-    public long encodeAsImageHeapObjectHeader(long heapBaseRelativeAddress) {
-        assert (heapBaseRelativeAddress & MASK_HEADER_BITS.rawValue()) == 0 : "Object header bits must be zero";
-        return heapBaseRelativeAddress;
+    public long encodeAsImageHeapObjectHeader(ImageHeapObject obj, long hubOffsetFromHeapBase) {
+        long header = hubOffsetFromHeapBase;
+        assert (header & MASK_HEADER_BITS.rawValue()) == 0 : "Object header bits must be zero initially";
+        if (HeapImpl.usesImageHeapCardMarking()) {
+            if (obj.getPartition() instanceof ChunkedImageHeapPartition) {
+                ChunkedImageHeapPartition partition = (ChunkedImageHeapPartition) obj.getPartition();
+                if (partition.isWritable()) {
+                    header |= REMEMBERED_SET_BIT.rawValue();
+                }
+                if (partition.usesUnalignedObjects()) {
+                    header |= UNALIGNED_BIT.rawValue();
+                }
+            } else {
+                assert obj.getPartition() instanceof FillerObjectDummyPartition;
+            }
+        }
+        return header;
     }
 
     public static boolean isAlignedObject(Object o) {

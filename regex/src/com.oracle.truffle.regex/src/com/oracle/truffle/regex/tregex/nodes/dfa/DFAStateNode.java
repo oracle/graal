@@ -46,13 +46,13 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
+import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
+import com.oracle.truffle.regex.tregex.string.AbstractString;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
@@ -60,30 +60,30 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 public class DFAStateNode extends DFAAbstractStateNode {
 
-    public static class LoopOptimizationNode extends Node {
+    /**
+     * This node is used when all except a very small set of code points will loop back to the
+     * current DFA state. This node's {@link #execute(Object, int, int)} method will search for the
+     * given small set of code points in an optimized, possibly vectorized loop.
+     */
+    public abstract static class LoopOptimizationNode extends Node {
 
-        private final short loopTransitionIndex;
-        @CompilationFinal(dimensions = 1) private final char[] indexOfChars;
+        public abstract int execute(Object input, int preLoopIndex, int maxIndex);
+
+        public abstract int encodedLength();
+
+        abstract LoopOptimizationNode nodeSplitCopy();
+    }
+
+    public abstract static class LoopOptIndexOfAnyNode extends LoopOptimizationNode {
+
         @Child private InputIndexOfNode indexOfNode;
 
-        public LoopOptimizationNode(short loopTransitionIndex, char[] indexOfChars) {
-            this.loopTransitionIndex = loopTransitionIndex;
-            this.indexOfChars = indexOfChars;
-        }
-
-        private LoopOptimizationNode nodeSplitCopy() {
-            return new LoopOptimizationNode(loopTransitionIndex, indexOfChars);
-        }
-
-        public char[] getIndexOfChars() {
-            return indexOfChars;
-        }
-
+        @Override
         public int encodedLength() {
             return 1;
         }
 
-        public InputIndexOfNode getIndexOfNode() {
+        InputIndexOfNode getIndexOfNode() {
             if (indexOfNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 indexOfNode = insert(InputIndexOfNode.create());
@@ -92,35 +92,133 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
+    /**
+     * Optimized search for a set of up to 4 {@code char} values.
+     */
+    public static final class LoopOptIndexOfAnyCharNode extends LoopOptIndexOfAnyNode {
+
+        @CompilationFinal(dimensions = 1) private final char[] chars;
+
+        public LoopOptIndexOfAnyCharNode(char[] chars) {
+            this.chars = chars;
+        }
+
+        private LoopOptIndexOfAnyCharNode(LoopOptIndexOfAnyCharNode copy) {
+            this.chars = copy.chars;
+        }
+
+        @Override
+        public int execute(Object input, int fromIndex, int maxIndex) {
+            return getIndexOfNode().execute(input, fromIndex, maxIndex, chars);
+        }
+
+        @Override
+        LoopOptimizationNode nodeSplitCopy() {
+            return new LoopOptIndexOfAnyCharNode(this);
+        }
+    }
+
+    /**
+     * Optimized search for a set of up to 4 {@code byte} values.
+     */
+    public static final class LoopOptIndexOfAnyByteNode extends LoopOptIndexOfAnyNode {
+
+        @CompilationFinal(dimensions = 1) private final byte[] bytes;
+
+        public LoopOptIndexOfAnyByteNode(byte[] bytes) {
+            this.bytes = bytes;
+        }
+
+        private LoopOptIndexOfAnyByteNode(LoopOptIndexOfAnyByteNode copy) {
+            this.bytes = copy.bytes;
+        }
+
+        @Override
+        public int execute(Object input, int fromIndex, int maxIndex) {
+            return getIndexOfNode().execute(input, fromIndex, maxIndex, bytes);
+        }
+
+        @Override
+        LoopOptimizationNode nodeSplitCopy() {
+            return new LoopOptIndexOfAnyByteNode(this);
+        }
+    }
+
+    /**
+     * Optimized search for a substring.
+     */
+    public static final class LoopOptIndexOfStringNode extends LoopOptimizationNode {
+
+        private final AbstractString str;
+        private final AbstractString mask;
+        @Child private InputIndexOfStringNode indexOfNode;
+
+        public LoopOptIndexOfStringNode(AbstractString str, AbstractString mask) {
+            this.str = str;
+            this.mask = mask;
+        }
+
+        private LoopOptIndexOfStringNode(LoopOptIndexOfStringNode copy) {
+            this.str = copy.str;
+            this.mask = copy.mask;
+        }
+
+        @Override
+        public int execute(Object input, int fromIndex, int maxIndex) {
+            return getIndexOfNode().execute(input, fromIndex, maxIndex, str.content(), mask == null ? null : mask.content());
+        }
+
+        @Override
+        public int encodedLength() {
+            return str.encodedLength();
+        }
+
+        @Override
+        LoopOptimizationNode nodeSplitCopy() {
+            return new LoopOptIndexOfStringNode(this);
+        }
+
+        private InputIndexOfStringNode getIndexOfNode() {
+            if (indexOfNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                indexOfNode = insert(InputIndexOfStringNode.create());
+            }
+            return indexOfNode;
+        }
+    }
+
     private static final byte FLAG_FINAL_STATE = 1;
     private static final byte FLAG_ANCHORED_FINAL_STATE = 1 << 1;
     private static final byte FLAG_HAS_BACKWARD_PREFIX_STATE = 1 << 2;
+    private static final byte FLAG_UTF_16_MUST_DECODE = 1 << 3;
 
     private final byte flags;
+    private final short loopTransitionIndex;
     @Child LoopOptimizationNode loopOptimizationNode;
-    @Children protected final CharMatcher[] matchers;
+    @Child Matchers matchers;
     private final DFASimpleCG simpleCG;
     private final AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher;
     private final BranchProfile stateReachedProfile = BranchProfile.create();
 
     DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
-        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopOptimizationNode.nodeSplitCopy(),
+        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopTransitionIndex, nodeSplitCopy.loopOptimizationNode.nodeSplitCopy(),
                         Arrays.copyOf(nodeSplitCopy.getSuccessors(), nodeSplitCopy.getSuccessors().length),
                         nodeSplitCopy.getMatchers(), nodeSplitCopy.simpleCG, nodeSplitCopy.allTransitionsInOneTreeMatcher);
     }
 
-    public DFAStateNode(short id, byte flags, LoopOptimizationNode loopOptimizationNode, short[] successors, CharMatcher[] matchers, DFASimpleCG simpleCG,
+    public DFAStateNode(short id, byte flags, short loopTransitionIndex, LoopOptimizationNode loopOptimizationNode, short[] successors, Matchers matchers, DFASimpleCG simpleCG,
                     AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher) {
         super(id, successors);
         assert id > 0;
         this.flags = flags;
+        this.loopTransitionIndex = loopTransitionIndex;
         this.loopOptimizationNode = loopOptimizationNode;
         this.matchers = matchers;
         this.simpleCG = simpleCG;
         this.allTransitionsInOneTreeMatcher = allTransitionsInOneTreeMatcher;
     }
 
-    public static byte buildFlags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState) {
+    public static byte buildFlags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState, boolean utf16MustDecode) {
         byte flags = 0;
         if (finalState) {
             flags |= FLAG_FINAL_STATE;
@@ -131,11 +229,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
         if (hasBackwardPrefixState) {
             flags |= FLAG_HAS_BACKWARD_PREFIX_STATE;
         }
+        if (utf16MustDecode) {
+            flags |= FLAG_UTF_16_MUST_DECODE;
+        }
         return flags;
-    }
-
-    public static LoopOptimizationNode buildLoopOptimizationNode(short loopTransitionIndex, char[] indexOfChars) {
-        return new LoopOptimizationNode(loopTransitionIndex, indexOfChars);
     }
 
     @Override
@@ -143,7 +240,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return new DFAStateNode(this, copyID);
     }
 
-    public final CharMatcher[] getMatchers() {
+    public final Matchers getMatchers() {
         return matchers;
     }
 
@@ -163,12 +260,16 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return flagIsSet(FLAG_HAS_BACKWARD_PREFIX_STATE);
     }
 
+    public boolean utf16MustDecode() {
+        return flagIsSet(FLAG_UTF_16_MUST_DECODE);
+    }
+
     private boolean flagIsSet(byte flag) {
         return (flags & flag) != 0;
     }
 
     public boolean hasLoopToSelf() {
-        return loopOptimizationNode != null;
+        return loopTransitionIndex >= 0;
     }
 
     boolean isLoopToSelf(int transitionIndex) {
@@ -177,7 +278,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     short getLoopToSelf() {
         assert hasLoopToSelf();
-        return loopOptimizationNode.loopTransitionIndex;
+        return loopTransitionIndex;
     }
 
     boolean treeTransitionMatching() {
@@ -188,136 +289,53 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return allTransitionsInOneTreeMatcher;
     }
 
-    boolean sameResultAsRegularMatchers(TRegexDFAExecutorNode executor, int c, boolean compactString, int allTransitionsMatcherResult) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (executor.isRegressionTestMode()) {
-            for (int i = 0; i < matchers.length; i++) {
-                if (matchers[i].execute(c, compactString)) {
-                    return i == allTransitionsMatcherResult;
-                }
-            }
-            return allTransitionsMatcherResult == -1;
-        }
-        return true;
+    /**
+     * Returns {@code true} if this state has a {@link LoopOptimizationNode}.
+     */
+    boolean canDoIndexOf() {
+        return hasLoopToSelf() && loopOptimizationNode != null;
     }
 
     /**
-     * Calculates this state's successor by finding a transition that matches the current input. If
-     * the successor is the state itself, this method continues consuming input characters until a
-     * different successor is found. This special handling allows for partial loop unrolling inside
-     * the DFA, as well as some optimizations in {@link CGTrackingDFAStateNode}.
-     *
-     * @param locals a virtual frame as described by {@link TRegexDFAExecutorProperties}.
-     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
-     * @param compactString {@code true} if the input string is a compact string, must be partial
-     *            evaluation constant.
+     * Gets called when a new DFA state is entered.
      */
-    @Override
-    public void executeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
+    void beforeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(compactString);
-        if (hasLoopToSelf()) {
-            if (executor.isForward() && loopOptimizationNode.indexOfChars != null) {
-                runIndexOf(locals, executor, compactString);
-            } else {
-                while (executor.inputHasNext(locals)) {
-                    if (executor.isSimpleCG()) {
-                        // we have to write the final state transition before anything else in
-                        // simpleCG mode
-                        checkFinalState(locals, executor);
-                    }
-                    if (!checkMatch(locals, executor, compactString)) {
-                        if (!executor.isSimpleCG()) {
-                            // in ignore-capture-groups mode, we can delay the final state check
-                            checkFinalState(locals, executor);
-                        }
-                        executor.inputAdvance(locals);
-                        return;
-                    }
-                    executor.inputAdvance(locals);
-                }
-                locals.setSuccessorIndex(atEnd(locals, executor));
-            }
-        } else {
-            if (!executor.inputHasNext(locals)) {
-                locals.setSuccessorIndex(atEnd(locals, executor));
-                return;
-            }
-            checkFinalState(locals, executor);
-            checkMatch(locals, executor, compactString);
-            executor.inputAdvance(locals);
-        }
+        checkFinalState(locals, executor);
     }
 
-    private void runIndexOf(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
-        assert executor.isForward();
-        final int preLoopIndex = locals.getIndex();
-        int indexOfResult = loopOptimizationNode.getIndexOfNode().execute(locals.getInput(),
-                        preLoopIndex,
-                        executor.getMaxIndex(locals),
-                        loopOptimizationNode.indexOfChars);
-        locals.setIndex(indexOfResult < 0 ? executor.getMaxIndex(locals) : indexOfResult);
+    /**
+     * Gets called after every call to {@link LoopOptimizationNode#execute(Object, int, int)}, which
+     * we call an {@code indexOf}-operation.
+     *
+     * @param preLoopIndex the starting index of the {@code indexOf}-operation.
+     * @param postLoopIndex the index found by the {@code indexOf}-operation. If the
+     *            {@code indexOf}-operation did not find a match, this value is equal to
+     *            {@link TRegexDFAExecutorLocals#getMaxIndex()}.
+     */
+    void afterIndexOf(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, final int preLoopIndex, int postLoopIndex) {
+        locals.setIndex(postLoopIndex);
         if (simpleCG != null && locals.getIndex() > preLoopIndex) {
             int curIndex = locals.getIndex();
             executor.inputSkipReverse(locals);
             applySimpleCGTransition(simpleCG.getTransitions()[getLoopToSelf()], locals);
             locals.setIndex(curIndex);
         }
-        if (indexOfResult < 0) {
-            locals.setSuccessorIndex(atEnd(locals, executor));
-        } else {
-            checkFinalState(locals, executor);
-            if (successors.length == 2) {
-                int successor = (getLoopToSelf() + 1) & 1;
-                CompilerAsserts.partialEvaluationConstant(successor);
-                if (simpleCG != null) {
-                    applySimpleCGTransition(simpleCG.getTransitions()[successor], locals);
-                }
-                executor.inputIncRaw(locals, loopOptimizationNode.encodedLength());
-                locals.setSuccessorIndex(successor);
-            } else {
-                checkMatch(locals, executor, compactString);
-                executor.inputAdvance(locals);
-            }
-        }
+        checkFinalState(locals, executor);
     }
 
     /**
-     * Finds the first matching transition. The index of the element of {@link #getMatchers()} that
-     * matched the current input character (
-     * {@link TRegexExecutorNode#inputRead(TRegexExecutorLocals)}) or
-     * {@link #FS_RESULT_NO_SUCCESSOR} is stored via
-     * {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}.
-     *
-     * @param locals a virtual frame as described by {@link TRegexDFAExecutorProperties}.
-     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
-     * @param compactString {@code true} if the input string is a compact string, must be partial
-     *            evaluation constant.
-     * @return {@code true} if the matching transition loops back to this state, {@code false}
-     *         otherwise.
+     * Regression test method that compares the result of {@link AllTransitionsInOneTreeMatcher} to
+     * the result of regular matchers.
      */
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    private boolean checkMatch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
-        final int c = executor.inputRead(locals);
-        if (treeTransitionMatching()) {
-            int successor = getTreeMatcher().checkMatchTree(locals, executor, this, c);
-            assert sameResultAsRegularMatchers(executor, c, compactString, successor) : this.toString();
-            locals.setSuccessorIndex(successor);
-            return isLoopToSelf(successor);
-        } else {
-            for (int i = 0; i < matchers.length; i++) {
-                if (matchers[i].execute(c, compactString)) {
-                    CompilerAsserts.partialEvaluationConstant(i);
-                    locals.setSuccessorIndex(i);
-                    successorFound(locals, executor, i);
-                    return isLoopToSelf(i);
-                }
-            }
-            locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
-            return false;
-        }
+    boolean sameResultAsRegularMatchers(int c, int allTransitionsMatcherResult) {
+        CompilerAsserts.neverPartOfCompilation();
+        return allTransitionsMatcherResult == matchers.match(c);
     }
 
+    /**
+     * Save the current result iff we are in a final state.
+     */
     private void checkFinalState(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (isFinalState()) {
@@ -330,15 +348,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     /**
      * Gets called if {@link TRegexExecutorNode#getMaxIndex(TRegexExecutorLocals)} is reached (!
-     * {@link TRegexExecutorNode#inputHasNext(TRegexExecutorLocals)}). In
-     * {@link BackwardDFAStateNode}, execution may still continue here, which is why this method can
-     * return a successor index.
-     *
-     * @param locals a virtual frame as described by {@link TRegexDFAExecutorProperties}.
-     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
-     * @return a successor index.
+     * {@link TRegexExecutorNode#inputHasNext(TRegexExecutorLocals)}).
      */
-    int atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+    void atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         boolean anchored = isAnchoredFinalState() && executor.inputAtEnd(locals);
         if (isFinalState() || anchored) {
@@ -351,15 +363,20 @@ public class DFAStateNode extends DFAAbstractStateNode {
                 }
             }
         }
-        return FS_RESULT_NO_SUCCESSOR;
     }
 
+    /**
+     * Gets called when a matching transition was found.
+     */
     void successorFound(TRegexDFAExecutorLocals locals, @SuppressWarnings("unused") TRegexDFAExecutorNode executor, int i) {
         if (simpleCG != null) {
             applySimpleCGTransition(simpleCG.getTransitions()[i], locals);
         }
     }
 
+    /**
+     * Saves the current result (single index or all capture group boundaries).
+     */
     void storeResult(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, @SuppressWarnings("unused") boolean anchored) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (executor.isSimpleCG()) {
@@ -390,7 +407,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         StringBuilder sb = new StringBuilder();
         DebugUtil.appendNodeId(sb, getId()).append(": ");
         if (!treeTransitionMatching()) {
-            sb.append(matchers.length).append(" successors");
+            sb.append(matchers.size()).append(" successors");
         }
         if (isAnchoredFinalState()) {
             sb.append(", AFS");
@@ -402,8 +419,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
         if (treeTransitionMatching()) {
             sb.append("      ").append(getTreeMatcher()).append("\n      successors: ").append(Arrays.toString(successors)).append("\n");
         } else {
-            for (int i = 0; i < matchers.length; i++) {
-                sb.append("      ").append(i).append(": ").append(matchers[i]).append(" -> ");
+            for (int i = 0; i < matchers.size(); i++) {
+                sb.append("      ").append(i).append(": ").append(matchers.toString(i)).append(" -> ");
                 DebugUtil.appendNodeId(sb, getSuccessors()[i]).append("\n");
             }
         }
@@ -415,8 +432,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
     public JsonValue toJson() {
         JsonArray transitions = Json.array();
         if (matchers != null) {
-            for (int i = 0; i < matchers.length; i++) {
-                transitions.append(Json.obj(Json.prop("matcher", matchers[i].toString()), Json.prop("target", successors[i])));
+            for (int i = 0; i < matchers.size(); i++) {
+                transitions.append(Json.obj(Json.prop("matcher", matchers.toString(i)), Json.prop("target", successors[i])));
             }
         }
         return Json.obj(Json.prop("id", getId()),

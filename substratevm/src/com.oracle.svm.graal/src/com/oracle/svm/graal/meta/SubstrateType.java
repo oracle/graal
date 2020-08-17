@@ -43,7 +43,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.Replaced;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
@@ -58,7 +57,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.misc.Unsafe;
 
-public class SubstrateType extends NodeClass implements SharedType, Replaced {
+public class SubstrateType extends NodeClass implements SharedType {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
@@ -448,6 +447,21 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
     @Override
     public boolean isLinked() {
         throw VMError.unimplemented();
+    }
+
+    @Override
+    public void link() {
+        throw VMError.unimplemented();
+    }
+
+    @Override
+    public boolean hasDefaultMethods() {
+        return hub.hasDefaultMethods();
+    }
+
+    @Override
+    public boolean declaresDefaultMethods() {
+        return hub.declaresDefaultMethods();
     }
 
     @Override

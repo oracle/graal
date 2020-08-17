@@ -109,6 +109,11 @@ public class IntArrayBuffer extends AbstractArrayBuffer implements Iterable<Inte
         return buf[index];
     }
 
+    public void inc(int index) {
+        assert index < length;
+        buf[index]++;
+    }
+
     public void set(int index, int value) {
         assert index < length;
         buf[index] = value;

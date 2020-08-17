@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 import static com.oracle.truffle.polyglot.EngineAccessor.NODES;
 
@@ -234,7 +235,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                     instance = fetchFromPool(newOptions, true);
                     break;
                 default:
-                    throw new AssertionError("Unknown context cardinality.");
+                    throw shouldNotReachHere();
             }
             instance.ensureMultiContextInitialized();
         }
@@ -278,7 +279,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                     // nothing to do
                     break;
                 default:
-                    throw new AssertionError("Unknown context cardinality.");
+                    throw shouldNotReachHere("Unknown context cardinality.");
             }
         }
     }
@@ -441,7 +442,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         PolyglotContextImpl context = PolyglotContextImpl.requireContext();
         PolyglotLanguageContext languageContext = context.getContext(this);
         if (languageContext.isInitialized() && languageContext.language.engine != this.engine) {
-            throw new AssertionError(String.format("Context reference was used from an Engine that is currently not entered. " +
+            throw shouldNotReachHere(String.format("Context reference was used from an Engine that is currently not entered. " +
                             "ContextReference of engine %s was used but engine %s is currently entered. " +
                             "ContextReference must not be shared between multiple Engine instances.",
                             languageContext.language.engine.creatorApi,

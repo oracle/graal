@@ -30,6 +30,7 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -99,7 +100,7 @@ public class MethodHandlePlugin implements NodePlugin {
                     inlineEverything = args.length != argumentsList.size();
                 }
                 ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-                if (inlineEverything && !targetMethod.hasBytecodes() && !b.getReplacements().hasSubstitution(targetMethod, b.bci())) {
+                if (inlineEverything && !targetMethod.hasBytecodes() && !b.getReplacements().hasSubstitution(targetMethod)) {
                     // we need to force-inline but we can not, leave the invoke as-is
                     return false;
                 }
@@ -110,8 +111,13 @@ public class MethodHandlePlugin implements NodePlugin {
                     return false;
                 }
 
-                b.handleReplacedInvoke(invoke.getInvokeKind(), targetMethod, argumentsList.toArray(new ValueNode[argumentsList.size()]), inlineEverything);
-
+                Invoke newInvoke = b.handleReplacedInvoke(invoke.getInvokeKind(), targetMethod, argumentsList.toArray(new ValueNode[argumentsList.size()]), inlineEverything);
+                if (newInvoke != null && !newInvoke.callTarget().equals(invoke.callTarget()) && newInvoke.asFixedNode().isAlive()) {
+                    // In the case where the invoke is not inlined, replace its call target with the
+                    // special ResolvedMethodHandleCallTargetNode.
+                    newInvoke.callTarget().replaceAndDelete(b.append(invoke.callTarget()));
+                    return true;
+                }
                 /*
                  * After handleReplacedInvoke, a return type according to the signature of
                  * targetMethod has been pushed. That can be different than the type expected by the

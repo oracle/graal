@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -455,7 +455,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
     public void testExperimentalOptionException() {
         Assume.assumeFalse(Boolean.getBoolean("polyglot.engine.AllowExperimentalOptions"));
         AbstractPolyglotTest.assertFails(() -> Context.newBuilder().option("optiontestlang1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
-            assertEquals("Option 'optiontestlang1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(). Do not use experimental options in production environments.",
+            assertEquals("Option 'optiontestlang1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(boolean) in Context.Builder or Engine.Builder. Do not use experimental options in production environments.",
                             e.getMessage());
         });
     }

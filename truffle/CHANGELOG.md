@@ -2,6 +2,13 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 20.3.0
+* Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.
+* Added new specialization utility to print detailed statistics about specialization instances and execution count. See [Specialization Statistics Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/SpecializationHistogram.md) for details on how to use it.
+* Added [TruffleFile.readSymbolicLink](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#readSymbolicLink--) method to read the symbolic link target.
+
+* Added new flags to inspect expansion during partial evaluation: `--engine.TraceMethodExpansion=truffleTier`, `--engine.TraceNodeExpansion=truffleTier`, `--engine.MethodExpansionStatistics=truffleTier` and `--engine.NodeExpansionStatistics=truffleTier`. Language implementations are encouraged to run with these flags enabled and investigate their output for unexpected results. See [Optimizing.md](https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md) for details.
+
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.
 * Added new identity APIs to `InteropLibrary`:
@@ -19,9 +26,18 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated and renamed `TruffleFile.getMimeType` to [TruffleFile.detectMimeType](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#detectMimeType--). The new method no longer throws `IOException` but returns `null` instead.
 * The languages are responsible for stopping and joining the stopped `Thread`s in the [TruffleLanguage.finalizeContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#finalizeContext-C-).
 * Added Truffle DSL `@Bind` annotation to common out expression for use in guards and specialization methods.
-* Added support for @Cached annotations to be weak using `@Cached(value ="...", weak = true)`. 
+* Added the ability to disable adoption for DSL cached expressions with type node using `@Cached(value ="...", weak = true)`.
+* Added an option not to adopt the parameter annotated by @Cached, using `@Cached(value ="...", adopt = false)`.
 * Added `TruffleWeakReference` utility to be used on partial evaluated code paths instead of the default JDK `WeakReference`.
 * Removed deprecated API in `com.oracle.truffle.api.source.Source`. The APIs were deprecated in 19.0.
+* Added `CompilerDirectives.shouldNotReachHere()` as a short-cut for languages to indicate that a path should not be reachable neither in compiled nor interpreted code paths.
+* All subclasses of `InteropException` do no longer provide a Java stack trace. They are intended to be thrown, immediately caught by the caller and not re-thrown. As a result they can now be allocated on compiled code paths and do no longer require a `@TruffleBoundary` or `transferToInterpreterAndInvalidate()` before use. Languages are encouraged to remove `@TruffleBoundary` annotations or leading `transferToInterpreterAndInvalidate()` method calls before interop exceptions are thrown. 
+* All `InteropException` subclasses now offer a new `create` factory method to provide a cause. This cause should only be used if user provided guest application code caused the problem.
+* The use of `InteropException.initCause` is now deprecated for performance reasons. Instead pass the cause when the `InteropException` is constructed. The method `initCause` will throw `UnsupportedOperationException` in future versions. Please validate all calls to `Throwable.initCause` for language or tool implementation code.
+* Added [TruffleFile.isSameFile](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#isSameFile-com.oracle.truffle.api.TruffleFile-java.nio.file.LinkOption...-) method to test if two `TruffleFile`s refer to the same physical file.
+* Added new `EncapsulatingNodeReference` class to lookup read and write the current encapsulating node. Deprecated encapsulating node methods in `NodeUtil`.
+* Added support for subclassing `DynamicObject` so that guest languages can directly base their object class hierarchy on it, add fields, and use `@ExportLibrary` on subclasses. Guest language object classes should implement `TruffleObject`.
+* Added new [DynamicObjectLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html) API for accessing and mutating properties and the shape of `DynamicObject` instances. This is the recommended API from now on. Other, low-level property access APIs will be deprecated and removed in a future release.
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.

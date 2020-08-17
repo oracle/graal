@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -297,9 +297,16 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return node;
         }
 
-        AnnotationMirror reflectable = findFirstAnnotation(lookupTypes, types.Introspectable);
-        if (reflectable != null) {
-            node.setReflectable(true);
+        AnnotationMirror introspectable = findFirstAnnotation(lookupTypes, types.Introspectable);
+        if (introspectable != null) {
+            node.setGenerateIntrospection(true);
+        }
+        String generateProperty = ProcessorContext.getInstance().getEnvironment().getOptions().get("truffle.dsl.GenerateSpecializationStatistics");
+        if (generateProperty != null) {
+            node.setGenerateStatistics(Boolean.parseBoolean(generateProperty));
+        }
+        if (findFirstAnnotation(lookupTypes, types.SpecializationStatistics_AlwaysEnabled) != null) {
+            node.setGenerateStatistics(true);
         }
 
         AnnotationMirror reportPolymorphism = findFirstAnnotation(lookupTypes, types.ReportPolymorphism);
@@ -1569,8 +1576,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return;
         }
 
-        initializeExpressions(elements, node);
         initializeReplaces(node);
+        resolveReplaces(node);
+        initializeExpressions(elements, node);
 
         if (node.hasErrors()) {
             return;
@@ -1583,7 +1591,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeReachability(node);
         initializeFallbackReachability(node);
         initializeCheckedExceptions(node);
-        resolveReplaces(node);
 
         List<SpecializationData> specializations = node.getSpecializations();
         for (SpecializationData cur : specializations) {
@@ -1722,6 +1729,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (specialization.getReplaces().isEmpty()) {
                 continue;
             }
+
+            for (SpecializationData replaced : specialization.getReplaces()) {
+                replaced.setReplaced(true);
+            }
+
             Set<SpecializationData> foundSpecializations = new HashSet<>();
             collectIncludes(specialization, foundSpecializations, new HashSet<SpecializationData>());
             specialization.getReplaces().addAll(foundSpecializations);
@@ -2015,6 +2027,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     String weakName = "weak" + ElementUtils.firstLetterUpperCase(parameter.getLocalName()) + "Gen_";
                     TypeMirror weakType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleWeakReference), Arrays.asList(cache.getParameter().getType()));
                     CodeVariableElement weakVariable = new CodeVariableElement(weakType, weakName);
+                    weakVariable.setEnclosingElement(specialization.getMethod());
                     Parameter weakParameter = new Parameter(parameter, weakVariable);
 
                     DSLExpression newWeakReference = new DSLExpression.Call(null, "new", Arrays.asList(sourceExpression));
@@ -2042,10 +2055,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
 
             } else if (cache.isCachedLibrary()) {
-                AnnotationMirror cachedLibrary = cache.getMessageAnnotation();
-                String expression = getCachedLibraryExpressions(cachedLibrary);
-
-                String limit = ElementUtils.getAnnotationValue(String.class, cachedLibrary, "limit", false);
+                String expression = cache.getCachedLibraryExpression();
+                String limit = cache.getCachedLibraryLimit();
                 if (expression == null) {
                     // its cached dispatch version treat it as normal cached
                     if (limit == null) {
@@ -2220,10 +2231,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return uncachedSpecialization;
     }
 
-    private static String getCachedLibraryExpressions(AnnotationMirror cachedLibrary) {
-        return ElementUtils.getAnnotationValue(String.class, cachedLibrary, "value", false);
-    }
-
     private static TypeMirror getFirstTypeArgument(TypeMirror languageType) {
         for (TypeMirror currentTypeArgument : ((DeclaredType) languageType).getTypeArguments()) {
             return currentTypeArgument;
@@ -2232,6 +2239,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private void verifyLanguageType(DeclaredType annotationType, CacheExpression cache, TypeMirror languageType) {
+        if (ElementUtils.typeEquals(types.HostLanguage, languageType)) {
+            // allowed without Registration annotation
+            return;
+        }
+
         AnnotationMirror registration = ElementUtils.findAnnotationMirror(ElementUtils.fromTypeMirror(languageType), types.TruffleLanguage_Registration);
         if (registration == null) {
             cache.addError("Invalid @%s specification. The type '%s' is not a valid language type. Valid language types must be annotated with @%s.",
@@ -2242,25 +2254,37 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private SpecializationData parseCachedLibraries(SpecializationData specialization, DSLExpressionResolver resolver, List<CacheExpression> libraries) {
-        SpecializationData uncachedSpecialization = specialization.copy();
-        uncachedSpecialization.getReplaces().add(specialization);
 
-        List<CacheExpression> uncachedLibraries = new ArrayList<>();
-        for (int i = 0; i < uncachedSpecialization.getCaches().size(); i++) {
-            CacheExpression expression = uncachedSpecialization.getCaches().get(i);
-            if (expression.isCachedLibrary()) {
-                expression = expression.copy();
-                uncachedSpecialization.getCaches().set(i, expression);
-                uncachedLibraries.add(expression);
+        SpecializationData uncachedSpecialization = null;
+        List<CacheExpression> uncachedLibraries = null;
+        /*
+         * No uncached specialization needed if there is a specialization that is strictly more
+         * generic than this one.
+         */
+        if (!specialization.isReplaced()) {
+            uncachedSpecialization = specialization.copy();
+            uncachedLibraries = new ArrayList<>();
+            uncachedSpecialization.getReplaces().add(specialization);
+
+            List<CacheExpression> caches = uncachedSpecialization.getCaches();
+            for (int i = 0; i < caches.size(); i++) {
+                CacheExpression expression = caches.get(i);
+                if (expression.getCachedLibraryExpression() != null) {
+                    expression = expression.copy();
+                    caches.set(i, expression);
+                    uncachedLibraries.add(expression);
+                }
             }
+            specialization.setUncachedSpecialization(uncachedSpecialization);
         }
-        specialization.setExcludeCompanion(uncachedSpecialization);
-
+        if (uncachedLibraries != null && uncachedLibraries.size() != libraries.size()) {
+            throw new AssertionError("Unexpected number of uncached libraries.");
+        }
         boolean seenDynamicParameterBound = false;
 
         for (int i = 0; i < libraries.size(); i++) {
             CacheExpression cachedLibrary = libraries.get(i);
-            CacheExpression uncachedLibrary = uncachedLibraries.get(i);
+            CacheExpression uncachedLibrary = uncachedLibraries != null ? uncachedLibraries.get(i) : null;
 
             TypeMirror parameterType = cachedLibrary.getParameter().getType();
             TypeElement type = ElementUtils.fromTypeMirror(parameterType);
@@ -2284,7 +2308,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.addError("Library '%s' has errors. Please resolve them first.", getSimpleName(parameterType));
                 continue;
             }
-            String expression = getCachedLibraryExpressions(cachedLibrary.getMessageAnnotation());
+            String expression = cachedLibrary.getCachedLibraryExpression();
             DSLExpression receiverExpression = parseCachedExpression(resolver, cachedLibrary, parsedLibrary.getSignatureReceiverType(), expression);
             if (receiverExpression == null) {
                 continue;
@@ -2361,11 +2385,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.setUncachedExpression(uncachedExpression);
 
                 uncachedExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, uncachedExpression, expression);
-                uncachedLibrary.setDefaultExpression(uncachedExpression);
-                uncachedLibrary.setUncachedExpression(uncachedExpression);
 
-                uncachedLibrary.setAlwaysInitialized(true);
-                uncachedLibrary.setRequiresBoundary(true);
+                if (uncachedLibrary != null) {
+                    uncachedLibrary.setDefaultExpression(uncachedExpression);
+                    uncachedLibrary.setUncachedExpression(uncachedExpression);
+
+                    uncachedLibrary.setAlwaysInitialized(true);
+                    uncachedLibrary.setRequiresBoundary(true);
+                }
             }
 
         }
@@ -2413,16 +2440,19 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private void parseCached(CacheExpression cache, SpecializationData specialization, DSLExpressionResolver originalResolver, Parameter parameter) {
         DSLExpressionResolver resolver = originalResolver;
         AnnotationMirror cachedAnnotation = cache.getMessageAnnotation();
+        AnnotationValue adopt = null;
         if (!cache.hasErrors()) {
+            adopt = getAnnotationValue(cachedAnnotation, "adopt", false);
             AnnotationMirror cached = findAnnotationMirror(cache.getParameter().getVariableElement(), types.Cached);
             cache.setDimensions(getAnnotationValue(Integer.class, cached, "dimensions"));
+            boolean disabledAdopt = adopt != null && Boolean.FALSE.equals(adopt.getValue());
             if (parameter.getType().getKind() == TypeKind.ARRAY &&
-                            !isSubtype(((ArrayType) parameter.getType()).getComponentType(), types.NodeInterface)) {
+                            (disabledAdopt || !isSubtype(((ArrayType) parameter.getType()).getComponentType(), types.NodeInterface))) {
                 if (cache.getDimensions() == -1) {
                     cache.addWarning("The cached dimensions attribute must be specified for array types.");
                 }
             } else {
-                if (cache.getDimensions() != -1) {
+                if (!disabledAdopt && cache.getDimensions() != -1) {
                     cache.addError("The dimensions attribute has no affect for the type %s.", getSimpleName(parameter.getType()));
                 }
             }
@@ -2505,6 +2535,16 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cache.setUncachedExpression(cache.getDefaultExpression());
             }
         }
+
+        if (adopt != null) {
+            TypeMirror type = parameter.getType();
+            if (type == null || !ElementUtils.isAssignable(type, types.NodeInterface) &&
+                            !(type.getKind() == TypeKind.ARRAY && isAssignable(((ArrayType) type).getComponentType(), types.NodeInterface))) {
+                cache.addError("Type '%s' is neither a NodeInterface type, nor an array of NodeInterface types and therefore it can not be adopted. Remove the adopt attribute to resolve this.",
+                                Objects.toString(type));
+            }
+        }
+        cache.setAdopt(getAnnotationValue(Boolean.class, cachedAnnotation, "adopt", true));
     }
 
     private DSLExpression resolveCachedExpression(DSLExpressionResolver resolver, CacheExpression cache, TypeMirror targetType, DSLExpression expression, String originalString) {

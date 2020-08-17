@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 /**
  * Transition guards introduced by bounded {@link Quantifier}s.
@@ -172,8 +172,7 @@ public final class QuantifierGuard {
             case exitEmptyMatch:
                 return Kind.enterEmptyMatch;
             default:
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new IllegalStateException();
+                throw Exceptions.shouldNotReachHere();
         }
     }
 

@@ -7,24 +7,24 @@ Please note that this command aborts as soon as one testsuite has failed.
 
 ## Testsuites
 
-| Tag         | Class name                      | Description                             |
-|-------------|---------------------------------|-----------------------------------------|
-| sulong      | SulongSuite                     | Sulong's internal tests                 |
-| interop     | com.oracle.llvm.tests.interop.* | Truffle Language interoperability tests |
-| debug       | LLVMDebugTest                   | Debug support test suite                |
-| llvm        | LLVMSuite                       | LLVM 3.2 test suite                     |
-| parser      | ParserTortureSuite              | Parser test using GCC suite             |
-| nwcc        | NWCCSuite                       | Test suite of the NWCC compiler v0.8.3  |
-| assembly    | InlineAssemblyTest              | Inline assembler tests                  |
-| gcc_c       | GCCSuite                        | GCC 5.2 test suite (C tests)            |
-| gcc_cpp     | GCCSuite                        | GCC 5.2 test suite (C++ tests)          |
-| gcc_fortran | GCCSuite                        | GCC 5.2 test suite (Fortran tests)      |
-| args        | MainArgsTest                    | Tests main args passing                 |
-| benchmarks  | ShootoutsSuite                  | Language Benchmark game tests           |
-| vaargs      | VAArgsTest                      | Varargs tests                           |
-| pipe        | CaptureOutputTest               | Test output capturing                   |
-| callback    | CallbackTest                    | Test calling native functions           |
-| type        | -                               | Test floating point arithmetic          |
+| Tag         | Class name                              | Description                             |
+|-------------|-----------------------------------------|-----------------------------------------|
+| sulong      | SulongSuite                             | Sulong's internal tests                 |
+| interop     | com.oracle.truffle.llvm.tests.interop.* | Truffle Language interoperability tests |
+| debug       | LLVMDebugTest                           | Debug support test suite                |
+| llvm        | LLVMSuite                               | LLVM 3.2 test suite                     |
+| parser      | ParserTortureSuite                      | Parser test using GCC suite             |
+| nwcc        | NWCCSuite                               | Test suite of the NWCC compiler v0.8.3  |
+| assembly    | InlineAssemblyTest                      | Inline assembler tests                  |
+| gcc_c       | GCCSuite                                | GCC 5.2 test suite (C tests)            |
+| gcc_cpp     | GCCSuite                                | GCC 5.2 test suite (C++ tests)          |
+| gcc_fortran | GCCSuite                                | GCC 5.2 test suite (Fortran tests)      |
+| args        | MainArgsTest                            | Tests main args passing                 |
+| benchmarks  | ShootoutsSuite                          | Language Benchmark game tests           |
+| vaargs      | VAArgsTest                              | Varargs tests                           |
+| pipe        | CaptureOutputTest                       | Test output capturing                   |
+| callback    | CallbackTest                            | Test calling native functions           |
+| type        | -                                       | Test floating point arithmetic          |
 
 The test cases consist of LLVM IR, C, C++, and Fortran files. While
 Sulong's Truffle LLVM IR runtime can directly execute the LLVM IR

@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexRootNode;
-import com.oracle.truffle.regex.tregex.string.StringUTF16;
 
 public abstract class InputIndexOfStringNode extends Node {
 
@@ -58,31 +57,62 @@ public abstract class InputIndexOfStringNode extends Node {
     public abstract int execute(Object input, int fromIndex, int maxIndex, Object match, Object mask);
 
     @Specialization(guards = "mask == null")
-    public int doString(String input, int fromIndex, int maxIndex, StringUTF16 match, @SuppressWarnings("unused") Object mask) {
-        int result = input.indexOf(match.toString(), fromIndex);
+    public int doBytes(byte[] input, int fromIndex, int maxIndex, byte[] match, @SuppressWarnings("unused") Object mask) {
+        return ArrayUtils.indexOfWithOrMask(input, fromIndex, maxIndex - fromIndex, match, null);
+    }
+
+    @Specialization(guards = "mask != null")
+    public int doBytesMask(byte[] input, int fromIndex, int maxIndex, byte[] match, byte[] mask) {
+        return ArrayUtils.indexOfWithOrMask(input, fromIndex, maxIndex - fromIndex, match, mask);
+    }
+
+    @Specialization(guards = "mask == null")
+    public int doString(String input, int fromIndex, int maxIndex, String match, @SuppressWarnings("unused") Object mask) {
+        int result = input.indexOf(match, fromIndex);
         return result >= maxIndex ? -1 : result;
     }
 
     @Specialization(guards = "mask != null")
-    public int doStringWithMask(String input, int fromIndex, int maxIndex, StringUTF16 match, StringUTF16 mask) {
-        return ArrayUtils.indexOfWithOrMask(input, fromIndex, maxIndex - fromIndex, match.toString(), mask.toString());
+    public int doStringMask(String input, int fromIndex, int maxIndex, String match, String mask) {
+        return ArrayUtils.indexOfWithOrMask(input, fromIndex, maxIndex - fromIndex, match, mask);
     }
 
     @Specialization
-    public int doTruffleObject(TruffleObject input, int fromIndex, int maxIndex, StringUTF16 match, Object mask,
-                    @Cached("create()") InputLengthNode lengthNode,
-                    @Cached("create()") InputRegionMatchesNode regionMatchesNode) {
+    public int doTruffleObjBytes(TruffleObject input, int fromIndex, int maxIndex, byte[] match, Object mask,
+                    @Cached InputLengthNode lengthNode,
+                    @Cached InputRegionMatchesNode regionMatchesNode) {
         if (maxIndex > lengthNode.execute(input)) {
             return -1;
         }
-        if (fromIndex + match.encodedLength() > maxIndex) {
+        if (fromIndex + match.length > maxIndex) {
             return -1;
         }
-        for (int i = fromIndex; i <= maxIndex - match.encodedLength(); i++) {
+        for (int i = fromIndex; i <= maxIndex - match.length; i++) {
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();
             }
-            if (regionMatchesNode.execute(input, i, match, 0, match.encodedLength(), mask)) {
+            if (regionMatchesNode.execute(input, i, match, 0, match.length, mask)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    @Specialization
+    public int doTruffleObjString(TruffleObject input, int fromIndex, int maxIndex, String match, Object mask,
+                    @Cached InputLengthNode lengthNode,
+                    @Cached InputRegionMatchesNode regionMatchesNode) {
+        if (maxIndex > lengthNode.execute(input)) {
+            return -1;
+        }
+        if (fromIndex + match.length() > maxIndex) {
+            return -1;
+        }
+        for (int i = fromIndex; i <= maxIndex - match.length(); i++) {
+            if (CompilerDirectives.inInterpreter()) {
+                RegexRootNode.checkThreadInterrupted();
+            }
+            if (regionMatchesNode.execute(input, i, match, 0, match.length(), mask)) {
                 return i;
             }
         }

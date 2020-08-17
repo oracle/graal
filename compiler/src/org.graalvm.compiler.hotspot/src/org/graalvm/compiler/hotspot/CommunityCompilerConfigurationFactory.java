@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import org.graalvm.compiler.core.Instrumentation;
 import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;

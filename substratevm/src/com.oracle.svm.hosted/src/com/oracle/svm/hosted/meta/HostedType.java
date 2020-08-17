@@ -423,6 +423,21 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
     }
 
     @Override
+    public void link() {
+        wrapped.link();
+    }
+
+    @Override
+    public boolean hasDefaultMethods() {
+        return wrapped.hasDefaultMethods();
+    }
+
+    @Override
+    public boolean declaresDefaultMethods() {
+        return wrapped.declaresDefaultMethods();
+    }
+
+    @Override
     public boolean isCloneableWithAllocation() {
         return isCloneable;
     }

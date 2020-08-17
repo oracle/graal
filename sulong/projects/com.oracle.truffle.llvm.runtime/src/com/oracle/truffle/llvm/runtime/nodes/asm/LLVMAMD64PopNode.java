@@ -55,8 +55,8 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
                         @CachedLanguage LLVMLanguage language) {
             LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
-            long sp = basePointer.get(memory);
-            short value = memory.getI16(sp);
+            long sp = basePointer.get(this, memory);
+            short value = memory.getI16(this, sp);
             sp += LLVMExpressionNode.I16_SIZE_IN_BYTES;
             basePointer.set(sp);
             return value;
@@ -70,8 +70,8 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
                         @CachedLanguage LLVMLanguage language) {
             LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
-            long sp = basePointer.get(memory);
-            int value = memory.getI32(sp);
+            long sp = basePointer.get(this, memory);
+            int value = memory.getI32(this, sp);
             sp += LLVMExpressionNode.I32_SIZE_IN_BYTES;
             basePointer.set(sp);
             return value;
@@ -85,8 +85,8 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
                         @CachedLanguage LLVMLanguage language) {
             LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
-            long sp = basePointer.get(memory);
-            long value = memory.getI64(sp);
+            long sp = basePointer.get(this, memory);
+            long value = memory.getI64(this, sp);
             sp += LLVMExpressionNode.I64_SIZE_IN_BYTES;
             basePointer.set(sp);
             return value;

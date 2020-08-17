@@ -46,6 +46,7 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.RangesBuffer;
 import com.oracle.truffle.regex.charset.SortedListOfRanges;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 public class CaseFoldTable {
 
@@ -67,7 +68,7 @@ public class CaseFoldTable {
             case PythonUnicode:
                 return PYTHON_UNICODE_TABLE_ENTRIES;
             default:
-                throw new IllegalStateException();
+                throw Exceptions.shouldNotReachHere();
         }
     }
 
@@ -146,7 +147,7 @@ public class CaseFoldTable {
                     }
                     break;
                 default:
-                    throw new IllegalStateException();
+                    throw Exceptions.shouldNotReachHere();
             }
         }
 
@@ -179,7 +180,7 @@ public class CaseFoldTable {
                 case ALTERNATING_AL:
                     return (codePointA ^ 1) == codePointB;
                 default:
-                    throw new IllegalStateException();
+                    throw Exceptions.shouldNotReachHere();
             }
         }
 
@@ -199,18 +200,8 @@ public class CaseFoldTable {
         }
 
         @Override
-        public int getMinValue() {
-            return 0;
-        }
-
-        @Override
-        public int getMaxValue() {
-            return 0x10ffff;
-        }
-
-        @Override
         public void appendRangesTo(RangesBuffer buffer, int startIndex, int endIndex) {
-            throw new UnsupportedOperationException();
+            throw Exceptions.shouldNotReachHere();
         }
     }
 

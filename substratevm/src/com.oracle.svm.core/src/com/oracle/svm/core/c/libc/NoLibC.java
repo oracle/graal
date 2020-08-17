@@ -24,15 +24,13 @@
  */
 package com.oracle.svm.core.c.libc;
 
-import com.oracle.svm.core.util.VMError;
-
-import java.nio.file.Path;
-import java.util.Collections;
 import java.util.List;
+
+import com.oracle.svm.core.util.VMError;
 
 public class NoLibC implements LibCBase {
 
-    public static final String NO_LIBC_ERROR = "Should not call this method when not running on a LibC.";
+    public static final String NO_LIBC_ERROR = "Should not call this method when not running on Linux.";
 
     @Override
     public String getName() {
@@ -40,22 +38,22 @@ public class NoLibC implements LibCBase {
     }
 
     @Override
-    public void prepare(Path directory) {
-
+    public String getTargetCompiler() {
+        throw VMError.shouldNotReachHere(NO_LIBC_ERROR);
     }
 
     @Override
     public List<String> getAdditionalQueryCodeCompilerOptions() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public List<String> getCCompilerOptions() {
-        return Collections.emptyList();
+        throw VMError.shouldNotReachHere(NO_LIBC_ERROR);
     }
 
     @Override
     public boolean hasIsolatedNamespaces() {
+        throw VMError.shouldNotReachHere(NO_LIBC_ERROR);
+    }
+
+    @Override
+    public boolean requiresLibCSpecificStaticJDKLibraries() {
         throw VMError.shouldNotReachHere(NO_LIBC_ERROR);
     }
 }

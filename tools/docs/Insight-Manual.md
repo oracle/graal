@@ -45,18 +45,18 @@ As such, whenever the *node.js* framework loaded a script,
 the listener got notified of it and could take an action - in this case
 printing the length and name of processed script.
 
-### Histogram - Use Full Power of Your Language!
+### Hotness Top 10 - Use Full Power of Your Language!
 
 Collecting the insights information isn't limited to simple print statement.
 One can perform any Turing complete computation in your language. Imagine
-following `function-histogram-tracing.js` that counts all method invocations
+following `function-hotness-tracing.js` that counts all method invocations
 and dumps the most frequent ones when the execution of your program is over:
 
 ```js
 var map = new Map();
 
-function dumpHistogram() {
-    print("==== Histogram ====");
+function dumpHotness() {
+    print("==== Hotness Top 10 ====");
     var digits = 3;
     Array.from(map.entries()).sort((one, two) => two[1] - one[1]).forEach(function (entry) {
         var number = entry[1].toString();
@@ -67,7 +67,7 @@ function dumpHistogram() {
         }
         if (number > 10) print(`${number} calls to ${entry[0]}`);
     });
-    print("===================");
+    print("========================");
 }
 
 insight.on('enter', function(ev) {
@@ -82,18 +82,18 @@ insight.on('enter', function(ev) {
     roots: true
 });
 
-insight.on('close', dumpHistogram);
+insight.on('close', dumpHotness);
 ```
 
 The `map` is a global variable visible for the whole **Insight** script that 
-allows the code to share data between the `insight.on('enter')` function and the `dumpHistogram`
+allows the code to share data between the `insight.on('enter')` function and the `dumpHotness`
 function. The latter is executed when the `node` process execution is over (registered via
-`insight.on('close', dumpHistogram)`. Invoke as:
+`insight.on('close', dumpHotness)`. Invoke as:
 
 ```bash
-$ graalvm/bin/node --experimental-options --js.print --insight=function-histogram-tracing.js -e "print('The result: ' + 6 * 7)"
+$ graalvm/bin/node --experimental-options --js.print --insight=function-hotness-tracing.js -e "print('The result: ' + 6 * 7)"
 The result: 42
-=== Histogram ===
+==== Hotness Top 10 ====
 543 calls to isPosixPathSeparator
 211 calls to E
 211 calls to makeNodeErrorWithCode
@@ -111,7 +111,7 @@ The result: 42
  13 calls to copyPrototype
  13 calls to hideStackFrames
  13 calls to addReadOnlyProcessAlias
-=================
+========================
 ```
 
 Table with names and counts of function invocations is printed out when the
@@ -197,6 +197,32 @@ It is necessary to start GraalVM's Ruby launcher with `--polyglot` parameter
 as the `source-tracing.js` script remains written in JavaScript. That's all
 fine - mixing languages has never been a problem for GraalVM!
 
+### Python
+
+It is possible to write your GraalVM Insight scripts in Python. Such insights
+can be applied to programs written in Python or any other language. Here is
+an example of a script that prints out value of variable `n` when a function
+`minusOne` in a `agent-fib.js` file is called:
+
+```python
+def onEnter(ctx, frame):
+    print(f"minusOne {frame.n}")
+
+class Roots:
+    roots = True
+
+    def sourceFilter(self, src):
+        return src.name == "agent-fib.js"
+
+    def rootNameFilter(self, n):
+        return n == "minusOne"
+
+insight.on("enter", onEnter, Roots())
+```
+Apply such script with `js --polyglot --insight=agent.py --experimental-options agent-fib.js`.
+Of course, make sure Python is installed in your GraalVM via the `gu` tool.
+
+
 ### Minimal Overhead
 
 With all the power the **Insight** framework brings, it is fair to ask what's
@@ -250,7 +276,7 @@ making all the code work as one! The `count++` invocation becomes natural part o
 the application at all the places representing `ROOT` of application functions.
 **Insight** system gives you unlimited instrumentation power at no cost!
 
-### Trully Polyglot - T-Tracing with Ruby
+### Trully Polyglot - Insight with Ruby
 
 Not only one can instrument any GraalVM language, but also the **Insight**
 scripts can be written in any GraalVM supported language. Take for example
@@ -258,21 +284,32 @@ Ruby and create `source-tracing.rb` (make sure GraalVM Ruby is installed via
 `gu install ruby`) file:
 
 ```ruby
-puts "Ruby: Initializing GraalVM Insight script"
+puts("Ruby: Insight version " + insight[:version] + " is launching")
 
-insight.on('source', ->(ev) {
-    name = ev[:name]
-    puts "Ruby: observed loading of #{name}" 
+insight.on("source", -> (env) { 
+  puts "Ruby: observed loading of " + env[:name]
+})
+puts("Ruby: Hooks are ready!")
+
+config = Truffle::Interop.hash_keys_as_members({
+  roots: true,
+  rootNameFilter: "minusOne",
+  sourceFilter: -> (src) {
+    return src[:name] == "agent-fib.js"
+  }
 })
 
-puts 'Ruby: Hooks are ready!'
+insight.on("enter", -> (ctx, frame) {
+    puts("minusOne " + frame[:n].to_s)
+}, config)
 ```
 
-and then you can launch your `node` application and instrument it with such
-Ruby written script:
+The above is an example of a script that prints out value of variable `n`
+when a function `minusOne` in a `agent-fib.js` file is called. Launch your
+`node` application and instrument it with such a Ruby written script:
 
 ```bash
-$ graalvm/bin/node --experimental-options --js.print --polyglot --insight=source-tracing.rb -e "print('With Ruby: ' + 6 * 7)" | grep Ruby:
+$ graalvm/bin/node --js.print --polyglot --insight=agent-ruby.rb --experimental-options agent-fib.js
 Ruby: Initializing GraalVM Insight script
 Ruby: Hooks are ready!
 Ruby: observed loading of internal/per_context/primordials.js
@@ -285,13 +322,13 @@ Ruby: observed loading of fs.js
 Ruby: observed loading of internal/fs/utils.js
 Ruby: observed loading of [eval]-wrapper
 Ruby: observed loading of [eval]
-With Ruby: 42
+Three is the result 3
 ```
 
 Write your **Insight** scripts in any language you wish! They'll be
 ultimatelly useful accross the whole GraalVM ecosystem.
 
-### Trully Polyglot - T-Tracing with R
+### Trully Polyglot - Insights with R
 
 The same instrument can be written in the R language opening tracing and
 aspect based programing to our friendly statistical community. Just create
@@ -318,7 +355,7 @@ R: observed loading of test.R
 
 The only change is the R language. All the other [Insight](Insight.md)
 features and 
-[APIs](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html#VERSION)
+[APIs](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html#VERSION)
 remain the same.
 
 ### Inspecting Values
@@ -411,9 +448,9 @@ instrument. Never the less, the compatibility of the **Insight** API
 exposed via the `insight` object
 is treated seriously.
 
-The [documentation](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html)
+The [documentation](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html)
 of the `insight` object properties and functions is available as part of its
-[javadoc](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html#VERSION).
+[javadoc](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html#VERSION).
 
 Future versions will add new features, but whatever has
 once been exposed, remains functional. If your script depends on some fancy new
@@ -424,7 +461,7 @@ print(`GraalVM Insight version is ${insight.version}`);
 ```
 
 and act accordingly to the obtained version. New elements in the
-[documentation](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html)
+[documentation](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html)
 carry associated `@since` tag to describe the minimimal version the associated
 functionality/element is available since.
 

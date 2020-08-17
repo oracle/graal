@@ -35,6 +35,8 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 class CodeBreakdownJsonObject extends JsonObject {
@@ -46,6 +48,11 @@ class CodeBreakdownJsonObject extends JsonObject {
 
     CodeBreakdownJsonObject(Feature.AfterCompilationAccess access) {
         this.access = access;
+    }
+
+    public Map<String, Integer> getData() {
+        return ((FeatureImpl.AfterCompilationAccessImpl) access).getCompilationTasks().stream()
+                        .collect(Collectors.toMap(t -> t.method.format("%H.%n(%p) %r"), t -> t.result.getTargetCodeSize()));
     }
 
     @Override

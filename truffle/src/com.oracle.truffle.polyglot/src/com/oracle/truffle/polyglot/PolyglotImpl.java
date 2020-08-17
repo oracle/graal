@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -198,7 +198,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             DispatchOutputStream dispatchOut = INSTRUMENT.createDispatchOutput(resolvedOut);
             DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
             Handler logHandler = PolyglotLoggers.asHandler(logHandlerOrStream);
-            logHandler = logHandler != null ? logHandler : PolyglotLoggers.createDefaultHandler(resolvedErr);
             ClassLoader contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
 
             impl = boundEngine ? preInitializedEngineRef.getAndSet(null) : null;
@@ -325,7 +324,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (hostValue instanceof TruffleObject) {
                 guestValue = hostValue;
             } else if (hostValue instanceof Proxy) {
-                guestValue = PolyglotProxy.toProxyGuestObject(null, (Proxy) hostValue);
+                guestValue = PolyglotProxy.toProxyGuestObject((Proxy) hostValue);
             } else if (hostValue instanceof Class) {
                 guestValue = HostObject.forClass((Class<?>) hostValue, null);
             } else {

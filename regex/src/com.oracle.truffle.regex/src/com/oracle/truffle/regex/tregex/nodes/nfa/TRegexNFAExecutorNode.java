@@ -136,7 +136,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     private void findNextStates(TRegexNFAExecutorLocals locals) {
-        int c = inputRead(locals);
+        int c = inputReadAndDecode(locals);
         while (locals.hasNext()) {
             expandState(locals, locals.next(), c, false);
             // If we have found a path to a final state, then we will trim all paths with lower
@@ -164,7 +164,6 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
         // to a final state.
         for (int i = 0; i < maxTransitionIndex(state); i++) {
             NFAStateTransition t = state.getSuccessors()[i];
-            NFAState target = t.getTarget();
             int targetId = t.getTarget().getId();
             int markIndex = targetId >> 6;
             long markBit = 1L << targetId;
@@ -172,7 +171,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
                 locals.getMarks()[markIndex] |= markBit;
                 if (t.getTarget().isUnAnchoredFinalState(true)) {
                     locals.pushResult(t, !isLoopBack);
-                } else if (target.getCharSet().contains(c)) {
+                } else if (t.getCodePointSet().contains(c)) {
                     locals.pushSuccessor(t, !isLoopBack);
                 }
             }

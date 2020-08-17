@@ -40,7 +40,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinTask;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -73,6 +75,7 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo.ClassInit
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
@@ -380,6 +383,8 @@ public class UniverseBuilder {
             arrayDepth++;
         } while (typeFound);
 
+        ImageSingletons.lookup(DynamicHubSupport.class).setMaxTypeId(orderedTypes.size());
+
         assert assertSame(orderedTypes, hUniverse.types.values());
         hUniverse.orderedTypes = orderedTypes;
     }
@@ -607,15 +612,17 @@ public class UniverseBuilder {
 
     /**
      * We want these types to be immutable so that they can be in the read-only part of the image
-     * heap. Moreover, all of them except for String *must* be read-only because they contain
-     * relocatable pointers.
+     * heap. Those types that contain relocatable pointers *must* be in the read-only relocatables
+     * partition of the image heap. Immutable types will not get a monitor field and will always use
+     * the secondary storage for monitor slots.
      */
     private static final Set<Class<?>> IMMUTABLE_TYPES = new HashSet<>(Arrays.asList(
                     String.class,
                     DynamicHub.class,
                     CEntryPointLiteral.class,
                     BoxedRelocatedPointer.class,
-                    ClassInitializerFunctionPointerHolder.class));
+                    ClassInitializerFunctionPointerHolder.class,
+                    FillerObject.class));
 
     private void collectMonitorFieldInfo(BigBang bb) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
@@ -623,30 +630,26 @@ public class UniverseBuilder {
             return;
         }
 
+        HostedConfiguration.instance().collectMonitorFieldInfo(bb, hUniverse, getImmutableTypes());
+    }
+
+    private Set<AnalysisType> getImmutableTypes() {
         Set<AnalysisType> immutableTypes = new HashSet<>();
         for (Class<?> immutableType : IMMUTABLE_TYPES) {
             Optional<AnalysisType> aType = aMetaAccess.optionalLookupJavaType(immutableType);
-            if (aType.isPresent()) {
-                immutableTypes.add(aType.get());
-            }
+            aType.ifPresent(immutableTypes::add);
         }
-
-        TypeState allSynchronizedTypeState = bb.getAllSynchronizedTypeState();
-        for (AnalysisType aType : allSynchronizedTypeState.types()) {
-            if (!aType.isArray() && !immutableTypes.contains(aType)) {
-                /*
-                 * Monitor fields on arrays would increase the array header too much. Also, types
-                 * that must be immutable cannot have a monitor field.
-                 */
-                final HostedInstanceClass hostedInstanceClass = (HostedInstanceClass) hUniverse.lookup(aType);
-                hostedInstanceClass.setNeedMonitorField();
-            }
-        }
+        return immutableTypes;
     }
 
     public static boolean isKnownImmutableType(Class<?> clazz) {
         return IMMUTABLE_TYPES.contains(clazz);
     }
+
+    /** These classes must never have a separate hash code field. */
+    private static final Class<?>[] CLASSES_WITHOUT_HASH_CODE_FIELD = new Class<?>[]{
+                    FillerObject.class, // for size reasons, instances should never be accessed
+    };
 
     @SuppressWarnings("try")
     private void collectHashCodeFieldInfo(BigBang bb) {
@@ -663,6 +666,11 @@ public class UniverseBuilder {
 
         DebugContext debug = bb.getDebug();
         try (Indent ignore = debug.logAndIndent("check types for which identityHashCode is invoked")) {
+            EconomicSet<HostedType> typesWithoutHashCodeField = EconomicSet.create();
+            for (Class<?> type : CLASSES_WITHOUT_HASH_CODE_FIELD) {
+                Optional<HostedType> hType = hMetaAccess.optionalLookupJavaType(type);
+                hType.ifPresent(typesWithoutHashCodeField::add);
+            }
 
             // Check which types may be a parameter of System.identityHashCode (which is invoked by
             // Object.hashCode).
@@ -672,36 +680,29 @@ public class UniverseBuilder {
             assert thisParamState != null;
             Iterable<AnalysisType> typesNeedHashCode = thisParamState.types();
             if (typesNeedHashCode == null || thisParamState.isUnknown() || methodFlow.isSaturated(bb, paramFlow)) {
-
                 /*
                  * If the identityHashCode parameter type is unknown or it is saturated then all
                  * classes need to get the hashCode field.
                  */
-
                 debug.log("all types need a hashCode field");
                 for (HostedType hType : hUniverse.getTypes()) {
-                    if (hType.isInstanceClass()) {
-                        ((HostedInstanceClass) hType).setNeedHashCodeField();
-                    }
+                    maybeSetNeedHashCodeField(hType, typesWithoutHashCodeField);
                 }
-                hUniverse.getObjectClass().setNeedHashCodeField();
+                maybeSetNeedHashCodeField(hUniverse.getObjectClass(), typesWithoutHashCodeField);
             } else {
-
                 // Mark all parameter types of System.identityHashCode to have a hash-code field.
-
                 for (AnalysisType type : typesNeedHashCode) {
                     debug.log("type %s is argument to identityHashCode", type);
-
-                    /*
-                     * Array types get a hash-code field by default. So we only have to deal with
-                     * instance types here.
-                     */
-                    if (type.isInstanceClass()) {
-                        HostedInstanceClass hType = (HostedInstanceClass) hUniverse.lookup(type);
-                        hType.setNeedHashCodeField();
-                    }
+                    maybeSetNeedHashCodeField(hUniverse.lookup(type), typesWithoutHashCodeField);
                 }
             }
+        }
+    }
+
+    private static void maybeSetNeedHashCodeField(HostedType hType, UnmodifiableEconomicSet<HostedType> typesWithoutHashCodeField) {
+        // Array types get a hash code field by default, so we only have to deal with instance types
+        if (hType.isInstanceClass() && !typesWithoutHashCodeField.contains(hType)) {
+            ((HostedInstanceClass) hType).setNeedHashCodeField();
         }
     }
 
@@ -722,12 +723,18 @@ public class UniverseBuilder {
         }
 
         if (HybridLayout.isHybrid(clazz)) {
+            /* Set start after array length field */
             assert startSize == ConfigurationValues.getObjectLayout().getArrayLengthOffset();
             int fieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
             startSize += fieldSize;
 
-            assert clazz.equals(hMetaAccess.lookupJavaType(DynamicHub.class)) : "currently only DynamicHub may be a hybrid class";
-            startSize += (hUniverse.numInterfaceBits + Byte.SIZE - 1) / Byte.SIZE;
+            /*
+             * Set start after bitset field, if the hybrid class has one. For now, only DynamicHubs
+             * can have bitsets.
+             */
+            if (clazz.equals(hMetaAccess.lookupJavaType(DynamicHub.class))) {
+                startSize += (hUniverse.numInterfaceBits + Byte.SIZE - 1) / Byte.SIZE;
+            }
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
@@ -782,13 +789,17 @@ public class UniverseBuilder {
         }
 
         // An int to hold the result for System.identityHashCode.
-        if (ConfigurationValues.getObjectLayout().useExplicitIdentityHashCodeField() && clazz.needHashCodeField()) {
-            int intFieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
-            nextOffset = NumUtil.roundUp(nextOffset, intFieldSize);
-            clazz.setHashCodeFieldOffset(nextOffset);
-            nextOffset += intFieldSize;
+        if (ConfigurationValues.getObjectLayout().useExplicitIdentityHashCodeField()) {
+            if (clazz.needHashCodeField()) {
+                int intFieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
+                nextOffset = NumUtil.roundUp(nextOffset, intFieldSize);
+                clazz.setHashCodeFieldOffset(nextOffset);
+                nextOffset += intFieldSize;
+            }
         } else {
-            clazz.setHashCodeFieldOffset(ConfigurationValues.getObjectLayout().getInstanceIdentityHashCodeOffset());
+            int offset = ConfigurationValues.getObjectLayout().getInstanceIdentityHashCodeOffset();
+            assert offset >= 0;
+            clazz.setHashCodeFieldOffset(offset);
         }
 
         clazz.instanceFields = orderedFields.toArray(new HostedField[orderedFields.size()]);

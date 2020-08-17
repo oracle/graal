@@ -63,7 +63,7 @@ final class ParsingInlineInvokePlugin implements InlineInvokePlugin {
 
     @Override
     public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
-        if (invocationPlugins.lookupInvocation(original) != null || replacements.hasSubstitution(original, builder.bci())) {
+        if (invocationPlugins.lookupInvocation(original) != null || replacements.hasSubstitution(original)) {
             /*
              * During partial evaluation, the invocation plugin or the substitution might trigger,
              * so we want the call to remain (we have better type information and more constant

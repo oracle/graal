@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.RUNTIME;
 import static com.oracle.truffle.polyglot.EngineAccessor.SOURCE;
 
@@ -64,7 +65,6 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
@@ -577,8 +577,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             try {
                 return asValue(lib.getMetaObject(receiver));
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("Unexpected unsupported message.", e);
+                throw shouldNotReachHere("Unexpected unsupported message.", e);
             }
         }
         return null;
@@ -658,8 +657,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 }
                 valueToString = truncateString(INTEROP.asString(uncached.toDisplayString(view)), CHARACTER_LIMIT);
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(e);
+                throw shouldNotReachHere(e);
             }
             String languageName = null;
             boolean hideType = false;
@@ -830,7 +828,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         try {
             return resultLib.asString(result);
         } catch (UnsupportedMessageException e) {
-            throw new AssertionError("toDisplayString must be coercible to java.lang.String, but is not.");
+            throw shouldNotReachHere("toDisplayString must be coercible to java.lang.String, but is not.", e);
         }
     }
 

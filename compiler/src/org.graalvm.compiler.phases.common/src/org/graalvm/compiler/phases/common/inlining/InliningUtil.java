@@ -697,22 +697,22 @@ public class InliningUtil extends ValueMergeUtil {
                 // invalid, so it should be cleared.
                 value.clearNodeSourcePosition();
             } else {
-                NodeSourcePosition pos = cursor.getKey().getNodeSourcePosition();
-                if (pos != null) {
+                NodeSourcePosition oldPos = cursor.getKey().getNodeSourcePosition();
+                if (oldPos != null) {
                     if (inlineeRoot == null) {
-                        assert (inlineeRoot = pos.getRootMethod()) != null;
+                        assert (inlineeRoot = oldPos.getRootMethod()) != null;
                     } else {
-                        assert pos.verifyRootMethod(inlineeRoot);
+                        assert oldPos.verifyRootMethod(inlineeRoot);
                     }
-                    NodeSourcePosition callerPos = posMap.get(pos);
-                    if (callerPos == null) {
-                        callerPos = pos.addCaller(invokePos, isSubstitution);
-                        posMap.put(pos, callerPos);
+                    NodeSourcePosition updatedPos = posMap.get(oldPos);
+                    if (updatedPos == null) {
+                        updatedPos = oldPos.addCaller(oldPos.getSourceLanguage(), invokePos, isSubstitution);
+                        posMap.put(oldPos, updatedPos);
                     }
-                    value.setNodeSourcePosition(callerPos);
+                    value.setNodeSourcePosition(updatedPos);
 
                     if (value instanceof DeoptimizingGuard) {
-                        ((DeoptimizingGuard) value).addCallerToNoDeoptSuccessorPosition(callerPos.getCaller());
+                        ((DeoptimizingGuard) value).addCallerToNoDeoptSuccessorPosition(updatedPos.getCaller());
                     }
                 } else {
                     if (isSubstitution) {

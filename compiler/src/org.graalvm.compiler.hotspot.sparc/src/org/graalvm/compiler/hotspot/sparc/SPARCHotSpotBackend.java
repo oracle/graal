@@ -216,6 +216,11 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
             SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
             masm.restoreWindow();
         }
+
+        @Override
+        public void returned(CompilationResultBuilder crb) {
+            // nothing to do
+        }
     }
 
     @Override
@@ -353,6 +358,10 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
             SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, null);
             crb.recordMark(HotSpotMarkId.DEOPT_HANDLER_ENTRY);
             SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), null, null);
+            if (config.supportsMethodHandleDeoptimizationEntry() && crb.needsMHDeoptHandler()) {
+                crb.recordMark(HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY);
+                SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), null, null);
+            }
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries

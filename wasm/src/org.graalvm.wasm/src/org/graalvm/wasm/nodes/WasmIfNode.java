@@ -45,8 +45,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.constants.TargetOffset;
+import org.graalvm.wasm.WasmInstance;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
@@ -59,8 +58,8 @@ public final class WasmIfNode extends WasmNode {
 
     private final ConditionProfile condition = ConditionProfile.createCountingProfile();
 
-    public WasmIfNode(WasmModule wasmModule, WasmCodeEntry codeEntry, WasmNode trueBranch, WasmNode falseBranch, int byteLength, byte returnTypeId, int initialStackPointer) {
-        super(wasmModule, codeEntry, byteLength);
+    public WasmIfNode(WasmInstance wasmInstance, WasmCodeEntry codeEntry, WasmNode trueBranch, WasmNode falseBranch, int byteLength, byte returnTypeId, int initialStackPointer) {
+        super(wasmInstance, codeEntry, byteLength);
         this.returnTypeId = returnTypeId;
         this.initialStackPointer = initialStackPointer;
         this.trueBranch = trueBranch;
@@ -68,7 +67,7 @@ public final class WasmIfNode extends WasmNode {
     }
 
     @Override
-    public TargetOffset execute(WasmContext context, VirtualFrame frame) {
+    public int execute(WasmContext context, VirtualFrame frame) {
         int stackPointer = initialStackPointer - 1;
         if (condition.profile(popInt(frame, stackPointer) != 0)) {
             trace("taking if branch");
@@ -77,7 +76,7 @@ public final class WasmIfNode extends WasmNode {
             trace("taking else branch");
             return falseBranch.execute(context, frame);
         } else {
-            return TargetOffset.MINUS_ONE;
+            return -1;
         }
     }
 

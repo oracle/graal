@@ -169,6 +169,14 @@ public class AMD64LibCHelper {
         @AllowNarrowingCast
         @CField
         boolean fAVX512BW();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fSHA();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fFMA();
     }
 
 }

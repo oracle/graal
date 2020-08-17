@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,12 @@ package com.oracle.truffle.polyglot;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
 import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.SpecializationStatistics;
+import com.oracle.truffle.api.utilities.TruffleWeakReference;
 
 final class PolyglotThreadInfo {
 
@@ -55,7 +55,7 @@ final class PolyglotThreadInfo {
     private static final Object NULL_CLASS_LOADER = new Object();
 
     private final PolyglotContextImpl context;
-    private final Reference<Thread> thread;
+    private final TruffleWeakReference<Thread> thread;
 
     private int enteredCount;
     final LinkedList<Object> explicitContextStack = new LinkedList<>();
@@ -65,12 +65,13 @@ final class PolyglotThreadInfo {
     private boolean deprioritized;
     private Object originalContextClassLoader = NULL_CLASS_LOADER;
     private ClassLoaderEntry prevContextClassLoader;
+    private SpecializationStatisticsEntry executionStatisticsEntry;
 
     private static volatile ThreadMXBean threadBean;
 
     PolyglotThreadInfo(PolyglotContextImpl context, Thread thread) {
         this.context = context;
-        this.thread = new WeakReference<>(thread);
+        this.thread = new TruffleWeakReference<>(thread);
         this.deprioritized = false;
     }
 
@@ -94,6 +95,9 @@ final class PolyglotThreadInfo {
         }
         if (!engine.customHostClassLoader.isValid()) {
             setContextClassLoader();
+        }
+        if (engine.specializationStatistics != null) {
+            engine.specializationStatistics.enter();
         }
     }
 
@@ -168,6 +172,29 @@ final class PolyglotThreadInfo {
             deprioritized = false;
         }
 
+        if (engine.specializationStatistics != null) {
+            leaveStatistics(engine.specializationStatistics);
+        }
+
+    }
+
+    @TruffleBoundary
+    private void enterStatistics(SpecializationStatistics statistics) {
+        SpecializationStatistics prev = statistics.enter();
+        if (prev != null || this.executionStatisticsEntry != null) {
+            executionStatisticsEntry = new SpecializationStatisticsEntry(prev, executionStatisticsEntry);
+        }
+    }
+
+    @TruffleBoundary
+    private void leaveStatistics(SpecializationStatistics statistics) {
+        SpecializationStatisticsEntry entry = this.executionStatisticsEntry;
+        if (entry == null) {
+            statistics.leave(null);
+        } else {
+            statistics.leave(entry.statistics);
+            this.executionStatisticsEntry = entry.next;
+        }
     }
 
     boolean isLastActive() {
@@ -220,6 +247,16 @@ final class PolyglotThreadInfo {
 
         ClassLoaderEntry(ClassLoader classLoader, ClassLoaderEntry next) {
             this.classLoader = classLoader;
+            this.next = next;
+        }
+    }
+
+    private static final class SpecializationStatisticsEntry {
+        final SpecializationStatistics statistics;
+        final SpecializationStatisticsEntry next;
+
+        SpecializationStatisticsEntry(SpecializationStatistics statistics, SpecializationStatisticsEntry next) {
+            this.statistics = statistics;
             this.next = next;
         }
     }

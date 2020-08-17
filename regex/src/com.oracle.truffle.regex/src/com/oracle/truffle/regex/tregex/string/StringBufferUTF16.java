@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.string;
 
 import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 public final class StringBufferUTF16 extends CharArrayBuffer implements AbstractStringBuffer {
 
@@ -53,8 +54,13 @@ public final class StringBufferUTF16 extends CharArrayBuffer implements Abstract
     }
 
     @Override
+    public Encoding getEncoding() {
+        return Encodings.UTF_16;
+    }
+
+    @Override
     public void append(int codepoint) {
-        int n = Encodings.UTF_16.getEncodedSize(codepoint);
+        int n = getEncoding().getEncodedSize(codepoint);
         int newLength = length() + n;
         ensureCapacity(newLength);
         if (n == 1) {
@@ -68,8 +74,8 @@ public final class StringBufferUTF16 extends CharArrayBuffer implements Abstract
 
     @Override
     public void appendOR(int c1, int c2) {
-        int n = Encodings.UTF_16.getEncodedSize(c1);
-        assert Encodings.UTF_16.getEncodedSize(c2) == n;
+        int n = getEncoding().getEncodedSize(c1);
+        assert getEncoding().getEncodedSize(c2) == n;
         int newLength = length() + n;
         ensureCapacity(newLength);
         if (n == 1) {
@@ -83,8 +89,8 @@ public final class StringBufferUTF16 extends CharArrayBuffer implements Abstract
 
     @Override
     public void appendXOR(int c1, int c2) {
-        int n = Encodings.UTF_16.getEncodedSize(c1);
-        assert Encodings.UTF_16.getEncodedSize(c2) == n;
+        int n = getEncoding().getEncodedSize(c1);
+        assert getEncoding().getEncodedSize(c2) == n;
         int newLength = length() + n;
         ensureCapacity(newLength);
         if (n == 1) {

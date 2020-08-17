@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.string;
 
 import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 public final class StringBufferUTF8 extends ByteArrayBuffer implements AbstractStringBuffer {
 
@@ -53,8 +54,13 @@ public final class StringBufferUTF8 extends ByteArrayBuffer implements AbstractS
     }
 
     @Override
+    public Encoding getEncoding() {
+        return Encodings.UTF_8;
+    }
+
+    @Override
     public void append(int codepoint) {
-        int n = Encodings.UTF_8.getEncodedSize(codepoint);
+        int n = getEncoding().getEncodedSize(codepoint);
         int newLength = length() + n;
         ensureCapacity(newLength);
         setLength(newLength);
@@ -82,8 +88,8 @@ public final class StringBufferUTF8 extends ByteArrayBuffer implements AbstractS
 
     @Override
     public void appendOR(int cp1, int cp2) {
-        int n = Encodings.UTF_8.getEncodedSize(cp1);
-        assert Encodings.UTF_8.getEncodedSize(cp2) == n;
+        int n = getEncoding().getEncodedSize(cp1);
+        assert getEncoding().getEncodedSize(cp2) == n;
         int newLength = length() + n;
         ensureCapacity(newLength);
         setLength(newLength);
@@ -115,8 +121,8 @@ public final class StringBufferUTF8 extends ByteArrayBuffer implements AbstractS
 
     @Override
     public void appendXOR(int cp1, int cp2) {
-        int n = Encodings.UTF_8.getEncodedSize(cp1);
-        assert Encodings.UTF_8.getEncodedSize(cp2) == n;
+        int n = getEncoding().getEncodedSize(cp1);
+        assert getEncoding().getEncodedSize(cp2) == n;
         int newLength = length() + n;
         ensureCapacity(newLength);
         setLength(newLength);

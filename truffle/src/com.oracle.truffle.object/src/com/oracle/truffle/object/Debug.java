@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -131,7 +131,7 @@ class Debug {
         IGVShapeVisitor visitor = new IGVShapeVisitor(printer);
         for (ShapeImpl shape : getAllShapes()) {
             if (isRootShape(shape)) {
-                printer.beginGraph(getId(shape) + " (" + calcShapeGraphSize(shape) + ") (" + shape.getObjectType() + ")");
+                printer.beginGraph(getId(shape) + " (" + calcShapeGraphSize(shape) + ") (" + shape.getDynamicType() + ")");
                 visitor.visitShape(shape);
                 printer.endGraph();
             }
@@ -216,7 +216,7 @@ class Debug {
                         printer.createElementForNode(s);
                         String name;
                         if (isRootShape(s)) {
-                            name = ("ROOT(" + s.getObjectType() + ")");
+                            name = ("ROOT(" + s.getDynamicType() + ")");
                         } else {
                             name = s.getTransitionFromParent().toString();
                             if (!s.isValid()) {
@@ -227,7 +227,8 @@ class Debug {
                         printer.setNodeProperty(s, "valid", s.isValid());
                         printer.setNodeProperty(s, "leaf", s.isLeaf());
                         printer.setNodeProperty(s, "identityHashCode", Integer.toHexString(System.identityHashCode(s)));
-                        printer.setNodeProperty(s, "objectType", s.getObjectType());
+                        printer.setNodeProperty(s, "dynamicType", s.getDynamicType());
+                        printer.setNodeProperty(s, "flags", s.getFlags());
                         printer.setNodeProperty(s, "shared", s.isShared());
 
                         for (Entry<? extends Transition, ? extends ShapeImpl> entry : transitions.entrySet()) {

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.io.IOException;
@@ -292,7 +293,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             newContexts[i] = new PolyglotLanguageContext(this, language);
         }
         hostContext.ensureInitialized(null);
-        ((HostContext) hostContext.getContextImpl()).internalContext = hostContext;
+        ((HostContext) hostContext.getContextImpl()).initializeInternal(hostContext);
         return newContexts;
     }
 
@@ -389,7 +390,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             if (singleContext.contextThreadLocal.isSet()) {
                 return singleContext.singleContext;
             } else {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 return null;
             }
         } else {
@@ -417,10 +418,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     /**
      * May be used anywhere to lookup the context.
+     *
+     * @throws IllegalStateException when there is no current context available.
      */
     static PolyglotContextImpl requireContext() {
         PolyglotContextImpl context = currentNotEntered();
-        assert context != null : "No current context available.";
+        if (context == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw PolyglotEngineException.illegalState("There is no current context available.");
+        }
         return context;
     }
 
@@ -481,7 +487,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             boolean transitionToMultiThreading = singleThreaded.isValid() && hasActiveOtherThread(true);
             if (transitionToMultiThreading) {
                 // recheck all thread accesses
-                checkAllThreadAccesses();
+                checkAllThreadAccesses(Thread.currentThread(), false);
             }
 
             Thread closing = this.closingThread;
@@ -526,21 +532,25 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    private void checkAllThreadAccesses() {
+    synchronized void checkMultiThreadedAccess(PolyglotThread newThread) {
+        boolean singleThread = singleThreaded.isValid() ? !isActive() : false;
+        checkAllThreadAccesses(newThread, singleThread);
+    }
+
+    private void checkAllThreadAccesses(Thread enteringThread, boolean singleThread) {
         assert Thread.holdsLock(this);
-        Thread current = Thread.currentThread();
         List<PolyglotLanguage> deniedLanguages = null;
         for (PolyglotLanguageContext context : contexts) {
             if (!context.isInitialized()) {
                 continue;
             }
             boolean accessAllowed = true;
-            if (!LANGUAGE.isThreadAccessAllowed(context.env, current, false)) {
+            if (!LANGUAGE.isThreadAccessAllowed(context.env, enteringThread, singleThread)) {
                 accessAllowed = false;
             }
             if (accessAllowed) {
                 for (PolyglotThreadInfo seenThread : threads.values()) {
-                    if (!LANGUAGE.isThreadAccessAllowed(context.env, seenThread.getThread(), false)) {
+                    if (!LANGUAGE.isThreadAccessAllowed(context.env, seenThread.getThread(), singleThread)) {
                         accessAllowed = false;
                         break;
                     }
@@ -554,7 +564,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             }
         }
         if (deniedLanguages != null) {
-            throw throwDeniedThreadAccess(current, false, deniedLanguages);
+            throw throwDeniedThreadAccess(enteringThread, singleThread, deniedLanguages);
         }
     }
 
@@ -906,7 +916,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         try {
             stringResult = UNCACHED.asString(UNCACHED.toDisplayString(languageContext.getLanguageView(result), true));
         } catch (UnsupportedMessageException e) {
-            throw new AssertionError(e);
+            throw shouldNotReachHere(e);
         }
         try {
             OutputStream out = languageContext.context.config.out;

@@ -68,12 +68,16 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
                     "{\"result\":{},\"id\":28}",
                     "{\"method\":\"Runtime.executionContextCreated\"",
                     "{\"method\":\"Debugger.paused\",",
+                    "{\"result\":{},\"id\":50}",
+                    "{\"method\":\"Debugger.resumed\"}",
+                    "{\"method\":\"Debugger.paused\",",
                     "{\"result\":{},\"id\":100}",
                     "{\"method\":\"Debugger.resumed\"}"
     };
     static {
-        MESSAGES_TO_BACKEND = Arrays.copyOf(INITIAL_MESSAGES, INITIAL_MESSAGES.length + 1);
-        MESSAGES_TO_BACKEND[INITIAL_MESSAGES.length] = "{\"id\":100,\"method\":\"Debugger.resume\"}";
+        MESSAGES_TO_BACKEND = Arrays.copyOf(INITIAL_MESSAGES, INITIAL_MESSAGES.length + 2);
+        MESSAGES_TO_BACKEND[INITIAL_MESSAGES.length] = "{\"id\":50,\"method\":\"Debugger.stepOver\"}";
+        MESSAGES_TO_BACKEND[INITIAL_MESSAGES.length + 1] = "{\"id\":100,\"method\":\"Debugger.resume\"}";
     }
 
     @Test
@@ -146,9 +150,9 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
                 result = context.eval("sl", "function main() {\n  x = 2;\n  return x;\n}");
                 Assert.assertEquals("Result", "2", result.toString());
             }
-            // We will not get the last 3 messages to client and 1 to backend
+            // We will not get the last 6 messages to client and 2 to backend
             // as we do not do initial suspension on re-connect
-            int expectedNumMessages = 2 * (MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length) - 4;
+            int expectedNumMessages = 2 * (MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length) - 8;
             synchronized (session.messages) {
                 while (session.messages.size() < expectedNumMessages) {
                     // The reply messages are sent asynchronously. We need to wait for them.
@@ -160,7 +164,7 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
             assertMessages(session.messages, MESSAGES_TO_BACKEND.length, MESSAGES_TO_CLIENT.length);
             // Messages after reconnect
             List<String> messagesAfterReconnect = session.messages.subList(MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length, expectedNumMessages);
-            assertMessages(messagesAfterReconnect, MESSAGES_TO_BACKEND.length - 1, MESSAGES_TO_CLIENT.length - 3);
+            assertMessages(messagesAfterReconnect, MESSAGES_TO_BACKEND.length - 2, MESSAGES_TO_CLIENT.length - 6);
         }
     }
 
@@ -266,6 +270,7 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
 
         Session.MsgHandler handler;
         private final List<String> messages;
+        private boolean didStep = false;
 
         BasicRemote(List<String> messages) {
             this.messages = messages;
@@ -279,7 +284,13 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
                 }
             }
             if (text.startsWith("{\"method\":\"Debugger.paused\"")) {
-                handler.onMessage("{\"id\":100,\"method\":\"Debugger.resume\"}");
+                if (!didStep) {
+                    handler.onMessage("{\"id\":50,\"method\":\"Debugger.stepOver\"}");
+                    didStep = true;
+                } else {
+                    handler.onMessage("{\"id\":100,\"method\":\"Debugger.resume\"}");
+                    didStep = false;
+                }
             }
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -854,7 +854,15 @@ public abstract class Launcher {
             throw abort(String.format("Invalid argument %s specified. %s'", arg, e.getMessage()));
         }
         if (descriptor.isDeprecated()) {
-            warn("Option '" + descriptor.getName() + "' is deprecated and might be removed from future versions.");
+            String messageFormat = "Option '%s' is deprecated and might be removed from future versions.";
+            String deprecationMessage = descriptor.getDeprecationMessage();
+            String message;
+            if (deprecationMessage != null) {
+                message = String.format(messageFormat + "%n%s", descriptor.getName(), deprecationMessage);
+            } else {
+                message = String.format(messageFormat, descriptor.getName());
+            }
+            warn(message);
         }
         if (!experimentalOptions && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
             throw abort(String.format("Option '%s' is experimental and must be enabled via '--experimental-options'%n" +
@@ -1059,7 +1067,7 @@ public abstract class Launcher {
 
     private void printJvmHelp() {
         println("JVM options:");
-        launcherOption("--vm.classpath <...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's classpath");
+        launcherOption("--vm.classpath=<...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's classpath");
         launcherOption("--vm.D<name>=<value>", "Set a system property");
         launcherOption("--vm.esa", "Enable system assertions");
         launcherOption("--vm.ea[:<packagename>...|:<classname>]", "Enable assertions with specified granularity");
@@ -1315,8 +1323,12 @@ public abstract class Launcher {
                 setSystemProperty(arg.substring("D".length()));
             } else if (arg.startsWith("XX:")) {
                 setRuntimeOption(arg.substring("XX:".length()));
-            } else if (arg.startsWith("X") && isXOption(arg)) {
-                setXOption(arg.substring("X".length()));
+            } else if (arg.startsWith("X")) {
+                if (isXOption(arg)) {
+                    setXOption(arg.substring("X".length()));
+                } else {
+                    throw abort("Unrecognized vm option: '--vm." + arg + "'. Some VM options may be only supported in --jvm mode.");
+                }
             } else {
                 throw abort("Unrecognized vm option: '--vm." + arg + "'. Such arguments should start with '--vm.D', '--vm.XX:', or '--vm.X'");
             }
@@ -1445,7 +1457,9 @@ public abstract class Launcher {
             System.out.println("Native VM options:");
             SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
             for (OptionDescriptor descriptor : getVMOptions()) {
-                sortedOptions.put(descriptor.getName(), descriptor);
+                if (!descriptor.isDeprecated()) {
+                    sortedOptions.put(descriptor.getName(), descriptor);
+                }
             }
             for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
                 OptionDescriptor descriptor = entry.getValue();
@@ -1477,7 +1491,9 @@ public abstract class Launcher {
             System.out.println("Compiler options:");
             SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
             for (OptionDescriptor descriptor : getCompilerOptions()) {
-                sortedOptions.put(descriptor.getName(), descriptor);
+                if (!descriptor.isDeprecated()) {
+                    sortedOptions.put(descriptor.getName(), descriptor);
+                }
             }
             for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
                 OptionDescriptor descriptor = entry.getValue();

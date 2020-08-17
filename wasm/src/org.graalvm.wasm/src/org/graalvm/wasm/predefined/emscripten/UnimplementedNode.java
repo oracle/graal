@@ -44,7 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
@@ -52,7 +52,7 @@ import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 public class UnimplementedNode extends WasmBuiltinRootNode {
     private final String name;
 
-    public UnimplementedNode(String name, WasmLanguage language, WasmModule module) {
+    public UnimplementedNode(String name, WasmLanguage language, WasmInstance module) {
         super(language, module);
         this.name = name;
     }

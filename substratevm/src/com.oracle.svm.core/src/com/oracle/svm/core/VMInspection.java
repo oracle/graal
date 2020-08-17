@@ -32,6 +32,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 
+import com.oracle.svm.core.thread.JavaThreads;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -63,14 +64,14 @@ public class VMInspection implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return isEnabled();
+        return isEnabled() || VMInspectionOptions.DumpThreadStacksOnSignal.getValue();
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         RuntimeSupport.getRuntimeSupport().addStartupHook(() -> {
             DumpAllStacks.install();
-            if (!Platform.includedIn(WINDOWS.class)) {
+            if (VMInspectionOptions.AllowVMInspection.getValue() && !Platform.includedIn(WINDOWS.class)) {
                 /* We have enough signals to enable the rest. */
                 DumpHeapReport.install();
                 if (DeoptimizationSupport.enabled()) {
@@ -89,6 +90,9 @@ public class VMInspection implements Feature {
 class VMInspectionOptions {
     @Option(help = "Enables features that allow the VM to be inspected during runtime.", type = OptionType.User) //
     public static final HostedOptionKey<Boolean> AllowVMInspection = new HostedOptionKey<>(false);
+
+    @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
+    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false);
 }
 
 class DumpAllStacks implements SignalHandler {
@@ -100,6 +104,7 @@ class DumpAllStacks implements SignalHandler {
     public void handle(Signal arg0) {
         JavaVMOperation.enqueueBlockingSafepoint("DumpAllStacks", () -> {
             Log log = Log.log();
+            log.string("Full thread dump:").newline().newline();
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 if (vmThread == CurrentIsolate.getCurrentThread()) {
                     /* Skip the signal handler stack */
@@ -117,7 +122,22 @@ class DumpAllStacks implements SignalHandler {
     }
 
     private static void dumpStack(Log log, IsolateThread vmThread) {
-        log.string("VMThread ").zhex(vmThread.rawValue()).spaces(2).string(VMThreads.StatusSupport.getStatusString(vmThread)).newline();
+        Thread javaThread = JavaThreads.fromVMThread(vmThread);
+        if (javaThread != null) {
+            log.character('"').string(javaThread.getName()).character('"');
+            log.string(" #").signed(javaThread.getId());
+            if (javaThread.isDaemon()) {
+                log.string(" daemon");
+            }
+        } else {
+            log.string("(no Java thread)");
+        }
+        log.string(" tid=0x").zhex(vmThread.rawValue());
+        if (javaThread != null) {
+            log.string(" state=").string(javaThread.getState().name());
+        }
+        log.newline();
+
         log.indent(true);
         JavaStackWalker.walkThread(vmThread, StackFramePrintVisitor.SINGLETON, log);
         log.indent(false);

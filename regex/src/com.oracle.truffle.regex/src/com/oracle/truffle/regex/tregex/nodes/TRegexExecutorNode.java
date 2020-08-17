@@ -41,9 +41,10 @@
 package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
@@ -59,6 +60,10 @@ public abstract class TRegexExecutorNode extends Node {
     public Encoding getEncoding() {
         assert root != null;
         return root.getEncoding();
+    }
+
+    public ConditionProfile getInputProfile() {
+        return root.getInputProfile();
     }
 
     /**
@@ -113,16 +118,14 @@ public abstract class TRegexExecutorNode extends Node {
         return forward ? index < getMaxIndex(locals) : index > getMinIndex(locals);
     }
 
-    public int inputRead(TRegexExecutorLocals locals) {
-        return inputRead(locals, locals.getIndex());
+    public int inputReadAndDecode(TRegexExecutorLocals locals) {
+        return inputReadAndDecode(locals, locals.getIndex());
     }
 
-    public int inputRead(TRegexExecutorLocals locals, int index) {
+    @ExplodeLoop
+    public int inputReadAndDecode(TRegexExecutorLocals locals, int index) {
         assert root != null;
-        if (getEncoding() == Encodings.UTF_16_RAW) {
-            locals.setNextIndex(inputIncRaw(index));
-            return inputReadRaw(locals);
-        } else if (getEncoding() == Encodings.UTF_16) {
+        if (getEncoding() == Encodings.UTF_16) {
             locals.setNextIndex(inputIncRaw(index));
             int c = inputReadRaw(locals);
             if (inputUTF16IsHighSurrogate(c) && inputHasNext(locals, locals.getNextIndex())) {
@@ -133,9 +136,51 @@ public abstract class TRegexExecutorNode extends Node {
                 }
             }
             return c;
+        } else if (getEncoding() == Encodings.UTF_8) {
+            int c = inputReadRaw(locals);
+            if (c < 0x80) {
+                locals.setNextIndex(inputIncRaw(index));
+                return c;
+            }
+            int codepoint = c & 0x3f;
+            if (!isForward()) {
+                assert c >> 6 == 2;
+                for (int i = 1; i < 4; i++) {
+                    c = inputReadRaw(locals, locals.getIndex() - i);
+                    if (i < 3 && c >> 6 == 2) {
+                        codepoint |= (c & 0x3f) << (6 * i);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            int nBytes = inputUTF8NumberOfLeadingOnes(c);
+            assert 1 < nBytes && nBytes < 5 : nBytes;
+            if (isForward()) {
+                locals.setNextIndex(inputIncRaw(index));
+                codepoint = c & (0xff >>> nBytes);
+                // Checkstyle: stop
+                switch (nBytes) {
+                    case 4:
+                        codepoint = codepoint << 6 | (inputReadRaw(locals, locals.getNextIndex()) & 0x3f);
+                        locals.setNextIndex(inputIncRaw(locals.getNextIndex()));
+                    case 3:
+                        codepoint = codepoint << 6 | (inputReadRaw(locals, locals.getNextIndex()) & 0x3f);
+                        locals.setNextIndex(inputIncRaw(locals.getNextIndex()));
+                    default:
+                        codepoint = codepoint << 6 | (inputReadRaw(locals, locals.getNextIndex()) & 0x3f);
+                        locals.setNextIndex(inputIncRaw(locals.getNextIndex()));
+                }
+                // Checkstyle: resume
+                return codepoint;
+            } else {
+                locals.setNextIndex(inputIncRaw(index, nBytes));
+                return codepoint | (c & (0xff >>> nBytes)) << (6 * (nBytes - 1));
+            }
         } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new UnsupportedOperationException();
+            assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1;
+            locals.setNextIndex(inputIncRaw(index));
+            return inputReadRaw(locals);
         }
     }
 
@@ -147,8 +192,16 @@ public abstract class TRegexExecutorNode extends Node {
         return UTF16.isLowSurrogate(c, isForward());
     }
 
-    protected int inputUTF16ToCodePoint(int highSurrogate, int lowSurrogate) {
+    public int inputUTF16ToCodePoint(int highSurrogate, int lowSurrogate) {
         return isForward() ? Character.toCodePoint((char) highSurrogate, (char) lowSurrogate) : Character.toCodePoint((char) lowSurrogate, (char) highSurrogate);
+    }
+
+    private static boolean inputUTF8IsTrailingByte(int c) {
+        return (c >> 6) == 2;
+    }
+
+    private static int inputUTF8NumberOfLeadingOnes(int c) {
+        return Integer.numberOfLeadingZeros(~(c << 24));
     }
 
     public int inputReadRaw(TRegexExecutorLocals locals) {
@@ -169,7 +222,6 @@ public abstract class TRegexExecutorNode extends Node {
     }
 
     public void inputAdvance(TRegexExecutorLocals locals) {
-        assert isForward() ? locals.getIndex() < locals.getNextIndex() : locals.getIndex() > locals.getNextIndex();
         locals.setIndex(locals.getNextIndex());
     }
 
@@ -181,18 +233,31 @@ public abstract class TRegexExecutorNode extends Node {
         inputSkipIntl(locals, !isForward());
     }
 
-    private void inputSkipIntl(TRegexExecutorLocals locals, boolean forward) {
-        if (getEncoding() == Encodings.UTF_16_RAW) {
-            inputIncRaw(locals, forward);
-        } else if (getEncoding() == Encodings.UTF_16) {
+    protected void inputSkipIntl(TRegexExecutorLocals locals, boolean forward) {
+        if (getEncoding() == Encodings.UTF_16) {
             int c = inputReadRaw(locals, forward);
             inputIncRaw(locals, forward);
             if (UTF16.isHighSurrogate(c, forward) && inputHasNext(locals, forward) && UTF16.isLowSurrogate(inputReadRaw(locals, forward), forward)) {
                 inputIncRaw(locals, forward);
             }
+        } else if (getEncoding() == Encodings.UTF_8) {
+            if (forward) {
+                int c = inputReadRaw(locals, true);
+                if (getInputProfile().profile(c < 128)) {
+                    inputIncRaw(locals, true);
+                } else {
+                    inputIncRaw(locals, inputUTF8NumberOfLeadingOnes(c), true);
+                }
+            } else {
+                int c;
+                do {
+                    c = inputReadRaw(locals, false);
+                    inputIncRaw(locals, false);
+                } while (inputHasNext(locals, false) && inputUTF8IsTrailingByte(c));
+            }
         } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new UnsupportedOperationException();
+            assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1;
+            inputIncRaw(locals, forward);
         }
     }
 
@@ -216,9 +281,25 @@ public abstract class TRegexExecutorNode extends Node {
         return inputIncRaw(index, 1, isForward());
     }
 
+    public int inputIncRaw(int index, int offset) {
+        return inputIncRaw(index, offset, isForward());
+    }
+
+    public static int inputIncRaw(int index, boolean forward) {
+        return inputIncRaw(index, 1, forward);
+    }
+
     public static int inputIncRaw(int index, int offset, boolean forward) {
         assert offset > 0;
         return forward ? index + offset : index - offset;
+    }
+
+    public void inputIncNextIndexRaw(TRegexExecutorLocals locals) {
+        inputIncNextIndexRaw(locals, 1);
+    }
+
+    public void inputIncNextIndexRaw(TRegexExecutorLocals locals, int offset) {
+        locals.setNextIndex(inputIncRaw(locals.getIndex(), offset, isForward()));
     }
 
     public int countUpTo(TRegexExecutorLocals locals, int max, int nCodePoints) {
@@ -227,20 +308,11 @@ public abstract class TRegexExecutorNode extends Node {
             assert isForward();
             int i = 0;
             int index = locals.getIndex();
-            while (index < max && i < nCodePoints) {
-                if (getEncoding() == Encodings.UTF_16_RAW) {
-                    index++;
-                } else if (getEncoding() == Encodings.UTF_16) {
-                    int c = inputReadRaw(locals, index++);
-                    if (UTF16.isHighSurrogate(c) && index < max && UTF16.isLowSurrogate(inputReadRaw(locals, index))) {
-                        index++;
-                    }
-                } else {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new UnsupportedOperationException();
-                }
+            while (locals.getIndex() < max && i < nCodePoints) {
+                inputSkipIntl(locals, true);
                 i++;
             }
+            locals.setIndex(index);
             return i;
         }
         return 0;
@@ -252,18 +324,7 @@ public abstract class TRegexExecutorNode extends Node {
             assert isForward();
             int i = 0;
             while (locals.getIndex() > min && i < nCodePoints) {
-                if (getEncoding() == Encodings.UTF_16_RAW) {
-                    locals.setIndex(locals.getIndex() - 1);
-                } else if (getEncoding() == Encodings.UTF_16) {
-                    locals.setIndex(locals.getIndex() - 1);
-                    int c = inputReadRaw(locals);
-                    if (UTF16.isLowSurrogate(c) && locals.getIndex() > min && UTF16.isHighSurrogate(inputReadRaw(locals, locals.getIndex() - 1))) {
-                        locals.setIndex(locals.getIndex() - 1);
-                    }
-                } else {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new UnsupportedOperationException();
-                }
+                inputSkipIntl(locals, false);
                 i++;
             }
             return i;

@@ -39,7 +39,6 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -50,7 +49,6 @@ import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.GraalAccess;
 
@@ -134,7 +132,17 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public InitKind specifiedInitKindFor(Class<?> clazz) {
-        return classInitializationConfiguration.lookupKind(clazz.getTypeName());
+        return classInitializationConfiguration.lookupKind(clazz.getTypeName()).getLeft();
+    }
+
+    @Override
+    public boolean canBeProvenSafe(Class<?> clazz) {
+        InitKind initKind = specifiedInitKindFor(clazz);
+        return initKind == null || (initKind.isDelayed() && !isStrictlyDefined(clazz));
+    }
+
+    private Boolean isStrictlyDefined(Class<?> clazz) {
+        return classInitializationConfiguration.lookupKind(clazz.getTypeName()).getRight();
     }
 
     @Override
@@ -394,7 +402,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     }
 
     private void setSubclassesAsRunTime(Class<?> clazz) {
-        if (clazz.isInterface() && !ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(clazz))) {
+        if (clazz.isInterface() && !metaAccess.lookupJavaType(clazz).declaresDefaultMethods()) {
             /*
              * An interface that does not declare a default method is independent from a class
              * initialization point of view, i.e., it is not initialized when a class implementing
@@ -404,7 +412,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
         loader.findSubclasses(clazz, false).stream()
                         .filter(c -> !c.equals(clazz))
-                        .filter(c -> !(c.isInterface() && !ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(c))))
+                        .filter(c -> !(c.isInterface() && !metaAccess.lookupJavaType(c).declaresDefaultMethods()))
                         .forEach(c -> classInitializationConfiguration.insert(c.getTypeName(), InitKind.RUN_TIME, "subtype of " + clazz.getTypeName(), true));
     }
 
@@ -471,7 +479,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     private void forceInitializeInterfaces(Class<?>[] interfaces, String reason) {
         for (Class<?> iface : interfaces) {
-            if (ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(iface))) {
+            if (metaAccess.lookupJavaType(iface).declaresDefaultMethods()) {
                 classInitializationConfiguration.insert(iface.getTypeName(), InitKind.BUILD_TIME, reason, true);
 
                 ensureClassInitialized(iface, false);
@@ -507,7 +515,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                                                     c.getTypeName(), "initialize-at-build-time")))
                                     .append("\n");
                 } else {
-                    assert specifiedKind.isDelayed() : "Specified kind must be the same as actual kind";
+                    assert specifiedKind.isDelayed() : "Specified kind must be the same as actual kind for type " + c.getTypeName();
                     String reason = classInitializationConfiguration.lookupReason(c.getTypeName());
                     detailedMessage.append(c.getTypeName()).append(" the class was requested to be initialized at run time (").append(reason).append("). ")
                                     .append(classInitializationErrorMessage(c, "Try avoiding to initialize the class that caused initialization of " + c.getTypeName()))
@@ -564,7 +572,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
         superResult = superResult.max(processInterfaces(clazz, memoize));
 
-        if (memoize && superResult == InitKind.BUILD_TIME && clazzResult == InitKind.RUN_TIME && specifiedInitKindFor(clazz) == null) {
+        if (memoize && superResult == InitKind.BUILD_TIME && clazzResult == InitKind.RUN_TIME && canBeProvenSafe(clazz)) {
             /*
              * Check if the class initializer is side-effect free using a simple intraprocedural
              * analysis.
@@ -603,7 +611,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         InitKind result = InitKind.BUILD_TIME;
 
         for (Class<?> iface : clazz.getInterfaces()) {
-            if (ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(iface))) {
+            if (metaAccess.lookupJavaType(iface).declaresDefaultMethods()) {
                 /*
                  * An interface that declares default methods is initialized when a class
                  * implementing it is initialized. So we need to inherit the InitKind from such an
@@ -634,19 +642,9 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         } else if (specifiedInitKindFor(clazz) != null) {
             return specifiedInitKindFor(clazz);
         } else {
-            ClassLoader typeClassLoader = clazz.getClassLoader();
-            if (typeClassLoader == null ||
-                            typeClassLoader == NativeImageGenerator.class.getClassLoader() ||
-                            typeClassLoader == com.sun.crypto.provider.SunJCE.class.getClassLoader() ||
-                            /* JDK 11 */
-                            typeClassLoader == OptionKey.class.getClassLoader() ||
-                            /* JDK 15 */
-                            typeClassLoader == ConfigurableClassInitialization.class.getClassLoader()) {
-                return InitKind.BUILD_TIME;
-            }
+            /* The default value. */
+            return InitKind.RUN_TIME;
         }
-
-        return InitKind.RUN_TIME;
     }
 
     private static boolean isProxyFromAnnotation(Class<?> clazz) {

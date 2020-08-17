@@ -25,11 +25,11 @@
 
 package com.oracle.svm.core.jdk;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
-
-import java.util.concurrent.atomic.AtomicLong;
 
 @TargetClass(java.util.SplittableRandom.class)
 final class Target_java_util_SplittableRandom {
@@ -66,7 +66,10 @@ public class SplittableRandomAccessors {
         return result;
     }
 
-    private static final Object lock = new Object();
+    private static class Lock {
+    }
+
+    private static final Lock lock = new Lock();
 
     // Checkstyle: allow synchronization
     private static AtomicLong initialize() {

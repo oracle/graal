@@ -105,12 +105,6 @@ public class HotSpotClassSubstitutions {
         }
     }
 
-    @MethodSubstitution(isStatic = false)
-    public static boolean isPrimitive(final Class<?> thisObj) {
-        KlassPointer klass = ClassGetHubNode.readClass(thisObj);
-        return klass.isNull();
-    }
-
     @Fold
     public static ResolvedJavaType getObjectType(@Fold.InjectedParameter MetaAccessProvider metaAccesss) {
         return metaAccesss.lookupJavaType(Object.class);

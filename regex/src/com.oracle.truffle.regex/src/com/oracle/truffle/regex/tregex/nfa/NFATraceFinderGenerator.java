@@ -286,10 +286,12 @@ public final class NFATraceFinderGenerator {
         return new NFA(originalNFA.getAst(), dummyInitialState, null, null, newAnchoredEntry, newUnAnchoredEntry, states, stateID, transitionID, preCalculatedResults);
     }
 
-    private void createTransition(NFAState source, NFAState target, NFAStateTransition originalTransition,
+    private NFAStateTransition createTransition(NFAState source, NFAState target, NFAStateTransition originalTransition,
                     PreCalculatedResultFactory preCalcResult, int preCalcResultIndex) {
         originalTransition.getGroupBoundaries().applyToResultFactory(preCalcResult, preCalcResultIndex);
-        source.setSuccessors(new NFAStateTransition[]{new NFAStateTransition((short) transitionID.inc(), source, target, originalTransition.getGroupBoundaries())}, true);
+        NFAStateTransition copy = new NFAStateTransition((short) transitionID.inc(), source, target, originalTransition.getCodePointSet(), originalTransition.getGroupBoundaries());
+        source.setSuccessors(new NFAStateTransition[]{copy}, true);
+        return copy;
     }
 
     private PreCalculatedResultFactory resultFactory() {
@@ -297,7 +299,8 @@ public final class NFATraceFinderGenerator {
     }
 
     private NFAStateTransition copyEntry(NFAState dummyInitialState, NFAStateTransition originalReverseEntry) {
-        return new NFAStateTransition((short) transitionID.inc(), copy(originalReverseEntry.getSource()), dummyInitialState, GroupBoundaries.getEmptyInstance());
+        return new NFAStateTransition((short) transitionID.inc(), copy(originalReverseEntry.getSource()), dummyInitialState, originalReverseEntry.getCodePointSet(),
+                        GroupBoundaries.getEmptyInstance());
     }
 
     private NFAState copy(NFAState s) {

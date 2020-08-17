@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.core.meta;
 
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -39,25 +34,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /** An object constant that holds a direct reference to the object. */
 public final class DirectSubstrateObjectConstant extends SubstrateObjectConstant {
 
-    @Platforms(Platform.HOSTED_ONLY.class) //
-    private static final AtomicReferenceFieldUpdater<DirectSubstrateObjectConstant, Object> ROOT_UPDATER = //
-                    AtomicReferenceFieldUpdater.newUpdater(DirectSubstrateObjectConstant.class, Object.class, "root");
-
     /** The raw object wrapped by this constant. */
     private final Object object;
-
-    /**
-     * An object specifying the origin of this constant. This value is used to distinguish between
-     * various constants of the same type. Only objects coming from static final fields and
-     * from @Fold annotations processing have a root. The static final field originated objects use
-     * the field itself as a root while the @Fold originated objects use the folded method as a
-     * root. The subtree of a root object shares the same root information as the root object, i.e.,
-     * the root information is transiently passed to the statically reachable objects. Other
-     * constants, embedded in the code, might not have a root. The root is only used at image build
-     * time.
-     */
-    @Platforms(Platform.HOSTED_ONLY.class) //
-    private volatile Object root;
 
     DirectSubstrateObjectConstant(Object object, boolean compressed) {
         super(compressed);
@@ -88,23 +66,6 @@ public final class DirectSubstrateObjectConstant extends SubstrateObjectConstant
     public SubstrateObjectConstant uncompress() {
         assert compressed;
         return new DirectSubstrateObjectConstant(object, false);
-    }
-
-    @Override
-    public boolean setRoot(Object newRoot) {
-        if (root == null && newRoot != null) {
-            /*
-             * It is possible that the same constant is reached on paths from different roots. We
-             * can only register one, we choose the first one.
-             */
-            return ROOT_UPDATER.compareAndSet(this, null, newRoot);
-        }
-        return false;
-    }
-
-    @Override
-    public Object getRoot() {
-        return root;
     }
 
     @Override

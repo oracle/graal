@@ -27,11 +27,10 @@ package com.oracle.svm.driver;
 import java.util.List;
 import java.util.Queue;
 
-import com.oracle.svm.driver.MacroOption.MacroOptionKind;
-
 class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
 
     private static final String helpTextServer = NativeImage.getResource("/HelpServer.txt");
+    private static final String enableServerOption = "--experimental-build-server";
 
     ServerOptionHandler(NativeImageServer nativeImage) {
         super(nativeImage);
@@ -41,17 +40,21 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
     public boolean consume(Queue<String> args) {
         String headArg = args.peek();
         switch (headArg) {
-            case "--help-extra":
+            case "--help-experimental-build-server":
                 args.poll();
-                nativeImage.showMessage(DefaultOptionHandler.helpExtraText);
                 nativeImage.showMessage(helpTextServer);
-                nativeImage.optionRegistry.showOptions(MacroOptionKind.Macro, true, nativeImage::showMessage);
                 nativeImage.showNewline();
                 System.exit(0);
                 return true;
             case DefaultOptionHandler.noServerOption:
                 args.poll();
                 nativeImage.setUseServer(false);
+                return true;
+            case enableServerOption:
+                args.poll();
+                if (!nativeImage.isDryRun()) {
+                    nativeImage.setUseServer(true);
+                }
                 return true;
             case DefaultOptionHandler.verboseServerOption:
                 args.poll();

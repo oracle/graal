@@ -45,8 +45,8 @@ import java.util.function.Consumer;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
@@ -55,7 +55,7 @@ import static org.graalvm.wasm.WasmTracing.trace;
 
 public class WasiFdWrite extends WasmBuiltinRootNode {
 
-    public WasiFdWrite(WasmLanguage language, WasmModule module) {
+    public WasiFdWrite(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
@@ -91,7 +91,7 @@ public class WasiFdWrite extends WasmBuiltinRootNode {
 
         trace("WasiFdWrite EXECUTE");
 
-        WasmMemory memory = module.symbolTable().memory();
+        WasmMemory memory = instance.memory();
         int num = 0;
         for (int i = 0; i < iovcnt; i++) {
             int ptr = memory.load_i32(this, iov + (i * 8 + 0));

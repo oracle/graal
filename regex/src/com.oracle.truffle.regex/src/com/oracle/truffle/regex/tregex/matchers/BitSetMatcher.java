@@ -41,9 +41,10 @@
 package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.BitSets;
 
 /**
  * Matcher that matches multiple characters with a common high byte using a bit set.<br>
@@ -54,9 +55,9 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 public abstract class BitSetMatcher extends InvertibleCharMatcher {
 
     private final int highByte;
-    private final CompilationFinalBitSet bitSet;
+    @CompilationFinal(dimensions = 1) private final long[] bitSet;
 
-    BitSetMatcher(boolean invert, int highByte, CompilationFinalBitSet bitSet) {
+    BitSetMatcher(boolean invert, int highByte, long[] bitSet) {
         super(invert);
         assert highByte != 0 : "use NullHighByteBitSetMatcher instead!";
         this.highByte = highByte;
@@ -71,20 +72,20 @@ public abstract class BitSetMatcher extends InvertibleCharMatcher {
      * @param bitSet the bit set to match the low byte of the characters to match.
      * @return a new {@link BitSetMatcher} or a {@link NullHighByteBitSetMatcher}.
      */
-    public static InvertibleCharMatcher create(boolean invert, int highByte, CompilationFinalBitSet bitSet) {
+    public static InvertibleCharMatcher create(boolean invert, int highByte, long[] bitSet) {
         if (highByte == 0) {
             return NullHighByteBitSetMatcher.create(invert, bitSet);
         }
         return BitSetMatcherNodeGen.create(invert, highByte, bitSet);
     }
 
-    public CompilationFinalBitSet getBitSet() {
+    public long[] getBitSet() {
         return bitSet;
     }
 
     @Specialization
-    public boolean match(int c, boolean compactString) {
-        return result(!compactString && highByte(c) == highByte && bitSet.get(lowByte(c)));
+    public boolean match(int c) {
+        return result(highByte(c) == highByte && BitSets.get(bitSet, lowByte(c)));
     }
 
     @Override
@@ -96,6 +97,6 @@ public abstract class BitSetMatcher extends InvertibleCharMatcher {
     @Override
     @CompilerDirectives.TruffleBoundary
     public String toString() {
-        return modifiersToString() + "{hi " + DebugUtil.charToString(highByte) + " lo " + bitSet + "}";
+        return modifiersToString() + "{hi " + DebugUtil.charToString(highByte) + " lo " + BitSets.toString(bitSet) + "}";
     }
 }

@@ -57,7 +57,6 @@ import sun.misc.Unsafe;
 public abstract class TRegexExecutorEntryNode extends Node {
 
     private static final sun.misc.Unsafe UNSAFE;
-    private static final Field coderField;
     private static final long coderFieldOffset;
 
     static {
@@ -66,20 +65,14 @@ public abstract class TRegexExecutorEntryNode extends Node {
             // UNSAFE is needed for detecting compact strings, which are not implemented prior to
             // java9
             UNSAFE = null;
-            coderField = null;
             coderFieldOffset = 0;
         } else {
             UNSAFE = getUnsafe();
-            Field field = null;
-            for (Field f : String.class.getDeclaredFields()) {
-                if (f.getName().equals("coder")) {
-                    field = f;
-                    break;
-                }
-            }
-            coderField = field;
-            if (coderField == null) {
-                throw new RuntimeException("failed to get coder field offset");
+            Field coderField;
+            try {
+                coderField = String.class.getDeclaredField("coder");
+            } catch (NoSuchFieldException e) {
+                throw new RuntimeException("failed to get coder field offset", e);
             }
             coderFieldOffset = UNSAFE.objectFieldOffset(coderField);
         }
@@ -117,6 +110,11 @@ public abstract class TRegexExecutorEntryNode extends Node {
     }
 
     public abstract Object execute(Object input, int fromIndex, int index, int maxIndex);
+
+    @Specialization
+    Object doByteArray(byte[] input, int fromIndex, int index, int maxIndex) {
+        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), false);
+    }
 
     @Specialization(guards = "isCompactString(input)")
     Object doStringCompact(String input, int fromIndex, int index, int maxIndex) {

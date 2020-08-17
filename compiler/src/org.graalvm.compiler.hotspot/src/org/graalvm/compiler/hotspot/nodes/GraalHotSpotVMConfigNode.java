@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,6 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerator;
 import org.graalvm.compiler.hotspot.HotSpotMarkId;
-import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
@@ -71,6 +70,7 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
         super(TYPE, stamp);
         this.config = config;
         this.markId = markId;
+        assert markId != null;
     }
 
     /**
@@ -84,6 +84,7 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
         super(TYPE, StampFactory.forKind(kind));
         this.config = config;
         this.markId = markId;
+        assert markId != null;
     }
 
     @Override
@@ -98,6 +99,9 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
     @NodeIntrinsic
     private static native int loadIntConfigValue(@ConstantNodeParameter HotSpotMarkId markId);
 
+    @NodeIntrinsic
+    private static native boolean loadBoolConfigValue(@ConstantNodeParameter HotSpotMarkId markId);
+
     public static long cardTableAddress() {
         return loadLongConfigValue(HotSpotMarkId.CARD_TABLE_ADDRESS);
     }
@@ -110,9 +114,24 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
         return loadIntConfigValue(HotSpotMarkId.LOG_OF_HEAP_REGION_GRAIN_BYTES);
     }
 
+    public static boolean verifyOops() {
+        return loadBoolConfigValue(HotSpotMarkId.VERIFY_OOPS);
+    }
+
+    public static long verifyOopBits() {
+        return loadLongConfigValue(HotSpotMarkId.VERIFY_OOP_BITS);
+    }
+
+    public static long verifyOopMask() {
+        return loadLongConfigValue(HotSpotMarkId.VERIFY_OOP_MASK);
+    }
+
+    public static long verifyOopCounterAddress() {
+        return loadLongConfigValue(HotSpotMarkId.VERIFY_OOP_COUNT_ADDRESS);
+    }
+
     public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter GraalHotSpotVMConfig config, HotSpotMarkId mark) {
-        HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) b.getReplacements();
-        if (replacements.isEncodingSnippets()) {
+        if (b.getReplacements().isEncodingSnippets()) {
             // This plugin must be deferred so that these constants aren't embedded in libgraal
             return false;
         }
@@ -122,16 +141,22 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        Boolean generatePIC = GeneratePIC.getValue(tool.getOptions());
-        if (markId == null) {
-            return ConstantNode.forBoolean(!generatePIC);
-        } else if (!generatePIC) {
+        boolean generatePIC = GeneratePIC.getValue(tool.getOptions());
+        if (!generatePIC || !markId.isAvailable()) {
             if (markId == HotSpotMarkId.CARD_TABLE_ADDRESS) {
                 return ConstantNode.forLong(config.cardtableStartAddress);
             } else if (markId == HotSpotMarkId.CRC_TABLE_ADDRESS) {
                 return ConstantNode.forLong(config.crcTableAddress);
             } else if (markId == HotSpotMarkId.LOG_OF_HEAP_REGION_GRAIN_BYTES) {
                 return ConstantNode.forInt(config.logOfHRGrainBytes);
+            } else if (markId == HotSpotMarkId.VERIFY_OOPS) {
+                return ConstantNode.forBoolean(config.verifyOops);
+            } else if (markId == HotSpotMarkId.VERIFY_OOP_BITS) {
+                return ConstantNode.forLong(config.verifyOopBits);
+            } else if (markId == HotSpotMarkId.VERIFY_OOP_MASK) {
+                return ConstantNode.forLong(config.verifyOopMask);
+            } else if (markId == HotSpotMarkId.VERIFY_OOP_COUNT_ADDRESS) {
+                return ConstantNode.forLong(config.verifyOopCounterAddress);
             } else {
                 throw GraalError.shouldNotReachHere(markId.toString());
             }

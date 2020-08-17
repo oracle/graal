@@ -59,7 +59,7 @@ public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode 
     protected LLVMNativePointer alloc(VirtualFrame frame, long size,
                     @CachedLanguage LLVMLanguage language) {
         try {
-            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size, 8));
+            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(this, frame, language.getLLVMMemory(), getStackPointerSlot(), size, 8));
         } catch (LLVMStackOverflowError soe) {
             CompilerDirectives.transferToInterpreter();
             throw new LLVMAllocationFailureException(this, soe);

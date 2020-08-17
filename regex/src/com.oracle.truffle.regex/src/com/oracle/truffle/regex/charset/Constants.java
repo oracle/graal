@@ -44,11 +44,22 @@ public final class Constants {
 
     public static final int MAX_CODE_POINT = Character.MAX_CODE_POINT;
 
+    // 0x00 - 0x7f
+    public static final CodePointSet ASCII_RANGE = CodePointSet.createNoDedup(0x00, 0x7f);
+
     // 0x00 - 0xff
     public static final CodePointSet BYTE_RANGE = CodePointSet.createNoDedup(0x00, 0xff);
 
     // 0x00 - 0xffff
     public static final CodePointSet BMP_RANGE = CodePointSet.createNoDedup(0x00, 0xffff);
+
+    public static final CodePointSet BMP_RANGE_WITHOUT_LATIN1 = CodePointSet.createNoDedup(0x100, 0xffff);
+
+    // range of code points that need two bytes in UTF-8
+    public static final CodePointSet UTF8_TWO_BYTE_RANGE = CodePointSet.createNoDedup(0x80, 0x7ff);
+
+    // range of code points that need three bytes in UTF-8
+    public static final CodePointSet UTF8_THREE_BYTE_RANGE = CodePointSet.createNoDedup(0x800, 0xffff);
 
     public static final CodePointSet BMP_WITHOUT_SURROGATES = CodePointSet.createNoDedup(0x0000, 0xd7ff, 0xe000, 0xffff);
 
@@ -59,6 +70,8 @@ public final class Constants {
     public static final CodePointSet LEAD_SURROGATES = CodePointSet.createNoDedup(0xd800, 0xdbff);
 
     public static final CodePointSet TRAIL_SURROGATES = CodePointSet.createNoDedup(0xdc00, 0xdfff);
+
+    public static final CodePointSet ASTRAL_SYMBOLS_AND_LONE_SURROGATES = CodePointSet.createNoDedup(0xd800, 0xdfff, 0x010000, 0x10ffff);
 
     // [0-9]
     public static final CodePointSet DIGITS = CodePointSet.createNoDedup('0', '9');
@@ -206,7 +219,7 @@ public final class Constants {
                     0x000e, 0x2027,
                     0x202a, 0x10ffff);
 
-    public static final CodePointSet DOT_ALL = CodePointSet.getFull();
+    public static final CodePointSet DOT_ALL = CodePointSet.createNoDedup(0x0000, 0x10ffff);
 
     // [A-Fa-f0-9]
     public static final CodePointSet HEX_CHARS = CodePointSet.createNoDedup(

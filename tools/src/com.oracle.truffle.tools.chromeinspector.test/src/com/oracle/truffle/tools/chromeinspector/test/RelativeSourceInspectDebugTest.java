@@ -169,6 +169,8 @@ public class RelativeSourceInspectDebugTest {
         // @formatter:on
         // CheckStyle: resume line length check
 
+        // Reset the delegate so that we can GC the tested Engine
+        ProxyLanguage.setDelegate(new ProxyLanguage());
         tester.finish();
     }
 
@@ -206,6 +208,9 @@ public class RelativeSourceInspectDebugTest {
                         "{\"method\":\"Debugger.resumed\"}\n"));
         // @formatter:on
         // CheckStyle: resume line length check
+        language = null;
+        // Reset the delegate so that we can GC the tested Engine
+        ProxyLanguage.setDelegate(new ProxyLanguage());
         tester.finish();
     }
 

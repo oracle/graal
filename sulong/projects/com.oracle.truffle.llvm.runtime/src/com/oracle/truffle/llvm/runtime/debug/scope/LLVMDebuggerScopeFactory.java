@@ -42,7 +42,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -96,7 +95,7 @@ public final class LLVMDebuggerScopeFactory {
                 if (slotValue == null) { // slots are null if they are cleared by LLVMFrameNuller
                     slotValue = "<unavailable>";
                 }
-                TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(stackValue.getType(), slotValue, dataLayout);
+                Object value = CommonNodeFactory.toGenericDebuggerValue(stackValue.getType(), slotValue, dataLayout);
                 entries.add(convertIdentifier(identifier, context), value);
             }
         }
@@ -113,7 +112,7 @@ public final class LLVMDebuggerScopeFactory {
                 int id = global.getBitcodeID(false);
                 int index = global.getSymbolIndex(false);
                 AssumedValue<LLVMPointer>[] globals = context.findSymbolTable(id);
-                final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), globals[index].get(), dataLayout);
+                final Object value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), globals[index].get(), dataLayout);
                 entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
             }
         }
@@ -128,7 +127,7 @@ public final class LLVMDebuggerScopeFactory {
                 int id = global.getBitcodeID(false);
                 int index = global.getSymbolIndex(false);
                 AssumedValue<LLVMPointer>[] globals = context.findSymbolTable(id);
-                final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), globals[index].get(), dataLayout);
+                final Object value = CommonNodeFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), globals[index].get(), dataLayout);
                 entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
             }
         }

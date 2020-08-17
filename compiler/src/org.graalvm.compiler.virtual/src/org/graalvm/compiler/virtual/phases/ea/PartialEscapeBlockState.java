@@ -74,7 +74,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
     }
 
     /**
-     * Usage count for the objectStates array, to avoid unneessary copying.
+     * Usage count for the objectStates array, to avoid unnecessary copying.
      */
     private RefCount arrayRefCount;
 

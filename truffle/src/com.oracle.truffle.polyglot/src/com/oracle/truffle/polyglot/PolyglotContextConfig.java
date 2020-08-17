@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -151,6 +151,9 @@ final class PolyglotContextConfig {
     boolean isAccessPermitted(PolyglotLanguage from, PolyglotLanguage to) {
         if (to.isHost() || to.cache.isInternal()) {
             // everyone has access to host or internal languages
+            return true;
+        }
+        if (from == to) {
             return true;
         }
         if (from == null) {

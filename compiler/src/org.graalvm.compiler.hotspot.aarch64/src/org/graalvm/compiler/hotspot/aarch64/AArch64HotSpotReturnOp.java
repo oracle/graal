@@ -70,5 +70,6 @@ public final class AArch64HotSpotReturnOp extends AArch64HotSpotEpilogueOp {
         final boolean emitSafepoint = !isStub;
         leaveFrame(crb, masm, emitSafepoint, requiresReservedStackAccessCheck);
         masm.ret(lr);
+        crb.frameContext.returned(crb);
     }
 }

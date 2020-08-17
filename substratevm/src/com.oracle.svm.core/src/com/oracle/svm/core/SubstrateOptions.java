@@ -25,8 +25,8 @@
 package com.oracle.svm.core;
 
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.None;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.None;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
 import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
@@ -77,6 +77,15 @@ public class SubstrateOptions {
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false);
 
+    @Option(help = "Builds a statically linked executable with libc dynamically linked", type = Expert, stability = OptionStability.EXPERIMENTAL)//
+    public static final HostedOptionKey<Boolean> StaticExecutableWithDynamicLibC = new HostedOptionKey<Boolean>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            StaticExecutable.update(values, true);
+            super.onValueUpdate(values, oldValue, newValue);
+        }
+    };
+
     public static final int ForceFallback = 10;
     public static final int Automatic = 5;
     public static final int NoFallback = 0;
@@ -94,6 +103,7 @@ public class SubstrateOptions {
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
     public static final String WATCHPID_PREFIX = "-watchpid";
     private static ValueUpdateHandler optimizeValueUpdateHandler;
+    private static ValueUpdateHandler debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
 
     @Option(help = "Show available options based on comma-separated option-types (allowed categories: User, Expert, Debug).")//
     public static final OptionKey<String> PrintFlags = new OptionKey<>(null);
@@ -120,6 +130,10 @@ public class SubstrateOptions {
 
     public static void setOptimizeValueUpdateHandler(ValueUpdateHandler updateHandler) {
         SubstrateOptions.optimizeValueUpdateHandler = updateHandler;
+    }
+
+    public static void setDebugInfoValueUpdateHandler(ValueUpdateHandler updateHandler) {
+        SubstrateOptions.debugInfoValueUpdateHandler = updateHandler;
     }
 
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
@@ -210,8 +224,8 @@ public class SubstrateOptions {
     @Option(help = "Enable support for threads and and thread-local variables (disable for single-threaded implementation)")//
     public static final HostedOptionKey<Boolean> MultiThreaded = new HostedOptionKey<>(true);
 
-    @Option(help = "Use only a writable native image heap.")//
-    public static final HostedOptionKey<Boolean> UseOnlyWritableBootImageHeap = new HostedOptionKey<>(false);
+    @Option(help = "Use only a writable native image heap (requires ld.gold linker)")//
+    public static final HostedOptionKey<Boolean> ForceNoROSectionRelocations = new HostedOptionKey<>(false);
 
     @Option(help = "Support multiple isolates.") //
     public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<Boolean>(null) {
@@ -385,7 +399,7 @@ public class SubstrateOptions {
                 /*
                  * The LLVM backend doesn't support speculative execution attack mitigation
                  */
-                MitigateSpeculativeExecutionAttacks.update(values, None);
+                SpectrePHTBarriers.update(values, None);
             }
         }
     };
@@ -464,16 +478,22 @@ public class SubstrateOptions {
     @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> UseReferenceHandlerThread = new HostedOptionKey<>(false);
 
+    @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<Integer>(0) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-            // force update of TrackNodeSourcePosition
-            if (newValue > 0 && !Boolean.TRUE.equals(values.get(TrackNodeSourcePosition))) {
-                TrackNodeSourcePosition.update(values, true);
-            }
+            debugInfoValueUpdateHandler.onValueUpdate(values, oldValue, newValue);
         }
     };
+
+    private static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, @SuppressWarnings("unused") Integer oldValue, Integer newValue) {
+        // force update of TrackNodeSourcePosition
+        if (newValue > 0 && !Boolean.TRUE.equals(values.get(TrackNodeSourcePosition))) {
+            TrackNodeSourcePosition.update(values, true);
+        }
+    }
+
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
     public static final HostedOptionKey<String[]> DebugInfoSourceSearchPath = new HostedOptionKey<String[]>(null) {
     };

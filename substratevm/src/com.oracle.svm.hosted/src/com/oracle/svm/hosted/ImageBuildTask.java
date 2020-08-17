@@ -42,11 +42,11 @@ public interface ImageBuildTask {
      * {@code compilationClassLoader}.
      *
      * @param args arguments passed with the request to the SVM image builder
-     * @param compilationClassLoader the classloader used for this image building task
+     * @param imageClassLoader the classloader used for this image building task
      * @return exit status of compilation
      * @see NativeImageBuildServer
      */
-    int build(String[] args, NativeImageClassLoader compilationClassLoader);
+    int build(String[] args, ImageClassLoader imageClassLoader);
 
     /**
      * Requests interruption of the image build.

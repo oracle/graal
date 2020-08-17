@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,11 +82,12 @@ public final class SpecializationData extends TemplateMethod {
     private final Set<SpecializationData> excludedBy = new LinkedHashSet<>();
     private String insertBeforeName;
     private SpecializationData insertBefore;
+    private boolean replaced;
     private boolean reachable;
     private boolean reachesFallback;
     private int index;
     private DSLExpression limitExpression;
-    private SpecializationData excludeCompanion;
+    private SpecializationData uncachedSpecialization;
     private final boolean reportPolymorphism;
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions, boolean hasUnexpectedResultRewrite,
@@ -105,6 +106,7 @@ public final class SpecializationData extends TemplateMethod {
         copy.guards.addAll(guards);
         copy.caches = new ArrayList<>(caches);
         copy.assumptionExpressions = new ArrayList<>(assumptionExpressions);
+        copy.replaced = replaced;
         copy.replaces.addAll(replaces);
         copy.replacesNames.addAll(replacesNames);
         copy.excludedBy.addAll(excludedBy);
@@ -116,12 +118,12 @@ public final class SpecializationData extends TemplateMethod {
         return copy;
     }
 
-    public void setExcludeCompanion(SpecializationData removeCompanion) {
-        this.excludeCompanion = removeCompanion;
+    public void setUncachedSpecialization(SpecializationData removeCompanion) {
+        this.uncachedSpecialization = removeCompanion;
     }
 
-    public SpecializationData getExcludeCompanion() {
-        return excludeCompanion;
+    public SpecializationData getUncachedSpecialization() {
+        return uncachedSpecialization;
     }
 
     public boolean isTrivialExpression(DSLExpression expression) {
@@ -316,8 +318,16 @@ public final class SpecializationData extends TemplateMethod {
         this.reachable = reachable;
     }
 
+    public void setReplaced(boolean replaced) {
+        this.replaced = replaced;
+    }
+
     public boolean isReachable() {
         return reachable;
+    }
+
+    public boolean isReplaced() {
+        return replaced;
     }
 
     public boolean isPolymorphic() {
@@ -427,6 +437,13 @@ public final class SpecializationData extends TemplateMethod {
 
     public int getIndex() {
         return index;
+    }
+
+    public int getIntrospectionIndex() {
+        if (getMethod() == null) {
+            return -1;
+        }
+        return index - 1;
     }
 
     public NodeData getNode() {
@@ -587,6 +604,23 @@ public final class SpecializationData extends TemplateMethod {
         if (prev.isGuardBindsCache()) {
             // may fallthrough due to limit
             return true;
+        }
+
+        if (node.isGenerateUncached() && !isReplaced() && prev.isReplaced()) {
+            // becomes reachable in the uncached node
+            return true;
+        }
+
+        /*
+         * Cached libraries have an implicit accepts guard and generate an uncached specialization
+         * which avoids any fallthrough except if there is a specialization that replaces it.
+         */
+        for (CacheExpression cache : prev.getCaches()) {
+            if (cache.isCachedLibrary()) {
+                if (getReplaces().contains(prev)) {
+                    return true;
+                }
+            }
         }
 
         Iterator<Parameter> currentSignature = getSignatureParameters().iterator();
