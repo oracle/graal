@@ -1169,6 +1169,18 @@ public final class Meta implements ContextAccess {
         return resolveSymbolOrFail(type, classLoader, java_lang_NoClassDefFoundError);
     }
 
+    /**
+     * Resolves the symbol using {@link #resolveSymbolOrFail(Symbol, StaticObject)}, and applies
+     * access checking, possibly throwing {@link IllegalAccessError}.
+     */
+    public Klass resolveSymbolAndAccessCheck(Symbol<Type> type, Klass accessingKlass) {
+        Klass klass = resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), java_lang_NoClassDefFoundError);
+        if (!Klass.checkAccess(klass, accessingKlass)) {
+            throw Meta.throwException(java_lang_IllegalAccessError);
+        }
+        return klass;
+    }
+
     @TruffleBoundary
     public static String toHostString(StaticObject str) {
         if (StaticObject.isNull(str)) {
