@@ -77,7 +77,7 @@ public interface NodeFactory {
 
     LLVMStatementNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
 
-    LLVMOffsetStoreNode createOptimizedMemoryStore(Type resolvedType, LLVMExpressionNode value) throws TypeOverflowException;
+    LLVMOffsetStoreNode createOffsetMemoryStore(Type resolvedType, LLVMExpressionNode value) throws TypeOverflowException;
 
     LLVMExpressionNode createRMWXchg(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
 

@@ -517,7 +517,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMOffsetStoreNode createOptimizedMemoryStore(Type resolvedType, LLVMExpressionNode value) throws TypeOverflowException {
+    public LLVMOffsetStoreNode createOffsetMemoryStore(Type resolvedType, LLVMExpressionNode value) throws TypeOverflowException {
         if (resolvedType instanceof PrimitiveType) {
             switch (((PrimitiveType) resolvedType).getPrimitiveKind()) {
                 case I8:

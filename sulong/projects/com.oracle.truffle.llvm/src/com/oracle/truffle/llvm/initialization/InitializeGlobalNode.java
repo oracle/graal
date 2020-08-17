@@ -169,7 +169,7 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
             try {
                 int size = (int) type.getSize(dataLayout);
                 valueOffsets.add(buffer.position());
-                valueStores.add(runtime.getNodeFactory().createOptimizedMemoryStore(type, value));
+                valueStores.add(runtime.getNodeFactory().createOffsetMemoryStore(type, value));
                 valueSizes.add(size);
                 buffer.position(buffer.position() + size);
             } catch (TypeOverflowException e) {
