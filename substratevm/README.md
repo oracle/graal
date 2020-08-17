@@ -15,12 +15,12 @@ the classes of your application and their dependencies, including those from the
 JDK. It analyses these classes to determine which classes, methods and fields
 are reachable during application execution. It then ahead-of-time compiles all
 reachable code and data into a native executable for a specific operating system
-and architecture.  This entire process is called **image build-time** to
+and architecture. This entire process is called **image build time** to
 clearly distinguish it from the compilation of Java source code to bytecode.
 
 GraalVM Native Image supports JVM-based languages, e.g., Java, Scala, Clojure,
 Kotlin. The resulting native image can, optionally, execute dynamic languages
-like JavaScript, Ruby, R, or Python. Polyglot embeddings can also be compiled
+like JavaScript, Ruby, R or Python. Polyglot embeddings can also be compiled
 ahead-of-time. To inform `native-image` of guest languages used by an
 application, specify `--language:<languageId>` for each guest language used
 (e.g., `--language:js`).
@@ -52,6 +52,8 @@ On Oracle Linux use `yum` package manager:
 ```
 sudo yum install gcc glibc-devel zlib-devel
 ```
+You can still install `libstdc++-static` as long as the optional repositories are enabled (_ol7_optional_latest_ on Oracle Linux 7 and _ol8_codeready_builder_ on Oracle Linux 8).
+
 On  Ubuntu Linux use `apt-get` package manager:
 ```
 sudo apt-get install build-essential libz-dev zlib1g-dev
@@ -129,8 +131,8 @@ com.oracle.svm.core.VM=GraalVM 20.2.0 Java 11 EE
 
 There is a small portion of Java features are not susceptible to ahead-of-time
 compilation, and will therefore miss out on the performance advantages. To be
-able to build a highly optimized native executable, we run an aggressive static
+able to build a highly optimized native executable, GraalVM runs an aggressive static
 analysis that requires a closed-world assumption, which means that all classes
-and all bytecodes that are reachable at runtime must be known at build-time.
+and all bytecodes that are reachable at run time must be known at build time.
 Therefore, it is not possible to load new data that have not been available
 during ahead-of-time compilation. Continue reading to the [GraalVM Native Image Compatibility and Optimization Guide](Limitations.md).

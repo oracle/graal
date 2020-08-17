@@ -71,7 +71,7 @@ supported.
 
 **Args**
 
-Use this property if your project requires custom `native-image` command line options to build correctly. For example, the `native-image-configure-examples/configure-at-runtime-example` has `Args = --initialize-at-build-time=com.fasterxml.jackson.annotation.JsonProperty$Access`  in its `native-image.properties` file to ensure the class `com.fasterxml.jackson.annotation.JsonProperty$Access` gets initialized at image built time.
+Use this property if your project requires custom `native-image` command line options to build correctly. For example, the `native-image-configure-examples/configure-at-runtime-example` has `Args = --initialize-at-build-time=com.fasterxml.jackson.annotation.JsonProperty$Access`  in its `native-image.properties` file to ensure the class `com.fasterxml.jackson.annotation.JsonProperty$Access` gets initialized at image build time.
 
 **JavaArgs**
 
@@ -92,7 +92,7 @@ Note that using `ImageName` does not prevent the user to override the name later
 ### Order of Arguments Evaluation
 The arguments passed to `native-image` are evaluated left-to-right. This also
 extends to arguments that get passed indirectly via `META-INF/native-image`
-based native-image configuration. Suppose you have a jar file that contains
+based native image configuration. Suppose you have a jar file that contains
 _native-image.properties_ with `Args = -H:Optimize=0`. Then by using the
 `-H:Optimize=2` option after `-cp <jar-file>` you can override the setting that
 comes from the jar file.
@@ -118,21 +118,21 @@ NativeImageArgs = --configurations-path /home/user/custom-image-configs \
 ## Runtime vs Build-Time Initialization
 
 Building your application into a native image allows you to decide which parts
-of your application should be run at image build-time and which parts have to
-run at image runtime.
+of your application should be run at image build time and which parts have to
+run at image run time.
 
 Since GraalVM 19.0 all class-initialization code (static initializers and static
 field initialization) of the application you build an image for will be executed
-at image runtime by default. Sometimes it is beneficial to allow class
-initialization code to get executed at image build-time for faster startup (e.g.
-if some static fields get initialized to runtime independent data). This can be
-controlled with the following native-image options:
+at image run time by default. Sometimes it is beneficial to allow class
+initialization code to get executed at image build time for faster startup (e.g.,
+if some static fields get initialized to run-time independent data). This can be
+controlled with the following `native-image` options:
 
 * `--initialize-at-build-time=<comma-separated list of packages and classes>`
 * `--initialize-at-run-time=<comma-separated list of packages and classes>`
 
-In addition to that, arbitrary computations are allowed at built time that can be put into `ImageSingletons` that are
-accessible at image runtime. For more information please have a look at [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/tree/master/native-image-configure-examples).
+In addition to that, arbitrary computations are allowed at build time that can be put into `ImageSingletons` that are
+accessible at image run time. For more information please have a look at [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/tree/master/native-image-configure-examples).
 
 For more information, continue reading to the [Class Initialization in Native Image](ClassInitialization.md) guide.
 

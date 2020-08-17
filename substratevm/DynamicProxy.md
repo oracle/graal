@@ -3,13 +3,13 @@
 Java dynamic proxies, implemented by `java.lang.reflect.Proxy`, provide a mechanism which enables object level access control by routing all method invocations through a `java.lang.reflect.InvocationHandler`.
 Dynamic proxy classes are generated from a list of interfaces.
 
-Substrate VM doesn't provide machinery for generating and interpreting bytecodes at runtime.
-Therefore all dynamic proxy classes need to be generated at native image build-time.
+Substrate VM does not provide machinery for generating and interpreting bytecodes at run time.
+Therefore all dynamic proxy classes need to be generated at native image build time.
 
 See also the [guide on assisted configuration of Java resources and other dynamic features](Configuration.md).
 
 # Automatic Detection
-Substrate VM employs a simple static analysis that detects calls to `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[], InvocationHandler)` and `java.lang.reflect.Proxy.getProxyClass(ClassLoader, Class<?>[])` and tries to determine the list of interfaces that define dynamic proxies automatically. Given the list of interfaces, Substrate VM generates the proxy classes at image build-time and adds them to the native image heap.
+Substrate VM employs a simple static analysis that detects calls to `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[], InvocationHandler)` and `java.lang.reflect.Proxy.getProxyClass(ClassLoader, Class<?>[])` and tries to determine the list of interfaces that define dynamic proxies automatically. Given the list of interfaces, Substrate VM generates the proxy classes at image build time and adds them to the native image heap.
 In addition to generating the dynamic proxy class the constructor of the generated class that takes a `java.lang.reflect.InvocationHandler` argument, i.e., the one reflectively invoked by `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[], InvocationHandler)`, is registered for reflection so that dynamic proxy instances can be allocated at run time.
 
 The analysis is limited to situations where the list of interfaces comes from a constant array or an array that is allocated in the same method.
@@ -82,7 +82,7 @@ The static analysis covers code patterns most frequently used to define dynamic 
 For the exceptional cases where the analysis cannot discover the interface array there is also a manual dynamic proxy configuration mechanism.
 
 ## Manual Configuration
-Dynamic proxy classes can be generated at native image build-time by specifying the list of interfaces that they implement.
+Dynamic proxy classes can be generated at native image build time by specifying the list of interfaces that they implement.
 Substrate VM provides two options for this purpose: `-H:DynamicProxyConfigurationFiles=<comma-separated-config-files>` and `-H:DynamicProxyConfigurationResources=<comma-separated-config-resources>`.
 
 These options accept JSON files whose structure is an array of arrays of fully qualified interface names. For example:
@@ -106,8 +106,8 @@ In this case the generated dynamic proxy class only implements `java.lang.reflec
 
 ## Dynamic Proxy Classes in Static Initializers
 
-Dynamic proxy classes and instances of dynamic proxy classes that are defined in static initializers can be accessed at runtime without any special handling.
-This is possible since the static initializers are executed at native image build-time.
+Dynamic proxy classes and instances of dynamic proxy classes that are defined in static initializers can be accessed at run time without any special handling.
+This is possible since the static initializers are executed at native image build time.
 For example this will work:
 ```java
 private final static Comparator proxyInstance;
