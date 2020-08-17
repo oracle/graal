@@ -308,17 +308,20 @@ public final class LLVMContext {
              * dependency order, but not initialised. (For C: libsulong / For C++: libsulong,
              * libsulong++) The truffle cache in parse internal will catch future parsing of the
              * default internal.
+             *
+             * String[] sulongLibraryNames =
+             * language.getCapability(PlatformCapability.class).getSulongDefaultLibraries(); for
+             * (int i = sulongLibraryNames.length - 1; i >= 0; i--) { ExternalLibrary library =
+             * addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>"); TruffleFile
+             * file = library.hasFile() ? library.getFile() :
+             * env.getInternalTruffleFile(library.getPath().toUri());
+             * env.parseInternal(Source.newBuilder("llvm",
+             * file).internal(library.isInternal()).build()); }
              */
-            String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
-            for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
-                ExternalLibrary library = addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>");
-                TruffleFile file = library.hasFile() ? library.getFile() : env.getInternalTruffleFile(library.getPath().toUri());
-                env.parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
-            }
-            // TODO (PLi): after the default libraries have been loaded. The start function symbol,
-            // the sulong initialise context, and the sulong dispose context symbol could be setup
-            // here
-            // instead of being at findAndSetSulongSpecificFunctions in LoadModulesNode.
+            /*- TODO (PLi): after the default libraries have been loaded. The start function symbol,
+             *   the sulong initialise context, and the sulong dispose context symbol could be setup
+             *   here instead of being at findAndSetSulongSpecificFunctions in LoadModulesNode.
+             */
             CallTarget libpolyglotMock = env.parseInternal(Source.newBuilder("llvm",
                             env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()).toUri())).internal(true).build());
             libpolyglotMock.call();

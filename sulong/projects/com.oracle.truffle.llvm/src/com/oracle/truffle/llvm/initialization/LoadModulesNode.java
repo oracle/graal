@@ -70,13 +70,19 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The {@link LoadModulesNode} initialise libraries. This involves building the scopes (local scope
- * and global scope), allocating the symbol table, resolving external symbols, resolving symbol
- * resolution, allocating global symbols, initialise the context, and initialise the constructor.
+ * The {@link LoadModulesNode} initialise all libraries. This involves building the scopes (local
+ * scope and global scope), allocating the symbol table, resolving external symbols, resolving
+ * symbol resolution, allocating global symbols, initialising the context, and initialising the
+ * constructor.
  *
- * parses the dependencies of a library.
+ * At the start of initialisation the dependencies of the library is parsed, the start function and
+ * main function are created, and the context initialisation and dispose symbols are defined. This
+ * is only ever done once per library. (Soon the main function will be created lazily as it is not
+ * necessary to look up the main function for every library.)
  *
- * There are nine phases.
+ * The initialisation of a library is broken down into nine phases. The scope building phase, the
+ * (defined) symbol initialisation phase, the external symbol initialisation phase, creating the
+ * global symbols,
  *
  * one scope phase six initialise phase one done/mark phase
  *

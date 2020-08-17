@@ -163,7 +163,7 @@ final class ParserDriver {
 
         // Remove cyclic and redundant dependency.
         // PLi: It might be cheaper to let the truffle cache take care of this.
-        removeCyclicDependency(source, dependenciesSource);
+        // removeCyclicDependency(source, dependenciesSource);
 
         if (isInternalLibrary) {
             String libraryName = getSimpleLibraryName(library.getName());
