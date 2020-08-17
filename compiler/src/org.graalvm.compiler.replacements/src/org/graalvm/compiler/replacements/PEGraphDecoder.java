@@ -236,9 +236,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 callerBytecodePosition = invokePosition;
             }
             if (position != null) {
-                return position.addCaller(caller.resolveSourceLanguagePosition(), callerBytecodePosition);
+                return position.addCaller(resolveSourceLanguagePosition(), callerBytecodePosition);
             }
-            final SourceLanguagePosition pos = caller.resolveSourceLanguagePosition();
+            final SourceLanguagePosition pos = resolveSourceLanguagePosition();
             if (pos != null && callerBytecodePosition != null) {
                 return new NodeSourcePosition(pos, callerBytecodePosition.getCaller(), callerBytecodePosition.getMethod(), callerBytecodePosition.getBCI());
             }
@@ -294,6 +294,16 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public String getLanguage() {
+            throw new IllegalStateException(getClass().getSimpleName() + " should not be reachable.");
+        }
+
+        @Override
+        public int getNodeId() {
+            throw new IllegalStateException(getClass().getSimpleName() + " should not be reachable.");
+        }
+
+        @Override
+        public String getNodeClassName() {
             throw new IllegalStateException(getClass().getSimpleName() + " should not be reachable.");
         }
     }

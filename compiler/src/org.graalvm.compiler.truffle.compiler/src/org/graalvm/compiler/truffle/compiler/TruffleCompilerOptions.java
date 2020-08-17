@@ -101,6 +101,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -276,6 +277,15 @@ public final class TruffleCompilerOptions {
         boolean performanceWarningsAreFatal = !getPolyglotOptionValue(options, PerformanceWarningsAreFatal).isEmpty();
         boolean exitVM = getPolyglotOptionValue(options, CompilationFailureAction) == PolyglotCompilerOptions.ExceptionAction.ExitVM;
         return compilationExceptionsAreFatal || performanceWarningsAreFatal || exitVM;
+    }
+
+    static OptionValues enableNodeSourcePositions(OptionValues values) {
+        if (GraalOptions.TrackNodeSourcePosition.getValue(values)) {
+            // already enabled nothing to do
+            return values;
+        } else {
+            return new OptionValues(values, GraalOptions.TrackNodeSourcePosition, Boolean.TRUE);
+        }
     }
 
     /**

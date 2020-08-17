@@ -31,11 +31,13 @@ import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.LibGraalScope.DetachAction;
+import org.graalvm.options.OptionValues;
 import org.graalvm.util.OptionsEncoder;
 
 import com.oracle.truffle.api.TruffleRuntime;
@@ -95,6 +97,15 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     @Override
     protected long getCompilerIdleDelay(OptimizedCallTarget callTarget) {
+        OptionValues options = callTarget.engine.getEngineOptions();
+        /*
+         * Libgraal compiler idle time is set to 0 to avoid that the libgraal isolate is shut down.
+         * We are collecting statistics if any of the flags are used.
+         */
+        if (!options.get(PolyglotCompilerOptions.MethodExpansionStatistics).isEmpty() || !options.get(PolyglotCompilerOptions.NodeExpansionStatistics).isEmpty() ||
+                        options.get(PolyglotCompilerOptions.InstrumentBranches) || options.get(PolyglotCompilerOptions.InstrumentBoundaries)) {
+            return 0L;
+        }
         return callTarget.getOptionValue(CompilerIdleDelay);
     }
 

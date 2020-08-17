@@ -43,7 +43,6 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerOptions;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -60,13 +59,21 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
     private int callCount = -1;
     private int inlinedCallCount = -1;
 
+    private TruffleNodeSources nodeSources;
+
     protected TruffleInlining(List<TruffleInliningDecision> callSites) {
         this.callSites = callSites;
     }
 
     public TruffleInlining(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy) {
         this(createDecisions(sourceTarget, policy, sourceTarget.getCompilerOptions()));
+    }
 
+    public TruffleNodeSources getTruffleNodeSources() {
+        if (nodeSources == null) {
+            nodeSources = new TruffleNodeSources();
+        }
+        return nodeSources;
     }
 
     private static List<TruffleInliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy, CompilerOptions options) {
@@ -263,40 +270,73 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
     static class TruffleSourceLanguagePosition implements org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition {
 
         private final SourceSection sourceSection;
+        private final Class<?> nodeClass;
+        private final int nodeId;
 
-        TruffleSourceLanguagePosition(SourceSection section) {
+        TruffleSourceLanguagePosition(SourceSection section, Class<?> nodeClass, int nodeId) {
             this.sourceSection = section;
+            this.nodeClass = nodeClass;
+            this.nodeId = nodeId;
         }
 
         @Override
         public String getDescription() {
+            if (sourceSection == null) {
+                return "<no-description>";
+            }
             return sourceSection.getSource().getURI() + " " + sourceSection.getStartLine() + ":" + sourceSection.getStartColumn();
         }
 
         @Override
         public int getOffsetEnd() {
+            if (sourceSection == null) {
+                return -1;
+            }
             return sourceSection.getCharEndIndex();
         }
 
         @Override
         public int getOffsetStart() {
+            if (sourceSection == null) {
+                return -1;
+            }
             return sourceSection.getCharIndex();
         }
 
         @Override
         public int getLineNumber() {
+            if (sourceSection == null) {
+                return -1;
+            }
             return sourceSection.getStartLine();
         }
 
         @Override
         public URI getURI() {
+            if (sourceSection == null) {
+                return null;
+            }
             return sourceSection.getSource().getURI();
         }
 
         @Override
         public String getLanguage() {
+            if (sourceSection == null) {
+                return null;
+            }
             return sourceSection.getSource().getLanguage();
         }
+
+        @Override
+        public int getNodeId() {
+            return nodeId;
+        }
+
+        @Override
+        public String getNodeClassName() {
+            return nodeClass.getName();
+        }
+
     }
 
     @Override
@@ -312,32 +352,12 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
     }
 
     @Override
-    public org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition getPosition(JavaConstant node) {
+    public TruffleSourceLanguagePosition getPosition(JavaConstant node) {
         Node truffleNode = runtime().asObject(Node.class, node);
         if (truffleNode == null) {
             return null;
         }
-        SourceSection section = null;
-        if (truffleNode instanceof DirectCallNode) {
-            section = ((DirectCallNode) truffleNode).getCurrentRootNode().getSourceSection();
-        }
-        if (section == null) {
-            section = truffleNode.getSourceSection();
-        }
-        if (section == null) {
-            Node cur = truffleNode.getParent();
-            while (cur != null) {
-                section = cur.getSourceSection();
-                if (section != null) {
-                    break;
-                }
-                cur = cur.getParent();
-            }
-        }
-        if (section != null) {
-            return new TruffleSourceLanguagePosition(section);
-        }
-        return null;
+        return getTruffleNodeSources().getSourceLocation(truffleNode);
     }
 
     public TruffleInliningDecision findByCall(OptimizedDirectCallNode callNode) {
