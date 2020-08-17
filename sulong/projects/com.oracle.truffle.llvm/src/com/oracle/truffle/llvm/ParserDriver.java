@@ -43,7 +43,6 @@ import com.oracle.truffle.llvm.parser.StackManager;
 import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
 import com.oracle.truffle.llvm.parser.factories.BasicPlatformCapability;
-import com.oracle.truffle.llvm.parser.factories.PlatformCapabilityBase;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
@@ -479,7 +478,7 @@ final class ParserDriver {
         }
     }
 
-    private void removeCyclicDependency(Source source, ArrayList<Source> dependenciesSource) {
+    /*private void removeCyclicDependency(Source source, ArrayList<Source> dependenciesSource) {
         // Remove the itself as it's own dependency
         while (dependenciesSource.contains(source)) {
             dependenciesSource.remove(source);
@@ -523,5 +522,5 @@ final class ParserDriver {
         if (toRemove != null) {
             sources.remove(toRemove);
         }
-    }
+    }*/
 }
