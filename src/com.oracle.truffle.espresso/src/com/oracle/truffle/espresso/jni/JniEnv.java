@@ -1294,7 +1294,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
-    public void GetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
+    public void GetCharArrayRegion(@Host(char[].class /* or byte[].class */) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
         char[] contents = array.unwrap();
         boundsCheck(start, len, contents.length);
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
@@ -1480,7 +1480,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
-        final StaticObject stringChars = (StaticObject) getMeta().java_lang_String_value.get(str);
+        StaticObject stringChars;
+        if (getJavaVersion().compactStringsEnabled()) {
+            stringChars = (StaticObject) getMeta().java_lang_String_toCharArray.invokeDirect(str);
+        } else {
+            stringChars = ((StaticObject) getMeta().java_lang_String_value.get(str));
+        }
         int len = stringChars.length();
         ByteBuffer criticalRegion = allocateDirect(len, JavaKind.Char); // direct byte buffer
         // (non-relocatable)
@@ -1521,7 +1526,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
-        char[] chars = ((StaticObject) getMeta().java_lang_String_value.get(string)).unwrap();
+        char[] chars;
+        if (getJavaVersion().compactStringsEnabled()) {
+            StaticObject wrappedChars = (StaticObject) getMeta().java_lang_String_toCharArray.invokeDirect(string);
+            chars = wrappedChars.unwrap();
+        } else {
+            chars = ((StaticObject) getMeta().java_lang_String_value.get(string)).unwrap();
+        }
         // Add one for zero termination.
         ByteBuffer bb = allocateDirect(chars.length + 1, JavaKind.Char);
         CharBuffer region = bb.asCharBuffer();
