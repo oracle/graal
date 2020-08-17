@@ -172,8 +172,10 @@ public abstract class SourceCache {
             Path targetPath = cachedPath(filePath);
             Path sourcePath = extendPath(root, filePath);
             if (tryCacheFileFromRoot(sourcePath, targetPath)) {
-                // return the original filePath
-                // we don't want the sources/jdk prefix to go into the debuginfo
+                /*
+                 * Return the original filePath. We don't want the sources prefix to go into the
+                 * debuginfo.
+                 */
                 return filePath;
             }
         }
