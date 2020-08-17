@@ -341,11 +341,11 @@ final class InterfaceTables {
             assert index == m.getVTableIndex();
             return new Entry(Location.SUPERVTABLE, index);
         }
-        index = getDeclaredMethodIndex(thisKlass.getDeclaredMethods(), mname, sig);
+        index = getDeclaredMethodIndex(thisKlass.getDeclaredMethods(), im, mname, sig);
         if (index != -1) {
             return new Entry(Location.DECLARED, index);
         }
-        index = lookupMirandas(mname, sig);
+        index = lookupMirandas(im, mname, sig);
         if (index != -1) {
             return new Entry(Location.MIRANDAS, index);
         }
@@ -356,20 +356,20 @@ final class InterfaceTables {
 
     }
 
-    private static int getDeclaredMethodIndex(Method[] declaredMethod, Symbol<Name> mname, Symbol<Signature> sig) {
+    private static int getDeclaredMethodIndex(Method[] declaredMethod, Method interfMethod, Symbol<Name> mname, Symbol<Signature> sig) {
         for (int i = 0; i < declaredMethod.length; i++) {
             Method m = declaredMethod[i];
-            if (!m.isStatic() && mname == m.getName() && sig == m.getRawSignature()) {
+            if (m.canOverride(interfMethod) && mname == m.getName() && sig == m.getRawSignature()) {
                 return i;
             }
         }
         return -1;
     }
 
-    private int lookupMirandas(Symbol<Name> mname, Symbol<Signature> sig) {
+    private int lookupMirandas(Method interfMethod, Symbol<Name> mname, Symbol<Signature> sig) {
         int pos = 0;
         for (Method m : mirandas) {
-            if (!m.isStatic() && m.getName() == mname && sig == m.getRawSignature()) {
+            if (m.canOverride(interfMethod) && m.getName() == mname && sig == m.getRawSignature()) {
                 return pos;
             }
             pos++;
