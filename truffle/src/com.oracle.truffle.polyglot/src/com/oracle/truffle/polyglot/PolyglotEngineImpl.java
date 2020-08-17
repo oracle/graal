@@ -66,6 +66,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
@@ -191,7 +192,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @CompilationFinal private HostToGuestCodeCache hostToGuestCodeCache;
 
     final SpecializationStatistics specializationStatistics;
-    final Supplier<TruffleLogger> engineLoggerSupplier;
+    final Function<String, TruffleLogger> engineLoggerSupplier;
     private volatile TruffleLogger engineLogger;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options,
@@ -386,7 +387,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             synchronized (this) {
                 result = this.engineLogger;
                 if (result == null) {
-                    this.engineLogger = result = this.engineLoggerSupplier.get();
+                    this.engineLogger = result = this.engineLoggerSupplier.apply(OPTION_GROUP_ENGINE);
                 }
             }
         }

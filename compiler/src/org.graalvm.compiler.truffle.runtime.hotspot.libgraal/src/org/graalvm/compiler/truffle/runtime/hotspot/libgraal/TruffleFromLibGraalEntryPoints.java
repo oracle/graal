@@ -231,8 +231,8 @@ final class TruffleFromLibGraalEntryPoints {
     }
 
     @TruffleFromLibGraal(Log)
-    static void log(Object truffleRuntime, Object compilable, String message) {
-        ((HotSpotTruffleCompilerRuntime) truffleRuntime).log((CompilableTruffleAST) compilable, message);
+    static void log(Object truffleRuntime, String loggerId, Object compilable, String message) {
+        ((HotSpotTruffleCompilerRuntime) truffleRuntime).log(loggerId, (CompilableTruffleAST) compilable, message);
     }
 
     @TruffleFromLibGraal(CreateInliningPlan)

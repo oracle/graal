@@ -34,6 +34,7 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.polyglot.Context;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class CompilerLoggingTest extends TruffleCompilerImplTest {
@@ -54,8 +55,8 @@ public class CompilerLoggingTest extends TruffleCompilerImplTest {
                 OptimizedCallTarget compilable = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(true));
                 compilable.call();
                 String logContent = new String(logOut.toByteArray());
-                String expected = String.format(FORMAT_SUCCESS, compilable.getName()) + MESSAGE_TO_STREAM + MESSAGE_TO_TTY;
-                assertTrue("Expected " + expected + " in " + logContent, logContent.contains(expected));
+                String expected = String.format(FORMAT_SUCCESS + "%s%s%n", compilable.getName(), MESSAGE_TO_STREAM, MESSAGE_TO_TTY);
+                Assert.assertEquals("Expected " + expected + " in " + logContent, expected, logContent);
             } finally {
                 runtime.removeListener(listener);
             }

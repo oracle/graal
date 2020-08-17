@@ -61,6 +61,7 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -829,7 +830,7 @@ final class EngineAccessor extends Accessor {
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T> T getOrCreateRuntimeData(Object polyglotEngine, BiFunction<OptionValues, Supplier<TruffleLogger>, T> constructor) {
+        public <T> T getOrCreateRuntimeData(Object polyglotEngine, BiFunction<OptionValues, Function<String, TruffleLogger>, T> constructor) {
             if (polyglotEngine == null) {
                 OptionValues engineOptionValues = PolyglotEngineImpl.getEngineOptionsWithNoEngine();
                 String defaultLogFile = System.getProperty(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + PolyglotEngineImpl.LOG_FILE_OPTION);
