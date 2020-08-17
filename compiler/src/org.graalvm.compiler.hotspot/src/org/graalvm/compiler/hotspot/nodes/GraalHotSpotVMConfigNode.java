@@ -164,13 +164,13 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
             }
         } else if (generatePIC && !aotVerifyOops) {
             if (markId == HotSpotMarkId.VERIFY_OOPS) {
-                return ConstantNode.forBoolean(config.verifyOops);
+                return ConstantNode.forBoolean(false);
             } else if (markId == HotSpotMarkId.VERIFY_OOP_BITS) {
-                return ConstantNode.forLong(config.verifyOopBits);
+                return ConstantNode.forLong(0L);
             } else if (markId == HotSpotMarkId.VERIFY_OOP_MASK) {
-                return ConstantNode.forLong(config.verifyOopMask);
+                return ConstantNode.forLong(0L);
             } else if (markId == HotSpotMarkId.VERIFY_OOP_COUNT_ADDRESS) {
-                return ConstantNode.forLong(config.verifyOopCounterAddress);
+                return ConstantNode.forLong(0L);
             }
         }
         return this;
