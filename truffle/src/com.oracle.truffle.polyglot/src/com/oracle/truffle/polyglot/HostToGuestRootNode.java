@@ -72,6 +72,10 @@ abstract class HostToGuestRootNode extends RootNode {
 
     protected abstract Class<?> getReceiverType();
 
+    protected boolean needsEnter() {
+        return true;
+    }
+
     @Override
     public final Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
@@ -79,7 +83,7 @@ abstract class HostToGuestRootNode extends RootNode {
         try {
             assert languageContext != null;
             PolyglotContextImpl context = languageContext.context;
-            boolean needsEnter = languageContext != null && engine.needsEnter(context);
+            boolean needsEnter = needsEnter() && languageContext != null && engine.needsEnter(context);
             Object prev;
             if (needsEnter) {
                 if (!seenEnter) {

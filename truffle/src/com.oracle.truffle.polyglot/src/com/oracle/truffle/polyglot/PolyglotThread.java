@@ -97,6 +97,11 @@ final class PolyglotThread extends Thread {
         }
 
         @Override
+        protected boolean needsEnter() {
+            return false;
+        }
+
+        @Override
         protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
             PolyglotThread thread = (PolyglotThread) receiver;
             Runnable run = (Runnable) args[HostToGuestRootNode.ARGUMENT_OFFSET];
