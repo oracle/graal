@@ -995,19 +995,7 @@ public class CompileQueue {
                 if (method.compilationInfo.isDeoptTarget()) {
                     assert verifyDeoptTarget(method, result);
                 }
-                for (Infopoint infopoint : result.getInfopoints()) {
-                    if (infopoint instanceof Call) {
-                        Call call = (Call) infopoint;
-                        HostedMethod callTarget = (HostedMethod) call.target;
-                        if (call.direct) {
-                            ensureCompiled(callTarget, new DirectCallReason(method, reason));
-                        } else if (callTarget != null && callTarget.getImplementations() != null) {
-                            for (HostedMethod impl : callTarget.getImplementations()) {
-                                ensureCompiled(impl, new VirtualCallReason(method, callTarget, reason));
-                            }
-                        }
-                    }
-                }
+                ensureCalleesCompiled(method, reason, result);
 
                 /* Shrink resulting code array to minimum size, to reduze memory footprint. */
                 if (result.getTargetCode().length > result.getTargetCodeSize()) {
@@ -1020,6 +1008,22 @@ public class CompileQueue {
             GraalError error = ex instanceof GraalError ? (GraalError) ex : new GraalError(ex);
             error.addContext("method: " + method.format("%r %H.%n(%p)") + "  [" + reason + "]");
             throw error;
+        }
+    }
+
+    protected void ensureCalleesCompiled(HostedMethod method, CompileReason reason, CompilationResult result) {
+        for (Infopoint infopoint : result.getInfopoints()) {
+            if (infopoint instanceof Call) {
+                Call call = (Call) infopoint;
+                HostedMethod callTarget = (HostedMethod) call.target;
+                if (call.direct) {
+                    ensureCompiled(callTarget, new DirectCallReason(method, reason));
+                } else if (callTarget != null && callTarget.getImplementations() != null) {
+                    for (HostedMethod impl : callTarget.getImplementations()) {
+                        ensureCompiled(impl, new VirtualCallReason(method, callTarget, reason));
+                    }
+                }
+            }
         }
     }
 
