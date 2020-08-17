@@ -48,7 +48,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNodeGen.LandingpadCatchEntryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNodeGen.LandingpadFilterEntryNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode.LLVMI32OptimizedStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode.LLVMI32OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValueNodeGen;
@@ -59,7 +59,7 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
     @Child private LLVMExpressionNode getStack;
     @Child private LLVMExpressionNode allocateLandingPadValue;
     @Child private LLVMPointerStoreNode writePointer = LLVMPointerStoreNode.create();
-    @Child private LLVMI32OptimizedStoreNode writeI32 = LLVMI32OptimizedStoreNode.create();
+    @Child private LLVMI32OffsetStoreNode writeI32 = LLVMI32OffsetStoreNode.create();
     @Children private final LandingpadEntryNode[] entries;
 
     private final FrameSlot exceptionSlot;

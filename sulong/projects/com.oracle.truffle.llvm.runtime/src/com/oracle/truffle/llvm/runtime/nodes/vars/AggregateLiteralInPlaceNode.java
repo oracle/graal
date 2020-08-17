@@ -40,21 +40,21 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OptimizedStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OptimizedStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOptimizedStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
 
-    @Children private final LLVMOptimizedStoreNode[] stores;
+    @Children private final LLVMOffsetStoreNode[] stores;
 
     @CompilationFinal(dimensions = 1) private final byte[] data;
     @CompilationFinal(dimensions = 1) private final int[] offsets;
     @CompilationFinal(dimensions = 1) private final int[] sizes;
 
-    public AggregateLiteralInPlaceNode(byte[] data, LLVMOptimizedStoreNode[] stores, int[] offsets, int[] sizes) {
+    public AggregateLiteralInPlaceNode(byte[] data, LLVMOffsetStoreNode[] stores, int[] offsets, int[] sizes) {
         assert offsets.length == stores.length + 1 && stores.length == sizes.length;
         assert offsets[offsets.length - 1] == data.length;
         this.data = data;
@@ -66,8 +66,8 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
     @ExplodeLoop
     @Specialization
     protected void initialize(VirtualFrame frame, LLVMPointer address,
-                    @Cached LLVMI8OptimizedStoreNode storeI8,
-                    @Cached LLVMI64OptimizedStoreNode storeI64) {
+                    @Cached LLVMI8OffsetStoreNode storeI8,
+                    @Cached LLVMI64OffsetStoreNode storeI64) {
         int offset = 0;
         int nextStore = 0;
         ByteBuffer view = ByteBuffer.wrap(data);

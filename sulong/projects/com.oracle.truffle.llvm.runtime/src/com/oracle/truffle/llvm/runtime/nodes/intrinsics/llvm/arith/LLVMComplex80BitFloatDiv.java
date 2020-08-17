@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode.LLVM80BitFloatOptimizedStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode.LLVM80BitFloatOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
@@ -51,7 +51,7 @@ public abstract class LLVMComplex80BitFloatDiv extends LLVMExpressionNode {
     @Child private LLVMExpressionNode alloc;
 
     @Child private LLVM80BitFloatStoreNode storeReal = LLVM80BitFloatStoreNode.create();
-    @Child private LLVM80BitFloatOptimizedStoreNode storeImag = LLVM80BitFloatOptimizedStoreNode.create();
+    @Child private LLVM80BitFloatOffsetStoreNode storeImag = LLVM80BitFloatOffsetStoreNode.create();
 
     public LLVMComplex80BitFloatDiv(LLVMExpressionNode alloc, LLVMExpressionNode a, LLVMExpressionNode b, LLVMExpressionNode c, LLVMExpressionNode d) {
         this.alloc = alloc;

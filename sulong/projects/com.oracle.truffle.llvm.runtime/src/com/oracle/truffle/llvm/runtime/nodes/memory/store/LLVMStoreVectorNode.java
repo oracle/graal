@@ -40,7 +40,7 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOptimizedStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -174,7 +174,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     @ExplodeLoop
     protected void writeVector(LLVMNativePointer address, LLVMPointerVector value,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
-                    @Cached LLVMPointerOptimizedStoreNode write) {
+                    @Cached LLVMPointerOffsetStoreNode write) {
         assert value.getLength() == getVectorLength();
         long offset = 0;
         for (int i = 0; i < getVectorLength(); i++) {

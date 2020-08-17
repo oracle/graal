@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNodeGen.LLVMI1OptimizedStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNodeGen.LLVMI1OffsetStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -49,14 +49,14 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNode {
 
     public abstract void executeWithTarget(LLVMPointer address, boolean value);
 
-    public abstract static class LLVMI1OptimizedStoreNode extends LLVMOptimizedStoreNode {
+    public abstract static class LLVMI1OffsetStoreNode extends LLVMOffsetStoreNode {
 
-        public static LLVMI1OptimizedStoreNode create() {
-            return LLVMI1OptimizedStoreNodeGen.create(null, null, null);
+        public static LLVMI1OffsetStoreNode create() {
+            return LLVMI1OffsetStoreNodeGen.create(null, null, null);
         }
 
-        public static LLVMI1OptimizedStoreNode create(LLVMExpressionNode value) {
-            return LLVMI1OptimizedStoreNodeGen.create(null, null, value);
+        public static LLVMI1OffsetStoreNode create(LLVMExpressionNode value) {
+            return LLVMI1OffsetStoreNodeGen.create(null, null, value);
         }
 
         public abstract void executeWithTarget(LLVMPointer receiver, long offset, boolean value);

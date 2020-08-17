@@ -34,15 +34,15 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OptimizedStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen.LLVMI8OptimizedStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen.LLVMI8OffsetStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 public abstract class LLVMI8ArrayLiteralNode extends LLVMExpressionNode {
 
     @CompilationFinal(dimensions = 1) private final byte[] values;
-    @Child private LLVMI8OptimizedStoreNode write = LLVMI8OptimizedStoreNodeGen.create();
+    @Child private LLVMI8OffsetStoreNode write = LLVMI8OffsetStoreNodeGen.create();
 
     public LLVMI8ArrayLiteralNode(byte[] values) {
         this.values = values;

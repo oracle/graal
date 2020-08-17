@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMIVarBitStoreNodeGen.LLVMIVarBitOptimizedStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMIVarBitStoreNodeGen.LLVMIVarBitOffsetStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -48,14 +48,14 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
 
     protected abstract void executeWithTarget(LLVMManagedPointer address, LLVMIVarBit value);
 
-    public abstract static class LLVMIVarBitOptimizedStoreNode extends LLVMOptimizedStoreNode {
+    public abstract static class LLVMIVarBitOffsetStoreNode extends LLVMOffsetStoreNode {
 
-        public static LLVMIVarBitOptimizedStoreNode create() {
-            return LLVMIVarBitOptimizedStoreNodeGen.create(null, null, null);
+        public static LLVMIVarBitOffsetStoreNode create() {
+            return LLVMIVarBitOffsetStoreNodeGen.create(null, null, null);
         }
 
-        public static LLVMIVarBitOptimizedStoreNode create(LLVMExpressionNode value) {
-            return LLVMIVarBitOptimizedStoreNodeGen.create(null, null, value);
+        public static LLVMIVarBitOffsetStoreNode create(LLVMExpressionNode value) {
+            return LLVMIVarBitOffsetStoreNodeGen.create(null, null, value);
         }
 
         public abstract void executeWithTarget(LLVMPointer receiver, long offset, LLVMIVarBit value);
@@ -70,7 +70,7 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
         protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, LLVMIVarBit value,
                         @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                        @Cached LLVMIVarBitOptimizedStoreNode store) {
+                        @Cached LLVMIVarBitOffsetStoreNode store) {
             store.executeWithTarget(getReceiver.execute(addr), offset, value);
         }
 

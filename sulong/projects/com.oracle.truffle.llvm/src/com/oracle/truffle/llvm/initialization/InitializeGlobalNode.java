@@ -48,7 +48,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOptimizedStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateLiteralInPlaceNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -144,7 +144,7 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
         private final LLVMParserRuntime runtime;
         private final DataLayout dataLayout;
 
-        private final ArrayList<LLVMOptimizedStoreNode> valueStores = new ArrayList<>();
+        private final ArrayList<LLVMOffsetStoreNode> valueStores = new ArrayList<>();
         private final ArrayList<Integer> valueOffsets = new ArrayList<>();
         private final ArrayList<Integer> valueSizes = new ArrayList<>();
 
@@ -178,7 +178,7 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
         }
 
         public LLVMStatementNode createNode(LLVMExpressionNode target) {
-            LLVMOptimizedStoreNode[] stores = new LLVMOptimizedStoreNode[valueStores.size()];
+            LLVMOffsetStoreNode[] stores = new LLVMOffsetStoreNode[valueStores.size()];
             int[] offsets = new int[valueStores.size() + 1];
             int[] sizes = new int[valueStores.size()];
             for (int i = 0; i < valueStores.size(); i++) {

@@ -33,7 +33,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode.LLVMDoubleOptimizedStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode.LLVMDoubleOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(value = "result", type = LLVMExpressionNode.class)
@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public abstract class LLVMComplexDoubleDiv extends LLVMExpressionNode {
 
     @Child private LLVMDoubleStoreNode storeReal = LLVMDoubleStoreNode.create();
-    @Child private LLVMDoubleOptimizedStoreNode storeImag = LLVMDoubleOptimizedStoreNode.create();
+    @Child private LLVMDoubleOffsetStoreNode storeImag = LLVMDoubleOffsetStoreNode.create();
 
     @Specialization
     public Object doDouble(LLVMPointer result, double a, double b, double c, double d) {

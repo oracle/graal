@@ -35,7 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNode.LLVMI1OptimizedStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNode.LLVMI1OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
@@ -690,7 +690,7 @@ public abstract class LLVMArithmetic {
 
         private final long secondValueOffset;
         private final Arithmetic arithmetic;
-        @Child private LLVMI1OptimizedStoreNode storeI1 = LLVMI1OptimizedStoreNode.create();
+        @Child private LLVMI1OffsetStoreNode storeI1 = LLVMI1OffsetStoreNode.create();
 
         public LLVMArithmeticWithOverflow(Arithmetic arithmetic, long secondValueOffset) {
             this.secondValueOffset = secondValueOffset;

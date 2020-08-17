@@ -29,30 +29,42 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
+import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen.LLVMI64OptimizedStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen.LLVMI64OffsetStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMGenericOptimizedStoreNode extends LLVMOptimizedStoreNode {
+@NodeChild(value = "target", type = LLVMExpressionNode.class)
+@NodeChild(value = "offset", type = LLVMExpressionNode.class)
+@NodeChild(value = "value", type = LLVMExpressionNode.class)
+public abstract class LLVMOffsetStoreNode extends LLVMNode {
 
-    @Child private LLVMStoreNode store;
+    public abstract void executeWithTarget(VirtualFrame frame, LLVMPointer receiver, long offset);
 
-    protected LLVMGenericOptimizedStoreNode(LLVMStoreNode store) {
-        this.store = store;
+    public abstract static class LLVMGenericOffsetStoreNode extends LLVMOffsetStoreNode {
+
+        @Child private LLVMStoreNode store;
+
+        protected LLVMGenericOffsetStoreNode(LLVMStoreNode store) {
+            this.store = store;
+        }
+
+        public static LLVMOffsetStoreNode create() {
+            return LLVMI64OffsetStoreNodeGen.create(null, null, null);
+        }
+
+        public static LLVMOffsetStoreNode create(LLVMExpressionNode value) {
+            return LLVMI64OffsetStoreNodeGen.create(null, null, value);
+        }
+
+        @Specialization
+        protected void doOp(LLVMPointer addr, long offset, Object value) {
+            store.executeWithTarget(addr.increment(offset), value);
+        }
     }
 
-    public static LLVMOptimizedStoreNode create() {
-        return LLVMI64OptimizedStoreNodeGen.create(null, null, null);
-    }
-
-    public static LLVMOptimizedStoreNode create(LLVMExpressionNode value) {
-        return LLVMI64OptimizedStoreNodeGen.create(null, null, value);
-    }
-
-    @Specialization
-    protected void doOp(LLVMPointer addr, long offset, Object value) {
-        store.executeWithTarget(addr.increment(offset), value);
-    }
 }
