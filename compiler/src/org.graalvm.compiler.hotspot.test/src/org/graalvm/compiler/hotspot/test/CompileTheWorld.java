@@ -1023,13 +1023,27 @@ public final class CompileTheWorld {
         if (excludeMethodFilter != null && excludeMethodFilter.matches(method)) {
             return;
         }
-        Future<?> task = threadPool.submit(new Runnable() {
+        Runnable skipCompile = new Runnable() {
             @Override
             public void run() {
-                waitToRun();
-                compileMethod(method, classFileCounter, libgraal);
             }
-        });
+        };
+        Future<?> task;
+        int startAtCompile = Options.StartAtCompile.getValue(harnessOptions);
+        int stopAtCompile = Options.StopAtCompile.getValue(harnessOptions);
+        long taskCount = threadPool.getTaskCount();
+        if (taskCount >= startAtCompile && taskCount < stopAtCompile) {
+            task = threadPool.submit(new Runnable() {
+                @Override
+                public void run() {
+                    waitToRun();
+                    compileMethod(method, classFileCounter, libgraal);
+                }
+            });
+        } else {
+            task = threadPool.submit(skipCompile);
+        }
+
         if (threadPool.getCorePoolSize() == 1) {
             task.get();
         }
@@ -1160,6 +1174,8 @@ public final class CompileTheWorld {
         public static final OptionKey<Integer> StartAt = new OptionKey<>(1);
         public static final OptionKey<Integer> StopAt = new OptionKey<>(Integer.MAX_VALUE);
         public static final OptionKey<Integer> MaxClasses = new OptionKey<>(Integer.MAX_VALUE);
+        public static final OptionKey<Integer> StartAtCompile = new OptionKey<>(0);
+        public static final OptionKey<Integer> StopAtCompile = new OptionKey<>(Integer.MAX_VALUE);
         public static final OptionKey<String> Config = new OptionKey<>(null);
         public static final OptionKey<Boolean> MultiThreaded = new OptionKey<>(false);
         public static final OptionKey<Integer> StatsInterval = new OptionKey<>(15);
@@ -1180,6 +1196,8 @@ public final class CompileTheWorld {
                          "StopAt", "Last class to consider for compilation (default = <number of classes>).",
                      "MaxClasses", "Maximum number of classes to process (default = <number of classes>). " +
                                    "Ignored if less than (StopAt - StartAt + 1).",
+                 "StartAtCompile", "Skip all compilations before this value.",
+                  "StopAtCompile", "Skip all compilations as of this value.",
                          "Config", "Option values to use during compile the world compilations. For example, " +
                                    "to disable partial escape analysis and print compilations specify " +
                                    "'PartialEscapeAnalysis=false PrintCompilation=true'. " +
