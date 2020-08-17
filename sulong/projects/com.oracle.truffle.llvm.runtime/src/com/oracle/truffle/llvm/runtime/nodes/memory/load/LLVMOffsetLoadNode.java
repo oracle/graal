@@ -31,6 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public abstract class LLVMOptimizedLoadNode extends LLVMNode {
+public abstract class LLVMOffsetLoadNode extends LLVMNode {
 
 }

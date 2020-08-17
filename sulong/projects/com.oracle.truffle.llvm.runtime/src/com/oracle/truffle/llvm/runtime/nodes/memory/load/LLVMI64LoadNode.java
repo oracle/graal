@@ -40,7 +40,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNodeGen.LLVMI64OptimizedLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNodeGen.LLVMI64OffsetLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -54,10 +54,10 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
 
     public abstract long executeWithTarget(Object address) throws UnexpectedResultException;
 
-    public abstract static class LLVMI64OptimizedLoadNode extends LLVMOptimizedLoadNode {
+    public abstract static class LLVMI64OffsetLoadNode extends LLVMOffsetLoadNode {
 
-        public static LLVMI64OptimizedLoadNode create() {
-            return LLVMI64OptimizedLoadNodeGen.create();
+        public static LLVMI64OffsetLoadNode create() {
+            return LLVMI64OffsetLoadNodeGen.create();
         }
 
         public abstract long executeWithTarget(LLVMPointer receiver, long offset) throws UnexpectedResultException;

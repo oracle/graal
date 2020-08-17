@@ -38,7 +38,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNodeGen.LLVMI16OptimizedLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNodeGen.LLVMI16OffsetLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -52,10 +52,10 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
 
     public abstract short executeWithTarget(Object address);
 
-    public abstract static class LLVMI16OptimizedLoadNode extends LLVMOptimizedLoadNode {
+    public abstract static class LLVMI16OffsetLoadNode extends LLVMOffsetLoadNode {
 
-        public static LLVMI16OptimizedLoadNode create() {
-            return LLVMI16OptimizedLoadNodeGen.create();
+        public static LLVMI16OffsetLoadNode create() {
+            return LLVMI16OffsetLoadNodeGen.create();
         }
 
         public abstract short executeWithTarget(LLVMPointer receiver, long offset);

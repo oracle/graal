@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadStringNodeGen.ForeignReadStringNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadStringNodeGen.PointerReadStringNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode.LLVMI8OptimizedLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode.LLVMI8OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -113,7 +113,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
 
     abstract static class PointerReadStringNode extends LLVMNode {
 
-        @Child private LLVMI8OptimizedLoadNode read = LLVMI8OptimizedLoadNode.create();
+        @Child private LLVMI8OffsetLoadNode read = LLVMI8OffsetLoadNode.create();
 
         protected abstract String execute(Object address);
 
