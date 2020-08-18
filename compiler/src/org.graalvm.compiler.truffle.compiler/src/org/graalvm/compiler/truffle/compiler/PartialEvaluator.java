@@ -341,7 +341,7 @@ public abstract class PartialEvaluator {
             try (DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
                             Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
                 inliningGraphPE(request);
-		assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
+                assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
                 try (DebugCloseable a = TruffleConvertDeoptimizeTimer.start(request.debug)) {
                     new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
                 }

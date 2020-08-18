@@ -853,7 +853,7 @@ public class MergeExplodeProxyTest extends PartialEvaluationTest {
 
     }
 
-    @Ignore("Merge explode partial evaluation cannot proxy nodes that are not alive in the framestate of inner loop begins")
+    @Ignore("GR-21520: Merge explode partial evaluation cannot proxy nodes that are not alive in the framestate of inner loop begins")
     @Test
     public void testNoneLiveLoopExitProxy() {
         byte[] bytecodes = new byte[]{
