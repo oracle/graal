@@ -233,13 +233,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             StaticObject monitor = method.isStatic()
                             ? /* class */ method.getDeclaringKlass().mirror()
                             : /* receiver */ (StaticObject) frame.getArguments()[0];
-            // No owner checks in SVM. Manual monitor accesses is a safeguard against unbalanced
-            // monitor accesses until Espresso has its own monitor handling.
-            //
-            // synchronized (monitor) {
-            initMonitorStack(frame);
-            // Do not register monitor on the stack. On abort signal, it would monitor exit twice.
-            InterpreterToVM.monitorEnter(monitor, getMeta());
+            enterSynchronized(frame, monitor);
             Object result;
             try {
                 result = methodNode.execute(frame);
@@ -247,10 +241,22 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
                 // force early return has already released the monitor on the frame, so don't
                 // do an unbalanced monitor exit here
                 if (getContext().getJDWPListener().getAndRemoveEarlyReturnValue() == null) {
-                    InterpreterToVM.monitorExit(monitor, getMeta());
+                    exitSynchronized(frame, monitor);
                 }
             }
             return result;
+        }
+
+        private void enterSynchronized(VirtualFrame frame, StaticObject monitor) {
+            InterpreterToVM.monitorEnter(monitor, getMeta());
+            MonitorStack monitorStack = new MonitorStack();
+            monitorStack.synchronizedMethodMonitor = monitor;
+            frame.setObject(super.monitorSlot, monitorStack);
+
+        }
+
+        private void exitSynchronized(@SuppressWarnings("unused") VirtualFrame frame, StaticObject monitor) {
+            InterpreterToVM.monitorExit(monitor, getMeta());
         }
     }
 
@@ -278,9 +284,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
     }
 
-    private static final class MonitorStack {
+    private static class MonitorStack {
         private static final int DEFAULT_CAPACITY = 4;
 
+        private StaticObject synchronizedMethodMonitor;
         private StaticObject[] monitors = new StaticObject[DEFAULT_CAPACITY];
         private int top = 0;
         private int capacity = DEFAULT_CAPACITY;
@@ -322,8 +329,15 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             }
         }
 
-        private StaticObject[] getMonitors() {
-            return monitors;
+        StaticObject[] getMonitors() {
+            if (synchronizedMethodMonitor == null) {
+                return monitors;
+            } else {
+                StaticObject[] result = new StaticObject[monitors.length];
+                result[0] = synchronizedMethodMonitor;
+                System.arraycopy(monitors, 0, result, 1, monitors.length);
+                return result;
+            }
         }
     }
 }
