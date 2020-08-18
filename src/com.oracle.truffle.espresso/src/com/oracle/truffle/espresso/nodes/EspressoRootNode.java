@@ -172,8 +172,8 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return monitorSlot != null;
     }
 
-    final void initMonitorStack(VirtualFrame frame) {
-        frame.setObject(monitorSlot, new MonitorStack());
+    final void initMonitorStack(VirtualFrame frame, MonitorStack monitorStack) {
+        frame.setObject(monitorSlot, monitorStack);
     }
 
     final void monitorExit(VirtualFrame frame, StaticObject monitor) {
@@ -251,8 +251,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             InterpreterToVM.monitorEnter(monitor, getMeta());
             MonitorStack monitorStack = new MonitorStack();
             monitorStack.synchronizedMethodMonitor = monitor;
-            frame.setObject(super.monitorSlot, monitorStack);
-
+            initMonitorStack(frame, monitorStack);
         }
 
         private void exitSynchronized(@SuppressWarnings("unused") VirtualFrame frame, StaticObject monitor) {
@@ -278,13 +277,13 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         @Override
         public Object execute(VirtualFrame frame) {
             if (usesMonitors()) {
-                initMonitorStack(frame);
+                initMonitorStack(frame, new MonitorStack());
             }
             return methodNode.execute(frame);
         }
     }
 
-    private static class MonitorStack {
+    private static final class MonitorStack {
         private static final int DEFAULT_CAPACITY = 4;
 
         private StaticObject synchronizedMethodMonitor;
@@ -329,7 +328,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             }
         }
 
-        StaticObject[] getMonitors() {
+        private StaticObject[] getMonitors() {
             if (synchronizedMethodMonitor == null) {
                 return monitors;
             } else {
