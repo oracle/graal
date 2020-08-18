@@ -601,10 +601,10 @@ public final class ClassfileParser {
          *
          * It has the special name <clinit>.
          *
-         * It is void (§4.3.3). (checked earlier)
+         * It is void (4.3.3). (checked earlier)
          *
          * In a class file whose version number is 51.0 or above, the method has its ACC_STATIC flag
-         * set and takes no arguments (§4.6).
+         * set and takes no arguments (4.6).
          */
         // Checks for void method if init or clinit.
         pool.utf8At(signatureIndex).validateSignature(isInit || isClinit);

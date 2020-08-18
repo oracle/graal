@@ -30,13 +30,14 @@ import java.util.ArrayList;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
 abstract class Operand {
     public static final Operand[] EMPTY_ARRAY = new Operand[0];
 
-    protected JavaKind kind;
+    protected final JavaKind kind;
 
     Operand(JavaKind kind) {
         this.kind = kind;
@@ -67,11 +68,15 @@ abstract class Operand {
     }
 
     Operand getComponent() {
-        return null;
+        throw EspressoError.shouldNotReachHere("Calling getComponent of a non-array Operand");
     }
 
     Operand getElemental() {
-        return null;
+        throw EspressoError.shouldNotReachHere("Calling getElemental of a non-array Operand");
+    }
+
+    int getDimensions() {
+        throw EspressoError.shouldNotReachHere("Calling getDimensions of a non-array Operand");
     }
 
     Symbol<Type> getType() {
@@ -80,10 +85,6 @@ abstract class Operand {
 
     Klass getKlass() {
         return null;
-    }
-
-    int getDimensions() {
-        return -1;
     }
 
     boolean isUninit() {
@@ -135,8 +136,8 @@ class PrimitiveOperand extends Operand {
 }
 
 final class ReturnAddressOperand extends PrimitiveOperand {
-    ArrayList<Integer> targetBCIs = new ArrayList<>();
-    int subroutineBCI;
+    final ArrayList<Integer> targetBCIs = new ArrayList<>();
+    final int subroutineBCI;
 
     ReturnAddressOperand(int target, int subroutineBCI) {
         super(JavaKind.ReturnAddress);
@@ -195,8 +196,8 @@ final class ReturnAddressOperand extends PrimitiveOperand {
 }
 
 class ReferenceOperand extends Operand {
-    protected Symbol<Type> type;
-    Klass thisKlass;
+    protected final Symbol<Type> type;
+    final Klass thisKlass;
 
     // Load if needed.
     protected Klass klass = null;
@@ -319,8 +320,8 @@ class ReferenceOperand extends Operand {
 }
 
 final class ArrayOperand extends Operand {
-    private int dimensions;
-    private Operand elemental;
+    private final int dimensions;
+    private final Operand elemental;
     private Operand component = null;
 
     ArrayOperand(Operand elemental, int dimensions) {

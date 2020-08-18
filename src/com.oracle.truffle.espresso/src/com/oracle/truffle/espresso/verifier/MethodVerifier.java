@@ -317,7 +317,7 @@ public final class MethodVerifier implements ContextAccess {
     private boolean calledConstructor = false;
 
     // Instruction stack to visit
-    private WorkingQueue queue = new WorkingQueue();
+    private final WorkingQueue queue = new WorkingQueue();
 
     Symbol<Type>[] getSig() {
         return sig;
@@ -356,6 +356,10 @@ public final class MethodVerifier implements ContextAccess {
         return majorVersion < ClassfileParser.JAVA_7_VERSION;
     }
 
+    private boolean earlierThan55() {
+        return majorVersion < ClassfileParser.JAVA_11_VERSION;
+    }
+
     private boolean version51OrEarlier() {
         return majorVersion <= ClassfileParser.JAVA_7_VERSION;
     }
@@ -382,7 +386,7 @@ public final class MethodVerifier implements ContextAccess {
      * 
      * is same as Byte for java 8 or earlier, becomes its own operand for Java >= 9
      */
-    final PrimitiveOperand Boolean;
+    final PrimitiveOperand booleanOperand;
 
     /* Special operand used for BA{LOAD, STORE}. Should never be pushed to stack */
     static final PrimitiveOperand ByteOrBoolean = new PrimitiveOperand(JavaKind.Byte) {
@@ -446,16 +450,6 @@ public final class MethodVerifier implements ContextAccess {
         @Override
         public String toString() {
             return "null";
-        }
-
-        @Override
-        boolean isPrimitive() {
-            return false;
-        }
-
-        @Override
-        Operand getComponent() {
-            return this;
         }
     };
 
@@ -551,7 +545,7 @@ public final class MethodVerifier implements ContextAccess {
         jliMethodHandle = new ReferenceOperand(Type.java_lang_invoke_MethodHandle, thisKlass);
         jlThrowable = new ReferenceOperand(Type.java_lang_Throwable, thisKlass);
 
-        Boolean = getJavaVersion().java9OrLater() ? new PrimitiveOperand(JavaKind.Boolean) : Byte;
+        booleanOperand = getJavaVersion().java9OrLater() ? new PrimitiveOperand(JavaKind.Boolean) : Byte;
 
         thisOperand = new ReferenceOperand(thisKlass, thisKlass);
         returnOperand = kindToOperand(Signatures.returnType(sig));
@@ -1288,7 +1282,7 @@ public final class MethodVerifier implements ContextAccess {
                 }
                 return jliMethodType;
             case DYNAMIC:
-                if (majorVersion < ClassfileParser.JAVA_11_VERSION) {
+                if (earlierThan55()) {
                     throw new ClassFormatError("LDC for Dynamic in classfile version < 55");
                 }
                 DynamicConstant constant = (DynamicConstant) pc;
@@ -2448,7 +2442,7 @@ public final class MethodVerifier implements ContextAccess {
     private Operand fromJVMType(byte jvmType) {
         // @formatter:off
         switch (jvmType) {
-            case 4  : return new ArrayOperand(Boolean);
+            case 4  : return new ArrayOperand(booleanOperand);
             case 5  : return new ArrayOperand(Char);
             case 6  : return new ArrayOperand(Float);
             case 7  : return new ArrayOperand(Double);
@@ -2481,7 +2475,7 @@ public final class MethodVerifier implements ContextAccess {
     private Operand kindToOperand(Symbol<Type> type) {
         // @formatter:off
         switch (Types.getJavaKind(type)) {
-            case Boolean: return Boolean;
+            case Boolean: return booleanOperand;
             case Byte   : return Byte;
             case Short  : return Short;
             case Char   : return Char;
