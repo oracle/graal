@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
 
 class X86_64BitVarArgs {
 
-    // see http://www.x86-64.org/documentation/abi.pdf
+    // see https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
 
     public static final int GP_OFFSET = 0;
     public static final int FP_OFFSET = 4;

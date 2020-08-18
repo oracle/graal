@@ -36,6 +36,9 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
+/**
+ * The node handling the <code>va_arg</code> instruction. N.B. This instruction is rarely emitted.
+ */
 @NodeChild
 public abstract class LLVMVAArg extends LLVMExpressionNode {
 

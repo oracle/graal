@@ -34,6 +34,17 @@ import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
+/**
+ * This library is a sort of SPI that allows the vararg infrastructure to be split into platform
+ * independent and platform specific code. The platform independent code (residing in
+ * <code>com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va</code>) uses
+ * {@link LLVMVaListLibrary} to manipulate platform specific <code>va_list</code> managed objects.
+ *
+ * @see LLVMVAStart
+ * @see LLVMVAEnd
+ * @see LLVMVACopy
+ * @see LLVMVAArg
+ */
 @GenerateLibrary
 public abstract class LLVMVaListLibrary extends Library {
 
@@ -43,11 +54,39 @@ public abstract class LLVMVaListLibrary extends Library {
         return FACTORY;
     }
 
+    /**
+     * Initialize the va_list. It corresponds to the <code>va_start</code> macro.
+     *
+     * @param vaList
+     * @param arguments
+     * @param numberOfExplicitArguments
+     */
     public abstract void initialize(Object vaList, Object[] arguments, int numberOfExplicitArguments);
 
+    /**
+     * Clean up the va_list. It corresponds to the <code>va_end</code> macro.
+     *
+     * @param vaList
+     */
     public abstract void cleanup(Object vaList);
 
+    /**
+     * Copy the source va_list to the destination va_list. It corresponds to the
+     * <code>va_copy</code> macro.
+     *
+     * @param srcVaList
+     * @param destVaList
+     * @param numberOfExplicitArguments
+     */
     public abstract void copy(Object srcVaList, Object destVaList, int numberOfExplicitArguments);
 
+    /**
+     * Shift the va_list argument to the next argument. It corresponds to the <code>va_arg</code>
+     * macro, if expanded to the LLVM <code>va_arg</code> instruction.
+     *
+     * @param vaList the va_list instance
+     * @param type the expected argument type
+     * @return the current argument before shifting
+     */
     public abstract Object shift(Object vaList, Type type);
 }

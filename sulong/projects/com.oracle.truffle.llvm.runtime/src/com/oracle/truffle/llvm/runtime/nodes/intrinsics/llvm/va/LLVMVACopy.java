@@ -37,6 +37,10 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
+/**
+ * The node handling the <code>va_copy</code> instruction. It just delegates to
+ * {@link LLVMVaListLibrary}.
+ */
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeField(type = int.class, name = "numberExplicitArguments")

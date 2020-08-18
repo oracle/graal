@@ -55,6 +55,9 @@ final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<Linux
         }
     }
 
+    // TODO: The following methods temporarily return X86 va_list objects until the AArch64 managed
+    // va_list is implemented.
+
     @Override
     public Object createVAListStorage() {
         return new LLVMX86_64VaListStorage();
