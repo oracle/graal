@@ -91,11 +91,17 @@ public final class InspectServerSession implements MessageEndpoint {
         this.onClose = onCloseTask;
     }
 
+    private static IOException createClosedException() {
+        return new IOException("The endpoint is closed.");
+    }
+
     @Override
-    public void sendClose() {
-        dispose();
+    public void sendClose() throws IOException {
+        if (processThread == null) {
+            throw createClosedException();
+        }
         Runnable onCloseRunnable = onClose;
-        onClose = null;
+        dispose();
         if (onCloseRunnable != null) {
             onCloseRunnable.run();
         }
@@ -120,6 +126,7 @@ public final class InspectServerSession implements MessageEndpoint {
         CommandProcessThread cmdProcessThread;
         synchronized (this) {
             this.messageEndpoint = null;
+            this.onClose = null;
             cmdProcessThread = processThread;
             if (cmdProcessThread != null) {
                 cmdProcessThread.dispose();
@@ -159,7 +166,10 @@ public final class InspectServerSession implements MessageEndpoint {
     }
 
     @Override
-    public void sendText(String message) {
+    public void sendText(String message) throws IOException {
+        if (processThread == null) {
+            throw createClosedException();
+        }
         Command cmd;
         try {
             cmd = new Command(message);
@@ -238,11 +248,17 @@ public final class InspectServerSession implements MessageEndpoint {
     }
 
     @Override
-    public void sendPing(ByteBuffer data) {
+    public void sendPing(ByteBuffer data) throws IOException {
+        if (processThread == null) {
+            throw createClosedException();
+        }
     }
 
     @Override
-    public void sendPong(ByteBuffer data) {
+    public void sendPong(ByteBuffer data) throws IOException {
+        if (processThread == null) {
+            throw createClosedException();
+        }
     }
 
     private JSONObject processCommand(Command cmd, CommandPostProcessor postProcessor) {

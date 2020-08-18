@@ -204,6 +204,43 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
     }
 
     @Test
+    public void inspectorCloseAfterDisposeTest() {
+        Session session = new Session(null);
+        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
+        MessageEndpoint peerEndpoint;
+        try (Engine engine = endpoint.onOpen(session)) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
+                peerEndpoint = endpoint.peer;
+            }
+        }
+        try {
+            peerEndpoint.sendClose();
+            Assert.fail("Endpoint should be closed already.");
+        } catch (IOException e) {
+            // O.K.
+        }
+        try {
+            peerEndpoint.sendText("Something");
+            Assert.fail("Endpoint should be closed already.");
+        } catch (IOException e) {
+            // O.K.
+        }
+        try {
+            peerEndpoint.sendPing(ByteBuffer.allocate(1));
+            Assert.fail("Endpoint should be closed already.");
+        } catch (IOException e) {
+            // O.K.
+        }
+        try {
+            peerEndpoint.sendPong(ByteBuffer.allocate(1));
+            Assert.fail("Endpoint should be closed already.");
+        } catch (IOException e) {
+            // O.K.
+        }
+    }
+
+    @Test
     public void inspectorVetoedTest() {
         Engine.Builder engineBuilder = Engine.newBuilder().serverTransport(new MessageTransport() {
 
