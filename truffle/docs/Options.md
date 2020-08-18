@@ -17,7 +17,7 @@ In addition the GraalVM compiler options can be listed with:
 ```
 $ my-language --jvm --vm.XX:+JVMCIPrintProperties
 ```
-See https://chriswhocodes.com/graalvm_ce_jdk8_options.html for a list of Graal compiler options.
+See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.html) for a list of the GraalVM compiler options.
 
 ## Default Language Launcher Options
 

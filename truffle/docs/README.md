@@ -37,7 +37,7 @@ A good way to start implementing your Truffle language is to fork the [SimpleLan
 SimpleLanguage is a relatively small language implementation, well documented and designed to demonstrate most of the Truffle features.
 You could also try by looking at code of one of the existing open-source Truffle language [implementations and experiments](./Languages.md).
 
-Consider reading [these publications](../../docs/Publications.md) for a very detailed view into how many of the aspects of Truffle work. However, as with any other software project, the source code is the ground truth.
+Consider reading [these publications](https://github.com/oracle/graal/blob/master/docs/Publications.md) for a very detailed view into how many of the aspects of Truffle work. However, as with any other software project, the source code is the ground truth.
 
 ### Advanced Topics
 
@@ -72,8 +72,8 @@ As a best practice it is recommended to upgrade Truffle only one version at a ti
 This way you can increment the version, fix deprecation warnings to continue with the next version.
 The deprecated Javadoc tags on the deprecated APIs are designed to be a guide on how to upgrade.
 
-The latest additions and changes can be seen in the [changelog](../CHANGELOG.md).
+The latest additions and changes can be seen in the [changelog](https://github.com/oracle/graal/blob/master/truffle/CHANGELOG.md).
 
 ## Modifying Truffle
 
-To understand how to modify Truffle, consult [this file](../README.md) and if you would like to contribute to Truffle, consult the [contribution documentation](../CONTRIBUTING.md).
+To understand how to modify Truffle, consult [this file](https://github.com/oracle/graal/blob/master/truffle/README.md) and if you would like to contribute to Truffle, consult the [contribution documentation](https://github.com/oracle/graal/blob/master/truffle/CONTRIBUTING.md).

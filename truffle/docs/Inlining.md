@@ -75,7 +75,7 @@ be, as well as how to find out which decisions were made during compilations.
 
 ### Call tree states
 
-[Nodes](../../compiler/src/org.graalvm.compiler.truffle.compiler/src/org/graalvm/compiler/truffle/compiler/phases/inlining/CallNode.java) in the inline [call tree](../../compiler/src/org.graalvm.compiler.truffle.compiler/src/org/graalvm/compiler/truffle/compiler/phases/inlining/CallTree.java)
+[Nodes](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.compiler/src/org/graalvm/compiler/truffle/compiler/phases/inlining/CallNode.java) in the inline [call tree](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.compiler/src/org/graalvm/compiler/truffle/compiler/phases/inlining/CallTree.java)
 represent *calls* to particular targets. This means that if one target calls
 another twice, we will see this as two nodes despite it being the same call
 target.

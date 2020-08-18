@@ -5,7 +5,7 @@ Truffle. When running in JVM mode, we can use standard JVM tooling, such as
 VisualVM, Java Flight Recorder and Oracle Developer Studio. When run as a Native Image we can use
 `callgrind` from the Valgrind tool suite and other system tools, such as `strace`.
 As a GraalVM language we can also use other GraalVM tools. For a broad enough
-definition of profiling, we can also use the [Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/20/guide/tools/ideal-graph-visualizer/) and
+definition of profiling, we can also use the [Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/20/docs/tools/igv/) and
 C1 Visualizer to inspect the compiler output.
 
 This guide is less about how to use each tool and more about suggestions for extracting
@@ -77,7 +77,7 @@ files as of this writing (Dec. 2018).
 ### Profiling with Oracle Developer Studio
 
 [Oracle Developer Studio](https://www.oracle.com/technetwork/server-storage/developerstudio/overview/index.html) includes a
-[performance analyzer](https://www.oracle.com/technetwork/server-storage/solarisstudio/features/performance-analyzer-2292312.html) that can be used with GraalVM.
+[Performance Analyzer](https://www.oracle.com/technetwork/server-storage/solarisstudio/features/performance-analyzer-2292312.html) that can be used with GraalVM.
 Developer Studio can be [downloaded from OTN](https://www.oracle.com/technetwork/server-storage/developerstudio/downloads/index.html)
 and the current version at time of writing (12.6) provides a perpetual no-cost license for production use and the development of commercial applications.
 
