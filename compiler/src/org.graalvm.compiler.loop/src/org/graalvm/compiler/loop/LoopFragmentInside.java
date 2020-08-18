@@ -267,7 +267,7 @@ public class LoopFragmentInside extends LoopFragment {
             usage.replaceFirstInput(trueSuccessor, loopTest.trueSuccessor());
         }
 
-        assert graph.hasValueProxies() || mainLoopBegin.loopExits().count() == 1 : "Can only merge early loop exits if graph has value proxies " + mainLoopBegin;
+        assert graph.hasValueProxies() || mainLoopBegin.loopExits().count() <= 1 : "Can only merge early loop exits if graph has value proxies " + mainLoopBegin;
 
         mergeEarlyLoopExits(graph, mainLoopBegin, mainCounted, new2OldPhis, loop);
 
@@ -323,7 +323,7 @@ public class LoopFragmentInside extends LoopFragment {
             if (next instanceof EndNode) {
                 mergeRegularEarlyExit(next, begin, exit, mainLoopBegin, graph, new2OldPhis, loop);
             } else {
-                GraalError.shouldNotReachHere("Can only unroll loops where the early exits which merge " + next);
+                GraalError.shouldNotReachHere("Can only unroll loops where the early exits which merge " + next + " duplicated node is " + begin + " main loop begin is " + mainLoopBegin);
             }
         }
     }
