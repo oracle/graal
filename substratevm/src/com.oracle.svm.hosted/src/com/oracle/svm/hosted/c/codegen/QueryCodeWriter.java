@@ -110,18 +110,6 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         /* Write general macro definitions. */
         writer.appendln();
 
-        /*
-         * On Posix systems we use the GNU C extension, typeof() to prevent the type promotion (to
-         * signed int) caused by the inversion operation. On Windows we generate c++ files so we can
-         * use decltype.
-         */
-        writer.appendln("#ifndef _WIN64");
-        writer.appendln("#define ISUNSIGNED(a) ((a) >= 0L && (typeof(a)) ~(a) >= 0L)");
-        writer.appendln("#else");
-        writer.appendln("#define ISUNSIGNED(a) ((a) >= 0L && (decltype(a)) ~(a) >= 0L)");
-        writer.appendln("#endif");
-        writer.appendln("#define IS_CONST_UNSIGNED(a) (a>=0 ? 1 : 0)");
-
         /* Write the main function with all the outputs for the children. */
         String functionName = nativeCodeInfo.getName().replaceAll("\\W", "_");
         writer.appendln();
@@ -199,13 +187,15 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         printUnsignedLong(fieldInfo.getOffsetInfo(), offsetOfField(fieldInfo));
 
         if (fieldInfo.getKind() == ElementKind.INTEGER) {
-            String tempVar = getUniqueTempVarName(fieldInfo.getParent());
             registerElementForCurrentLine(fieldInfo.getParent().getAnnotatedElement());
             writer.indents().appendln("{");
             writer.indent();
-            writer.indents().appendln(fieldInfo.getParent().getName() + " " + tempVar + ";");
-            writer.indents().appendln("memset(&" + tempVar + ", 0x0, sizeof(" + tempVar + "));");
-            printIsUnsigned(fieldInfo.getSignednessInfo(), isUnsigned(tempVar + "." + fieldInfo.getName()));
+            writer.indents().appendln(fieldInfo.getParent().getName() + " fieldHolder;");
+            writer.indents().appendln("memset(&fieldHolder, 0x0, sizeof(fieldHolder));");
+            writer.indents().appendln("unsigned long all_bits_set = -1;");
+            writer.indents().appendln("fieldHolder." + fieldInfo.getName() + " = all_bits_set;");
+            writer.indents().appendln("int is_unsigned = fieldHolder." + fieldInfo.getName() + " >= 0;");
+            printIsUnsigned(fieldInfo.getSignednessInfo(), "is_unsigned");
             writer.outdent();
             writer.indents().appendln("}");
         }
@@ -234,10 +224,10 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.indents().appendln("memset(&w, 0x0, sizeof(w));");
         /* Fill the actual bitfield with 1 bits. Maximum size is 64 bits. */
         registerElementForCurrentLine(bitfieldInfo.getAnnotatedElement());
-        writer.indents().appendln("unsigned long one_bits64 = 0xffffffffffffffff;");
-        writer.indents().appendln("w.s." + bitfieldName + " = one_bits64;");
+        writer.indents().appendln("unsigned long all_bits_set = -1;");
+        writer.indents().appendln("w.s." + bitfieldName + " = all_bits_set;");
         /* All bits are set, so signed bitfields are < 0; */
-        writer.indents().appendln("is_unsigned =  (w.s." + bitfieldName + " >= 0);");
+        writer.indents().appendln("is_unsigned = w.s." + bitfieldName + " >= 0;");
         /* Find the first byte that is used by the bitfield, i.e., the first byte with a bit set. */
         writer.indents().appendln("p = (char*)&w.s;");
         writer.indents().appendln("byte_offset = 0;");
@@ -277,13 +267,13 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         printUnsignedLong(pointerToInfo.getSizeInfo(), sizeOf(pointerToInfo));
 
         if (pointerToInfo.getKind() == ElementKind.INTEGER) {
-            String tempVar = getUniqueTempVarName(pointerToInfo);
             registerElementForCurrentLine(pointerToInfo.getAnnotatedElement());
             writer.indents().appendln("{");
             writer.indent();
-            String init = " = 0";
-            writer.indents().appendln(pointerToInfo.getName() + " " + tempVar + init + ";");
-            printIsUnsigned(pointerToInfo.getSignednessInfo(), isUnsigned(tempVar));
+            writer.indents().appendln("unsigned long all_bits_set = -1;");
+            writer.indents().appendln(pointerToInfo.getName() + " fieldHolder = all_bits_set;");
+            writer.indents().appendln("int is_unsigned = fieldHolder >= 0;");
+            printIsUnsigned(pointerToInfo.getSignednessInfo(), "is_unsigned");
             writer.outdent();
             writer.indents().appendln("}");
         }
@@ -331,13 +321,6 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     }
 
-    private int tempVarCounter;
-
-    private String getUniqueTempVarName(ElementInfo info) {
-        tempVarCounter++;
-        return "tmp_" + info.getName().replaceAll("\\W", "_") + "_" + tempVarCounter;
-    }
-
     private static String sizeOf(ElementInfo element) {
         String elementName = element.getName();
         /* sizeof(void) is undefined and an error on some compilers */
@@ -352,12 +335,8 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         return "offsetof(" + field.getParent().getName() + ", " + field.getName() + ")";
     }
 
-    private static String isUnsigned(String symbolName) {
-        return "ISUNSIGNED(" + symbolName + ")";
-    }
-
     private static String isConstUnsigned(String symbolName) {
-        return "IS_CONST_UNSIGNED(" + symbolName + ")";
+        return "(" + symbolName + ">=0 ? 1 : 0)";
     }
 
     private void registerElementForCurrentLine(Object element) {
