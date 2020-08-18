@@ -508,7 +508,11 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
             if (sps != null) {
                 sps.activeWS = null;
             }
-            iss.sendClose();
+            try {
+                iss.sendClose();
+            } catch (IOException e) {
+                iss.context.logException(e);
+            }
         }
 
         @Override
@@ -524,7 +528,11 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
         public void onMessage(WebSocketFrame frame) {
             String message = frame.getTextPayload();
             iss.context.logMessage("CLIENT: ", message);
-            iss.sendText(message);
+            try {
+                iss.sendText(message);
+            } catch (IOException e) {
+                iss.context.logException(e);
+            }
         }
 
         @Override

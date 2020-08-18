@@ -176,7 +176,11 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
     @Override
     public void onMessage(String message) {
         executionContext.logMessage("CLIENT: ", message);
-        iss.sendText(message);
+        try {
+            iss.sendText(message);
+        } catch (IOException e) {
+            executionContext.logException(e);
+        }
     }
 
     @Override
