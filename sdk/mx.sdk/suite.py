@@ -88,12 +88,8 @@ suite = {
     },
     "JLINE3" : {
       "sha1" : "23ea146403afcc9f0928fa08b317b32542ac2e03",
-      "path" : "/home/bspasoje/.m2/repository/org/graalvm/shadowed/org/jline/jline3-shadowed/3.13.2/jline3-shadowed-3.13.2.jar",
-      # "maven" : {
-      #   "groupId" : "org.graalvm.shadowed.org.jline",
-      #   "artifactId" : "jline",
-      #   "version" : "3.13.2",
-      # },
+      "version" : "3.13.2",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
       "license" : "BSD-new"
     },
     "LLVM_ORG" : {
