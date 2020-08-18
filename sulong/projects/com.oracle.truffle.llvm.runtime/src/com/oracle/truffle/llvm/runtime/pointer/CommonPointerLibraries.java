@@ -60,9 +60,12 @@ import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Clazz;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Method;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.StructMember;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetIndexPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNode;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
@@ -316,6 +319,21 @@ abstract class CommonPointerLibraries {
 
     static LLVMFunction getLLVMFunction(LLVMContext context, Method method, LLVMInteropType.Clazz clazz, String member) throws UnknownIdentifierException {
         if (method == null) {
+            // check if 'member' denotes a function pointer
+            StructMember structMember = clazz.findMember(member);
+            if (structMember != null) {
+                LLVMForeignGetMemberPointerNode llvmForeignGetMemberPointerNode = LLVMForeignGetMemberPointerNodeGen.getUncached();
+                LLVMForeignReadNode llvmForeignReadNode = LLVMForeignReadNodeGen.getUncached();
+
+                Object readMember = readMember(receiver, member, llvmForeignGetMemberPointerNode, llvmForeignReadNode);
+                if (readMember instanceof LLVMPointerImpl) {
+                    /*
+                     * function pointer: do not pass 'newArguments', but 'arguments' (no
+                     * 'self'/'this' object needed)
+                     */
+                    return execute((LLVMPointerImpl) readMember, arguments);
+                }
+            }
             throw UnknownIdentifierException.create(member);
         }
         LLVMFunction llvmFunction = context.getGlobalScope().getFunction(method.getLinkageName());
@@ -354,6 +372,16 @@ abstract class CommonPointerLibraries {
         LLVMFunctionDescriptor fn = LLVMLanguage.getContext().createFunctionDescriptor(llvmFunction);
 
         return InteropLibrary.getUncached().execute(fn, newArguments);
+    }
+
+    @ExportMessage
+    static boolean isExecutable(LLVMPointerImpl receiver) {
+        return InteropLibrary.getUncached().isExecutable(receiver);
+    }
+
+    @ExportMessage
+    static Object execute(LLVMPointerImpl receiver, Object[] arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+        return InteropLibrary.getUncached().execute(receiver, arguments);
     }
 
     @ExportMessage
