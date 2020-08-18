@@ -2947,6 +2947,96 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean hasExceptionCause(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.hasExceptionCause(receiver);
+            return result;
+        }
+
+        @Override
+        public Object getExceptionCause(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            Object result = delegate.getExceptionCause(receiver);
+            assert validReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        public boolean hasExceptionSuppressed(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.hasExceptionSuppressed(receiver);
+            return result;
+        }
+
+        @Override
+        public Object getExceptionSuppressed(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            Object result = delegate.getExceptionSuppressed(receiver);
+            assert validReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        public boolean hasExceptionMessage(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.hasExceptionMessage(receiver);
+            return result;
+        }
+
+        @Override
+        public Object getExceptionMessage(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            Object result = delegate.getExceptionMessage(receiver);
+            assert validReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        public boolean hasExceptionStackTrace(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.hasExceptionStackTrace(receiver);
+            return result;
+        }
+
+        @Override
+        public Object getExceptionStackTrace(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            Object result = delegate.getExceptionStackTrace(receiver);
+            assert validReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        public boolean hasExecutableName(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.hasExecutableName(receiver);
+            return result;
+        }
+
+        @Override
+        public Object getExecutableName(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            Object result = delegate.getExecutableName(receiver);
+            assert validReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        public boolean hasDeclaringMetaObject(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.hasDeclaringMetaObject(receiver);
+            return result;
+        }
+
+        @Override
+        public Object getDeclaringMetaObject(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            Object result = delegate.getDeclaringMetaObject(receiver);
+            assert validReturn(receiver, result);
+            return result;
+        }
+
+        @Override
         public Object toDisplayString(Object receiver, boolean allowSideEffects) {
             assert preCondition(receiver);
             assert validNonInteropArgument(receiver, allowSideEffects);

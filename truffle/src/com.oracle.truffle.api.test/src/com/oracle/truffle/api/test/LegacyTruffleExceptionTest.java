@@ -74,7 +74,7 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
         setupEnv(createContext(verifyingHandler), new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                LegacyCatchableException exception = new LegacyCatchableException();
+                LegacyCatchableException exception = new LegacyCatchableException("Test exception");
                 LangObject exceptionObject = new LangObject(exception);
                 exception.setExceptionObject(exceptionObject);
                 return createAST(LegacyTruffleExceptionTest.class, languageInstance, exceptionObject, (node) -> exception.setLocation(node));
@@ -141,7 +141,8 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
         private Node location;
         private Object exeptionObject;
 
-        LegacyCatchableException() {
+        LegacyCatchableException(String message) {
+            super(message);
         }
 
         void setExceptionObject(Object exeptionObject) {
@@ -170,6 +171,7 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
         private Object exeptionObject;
 
         LegacyUnCatchableException() {
+            super();
         }
 
         void setExceptionObject(Object exeptionObject) {
