@@ -159,8 +159,8 @@ final class AssertUtils {
 
     @SuppressWarnings("deprecation")
     static boolean isInteropValue(Object o) {
-        return o instanceof Throwable || o instanceof TruffleObject || o instanceof Boolean || o instanceof Byte || o instanceof Short ||
-                        o instanceof Integer || o instanceof Long || o instanceof Float || o instanceof Double || o instanceof Character || o instanceof String;
+        return o instanceof TruffleObject || o instanceof Boolean || o instanceof Byte || o instanceof Short || o instanceof Integer || o instanceof Long || o instanceof Float ||
+                        o instanceof Double || o instanceof Character || o instanceof String;
     }
 
     static boolean validArguments(Object receiver, Object[] args) {
