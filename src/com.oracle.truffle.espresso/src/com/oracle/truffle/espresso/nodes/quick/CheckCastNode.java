@@ -22,10 +22,12 @@
  */
 package com.oracle.truffle.espresso.nodes.quick;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
@@ -33,11 +35,17 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class CheckCastNode extends QuickNode {
 
-    final Klass typeToCheck;
+    @CompilerDirectives.CompilationFinal Klass typeToCheck;
+    final char cpIndex;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
     protected abstract boolean executeCheckCast(Klass instanceKlass);
+
+    CheckCastNode(char cpIndex, int top, int callerBCI) {
+        super(top, callerBCI);
+        this.cpIndex = cpIndex;
+    }
 
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "instanceKlass == cachedKlass")
@@ -53,22 +61,24 @@ public abstract class CheckCastNode extends QuickNode {
         return checkCast(typeToCheck, instanceKlass);
     }
 
-    CheckCastNode(Klass typeToCheck, int top, int callerBCI) {
-        super(top, callerBCI);
-        assert !typeToCheck.isPrimitive();
-        this.typeToCheck = typeToCheck;
-    }
-
     @TruffleBoundary
     static boolean checkCast(Klass typeToCheck, Klass instanceKlass) {
         return typeToCheck.isAssignableFrom(instanceKlass);
+    }
+
+    private boolean doCheckCast(StaticObject receiver) {
+        if (typeToCheck == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            typeToCheck = getBytecodesNode().resolveType(Bytecodes.CHECKCAST, cpIndex);
+        }
+        return executeCheckCast(receiver.getKlass());
     }
 
     @Override
     public final int execute(final VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = root.peekObject(frame, top - 1);
-        if (StaticObject.isNull(receiver) || executeCheckCast(receiver.getKlass())) {
+        if (StaticObject.isNull(receiver) || doCheckCast(receiver)) {
             return 0;
         }
         Meta meta = typeToCheck.getMeta();
