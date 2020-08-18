@@ -19,21 +19,22 @@ The following language implementations exist already:
 
 ## Experiments
 
-* [ZipPy](https://github.com/securesystemslab/zippy), a Python implementation.
-* [Mumbler](https://github.com/cesquivias/mumbler), an experimental Lisp programming language.
-* [LuaTruffle](https://github.com/lucasallan/LuaTruffle), an implementation of the Lua language.
-* [hextruffe](https://bitbucket.org/hexafraction/truffles), an implementation of Hex.
-* [TruffleMATE](https://github.com/charig/TruffleMATE), a Smalltalk with a completely reified runtime system.
-* [PureScript](https://github.com/slamdata/truffled-purescript), a small strongly typed programming language.
-* [Mozart-Graal](https://github.com/eregon/mozart-graal), an implementation of the Oz programming language.
-* [DynSem](https://github.com/metaborg/dynsem), a DSL for declarative specification of dynamic semantics of languages.
-* [Cover](https://github.com/gerard-/cover), a Safe Subset of C++.
-* [TrufflePascal](https://github.com/Aspect26/TrufflePascal/), a Pascal interpreter.
-* [Reactive Ruby](https://github.com/guidosalva/ReactiveRubyTruffle), TruffleRuby meets Reactive Programming.
-* [PorcE](https://github.com/orc-lang/orc/tree/master/PorcE), an Orc language implementation.
-* [shen-truffle](https://github.com/ragnard/shen-truffle), a port of the Shen programming language.
 * [bf](https://github.com/chumer/bf/), an experimental Brainfuck programming language implementation.
 * [brainfuck-jvm](https://github.com/mthmulders/brainfuck-jvm), another Brainfuck language implementation.
+* [Cover](https://github.com/gerard-/cover), a Safe Subset of C++.
+* [DynSem](https://github.com/metaborg/dynsem), a DSL for declarative specification of dynamic semantics of languages.
 * [Heap Language](https://github.com/jaroslavtulach/heapdump) tutorial showing embedding of Truffle languages via interoperability.
+* [hextruffe](https://bitbucket.org/hexafraction/truffles), an implementation of Hex.
+* [LuaTruffle](https://github.com/lucasallan/LuaTruffle), an implementation of the Lua language.
+* [Mozart-Graal](https://github.com/eregon/mozart-graal), an implementation of the Oz programming language.
+* [Mumbler](https://github.com/cesquivias/mumbler), an experimental Lisp programming language.
+* [PorcE](https://github.com/orc-lang/orc/tree/master/PorcE), an Orc language implementation.
+* [PureScript](https://github.com/slamdata/truffled-purescript), a small strongly typed programming language.
+* [Reactive Ruby](https://github.com/guidosalva/ReactiveRubyTruffle), TruffleRuby meets Reactive Programming.
+* [shen-truffle](https://github.com/ragnard/shen-truffle), a port of the Shen programming language.
+* [TruffleMATE](https://github.com/charig/TruffleMATE), a Smalltalk with a completely reified runtime system.
+* [TrufflePascal](https://github.com/Aspect26/TrufflePascal/), a Pascal interpreter.
+* [ZipPy](https://github.com/securesystemslab/zippy), a Python implementation.
+
 
 Submit a [pull request](https://help.github.com/articles/using-pull-requests/) to add/remove from this list.
