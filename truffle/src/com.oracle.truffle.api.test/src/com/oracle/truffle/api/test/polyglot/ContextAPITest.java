@@ -170,8 +170,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        public boolean isExceptionCatchable() {
-            return true;
+        public boolean isExceptionUnwind() {
+            return false;
         }
 
         @ExportMessage

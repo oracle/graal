@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,70 +38,55 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.api.interop;
 
-package com.oracle.truffle.sl.parser;
-
-import com.oracle.truffle.api.interop.ExceptionType;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 @ExportLibrary(InteropLibrary.class)
-public class SLParseError extends TruffleException {
+final class TruffleStackTraceElementObject implements TruffleObject {
 
-    public static final long serialVersionUID = 1L;
-    private final Source source;
-    private final int line;
-    private final int column;
-    private final int length;
+    private final RootNode rootNode;
+    private final SourceSection sourceSection;
 
-    public SLParseError(Source source, int line, int column, int length, String message) {
-        super(message);
-        this.source = source;
-        this.line = line;
-        this.column = column;
-        this.length = length;
+    TruffleStackTraceElementObject(RootNode rootNode, SourceSection sourceSection) {
+        this.rootNode = rootNode;
+        this.sourceSection = sourceSection;
     }
 
     @ExportMessage
-    public boolean isException() {
+    boolean hasExecutableName() {
         return true;
     }
 
     @ExportMessage
-    public boolean isExceptionUnwind() {
+    Object getExecutableName() {
+        return rootNode.getName();
+    }
+
+    @ExportMessage
+    boolean hasSourceLocation() {
+        return sourceSection != null;
+    }
+
+    @ExportMessage
+    SourceSection getSourceLocation() throws UnsupportedMessageException {
+        if (sourceSection == null) {
+            throw UnsupportedMessageException.create();
+        } else {
+            return sourceSection;
+        }
+    }
+
+    @ExportMessage
+    boolean hasDeclaringMetaObject() {
         return false;
     }
 
     @ExportMessage
-    public ExceptionType getExceptionType() {
-        return ExceptionType.SYNTAX_ERROR;
-    }
-
-    @ExportMessage
-    public int getExceptionExitStatus() {
-        return 0;
-    }
-
-    @ExportMessage
-    public RuntimeException throwException() {
-        throw this;
-    }
-
-    @ExportMessage
-    public boolean hasSourceLocation() {
-        return source != null;
-    }
-
-    @ExportMessage(name = "getSourceLocation")
-    public SourceSection sourceLocation() throws UnsupportedMessageException {
-        if (source == null) {
-            throw UnsupportedMessageException.create();
-        }
-        return source.createSection(line, column, length);
+    Object getDeclaringMetaObject() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 }

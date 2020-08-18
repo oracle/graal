@@ -149,6 +149,10 @@ final class NodeAccessor extends Accessor {
             return rootNode.isTrivial();
         }
 
+        @Override
+        public Object translateStackTraceElement(TruffleStackTraceElement stackTraceLement) {
+            return stackTraceLement.getTarget().getRootNode().translateStackTraceElement(stackTraceLement);
+        }
     }
 
 }

@@ -1357,8 +1357,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
 
             @ExportMessage
-            public boolean isExceptionCatchable() {
-                return true;
+            public boolean isExceptionUnwind() {
+                return false;
             }
 
             @ExportMessage

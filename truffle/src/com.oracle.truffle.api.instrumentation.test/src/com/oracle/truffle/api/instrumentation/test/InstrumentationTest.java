@@ -2487,8 +2487,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
 
         @ExportMessage
-        public boolean isExceptionCatchable() {
-            return false;
+        public boolean isExceptionUnwind() {
+            return true;
         }
 
         @ExportMessage

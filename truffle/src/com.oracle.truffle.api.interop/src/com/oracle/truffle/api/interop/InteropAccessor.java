@@ -44,6 +44,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 @SuppressWarnings("deprecation")
 final class InteropAccessor extends Accessor {
@@ -131,6 +133,11 @@ final class InteropAccessor extends Accessor {
                 return ((TruffleException) exception).getLazyStackTrace();
             }
             return null;
+        }
+
+        @Override
+        public Object createDefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection) {
+            return new TruffleStackTraceElementObject(rootNode, sourceSection);
         }
 
     }

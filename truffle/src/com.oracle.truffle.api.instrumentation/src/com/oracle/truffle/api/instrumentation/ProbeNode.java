@@ -288,7 +288,7 @@ public final class ProbeNode extends Node {
                 interop = insert(InteropLibrary.getFactory().createDispatched(5));
             }
             try {
-                if (interop.isException(exception) && !interop.isExceptionCatchable(exception)) {
+                if (interop.isException(exception) && interop.isExceptionUnwind(exception)) {
                     interop.throwException(exception);
                 }
             } catch (UnsupportedMessageException um) {
@@ -663,7 +663,7 @@ public final class ProbeNode extends Node {
     static void exceptionEventForClientInstrument(EventBinding.Source<?> b, String eventName, Throwable t) {
         InteropLibrary interop = InteropLibrary.getUncached();
         try {
-            if (interop.isException(t) && !interop.isExceptionCatchable(t)) {
+            if (interop.isException(t) && interop.isExceptionUnwind(t)) {
                 interop.throwException(t);
             }
         } catch (UnsupportedMessageException um) {

@@ -652,7 +652,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             } catch (Throwable t) {
                 InteropLibrary interop = InteropLibrary.getUncached();
                 try {
-                    if (interop.isException(t) && !interop.isExceptionCatchable(t)) {
+                    if (interop.isException(t) && interop.isExceptionUnwind(t)) {
                         throw interop.throwException(t);
                     }
                 } catch (UnsupportedMessageException um) {

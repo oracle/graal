@@ -293,8 +293,8 @@ public class LanguageSPITest {
         }
 
         @ExportMessage
-        public boolean isExceptionCatchable() {
-            return true;
+        public boolean isExceptionUnwind() {
+            return false;
         }
 
         @ExportMessage
@@ -333,8 +333,8 @@ public class LanguageSPITest {
         }
 
         @ExportMessage
-        public boolean isExceptionCatchable() {
-            return true;
+        public boolean isExceptionUnwind() {
+            return false;
         }
 
         @ExportMessage

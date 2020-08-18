@@ -114,11 +114,11 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        public boolean isExceptionCatchable() throws UnsupportedMessageException {
+        public boolean isExceptionUnwind() throws UnsupportedMessageException {
             if (exception == null) {
                 throw UnsupportedMessageException.create();
             }
-            return false;
+            return true;
         }
 
         @ExportMessage

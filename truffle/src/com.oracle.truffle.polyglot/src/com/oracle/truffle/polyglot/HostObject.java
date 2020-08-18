@@ -1022,9 +1022,9 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isExceptionCatchable() throws UnsupportedMessageException {
+    boolean isExceptionUnwind() throws UnsupportedMessageException {
         if (isException()) {
-            return !(obj instanceof ThreadDeath);
+            return obj instanceof ThreadDeath;
         }
         throw UnsupportedMessageException.create();
     }

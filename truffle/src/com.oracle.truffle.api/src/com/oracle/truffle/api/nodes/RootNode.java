@@ -413,6 +413,11 @@ public abstract class RootNode extends ExecutableNode {
         return null;
     }
 
+    protected Object translateStackTraceElement(TruffleStackTraceElement element) {
+        Node location = element.getLocation();
+        return NodeAccessor.INTEROP.createDefaultStackTraceElementObject(element.getTarget().getRootNode(), location != null ? location.getEncapsulatingSourceSection() : null);
+    }
+
     /**
      * Helper method to create a root node that always returns the same value. Certain operations
      * (especially {@link com.oracle.truffle.api.interop inter-operability} API) require return of

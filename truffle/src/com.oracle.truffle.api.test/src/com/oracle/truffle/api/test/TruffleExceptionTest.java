@@ -84,7 +84,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         setupEnv(createContext(verifyingHandler), new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                TruffleExceptionImpl exception = new TruffleExceptionImpl(true);
+                TruffleExceptionImpl exception = new TruffleExceptionImpl(false);
                 return createAST(TruffleException.class, languageInstance, exception, (node) -> exception.setLocation(node));
             }
         });
@@ -97,7 +97,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         setupEnv(createContext(verifyingHandler), new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                TruffleExceptionImpl exception = new TruffleExceptionImpl(false);
+                TruffleExceptionImpl exception = new TruffleExceptionImpl(true);
                 return createAST(TruffleException.class, languageInstance, exception, (node) -> exception.setLocation(node));
             }
         });
@@ -196,16 +196,16 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
 
         @Override
         Object execute(VirtualFrame frame) {
-            boolean runFinalization = true;
+            boolean unwind = false;
             try {
                 return block.execute(frame);
             } catch (Throwable ex) {
                 if (interop.isException(ex)) {
                     try {
-                        runFinalization = interop.isExceptionCatchable(ex);
-                        Assert.assertEquals(runFinalization ? ExceptionType.GUEST_LANGUAGE_ERROR : ExceptionType.CANCEL, interop.getExceptionType(ex));
+                        unwind = interop.isExceptionUnwind(ex);
+                        Assert.assertEquals(unwind ? ExceptionType.CANCEL : ExceptionType.GUEST_LANGUAGE_ERROR, interop.getExceptionType(ex));
                         Assert.assertEquals(0, interop.getExceptionExitStatus(ex));
-                        if (runFinalization && catchBlock != null) {
+                        if (!unwind && catchBlock != null) {
                             return catchBlock.execute(frame);
                         } else {
                             interop.throwException(ex);
@@ -216,7 +216,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
                 }
                 throw ex;
             } finally {
-                if (runFinalization && finalizerBlock != null) {
+                if (!unwind && finalizerBlock != null) {
                     finalizerBlock.execute(frame);
                 }
             }
@@ -247,11 +247,11 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
     @ExportLibrary(InteropLibrary.class)
     static final class TruffleExceptionImpl extends TruffleException {
 
-        private final boolean catchable;
+        private final boolean unwind;
         private Node location;
 
-        TruffleExceptionImpl(boolean catchable) {
-            this.catchable = catchable;
+        TruffleExceptionImpl(boolean unwind) {
+            this.unwind = unwind;
         }
 
         @Override
@@ -269,13 +269,13 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        public boolean isExceptionCatchable() {
-            return catchable;
+        public boolean isExceptionUnwind() {
+            return unwind;
         }
 
         @ExportMessage
         public ExceptionType getExceptionType() {
-            return catchable ? ExceptionType.GUEST_LANGUAGE_ERROR : ExceptionType.CANCEL;
+            return unwind ? ExceptionType.CANCEL : ExceptionType.GUEST_LANGUAGE_ERROR;
         }
 
         @ExportMessage

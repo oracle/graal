@@ -170,6 +170,8 @@ public abstract class Accessor {
         public abstract void forceAdoption(Node parent, Node child);
 
         public abstract boolean isTrivial(RootNode rootNode);
+
+        public abstract Object translateStackTraceElement(TruffleStackTraceElement stackTraceLement);
     }
 
     public abstract static class SourceSupport extends Support {
@@ -220,6 +222,8 @@ public abstract class Accessor {
         public abstract boolean isScopeObject(Object receiver);
 
         public abstract Throwable getLazyStackTrace(Throwable exception);
+
+        public abstract Object createDefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection);
     }
 
     public abstract static class EngineSupport extends Support {

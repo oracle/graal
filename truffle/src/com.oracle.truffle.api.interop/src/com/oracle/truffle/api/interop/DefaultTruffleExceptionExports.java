@@ -40,9 +40,14 @@
  */
 package com.oracle.truffle.api.interop;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.ArrayList;
+import java.util.List;
 
 @SuppressWarnings("unused")
 @ExportLibrary(value = InteropLibrary.class, receiverType = TruffleException.class)
@@ -59,8 +64,8 @@ final class DefaultTruffleExceptionExports {
     }
 
     @ExportMessage
-    static boolean isExceptionCatchable(TruffleException receiver) {
-        return true;
+    static boolean isExceptionUnwind(TruffleException receiver) {
+        return false;
     }
 
     @ExportMessage
@@ -85,5 +90,133 @@ final class DefaultTruffleExceptionExports {
             throw UnsupportedMessageException.create();
         }
         return sourceLocation;
+    }
+
+    @ExportMessage
+    static boolean hasExceptionCause(TruffleException receiver) {
+        return receiver.getCause() != null;
+    }
+
+    @ExportMessage
+    static Object getExceptionCause(TruffleException receiver) throws UnsupportedMessageException {
+        Throwable throwable = receiver.getCause();
+        if (throwable != null) {
+            return throwable;
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static boolean hasExceptionSuppressed(TruffleException receiver) {
+        return hasExceptionSuppressedImpl(receiver);
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static Object getExceptionSuppressed(TruffleException receiver) throws UnsupportedMessageException {
+        return getExceptionSuppressedImpl(receiver);
+    }
+
+    @ExportMessage
+    static boolean hasExceptionMessage(TruffleException receiver) {
+        return receiver.getMessage() != null;
+    }
+
+    @ExportMessage
+    static Object getExceptionMessage(TruffleException receiver) throws UnsupportedMessageException {
+        String message = receiver.getMessage();
+        if (message == null) {
+            throw UnsupportedMessageException.create();
+        } else {
+            return message;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static boolean hasExceptionStackTrace(TruffleException receiver) {
+        return TruffleStackTrace.fillIn(receiver) != null;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static Object getExceptionStackTrace(TruffleException receiver) throws UnsupportedMessageException {
+        return getExceptionStackTraceImpl(receiver);
+    }
+
+    static boolean hasExceptionSuppressedImpl(Throwable t) {
+        for (Throwable se : t.getSuppressed()) {
+            if (isTruffleException(se)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static Object getExceptionSuppressedImpl(Throwable t) throws UnsupportedMessageException {
+        List<Throwable> suppressed = new ArrayList<>();
+        for (Throwable se : t.getSuppressed()) {
+            if (isTruffleException(se)) {
+                suppressed.add(se);
+            }
+        }
+        if (suppressed.isEmpty()) {
+            throw UnsupportedMessageException.create();
+        } else {
+            return new InteropList(suppressed.toArray(new Throwable[suppressed.size()]));
+        }
+    }
+
+    static Object getExceptionStackTraceImpl(Throwable t) throws UnsupportedMessageException {
+        List<TruffleStackTraceElement> stack = TruffleStackTrace.getStackTrace(t);
+        if (stack == null) {
+            throw UnsupportedMessageException.create();
+        } else {
+            Object[] items = new Object[stack.size()];
+            for (int i = 0; i < items.length; i++) {
+                items[i] = stack.get(i).getGuestObject();
+            }
+            return new InteropList(items);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean isTruffleException(Throwable t) {
+        return t instanceof com.oracle.truffle.api.TruffleException;
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class InteropList implements TruffleObject {
+
+        private final Object[] items;
+
+        InteropList(Object[] items) {
+            this.items = items;
+        }
+
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return items.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < items.length;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (index < 0 || index >= items.length) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            return items[(int) index];
+        }
     }
 }

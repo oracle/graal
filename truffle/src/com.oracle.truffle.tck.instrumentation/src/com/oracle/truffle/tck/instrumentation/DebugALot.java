@@ -170,7 +170,7 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
     private static void rethrowUnCatchable(Throwable t) {
         InteropLibrary interop = InteropLibrary.getUncached();
         try {
-            if (interop.isException(t) && !interop.isExceptionCatchable(t)) {
+            if (interop.isException(t) && interop.isExceptionUnwind(t)) {
                 interop.throwException(t);
             }
         } catch (UnsupportedMessageException um) {

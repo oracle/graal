@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -72,14 +73,14 @@ import com.oracle.truffle.api.source.SourceSection;
  *         } catch (Throwable ex) {
  *             if (interop.isException(ex)) {
  *                 try {
- *                     runFinalization = interop.isExceptionCatchable(ex);
- *                     if (runFinalization && catchBlock != null) {
+ *                     unwind = interop.isExceptionUnwind(ex);
+ *                     if (!unwind && catchBlock != null) {
  *                         return catchBlock.execute(frame);
  *                     } else {
  *                         interop.throwException(ex);
  *                     }
  *                 } catch (UnsupportedMessageException ume) {
- *                     CompilerDirectives.shouldNotReachHere(ume);
+ *                     throw CompilerDirectives.shouldNotReachHere(ume);
  *                 }
  *             }
  *             throw ex;
@@ -98,41 +99,21 @@ import com.oracle.truffle.api.source.SourceSection;
 public abstract class TruffleException extends RuntimeException implements TruffleObject, com.oracle.truffle.api.TruffleException {
 
     private final int stackTraceElementLimit;
+    private final Throwable internalCause;
     private volatile Throwable lazyStackTrace;
 
     protected TruffleException() {
-        this((String) null, -1);
-    }
-
-    protected TruffleException(int stackTraceElementLimit) {
-        this((String) null, stackTraceElementLimit);
+        this(null, null, -1);
     }
 
     protected TruffleException(String message) {
-        this(message, -1);
-    }
-
-    protected TruffleException(String message, int stackTraceElementLimit) {
-        super(message);
-        this.stackTraceElementLimit = stackTraceElementLimit;
-    }
-
-    protected TruffleException(Throwable internalCause) {
-        this(internalCause, -1);
-    }
-
-    protected TruffleException(Throwable internalCause, int stackTraceElementLimit) {
-        super(checkCause(internalCause));
-        this.stackTraceElementLimit = stackTraceElementLimit;
-    }
-
-    protected TruffleException(String message, Throwable internalCause) {
-        this(message, internalCause, -1);
+        this(message, null, -1);
     }
 
     protected TruffleException(String message, Throwable internalCause, int stackTraceElementLimit) {
         super(message, checkCause(internalCause));
         this.stackTraceElementLimit = stackTraceElementLimit;
+        this.internalCause = internalCause;
     }
 
     @Override
@@ -276,10 +257,22 @@ public abstract class TruffleException extends RuntimeException implements Truff
     }
 
     /**
-     * @inheritDoc
+     * Setting a cause is not supported. Pass in the cause using the constructors instead.
      */
+    @Deprecated
+    @TruffleBoundary
     public Throwable initCause(Throwable cause) {
-        return super.initCause(checkCause(cause));
+        throw new UnsupportedOperationException("Not supported. Pass in the cause using the constructors instead.");
+    }
+
+    /**
+     * Returns the cause of an exception.
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public final Throwable getCause() {
+        return internalCause;
     }
 
     Throwable getLazyStackTrace() {

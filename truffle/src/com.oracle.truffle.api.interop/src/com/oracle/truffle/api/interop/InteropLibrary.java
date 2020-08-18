@@ -1230,7 +1230,7 @@ public abstract class InteropLibrary extends Library {
         throw UnsupportedMessageException.create();
     }
 
-    public boolean isExceptionCatchable(Object receiver) throws UnsupportedMessageException {
+    public boolean isExceptionUnwind(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
@@ -1239,6 +1239,54 @@ public abstract class InteropLibrary extends Library {
     }
 
     public int getExceptionExitStatus(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    public boolean hasExceptionCause(Object receiver) {
+        return false;
+    }
+
+    public Object getExceptionCause(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    public boolean hasExceptionSuppressed(Object receiver) {
+        return false;
+    }
+
+    public Object getExceptionSuppressed(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    public boolean hasExceptionMessage(Object receiver) {
+        return false;
+    }
+
+    public Object getExceptionMessage(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    public boolean hasExceptionStackTrace(Object receiver) {
+        return false;
+    }
+
+    public Object getExceptionStackTrace(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    public boolean hasExecutableName(Object receiver) {
+        return false;
+    }
+
+    public Object getExecutableName(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    public boolean hasDeclaringMetaObject(Object receiver) {
+        return false;
+    }
+
+    public Object getDeclaringMetaObject(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
@@ -2856,9 +2904,9 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
-        public boolean isExceptionCatchable(Object receiver) throws UnsupportedMessageException {
+        public boolean isExceptionUnwind(Object receiver) throws UnsupportedMessageException {
             assert preCondition(receiver);
-            boolean result = delegate.isExceptionCatchable(receiver);
+            boolean result = delegate.isExceptionUnwind(receiver);
             return result;
         }
 

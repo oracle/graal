@@ -1202,7 +1202,7 @@ public class Breakpoint {
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
             boolean uncatchable = false;
             try {
-                uncatchable = interop.isException(exception) && !interop.isExceptionCatchable(exception);
+                uncatchable = interop.isException(exception) && interop.isExceptionUnwind(exception);
             } catch (UnsupportedMessageException um) {
                 CompilerDirectives.shouldNotReachHere(um);
             }
@@ -1246,7 +1246,7 @@ public class Breakpoint {
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
             boolean uncatchable = false;
             try {
-                uncatchable = interop.isException(exception) && !interop.isExceptionCatchable(exception);
+                uncatchable = interop.isException(exception) && interop.isExceptionUnwind(exception);
             } catch (UnsupportedMessageException um) {
                 CompilerDirectives.shouldNotReachHere(um);
             }

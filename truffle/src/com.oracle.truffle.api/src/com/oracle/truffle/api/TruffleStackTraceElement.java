@@ -116,4 +116,8 @@ public final class TruffleStackTraceElement {
         return frame;
     }
 
+    public Object getGuestObject() {
+        return LanguageAccessor.nodesAccess().translateStackTraceElement(this);
+    }
+
 }
