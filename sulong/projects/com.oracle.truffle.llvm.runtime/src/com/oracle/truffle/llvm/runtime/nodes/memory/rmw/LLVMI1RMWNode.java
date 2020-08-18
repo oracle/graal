@@ -44,10 +44,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
 public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
 
-    protected static LLVMI1StoreNode createWrite() {
-        return LLVMI1StoreNode.create();
-    }
-
     public abstract static class LLVMI1RMWXchgNode extends LLVMI1RMWNode {
 
         @Specialization
@@ -59,7 +55,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         @Specialization
         protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached LLVMI1LoadNode read,
-                        @Cached("createWrite()") LLVMI1StoreNode write) {
+                        @Cached LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
                 boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, value);
@@ -79,7 +75,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         @Specialization
         protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached LLVMI1LoadNode read,
-                        @Cached("createWrite()") LLVMI1StoreNode write) {
+                        @Cached LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
                 boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result ^ value);
@@ -99,7 +95,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         @Specialization
         protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached LLVMI1LoadNode read,
-                        @Cached("createWrite()") LLVMI1StoreNode write) {
+                        @Cached LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
                 boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result ^ value);
@@ -119,7 +115,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         @Specialization
         protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached LLVMI1LoadNode read,
-                        @Cached("createWrite()") LLVMI1StoreNode write) {
+                        @Cached LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
                 boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result & value);
@@ -139,7 +135,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         @Specialization
         protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached LLVMI1LoadNode read,
-                        @Cached("createWrite()") LLVMI1StoreNode write) {
+                        @Cached LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
                 boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, !(result & value));
@@ -159,7 +155,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         @Specialization
         protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached LLVMI1LoadNode read,
-                        @Cached("createWrite()") LLVMI1StoreNode write) {
+                        @Cached LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
                 boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result | value);
@@ -179,7 +175,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         @Specialization
         protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached LLVMI1LoadNode read,
-                        @Cached("createWrite()") LLVMI1StoreNode write) {
+                        @Cached LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
                 boolean result = read.executeWithTarget(address);
                 write.executeWithTarget(address, result ^ value);

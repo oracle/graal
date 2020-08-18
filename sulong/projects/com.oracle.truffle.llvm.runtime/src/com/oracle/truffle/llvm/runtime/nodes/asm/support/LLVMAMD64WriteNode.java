@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.support;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -112,7 +113,7 @@ public abstract class LLVMAMD64WriteNode extends LLVMNode {
 
     abstract static class LLVMAMD64MemWriteNode extends LLVMNode {
 
-        @Child private LLVMPointerStoreNode storePointer = LLVMPointerStoreNode.create();
+        @Child private LLVMPointerStoreNode storePointer;
 
         public abstract void executeWithTarget(LLVMPointer addr, Object value);
 
@@ -142,6 +143,10 @@ public abstract class LLVMAMD64WriteNode extends LLVMNode {
 
         @Fallback
         protected void doObject(LLVMPointer addr, Object value) {
+            if (storePointer == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                storePointer = insert(LLVMPointerStoreNode.create());
+            }
             storePointer.executeWithTarget(addr, value);
         }
     }

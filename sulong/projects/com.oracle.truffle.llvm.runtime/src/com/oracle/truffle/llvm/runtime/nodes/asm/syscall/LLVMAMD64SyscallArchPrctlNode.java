@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -53,20 +52,15 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
     @Specialization
     protected long doOp(long code, long addr,
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @Cached("createAddressStoreNode()") LLVMPointerStoreNode store) {
+                    @Cached LLVMPointerStoreNode store) {
         return exec(code, LLVMNativePointer.create(addr), context, store);
     }
 
     @Specialization
     protected long doOp(long code, LLVMPointer addr,
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @Cached("createAddressStoreNode()") LLVMPointerStoreNode store) {
+                    @Cached LLVMPointerStoreNode store) {
         return exec(code, addr, context, store);
-    }
-
-    protected LLVMPointerStoreNode createAddressStoreNode() {
-        CompilerAsserts.neverPartOfCompilation();
-        return LLVMPointerStoreNode.create();
     }
 
     private long exec(long code, LLVMPointer addr, LLVMContext context, LLVMPointerStoreNode store) throws AssertionError {

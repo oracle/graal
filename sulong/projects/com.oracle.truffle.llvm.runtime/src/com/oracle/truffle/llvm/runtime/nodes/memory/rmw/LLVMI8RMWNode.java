@@ -44,10 +44,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
 public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
 
-    protected static LLVMI8StoreNode createWrite() {
-        return LLVMI8StoreNode.create();
-    }
-
     public abstract static class LLVMI8RMWXchgNode extends LLVMI8RMWNode {
 
         @Specialization
@@ -59,7 +55,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
         @Specialization
         protected byte doOp(LLVMManagedPointer address, byte value,
                         @Cached LLVMI8LoadNode read,
-                        @Cached("createWrite()") LLVMI8StoreNode write) {
+                        @Cached LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
                 byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, value);
@@ -79,7 +75,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
         @Specialization
         protected byte doOp(LLVMManagedPointer address, byte value,
                         @Cached LLVMI8LoadNode read,
-                        @Cached("createWrite()") LLVMI8StoreNode write) {
+                        @Cached LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
                 byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ((byte) (result + value)));
@@ -99,7 +95,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
         @Specialization
         protected byte doOp(LLVMManagedPointer address, byte value,
                         @Cached LLVMI8LoadNode read,
-                        @Cached("createWrite()") LLVMI8StoreNode write) {
+                        @Cached LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
                 byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ((byte) (result - value)));
@@ -119,7 +115,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
         @Specialization
         protected byte doOp(LLVMManagedPointer address, byte value,
                         @Cached LLVMI8LoadNode read,
-                        @Cached("createWrite()") LLVMI8StoreNode write) {
+                        @Cached LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
                 byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ((byte) (result & value)));
@@ -139,7 +135,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
         @Specialization
         protected byte doOp(LLVMManagedPointer address, byte value,
                         @Cached LLVMI8LoadNode read,
-                        @Cached("createWrite()") LLVMI8StoreNode write) {
+                        @Cached LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
                 byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ((byte) ~(result & value)));
@@ -159,7 +155,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
         @Specialization
         protected byte doOp(LLVMManagedPointer address, byte value,
                         @Cached LLVMI8LoadNode read,
-                        @Cached("createWrite()") LLVMI8StoreNode write) {
+                        @Cached LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
                 byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ((byte) (result | value)));
@@ -179,7 +175,7 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
         @Specialization
         protected byte doOp(LLVMManagedPointer address, byte value,
                         @Cached LLVMI8LoadNode read,
-                        @Cached("createWrite()") LLVMI8StoreNode write) {
+                        @Cached LLVMI8StoreNode write) {
             synchronized (address.getObject()) {
                 byte result = read.executeWithTarget(address);
                 write.executeWithTarget(address, ((byte) (result ^ value)));

@@ -45,10 +45,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
 public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
-    protected static LLVMI64StoreNode createWrite() {
-        return LLVMI64StoreNode.create();
-    }
-
     public abstract static class LLVMI64RMWXchgNode extends LLVMI64RMWNode {
 
         @Specialization
@@ -60,7 +56,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         @Specialization
         protected Object doOp(LLVMManagedPointer address, long value,
                         @Cached LLVMI64LoadNode read,
-                        @Cached("createWrite()") LLVMI64StoreNode write) {
+                        @Cached LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 Object result = read.executeWithTargetGeneric(address);
                 write.executeWithTarget(address, value);
@@ -81,7 +77,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         protected long doOp(LLVMManagedPointer address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached LLVMI64LoadNode read,
-                        @Cached("createWrite()") LLVMI64StoreNode write) {
+                        @Cached LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 long result = toNative.executeWithTarget(read.executeWithTargetGeneric(address)).asNative();
                 write.executeWithTarget(address, result + value);
@@ -102,7 +98,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         protected long doOp(LLVMManagedPointer address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached LLVMI64LoadNode read,
-                        @Cached("createWrite()") LLVMI64StoreNode write) {
+                        @Cached LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 long result = toNative.executeWithTarget(read.executeWithTargetGeneric(address)).asNative();
                 write.executeWithTarget(address, result - value);
@@ -123,7 +119,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         protected long doOp(LLVMManagedPointer address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached LLVMI64LoadNode read,
-                        @Cached("createWrite()") LLVMI64StoreNode write) {
+                        @Cached LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 long result = toNative.executeWithTarget(read.executeWithTargetGeneric(address)).asNative();
                 write.executeWithTarget(address, result & value);
@@ -144,7 +140,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         protected long doOp(LLVMManagedPointer address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached LLVMI64LoadNode read,
-                        @Cached("createWrite()") LLVMI64StoreNode write) {
+                        @Cached LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 long result = toNative.executeWithTarget(read.executeWithTargetGeneric(address)).asNative();
                 write.executeWithTarget(address, ~(result & value));
@@ -165,7 +161,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         protected long doOp(LLVMManagedPointer address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached LLVMI64LoadNode read,
-                        @Cached("createWrite()") LLVMI64StoreNode write) {
+                        @Cached LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 long result = toNative.executeWithTarget(read.executeWithTargetGeneric(address)).asNative();
                 write.executeWithTarget(address, result | value);
@@ -186,7 +182,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         protected long doOp(LLVMManagedPointer address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached LLVMI64LoadNode read,
-                        @Cached("createWrite()") LLVMI64StoreNode write) {
+                        @Cached LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
                 long result = toNative.executeWithTarget(read.executeWithTargetGeneric(address)).asNative();
                 write.executeWithTarget(address, result ^ value);

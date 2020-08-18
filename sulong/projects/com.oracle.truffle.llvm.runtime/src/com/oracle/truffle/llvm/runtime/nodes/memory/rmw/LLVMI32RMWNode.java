@@ -44,10 +44,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
 public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
 
-    protected static LLVMI32StoreNode createWrite() {
-        return LLVMI32StoreNode.create();
-    }
-
     public abstract static class LLVMI32RMWXchgNode extends LLVMI32RMWNode {
 
         @Specialization

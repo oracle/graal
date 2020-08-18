@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.c;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -485,7 +484,7 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected double doIntrinsic(double value, LLVMPointer integralAddr,
-                        @Cached("createDoubleStore()") LLVMDoubleStoreNode store) {
+                        @Cached LLVMDoubleStoreNode store) {
             double fractional = value % 1;
             double integral = value - fractional;
             store.executeWithTarget(integralAddr, integral);
@@ -494,7 +493,7 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected float doIntrinsic(float value, LLVMPointer integralAddr,
-                        @Cached("createFloatStore()") LLVMFloatStoreNode store) {
+                        @Cached LLVMFloatStoreNode store) {
             float fractional = value % 1;
             float integral = value - fractional;
             store.executeWithTarget(integralAddr, integral);
@@ -503,27 +502,12 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat longDoubleValue, LLVMPointer integralAddr,
-                        @Cached("create80BitFloatStore()") LLVM80BitFloatStoreNode store) {
+                        @Cached LLVM80BitFloatStoreNode store) {
             double value = longDoubleValue.getDoubleValue();
             double fractional = value % 1;
             double integral = value - fractional;
             store.executeWithTarget(integralAddr, LLVM80BitFloat.fromDouble(integral));
             return LLVM80BitFloat.fromDouble(fractional);
-        }
-
-        @TruffleBoundary
-        protected static LLVMDoubleStoreNode createDoubleStore() {
-            return LLVMDoubleStoreNode.create();
-        }
-
-        @TruffleBoundary
-        protected static LLVMFloatStoreNode createFloatStore() {
-            return LLVMFloatStoreNode.create();
-        }
-
-        @TruffleBoundary
-        protected static LLVM80BitFloatStoreNode create80BitFloatStore() {
-            return LLVM80BitFloatStoreNode.create();
         }
     }
 
