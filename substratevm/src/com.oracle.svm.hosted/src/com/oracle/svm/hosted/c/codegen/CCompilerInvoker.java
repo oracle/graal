@@ -39,7 +39,6 @@ import java.util.Optional;
 import java.util.Scanner;
 import java.util.function.Consumer;
 
-import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -48,6 +47,7 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -193,6 +193,10 @@ public abstract class CCompilerInvoker {
             }
         }
 
+        @Override
+        protected List<String> compileStrictOptions() {
+            return Arrays.asList("/Wall", "/WX");
+        }
     }
 
     private static class LinuxCCompilerInvoker extends CCompilerInvoker {
@@ -393,7 +397,8 @@ public abstract class CCompilerInvoker {
     }
 
     @SuppressWarnings("try")
-    public void compileAndParseError(List<String> options, Path source, Path target, CompilerErrorHandler handler, DebugContext debug) {
+    public void compileAndParseError(boolean strict, List<String> compileOptions, Path source, Path target, CompilerErrorHandler handler, DebugContext debug) {
+        List<String> options = strict ? createStrictOptions(compileOptions) : compileOptions;
         ProcessBuilder pb = new ProcessBuilder()
                         .command(createCompilerCommand(options, target.normalize(), source.normalize()))
                         .directory(tempDirectory.toFile());
@@ -433,6 +438,16 @@ public abstract class CCompilerInvoker {
                 compilingProcess.destroy();
             }
         }
+    }
+
+    private List<String> createStrictOptions(List<String> compileOptions) {
+        ArrayList<String> strictCompileOptions = new ArrayList<>(compileStrictOptions());
+        strictCompileOptions.addAll(compileOptions);
+        return strictCompileOptions;
+    }
+
+    protected List<String> compileStrictOptions() {
+        return Arrays.asList("-Wall", "-Werror");
     }
 
     protected boolean detectError(String line) {
