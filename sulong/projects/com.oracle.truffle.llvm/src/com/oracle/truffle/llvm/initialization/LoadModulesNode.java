@@ -111,7 +111,7 @@ public final class LoadModulesNode extends RootNode {
 
     @Children DirectCallNode[] dependencies;
     final CallTarget[] callTargets;
-    final List<Source> dependenciesSource;
+    final List<Object> dependenciesSource;
     final LLVMParserResult parserResult;
     final LLVMLanguage language;
     private boolean hasInitialised;
@@ -133,7 +133,7 @@ public final class LoadModulesNode extends RootNode {
     }
 
     private LoadModulesNode(String name, LLVMParserResult parserResult, LLVMContext context,
-                    FrameDescriptor rootFrame, boolean lazyParsing, List<Source> dependenciesSource, Source source, LLVMLanguage language) throws Type.TypeOverflowException {
+                    FrameDescriptor rootFrame, boolean lazyParsing, List<Object> dependenciesSource, Source source, LLVMLanguage language) throws Type.TypeOverflowException {
 
         super(language, rootFrame);
         this.mainFunctionCallTarget = null;
@@ -171,7 +171,7 @@ public final class LoadModulesNode extends RootNode {
     }
 
     public static LoadModulesNode create(String name, LLVMParserResult parserResult, FrameDescriptor rootFrame,
-                    boolean lazyParsing, LLVMContext context, List<Source> dependencySources, Source source, LLVMLanguage language) {
+                    boolean lazyParsing, LLVMContext context, List<Object> dependencySources, Source source, LLVMLanguage language) {
         LoadModulesNode node = null;
         try {
             node = new LoadModulesNode(name, parserResult, context, rootFrame, lazyParsing, dependencySources, source, language);
@@ -179,6 +179,66 @@ public final class LoadModulesNode extends RootNode {
         } catch (Type.TypeOverflowException e) {
             throw new LLVMUnsupportedException(node, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
         }
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+
+        if (ctxRef == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.ctxRef = lookupContextReference(LLVMLanguage.class);
+        }
+        LLVMContext context = ctxRef.get();
+
+        synchronized (context) {
+            if (!hasInitialised) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                // Parse the dependencies of this library.
+                for (int i = 0; i < dependenciesSource.size(); i++) {
+                    // native dependencies are null
+                    if (dependenciesSource.get(i) != null) {
+                        if (dependenciesSource.get(i) instanceof Source) {
+                            CallTarget callTarget = context.getEnv().parseInternal((Source) dependenciesSource.get(i));
+                            dependencies[i] = DirectCallNode.create(callTarget);
+                            // The call targets are needed for initialising the scope.
+                            callTargets[i] = callTarget;
+                        } else if (dependenciesSource.get(i) instanceof CallTarget) {
+                            dependencies[i] = DirectCallNode.create((CallTarget) dependenciesSource.get(i));
+                            // The call targets are needed for initialising the scope.
+                            callTargets[i] = (CallTarget) dependenciesSource.get(i);
+                        } else {
+                            throw new IllegalStateException("Unknown dependency.");
+                        }
+                    }
+                }
+                // TODO (PLi): The main function can be created lazliy. The start function, the
+                // context initialise and
+                // dispose symbols should only be set once, when libsulong is first parsed.
+                LLVMFunctionDescriptor startFunctionDescriptor = findAndSetSulongSpecificFunctions(language, context);
+                LLVMFunction mainFunction = findMainFunction(parserResult);
+                if (mainFunction != null) {
+                    RootCallTarget startCallTarget = startFunctionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
+                    Path applicationPath = mainFunction.getLibrary().getPath();
+                    RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
+                    mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
+                }
+                /*
+                 * check if the context already contain the initialization context -- only for
+                 * libsulong. only set once per context, only insert if it's not there.
+                 */
+                initContext = this.insert(context.createInitializeContextNode(getFrameDescriptor()));
+                hasInitialised = true;
+            }
+
+            LLVMScope scope = loadModule(frame, context);
+
+            // or just check that scope is not null,
+            if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
+                assert scope != null;
+                return new SulongLibrary(sourceName, scope, mainFunctionCallTarget, context);
+            }
+        }
+        return null;
     }
 
     @ExplodeLoop
@@ -386,58 +446,6 @@ public final class LoadModulesNode extends RootNode {
             }
             context.markLibraryLoaded(bitcodeID);
         }
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-
-        if (ctxRef == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.ctxRef = lookupContextReference(LLVMLanguage.class);
-        }
-        LLVMContext context = ctxRef.get();
-
-        synchronized (context) {
-            if (!hasInitialised) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                // Parse the dependencies of this library.
-                for (int i = 0; i < dependenciesSource.size(); i++) {
-                    // native dependencies are null
-                    if (dependenciesSource.get(i) != null) {
-                        CallTarget callTarget = context.getEnv().parseInternal(dependenciesSource.get(i));
-                        dependencies[i] = DirectCallNode.create(callTarget);
-                        // The call targets are needed for initialising the scope.
-                        callTargets[i] = callTarget;
-                    }
-                }
-                // TODO (PLi): The main function can be created lazliy. The start function, the
-                // context initialise and
-                // dispose symbols should only be set once, when libsulong is first parsed.
-                LLVMFunctionDescriptor startFunctionDescriptor = findAndSetSulongSpecificFunctions(language, context);
-                LLVMFunction mainFunction = findMainFunction(parserResult);
-                if (mainFunction != null) {
-                    RootCallTarget startCallTarget = startFunctionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
-                    Path applicationPath = mainFunction.getLibrary().getPath();
-                    RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
-                    mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
-                }
-                /*
-                 * check if the context already contain the initialization context -- only for
-                 * libsulong. only set once per context, only insert if it's not there.
-                 */
-                initContext = this.insert(context.createInitializeContextNode(getFrameDescriptor()));
-                hasInitialised = true;
-            }
-
-            LLVMScope scope = loadModule(frame, context);
-
-            // or just check that scope is not null,
-            if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
-                assert scope != null;
-                return new SulongLibrary(sourceName, scope, mainFunctionCallTarget, context);
-            }
-        }
-        return null;
     }
 
     @CompilerDirectives.TruffleBoundary

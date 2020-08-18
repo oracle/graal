@@ -141,7 +141,7 @@ final class ParserDriver {
      */
     private CallTarget parseWithDependencies(Source source, ByteSequence bytes, ExternalLibrary library) {
 
-        ArrayList<Source> dependenciesSource = new ArrayList<>();
+        ArrayList<Object> dependenciesSource = new ArrayList<>();
         insertDefaultDependencies(dependenciesSource);
         // Process the bitcode file and its dependencies in the dynamic linking order
         LLVMParserResult result = parseLibraryWithSource(source, library, bytes, dependenciesSource);
@@ -185,18 +185,30 @@ final class ParserDriver {
      *
      * @param sourceDependencies
      */
-    private void insertDefaultDependencies(ArrayList<Source> sourceDependencies) {
+    private void insertDefaultDependencies(ArrayList<Object> sourceDependencies) {
         // There could be conflicts between the default libraries of Sulong and the ones that are
         // passed on the command-line. To resolve that, we add ours first but parse them later on.
         String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
         for (String sulongLibraryName : sulongLibraryNames) {
-            sourceDependencies.add(createDependencySource(context.addInternalLibrary(sulongLibraryName, "<default bitcode library>")));
+            ExternalLibrary lib = context.addInternalLibrary(sulongLibraryName, "<default bitcode library>");
+            CallTarget calls = language.getCachedLibrary(lib.getPath().toString());
+            if (calls == null) {
+                sourceDependencies.add(createDependencySource(lib));
+            } else {
+                sourceDependencies.add(calls);
+            }
         }
 
         // parse all libraries that were passed on the command-line
         List<String> externals = SulongEngineOption.getPolyglotOptionExternalLibraries(context.getEnv());
         for (String external : externals) {
-            sourceDependencies.add(createDependencySource(context.addExternalLibraryDefaultLocator(external, "<command line>")));
+            ExternalLibrary lib = context.addExternalLibraryDefaultLocator(external, "<command line>");
+            CallTarget calls = language.getCachedLibrary(lib.getPath().toString());
+            if (calls == null) {
+                sourceDependencies.add(createDependencySource(lib));
+            } else {
+                sourceDependencies.add(calls);
+            }
         }
     }
 
@@ -353,7 +365,7 @@ final class ParserDriver {
      * @param bytes the bytes of the library to be parsed
      * @return the parser result corresponding to {@code lib}
      */
-    private LLVMParserResult parseLibraryWithSource(Source source, ExternalLibrary library, ByteSequence bytes, ArrayList<Source> sourceDependencies) {
+    private LLVMParserResult parseLibraryWithSource(Source source, ExternalLibrary library, ByteSequence bytes, ArrayList<Object> sourceDependencies) {
         BinaryParserResult binaryParserResult = BinaryParser.parse(bytes, source, context);
         if (binaryParserResult != null) {
             library.makeBitcodeLibrary();
@@ -377,23 +389,33 @@ final class ParserDriver {
      * {@link BinaryParserResult} into {@link ExternalLibrary}s and add them to the if not already
      * in there.
      */
-    private void processDependencies(ExternalLibrary library, BinaryParserResult binaryParserResult, ArrayList<Source> dependenciesSource, ArrayList<ExternalLibrary> dependencies) {
+    private void processDependencies(ExternalLibrary library, BinaryParserResult binaryParserResult, ArrayList<Object> dependenciesSource, ArrayList<ExternalLibrary> dependencies) {
         for (String lib : context.preprocessDependencies(library, binaryParserResult.getLibraries())) {
             ExternalLibrary dependency = context.findExternalLibrary(lib, library, binaryParserResult.getLocator());
             if (dependency != null && !dependencies.contains(dependency)) {
                 dependencies.add(dependency);
-                Source source = createDependencySource(dependency);
-                if (!dependenciesSource.contains(source)) {
-                    dependenciesSource.add(source);
+                CallTarget calls = language.getCachedLibrary(dependency.getPath().toString());
+                if (calls == null) {
+                    Source source = createDependencySource(dependency);
+                    if (!dependenciesSource.contains(source)) {
+                        dependenciesSource.add(source);
+                    }
+                } else {
+                    dependenciesSource.add(calls);
                 }
             } else {
                 // The cached is returned if lib has already been added.
                 dependency = context.addExternalLibrary(lib, library, binaryParserResult.getLocator());
                 if (dependency != null && !dependencies.contains(dependency)) {
                     dependencies.add(dependency);
-                    Source source = createDependencySource(dependency);
-                    if (!dependenciesSource.contains(source)) {
-                        dependenciesSource.add(source);
+                    CallTarget calls = language.getCachedLibrary(dependency.getPath().toString());
+                    if (calls == null) {
+                        Source source = createDependencySource(dependency);
+                        if (!dependenciesSource.contains(source)) {
+                            dependenciesSource.add(source);
+                        }
+                    } else {
+                        dependenciesSource.add(calls);
                     }
                 }
             }
@@ -466,7 +488,7 @@ final class ParserDriver {
      * @param source the {@link Source} of the library
      * @return the call target for initialising the library.
      */
-    private CallTarget createLibraryCallTarget(String name, LLVMParserResult parserResult, List<Source> sources, Source source) {
+    private CallTarget createLibraryCallTarget(String name, LLVMParserResult parserResult, List<Object> sources, Source source) {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         } else {
@@ -478,49 +500,32 @@ final class ParserDriver {
         }
     }
 
-    /*private void removeCyclicDependency(Source source, ArrayList<Source> dependenciesSource) {
-        // Remove the itself as it's own dependency
-        while (dependenciesSource.contains(source)) {
-            dependenciesSource.remove(source);
-        }
-
-        // Remove libsulong++ for libsulong
-        if (source.getName().equals(BasicPlatformCapability.LIBSULONG_FILENAME)) {
-            removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONGXX_FILENAME);
-        }
-
-        // Remove libsulong for libsulong++
-        if (source.getName().equals(BasicPlatformCapability.LIBSULONGXX_FILENAME)) {
-            removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONG_FILENAME);
-        }
-
-        if (context.getEnv().getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES)) {
-            // If the option --llvm.loadC++Libraries is used then libsulong++ will be loaded for
-            // both
-            // libc++ and libc++abi as default libraries. This will cause a cyclic dependency of
-            // libsulong++ -> libc++ -> libsulong++ -> .. or
-            // libsuling++ -> libc++ -> libc++abi -> libsulong++ -> ..
-            if (source.getName().contains(PlatformCapabilityBase.LIBCXX_PREFIX)) {
-                removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONGXX_FILENAME);
-            } else if (source.getName().contains(PlatformCapabilityBase.LIBCXXABI_PREFIX)) {
-                removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONGXX_FILENAME);
-            }
-        }
-    }
-
-    // This method is required as only the name of the libraries is given, not the source of the
-    // library itself.
-    private static void removeDependency(ArrayList<Source> sources, String remove) {
-        Source toRemove = null;
-        for (Source dependency : sources) {
-            if (dependency != null) {
-                if (dependency.getName().equals(remove)) {
-                    toRemove = dependency;
-                }
-            }
-        }
-        if (toRemove != null) {
-            sources.remove(toRemove);
-        }
-    }*/
+    /*
+     * private void removeCyclicDependency(Source source, ArrayList<Source> dependenciesSource) { //
+     * Remove the itself as it's own dependency while (dependenciesSource.contains(source)) {
+     * dependenciesSource.remove(source); }
+     * 
+     * // Remove libsulong++ for libsulong if
+     * (source.getName().equals(BasicPlatformCapability.LIBSULONG_FILENAME)) {
+     * removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONGXX_FILENAME); }
+     * 
+     * // Remove libsulong for libsulong++ if
+     * (source.getName().equals(BasicPlatformCapability.LIBSULONGXX_FILENAME)) {
+     * removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONG_FILENAME); }
+     * 
+     * if (context.getEnv().getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES)) { // If the
+     * option --llvm.loadC++Libraries is used then libsulong++ will be loaded for // both // libc++
+     * and libc++abi as default libraries. This will cause a cyclic dependency of // libsulong++ ->
+     * libc++ -> libsulong++ -> .. or // libsuling++ -> libc++ -> libc++abi -> libsulong++ -> .. if
+     * (source.getName().contains(PlatformCapabilityBase.LIBCXX_PREFIX)) {
+     * removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONGXX_FILENAME); } else if
+     * (source.getName().contains(PlatformCapabilityBase.LIBCXXABI_PREFIX)) {
+     * removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONGXX_FILENAME); } } }
+     * 
+     * // This method is required as only the name of the libraries is given, not the source of the
+     * // library itself. private static void removeDependency(ArrayList<Source> sources, String
+     * remove) { Source toRemove = null; for (Source dependency : sources) { if (dependency != null)
+     * { if (dependency.getName().equals(remove)) { toRemove = dependency; } } } if (toRemove !=
+     * null) { sources.remove(toRemove); } }
+     */
 }

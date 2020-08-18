@@ -271,7 +271,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     /*
-     * Call target
+     * TODO: comments Call target
      */
     @Override
     protected CallTarget parse(ParsingRequest request) {
@@ -289,6 +289,14 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             return callTarget;
         }
         return getCapability(Loader.class).load(getContext(), source, nextID);
+    }
+
+    public boolean isLibraryCached(String path) {
+        return libraryCache.get(path) != null;
+    }
+
+    public CallTarget getCachedLibrary(String path) {
+        return libraryCache.get(path);
     }
 
     @Override
