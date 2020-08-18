@@ -71,7 +71,14 @@ suite = {
     ]
   },
 
-  "defaultLicense" : "GPLv2-CPE",
+  "licenses" : {
+    "upl" : {
+      "name" : "Universal Permissive License, Version 1.0",
+      "url" : "http://opensource.org/licenses/upl",
+    },
+  },
+
+  "defaultLicense" : "UPL",
 
   "javac.lint.overrides" : "none",
 
