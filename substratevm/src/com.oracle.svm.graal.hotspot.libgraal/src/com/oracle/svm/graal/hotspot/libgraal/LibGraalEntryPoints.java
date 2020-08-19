@@ -98,11 +98,21 @@ public final class LibGraalEntryPoints {
     @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalScope_detachThreadFrom", builtin = CEntryPoint.Builtin.DETACH_THREAD)
     static native void detachThreadFrom(PointerBase env, PointerBase hsClazz, @CEntryPoint.IsolateThreadContext long isolateThread);
 
-    private static long cachedOptionsHash;
-    private static OptionValues cachedOptions;
+    static class CachedOptions {
+        final OptionValues options;
+        final long hash;
 
-    private static synchronized OptionValues decodeOptions(long address, int size, int hash) {
-        if (cachedOptionsHash != hash) {
+        CachedOptions(OptionValues options, long hash) {
+            this.options = options;
+            this.hash = hash;
+        }
+    }
+
+    private static final ThreadLocal<CachedOptions> cachedOptions = new ThreadLocal<>();
+
+    private static OptionValues decodeOptions(long address, int size, int hash) {
+        CachedOptions options = cachedOptions.get();
+        if (options == null || options.hash != hash) {
             byte[] buffer = new byte[size];
             UNSAFE.copyMemory(null, address, buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET, size);
             int actualHash = Arrays.hashCode(buffer);
@@ -117,10 +127,11 @@ public final class LibGraalEntryPoints {
                 final Object optionValue = e.getValue();
                 OptionsParser.parseOption(optionName, optionValue, dstMap, loader);
             }
-            cachedOptionsHash = hash;
-            cachedOptions = new OptionValues(dstMap);
+
+            options = new CachedOptions(new OptionValues(dstMap), hash);
+            cachedOptions.set(options);
         }
-        return cachedOptions;
+        return options.options;
     }
 
     @SuppressWarnings({"unused"})
