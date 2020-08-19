@@ -42,7 +42,6 @@ package com.oracle.truffle.api.test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
@@ -53,7 +52,6 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -217,7 +215,10 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
                     try {
                         unwind = interop.isExceptionUnwind(ex);
                         Assert.assertEquals(unwind ? ExceptionType.CANCEL : ExceptionType.GUEST_LANGUAGE_ERROR, interop.getExceptionType(ex));
-                        Assert.assertEquals(0, interop.getExceptionExitStatus(ex));
+                        AbstractPolyglotTest.assertFails(() -> {
+                            interop.getExceptionExitStatus(ex);
+                            return null;
+                        }, UnsupportedMessageException.class);
                         if (ex.getMessage() != null) {
                             Assert.assertTrue(interop.hasExceptionMessage(ex));
                             Assert.assertEquals(ex.getMessage(), interop.getExceptionMessage(ex));
@@ -296,11 +297,6 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        public boolean isException() {
-            return true;
-        }
-
-        @ExportMessage
         public boolean isExceptionUnwind() {
             return unwind;
         }
@@ -308,16 +304,6 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         @ExportMessage
         public ExceptionType getExceptionType() {
             return unwind ? ExceptionType.CANCEL : ExceptionType.GUEST_LANGUAGE_ERROR;
-        }
-
-        @ExportMessage
-        public int getExceptionExitStatus() {
-            return 0;
-        }
-
-        @ExportMessage
-        public RuntimeException throwException() {
-            throw this;
         }
 
         @ExportMessage
@@ -332,63 +318,6 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
                 throw UnsupportedMessageException.create();
             }
             return res;
-        }
-
-        @ExportMessage
-        public boolean hasExceptionMessage() {
-            return true;
-        }
-
-        @ExportMessage
-        public Object getExceptionMessage() {
-            return this.getMessage();
-        }
-
-        @ExportMessage
-        public boolean hasExceptionStackTrace() {
-            return true;
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        public Object getExceptionStackTrace() {
-            return new StackTrace(TruffleStackTrace.getStackTrace(this));
-        }
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    static final class StackTrace implements TruffleObject {
-
-        private final Object[] stack;
-
-        StackTrace(List<TruffleStackTraceElement> stack) {
-            this.stack = new Object[stack.size()];
-            for (int i = 0; i < this.stack.length; i++) {
-                this.stack[i] = stack.get(i).getGuestObject();
-            }
-        }
-
-        @ExportMessage
-        boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        long getArraySize() {
-            return stack.length;
-        }
-
-        @ExportMessage
-        boolean isArrayElementReadable(long index) {
-            return index >= 0 && index < stack.length;
-        }
-
-        @ExportMessage
-        Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (index < 0 || index >= stack.length) {
-                throw InvalidArrayIndexException.create(index);
-            }
-            return stack[(int) index];
         }
     }
 

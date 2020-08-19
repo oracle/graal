@@ -46,6 +46,7 @@ import static com.oracle.truffle.api.test.TruffleExceptionTest.createContext;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -75,7 +76,7 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
                 LegacyCatchableException exception = new LegacyCatchableException("Test exception");
-                LangObject exceptionObject = new LangObject(exception);
+                LangObject exceptionObject = new LangObject(exception, false);
                 exception.setExceptionObject(exceptionObject);
                 return createAST(LegacyTruffleExceptionTest.class, languageInstance, exceptionObject, (node) -> exception.setLocation(node));
             }
@@ -90,7 +91,7 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
                 LegacyUnCatchableException exception = new LegacyUnCatchableException();
-                LangObject exceptionObject = new LangObject(exception);
+                LangObject exceptionObject = new LangObject(exception, true);
                 exception.setExceptionObject(exceptionObject);
                 return createAST(LegacyTruffleExceptionTest.class, languageInstance, exceptionObject, (node) -> exception.setLocation(node));
             }
@@ -102,10 +103,12 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
     @ExportLibrary(InteropLibrary.class)
     static final class LangObject implements TruffleObject {
 
-        private Throwable exception;
+        private final Throwable exception;
+        private final boolean unwind;
 
-        LangObject(Throwable exception) {
+        LangObject(Throwable exception, boolean unwind) {
             this.exception = exception;
+            this.unwind = unwind;
         }
 
         @ExportMessage
@@ -118,7 +121,15 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
             if (exception == null) {
                 throw UnsupportedMessageException.create();
             }
-            return true;
+            return unwind;
+        }
+
+        @ExportMessage
+        public ExceptionType getExceptionType() throws UnsupportedMessageException {
+            if (exception == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return unwind ? ExceptionType.CANCEL : ExceptionType.GUEST_LANGUAGE_ERROR;
         }
 
         @ExportMessage

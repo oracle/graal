@@ -74,8 +74,8 @@ final class DefaultTruffleExceptionExports {
     }
 
     @ExportMessage
-    static int getExceptionExitStatus(TruffleException receiver) {
-        return 0;
+    static int getExceptionExitStatus(TruffleException receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
@@ -108,13 +108,11 @@ final class DefaultTruffleExceptionExports {
     }
 
     @ExportMessage
-    @TruffleBoundary
     static boolean hasExceptionSuppressed(TruffleException receiver) {
         return hasExceptionSuppressedImpl(receiver);
     }
 
     @ExportMessage
-    @TruffleBoundary
     static Object getExceptionSuppressed(TruffleException receiver) throws UnsupportedMessageException {
         return getExceptionSuppressedImpl(receiver);
     }
@@ -135,17 +133,16 @@ final class DefaultTruffleExceptionExports {
     }
 
     @ExportMessage
-    @TruffleBoundary
     static boolean hasExceptionStackTrace(TruffleException receiver) {
-        return TruffleStackTrace.fillIn(receiver) != null;
+        return true;
     }
 
     @ExportMessage
-    @TruffleBoundary
     static Object getExceptionStackTrace(TruffleException receiver) throws UnsupportedMessageException {
         return getExceptionStackTraceImpl(receiver);
     }
 
+    @TruffleBoundary
     static boolean hasExceptionSuppressedImpl(Throwable t) {
         for (Throwable se : t.getSuppressed()) {
             if (isTruffleException(se)) {
@@ -155,6 +152,7 @@ final class DefaultTruffleExceptionExports {
         return false;
     }
 
+    @TruffleBoundary
     static Object getExceptionSuppressedImpl(Throwable t) throws UnsupportedMessageException {
         List<Throwable> suppressed = new ArrayList<>();
         for (Throwable se : t.getSuppressed()) {
@@ -169,6 +167,7 @@ final class DefaultTruffleExceptionExports {
         }
     }
 
+    @TruffleBoundary
     static Object getExceptionStackTraceImpl(Throwable t) throws UnsupportedMessageException {
         List<TruffleStackTraceElement> stack = TruffleStackTrace.getStackTrace(t);
         if (stack == null) {

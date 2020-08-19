@@ -165,28 +165,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        public boolean isException() {
-            return true;
-        }
-
-        @ExportMessage
-        public boolean isExceptionUnwind() {
-            return false;
-        }
-
-        @ExportMessage
         public ExceptionType getExceptionType() {
             return ExceptionType.SYNTAX_ERROR;
-        }
-
-        @ExportMessage
-        public int getExceptionExitStatus() {
-            return 0;
-        }
-
-        @ExportMessage
-        public RuntimeException throwException() {
-            throw this;
         }
 
         @ExportMessage

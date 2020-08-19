@@ -90,8 +90,12 @@ final class DefaultLegacyTruffleExceptionExports {
     }
 
     @ExportMessage
-    static int getExceptionExitStatus(com.oracle.truffle.api.TruffleException receiver) {
-        return receiver.getExitStatus();
+    static int getExceptionExitStatus(com.oracle.truffle.api.TruffleException receiver) throws UnsupportedMessageException {
+        if (receiver.isExit()) {
+            return receiver.getExitStatus();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
     @ExportMessage

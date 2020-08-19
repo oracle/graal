@@ -2482,11 +2482,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
 
         @ExportMessage
-        public boolean isException() {
-            return true;
-        }
-
-        @ExportMessage
         public boolean isExceptionUnwind() {
             return true;
         }
@@ -2494,16 +2489,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         @ExportMessage
         public ExceptionType getExceptionType() {
             return ExceptionType.CANCEL;
-        }
-
-        @ExportMessage
-        public int getExceptionExitStatus() {
-            return 0;
-        }
-
-        @ExportMessage
-        public RuntimeException throwException() {
-            throw this;
         }
     }
 }

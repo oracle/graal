@@ -1352,28 +1352,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
 
             @ExportMessage
-            public boolean isException() {
-                return true;
-            }
-
-            @ExportMessage
-            public boolean isExceptionUnwind() {
-                return false;
-            }
-
-            @ExportMessage
             public ExceptionType getExceptionType() {
                 return type.equals("internal") ? ExceptionType.INTERNAL_ERROR : ExceptionType.GUEST_LANGUAGE_ERROR;
-            }
-
-            @ExportMessage
-            public int getExceptionExitStatus() {
-                return 0;
-            }
-
-            @ExportMessage
-            public RuntimeException throwException() {
-                throw this;
             }
 
             @ExportMessage

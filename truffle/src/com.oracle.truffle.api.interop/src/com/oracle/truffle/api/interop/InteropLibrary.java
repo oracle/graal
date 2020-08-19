@@ -1211,7 +1211,7 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"throwException"})
     @SuppressWarnings("deprecation")
     public boolean isException(Object receiver) {
-        return false;
+        return receiver instanceof TruffleException;
     }
 
     /**
@@ -1227,65 +1227,126 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"isException"})
     public RuntimeException throwException(Object receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+        if (receiver instanceof TruffleException) {
+            throw DefaultTruffleExceptionExports.throwException((TruffleException) receiver);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
     public boolean isExceptionUnwind(Object receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+        if (receiver instanceof TruffleException) {
+            return DefaultTruffleExceptionExports.isExceptionUnwind((TruffleException) receiver);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
+    @Abstract(ifExported = {"isExceptionUnwind", "getExceptionExitStatus"})
     public ExceptionType getExceptionType(Object receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+        if (receiver instanceof TruffleException) {
+            return DefaultTruffleExceptionExports.getExceptionType((TruffleException) receiver);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
     public int getExceptionExitStatus(Object receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+        if (receiver instanceof TruffleException) {
+            return DefaultTruffleExceptionExports.getExceptionExitStatus((TruffleException) receiver);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
+    @Abstract(ifExported = {"getExceptionCause"})
     public boolean hasExceptionCause(Object receiver) {
-        return false;
+        if (receiver instanceof TruffleException) {
+            return DefaultTruffleExceptionExports.hasExceptionCause((TruffleException) receiver);
+        } else {
+            return false;
+        }
     }
 
+    @Abstract(ifExported = {"hasExceptionCause"})
     public Object getExceptionCause(Object receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+        if (receiver instanceof TruffleException) {
+            return DefaultTruffleExceptionExports.getExceptionCause((TruffleException) receiver);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
+    @Abstract(ifExported = {"getExceptionSuppressed"})
     public boolean hasExceptionSuppressed(Object receiver) {
-        return false;
+        if (receiver instanceof TruffleException) {
+            return DefaultTruffleExceptionExports.hasExceptionSuppressed((TruffleException) receiver);
+        } else {
+            return false;
+        }
     }
 
+    @Abstract(ifExported = {"hasExceptionSuppressed"})
     public Object getExceptionSuppressed(Object receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+        if (receiver instanceof TruffleException) {
+            return DefaultTruffleExceptionExports.getExceptionSuppressed((TruffleException) receiver);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
+    @Abstract(ifExported = {"getExceptionMessage"})
     public boolean hasExceptionMessage(Object receiver) {
-        return false;
+        if (receiver instanceof TruffleException) {
+            return DefaultTruffleExceptionExports.hasExceptionMessage((TruffleException) receiver);
+        } else {
+            return false;
+        }
     }
 
+    @Abstract(ifExported = {"hasExceptionMessage"})
     public Object getExceptionMessage(Object receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+        if (receiver instanceof TruffleException) {
+            return DefaultTruffleExceptionExports.getExceptionMessage((TruffleException) receiver);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
+    @Abstract(ifExported = {"getExceptionStackTrace"})
     public boolean hasExceptionStackTrace(Object receiver) {
-        return false;
+        if (receiver instanceof TruffleException) {
+            return DefaultTruffleExceptionExports.hasExceptionStackTrace((TruffleException) receiver);
+        } else {
+            return false;
+        }
     }
 
+    @Abstract(ifExported = {"hasExceptionStackTrace"})
     public Object getExceptionStackTrace(Object receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+        if (receiver instanceof TruffleException) {
+            return DefaultTruffleExceptionExports.getExceptionStackTrace((TruffleException) receiver);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
+    @Abstract(ifExported = {"getExecutableName"})
     public boolean hasExecutableName(Object receiver) {
         return false;
     }
 
+    @Abstract(ifExported = {"hasExecutableName"})
     public Object getExecutableName(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
+    @Abstract(ifExported = {"getDeclaringMetaObject"})
     public boolean hasDeclaringMetaObject(Object receiver) {
         return false;
     }
 
+    @Abstract(ifExported = {"hasDeclaringMetaObject"})
     public Object getDeclaringMetaObject(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
