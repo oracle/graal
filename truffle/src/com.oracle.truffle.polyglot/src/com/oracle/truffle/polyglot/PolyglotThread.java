@@ -79,15 +79,21 @@ final class PolyglotThread extends Thread {
     public void run() {
         // always call through a HostToGuestRootNode so that stack/frame
         // walking can determine in which context the frame was executed
-        callTarget.call(languageContext, this, new Runnable() {
+        callTarget.call(languageContext, this, new PolyglotThreadRunnable() {
             @Override
-            public void run() {
+            public void execute() {
                 PolyglotThread.super.run();
             }
         });
     }
 
     private static final AtomicInteger THREAD_INIT_NUMBER = new AtomicInteger(0);
+
+    // replacing Runnable with dedicated interface to avoid having Runnable.run() on the fast path,
+    // since SVM will otherwise pull in all Runnable implementations as runtime compiled methods
+    private interface PolyglotThreadRunnable {
+        void execute();
+    }
 
     private static final class ThreadSpawnRootNode extends HostToGuestRootNode {
 
@@ -104,7 +110,7 @@ final class PolyglotThread extends Thread {
         @Override
         protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
             PolyglotThread thread = (PolyglotThread) receiver;
-            Runnable run = (Runnable) args[HostToGuestRootNode.ARGUMENT_OFFSET];
+            PolyglotThreadRunnable run = (PolyglotThreadRunnable) args[HostToGuestRootNode.ARGUMENT_OFFSET];
 
             Object prev;
             try {
@@ -118,7 +124,7 @@ final class PolyglotThread extends Thread {
             }
             assert prev == null; // is this assertion correct?
             try {
-                run.run();
+                run.execute();
             } finally {
                 languageContext.leaveThread(prev, thread);
             }
