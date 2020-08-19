@@ -99,6 +99,10 @@ final class PolyglotThread extends Thread {
 
     private static final class ThreadSpawnRootNode extends HostToGuestRootNode {
 
+        ThreadSpawnRootNode(PolyglotLanguageContext languageContext) {
+            super(languageContext);
+        }
+
         @Override
         protected Class<?> getReceiverType() {
             return PolyglotThread.class;
@@ -137,7 +141,7 @@ final class PolyglotThread extends Thread {
         public static CallTarget lookup(PolyglotLanguageContext languageContext) {
             CallTarget target = lookupHostCodeCache(languageContext, ThreadSpawnRootNode.class, CallTarget.class);
             if (target == null) {
-                target = installHostCodeCache(languageContext, ThreadSpawnRootNode.class, createTarget(new ThreadSpawnRootNode()), CallTarget.class);
+                target = installHostCodeCache(languageContext, ThreadSpawnRootNode.class, createTarget(new ThreadSpawnRootNode(languageContext)), CallTarget.class);
             }
             return target;
         }
