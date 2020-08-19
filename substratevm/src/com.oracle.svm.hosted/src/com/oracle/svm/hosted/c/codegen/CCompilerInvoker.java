@@ -195,7 +195,12 @@ public abstract class CCompilerInvoker {
 
         @Override
         protected List<String> compileStrictOptions() {
-            return Arrays.asList("/Wall", "/WX");
+            /*
+             * On Windows `/Wall` corresponds to `-Wall -Wextra`. Therefore we use /W4 instead.
+             * Options `/wd4244` and `/wd4245` are needed because our query code makes use of
+             * implicit unsigned/signed conversions to detect signedness of types.
+             */
+            return Arrays.asList("/WX", "/W4", "/wd4244", "/wd4245");
         }
     }
 
