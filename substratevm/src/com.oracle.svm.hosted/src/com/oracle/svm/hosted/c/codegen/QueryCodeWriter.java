@@ -92,12 +92,14 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     @Override
     protected void visitNativeCodeInfo(NativeCodeInfo nativeCodeInfo) {
-        NativeImageHeaderPreamble.read(getClass().getClassLoader(), "graal_isolate.preamble")
-                        .forEach(writer::appendln);
-
         for (String preDefine : nativeCodeInfo.getDirectives().getMacroDefinitions()) {
             writer.appendMacroDefinition(preDefine);
         }
+        writer.appendln();
+
+        NativeImageHeaderPreamble.read(getClass().getClassLoader(), "graal_isolate.preamble")
+                        .forEach(writer::appendln);
+        writer.appendln();
 
         if (!nativeCodeInfo.isBuiltin()) {
             writer.includeFiles(nativeCodeInfo.getDirectives().getHeaderFiles());
