@@ -462,6 +462,8 @@ public final class Meta implements ContextAccess {
 
         java_lang_invoke_MethodHandleNatives_linkCallSite11 = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite,
                         Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array);
+        java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkDynamicConstant,
+                        Signature.Object_Object_int_Object_Object_Object_Object);
     }
 
     public void postSystemInit() {
@@ -826,6 +828,7 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_invoke_MethodHandleNatives_findMethodHandleType;
     public final Method java_lang_invoke_MethodHandleNatives_linkCallSite8;
     public final Method java_lang_invoke_MethodHandleNatives_linkCallSite11;
+    public final Method java_lang_invoke_MethodHandleNatives_linkDynamicConstant;
 
     public final Method java_lang_Object_wait;
     public final Method java_lang_Object_toString;

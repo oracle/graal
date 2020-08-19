@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.classfile;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.impl.Field;
@@ -62,6 +64,26 @@ public final class RuntimeConstantPool extends ConstantPool {
     @Override
     public PoolConstant at(int index, String description) {
         return pool.at(index, description);
+    }
+
+    private Resolvable.ResolvedConstant outOfLockResolvedAt(Klass accessingKlass, int index, String description) {
+        Resolvable.ResolvedConstant c = constants[index];
+        if (c == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // double check: deopt is a heavy operation.
+            c = constants[index];
+            if (c == null) {
+                Resolvable.ResolvedConstant locallyResolved = ((Resolvable) pool.at(index, description)).resolve(this, index, accessingKlass);
+                synchronized (this) {
+                    // Triple check: non-trivial resolution
+                    c = constants[index];
+                    if (c == null) {
+                        constants[index] = c = locallyResolved;
+                    }
+                }
+            }
+        }
+        return c;
     }
 
     private Resolvable.ResolvedConstant resolvedAt(Klass accessingKlass, int index, String description) {
@@ -108,6 +130,14 @@ public final class RuntimeConstantPool extends ConstantPool {
     public StaticObject resolvedMethodTypeAt(Klass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "method type");
         return (StaticObject) resolved.value();
+    }
+
+    public InvokeDynamicConstant.Resolved resolvedInvokeDynamicAt(Klass accessingKlass, int index) {
+        return (InvokeDynamicConstant.Resolved) outOfLockResolvedAt(accessingKlass, index, "invokedynamic");
+    }
+
+    public DynamicConstant.Resolved resolvedDynamicConstantAt(Klass accessingKlass, int index) {
+        return (DynamicConstant.Resolved) outOfLockResolvedAt(accessingKlass, index, "dynamic constant");
     }
 
     public StaticObject getClassLoader() {

@@ -319,6 +319,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> findMethodHandleType = StaticSymbols.putName("findMethodHandleType");
         public static final Symbol<Name> linkMethod = StaticSymbols.putName("linkMethod");
         public static final Symbol<Name> linkCallSite = StaticSymbols.putName("linkCallSite");
+        public static final Symbol<Name> linkDynamicConstant = StaticSymbols.putName("linkDynamicConstant");
         public static final Symbol<Name> linkMethodHandleConstant = StaticSymbols.putName("linkMethodHandleConstant");
 
         // MethodHandles
@@ -741,6 +742,14 @@ public final class Symbol<T> extends ByteSequence {
                         Type.java_lang_Object,
                         Type.java_lang_Object,
                         Type.java_lang_Object_array);
+        public static final Symbol<Signature> Object_Object_int_Object_Object_Object_Object = StaticSymbols.putSignature(
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type._int,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object);
         public static final Symbol<Signature> MethodHandles$Lookup = StaticSymbols.putSignature(Type.java_lang_invoke_MethodHandles$Lookup);
 
         public static final Symbol<Signature> Thread$State_int = StaticSymbols.putSignature(Type.java_lang_Thread$State, Type._int);
