@@ -238,7 +238,7 @@ final class ParserDriver {
                 int idx = name.indexOf('_', SULONG_RENAME_MARKER_LEN);
                 if (idx > 0) {
                     lib = name.substring(SULONG_RENAME_MARKER_LEN, idx);
-                    scope = language.getInternalFileScopes(lib);
+                    scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                     if (scope == null) {
                         try {
                             /*
@@ -250,7 +250,7 @@ final class ParserDriver {
                             ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>");
                             TruffleFile file = library.hasFile() ? library.getFile() : context.getEnv().getInternalTruffleFile(library.getPath().toUri());
                             context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
-                            scope = language.getInternalFileScopes(lib);
+                            scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                         } catch (Exception e) {
                             throw new IllegalStateException(e);
                         }
@@ -264,7 +264,7 @@ final class ParserDriver {
             } else if (CXXDemangler.isRenamedNamespaceSymbol(name)) {
                 ArrayList<String> namespaces = CXXDemangler.decodeNamespace(name);
                 lib = CXXDemangler.getAndRemoveLibraryName(namespaces);
-                scope = language.getInternalFileScopes(lib);
+                scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                 if (scope == null) {
                     try {
                         /*
@@ -276,7 +276,7 @@ final class ParserDriver {
                         ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>");
                         TruffleFile file = library.hasFile() ? library.getFile() : context.getEnv().getInternalTruffleFile(library.getPath().toUri());
                         context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
-                        scope = language.getInternalFileScopes(lib);
+                        scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                     } catch (Exception e) {
                         throw new IllegalStateException(e);
                     }
