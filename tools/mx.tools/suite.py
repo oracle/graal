@@ -4,8 +4,8 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "20.2.0",
-    "release" : True,
+    "version" : "20.2.1",
+    "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
         "name" : "GraalVM Development",
@@ -459,7 +459,6 @@ suite = {
               "artifactId" : "warmup",
             },
             "description" : "Truffle warmup estimation tool.",
-            "javadocType" : "api",
         },
         "TRUFFLE_WARMUP_ESTIMATOR_TEST": {
             "subDir": "src",
