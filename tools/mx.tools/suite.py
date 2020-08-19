@@ -459,7 +459,6 @@ suite = {
               "artifactId" : "warmup",
             },
             "description" : "Truffle warmup estimation tool.",
-            "javadocType" : "api",
         },
         "TRUFFLE_WARMUP_ESTIMATOR_TEST": {
             "subDir": "src",
