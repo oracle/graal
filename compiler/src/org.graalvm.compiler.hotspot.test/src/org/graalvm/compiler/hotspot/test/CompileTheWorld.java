@@ -804,15 +804,18 @@ public final class CompileTheWorld {
         int maxCompiles = Options.MaxCompiles.getValue(harnessOptions);
         float selector = Math.max(0, startAtCompile);
         float selectorStep = maxCompiles < allCompiles ? (float) allCompiles / maxCompiles : 1.0f;
+        int repeat = Options.Repeat.getValue(harnessOptions);
         for (Map.Entry<HotSpotResolvedJavaMethod, Integer> e : toBeCompiled.entrySet()) {
             if (compilationNum >= startAtCompile && compilationNum < stopAtCompile) {
                 if (Math.round(selector) == compilationNum) {
-                    threadPool.submit(new Runnable() {
-                        @Override
-                        public void run() {
-                            compileMethod(e.getKey(), e.getValue(), libgraal);
-                        }
-                    });
+                    for (int i = 0; i < repeat; i++) {
+                        threadPool.submit(new Runnable() {
+                            @Override
+                            public void run() {
+                                compileMethod(e.getKey(), e.getValue(), libgraal);
+                            }
+                        });
+                    }
                     selector += selectorStep;
                 }
             }
@@ -1202,6 +1205,7 @@ public final class CompileTheWorld {
          */
         public static final OptionKey<String> LimitModules = new OptionKey<>("~jdk.internal.vm.compiler");
         public static final OptionKey<Integer> Iterations = new OptionKey<>(1);
+        public static final OptionKey<Integer> Repeat = new OptionKey<>(1);
         public static final OptionKey<String> MethodFilter = new OptionKey<>(null);
         public static final OptionKey<Integer> HugeMethodLimit = new OptionKey<>(8000);
         public static final OptionKey<String> ExcludeMethodFilter = new OptionKey<>(null);
@@ -1226,6 +1230,7 @@ public final class CompileTheWorld {
                    "LimitModules", "Comma separated list of module names to which compilation should be limited. " +
                                    "Module names can be prefixed with \"~\" to exclude the named module.",
                      "Iterations", "The number of iterations to perform.",
+                         "Repeat", "The number of times to compile each method.",
                    "MethodFilter", "Only compile methods matching this filter.",
                 "HugeMethodLimit", "Don't compile methods larger than this (default: value of -XX:HugeMethodLimit).",
             "ExcludeMethodFilter", "Exclude methods matching this filter from compilation.",
