@@ -142,7 +142,7 @@ final class ParserDriver {
     private CallTarget parseWithDependencies(Source source, ByteSequence bytes, ExternalLibrary library) {
 
         ArrayList<Object> dependenciesSource = new ArrayList<>();
-        insertDefaultDependencies(dependenciesSource);
+        insertDefaultDependencies(dependenciesSource, source.getName());
         // Process the bitcode file and its dependencies in the dynamic linking order
         LLVMParserResult result = parseLibraryWithSource(source, library, bytes, dependenciesSource);
         boolean isInternalLibrary = context.isInternalLibrary(library);
@@ -154,15 +154,11 @@ final class ParserDriver {
             if (nfiContextExtension != null) {
                 nfiContextExtension.addNativeLibrary(library);
             }
-            // An empty
+            // An empty call target is returned.
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         }
         // ensures the library of the source is not native
         assert !library.isNative();
-
-        // Remove cyclic and redundant dependency.
-        // PLi: It might be cheaper to let the truffle cache take care of this.
-        // removeCyclicDependency(source, dependenciesSource);
 
         if (isInternalLibrary) {
             String libraryName = getSimpleLibraryName(library.getName());
@@ -185,17 +181,20 @@ final class ParserDriver {
      *
      * @param sourceDependencies
      */
-    private void insertDefaultDependencies(ArrayList<Object> sourceDependencies) {
+    private void insertDefaultDependencies(ArrayList<Object> sourceDependencies, String currentLib) {
         // There could be conflicts between the default libraries of Sulong and the ones that are
         // passed on the command-line. To resolve that, we add ours first but parse them later on.
         String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
         for (String sulongLibraryName : sulongLibraryNames) {
-            ExternalLibrary lib = context.addInternalLibrary(sulongLibraryName, "<default bitcode library>");
-            CallTarget calls = language.getCachedLibrary(lib.getPath().toString());
-            if (calls == null) {
-                sourceDependencies.add(createDependencySource(lib));
-            } else {
-                sourceDependencies.add(calls);
+            // don't add the library itself as one of it's own dependency.
+            if (!currentLib.equalsIgnoreCase(sulongLibraryName)) {
+                ExternalLibrary lib = context.addInternalLibrary(sulongLibraryName, "<default bitcode library>");
+                CallTarget calls = language.getCachedLibrary(lib.getPath().toString());
+                if (calls == null) {
+                    sourceDependencies.add(createDependencySource(lib));
+                } else {
+                    sourceDependencies.add(calls);
+                }
             }
         }
 
@@ -240,23 +239,9 @@ final class ParserDriver {
                     lib = name.substring(SULONG_RENAME_MARKER_LEN, idx);
                     scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                     if (scope == null) {
-                        try {
-                            /*
-                             * If the library that contains the function is not in the language, and
-                             * therefore has not been parsed, then we will try to lazily parse the
-                             * library now.
-                             */
-                            String libName = lib + "." + NFIContextExtension.getNativeLibrarySuffix();
-                            ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>");
-                            TruffleFile file = library.hasFile() ? library.getFile() : context.getEnv().getInternalTruffleFile(library.getPath().toUri());
-                            context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
-                            scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
-                        } catch (Exception e) {
-                            throw new IllegalStateException(e);
-                        }
-                    }
-                    if (scope == null) {
-                        throw new LLVMLinkerException(String.format("The symbol %s could not be imported because library %s was not found", external.getName(), lib));
+                        // The default internal libraries should be loaded when the context is
+                        // initialised.
+                        throw new LLVMLinkerException(String.format("The symbol %s could not be imported because library %s was not found during symbol renaming", external.getName(), lib));
                     }
                     originalName = name.substring(idx + 1);
                     createNewFunction(scope, originalName, parserResult, external, lib, name, it);
@@ -266,23 +251,9 @@ final class ParserDriver {
                 lib = CXXDemangler.getAndRemoveLibraryName(namespaces);
                 scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                 if (scope == null) {
-                    try {
-                        /*
-                         * If the library that contains the function is not in the language, and
-                         * therefore has not been parsed, then we will try to lazily parse the
-                         * library now.
-                         */
-                        String libName = lib + "." + NFIContextExtension.getNativeLibrarySuffix();
-                        ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>");
-                        TruffleFile file = library.hasFile() ? library.getFile() : context.getEnv().getInternalTruffleFile(library.getPath().toUri());
-                        context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
-                        scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
-                    } catch (Exception e) {
-                        throw new IllegalStateException(e);
-                    }
-                }
-                if (scope == null) {
-                    throw new LLVMLinkerException(String.format("The symbol %s could not be imported because library %s was not found", external.getName(), lib));
+                    // The default internal libraries should be loaded when the context is
+                    // initialised.
+                    throw new LLVMLinkerException(String.format("The symbol %s could not be imported because library %s was not found during symbol renaming", external.getName(), lib));
                 }
                 originalName = CXXDemangler.encodeNamespace(namespaces);
                 createNewFunction(scope, originalName, parserResult, external, lib, name, it);
@@ -328,7 +299,6 @@ final class ParserDriver {
             throw new LLVMParserException("Byte order " + targetDataLayout.getByteOrder() + " of file " + library.getPath() + " is not supported");
         }
         NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(context, targetDataLayout);
-        // This needs to be removed once the nodefactory is taken out of the language.
         LLVMScope fileScope = new LLVMScope();
         int bitcodeID = nextFreeBitcodeID.getAndIncrement();
         LLVMParserRuntime runtime = new LLVMParserRuntime(context, library, fileScope, nodeFactory, bitcodeID);
@@ -391,31 +361,39 @@ final class ParserDriver {
      */
     private void processDependencies(ExternalLibrary library, BinaryParserResult binaryParserResult, ArrayList<Object> dependenciesSource, ArrayList<ExternalLibrary> dependencies) {
         for (String lib : context.preprocessDependencies(library, binaryParserResult.getLibraries())) {
-            ExternalLibrary dependency = context.findExternalLibrary(lib, library, binaryParserResult.getLocator());
-            if (dependency != null && !dependencies.contains(dependency)) {
-                dependencies.add(dependency);
-                CallTarget calls = language.getCachedLibrary(dependency.getPath().toString());
-                if (calls == null) {
-                    Source source = createDependencySource(dependency);
-                    if (!dependenciesSource.contains(source)) {
-                        dependenciesSource.add(source);
-                    }
-                } else {
-                    dependenciesSource.add(calls);
-                }
-            } else {
-                // The cached is returned if lib has already been added.
-                dependency = context.addExternalLibrary(lib, library, binaryParserResult.getLocator());
+            // don't add the library itself as one of it's own dependency.
+            if (!library.getName().equalsIgnoreCase(lib)) {
+                ExternalLibrary dependency = context.findExternalLibrary(lib, library, binaryParserResult.getLocator());
                 if (dependency != null && !dependencies.contains(dependency)) {
                     dependencies.add(dependency);
                     CallTarget calls = language.getCachedLibrary(dependency.getPath().toString());
+                    // only create a source if the library has not already been parsed.
                     if (calls == null) {
                         Source source = createDependencySource(dependency);
                         if (!dependenciesSource.contains(source)) {
                             dependenciesSource.add(source);
                         }
                     } else {
-                        dependenciesSource.add(calls);
+                        if (!dependenciesSource.contains(calls)) {
+                            dependenciesSource.add(calls);
+                        }
+                    }
+                } else {
+                    dependency = context.addExternalLibrary(lib, library, binaryParserResult.getLocator());
+                    if (dependency != null && !dependencies.contains(dependency)) {
+                        dependencies.add(dependency);
+                        CallTarget calls = language.getCachedLibrary(dependency.getPath().toString());
+                        // only create a source if the library has not already been parsed.
+                        if (calls == null) {
+                            Source source = createDependencySource(dependency);
+                            if (!dependenciesSource.contains(source)) {
+                                dependenciesSource.add(source);
+                            }
+                        } else {
+                            if (!dependenciesSource.contains(calls)) {
+                                dependenciesSource.add(calls);
+                            }
+                        }
                     }
                 }
             }
@@ -499,33 +477,4 @@ final class ParserDriver {
             return Truffle.getRuntime().createCallTarget(loadModules);
         }
     }
-
-    /*
-     * private void removeCyclicDependency(Source source, ArrayList<Source> dependenciesSource) { //
-     * Remove the itself as it's own dependency while (dependenciesSource.contains(source)) {
-     * dependenciesSource.remove(source); }
-     * 
-     * // Remove libsulong++ for libsulong if
-     * (source.getName().equals(BasicPlatformCapability.LIBSULONG_FILENAME)) {
-     * removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONGXX_FILENAME); }
-     * 
-     * // Remove libsulong for libsulong++ if
-     * (source.getName().equals(BasicPlatformCapability.LIBSULONGXX_FILENAME)) {
-     * removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONG_FILENAME); }
-     * 
-     * if (context.getEnv().getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES)) { // If the
-     * option --llvm.loadC++Libraries is used then libsulong++ will be loaded for // both // libc++
-     * and libc++abi as default libraries. This will cause a cyclic dependency of // libsulong++ ->
-     * libc++ -> libsulong++ -> .. or // libsuling++ -> libc++ -> libc++abi -> libsulong++ -> .. if
-     * (source.getName().contains(PlatformCapabilityBase.LIBCXX_PREFIX)) {
-     * removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONGXX_FILENAME); } else if
-     * (source.getName().contains(PlatformCapabilityBase.LIBCXXABI_PREFIX)) {
-     * removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONGXX_FILENAME); } } }
-     * 
-     * // This method is required as only the name of the libraries is given, not the source of the
-     * // library itself. private static void removeDependency(ArrayList<Source> sources, String
-     * remove) { Source toRemove = null; for (Source dependency : sources) { if (dependency != null)
-     * { if (dependency.getName().equals(remove)) { toRemove = dependency; } } } if (toRemove !=
-     * null) { sources.remove(toRemove); } }
-     */
 }
