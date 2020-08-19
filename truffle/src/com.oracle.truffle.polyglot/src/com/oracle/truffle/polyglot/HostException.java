@@ -41,7 +41,7 @@
 package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleException;
+import com.oracle.truffle.api.interop.AbstractTruffleException;
 import com.oracle.truffle.api.library.ExportLibrary;
 
 /**
@@ -49,7 +49,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
  */
 @SuppressWarnings("serial")
 @ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
-final class HostException extends TruffleException {
+final class HostException extends AbstractTruffleException {
 
     private final Throwable original;
     final HostObject delegate;

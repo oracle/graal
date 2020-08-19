@@ -121,7 +121,7 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.TruffleException;
+import com.oracle.truffle.api.interop.AbstractTruffleException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -1915,7 +1915,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @SuppressWarnings("serial")
-    static class TestException extends TruffleException {
+    static class TestException extends AbstractTruffleException {
 
         final Node location;
 
@@ -2472,7 +2472,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static final class MyKillException extends TruffleException {
+    static final class MyKillException extends AbstractTruffleException {
 
         static final long serialVersionUID = 1;
         static final String MESSAGE = "kill exception";

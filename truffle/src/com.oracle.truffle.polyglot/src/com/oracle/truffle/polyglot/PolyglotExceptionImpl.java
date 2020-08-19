@@ -126,7 +126,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         if (interop.isException(exception)) {
             try {
                 ExceptionType exceptionType = interop.getExceptionType(exception);
-                this.internal = exceptionType == ExceptionType.INTERNAL_ERROR;
+                this.internal = false;
                 this.cancelled = exceptionType == ExceptionType.CANCEL;
                 this.syntaxError = exceptionType == ExceptionType.SYNTAX_ERROR;
                 this.incompleteSource = exceptionType == ExceptionType.INCOMPLETE_SOURCE;

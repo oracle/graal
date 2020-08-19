@@ -69,7 +69,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleException;
+import com.oracle.truffle.api.interop.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -78,7 +78,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @SuppressWarnings("serial")
-    private static class TestGuestError extends TruffleException {
+    private static class TestGuestError extends AbstractTruffleException {
 
         TestGuestError() {
             super("MyError");

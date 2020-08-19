@@ -43,7 +43,7 @@ package com.oracle.truffle.sl.parser;
 
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleException;
+import com.oracle.truffle.api.interop.AbstractTruffleException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -51,7 +51,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 @ExportLibrary(InteropLibrary.class)
-public class SLParseError extends TruffleException {
+public class SLParseError extends AbstractTruffleException {
 
     public static final long serialVersionUID = 1L;
     private final Source source;

@@ -65,7 +65,7 @@ public enum ExceptionType implements TruffleObject {
      *
      * @since 20.2
      */
-    GUEST_LANGUAGE_ERROR,
+    LANGUAGE_ERROR,
 
     /**
      * Indicates a syntax error that is indicating that the syntax is incomplete.
@@ -73,13 +73,6 @@ public enum ExceptionType implements TruffleObject {
      * @since 20.2
      */
     INCOMPLETE_SOURCE,
-
-    /**
-     * Indicates an internal error.
-     *
-     * @since 20.2
-     */
-    INTERNAL_ERROR,
 
     /**
      * Indicates a parser or syntax error.

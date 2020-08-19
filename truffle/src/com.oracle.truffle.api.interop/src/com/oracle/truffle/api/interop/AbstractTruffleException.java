@@ -48,69 +48,24 @@ import com.oracle.truffle.api.source.SourceSection;
 /**
  * A base class for an exception thrown during the execution of a guest language program.
  *
- * The following simplified {@code TryCatchNode} shows how the
- * {@link TruffleException#isCatchable()} should be handled by languages.
- *
- * <pre>
- * public class TryCatchNode extends StatementNode {
- *
- *     &#64;Child private BlockNode block;
- *     &#64;Child private BlockNode catchBlock;
- *     &#64;Child private BlockNode finalizerBlock;
- *     &#64;Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
- *
- *     public TryCatchNode(BlockNode block, BlockNode catchBlock, BlockNode finalizerBlock) {
- *         this.block = block;
- *         this.catchBlock = catchBlock;
- *         this.finalizerBlock = finalizerBlock;
- *     }
- *
- *     &#64;Override
- *     Object execute(VirtualFrame frame) {
- *         boolean runFinalization = true;
- *         try {
- *             return block.execute(frame);
- *         } catch (Throwable ex) {
- *             if (interop.isException(ex)) {
- *                 try {
- *                     unwind = interop.isExceptionUnwind(ex);
- *                     if (!unwind && catchBlock != null) {
- *                         return catchBlock.execute(frame);
- *                     } else {
- *                         interop.throwException(ex);
- *                     }
- *                 } catch (UnsupportedMessageException ume) {
- *                     throw CompilerDirectives.shouldNotReachHere(ume);
- *                 }
- *             }
- *             throw ex;
- *         } finally {
- *             if (runFinalization && finalizerBlock != null) {
- *                 finalizerBlock.execute(frame);
- *             }
- *         }
- *     }
- * }
- * </pre>
- *
  * @since 20.2
  */
 @SuppressWarnings({"serial", "deprecation"})
-public abstract class TruffleException extends RuntimeException implements TruffleObject, com.oracle.truffle.api.TruffleException {
+public abstract class AbstractTruffleException extends RuntimeException implements TruffleObject, com.oracle.truffle.api.TruffleException {
 
     private final int stackTraceElementLimit;
     private final Throwable internalCause;
     private volatile Throwable lazyStackTrace;
 
-    protected TruffleException() {
+    protected AbstractTruffleException() {
         this(null, null, -1);
     }
 
-    protected TruffleException(String message) {
+    protected AbstractTruffleException(String message) {
         this(message, null, -1);
     }
 
-    protected TruffleException(String message, Throwable internalCause, int stackTraceElementLimit) {
+    protected AbstractTruffleException(String message, Throwable internalCause, int stackTraceElementLimit) {
         super(message, checkCause(internalCause));
         this.stackTraceElementLimit = stackTraceElementLimit;
         this.internalCause = internalCause;
@@ -205,14 +160,14 @@ public abstract class TruffleException extends RuntimeException implements Truff
     /**
      * Returns <code>true</code> if this exception indicates an internal error. Note that all
      * exceptions thrown in a guest language implementation that are not implementing
-     * {@link TruffleException} are considered internal.
+     * {@link AbstractTruffleException} are considered internal.
      *
      * @since 0.27
      */
     @Deprecated
     @Override
     public final boolean isInternalError() {
-        return getExceptionType() == ExceptionType.INTERNAL_ERROR;
+        return false;
     }
 
     /**
@@ -261,7 +216,7 @@ public abstract class TruffleException extends RuntimeException implements Truff
      */
     @Deprecated
     @TruffleBoundary
-    public Throwable initCause(Throwable cause) {
+    public final Throwable initCause(Throwable cause) {
         throw new UnsupportedOperationException("Not supported. Pass in the cause using the constructors instead.");
     }
 

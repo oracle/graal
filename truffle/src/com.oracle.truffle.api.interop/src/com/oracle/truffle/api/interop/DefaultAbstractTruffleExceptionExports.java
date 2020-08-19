@@ -47,44 +47,45 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @SuppressWarnings("unused")
-@ExportLibrary(value = InteropLibrary.class, receiverType = TruffleException.class)
-final class DefaultTruffleExceptionExports {
+@ExportLibrary(value = InteropLibrary.class, receiverType = AbstractTruffleException.class)
+final class DefaultAbstractTruffleExceptionExports {
 
     @ExportMessage
-    static boolean isException(TruffleException receiver) {
+    static boolean isException(AbstractTruffleException receiver) {
         return true;
     }
 
     @ExportMessage
-    static RuntimeException throwException(TruffleException receiver) {
+    static RuntimeException throwException(AbstractTruffleException receiver) {
         throw receiver;
     }
 
     @ExportMessage
-    static boolean isExceptionUnwind(TruffleException receiver) {
+    static boolean isExceptionUnwind(AbstractTruffleException receiver) {
         return false;
     }
 
     @ExportMessage
-    static ExceptionType getExceptionType(TruffleException receiver) {
-        return ExceptionType.GUEST_LANGUAGE_ERROR;
+    static ExceptionType getExceptionType(AbstractTruffleException receiver) {
+        return ExceptionType.LANGUAGE_ERROR;
     }
 
     @ExportMessage
-    static int getExceptionExitStatus(TruffleException receiver) throws UnsupportedMessageException {
+    static int getExceptionExitStatus(AbstractTruffleException receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
-    static boolean hasSourceLocation(TruffleException receiver) {
+    static boolean hasSourceLocation(AbstractTruffleException receiver) {
         return receiver.getSourceLocation() != null;
     }
 
     @ExportMessage
-    static SourceSection getSourceLocation(TruffleException receiver) throws UnsupportedMessageException {
+    static SourceSection getSourceLocation(AbstractTruffleException receiver) throws UnsupportedMessageException {
         SourceSection sourceLocation = receiver.getSourceLocation();
         if (sourceLocation == null) {
             throw UnsupportedMessageException.create();
@@ -93,12 +94,12 @@ final class DefaultTruffleExceptionExports {
     }
 
     @ExportMessage
-    static boolean hasExceptionCause(TruffleException receiver) {
+    static boolean hasExceptionCause(AbstractTruffleException receiver) {
         return receiver.getCause() != null;
     }
 
     @ExportMessage
-    static Object getExceptionCause(TruffleException receiver) throws UnsupportedMessageException {
+    static Object getExceptionCause(AbstractTruffleException receiver) throws UnsupportedMessageException {
         Throwable throwable = receiver.getCause();
         if (throwable != null) {
             return throwable;
@@ -108,22 +109,22 @@ final class DefaultTruffleExceptionExports {
     }
 
     @ExportMessage
-    static boolean hasExceptionSuppressed(TruffleException receiver) {
+    static boolean hasExceptionSuppressed(AbstractTruffleException receiver) {
         return hasExceptionSuppressedImpl(receiver);
     }
 
     @ExportMessage
-    static Object getExceptionSuppressed(TruffleException receiver) throws UnsupportedMessageException {
+    static Object getExceptionSuppressed(AbstractTruffleException receiver) throws UnsupportedMessageException {
         return getExceptionSuppressedImpl(receiver);
     }
 
     @ExportMessage
-    static boolean hasExceptionMessage(TruffleException receiver) {
+    static boolean hasExceptionMessage(AbstractTruffleException receiver) {
         return receiver.getMessage() != null;
     }
 
     @ExportMessage
-    static Object getExceptionMessage(TruffleException receiver) throws UnsupportedMessageException {
+    static Object getExceptionMessage(AbstractTruffleException receiver) throws UnsupportedMessageException {
         String message = receiver.getMessage();
         if (message == null) {
             throw UnsupportedMessageException.create();
@@ -133,12 +134,12 @@ final class DefaultTruffleExceptionExports {
     }
 
     @ExportMessage
-    static boolean hasExceptionStackTrace(TruffleException receiver) {
+    static boolean hasExceptionStackTrace(AbstractTruffleException receiver) {
         return true;
     }
 
     @ExportMessage
-    static Object getExceptionStackTrace(TruffleException receiver) throws UnsupportedMessageException {
+    static Object getExceptionStackTrace(AbstractTruffleException receiver) throws UnsupportedMessageException {
         return getExceptionStackTraceImpl(receiver);
     }
 
@@ -171,14 +172,13 @@ final class DefaultTruffleExceptionExports {
     static Object getExceptionStackTraceImpl(Throwable t) throws UnsupportedMessageException {
         List<TruffleStackTraceElement> stack = TruffleStackTrace.getStackTrace(t);
         if (stack == null) {
-            throw UnsupportedMessageException.create();
-        } else {
-            Object[] items = new Object[stack.size()];
-            for (int i = 0; i < items.length; i++) {
-                items[i] = stack.get(i).getGuestObject();
-            }
-            return new InteropList(items);
+            stack = Collections.emptyList();
         }
+        Object[] items = new Object[stack.size()];
+        for (int i = 0; i < items.length; i++) {
+            items[i] = stack.get(i).getGuestObject();
+        }
+        return new InteropList(items);
     }
 
     @SuppressWarnings("deprecation")

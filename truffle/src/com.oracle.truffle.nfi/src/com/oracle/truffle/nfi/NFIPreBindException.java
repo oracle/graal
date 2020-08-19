@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.interop.TruffleException;
+import com.oracle.truffle.api.interop.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
-class NFIPreBindException extends TruffleException {
+class NFIPreBindException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 1L;
 

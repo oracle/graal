@@ -59,7 +59,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.interop.TruffleException;
+import com.oracle.truffle.api.interop.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -77,9 +77,9 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
  * and <code>o</code> is an object containing an <code>A</code> property.
  * <p>
  * To trigger an exception, evaluate a Source containing number <code>1</code> for an
- * {@link IllegalStateException}, number <code>2</code> for a {@link TruffleException}, or number
- * <code>3</code> for an {@link AssertionError}. The number is available in <code>a</code> local
- * variable and <code>o.A</code> property, so that it can be passed to the
+ * {@link IllegalStateException}, number <code>2</code> for a {@link AbstractTruffleException}, or
+ * number <code>3</code> for an {@link AssertionError}. The number is available in <code>a</code>
+ * local variable and <code>o.A</code> property, so that it can be passed to the
  * {@link #throwBug(java.lang.Object)}.
  * <p>
  * Extend this class and {@link #throwBug(java.lang.Object) throw bug} in a language method, or
@@ -387,7 +387,7 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
         }
     }
 
-    private static class TestTruffleException extends TruffleException {
+    private static class TestTruffleException extends AbstractTruffleException {
 
         private static final long serialVersionUID = 7653875618655878235L;
 

@@ -129,15 +129,15 @@ final class InteropAccessor extends Accessor {
 
         @Override
         public Throwable getLazyStackTrace(Throwable exception) {
-            if (exception instanceof TruffleException) {
-                return ((TruffleException) exception).getLazyStackTrace();
+            if (exception instanceof AbstractTruffleException) {
+                return ((AbstractTruffleException) exception).getLazyStackTrace();
             }
             return null;
         }
 
         @Override
         public Object createDefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection) {
-            return new TruffleStackTraceElementObject(rootNode, sourceSection);
+            return new DefaultStackTraceElementObject(rootNode, sourceSection);
         }
 
     }

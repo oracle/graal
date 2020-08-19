@@ -46,12 +46,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 @ExportLibrary(InteropLibrary.class)
-final class TruffleStackTraceElementObject implements TruffleObject {
+final class DefaultStackTraceElementObject implements TruffleObject {
 
     private final RootNode rootNode;
     private final SourceSection sourceSection;
 
-    TruffleStackTraceElementObject(RootNode rootNode, SourceSection sourceSection) {
+    DefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection) {
         this.rootNode = rootNode;
         this.sourceSection = sourceSection;
     }

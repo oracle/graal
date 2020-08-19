@@ -42,9 +42,7 @@ package com.oracle.truffle.api.interop;
 
 import static com.oracle.truffle.api.interop.ExceptionType.CANCEL;
 import static com.oracle.truffle.api.interop.ExceptionType.EXIT;
-import static com.oracle.truffle.api.interop.ExceptionType.GUEST_LANGUAGE_ERROR;
 import static com.oracle.truffle.api.interop.ExceptionType.INCOMPLETE_SOURCE;
-import static com.oracle.truffle.api.interop.ExceptionType.INTERNAL_ERROR;
 import static com.oracle.truffle.api.interop.ExceptionType.SYNTAX_ERROR;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -52,6 +50,7 @@ import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
+import static com.oracle.truffle.api.interop.ExceptionType.LANGUAGE_ERROR;
 
 @SuppressWarnings({"unused", "deprecation"})
 @ExportLibrary(value = InteropLibrary.class, receiverType = com.oracle.truffle.api.TruffleException.class)
@@ -59,33 +58,37 @@ final class DefaultLegacyTruffleExceptionExports {
 
     @ExportMessage
     static boolean isException(com.oracle.truffle.api.TruffleException receiver) {
-        return true;
+        return !receiver.isInternalError();
     }
 
     @ExportMessage
-    static RuntimeException throwException(com.oracle.truffle.api.TruffleException receiver) {
-        throw sthrow(RuntimeException.class, (Throwable) receiver);
+    static RuntimeException throwException(com.oracle.truffle.api.TruffleException receiver) throws UnsupportedMessageException {
+        if (!isException(receiver)) {
+            throw UnsupportedMessageException.create();
+        } else {
+            throw sthrow(RuntimeException.class, (Throwable) receiver);
+        }
     }
 
     @ExportMessage
     static boolean isExceptionUnwind(com.oracle.truffle.api.TruffleException receiver) {
-        return receiver instanceof ThreadDeath;
+        return isException(receiver) && receiver instanceof ThreadDeath;
     }
 
     @ExportMessage
-    static ExceptionType getExceptionType(com.oracle.truffle.api.TruffleException receiver) {
-        if (receiver.isCancelled()) {
+    static ExceptionType getExceptionType(com.oracle.truffle.api.TruffleException receiver) throws UnsupportedMessageException {
+        if (!isException(receiver)) {
+            throw UnsupportedMessageException.create();
+        } else if (receiver.isCancelled()) {
             return CANCEL;
         } else if (receiver.isExit()) {
             return EXIT;
         } else if (receiver.isIncompleteSource()) {
             return INCOMPLETE_SOURCE;
-        } else if (receiver.isInternalError()) {
-            return INTERNAL_ERROR;
         } else if (receiver.isSyntaxError()) {
             return SYNTAX_ERROR;
         } else {
-            return GUEST_LANGUAGE_ERROR;
+            return LANGUAGE_ERROR;
         }
     }
 
@@ -115,7 +118,7 @@ final class DefaultLegacyTruffleExceptionExports {
     @ExportMessage
     @TruffleBoundary
     static boolean hasExceptionCause(com.oracle.truffle.api.TruffleException receiver) {
-        if (!(receiver instanceof Throwable)) {
+        if (!isException(receiver) || !(receiver instanceof Throwable)) {
             return false;
         }
         Throwable cause = ((Throwable) receiver).getCause();
@@ -138,24 +141,24 @@ final class DefaultLegacyTruffleExceptionExports {
     @ExportMessage
     @TruffleBoundary
     static boolean hasExceptionSuppressed(com.oracle.truffle.api.TruffleException receiver) {
-        if (!(receiver instanceof Throwable)) {
+        if (!isException(receiver) || !(receiver instanceof Throwable)) {
             return false;
         }
-        return DefaultTruffleExceptionExports.hasExceptionSuppressedImpl((Throwable) receiver);
+        return DefaultAbstractTruffleExceptionExports.hasExceptionSuppressedImpl((Throwable) receiver);
     }
 
     @ExportMessage
     @TruffleBoundary
     static Object getExceptionSuppressed(com.oracle.truffle.api.TruffleException receiver) throws UnsupportedMessageException {
-        if (!(receiver instanceof Throwable)) {
-            return false;
+        if (!isException(receiver) || !(receiver instanceof Throwable)) {
+            throw UnsupportedMessageException.create();
         }
-        return DefaultTruffleExceptionExports.getExceptionSuppressedImpl((Throwable) receiver);
+        return DefaultAbstractTruffleExceptionExports.getExceptionSuppressedImpl((Throwable) receiver);
     }
 
     @ExportMessage
     static boolean hasExceptionMessage(com.oracle.truffle.api.TruffleException receiver) {
-        if (!(receiver instanceof Throwable)) {
+        if (!isException(receiver) || !(receiver instanceof Throwable)) {
             return false;
         }
         return ((Throwable) receiver).getMessage() != null;
@@ -164,7 +167,7 @@ final class DefaultLegacyTruffleExceptionExports {
     @ExportMessage
     static Object getExceptionMessage(com.oracle.truffle.api.TruffleException receiver) throws UnsupportedMessageException {
         String message = null;
-        if (!(receiver instanceof Throwable) || (message = ((Throwable) receiver).getMessage()) == null) {
+        if (!isException(receiver) || !(receiver instanceof Throwable) || (message = ((Throwable) receiver).getMessage()) == null) {
             throw UnsupportedMessageException.create();
         }
         return message;
@@ -173,7 +176,7 @@ final class DefaultLegacyTruffleExceptionExports {
     @ExportMessage
     @TruffleBoundary
     static boolean hasExceptionStackTrace(com.oracle.truffle.api.TruffleException receiver) {
-        if (!(receiver instanceof Throwable)) {
+        if (!isException(receiver) || !(receiver instanceof Throwable)) {
             return false;
         }
         return TruffleStackTrace.fillIn((Throwable) receiver) != null;
@@ -182,10 +185,10 @@ final class DefaultLegacyTruffleExceptionExports {
     @ExportMessage
     @TruffleBoundary
     static Object getExceptionStackTrace(com.oracle.truffle.api.TruffleException receiver) throws UnsupportedMessageException {
-        if (!(receiver instanceof Throwable)) {
+        if (!isException(receiver) || !(receiver instanceof Throwable)) {
             throw UnsupportedMessageException.create();
         }
-        return DefaultTruffleExceptionExports.getExceptionStackTraceImpl((Throwable) receiver);
+        return DefaultAbstractTruffleExceptionExports.getExceptionStackTraceImpl((Throwable) receiver);
     }
 
     @SuppressWarnings({"unchecked", "unused"})

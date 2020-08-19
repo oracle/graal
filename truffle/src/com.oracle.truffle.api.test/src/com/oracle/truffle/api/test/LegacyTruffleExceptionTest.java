@@ -129,7 +129,7 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
             if (exception == null) {
                 throw UnsupportedMessageException.create();
             }
-            return unwind ? ExceptionType.CANCEL : ExceptionType.GUEST_LANGUAGE_ERROR;
+            return unwind ? ExceptionType.CANCEL : ExceptionType.LANGUAGE_ERROR;
         }
 
         @ExportMessage

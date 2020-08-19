@@ -94,7 +94,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleException;
+import com.oracle.truffle.api.interop.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -156,7 +156,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
     @SuppressWarnings("serial")
     @ExportLibrary(InteropLibrary.class)
-    static class SyntaxError extends TruffleException {
+    static class SyntaxError extends AbstractTruffleException {
 
         private final SourceSection location;
 

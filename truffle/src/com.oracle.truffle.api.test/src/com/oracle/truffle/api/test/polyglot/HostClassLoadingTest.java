@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -73,7 +72,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -190,11 +188,6 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
     private static void assertNonInternalException(Throwable t) {
         InteropLibrary interop = InteropLibrary.getUncached();
         assertTrue(interop.isException(t));
-        try {
-            assertFalse(ExceptionType.INTERNAL_ERROR.equals(interop.getExceptionType(t)));
-        } catch (UnsupportedMessageException um) {
-            CompilerDirectives.shouldNotReachHere(um);
-        }
     }
 
     private static Path setupSimpleClassPath() throws IOException {

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -72,7 +71,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -854,14 +852,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
             Assert.fail();
         } catch (RuntimeException e) {
             InteropLibrary interop = InteropLibrary.getUncached();
-            if (!interop.isException(e)) {
-                Assert.fail();
-            }
-            try {
-                Assert.assertFalse(ExceptionType.INTERNAL_ERROR.equals(interop.getExceptionType(e)));
-            } catch (UnsupportedMessageException um) {
-                CompilerDirectives.shouldNotReachHere(um);
-            }
+            Assert.assertTrue(interop.isException(e));
             Assert.assertEquals("Host Error", ((Exception) e).getMessage());
             Assert.assertTrue(languageEnv.asHostException(e) instanceof TestError);
         }

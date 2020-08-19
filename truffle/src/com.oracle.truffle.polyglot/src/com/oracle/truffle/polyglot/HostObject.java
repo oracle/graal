@@ -1032,7 +1032,7 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     public ExceptionType getExceptionType() throws UnsupportedMessageException {
         if (isException()) {
-            return obj instanceof InterruptedException ? ExceptionType.CANCEL : ExceptionType.GUEST_LANGUAGE_ERROR;
+            return obj instanceof InterruptedException ? ExceptionType.CANCEL : ExceptionType.LANGUAGE_ERROR;
         }
         throw UnsupportedMessageException.create();
     }
