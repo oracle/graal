@@ -80,6 +80,11 @@ final class DefaultAbstractTruffleExceptionExports {
     }
 
     @ExportMessage
+    static boolean isExceptionIncompleteSource(AbstractTruffleException receiver) throws UnsupportedMessageException {
+        return false;
+    }
+
+    @ExportMessage
     static boolean hasSourceLocation(AbstractTruffleException receiver) {
         return receiver.getSourceLocation() != null;
     }

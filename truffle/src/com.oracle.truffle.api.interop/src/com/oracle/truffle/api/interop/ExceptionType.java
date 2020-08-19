@@ -68,13 +68,6 @@ public enum ExceptionType implements TruffleObject {
     LANGUAGE_ERROR,
 
     /**
-     * Indicates a syntax error that is indicating that the syntax is incomplete.
-     *
-     * @since 20.2
-     */
-    INCOMPLETE_SOURCE,
-
-    /**
      * Indicates a parser or syntax error.
      *
      * @since 20.2

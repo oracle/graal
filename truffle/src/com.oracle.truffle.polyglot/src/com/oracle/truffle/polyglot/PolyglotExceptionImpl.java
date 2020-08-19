@@ -129,9 +129,9 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 this.internal = false;
                 this.cancelled = exceptionType == ExceptionType.CANCEL;
                 this.syntaxError = exceptionType == ExceptionType.SYNTAX_ERROR;
-                this.incompleteSource = exceptionType == ExceptionType.INCOMPLETE_SOURCE;
                 this.exit = exceptionType == ExceptionType.EXIT;
                 this.exitStatus = this.exit ? interop.getExceptionExitStatus(exception) : 0;
+                this.incompleteSource = this.syntaxError ? interop.isExceptionIncompleteSource(exception) : false;
 
                 if (interop.hasSourceLocation(exception)) {
                     com.oracle.truffle.api.source.SourceSection section = interop.getSourceLocation(exception);

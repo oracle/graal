@@ -1305,10 +1305,18 @@ public abstract class InteropLibrary extends Library {
         }
     }
 
-    @Abstract(ifExported = {"isExceptionUnwind", "getExceptionExitStatus"})
+    @Abstract(ifExported = {"isExceptionUnwind", "getExceptionExitStatus", "isExceptionIncompleteSource"})
     public ExceptionType getExceptionType(Object receiver) throws UnsupportedMessageException {
         if (receiver instanceof AbstractTruffleException) {
             return DefaultAbstractTruffleExceptionExports.getExceptionType((AbstractTruffleException) receiver);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    public boolean isExceptionIncompleteSource(Object receiver) throws UnsupportedMessageException {
+        if (receiver instanceof AbstractTruffleException) {
+            return DefaultAbstractTruffleExceptionExports.isExceptionIncompleteSource((AbstractTruffleException) receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -3038,6 +3046,13 @@ public abstract class InteropLibrary extends Library {
         public ExceptionType getExceptionType(Object receiver) throws UnsupportedMessageException {
             assert preCondition(receiver);
             ExceptionType result = delegate.getExceptionType(receiver);
+            return result;
+        }
+
+        @Override
+        public boolean isExceptionIncompleteSource(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            boolean result = delegate.isExceptionIncompleteSource(receiver);
             return result;
         }
 

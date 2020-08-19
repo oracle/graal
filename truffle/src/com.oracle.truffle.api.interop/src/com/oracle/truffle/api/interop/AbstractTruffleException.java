@@ -154,7 +154,11 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     @Deprecated
     @Override
     public final boolean isIncompleteSource() {
-        return getExceptionType() == ExceptionType.INCOMPLETE_SOURCE;
+        try {
+            return InteropLibrary.getUncached().isExceptionIncompleteSource(this);
+        } catch (UnsupportedMessageException um) {
+            throw CompilerDirectives.shouldNotReachHere(um);
+        }
     }
 
     /**

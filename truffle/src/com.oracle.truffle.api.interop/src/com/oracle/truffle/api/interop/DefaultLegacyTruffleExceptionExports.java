@@ -42,7 +42,6 @@ package com.oracle.truffle.api.interop;
 
 import static com.oracle.truffle.api.interop.ExceptionType.CANCEL;
 import static com.oracle.truffle.api.interop.ExceptionType.EXIT;
-import static com.oracle.truffle.api.interop.ExceptionType.INCOMPLETE_SOURCE;
 import static com.oracle.truffle.api.interop.ExceptionType.SYNTAX_ERROR;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -83,13 +82,16 @@ final class DefaultLegacyTruffleExceptionExports {
             return CANCEL;
         } else if (receiver.isExit()) {
             return EXIT;
-        } else if (receiver.isIncompleteSource()) {
-            return INCOMPLETE_SOURCE;
         } else if (receiver.isSyntaxError()) {
             return SYNTAX_ERROR;
         } else {
             return LANGUAGE_ERROR;
         }
+    }
+
+    @ExportMessage
+    static boolean isExceptionIncompleteSource(com.oracle.truffle.api.TruffleException receiver) {
+        return receiver.isIncompleteSource();
     }
 
     @ExportMessage
