@@ -602,12 +602,7 @@ public final class InterpreterToVM implements ContextAccess {
                             if ((method.getModifiers() & Constants.ACC_LAMBDA_FORM_HIDDEN) == 0) {
                                 if (!c.checkFillIn(method)) {
                                     if (!c.checkThrowableInit(method)) {
-                                        int bci = -1; // unknown
-                                        if (espressoNode.isBytecodeNode()) {
-                                            bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
-                                        } else if (method.isNative()) {
-                                            bci = -2; // native
-                                        }
+                                        int bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
                                         frames.add(new VM.StackElement(method, bci));
                                         c.inc();
                                     }

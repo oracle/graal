@@ -415,8 +415,22 @@ public final class Meta implements ContextAccess {
 
         if (getJavaVersion().java9OrLater()) {
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = knownKlass(Type.jdk_internal_loader_ClassLoaders$PlatformClassLoader);
+            java_lang_StackWalker = knownKlass(Type.java_lang_StackWalker);
+            java_lang_AbstractStackWalker = knownKlass(Type.java_lang_AbstractStackWalker);
+            java_lang_AbstractStackWalker_doStackWalk = java_lang_AbstractStackWalker.lookupDeclaredMethod(Name.doStackWalk, Signature.Object_long_int_int_int_int);
+
+            java_lang_StackFrameInfo = knownKlass(Type.java_lang_StackFrameInfo);
+            java_lang_StackFrameInfo_memberName = java_lang_StackFrameInfo.lookupDeclaredField(Name.memberName, Type.java_lang_Object);
+            java_lang_StackFrameInfo_bci = java_lang_StackFrameInfo.lookupDeclaredField(Name.bci, Type._int);
         } else {
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = null;
+            java_lang_StackWalker = null;
+            java_lang_AbstractStackWalker = null;
+            java_lang_AbstractStackWalker_doStackWalk = null;
+
+            java_lang_StackFrameInfo = null;
+            java_lang_StackFrameInfo_memberName = null;
+            java_lang_StackFrameInfo_bci = null;
         }
 
         if (getJavaVersion().modulesEnabled()) {
@@ -854,6 +868,14 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_ref_ReferenceQueue;
     public final Field java_lang_ref_ReferenceQueue_NULL;
     public final Method sun_reflect_Reflection_getCallerClass;
+
+    public final ObjectKlass java_lang_StackWalker;
+    public final ObjectKlass java_lang_AbstractStackWalker;
+    public final Method java_lang_AbstractStackWalker_doStackWalk;
+
+    public final ObjectKlass java_lang_StackFrameInfo;
+    public final Field java_lang_StackFrameInfo_memberName;
+    public final Field java_lang_StackFrameInfo_bci;
 
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;

@@ -68,22 +68,19 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (targetKlass.getType() == Type.java_lang_reflect_Method) {
             // Actual planting
             Method target = Method.getHostReflectiveMethodRoot(ref, meta);
-            int refKind = target.getRefKind();
-            plantResolvedMethod(self, target, refKind, meta.java_lang_invoke_MemberName_flags, meta);
+            plantResolvedMethod(self, target, target.getRefKind(), meta);
             // Finish the job
             self.setField(meta.java_lang_invoke_MemberName_clazz, target.getDeclaringKlass().mirror());
         } else if (targetKlass.getType() == Type.java_lang_reflect_Field) {
             // Actual planting
             Field field = Field.getReflectiveFieldRoot(ref, meta);
-            int refkind = getRefKind(self.getIntField(meta.java_lang_invoke_MemberName_flags));
-            plantResolvedField(self, field, refkind, meta.java_lang_invoke_MemberName_flags, meta);
+            plantResolvedField(self, field, getRefKind(self.getIntField(meta.java_lang_invoke_MemberName_flags)), meta);
             // Finish the job
             Klass fieldKlass = ref.getField(meta.java_lang_reflect_Field_class).getMirrorKlass();
             self.setField(meta.java_lang_invoke_MemberName_clazz, fieldKlass.mirror());
         } else if (targetKlass.getType() == Type.java_lang_reflect_Constructor) {
             Method target = Method.getHostReflectiveConstructorRoot(ref, meta);
-            int refKind = target.getRefKind();
-            plantResolvedMethod(self, target, refKind, meta.java_lang_invoke_MemberName_flags, meta);
+            plantResolvedMethod(self, target, target.getRefKind(), meta);
             self.setField(meta.java_lang_invoke_MemberName_clazz, target.getDeclaringKlass().mirror());
         } else {
             throw EspressoError.shouldNotReachHere("invalid argument for MemberName.init: ", ref.getKlass());
@@ -306,7 +303,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             case MN_IS_CONSTRUCTOR:
                 profiler.profile(1);
                 Symbol<Signature> constructorSignature = meta.getEspressoLanguage().getSignatures().lookupValidSignature(desc);
-                plantMethodMemberName(memberName, constructorSignature, defKlass, callerKlass, methodName, flagField, refKind, meta);
+                plantMethodMemberName(memberName, constructorSignature, defKlass, callerKlass, methodName, refKind, meta);
                 memberName.setHiddenField(meta.HIDDEN_VMINDEX, -3_000_000L);
                 break;
             case MN_IS_METHOD:
@@ -315,19 +312,19 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 Symbol<Signature> sig = signatures.lookupValidSignature(desc);
                 if (refKind == REF_invokeStatic || refKind == REF_invokeInterface) {
                     profiler.profile(4);
-                    plantMethodMemberName(memberName, sig, defKlass, callerKlass, methodName, flagField, refKind, meta);
+                    plantMethodMemberName(memberName, sig, defKlass, callerKlass, methodName, refKind, meta);
 
                 } else if (mhMethodId != None) {
                     assert (!mhMethodId.isStaticPolymorphicSignature());
                     if (mhMethodId.isSignaturePolymorphicIntrinsic()) {
                         profiler.profile(5);
-                        plantInvokeBasic(memberName, sig, defKlass, callerKlass, methodName, flagField, refKind, meta);
+                        plantInvokeBasic(memberName, sig, defKlass, callerKlass, methodName, refKind, meta);
                     } else {
                         throw EspressoError.shouldNotReachHere("Should never need to resolve invokeGeneric MemberName");
                     }
                 } else if (refKind == REF_invokeVirtual || refKind == REF_invokeSpecial) {
                     profiler.profile(6);
-                    plantMethodMemberName(memberName, sig, defKlass, callerKlass, methodName, flagField, refKind, meta);
+                    plantMethodMemberName(memberName, sig, defKlass, callerKlass, methodName, refKind, meta);
                 }
                 flags = memberName.getIntField(flagField);
                 refKind = (flags >> MN_REFERENCE_KIND_SHIFT) & MN_REFERENCE_KIND_MASK;
@@ -336,7 +333,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             case MN_IS_FIELD:
                 profiler.profile(3);
                 Symbol<Type> t = meta.getEspressoLanguage().getTypes().lookup(desc);
-                plantFieldMemberName(memberName, t, defKlass, methodName, flagField, refKind, meta);
+                plantFieldMemberName(memberName, t, defKlass, methodName, refKind, meta);
                 break;
             default:
                 throw Meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Member name resolution failed");
@@ -347,38 +344,39 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     // region MemberName planting
 
-    private static void plantInvokeBasic(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Klass callerKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
+    private static void plantInvokeBasic(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Klass callerKlass, Symbol<Name> name, int refKind, Meta meta) {
         assert (name == Name.invokeBasic);
         Method target = defKlass.lookupMethod(name, sig, callerKlass);
         memberName.setHiddenField(meta.HIDDEN_VMTARGET, target);
-        memberName.setIntField(flagField, getMethodFlags(target, refKind));
+        memberName.setIntField(meta.java_lang_invoke_MemberName_flags, getMethodFlags(target, refKind));
     }
 
-    private static void plantMethodMemberName(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Klass callerKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
+    private static void plantMethodMemberName(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Klass callerKlass, Symbol<Name> name, int refKind, Meta meta) {
         Method target = defKlass.lookupMethod(name, sig, callerKlass);
         if (target == null) {
             throw Meta.throwException(meta.java_lang_NoSuchMethodError);
         }
-        plantResolvedMethod(memberName, target, refKind, flagField, meta);
+        plantResolvedMethod(memberName, target, refKind, meta);
     }
 
-    private static void plantResolvedMethod(StaticObject memberName, Method target, int refKind, Field flagField, Meta meta) {
+    // Exposed to StackWalk
+    public static void plantResolvedMethod(StaticObject memberName, Method target, int refKind, Meta meta) {
         memberName.setHiddenField(meta.HIDDEN_VMTARGET, target);
-        memberName.setIntField(flagField, getMethodFlags(target, refKind));
+        memberName.setIntField(meta.java_lang_invoke_MemberName_flags, getMethodFlags(target, refKind));
     }
 
-    private static void plantFieldMemberName(StaticObject memberName, Symbol<Type> type, Klass defKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
+    private static void plantFieldMemberName(StaticObject memberName, Symbol<Type> type, Klass defKlass, Symbol<Name> name, int refKind, Meta meta) {
         Field field = defKlass.lookupField(name, type);
         if (field == null) {
             throw Meta.throwException(meta.java_lang_NoSuchFieldError);
         }
-        plantResolvedField(memberName, field, refKind, flagField, meta);
+        plantResolvedField(memberName, field, refKind, meta);
     }
 
-    private static void plantResolvedField(StaticObject memberName, Field field, int refKind, Field flagField, Meta meta) {
+    private static void plantResolvedField(StaticObject memberName, Field field, int refKind, Meta meta) {
         memberName.setHiddenField(meta.HIDDEN_VMTARGET, field.getDeclaringKlass());
         memberName.setHiddenField(meta.HIDDEN_VMINDEX, (long) field.getSlot() + Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
-        memberName.setIntField(flagField, getFieldFlags(refKind, field));
+        memberName.setIntField(meta.java_lang_invoke_MemberName_flags, getFieldFlags(refKind, field));
     }
 
     private static int getMethodFlags(Method target, int refKind) {

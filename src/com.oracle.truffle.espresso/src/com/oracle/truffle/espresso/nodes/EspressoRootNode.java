@@ -153,7 +153,13 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     public final int readBCI(Frame frame) {
-        return ((BytecodeNode) getMethodNode()).readBCI(frame);
+        if (isBytecodeNode()) {
+            return ((BytecodeNode) getMethodNode()).readBCI(frame);
+        } else if (getMethod().isNative()) {
+            return -2; // native
+        } else {
+            return -1; // unknown
+        }
     }
 
     public final void setFrameId(Frame frame, long frameId) {
