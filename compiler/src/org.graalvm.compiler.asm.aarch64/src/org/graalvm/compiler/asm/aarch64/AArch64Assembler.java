@@ -1936,6 +1936,9 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     private void addSubShiftedInstruction(Instruction instr, Register dst, Register src1, Register src2, ShiftType shiftType, int imm, InstructionType type) {
+        assert !dst.equals(sp);
+        assert !src1.equals(sp);
+        assert !src2.equals(sp);
         assert shiftType != ShiftType.ROR;
         assert imm >= 0 && imm < type.width;
         emitInt(type.encoding | instr.encoding | AddSubShiftedOp | imm << ImmediateOffset | shiftType.encoding << ShiftTypeOffset | rd(dst) | rs1(src1) | rs2(src2));
