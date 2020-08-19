@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceClassLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceMemberType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceMethodType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -358,6 +359,15 @@ public abstract class LLVMInteropType implements TruffleObject {
             return superclass;
         }
 
+        public boolean hasVirtualMethods() {
+            for (Method m : methods) {
+                if (m.getVirtualIndex() >= 0) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
     }
 
     public static final class StructMember {
@@ -422,12 +432,14 @@ public abstract class LLVMInteropType implements TruffleObject {
         private final Clazz clazz;
         private final String name;
         private final String linkageName;
+        private final long virtualIndex;
 
-        Method(Clazz clazz, String name, String linkageName, InteropTypeRegistry.Register returnType, LLVMInteropType[] parameterTypes) {
+        Method(Clazz clazz, String name, String linkageName, InteropTypeRegistry.Register returnType, LLVMInteropType[] parameterTypes, long virtualIndex) {
             super(returnType, parameterTypes, true);
             this.clazz = clazz;
             this.name = name;
             this.linkageName = linkageName;
+            this.virtualIndex = virtualIndex;
         }
 
         public Clazz getObjectClass() {
@@ -440,6 +452,10 @@ public abstract class LLVMInteropType implements TruffleObject {
 
         public String getLinkageName() {
             return linkageName;
+        }
+
+        public long getVirtualIndex() {
+            return virtualIndex;
         }
 
         @Override
@@ -579,7 +595,7 @@ public abstract class LLVMInteropType implements TruffleObject {
                 ret.members[i] = new StructMember(ret, member.getName(), startOffset, endOffset, get(memberType));
             }
             for (int i = 0; i < ret.methods.length; i++) {
-                ret.methods[i] = convertMethod(type.getMethodName(i), type.getMethodLinkageName(i), type.getMethod(i), ret);
+                ret.methods[i] = convertMethod(type.getMethod(i), ret);
             }
             return ret;
         }
@@ -595,11 +611,12 @@ public abstract class LLVMInteropType implements TruffleObject {
             return interopFunctionType;
         }
 
-        private Method convertMethod(String name, String linkageName, LLVMSourceFunctionType functionType, Clazz clazz) {
-            List<LLVMSourceType> parameterTypes = functionType.getParameterTypes();
+        private Method convertMethod(LLVMSourceMethodType sourceMethod, Clazz clazz) {
+            List<LLVMSourceType> parameterTypes = sourceMethod.getParameterTypes();
             LLVMInteropType[] interopParameterTypes = new LLVMInteropType[parameterTypes.size()];
-            Method interopMethodType = new Method(clazz, name, linkageName, new Register(functionType, functionType.getReturnType()), interopParameterTypes);
-            typeCache.put(functionType, interopMethodType);
+            Method interopMethodType = new Method(clazz, sourceMethod.getName(), sourceMethod.getLinkageName(), new Register(sourceMethod, sourceMethod.getReturnType()), interopParameterTypes,
+                            sourceMethod.getVirtualIndex());
+            typeCache.put(sourceMethod, interopMethodType);
             for (int i = 0; i < interopParameterTypes.length; i++) {
                 interopParameterTypes[i] = get(parameterTypes.get(i));
             }

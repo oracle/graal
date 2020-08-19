@@ -216,8 +216,9 @@ final class DITypeExtractor implements MetadataVisitor {
                                 final String methodName = ((MDString) mdSubprogram.getName()).getString();
                                 final String methodLinkageName = ((MDString) mdSubprogram.getLinkageName()).getString();
                                 final LLVMSourceFunctionType llvmSourceFunctionType = (LLVMSourceFunctionType) parsedTypes.get(mdSubprogram);
+                                final long virtualIndex = mdSubprogram.getVirtuality() > 0 ? mdSubprogram.getVirtualIndex() : -1L;
                                 if (llvmSourceFunctionType != null) {
-                                    type.addMethod(methodName, methodLinkageName, llvmSourceFunctionType);
+                                    type.addMethod(methodName, methodLinkageName, llvmSourceFunctionType, virtualIndex);
                                 }
                             } catch (ClassCastException cce) {
                                 /*
