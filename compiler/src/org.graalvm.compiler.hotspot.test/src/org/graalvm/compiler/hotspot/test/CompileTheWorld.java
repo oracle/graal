@@ -64,6 +64,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -76,6 +77,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
@@ -115,6 +117,7 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCICompiler;
 import sun.misc.Unsafe;
@@ -205,9 +208,10 @@ public final class CompileTheWorld {
 
     // Counters
     private int classFileCounter = 0;
-    private AtomicLong compiledMethodsCounter = new AtomicLong();
     private AtomicLong compileTime = new AtomicLong();
     private AtomicLong memoryUsed = new AtomicLong();
+    private Map<ResolvedJavaMethod, Long> compileTimes = new ConcurrentHashMap<>();
+    private Map<ResolvedJavaMethod, Integer> hugeMethods = new HashMap<>();
 
     /**
      * Per-isolate values used to control if metrics should be printed and reset as part of the next
@@ -899,6 +903,8 @@ public final class CompileTheWorld {
         }
 
         if (!running) {
+            // Restart elapsed time to measure only compilation lapsed time
+            start = System.nanoTime();
             startThreads();
         }
         int wakeups = 0;
@@ -909,11 +915,13 @@ public final class CompileTheWorld {
         do {
             completedTaskCount = threadPool.getCompletedTaskCount();
             if (wakeups % statsInterval == 0 || completedTaskCount == taskCount) {
-                long compiles = completedTaskCount - lastCompletedTaskCount;
-                double rate = (double) compiles / statsInterval;
+                long compilationsInInterval = completedTaskCount - lastCompletedTaskCount;
+                double rate = (double) compilationsInInterval / statsInterval;
                 long percent = completedTaskCount * 100 / taskCount;
-                TTY.printf("CompileTheWorld : [%2d%%, %.1f compiles/s] Waiting for %d compiles, just completed %d compiles%n",
-                                percent, rate, taskCount - completedTaskCount, compiles);
+                TTY.printf("CompileTheWorld : [%2d%%, %.1f compiles/s] %d of %d compilations completed, %d in last interval%n",
+                                percent, rate,
+                                completedTaskCount, taskCount,
+                                compilationsInInterval);
                 if (libgraal != null) {
                     armPrintMetrics();
                 }
@@ -933,11 +941,32 @@ public final class CompileTheWorld {
 
         println();
         int compiledClasses = classFileCounter > compileStartAt ? classFileCounter - compileStartAt : 0;
-        if (Options.MultiThreaded.getValue(harnessOptions)) {
-            TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms elapsed, %d ms compile time, %d bytes of memory used)", compiledClasses, compiledMethodsCounter.get(), elapsedTime,
-                            compileTime.get() / 1000000, memoryUsed.get());
-        } else {
-            TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms, %d bytes of memory used)", compiledClasses, compiledMethodsCounter.get(), compileTime.get(), memoryUsed.get());
+        int compiledBytecodes = compileTimes.keySet().stream().collect(Collectors.summingInt(ResolvedJavaMethod::getCodeSize));
+        int compiledMethods = compileTimes.size();
+        long elapsedTimeSeconds = nanoToMillis(compileTime.get()) / 1_000;
+        double rateInMethods = (double) compiledMethods / elapsedTimeSeconds;
+        double rateInBytecodes = (double) compiledBytecodes / elapsedTimeSeconds;
+        TTY.println("CompileTheWorld : ======================== Done ======================");
+        TTY.println("CompileTheWorld :         Compiled classes: %,d", compiledClasses);
+        TTY.println("CompileTheWorld :         Compiled methods: %,d [%,d bytecodes]", compiledMethods, compiledBytecodes);
+        TTY.println("CompileTheWorld :             Elapsed time: %,d ms", nanoToMillis(elapsedTime));
+        TTY.println("CompileTheWorld :             Compile time: %,d ms", nanoToMillis(compileTime.get()));
+        TTY.println("CompileTheWorld :  Compilation rate/thread: %,.1f methods/sec, %,.0f bytecodes/sec", rateInMethods, rateInBytecodes);
+        TTY.println("CompileTheWorld : HotSpot heap memory used: %,.3f MB", (double) memoryUsed.get() / 1_000_000);
+        TTY.println("CompileTheWorld :     Huge methods skipped: %,d", hugeMethods.size());
+        int limit = Options.MetricsReportLimit.getValue(harnessOptions);
+        if (limit > 0) {
+            TTY.println("Longest compile times:");
+            compileTimes.entrySet().stream().sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue())).limit(limit).forEach(e -> {
+                long time = nanoToMillis(e.getValue());
+                ResolvedJavaMethod method = e.getKey();
+                TTY.printf("  %,10d ms   %s [bytecodes: %d]%n", time, method.format("%H.%n(%p)"), method.getCodeSize());
+            });
+            TTY.printf("Largest methods skipped due to bytecode size exceeding HugeMethodLimit (%d):%n", getHugeMethodLimit(compiler.getGraalRuntime().getVMConfig()));
+            hugeMethods.entrySet().stream().sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue())).limit(limit).forEach(e -> {
+                ResolvedJavaMethod method = e.getKey();
+                TTY.printf("  %,10d      %s%n", e.getValue(), method.format("%H.%n(%p)"), method.getCodeSize());
+            });
         }
 
         GlobalMetrics metricValues = ((HotSpotGraalRuntime) compiler.getGraalRuntime()).getMetricValues();
@@ -978,6 +1007,10 @@ public final class CompileTheWorld {
             }
             TTY.println("---------------------------------------------");
         }
+    }
+
+    static long nanoToMillis(long ns) {
+        return ns / 1_000_000;
     }
 
     /**
@@ -1120,8 +1153,9 @@ public final class CompileTheWorld {
             }
 
             memoryUsed.getAndAdd(getCurrentThreadAllocatedBytes() - allocatedAtStart);
-            compileTime.getAndAdd(System.nanoTime() - start);
-            compiledMethodsCounter.incrementAndGet();
+            long duration = System.nanoTime() - start;
+            compileTime.getAndAdd(duration);
+            compileTimes.put(method, duration);
         } catch (Throwable t) {
             // Catch everything and print a message
             println("CompileTheWorld (%d) : Error compiling method: %s", counter, method.format("%H.%n(%p):%r"));
@@ -1139,11 +1173,13 @@ public final class CompileTheWorld {
             return false;
         }
         GraalHotSpotVMConfig c = compiler.getGraalRuntime().getVMConfig();
-        if (c.dontCompileHugeMethods && javaMethod.getCodeSize() > c.hugeMethodLimit) {
+        int hugeMethodLimit = getHugeMethodLimit(c);
+        if (c.dontCompileHugeMethods && javaMethod.getCodeSize() > hugeMethodLimit) {
             println(verbose || methodFilter != null,
-                            String.format("CompileTheWorld (%d) : Skipping huge method %s (use -XX:-DontCompileHugeMethods or -XX:HugeMethodLimit=%d to include it)", classFileCounter,
+                            String.format("CompileTheWorld (%d) : Skipping huge method %s (use -XX:-DontCompileHugeMethods or -DCompileTheWorld.HugeMethodLimit=%d to include it)", classFileCounter,
                                             javaMethod.format("%H.%n(%p):%r"),
                                             javaMethod.getCodeSize()));
+            hugeMethods.put(javaMethod, javaMethod.getCodeSize());
             return false;
         }
         // Allow use of -XX:CompileCommand=dontinline to exclude problematic methods
@@ -1159,6 +1195,14 @@ public final class CompileTheWorld {
         return true;
     }
 
+    private int getHugeMethodLimit(GraalHotSpotVMConfig c) {
+        if (Options.HugeMethodLimit.hasBeenSet(harnessOptions)) {
+            return Options.HugeMethodLimit.getValue(harnessOptions);
+        } else {
+            return c.hugeMethodLimit;
+        }
+    }
+
     static class Options {
         public static final OptionKey<Boolean> Help = new OptionKey<>(false);
         public static final OptionKey<String> Classpath = new OptionKey<>(CompileTheWorld.SUN_BOOT_CLASS_PATH);
@@ -1170,6 +1214,7 @@ public final class CompileTheWorld {
         public static final OptionKey<String> LimitModules = new OptionKey<>("~jdk.internal.vm.compiler");
         public static final OptionKey<Integer> Iterations = new OptionKey<>(1);
         public static final OptionKey<String> MethodFilter = new OptionKey<>(null);
+        public static final OptionKey<Integer> HugeMethodLimit = new OptionKey<>(8000);
         public static final OptionKey<String> ExcludeMethodFilter = new OptionKey<>(null);
         public static final OptionKey<Integer> StartAt = new OptionKey<>(1);
         public static final OptionKey<Integer> StopAt = new OptionKey<>(Integer.MAX_VALUE);
@@ -1179,6 +1224,7 @@ public final class CompileTheWorld {
         public static final OptionKey<String> Config = new OptionKey<>(null);
         public static final OptionKey<Boolean> MultiThreaded = new OptionKey<>(false);
         public static final OptionKey<Integer> StatsInterval = new OptionKey<>(15);
+        public static final OptionKey<Integer> MetricsReportLimit = new OptionKey<>(10);
         public static final OptionKey<Integer> Threads = new OptionKey<>(0);
         public static final OptionKey<Boolean> InvalidateInstalledCode = new OptionKey<>(true);
 
@@ -1191,6 +1237,7 @@ public final class CompileTheWorld {
                                    "Module names can be prefixed with \"~\" to exclude the named module.",
                      "Iterations", "The number of iterations to perform.",
                    "MethodFilter", "Only compile methods matching this filter.",
+                "HugeMethodLimit", "Don't compile methods larger than this (default: value of -XX:HugeMethodLimit).",
             "ExcludeMethodFilter", "Exclude methods matching this filter from compilation.",
                         "StartAt", "First class to consider for compilation (default = 1).",
                          "StopAt", "Last class to consider for compilation (default = <number of classes>).",
@@ -1204,6 +1251,7 @@ public final class CompileTheWorld {
                                    "Unless explicitly enabled with 'Inline=true' here, inlining is disabled.",
                   "MultiThreaded", "Run using multiple threads for compilation.",
                   "StatsInterval", "Report progress stats every N seconds.",
+             "MetricsReportLimit", "Max number of entries to show in per-metric reports.",
                         "Threads", "Number of threads to use for multithreaded execution. Defaults to Runtime.getRuntime().availableProcessors().",
         "InvalidateInstalledCode", "Invalidate the generated code so the code cache doesn't fill up.");
         // @formatter:on
