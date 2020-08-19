@@ -34,9 +34,11 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.GlobalMetrics;
+import org.graalvm.compiler.hotspot.CompilationContext;
 import org.graalvm.compiler.hotspot.CompilationTask;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
+import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -199,18 +201,20 @@ public final class LibGraalEntryPoints {
             int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
             HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
-            OptionValues options = decodeOptions(optionsAddress, optionsSize, optionsHash);
-            CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, installAsDefault);
-            task.runCompilation(options);
-            HotSpotInstalledCode installedCode = task.getInstalledCode();
+            try (CompilationContext scope = HotSpotGraalServices.openLocalCompilationContext(request)) {
 
-            if (printMetrics) {
-                GlobalMetrics metricValues = ((HotSpotGraalRuntime) compiler.getGraalRuntime()).getMetricValues();
-                metricValues.print(options);
-                metricValues.clear();
+                OptionValues options = decodeOptions(optionsAddress, optionsSize, optionsHash);
+                CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, installAsDefault);
+                task.runCompilation(options);
+                HotSpotInstalledCode installedCode = task.getInstalledCode();
+
+                if (printMetrics) {
+                    GlobalMetrics metricValues = ((HotSpotGraalRuntime) compiler.getGraalRuntime()).getMetricValues();
+                    metricValues.print(options);
+                    metricValues.clear();
+                }
+                return LibGraal.translate(installedCode);
             }
-
-            return LibGraal.translate(installedCode);
         } catch (Throwable t) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             t.printStackTrace(new PrintStream(baos));
