@@ -299,7 +299,6 @@ final class ExpansionStatistics {
         for (Node node : graph.getNodes()) {
             NodeSourcePosition nodeSourcePosition = node.getNodeSourcePosition();
             TreeNode tree = resolveMethodTree(root, nodeSourcePosition);
-            assert tree != root;
             Block block = cfg.blockFor(node);
             double frequency;
             if (block != null) {
