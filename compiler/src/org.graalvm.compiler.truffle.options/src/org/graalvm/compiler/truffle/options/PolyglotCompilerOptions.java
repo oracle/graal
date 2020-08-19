@@ -242,7 +242,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> BackgroundCompilation = new OptionKey<>(true);
 
     @Option(help = "Manually set the number of compiler threads", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> CompilerThreads = new OptionKey<>(0);
+    public static final OptionKey<Integer> CompilerThreads = new OptionKey<>(-1);
 
     @Option(help = "Set the time in milliseconds an idle Truffle compiler thread will wait for new tasks before terminating. " +
             "New compiler threads will be started once new compilation tasks are submitted. " +
