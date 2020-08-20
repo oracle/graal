@@ -1022,7 +1022,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case INVOKESPECIAL: // fall through
                     case INVOKESTATIC: // fall through
 
-                    case INVOKEINTERFACE: top += quickenInvoke(frame, top, curBCI, curOpcode); break;
+                    case INVOKEINTERFACE: top += quickenInvoke(frame, top, curBCI, curOpcode, statementIndex); break;
 
                     case NEW: putObject(frame, top, InterpreterToVM.newObject(resolveType(curOpcode, bs.readCPI(curBCI)), true)); break;
                     case NEWARRAY: putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1), getMeta())); break;
@@ -1510,7 +1510,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
-    private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, int opcode) {
+    private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex) {
         QUICKENED_INVOKES.inc();
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opcode);
@@ -1522,7 +1522,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 // During resolution of the symbolic reference to the method, any of the exceptions
                 // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
                 Method resolutionSeed = resolveMethod(opcode, bs.readCPI(curBCI));
-                QuickNode invoke = dispatchQuickened(top, curBCI, opcode, resolutionSeed, getContext().InlineFieldAccessors);
+                QuickNode invoke = dispatchQuickened(top, curBCI, opcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors);
                 quick = injectQuick(curBCI, invoke);
             }
         }
@@ -1534,13 +1534,13 @@ public final class BytecodeNode extends EspressoMethodNode {
      * Revert speculative quickening e.g. revert inlined fields accessors to a normal invoke.
      * INVOKEVIRTUAL -> QUICK (InlinedGetter/SetterNode) -> QUICK (InvokeVirtualNode)
      */
-    public int reQuickenInvoke(final VirtualFrame frame, int top, int curBCI, int opcode, Method resolutionSeed) {
+    public int reQuickenInvoke(final VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Method resolutionSeed) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opcode);
         QuickNode invoke = null;
         synchronized (this) {
             assert bs.currentBC(curBCI) == QUICK;
-            invoke = dispatchQuickened(top, curBCI, opcode, resolutionSeed, false);
+            invoke = dispatchQuickened(top, curBCI, opcode, statementIndex, resolutionSeed, false);
             char cpi = bs.readCPI(curBCI);
             nodes[cpi] = nodes[cpi].replace(invoke);
         }
@@ -1548,7 +1548,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         return invoke.execute(frame);
     }
 
-    public int quickenGetField(final VirtualFrame frame, int top, int curBCI, int opcode, Field field) {
+    public int quickenGetField(final VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Field field) {
         CompilerDirectives.transferToInterpreter();
         assert opcode == GETFIELD;
         QuickNode getField;
@@ -1556,13 +1556,13 @@ public final class BytecodeNode extends EspressoMethodNode {
             if (bs.currentBC(curBCI) == QUICK) {
                 getField = nodes[bs.readCPI(curBCI)];
             } else {
-                getField = injectQuick(curBCI, new QuickenedGetFieldNode(top, curBCI, field));
+                getField = injectQuick(curBCI, new QuickenedGetFieldNode(top, curBCI, statementIndex, field));
             }
         }
         return getField.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
-    public int quickenPutField(final VirtualFrame frame, int top, int curBCI, int opcode, Field field) {
+    public int quickenPutField(final VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Field field) {
         CompilerDirectives.transferToInterpreter();
         assert opcode == PUTFIELD;
         QuickNode putField;
@@ -1570,13 +1570,13 @@ public final class BytecodeNode extends EspressoMethodNode {
             if (bs.currentBC(curBCI) == QUICK) {
                 putField = nodes[bs.readCPI(curBCI)];
             } else {
-                putField = injectQuick(curBCI, new QuickenedPutFieldNode(top, curBCI, field));
+                putField = injectQuick(curBCI, new QuickenedPutFieldNode(top, curBCI, field, statementIndex));
             }
         }
         return putField.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
-    private QuickNode dispatchQuickened(int top, int curBCI, int opcode, Method resolutionSeed, boolean allowFieldAccessInlining) {
+    private QuickNode dispatchQuickened(int top, int curBCI, int opcode, int statementIndex, Method resolutionSeed, boolean allowFieldAccessInlining) {
         assert !allowFieldAccessInlining || getContext().InlineFieldAccessors;
         QuickNode invoke;
         Method resolved = resolutionSeed;
@@ -1649,9 +1649,9 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
 
         if (allowFieldAccessInlining && resolved.isInlinableGetter()) {
-            invoke = InlinedGetterNode.create(resolved, top, opcode, curBCI);
+            invoke = InlinedGetterNode.create(resolved, top, opcode, curBCI, statementIndex);
         } else if (allowFieldAccessInlining && resolved.isInlinableSetter()) {
-            invoke = InlinedSetterNode.create(resolved, top, opcode, curBCI);
+            invoke = InlinedSetterNode.create(resolved, top, opcode, curBCI, statementIndex);
         } else if (resolved.isPolySignatureIntrinsic()) {
             invoke = new InvokeHandleNode(resolved, getMethod().getDeclaringKlass(), top, curBCI);
         } else if (opcode == INVOKEINTERFACE && resolved.getITableIndex() < 0) {
@@ -1990,7 +1990,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
         if (!noForeignObjects.isValid() && opcode == PUTFIELD) {
             if (receiver.isForeignObject()) {
-                return quickenPutField(frame, top, curBCI, opcode, field);
+                return quickenPutField(frame, top, curBCI, opcode, statementIndex, field);
             } else {
                 releaseObject(frame, slot);
             }
@@ -2108,7 +2108,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
         if (!noForeignObjects.isValid() && opcode == GETFIELD) {
             if (receiver.isForeignObject()) {
-                return quickenGetField(frame, top, curBCI, opcode, field);
+                return quickenGetField(frame, top, curBCI, opcode, statementIndex, field);
             } else {
                 releaseObject(frame, slot);
             }
@@ -2272,6 +2272,18 @@ public final class BytecodeNode extends EspressoMethodNode {
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         return tag == StandardTags.RootBodyTag.class || tag == StandardTags.RootTag.class;
+    }
+
+    public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
+        if (instrumentation != null && (noForeignObjects.isValid() || receiver.isEspressoObject())) {
+            instrumentation.notifyFieldModification(frame, index, field, receiver, value);
+        }
+    }
+
+    public void notifyFieldAccess(VirtualFrame frame, int index, Field field, StaticObject receiver) {
+        if (instrumentation != null && (noForeignObjects.isValid() || receiver.isEspressoObject())) {
+            instrumentation.notifyFieldAccess(frame, index, field, receiver);
+        }
     }
 
     static final class InstrumentationSupport extends Node {

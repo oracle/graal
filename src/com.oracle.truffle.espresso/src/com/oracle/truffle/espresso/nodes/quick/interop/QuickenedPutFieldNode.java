@@ -30,21 +30,22 @@ import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 
 public final class QuickenedPutFieldNode extends QuickNode {
     private final int slotCount;
+    private final int statementIndex;
 
     @Child AbstractSetFieldNode setFieldNode;
 
-    public QuickenedPutFieldNode(int top, int callerBCI, Field field) {
+    public QuickenedPutFieldNode(int top, int callerBCI, Field field, int statementIndex) {
         super(top, callerBCI);
         assert !field.isStatic();
         this.setFieldNode = AbstractSetFieldNode.create(field);
         this.slotCount = field.getKind().getSlotCount();
+        this.statementIndex = statementIndex;
     }
 
     @Override
     public int execute(VirtualFrame frame) {
-        // TODO: instrumentation
         BytecodeNode root = getBytecodesNode();
-        setFieldNode.setField(frame, root, top);
+        setFieldNode.setField(frame, root, top, statementIndex);
         return -slotCount - 1; // -receiver
     }
 
