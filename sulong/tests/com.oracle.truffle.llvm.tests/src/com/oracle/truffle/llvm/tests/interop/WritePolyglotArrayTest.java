@@ -676,7 +676,11 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
             addUnsupported(c, "write_float_to_float_array", PRIMITIVE_INT_ARRAY_1, 0, (float) Math.PI, expectPolyglotException("Wrong type writing to array element"));
             /* Typed as i32 array. Reinterpret float bits as int. */
             addSupported(c, "write_float", TYPED_I32_INT_ARRAY_1, 0, (float) Math.PI, assertResult((newArray, idx, value) -> newArray.set(idx, Float.floatToIntBits((Float) value))));
-            addSupported(c, "write_float_to_float_array", TYPED_I32_INT_ARRAY_1, 0, (float) Math.PI, assertResult((newArray, idx, value) -> newArray.set(idx, Float.floatToIntBits((Float) value))));
+            /*
+             * Typed as i32 array, but explicitly overwritten to float array. The float cannot be
+             * converted to an int.
+             */
+            addUnsupported(c, "write_float_to_float_array", TYPED_I32_INT_ARRAY_1, 0, (float) Math.PI, expectPolyglotException("Wrong type writing to array element"));
         }
 
         /**
@@ -781,7 +785,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
             addUnsupported(c, "write_double", PRIMITIVE_INT_ARRAY_1, 0, Math.PI, expectPolyglotException("Wrong type writing to array element"));
             addUnsupported(c, "write_double", TYPED_I32_INT_ARRAY_1, 0, Math.PI, expectPolyglotException("to foreign object"));
             addUnsupported(c, "write_double_to_double_array", PRIMITIVE_INT_ARRAY_1, 0, Math.PI, expectPolyglotException("Wrong type writing to array element"));
-            addUnsupported(c, "write_double_to_double_array", TYPED_I32_INT_ARRAY_1, 0, Math.PI, expectPolyglotException("to foreign object"));
+            addUnsupported(c, "write_double_to_double_array", TYPED_I32_INT_ARRAY_1, 0, Math.PI, expectPolyglotException("Wrong type writing to array element"));
         }
 
         /**
@@ -811,8 +815,8 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
                             expectPolyglotException("Wrong type writing to array element"));
             addSupported(c, "write_double_to_double_array", PRIMITIVE_DOUBLE_ARRAY_8, 0, Math.PI,
                             assertResult((newArray, idx, value) -> newArray.set(idx, value)));
-            addUnsupported(c, "write_double_to_double_array", TYPED_FLOAT_ARRAY_8, 0, Math.PI,
-                            expectPolyglotException("to foreign object"));
+            addSupported(c, "write_double_to_double_array", TYPED_FLOAT_ARRAY_8, 0, Math.PI,
+                            assertResult((newArray, idx, value) -> newArray.set(idx, value)));
             addSupported(c, "write_double_to_double_array", TYPED_DOUBLE_ARRAY_8, 0, Math.PI,
                             assertResult((newArray, idx, value) -> newArray.set(idx, value)));
         }
