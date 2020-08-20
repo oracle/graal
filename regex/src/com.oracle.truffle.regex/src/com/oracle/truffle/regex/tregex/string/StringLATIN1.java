@@ -44,11 +44,11 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-public final class StringUTF32 implements AbstractString {
+public final class StringLATIN1 implements AbstractString {
 
-    @CompilationFinal(dimensions = 1) private final int[] str;
+    @CompilationFinal(dimensions = 1) private final byte[] str;
 
-    public StringUTF32(int[] str) {
+    public StringLATIN1(byte[] str) {
         this.str = str;
     }
 
@@ -68,13 +68,13 @@ public final class StringUTF32 implements AbstractString {
     }
 
     @Override
-    public StringUTF32 substring(int start, int end) {
-        return new StringUTF32(Arrays.copyOfRange(str, start, end));
+    public StringLATIN1 substring(int start, int end) {
+        return new StringLATIN1(Arrays.copyOfRange(str, start, end));
     }
 
     @Override
     public boolean regionMatches(int offset, AbstractString other, int ooffset, int encodedLength) {
-        int[] o = ((StringUTF32) other).str;
+        byte[] o = ((StringLATIN1) other).str;
         if (offset + encodedLength > str.length || ooffset + encodedLength > o.length) {
             return false;
         }
@@ -88,14 +88,14 @@ public final class StringUTF32 implements AbstractString {
 
     @Override
     public AbstractStringIterator iterator() {
-        return new StringUTF32Iterator(str);
+        return new StringLATIN1Iterator(str);
     }
 
-    private static final class StringUTF32Iterator extends AbstractStringIterator {
+    private static final class StringLATIN1Iterator extends AbstractStringIterator {
 
-        private final int[] str;
+        private final byte[] str;
 
-        private StringUTF32Iterator(int[] str) {
+        private StringLATIN1Iterator(byte[] str) {
             this.str = str;
         }
 
@@ -106,7 +106,7 @@ public final class StringUTF32 implements AbstractString {
 
         @Override
         public int nextInt() {
-            return str[i++];
+            return Byte.toUnsignedInt(str[i++]);
         }
     }
 }
