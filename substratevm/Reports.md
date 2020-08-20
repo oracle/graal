@@ -1,11 +1,13 @@
-### Points-to analysis reports
+# Points-to Analysis Reports
 
-The points-to analysis produces two kinds of reports: analysis call tree and image object tree.
-This information is produced by an intermediate step in the image building process and represents the static analysis view of the call graph and heap object graph.
-These graphs are further transformed in the image building process before they are AOT compiled into the image and written into the image heap, respectively.
+The points-to analysis produces two kinds of reports: analysis call tree and
+image object tree. This information is produced by an intermediate step in the
+image building process and represents the static analysis view of the call graph
+and heap object graph. These graphs are further transformed in the image
+building process before they are AOT compiled into the image and written into
+the image heap, respectively.
 
 #### Call tree
-
 The call tree is a a breadth-first tree reduction of the call graph as seen by the points-to analysis.
 The points-to analysis eliminates calls to methods that it determines cannot be reachable at runtime, based on the analysed receiver types.
 It also completely eliminates invocations in unreachable code blocks, e.g., blocks guarded by a type check that always fails.
@@ -14,18 +16,18 @@ It produces a file with the structure:
 
 ```
 VM Entry Points
-├── entry <entry-method> id=<entry-method-id> 
-│   ├── directly calls <callee> id=<callee-id> @bci=<invoke-bci> 
+├── entry <entry-method> id=<entry-method-id>
+│   ├── directly calls <callee> id=<callee-id> @bci=<invoke-bci>
 │   │   └── <callee-sub-tree>
-│   ├── virtually calls <callee> @bci=<invoke-bci> 
-│   │   ├── is overridden by <overide-method-i> id=<overide-method-i-id> 
+│   ├── virtually calls <callee> @bci=<invoke-bci>
+│   │   ├── is overridden by <overide-method-i> id=<overide-method-i-id>
 │   │   │   └── <callee-sub-tree>
-│   │   └── is overridden by <overide-method-j> id-ref=<overide-method-j-id> 
+│   │   └── is overridden by <overide-method-j> id-ref=<overide-method-j-id>
 │   └── interfacially calls <callee> @bci=<invoke-bci>
-│       ├── is implemented by <implementation-method-x> id=<implementation-method-x-id> 
+│       ├── is implemented by <implementation-method-x> id=<implementation-method-x-id>
 │       │   └── <callee-sub-tree>
-│       └── is implemented by <implementation-method-y> id-ref=<implementation-method-y-id> 
-├── entry <entry-method> id=<entry-method-id> 
+│       └── is implemented by <implementation-method-y> id-ref=<implementation-method-y-id>
+├── entry <entry-method> id=<entry-method-id>
 │   └── <callee-sub-tree>
 └── ...
 ```
@@ -45,7 +47,6 @@ Each invoke is tagged with the invocation bci: `@bci=<invoke-bci>`.
 For invokes of inline methods the `<invoke-bci>` is a list of bci values, separated with `->`, enumerating the inline locations, backwards to the original invocation location.
 
 #### Image object tree
-
 The image object tree is an exhaustive expansion of the objects included in the native image heap.
 The tree is obtained by a depth first walk of the native image heap object graph.
 It is enabled using the `-H:+PrintImageObjectTree` option.
@@ -114,8 +115,8 @@ For types the pattern is based on the fully qualified name of the type and refer
 For roots the pattern is based on the string format of the root as described above.
 The pattern accepts the `*` modifier:
   - ends-with: `*<str>` - the pattern exactly matches all entries that end with `<str>`
-  - starts-with: `<str>*` - the pattern exactly matches all entries that start with `<str>` 
-  - contains: `*<str>*` - the pattern exactly matches all entries that contain `<str>` 
+  - starts-with: `<str>*` - the pattern exactly matches all entries that start with `<str>`
+  - contains: `*<str>*` - the pattern exactly matches all entries that contain `<str>`
   - equals: `<str>` - the pattern exactly matches all entries that are equal to `<str>`  
   - all: `*` - the pattern matches all entries  
 
@@ -123,7 +124,7 @@ The pattern accepts the `*` modifier:
 Types suppression/expansion:
   - `-H:ImageObjectTreeSuppressTypes=java.io.BufferedWriter` - suppress the expansion of `java.io.BufferedWriter` objects
   - `-H:ImageObjectTreeSuppressTypes=java.io.BufferedWriter,java.io.BufferedOutputStream` - suppress the expansion of `java.io.BufferedWriter` and `java.io.BufferedOutputStream` objects
-  - `-H:ImageObjectTreeSuppressTypes=java.io.*` - suppress the expansion of all `java.io.*` objects 
+  - `-H:ImageObjectTreeSuppressTypes=java.io.*` - suppress the expansion of all `java.io.*` objects
   - `-H:ImageObjectTreeExpandTypes=java.lang.String` - force the expansion of `java.lang.String` objects
   - `-H:ImageObjectTreeExpandTypes=java.lang.String,java.math.BigInteger` - force the expansion of `java.lang.String` and `java.math.BigInteger` objects
   - `-H:ImageObjectTreeExpandTypes=java.lang.*` - force the expansion of all `java.lang.*` objects

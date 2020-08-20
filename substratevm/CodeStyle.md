@@ -1,4 +1,4 @@
-# Substrate VM Code Style
+# Native Image Code Style
 
 ## Source Code Formatting
 

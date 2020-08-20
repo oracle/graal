@@ -1,5 +1,4 @@
-# Accessing resources in Substrate VM images
-(See also the [guide on assisted configuration of Java resources and other dynamic features](CONFIGURE.md))
+# Accessing Resources in Native Images
 
 By default, the native-image builder will not integrate any of the resources which are on the classpath during image building into the image it creates.
 To make calls such as `Class.getResource()`, `Class.getResourceAsStream()` (or the corresponding ClassLoader methods) return specific resources (instead of null), the resources that should be accessible at image runtime need to be explicitly specified. This can be done via a configuration file such as the following:
@@ -15,7 +14,7 @@ To make calls such as `Class.getResource()`, `Class.getResourceAsStream()` (or t
 ```
 
 The configuration file's path must be provided to `native-image` with `-H:ResourceConfigurationFiles=/path/to/resource-config.json`. Alternatively, individual resource paths can also be specified directly to `native-image`:
-```bash
+```
 native-image -H:IncludeResources=<Java regexp that matches resources to be included in the image> ...
 ```
 The `-H:IncludeResources` option can be passed several times to define more than one regexp to match resources.
@@ -43,7 +42,9 @@ then:
 *  `Resource0.txt` and `Resource1.txt` can be loaded with `.*/Resource0.txt$` and `.*/Resource1.txt$`
    (or alternatively with a single `.*/(Resource0|Resource1).txt$`)
 
-# Resource Bundles on Substrate VM
+See also the [guide on assisted configuration of Java resources and other dynamic features](Configuration.md#assisted-configuration-of-native-image-builds).
+
+## Resource Bundles on Substrate VM
 
 Java localization support (`java.util.ResourceBundle`) enables Java code to load L10N resources and show the right user messages suitable for actual runtime time locale, format and etc. settings.
 
@@ -61,6 +62,6 @@ Substrate VM needs an ahead of time knowledge of resources bundles your applicat
 ```
 
 Alternatively, bundles can be specified directly as options to `native-image` as follows:
-```bash
+```
 native-image -H:IncludeResourceBundles=your.pgk.Bundle,another.pkg.Resource,etc.Bundle ...
 ```

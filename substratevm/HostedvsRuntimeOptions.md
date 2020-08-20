@@ -1,33 +1,34 @@
-# Substrate VM Options
+# Native Image Hosted and Runtime Options
 
-Substrate VM has two distinct kinds of options:
+Besides options to the native image builder listed in the [Options](Options.md)
+guide,  Native Image also distinguishes hosted and runtime options.
 
 * Hosted options: configure the boot image generation, i.e., influence what is put into the image and how the image is built.
 They are set using the prefix `-H:` on the command line.
 
-* Runtime options: get their initial value during boot image generation, using the prefix `-R:` on the command line of the boot image generator.
-At run time, the default prefix is `-XX:` (but this is application specific and not mandated by Substrate VM).
+* Runtime options: get their initial value during boot image generation, using the prefix `-R:` on the command line of the boot image generator. At runtime, the default prefix is `-XX:` (but this is application specific and not mandated by Substrate VM).
 
-For developer documentation on how to define and use options, read the package documentation of the package `com.oracle.svm.core.option`.
-
+For developer documentation on how to define and use options, read the documentation of the `com.oracle.svm.core.option` package.
 
 ## List of Useful Options
 
-### Graal Graph Dumping
+### Graph Dumping
+Native Image re-used the GraalVM options for graph dumping, logging, counters
+and everything else of the GraalVM debug environment. These GraalVM options can
+be used both as hosted options (if you want to dump graphs of the boot image
+generator) and runtime options (if you want to dump graphs during dynamic
+compilation at runtime).
 
-Substrate VM re-used the Graal options for graph dumping, logging, counters, and everything else of the Graal debug environment.
-These Graal options can be used both as hosted options (if you want to dump graphs of the boot image generator) and runtime options (if you want to dump graphs during dynamic compilation at run time).
-
-Graal options that work as expected include `Dump`, `DumpOnError`, `Log`, `MethodFilter`, and the options to specify file names and ports for the dump handlers.
+The GraalVM compiler options that work as expected include `Dump`, `DumpOnError`, `Log`,
+`MethodFilter` and the options to specify file names and ports for the dump
+handlers.
 
 Example that dumps Graal graphs of the boot image generator: `-H:Dump= -H:MethodFilter=ClassName.MethodName`.
 
-Example that dumps Graal graphs at run time: specify the dump flags at run time with `-XX:Dump= -XX:MethodFilter=ClassName.MethodName`.
+Example that dumps Graal graphs at run time: specify the dump flags at runtime with `-XX:Dump= -XX:MethodFilter=ClassName.MethodName`.
 
 ### Debug Options
-
-These options enable additional checks in the generated executable.
-This helps with debugging.
+These options enable additional checks in the generated executable to help with debugging.
 
 * `-H:[+|-]HostedAssertions`
   Enable or disable Java assert statements in the boot image generator.
@@ -40,7 +41,6 @@ If this option is specified, the temporary files are not deleted so that you can
 
 
 ### Garbage Collection Options
-
 * `-Xmn=`
   Set the size of the young generation (the amount of memory that can be allocated without triggering a GC).
 Value is specified in bytes, suffix `k`, `m`, or `g` can be used for scaling.
@@ -59,8 +59,7 @@ Heap space that is unused will be retained for future heap usage, rather than be
   collection.
 
 
-### Control the main entry points
-
+### Control the Main Entry Points
 * `-H:Kind=[EXECUTABLE | SHARED_LIBRARY]`
   Generate a executable with a main entry point, or a shared library with all entry points that are marked via `@CEntryPoint`.
 * `-H:Class=ClassName`

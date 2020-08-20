@@ -1641,6 +1641,6 @@ if is_musl_supported():
     @mx.command(suite.name, command_name='muslhelloworld', usage_msg='[options]', doc_function=lambda: doc_string)
     def musl_helloworld(args, config=None):
         if not is_musl_gcc_wrapper_on_path():
-            mx.abort('musl-gcc wrapper not detected on path. Cannot run musl helloworld. Please consult substratevm/STATIC-IMAGES.md')
+            mx.abort('musl-gcc wrapper not detected on path. Cannot run musl helloworld. Please consult substratevm/StaticImages.md')
         final_args = ['--static', '--libc=musl'] + args
         run_helloworld_command(final_args, config, 'muslhelloworld')
