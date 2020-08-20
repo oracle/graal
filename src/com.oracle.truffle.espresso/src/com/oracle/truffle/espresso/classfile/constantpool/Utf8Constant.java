@@ -39,6 +39,8 @@ public final class Utf8Constant implements PoolConstant {
     private static final int VALID_TYPE = 0x40;
     private static final int VALID_TYPE_OR_VOID = 0x80;
 
+    private static final int VALID_INIT_SIGNATURE = 0x100;
+
     private byte validationCache;
 
     @Override
@@ -115,12 +117,17 @@ public final class Utf8Constant implements PoolConstant {
     }
 
     public void validateSignature() {
+        validateSignature(false);
+    }
+
+    public void validateSignature(boolean isInit) {
         validateUTF8();
-        if ((validationCache & VALID_SIGNATURE) == 0) {
-            if (!Validation.validSignatureDescriptor(value)) {
+        int mask = isInit ? VALID_INIT_SIGNATURE : VALID_SIGNATURE;
+        if ((validationCache & mask) == 0) {
+            if (!Validation.validSignatureDescriptor(value, isInit)) {
                 throw ConstantPool.classFormatError("Invalid signature descriptor: " + value);
             }
-            validationCache |= VALID_SIGNATURE;
+            validationCache |= (mask | VALID_SIGNATURE);
         }
     }
 

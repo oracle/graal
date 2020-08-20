@@ -42,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "55707d46da4e631ea74abff1c69f1289e9e276b9",
+                "version": "59481e97c24d0c323f66fc456a170d6af44c4602",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -52,7 +52,7 @@ suite = {
                 "name": "tools",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "55707d46da4e631ea74abff1c69f1289e9e276b9",
+                "version": "59481e97c24d0c323f66fc456a170d6af44c4602",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -60,7 +60,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "12c84fa6e11dc0dcabf4b5886aea40604f420a3c",
+                "version": "b1c5c2e56ef8fe1ceb4cf7ee65eb7e656ddef717",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -231,7 +231,7 @@ suite = {
                 "truffle:TRUFFLE_TCK",
                 "mx:JUNIT",
                 "mx:ASM_COMMONS_7.1",
-                "tools:AGENTSCRIPT",
+                "tools:INSIGHT",
             ],
             # JTT unit tests run both on the host JVM and on Espresso, so they must be compiled with a version compatible with Espresso (8).
             # Espresso itself can be compiled with Java 11 and the unit tests (compiled to 8) should run on a JVM 11.
@@ -354,7 +354,7 @@ suite = {
                 "espresso:POLYGLOT",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_TCK",
-                "tools:AGENTSCRIPT",
+                "tools:INSIGHT",
                 "mx:JUNIT",
             ],
             "javaProperties": {

@@ -47,6 +47,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.AccessControlContext;
 import java.security.ProtectionDomain;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -867,7 +868,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public void JVM_UnloadLibrary(@SuppressWarnings("unused") @Pointer TruffleObject handle) {
         // TODO(peterssen): Do unload the library.
-        getLogger().severe(String.format("JVM_UnloadLibrary: %x was not unloaded!", handle));
+        getLogger().severe(String.format("JVM_UnloadLibrary: %x was not unloaded!", interopAsPointer(handle)));
     }
 
     @VmImpl
@@ -991,6 +992,16 @@ public final class VM extends NativeEnv implements ContextAccess {
         setProperty.invokeWithConversions(properties, "sun.boot.library.path", Utils.stringify(props.bootLibraryPath()));
         setProperty.invokeWithConversions(properties, "java.ext.dirs", Utils.stringify(props.extDirs()));
 
+        // Modules properties.
+        if (getJavaVersion().modulesEnabled()) {
+            setPropertyIfExists(properties, setProperty, "jdk.module.main", getModuleMain(options));
+            setPropertyIfExists(properties, setProperty, "jdk.module.path", Utils.stringify(options.get(EspressoOptions.ModulePath)));
+            setNumberedProperty(setProperty, properties, "jdk.module.addreads", options.get(EspressoOptions.AddReads));
+            setNumberedProperty(setProperty, properties, "jdk.module.addexports", options.get(EspressoOptions.AddExports));
+            setNumberedProperty(setProperty, properties, "jdk.module.addopens", options.get(EspressoOptions.AddOpens));
+            setNumberedProperty(setProperty, properties, "jdk.module.addmods", options.get(EspressoOptions.AddModules));
+        }
+
         // Set VM information.
         setProperty.invokeWithConversions(properties, "java.vm.specification.version", EspressoLanguage.VM_SPECIFICATION_VERSION);
         setProperty.invokeWithConversions(properties, "java.vm.specification.name", EspressoLanguage.VM_SPECIFICATION_NAME);
@@ -1001,6 +1012,30 @@ public final class VM extends NativeEnv implements ContextAccess {
         setProperty.invokeWithConversions(properties, "java.vm.info", EspressoLanguage.VM_INFO);
 
         return properties;
+    }
+
+    public static void setPropertyIfExists(@Host(Properties.class) StaticObject properties, Method setProperty, String propertyName, String value) {
+        if (value != null && value.length() > 0) {
+            setProperty.invokeWithConversions(properties, propertyName, value);
+        }
+    }
+
+    private static String getModuleMain(OptionValues options) {
+        String module = options.get(EspressoOptions.Module);
+        if (module.length() > 0) {
+            int slash = module.indexOf('/');
+            if (slash != -1) {
+                module = module.substring(0, slash);
+            }
+        }
+        return module;
+    }
+
+    private static void setNumberedProperty(Method setProperty, StaticObject properties, String property, List<String> values) {
+        int count = 0;
+        for (String value : values) {
+            setProperty.invokeWithConversions(properties, property + "." + count++, value);
+        }
     }
 
     @VmImpl
@@ -2453,14 +2488,14 @@ public final class VM extends NativeEnv implements ContextAccess {
         PackageTable packageTable = registry.packages();
         ModuleTable moduleTable = registry.modules();
         assert moduleTable != null && packageTable != null;
-        boolean loaderIsBootOrPlatform = StaticObject.isNull(loader) || getMeta().jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass());
+        boolean loaderIsBootOrPlatform = ClassRegistry.loaderIsBootOrPlatform(loader, getMeta());
 
         ArrayList<Symbol<Name>> pkgSymbols = new ArrayList<>();
         String[] packages = extractNativePackages(pkgs, num_package, profiler);
         try (EntryTable.BlockLock block = packageTable.write()) {
             for (String str : packages) {
                 // Extract the package symbols. Also checks for duplicates.
-                if (!loaderIsBootOrPlatform && str.startsWith("java/")) {
+                if (!loaderIsBootOrPlatform && (str.equals("java") || str.startsWith("java/"))) {
                     // Only modules defined to either the boot or platform class loader, can define
                     // a "java/" package.
                     profiler.profile(14);
@@ -2639,6 +2674,33 @@ public final class VM extends NativeEnv implements ContextAccess {
         /*
          * currently nop
          */
+    }
+
+    private static final long ONE_BILLION = 1_000_000_000;
+    private static final long MAX_DIFF = 0x0100000000L;
+
+    @VmImpl
+    @JniImpl
+    @SuppressWarnings("unused")
+    @TruffleBoundary
+    public static long JVM_GetNanoTimeAdjustment(@Host(Class.class) StaticObject ignored, long offset) {
+        Instant now = Instant.now();
+        long secs = now.getEpochSecond();
+        long nanos = now.getNano();
+        long diff = secs - offset;
+        if (diff > MAX_DIFF || diff < -MAX_DIFF) {
+            return -1;
+        }
+        // Test above also guards against overflow.
+        return (diff * ONE_BILLION) + nanos;
+    }
+
+    @VmImpl
+    @JniImpl
+    @TruffleBoundary
+    public static long JVM_MaxObjectInspectionAge() {
+        // TODO: somehow use GC.maxObjectInspectionAge() (not supported by SVM);
+        return 0;
     }
 
     @VmImpl

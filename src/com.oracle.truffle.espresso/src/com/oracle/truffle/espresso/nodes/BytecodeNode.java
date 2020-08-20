@@ -1716,29 +1716,6 @@ public final class BytecodeNode extends EspressoMethodNode {
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
-    public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass accessingKlass, Meta meta) {
-        Symbol<Type> rt = Signatures.returnType(signature);
-        int pcount = Signatures.parameterCount(signature, false);
-
-        StaticObject[] ptypes = new StaticObject[pcount];
-        try {
-            for (int i = 0; i < pcount; i++) {
-                Symbol<Type> paramType = Signatures.parameterType(signature, i);
-                ptypes[i] = meta.resolveSymbolOrFail(paramType, accessingKlass.getDefiningClassLoader()).mirror();
-            }
-        } catch (Throwable e) {
-            throw Meta.throwException(meta.java_lang_NoClassDefFoundError);
-        }
-        StaticObject rtype;
-        try {
-            rtype = meta.resolveSymbolOrFail(rt, accessingKlass.getDefiningClassLoader()).mirror();
-        } catch (Throwable e) {
-            throw Meta.throwException(meta.java_lang_BootstrapMethodError);
-        }
-        return (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(
-                        null,
-                        rtype, StaticObject.createArray(meta.java_lang_Class_array, ptypes));
-    }
     // endregion Bytecode quickening
 
     // region Class/Method/Field resolution
@@ -1787,7 +1764,9 @@ public final class BytecodeNode extends EspressoMethodNode {
     private Object exitMethodAndReturn(int result) {
         // @formatter:off
         switch (Signatures.returnKind(getMethod().getParsedSignature())) {
-            case Boolean : return result != 0;
+            case Boolean :
+                // TODO: Use a node ?
+                return stackIntToBoolean(result);
             case Byte    : return (byte) result;
             case Short   : return (short) result;
             case Char    : return (char) result;
@@ -1797,6 +1776,10 @@ public final class BytecodeNode extends EspressoMethodNode {
                 throw EspressoError.shouldNotReachHere("unexpected kind");
         }
         // @formatter:on
+    }
+
+    private boolean stackIntToBoolean(int result) {
+        return getJavaVersion().java9OrLater() ? (result & 1) != 0 : result != 0;
     }
 
     private static Object exitMethodAndReturnObject(Object result) {
@@ -1953,9 +1936,8 @@ public final class BytecodeNode extends EspressoMethodNode {
             // the instruction must occur in an instance initialization method (<init>) of the
             // current class. Otherwise, an IllegalAccessError is thrown.
             if (field.isFinalFlagSet()) {
-                // && getMethod().isConstructor()
-                // Enforced in class files >= v53 (9).
-                if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass())) {
+                if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass()) ||
+                                (getJavaVersion().java9OrLater() && !getMethod().isConstructor())) {
                     CompilerDirectives.transferToInterpreter();
                     throw Meta.throwException(getMeta().java_lang_IllegalAccessError);
                 }
@@ -1971,9 +1953,8 @@ public final class BytecodeNode extends EspressoMethodNode {
             // instruction must occur in the <clinit> method of the current class. Otherwise, an
             // IllegalAccessError is thrown.
             if (field.isFinalFlagSet()) {
-                // && getMethod().isClassInitializer()
-                // Enforced in class files >= v53 (9).
-                if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass())) {
+                if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass()) ||
+                                (getJavaVersion().java9OrLater() && !getMethod().isClassInitializer())) {
                     CompilerDirectives.transferToInterpreter();
                     throw Meta.throwException(getMeta().java_lang_IllegalAccessError);
                 }
@@ -1998,7 +1979,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
         switch (field.getKind()) {
             case Boolean:
-                boolean booleanValue = peekInt(frame, top - 1) == 1;
+                boolean booleanValue = stackIntToBoolean(peekInt(frame, top - 1));
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, booleanValue);
                 }
