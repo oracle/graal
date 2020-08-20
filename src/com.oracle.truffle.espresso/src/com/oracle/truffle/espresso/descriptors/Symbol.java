@@ -278,6 +278,7 @@ public final class Symbol<T> extends ByteSequence {
 
         // j.l.StackStreamFactory
         public static final Symbol<Name> doStackWalk = StaticSymbols.putName("doStackWalk");
+        public static final Symbol<Name> callStackWalk = StaticSymbols.putName("callStackWalk");
 
         // j.l.StackFrameInfo
         public static final Symbol<Name> memberName = StaticSymbols.putName("memberName");
@@ -719,6 +720,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _char_array = StaticSymbols.putSignature(Type._char_array);
         public static final Symbol<Signature> _int_boolean_boolean = StaticSymbols.putSignature(Type._int, Type._boolean, Type._boolean);
         public static final Symbol<Signature> Object_long_int_int_int_int = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int, Type._int);
+        public static final Symbol<Signature> Object_long_int_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int,
+                        Type.java_lang_Object_array);
 
         public static final Symbol<Signature> Boolean_boolean = StaticSymbols.putSignature(Type.java_lang_Boolean, Type._boolean);
         public static final Symbol<Signature> Byte_byte = StaticSymbols.putSignature(Type.java_lang_Byte, Type._byte);

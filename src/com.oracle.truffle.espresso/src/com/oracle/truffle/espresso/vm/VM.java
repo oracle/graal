@@ -2734,8 +2734,22 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     @SuppressWarnings("unused")
-    public void JVM_InitStackTraceElement(@Host(StackTraceElement.class) StaticObject element, @Host(typeName = "Ljava/lang/StackFrameInfo;") StaticObject info) {
-        // TODO: this
+    public void JVM_InitStackTraceElement(@Host(StackTraceElement.class) StaticObject element, @Host(typeName = "Ljava/lang/StackFrameInfo;") StaticObject info,
+                    @GuestCall(target = "java_lang_Class_getName") DirectCallNode classGetName) {
+        if (StaticObject.isNull(element) || StaticObject.isNull(info)) {
+            throw Meta.throwException(getMeta().java_lang_NullPointerException);
+        }
+        StaticObject mname = info.getField(getMeta().java_lang_StackFrameInfo_memberName);
+        if (StaticObject.isNull(mname)) {
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_InternalError, "uninitialized StackFrameInfo !");
+        }
+        StaticObject clazz = mname.getField(getMeta().java_lang_invoke_MemberName_clazz);
+        Method m = (Method) mname.getHiddenField(getMeta().HIDDEN_VMTARGET);
+        if (m == null) {
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_InternalError, "uninitialized StackFrameInfo !");
+        }
+        int bci = info.getIntField(getMeta().java_lang_StackFrameInfo_bci);
+        fillInElement(element, new VM.StackElement(m, bci), classGetName);
     }
 
     @VmImpl

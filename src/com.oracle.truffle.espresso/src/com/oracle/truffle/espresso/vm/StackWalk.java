@@ -33,6 +33,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -41,7 +43,9 @@ import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 
 public class StackWalk {
-    private final AtomicLong walkerIds = new AtomicLong();
+    // -1 and 0 are reserved values.
+    private final AtomicLong walkerIds = new AtomicLong(1);
+
     private final Map<Long, FrameWalker> walkers = new ConcurrentHashMap<>();
 
     private static final long JVM_STACKWALK_FILL_CLASS_REFS_ONLY = 0x2;
@@ -86,9 +90,9 @@ public class StackWalk {
         if (decoded < 1) {
             throw Meta.throwException(meta.java_lang_InternalError);
         }
-        long id = publish(fw);
+        long id = anchor(fw);
         Object result = meta.java_lang_AbstractStackWalker_doStackWalk.invokeDirect(stackStream, id, skipframes, batchSize, startIndex, startIndex + decoded);
-        unpublish(id);
+        unAnchor(id);
         return (StaticObject) result;
     }
 
@@ -98,7 +102,7 @@ public class StackWalk {
                     int batchSize, int startIndex,
                     @Host(Object[].class) StaticObject frames,
                     Meta meta) {
-        FrameWalker fw = getPublished(anchor);
+        FrameWalker fw = getAnchored(anchor);
         if (fw == null) {
             throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "doStackWalk: corrupted buffers");
         }
@@ -115,21 +119,21 @@ public class StackWalk {
         return decoded;
     }
 
-    private long publish(FrameWalker fw) {
+    private long anchor(FrameWalker fw) {
         long id = walkerIds.getAndIncrement();
         walkers.put(id, fw);
         return id;
     }
 
-    private FrameWalker getPublished(long id) {
+    private FrameWalker getAnchored(long id) {
         return walkers.get(id);
     }
 
-    private void unpublish(long id) {
+    private void unAnchor(long id) {
         walkers.remove(id);
     }
 
-    private static class FrameWalker {
+    private static class FrameWalker implements FrameInstanceVisitor<Integer> {
         protected final Meta meta;
         protected long mode;
 
@@ -138,13 +142,15 @@ public class StackWalk {
         private int batchSize = 0;
         private int startIndex = 0;
 
+        private StaticObject frames = StaticObject.NULL;
         private int depth = 0;
         private int decoded = 0;
 
-        private static final int CLEAR = 0;
-        private static final int FINDSTART = 1;
-        private static final int PROCESS = 2;
-        private static final int HALT = 3;
+        private static final int LOCATE_CALLSTACKWALk = 0;
+        private static final int LOCATE_STACK_BEGIN = 1;
+        private static final int LOCATE_FROM = 2;
+        private static final int PROCESS = 3;
+        private static final int HALT = 4;
 
         public FrameWalker(Meta meta, long mode) {
             this.meta = meta;
@@ -156,27 +162,48 @@ public class StackWalk {
         }
 
         public void clear() {
-            state = CLEAR;
+            state = LOCATE_CALLSTACKWALk;
             depth = 0;
             decoded = 0;
         }
 
-        public void init(int from, int batchSize, int startIndex) {
-            clear();
-            this.from = from;
-            this.batchSize = batchSize;
-            this.startIndex = startIndex;
+        public void init(int skipFrames, int firstBatchSize, int firstStartIndex) {
+            this.from = skipFrames;
+            this.batchSize = firstBatchSize;
+            this.startIndex = firstStartIndex;
         }
 
-        public void next(int batchSize, int startIndex) {
+        public void next(int newBatchSize, int newStartIndex) {
             this.from = depth;
-            this.batchSize = batchSize;
-            this.startIndex = startIndex;
-            clear();
+            this.batchSize = newBatchSize;
+            this.startIndex = newStartIndex;
         }
 
-        public void mode(long mode) {
-            this.mode = mode;
+        public void mode(long toSet) {
+            this.mode = toSet;
+        }
+
+        /**
+         * Since we restart the frame walking even when java requests a "continue", we need to
+         * somehow keep around where in the last stack traversal we stopped. This is done in 3
+         * steps:
+         *
+         * <li>Since the frames are anchored at the point where callStackWalk is called, we first
+         * set the "frame iterator" at this particular point.
+         *
+         * <li>Once the frame iterator is set at callStackWalk, we unwind the stack until we find
+         * the requester of the stack walking (in practice, that means skipping all methods from the
+         * StackWalker API)
+         *
+         * <li>Once we found the caller, we then need to unwind the frames until where we left off
+         * previously.
+         */
+        public Integer doStackWalk(StaticObject usedFrames) {
+            clear();
+            this.frames = usedFrames;
+            Integer res = Truffle.getRuntime().iterateFrames(this);
+            this.frames = StaticObject.NULL;
+            return res;
         }
 
         private boolean isFromStackWalkingAPI(Method m) {
@@ -184,41 +211,50 @@ public class StackWalk {
                             m.getDeclaringKlass().getSuperKlass() == meta.java_lang_AbstractStackWalker;
         }
 
-        public Integer doStackWalk(StaticObject frames) {
-            return Truffle.getRuntime().iterateFrames(
-                            new FrameInstanceVisitor<Integer>() {
-                                @Override
-                                public Integer visitFrame(FrameInstance frameInstance) {
-                                    return FrameWalker.this.visitFrame(frameInstance, frames);
-                                }
-                            });
+        private boolean isCallStackWalk(Method m) {
+            return m.getDeclaringKlass() == meta.java_lang_AbstractStackWalker &&
+                            Name.callStackWalk.equals(m.getName()) &&
+                            Symbol.Signature.Object_long_int_int_int_Object_array.equals(m.getRawSignature());
         }
 
-        public Integer visitFrame(FrameInstance frameInstance, StaticObject frames) {
+        @SuppressWarnings("fallthrough")
+        @Override
+        public Integer visitFrame(FrameInstance frameInstance) {
             Method m = VM.getMethodFromFrame(frameInstance);
             if (m != null) {
                 switch (state) {
-                    case CLEAR:
+                    case LOCATE_CALLSTACKWALk:
+                        if (!isCallStackWalk(m)) {
+                            break;
+                        }
+                        // Found callStackWalk: start unwinding StackWalker API
+                        state = LOCATE_STACK_BEGIN;
+                        // fallthrough
+                    case LOCATE_STACK_BEGIN:
                         if (isFromStackWalkingAPI(m)) {
                             break;
                         }
-                        state = FINDSTART;
+                        // Found Caller: find where we left off.
+                        state = LOCATE_FROM;
                         // fallthrough
-                    case FINDSTART:
+                    case LOCATE_FROM:
                         if (depth < from) {
                             depth++;
                             break;
                         }
+                        // Found where we left off: start processing.
                         state = PROCESS;
                         // fallthrough
                     case PROCESS:
                         if (decoded >= batchSize) {
+                            // Done
                             state = HALT;
                             return decoded;
                         }
-                        tryProcessFrame(frameInstance, m, frames, startIndex + decoded);
+                        tryProcessFrame(frameInstance, m, startIndex + decoded);
                         depth++;
                         if (decoded >= batchSize) {
+                            // Done
                             state = HALT;
                             return decoded;
                         }
@@ -231,7 +267,7 @@ public class StackWalk {
             return null;
         }
 
-        private void tryProcessFrame(FrameInstance frameInstance, Method m, StaticObject frames, int index) {
+        private void tryProcessFrame(FrameInstance frameInstance, Method m, int index) {
             if (getCallerClass(mode) || skipHiddenFrames(mode)) {
                 if ((m.getModifiers() & ACC_LAMBDA_FORM_HIDDEN) != 0) {
                     return;
@@ -240,22 +276,22 @@ public class StackWalk {
             if (!needMethodInfo(mode) && getCallerClass(mode) && (index == startIndex) && ((m.getModifiers() & ACC_CALLER_SENSITIVE) != 0)) {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "StackWalker::getCallerClass called from @CallerSensitive method");
             }
-            processFrame(frameInstance, m, frames, index);
+            processFrame(frameInstance, m, index);
             decoded++;
         }
 
-        public void processFrame(FrameInstance frameInstance, Method m, StaticObject frames, int index) {
+        public void processFrame(FrameInstance frameInstance, Method m, int index) {
             if (liveFrameInfo(mode)) {
-                fillFrame(frameInstance, m, frames, index);
+                fillFrame(frameInstance, m, index);
                 // TODO: extract stack, locals and monitors from the frame.
             } else if (needMethodInfo(mode)) {
-                fillFrame(frameInstance, m, frames, index);
+                fillFrame(frameInstance, m, index);
             } else {
                 frames.putObject(m.getDeclaringKlass().mirror(), index, meta);
             }
         }
 
-        public void fillFrame(FrameInstance frameInstance, Method m, StaticObject frames, int index) {
+        public void fillFrame(FrameInstance frameInstance, Method m, int index) {
             StaticObject frame = frames.get(index);
             StaticObject memberName = frame.getField(meta.java_lang_StackFrameInfo_memberName);
             Target_java_lang_invoke_MethodHandleNatives.plantResolvedMethod(memberName, m, m.getRefKind(), meta);

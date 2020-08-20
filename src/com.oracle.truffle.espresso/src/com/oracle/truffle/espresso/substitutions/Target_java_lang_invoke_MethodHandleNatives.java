@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_getField;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_getStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
@@ -41,6 +42,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -84,6 +86,80 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             self.setField(meta.java_lang_invoke_MemberName_clazz, target.getDeclaringKlass().mirror());
         } else {
             throw EspressoError.shouldNotReachHere("invalid argument for MemberName.init: ", ref.getKlass());
+        }
+    }
+
+    @Substitution
+    public static void expand(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self,
+                    @InjectMeta Meta meta,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        if (StaticObject.isNull(self)) {
+            profiler.profile(0);
+            throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "MemberName is null");
+        }
+        boolean haveClazz = !StaticObject.isNull(self.getField(meta.java_lang_invoke_MemberName_clazz));
+        boolean haveName = !StaticObject.isNull(self.getField(meta.java_lang_invoke_MemberName_name));
+        boolean haveType = !StaticObject.isNull(self.getField(meta.java_lang_invoke_MemberName_type));
+        int flags = self.getIntField(meta.java_lang_invoke_MemberName_flags);
+
+        switch (flags & ALL_KINDS) {
+            case MN_IS_METHOD:
+            case MN_IS_CONSTRUCTOR: {
+                Method m = (Method) self.getHiddenField(meta.HIDDEN_VMTARGET);
+                if (m == null) {
+                    profiler.profile(2);
+                    throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
+                }
+                if (!haveClazz) {
+                    self.setField(meta.java_lang_invoke_MemberName_clazz, m.getDeclaringKlass().mirror());
+                }
+                if (!haveName) {
+                    self.setField(meta.java_lang_invoke_MemberName_name, meta.toGuestString(m.getName()));
+                }
+                if (!haveType) {
+                    self.setField(meta.java_lang_invoke_MemberName_type, meta.toGuestString(m.getRawSignature()));
+                }
+                break;
+            }
+            case MN_IS_FIELD: {
+                StaticObject clazz = self.getField(meta.java_lang_invoke_MemberName_clazz);
+                if (StaticObject.isNull(clazz)) {
+                    profiler.profile(3);
+                    throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
+                }
+                Klass holder = clazz.getMirrorKlass();
+                int slot = (int) (((long) self.getHiddenField(meta.HIDDEN_VMINDEX)) - Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
+                boolean isStatic = (flags & ACC_STATIC) != 0;
+                Field f;
+                try {
+                    if (isStatic) {
+                        f = holder.lookupStaticFieldTable(slot);
+                    } else {
+                        f = holder.lookupFieldTable(slot);
+                    }
+                } catch (IndexOutOfBoundsException e) {
+                    f = null;
+                }
+                if (f == null) {
+                    profiler.profile(4);
+                    throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
+                }
+                if (!haveName) {
+                    self.setField(meta.java_lang_invoke_MemberName_name, meta.toGuestString(f.getName()));
+                }
+                if (!haveType) {
+                    if (Types.isPrimitive(f.getType())) {
+                        Klass k = meta.resolvePrimitive(f.getType());
+                        self.setField(meta.java_lang_invoke_MemberName_type, k.mirror());
+                    } else {
+                        self.setField(meta.java_lang_invoke_MemberName_type, meta.toGuestString(f.getType()));
+                    }
+                }
+                break;
+            }
+            default:
+                profiler.profile(1);
+                throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "MemberName is null");
         }
     }
 

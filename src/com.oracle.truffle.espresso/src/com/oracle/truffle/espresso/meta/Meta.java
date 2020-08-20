@@ -346,7 +346,7 @@ public final class Meta implements ContextAccess {
         java_lang_invoke_MemberName_getSignature = java_lang_invoke_MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
         java_lang_invoke_MemberName_clazz = java_lang_invoke_MemberName.lookupDeclaredField(Name.clazz, Type.java_lang_Class);
         java_lang_invoke_MemberName_name = java_lang_invoke_MemberName.lookupDeclaredField(Name.name, Type.java_lang_String);
-        java_lang_invoke_MemberName_type = java_lang_invoke_MemberName.lookupDeclaredField(Name.type, Type.java_lang_invoke_MethodType);
+        java_lang_invoke_MemberName_type = java_lang_invoke_MemberName.lookupDeclaredField(Name.type, Type.java_lang_Object);
         java_lang_invoke_MemberName_flags = java_lang_invoke_MemberName.lookupDeclaredField(Name.flags, Type._int);
 
         java_lang_invoke_MethodHandle = knownKlass(Type.java_lang_invoke_MethodHandle);
@@ -1119,23 +1119,7 @@ public final class Meta implements ContextAccess {
         return (ObjectKlass) getRegistries().loadKlass(type, StaticObject.NULL);
     }
 
-    /**
-     * Resolves an internal symbolic type descriptor taken from the constant pool, and returns the
-     * corresponding Klass.
-     * <li>If the symbol represents an internal primitive (/ex: 'B' or 'I'), this method returns the
-     * corresponding primitive. Primitives are therefore not "loaded", but directly resolved..
-     * <li>If the symbol is a symbolic references, it asks the given ClassLoader to load the
-     * corresponding Klass.
-     * <li>If the symbol represents an array, resolves its elemental type, and returns the array
-     * corresponding array Klass.
-     *
-     * @param type The symbolic type
-     * @param classLoader The class loader of the constant pool holder.
-     * @return The asked Klass, or null if no representation can be found.
-     */
-    public Klass resolveSymbolOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
-        assert classLoader != null : "use StaticObject.NULL for BCL";
-        // Resolution only resolves references. Bypass loading for primitives.
+    public Klass resolvePrimitive(Symbol<Type> type) {
         if (type.length() == 1) {
             switch (type.byteAt(0)) {
                 case 'B': // byte
@@ -1158,6 +1142,30 @@ public final class Meta implements ContextAccess {
                     return _boolean;
                 default:
             }
+        }
+        return null;
+    }
+
+    /**
+     * Resolves an internal symbolic type descriptor taken from the constant pool, and returns the
+     * corresponding Klass.
+     * <li>If the symbol represents an internal primitive (/ex: 'B' or 'I'), this method returns the
+     * corresponding primitive. Primitives are therefore not "loaded", but directly resolved..
+     * <li>If the symbol is a symbolic references, it asks the given ClassLoader to load the
+     * corresponding Klass.
+     * <li>If the symbol represents an array, resolves its elemental type, and returns the array
+     * corresponding array Klass.
+     *
+     * @param type The symbolic type
+     * @param classLoader The class loader of the constant pool holder.
+     * @return The asked Klass, or null if no representation can be found.
+     */
+    public Klass resolveSymbolOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+        assert classLoader != null : "use StaticObject.NULL for BCL";
+        // Resolution only resolves references. Bypass loading for primitives.
+        Klass k = resolvePrimitive(type);
+        if (k != null) {
+            return k;
         }
         if (Types.isArray(type)) {
             Klass elemental = resolveSymbolOrNull(getTypes().getElementalType(type), classLoader);
