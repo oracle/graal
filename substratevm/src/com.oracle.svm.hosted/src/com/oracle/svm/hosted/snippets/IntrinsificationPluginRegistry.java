@@ -79,13 +79,8 @@ public class IntrinsificationPluginRegistry {
 
     public void add(ResolvedJavaMethod method, int bci, Object element) {
         Object nonNullElement = element != null ? element : NULL_MARKER;
-        Object previous = analysisElements.put(new CallSiteDescriptor(method, bci), nonNullElement);
-
-        /*
-         * New elements can only be added when the intrinsification is executed during the analysis.
-         * If an intrinsified element was already registered that's an error.
-         */
-        VMError.guarantee(previous == null, "Detected previously intrinsified element");
+        Object previous = analysisElements.putIfAbsent(new CallSiteDescriptor(method, bci), nonNullElement);
+        VMError.guarantee(previous == null || previous.equals(nonNullElement), "Newly intrinsified element (" + nonNullElement + ") different than the previous (" + previous + ")");
     }
 
     @SuppressWarnings("unchecked")

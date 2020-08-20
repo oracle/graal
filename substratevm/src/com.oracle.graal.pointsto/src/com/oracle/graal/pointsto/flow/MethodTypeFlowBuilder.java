@@ -220,7 +220,7 @@ public class MethodTypeFlowBuilder {
                          */
                         config = config.withRetainLocalVariables(true);
 
-                        bb.getHostVM().createGraphBuilderPhase(bb.getProviders(), config, OptimisticOptimizations.NONE, null).apply(graph);
+                        bb.getHostVM().createGraphBuilderPhase(bb, bb.getProviders(), config, OptimisticOptimizations.NONE, null).apply(graph);
                     }
                 } catch (PermanentBailoutException ex) {
                     bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
@@ -1291,7 +1291,7 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof InvokeNode || n instanceof InvokeWithExceptionNode) {
                 Invoke invoke = (Invoke) n;
                 if (invoke.callTarget() instanceof MethodCallTargetNode) {
-                    guarantee(invoke.stateAfter().outerFrameState() == null, "Outer FrameState must not be null.");
+                    // guarantee(invoke.stateAfter().outerFrameState() == null, "Outer FrameState must not be null.");
 
                     MethodCallTargetNode target = (MethodCallTargetNode) invoke.callTarget();
 
@@ -1535,7 +1535,10 @@ public class MethodTypeFlowBuilder {
         NodeSourcePosition position = node.getNodeSourcePosition();
         // If the 'position' has a 'caller' then it is inlined, case in which the BCI is
         // probably not unique.
-        if (position != null && position.getCaller() == null) {
+        if (position != null) {
+            while (position.getCaller() != null) {
+                position = position.getCaller();
+            }
             if (position.getBCI() >= 0) {
                 return position.getBCI();
             }

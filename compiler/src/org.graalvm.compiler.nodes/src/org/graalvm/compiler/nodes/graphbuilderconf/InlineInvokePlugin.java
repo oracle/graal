@@ -143,17 +143,19 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
     /**
      * Notification that a method is about to be inlined.
      *
+     * @param b the context
      * @param methodToInline the inlined method
      */
-    default void notifyBeforeInline(ResolvedJavaMethod methodToInline) {
+    default void notifyBeforeInline(GraphBuilderContext b, ResolvedJavaMethod methodToInline) {
     }
 
     /**
      * Notification that a method was inlined.
      *
+     * @param b the context
      * @param methodToInline the inlined method
      */
-    default void notifyAfterInline(ResolvedJavaMethod methodToInline) {
+    default void notifyAfterInline(GraphBuilderContext b, ResolvedJavaMethod methodToInline) {
     }
 
     /**

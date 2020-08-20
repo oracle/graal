@@ -121,7 +121,7 @@ final class PEInliningPlanInvokePlugin implements InlineInvokePlugin {
     }
 
     @Override
-    public void notifyAfterInline(ResolvedJavaMethod inlinedTargetMethod) {
+    public void notifyAfterInline(GraphBuilderContext b, ResolvedJavaMethod inlinedTargetMethod) {
         if (inlinedTargetMethod.equals(partialEvaluator.callInlined)) {
             inlining.pop();
         }

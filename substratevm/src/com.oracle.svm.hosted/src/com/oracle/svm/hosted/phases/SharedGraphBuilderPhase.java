@@ -58,11 +58,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance {
     final WordTypes wordTypes;
+    protected final NativeImageInlineDuringParsingPlugin.InvocationData inlineInvocationData;
 
     public SharedGraphBuilderPhase(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext,
-                    WordTypes wordTypes) {
+                    WordTypes wordTypes, NativeImageInlineDuringParsingPlugin.InvocationData inlineInvocationData) {
         super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
         this.wordTypes = wordTypes;
+        this.inlineInvocationData = inlineInvocationData;
     }
 
     @Override
@@ -75,17 +77,24 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         private final boolean explicitExceptionEdges;
         private final boolean allowIncompleteClassPath;
+        protected final NativeImageInlineDuringParsingPlugin.InvocationData inlineInvocationData;
+        protected NativeImageInlineDuringParsingPlugin.InvocationResultInline inlineDuringParsingState;
 
         protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges) {
-            this(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges, NativeImageOptions.AllowIncompleteClasspath.getValue());
+                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges, NativeImageInlineDuringParsingPlugin.InvocationData inlineInvocationData) {
+            this(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges, NativeImageOptions.AllowIncompleteClasspath.getValue(), inlineInvocationData);
         }
 
         protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges, boolean allowIncompleteClasspath) {
+                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges, boolean allowIncompleteClasspath, NativeImageInlineDuringParsingPlugin.InvocationData inlineInvocationData) {
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
             this.explicitExceptionEdges = explicitExceptionEdges;
             this.allowIncompleteClassPath = allowIncompleteClasspath;
+            this.inlineInvocationData = inlineInvocationData;
+        }
+
+        public GraphBuilderConfiguration getGraphBuilderConfig() {
+            return graphBuilderConfig;
         }
 
         @Override

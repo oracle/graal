@@ -43,7 +43,7 @@ public class ClassInitializerGraphBuilderPhase extends SharedGraphBuilderPhase {
          * not have the graph builder plugins for word types installed either. Passing null as the
          * WordTypes disables the word type checks in the bytecode parser.
          */
-        super(providers, graphBuilderConfig, optimisticOpts, null, null);
+        super(providers, graphBuilderConfig, optimisticOpts, null, null, null);
     }
 
     @Override
@@ -54,7 +54,7 @@ public class ClassInitializerGraphBuilderPhase extends SharedGraphBuilderPhase {
     static class ClassInitializerBytecodeParser extends SharedBytecodeParser {
         ClassInitializerBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true, true);
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true, true, null);
         }
     }
 }

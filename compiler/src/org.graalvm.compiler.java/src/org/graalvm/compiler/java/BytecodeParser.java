@@ -948,6 +948,21 @@ public class BytecodeParser implements GraphBuilderContext {
         this.traceLevel = level != 0 ? refineTraceLevel(level) : 0;
     }
 
+    /**
+     * Returns true if the current parse position is covered by an exception handler, including
+     * exception handlers of all outer scopes when inlining during parsing.
+     */
+    protected boolean insideTryBlock() {
+        BytecodeParser cur = this;
+        while (cur != null) {
+            if (cur.currentBlock.exceptionDispatchBlock() != null) {
+                return true;
+            }
+            cur = cur.parent;
+        }
+        return false;
+    }
+
     private int refineTraceLevel(int level) {
         ResolvedJavaMethod tmethod = graph.method();
         if (tmethod == null) {
@@ -2513,13 +2528,13 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected final void notifyBeforeInline(ResolvedJavaMethod inlinedMethod) {
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
-            plugin.notifyBeforeInline(inlinedMethod);
+            plugin.notifyBeforeInline(this, inlinedMethod);
         }
     }
 
     protected final void notifyAfterInline(ResolvedJavaMethod inlinedMethod) {
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
-            plugin.notifyAfterInline(inlinedMethod);
+            plugin.notifyAfterInline(this, inlinedMethod);
         }
     }
 
