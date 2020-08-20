@@ -1706,9 +1706,11 @@ public class FlatNodeGenFactory {
             }
         }
         if (reportPolymorphismAction.megamorphism) {
+            builder.string("(");
             builder.string("((" + OLD_STATE + " & " + MEGAMORPHIC_MASK + ") == 0)");
             builder.string(" && ");
-            builder.string("(" + MEGAMORPHIC_STATE + ") != 0");
+            builder.string("(" + MEGAMORPHIC_STATE + " != 0)");
+            builder.string(")");
         }
         builder.end(); // if
         builder.startBlock().startStatement().startCall("this", REPORT_POLYMORPHIC_SPECIALIZE).end(2);

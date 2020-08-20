@@ -84,6 +84,8 @@ public @interface ReportPolymorphism {
 
     }
 
+    @Retention(RetentionPolicy.CLASS)
+    @Target(ElementType.METHOD)
     @interface Megamorphic {
 
     }
