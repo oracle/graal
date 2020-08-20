@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.223.0",
+    "mxversion": "5.271.0",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
@@ -309,7 +309,14 @@ suite = {
         "CHROMEINSPECTOR": {
             "subDir": "src",
             # This distribution defines a module.
-            "moduleName" : "com.oracle.truffle.tools.chromeinspector",
+            "moduleInfo" : {
+                "name" : "com.oracle.truffle.tools.chromeinspector",
+                "requiresConcealed" : {
+                    "org.graalvm.truffle" : [
+                        "com.oracle.truffle.api.instrumentation"
+                    ],
+                },
+            },
             "dependencies": ["com.oracle.truffle.tools.chromeinspector"],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
@@ -345,7 +352,14 @@ suite = {
         "INSIGHT": {
             "subDir": "src",
             # This distribution defines a module.
-            "moduleName" : "org.graalvm.tools.insight",
+            "moduleInfo" : {
+                "name" : "org.graalvm.tools.insight",
+                "requiresConcealed" : {
+                    "org.graalvm.truffle" : [
+                        "com.oracle.truffle.api.instrumentation"
+                    ],
+                },
+            },
             "dependencies": [
                 "org.graalvm.tools.insight",
                 "com.oracle.truffle.tools.agentscript"
@@ -380,7 +394,14 @@ suite = {
         "TRUFFLE_PROFILER": {
             "subDir": "src",
             # This distribution defines a module.
-            "moduleName" : "com.oracle.truffle.tools.profiler",
+            "moduleInfo" : {
+                "name" : "com.oracle.truffle.tools.profiler",
+                "requiresConcealed" : {
+                    "org.graalvm.truffle" : [
+                        "com.oracle.truffle.api.instrumentation"
+                    ],
+                },
+            },
             "dependencies": [
                 "com.oracle.truffle.tools.profiler",
             ],
@@ -415,7 +436,14 @@ suite = {
         "TRUFFLE_COVERAGE": {
             "subDir": "src",
             # This distribution defines a module.
-            "moduleName" : "com.oracle.truffle.tools.coverage",
+            "moduleInfo" : {
+                "name" : "com.oracle.truffle.tools.coverage",
+                "requiresConcealed" : {
+                    "org.graalvm.truffle" : [
+                        "com.oracle.truffle.api.instrumentation"
+                    ],
+                },
+            },
             "dependencies": [
                 "com.oracle.truffle.tools.coverage",
             ],
@@ -508,7 +536,14 @@ suite = {
         "LSP": {
             "subDir": "src",
             # This distribution defines a module.
-            "moduleName" : "org.graalvm.tools.lsp",
+            "moduleInfo" : {
+                "name" : "org.graalvm.tools.lsp",
+                "requiresConcealed" : {
+                    "org.graalvm.truffle" : [
+                        "com.oracle.truffle.api.instrumentation"
+                    ],
+                },
+            },
             "dependencies": [
                 "org.graalvm.tools.api.lsp",
                 "org.graalvm.tools.lsp"
