@@ -388,6 +388,9 @@ public abstract class LLVMInteropType implements TruffleObject {
 
         public void buildVTable() {
             if (vtable == null) {
+                if (superclass != null) {
+                    superclass.buildVTable();
+                }
                 vtable = new VTable(this);
             }
         }
@@ -401,14 +404,17 @@ public abstract class LLVMInteropType implements TruffleObject {
         VTable(Clazz clazz) {
             this.clazz = clazz;
             this.table = new HashMap<>();
-            for (Method m : clazz.methods) {
-                if (m != null && m.getVirtualIndex() >= 0) {
-                    table.put(m.virtualIndex, m);
+            for (Clazz c = clazz; c != null; c = c.superclass) {
+                for (Method m : c.methods) {
+                    if (m != null && m.getVirtualIndex() >= 0) {
+                        // only put into map if absent!
+                        table.putIfAbsent(m.virtualIndex, m);
+                    }
                 }
             }
         }
 
-        public LLVMInteropType.Method findMethod(long virtualIndex) throws NoSuchElementException {
+        public LLVMInteropType.Method findMethod(long virtualIndex) {
             final LLVMInteropType.Method m = table.get(virtualIndex);
             if (m == null) {
                 CompilerDirectives.transferToInterpreter();
@@ -440,7 +446,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
 
         @ExportMessage
-        Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
+        Object readArrayElement(long index) throws UnsupportedMessageException {
             try {
                 final String methodName = vtable.findMethod(index).getName();
                 try {
@@ -452,7 +458,8 @@ public abstract class LLVMInteropType implements TruffleObject {
                     // TODO pichristoph: change to UnknownIdentifierException
                 }
             } catch (NoSuchElementException e) {
-                throw InvalidArrayIndexException.create(index, e);
+                final String msg = String.format("No method found in vtable of %s with index %d", vtable.clazz, index);
+                throw new IllegalStateException(msg);
             }
         }
 
