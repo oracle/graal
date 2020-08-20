@@ -51,25 +51,45 @@ import com.oracle.svm.hosted.c.query.QueryResultFormat;
 
 public class QueryCodeWriter extends InfoTreeVisitor {
 
-    private static final String FORMATOR_SIGNED_LONG = "%ld";
-    private static final String FORMATOR_UNSIGNED_LONG = "%lu";
-    private static final String FORMATOR_LONG_HEX = "%lX";
-    private static final String FORMATOR_FLOAT = "%.15e";
-    private static final String FORMATOR_STRING = QueryResultFormat.STRING_MARKER + "%s" + QueryResultFormat.STRING_MARKER;
+    private static final String fstr_float = "%.15e";
+    private static final String fstr_string = QueryResultFormat.STRING_MARKER + "%s" + QueryResultFormat.STRING_MARKER;
 
     private final CSourceCodeWriter writer;
 
     private final List<Object> elementForLineNumber;
 
+    private final boolean isWindows;
+
+    private final String fstr_sint64;
+    private final String fstr_uint64;
+    private final String fstr_uint64_hex;
+
+    private final String uint64;
+    private final String sint64;
+
     public QueryCodeWriter(Path tempDirectory) {
         writer = new CSourceCodeWriter(tempDirectory);
         elementForLineNumber = new ArrayList<>();
+        isWindows = Platform.includedIn(Platform.WINDOWS.class);
+
+        String fstr_l64 = "%" + (isWindows ? "ll" : "l");
+        fstr_sint64 = fstr_l64 + "d";
+        fstr_uint64 = fstr_l64 + "u";
+        fstr_uint64_hex = fstr_l64 + "X";
+
+        uint64 = int64(isWindows, true);
+        sint64 = int64(isWindows, false);
+    }
+
+    private static String int64(boolean isWindows, boolean unsigned) {
+        /* Linux uses LP64, Windows uses LLP64 */
+        return (unsigned ? "unsigned " : "") + (isWindows ? "long long" : "long");
     }
 
     public Path write(NativeCodeInfo nativeCodeInfo) {
         nativeCodeInfo.accept(this);
 
-        String srcFileExtension = Platform.includedIn(Platform.WINDOWS.class) ? CSourceCodeWriter.CXX_SOURCE_FILE_EXTENSION : CSourceCodeWriter.C_SOURCE_FILE_EXTENSION;
+        String srcFileExtension = isWindows ? CSourceCodeWriter.CXX_SOURCE_FILE_EXTENSION : CSourceCodeWriter.C_SOURCE_FILE_EXTENSION;
         String sourceFileName = nativeCodeInfo.getName().replaceAll("\\W", "_").concat(srcFileExtension);
         return writer.writeFile(sourceFileName);
     }
@@ -175,7 +195,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
             writer.indent();
             writer.indents().appendln(fieldInfo.getParent().getName() + " fieldHolder;");
             writer.indents().appendln("memset(&fieldHolder, 0x0, sizeof(fieldHolder));");
-            writer.indents().appendln("unsigned long all_bits_set = -1;");
+            writer.indents().appendln(uint64 + " all_bits_set = -1;");
             writer.indents().appendln("fieldHolder." + fieldInfo.getName() + " = all_bits_set;");
             writer.indents().appendln("int is_unsigned = fieldHolder." + fieldInfo.getName() + " > 0;");
             printIsUnsigned(fieldInfo.getSignednessInfo(), "is_unsigned");
@@ -196,18 +216,18 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.indents().appendln("struct _w {");
         registerElementForCurrentLine(bitfieldInfo.getParent().getAnnotatedElement());
         writer.indents().appendln("  " + structName + " s;");
-        writer.indents().appendln("  long long int pad;");
+        writer.indents().appendln("  " + sint64 + " pad;");
         writer.indents().appendln("} w;");
         writer.indents().appendln("int is_unsigned;");
         writer.indents().appendln("char *p;");
         writer.indents().appendln("unsigned int byte_offset;");
         writer.indents().appendln("int start_bit, end_bit;");
-        writer.indents().appendln("unsigned long long int v;");
+        writer.indents().appendln(uint64 + " v;");
         /* Set the structure to 0 bits (including the padding space). */
         writer.indents().appendln("memset(&w, 0x0, sizeof(w));");
         /* Fill the actual bitfield with 1 bits. Maximum size is 64 bits. */
         registerElementForCurrentLine(bitfieldInfo.getAnnotatedElement());
-        writer.indents().appendln("unsigned long all_bits_set = -1;");
+        writer.indents().appendln(uint64 + " all_bits_set = -1;");
         writer.indents().appendln("w.s." + bitfieldName + " = all_bits_set;");
         /* All bits are set, so signed bitfields are < 0; */
         writer.indents().appendln("is_unsigned = w.s." + bitfieldName + " > 0;");
@@ -223,7 +243,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.indents().appendln("  start_bit = end_bit = -1;");
         writer.indents().appendln("} else {");
         /* Read the 64 bits starting at the byte offset we found. */
-        writer.indents().appendln("  v = *((unsigned long long int*) (p + byte_offset));");
+        writer.indents().appendln("  v = *((" + uint64 + "*) (p + byte_offset));");
         /* Find the first bit that is set. */
         writer.indents().appendln("  while ((v & 0x1) == 0) {");
         writer.indents().appendln("    start_bit++;");
@@ -253,7 +273,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
             registerElementForCurrentLine(pointerToInfo.getAnnotatedElement());
             writer.indents().appendln("{");
             writer.indent();
-            writer.indents().appendln("unsigned long all_bits_set = -1;");
+            writer.indents().appendln(uint64 + " all_bits_set = -1;");
             writer.indents().appendln(pointerToInfo.getName() + " fieldHolder = all_bits_set;");
             writer.indents().appendln("int is_unsigned = fieldHolder > 0;");
             printIsUnsigned(pointerToInfo.getSignednessInfo(), "is_unsigned");
@@ -272,31 +292,31 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     private void printString(ElementInfo info, String arg) {
         registerElementForCurrentLine(info.getAnnotatedElement());
-        writer.indents().printf(info.getUniqueID() + DELIMINATOR + FORMATOR_STRING, arg).semicolon();
+        writer.indents().printf(info.getUniqueID() + DELIMINATOR + fstr_string, arg).semicolon();
     }
 
     private static String cast(String targetType, String value) {
         return "((" + targetType + ")" + value + ")";
     }
 
-    private void printLongHex(ElementInfo info, String arg) {
-        registerElementForCurrentLine(info.getAnnotatedElement());
-        writer.indents().printf(info.getUniqueID() + DELIMINATOR + FORMATOR_LONG_HEX, cast("long unsigned int", arg)).semicolon();
-    }
-
     private void printSignedLong(ElementInfo info, String arg) {
         registerElementForCurrentLine(info.getAnnotatedElement());
-        writer.indents().printf(info.getUniqueID() + DELIMINATOR + FORMATOR_SIGNED_LONG, cast("long int", arg)).semicolon();
+        writer.indents().printf(info.getUniqueID() + DELIMINATOR + fstr_sint64, cast(sint64, arg)).semicolon();
     }
 
     private void printUnsignedLong(ElementInfo info, String arg) {
         registerElementForCurrentLine(info.getAnnotatedElement());
-        writer.indents().printf(info.getUniqueID() + DELIMINATOR + FORMATOR_UNSIGNED_LONG, cast("long unsigned int", arg)).semicolon();
+        writer.indents().printf(info.getUniqueID() + DELIMINATOR + fstr_uint64, cast(uint64, arg)).semicolon();
+    }
+
+    private void printLongHex(ElementInfo info, String arg) {
+        registerElementForCurrentLine(info.getAnnotatedElement());
+        writer.indents().printf(info.getUniqueID() + DELIMINATOR + fstr_uint64_hex, cast(uint64, arg)).semicolon();
     }
 
     private void printFloat(ElementInfo info, String arg) {
         registerElementForCurrentLine(info.getAnnotatedElement());
-        writer.indents().printf(info.getUniqueID() + DELIMINATOR + FORMATOR_FLOAT, arg).semicolon();
+        writer.indents().printf(info.getUniqueID() + DELIMINATOR + fstr_float, arg).semicolon();
     }
 
     private void printIsUnsigned(ElementInfo info, String arg) {
