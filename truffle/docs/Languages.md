@@ -13,7 +13,7 @@ The following language implementations exist already:
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language implementation to demonstrate Truffle features.
 * [TruffleSqueak](https://github.com/hpi-swa/trufflesqueak/), a Squeak/Smalltalk VM implementation and polyglot programming environment.
 * [TRegex](https://github.com/oracle/graal/tree/master/regex), a generic regular expression engine (internal, for use by other languages only). *
-* [Yatta](https://yatta-lang.org/), the reference implementation of a minimalistic, strongly dynamically typed, parallel and non-blocking, polyglot, strict, functional programming language.
+* [Yona](https://yona-lang.org/), the reference implementation of a minimalistic, strongly dynamically typed, parallel and non-blocking, polyglot, strict, functional programming language.
 
 \* Shipped as part of [GraalVM](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 
