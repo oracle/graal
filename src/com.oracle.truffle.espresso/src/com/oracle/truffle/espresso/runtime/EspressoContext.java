@@ -555,6 +555,8 @@ public final class EspressoContext {
         // TODO(Gregersen) - /browse/GR-20077
     }
 
+    private static final int MAX_KILL_SPINS = 20;
+
     public void interruptActiveThreads() {
         isClosing = true;
         invalidateNoThreadStop("Killing the VM");
@@ -565,16 +567,26 @@ public final class EspressoContext {
                 try {
                     if (t.isDaemon()) {
                         Target_java_lang_Thread.killThread(guest);
+                    }
+                    Target_java_lang_Thread.interrupt0(guest);
+                    // Give time to gracefully exit.
+                    t.join(30);
+                    int loops = 0;
+                    while (t.isAlive() && ++loops < MAX_KILL_SPINS) {
+                        /*
+                         * Temporary fix for running JCK tests. Forcefully killing all threads at
+                         * context closing time allows to identify which failures are due to actual
+                         * timeouts or due to thread being unresponsive. Note that this still does
+                         * not wakes up thread blocked in native.
+                         * 
+                         * Currently, threads in native can not be killed in Espresso. This
+                         * translates into a polyglot-side java.lang.IllegalStateException: The
+                         * language did not complete all polyglot threads but should have.
+                         */
+                        // TODO: Gracefully exit and allow stopping threads in native.
+                        Target_java_lang_Thread.forceKillThread(guest);
                         Target_java_lang_Thread.interrupt0(guest);
                         t.join(10);
-                        while (t.isAlive()) {
-                            Target_java_lang_Thread.setThreadStop(guest, Target_java_lang_Thread.KillStatus.DISSIDENT);
-                            Target_java_lang_Thread.interrupt0(guest);
-                            t.join(10);
-                        }
-                    } else {
-                        Target_java_lang_Thread.interrupt0(guest);
-                        t.join();
                     }
                 } catch (InterruptedException e) {
                     getLogger().warning("Thread interrupted while stopping thread in closing context.");

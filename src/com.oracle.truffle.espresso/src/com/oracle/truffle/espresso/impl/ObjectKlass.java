@@ -266,13 +266,11 @@ public final class ObjectKlass extends Klass {
                     throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
                 }
                 try {
-                    // Spec fragment: Then, initialize each final static field of C with the
-                    // constant value in its ConstantValue attribute (&sect;4.7.2), in the order the
-                    // fields appear in the ClassFile structure.
-                    //
-                    // ...
-                    //
-                    // Next, execute the class or interface initialization method of C.
+                    /*
+                     * Spec fragment: Then, initialize each final static field of C with the
+                     * constant value in its ConstantValue attribute (&sect;4.7.2), in the order the
+                     * fields appear in the ClassFile structure.
+                     */
                     prepare();
 
                     initState = PREPARED;
@@ -282,14 +280,24 @@ public final class ObjectKlass extends Klass {
                             getContext().getJDWPListener().classPrepared(this, prepareThread);
                         }
                     }
-                    if (getSuperKlass() != null) {
-                        getSuperKlass().initialize();
+                    if (!isInterface()) {
+                        /*
+                         * Next, if C is a class rather than an interface, then let SC be its
+                         * superclass and let SI1, ..., SIn be all superinterfaces of C [...] For
+                         * each S in the list [ SC, SI1, ..., SIn ], if S has not yet been
+                         * initialized, then recursively perform this entire procedure for S. If
+                         * necessary, verify and prepare S first.
+                         */
+                        if (getSuperKlass() != null) {
+                            getSuperKlass().initialize();
+                        }
+                        for (ObjectKlass interf : getSuperInterfaces()) {
+                            // Initialize all super interfaces, direct and indirect, with default
+                            // methods.
+                            interf.recursiveInitialize();
+                        }
                     }
-                    for (ObjectKlass interf : getSuperInterfaces()) {
-                        // Initialize all super interfaces, direct and indirect, with default
-                        // methods.
-                        interf.recursiveInitialize();
-                    }
+                    // Next, execute the class or interface initialization method of C.
                     Method clinit = getClassInitializer();
                     if (clinit != null) {
                         clinit.getCallTarget().call();
@@ -388,14 +396,13 @@ public final class ObjectKlass extends Klass {
 
     private void recursiveInitialize() {
         if (!isInitialized()) { // Skip synchronization and locks if already init.
+            for (ObjectKlass interf : getSuperInterfaces()) {
+                interf.recursiveInitialize();
+            }
             if (hasDeclaredDefaultMethods()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 verify();
-                actualInit();
-            } else {
-                for (ObjectKlass interf : getSuperInterfaces()) {
-                    interf.recursiveInitialize();
-                }
+                actualInit(); // Does not recursively initialize interfaces
             }
         }
     }

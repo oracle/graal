@@ -183,8 +183,8 @@ JNIEXPORT void JNICALL JVM_GC(void) {
 }
 
 JNIEXPORT jlong JNICALL JVM_MaxObjectInspectionAge(void) {
-  UNIMPLEMENTED(JVM_MaxObjectInspectionAge);
-  return 0;
+  IMPLEMENTED(JVM_MaxObjectInspectionAge);
+  return (*getEnv())->JVM_MaxObjectInspectionAge();
 }
 
 JNIEXPORT void JNICALL JVM_TraceInstructions(jboolean on) {
@@ -1294,8 +1294,8 @@ JNIEXPORT jboolean JNICALL JVM_AreNestMates(JNIEnv *env, jclass current, jclass 
 }
 
 JNIEXPORT void JNICALL JVM_BeforeHalt() {
-  UNIMPLEMENTED(JVM_BeforeHalt);
-  return;
+  IMPLEMENTED(JVM_BeforeHalt);
+  return (*getEnv())->JVM_BeforeHalt();
 }
 
 JNIEXPORT jobject JNICALL JVM_CallStackWalk(JNIEnv *env, jobject stackStream, jlong mode,
@@ -1338,8 +1338,8 @@ JNIEXPORT jobject JNICALL JVM_GetAndClearReferencePendingList(JNIEnv *env) {
 }
 
 JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(JNIEnv *env, jclass ignored, jlong offset_secs) {
-  UNIMPLEMENTED(JVM_GetNanoTimeAdjustment);
-  return 0;
+  IMPLEMENTED(JVM_GetNanoTimeAdjustment);
+  return (*getEnv())->JVM_GetNanoTimeAdjustment(env, ignored, offset_secs);
 }
 
 JNIEXPORT jclass JNICALL JVM_GetNestHost(JNIEnv *env, jclass current) {

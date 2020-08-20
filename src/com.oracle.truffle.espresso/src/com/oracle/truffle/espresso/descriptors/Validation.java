@@ -121,7 +121,7 @@ public final class Validation {
             prev = i + 1;
             ++i;
         }
-        return true;
+        return prev != bytes.length();
     }
 
     public static boolean validBinaryName(CharSequence chars) {
@@ -143,7 +143,7 @@ public final class Validation {
             prev = i + 1;
             ++i;
         }
-        return true;
+        return prev != chars.length();
     }
 
     /**
@@ -218,6 +218,10 @@ public final class Validation {
         return false;
     }
 
+    public static boolean validSignatureDescriptor(ByteSequence bytes) {
+        return validSignatureDescriptor(bytes, false);
+    }
+
     /**
      * A method descriptor contains zero or more parameter descriptors, representing the types of
      * parameters that the method takes, and a return descriptor, representing the type of the value
@@ -227,7 +231,7 @@ public final class Validation {
      *     SignatureDescriptor: ( {FieldDescriptor} ) TypeDescriptor
      * </pre>
      */
-    public static boolean validSignatureDescriptor(ByteSequence bytes) {
+    public static boolean validSignatureDescriptor(ByteSequence bytes, boolean isInit) {
         if (bytes.length() < 3) { // shortest descriptor e.g. ()V
             return false;
         }
@@ -282,7 +286,11 @@ public final class Validation {
         }
         assert bytes.byteAt(index) == ')';
         // Validate return type.
-        return validTypeDescriptor(bytes.subSequence(index + 1, bytes.length() - index - 1), true);
+        if (isInit) {
+            return bytes.subSequence(index + 1, bytes.length() - index - 1).contentEquals(Symbol.Type._void);
+        } else {
+            return validTypeDescriptor(bytes.subSequence(index + 1, bytes.length() - index - 1), true);
+        }
     }
 
     public static boolean validModifiedUTF8(ByteSequence bytes) {

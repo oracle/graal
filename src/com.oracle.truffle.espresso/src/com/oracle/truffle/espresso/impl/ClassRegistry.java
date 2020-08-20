@@ -112,8 +112,8 @@ public abstract class ClassRegistry implements ContextAccess {
     private final EspressoContext context;
 
     private final int loaderID;
-    private ModuleEntry unnamed;
 
+    private ModuleEntry unnamed;
     private final PackageTable packages;
     private final ModuleTable modules;
 
@@ -235,10 +235,15 @@ public abstract class ClassRegistry implements ContextAccess {
     private ParserKlass getParserKlass(byte[] bytes, String strType) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
         ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
-        if (StaticObject.notNull(getClassLoader()) && parserKlass.getName().toString().startsWith("java/")) {
+        if (!loaderIsBootOrPlatform(getClassLoader(), getMeta()) && parserKlass.getName().toString().startsWith("java/")) {
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
         }
         return parserKlass;
+    }
+
+    public static boolean loaderIsBootOrPlatform(StaticObject loader, Meta meta) {
+        return StaticObject.isNull(loader) ||
+                        (meta.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
     }
 
     private ObjectKlass createAndPutKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType) {

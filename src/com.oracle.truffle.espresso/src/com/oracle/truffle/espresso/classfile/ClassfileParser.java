@@ -181,7 +181,7 @@ public final class ClassfileParser {
             if (majorVersion >= JAVA_9_VERSION) {
                 s.readU2();
                 badConstantSeen = tag;
-                return;
+                throw stream.classFormatError("Illegal constant tag for a class file: %d. Should appear only in module info files.", tag.getValue());
             }
         }
         throw stream.classFormatError("Unknown constant tag %d", tag.getValue());
@@ -878,7 +878,11 @@ public final class ClassfileParser {
             int numBootstrapArguments = stream.readU2();
             char[] bootstrapArguments = new char[numBootstrapArguments];
             for (int j = 0; j < numBootstrapArguments; ++j) {
-                bootstrapArguments[j] = (char) stream.readU2();
+                char cpIndex = (char) stream.readU2();
+                if (!pool.tagAt(cpIndex).isLoadable()) {
+                    throw ConstantPool.classFormatError("Invalid constant pool constant for BootstrapMethodAttribute. Not a loadable constant");
+                }
+                bootstrapArguments[j] = cpIndex;
             }
             entries[i] = new BootstrapMethodsAttribute.Entry((char) bootstrapMethodRef, bootstrapArguments);
         }

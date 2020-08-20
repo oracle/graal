@@ -228,6 +228,9 @@ public final class Target_java_lang_Thread {
                         Method dispatchUncaughtException = self.getKlass().lookupMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
                         assert !dispatchUncaughtException.isStatic();
                         dispatchUncaughtException.invokeDirect(self, uncaught.getExceptionObject());
+                    } catch (EspressoExitException exit) {
+                        // TODO: initiate shutdown sequence from here.
+                        throw exit;
                     } finally {
                         setThreadStop(self, KillStatus.EXITING);
                         threadExit.call(self);
@@ -434,8 +437,18 @@ public final class Target_java_lang_Thread {
         thread.setHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH, value);
     }
 
+    /**
+     * Hints the thread that it should throw a ThreadDeath error whenever he can.
+     */
     public static void killThread(StaticObject thread) {
-        thread.setHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH, KillStatus.KILL);
+        setThreadStop(thread, KillStatus.KILL);
+    }
+
+    /**
+     * Forces the thread to stop execution at the next safepoint by throwing a host exit exception.
+     */
+    public static void forceKillThread(StaticObject thread) {
+        setThreadStop(thread, KillStatus.DISSIDENT);
     }
 
     public static void setDeathThrowable(StaticObject self, Object deathThrowable) {

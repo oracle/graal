@@ -28,6 +28,7 @@ import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -42,7 +43,6 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -146,7 +146,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                     Object[] arguments,
                     @Exclusive @Cached LookupDeclaredMethod lookupMethod,
                     @Exclusive @Cached InvokeEspressoNode invoke)
-                    throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+                    throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method method = lookupMethod.execute(this, member, true, true, arguments.length);
         if (method != null) {
             assert method.isStatic() && method.isPublic() && member.equals(method.getName().toString()) && method.getParameterCount() == arguments.length;
@@ -228,7 +228,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             int length = 0;
             try {
                 length = (int) toEspressoNode.execute(argument, meta._int);
-            } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+            } catch (UnsupportedTypeException e) {
                 throw UnsupportedTypeException.create(new Object[]{argument}, "Expected a single int");
             }
             if (length < 0) {
