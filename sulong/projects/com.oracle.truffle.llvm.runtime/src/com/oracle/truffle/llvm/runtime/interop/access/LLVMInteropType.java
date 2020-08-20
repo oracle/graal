@@ -29,13 +29,28 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -51,13 +66,6 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Describes how foreign interop should interpret values.
@@ -269,11 +277,13 @@ public abstract class LLVMInteropType implements TruffleObject {
 
         @CompilationFinal(dimensions = 1) final Method[] methods;
         private Clazz superclass;
+        private VTable vtable;
 
         Clazz(String name, StructMember[] members, Method[] methods, long size) {
             super(name, members, size);
             this.methods = methods;
             this.superclass = null;
+            this.vtable = null;
         }
 
         public void setSuperClass(Clazz superclass) {
@@ -365,9 +375,123 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return true;
                 }
             }
+            if (superclass != null) {
+                return superclass.hasVirtualMethods();
+            }
             return false;
         }
 
+        public VTable getVTable() {
+            buildVTable();
+            return vtable;
+        }
+
+        public void buildVTable() {
+            if (vtable == null) {
+                vtable = new VTable(this);
+            }
+        }
+
+    }
+
+    public static final class VTable {
+        final HashMap<Long, Method> table;
+        final Clazz clazz;
+
+        VTable(Clazz clazz) {
+            this.clazz = clazz;
+            this.table = new HashMap<>();
+            for (Method m : clazz.methods) {
+                if (m != null && m.getVirtualIndex() >= 0) {
+                    table.put(m.virtualIndex, m);
+                }
+            }
+        }
+
+        public LLVMInteropType.Method findMethod(long virtualIndex) throws NoSuchElementException {
+            final LLVMInteropType.Method m = table.get(virtualIndex);
+            if (m == null) {
+                CompilerDirectives.transferToInterpreter();
+                throw new NoSuchElementException(String.format("No method in %s with virtualIndex %d", clazz.name, virtualIndex));
+            }
+            return m;
+        }
+
+    }
+
+    @ExportLibrary(value = InteropLibrary.class)
+    public static final class VTableObjectPair implements TruffleObject {
+        private final VTable vtable;
+        private final Object foreign;
+
+        private VTableObjectPair(VTable vtable, Object foreign) {
+            this.vtable = vtable;
+            this.foreign = foreign;
+        }
+
+        public static VTableObjectPair create(VTable vtable, Object foreign) {
+            return new VTableObjectPair(vtable, foreign);
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
+            try {
+                final String methodName = vtable.findMethod(index).getName();
+                try {
+                    Object readMember = InteropLibrary.getUncached(foreign).readMember(foreign, methodName);
+                    return new RemoveSelfArgument(readMember);
+                } catch (UnknownIdentifierException e) {
+                    final String msg = String.format("External method \"%s\" of %s not found", methodName, foreign);
+                    throw new IllegalStateException(msg);
+                    // TODO pichristoph: change to UnknownIdentifierException
+                }
+            } catch (NoSuchElementException e) {
+                throw InvalidArrayIndexException.create(index, e);
+            }
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return vtable.table.size();
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < getArraySize();
+        }
+    }
+
+    /**
+     * C++/LLVM methods provide the 'this'/'self' object as the first method for every method. Thus,
+     * when calling a foreign language, this parameter has to be removed.
+     */
+    @ExportLibrary(value = InteropLibrary.class)
+    public static final class RemoveSelfArgument implements TruffleObject {
+        private final Object foreignMethodObject;
+
+        RemoveSelfArgument(Object foreignMethodObject) {
+            this.foreignMethodObject = foreignMethodObject;
+        }
+
+        @ExportMessage
+        boolean isExecutable() {
+            return InteropLibrary.getUncached(foreignMethodObject).isException(foreignMethodObject);
+        }
+
+        @ExportMessage
+        Object execute(Object[] arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+            Object[] newArguments = new Object[arguments.length - 1];
+            for (int i = 1; i < arguments.length; i++) {
+                newArguments[i - 1] = arguments[i];
+            }
+            return InteropLibrary.getUncached(foreignMethodObject).execute(foreignMethodObject, newArguments);
+        }
     }
 
     public static final class StructMember {
@@ -597,6 +721,7 @@ public abstract class LLVMInteropType implements TruffleObject {
             for (int i = 0; i < ret.methods.length; i++) {
                 ret.methods[i] = convertMethod(type.getMethod(i), ret);
             }
+            ret.buildVTable();
             return ret;
         }
 
