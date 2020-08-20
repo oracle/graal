@@ -117,7 +117,7 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
             return (int) toEspressoNode.execute(value, context.getMeta()._int);
-        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to int");
         }
     }
@@ -150,7 +150,7 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
             return (boolean) toEspressoNode.execute(value, context.getMeta()._boolean);
-        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to boolean");
         }
     }
@@ -183,7 +183,7 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
             return (char) toEspressoNode.execute(value, context.getMeta()._char);
-        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to char");
         }
     }
@@ -216,7 +216,7 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
             return (short) toEspressoNode.execute(value, context.getMeta()._short);
-        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to short");
         }
     }
@@ -249,7 +249,7 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
             return (byte) toEspressoNode.execute(value, context.getMeta()._byte);
-        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to byte");
         }
     }
@@ -282,7 +282,7 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
             return (long) toEspressoNode.execute(value, context.getMeta()._long);
-        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to long");
         }
     }
@@ -315,7 +315,7 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
             return (float) toEspressoNode.execute(value, context.getMeta()._float);
-        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to float");
         }
     }
@@ -348,7 +348,7 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
             return (double) toEspressoNode.execute(value, context.getMeta()._double);
-        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to double");
         }
     }
@@ -384,7 +384,7 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
             return (StaticObject) toEspressoNode.execute(value, typeKlass);
-        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to " + typeKlass.getNameAsString());
         }
     }
