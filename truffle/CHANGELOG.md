@@ -8,6 +8,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [TruffleFile.readSymbolicLink](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#readSymbolicLink--) method to read the symbolic link target.
 
 * Added new flags to inspect expansion during partial evaluation: `--engine.TraceMethodExpansion=truffleTier`, `--engine.TraceNodeExpansion=truffleTier`, `--engine.MethodExpansionStatistics=truffleTier` and `--engine.NodeExpansionStatistics=truffleTier`. Language implementations are encouraged to run with these flags enabled and investigate their output for unexpected results. See [Optimizing.md](https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md) for details.
+* Enabled by default the elastic allocation of Truffle compiler threads depending on the number of available processors, in both JVM and native modes. The old behavior, 1 or 2 compiler threads, can be explicitly enabled with `--engine.CompilerThreads=0`.
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.
