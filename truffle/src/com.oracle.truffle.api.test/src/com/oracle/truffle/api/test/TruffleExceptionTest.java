@@ -236,8 +236,23 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
                     }
                 }
                 if (truffleException != null && catchBlock != null) {
-                    returnValue = catchBlock.execute(frame);
-                    truffleException = null;
+                    try {
+                        returnValue = catchBlock.execute(frame);
+                        truffleException = null;
+                    } catch (ControlFlowException ex) {
+                        controlFlow = ex;
+                    } catch (Throwable ex) {
+                        if (interop.isException(ex)) {
+                            if (interop.isExceptionUnwind(ex)) {
+                                throw interop.throwException(ex);
+                            } else {
+                                truffleException = ex;
+                            }
+                        } else {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            throw ex;
+                        }
+                    }
                 }
                 if (finallyBlock != null) {
                     finallyBlock.execute(frame);

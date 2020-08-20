@@ -308,6 +308,7 @@ public class LanguageSPITest {
         }
 
         @ExportMessage
+        @SuppressWarnings("static-method")
         public ExceptionType getExceptionType() {
             return ExceptionType.SYNTAX_ERROR;
         }

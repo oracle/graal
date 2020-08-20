@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.test;
 
-import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static com.oracle.truffle.api.test.TruffleExceptionTest.createAST;
 import static com.oracle.truffle.api.test.TruffleExceptionTest.createContext;
 

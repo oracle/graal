@@ -1349,7 +1349,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
 
             @ExportMessage
-            public Class<? extends TruffleLanguage<?>> getLanguage() throws UnsupportedMessageException {
+            public Class<? extends TruffleLanguage<?>> getLanguage() {
                 return InstrumentationTestLanguage.class;
             }
 
@@ -1373,6 +1373,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
 
             @ExportMessage
+            @SuppressWarnings("unused")
             public Object toDisplayString(boolean allowSideEffects) {
                 return asString();
             }

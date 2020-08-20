@@ -57,6 +57,7 @@ final class DefaultStackTraceElementObject implements TruffleObject {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     boolean hasExecutableName() {
         return true;
     }
@@ -81,11 +82,13 @@ final class DefaultStackTraceElementObject implements TruffleObject {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     boolean hasDeclaringMetaObject() {
         return false;
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     Object getDeclaringMetaObject() throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }

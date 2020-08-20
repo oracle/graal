@@ -60,6 +60,7 @@ public class NFIUnsatisfiedLinkError extends AbstractTruffleException {
         this.location = location;
     }
 
+    @Override
     public Node getLocation() {
         return location;
     }
