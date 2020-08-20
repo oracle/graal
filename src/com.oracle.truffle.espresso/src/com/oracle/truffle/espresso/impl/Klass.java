@@ -28,6 +28,7 @@ import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -35,6 +36,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -43,6 +47,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -62,6 +67,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
+import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
@@ -138,7 +144,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @ExportMessage
     final Object invokeMember(String member,
                     Object[] arguments,
-                    @Cached LookupDeclaredMethod lookupMethod,
+                    @Exclusive @Cached LookupDeclaredMethod lookupMethod,
                     @Exclusive @Cached InvokeEspressoNode invoke)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method method = lookupMethod.execute(this, member, true, true, arguments.length);
@@ -176,6 +182,134 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             members.add(SUPER);
         }
         return new KeysArray(members.toArray(new String[members.size()]));
+    }
+
+    protected static boolean isObjectKlass(Klass receiver) {
+        return receiver instanceof ObjectKlass;
+    }
+
+    @ExportMessage
+    abstract static class IsInstantiable {
+        @SuppressWarnings("unused")
+        @Specialization(guards = "receiver.isPrimitive()")
+        static boolean doPrimitive(Klass receiver) {
+            return false;
+        }
+
+        @Specialization(guards = "isObjectKlass(receiver)")
+        static boolean doObject(Klass receiver) {
+            if (receiver.isAbstract()) {
+                return false;
+            }
+            /* Check that the class has a public constructor */
+            for (Method m : receiver.getDeclaredMethods()) {
+                if (m.isPublic() && !m.isStatic() && m.getName().equals(Name._init_)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Specialization(guards = "receiver.isArray()")
+        static boolean doArray(Klass receiver) {
+            return (receiver.getElementalType().isPrimitive() && receiver.getElementalType().getJavaKind() != JavaKind.Void) || receiver.getElementalType().isConcrete();
+        }
+    }
+
+    @ExportMessage
+    abstract static class Instantiate {
+        @SuppressWarnings("unused")
+        @Specialization(guards = "receiver.isPrimitive()")
+        static Object doPrimitive(Klass receiver, Object[] arguments) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        private static int convertLength(Object argument, ToEspressoNode toEspressoNode, Meta meta) throws UnsupportedTypeException {
+            int length = 0;
+            try {
+                length = (int) toEspressoNode.execute(argument, meta._int);
+            } catch (UnsupportedTypeException e) {
+                throw UnsupportedTypeException.create(new Object[]{argument}, "Expected a single int");
+            }
+            if (length < 0) {
+                throw UnsupportedTypeException.create(new Object[]{argument}, "Expected a non-negative length");
+            }
+            return length;
+        }
+
+        private static int getLength(Object[] arguments, ToEspressoNode toEspressoNode, Meta meta) throws UnsupportedTypeException, ArityException {
+            if (arguments.length != 1) {
+                throw ArityException.create(1, arguments.length);
+            }
+            return convertLength(arguments[0], toEspressoNode, meta);
+        }
+
+        protected static boolean isPrimitiveArray(Klass receiver) {
+            return receiver instanceof ArrayKlass && ((ArrayKlass) receiver).getComponentType().isPrimitive();
+        }
+
+        /* 1-dimensional reference (non-primitive) array */
+        protected static boolean isReferenceArray(Klass receiver) {
+            return receiver instanceof ArrayKlass && ((ArrayKlass) receiver).getComponentType() instanceof ObjectKlass;
+        }
+
+        protected static boolean isMultidimensionalArray(Klass receiver) {
+            return receiver instanceof ArrayKlass && ((ArrayKlass) receiver).getComponentType().isArray();
+        }
+
+        @Specialization(guards = "isPrimitiveArray(receiver)")
+        static StaticObject doPrimitiveArray(Klass receiver, Object[] arguments,
+                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) throws ArityException, UnsupportedTypeException {
+            ArrayKlass arrayKlass = (ArrayKlass) receiver;
+            assert arrayKlass.getComponentType().getJavaKind() != JavaKind.Void;
+            int length = getLength(arguments, toEspressoNode, context.getMeta());
+            return InterpreterToVM.allocatePrimitiveArray((byte) arrayKlass.getComponentType().getJavaKind().getBasicType(), length, context.getMeta());
+        }
+
+        @Specialization(guards = "isReferenceArray(receiver)")
+        static StaticObject doReferenceArray(Klass receiver, Object[] arguments,
+                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) throws UnsupportedTypeException, ArityException {
+            ArrayKlass arrayKlass = (ArrayKlass) receiver;
+            int length = getLength(arguments, toEspressoNode, context.getMeta());
+            return InterpreterToVM.newReferenceArray(arrayKlass.getComponentType(), length);
+        }
+
+        @Specialization(guards = "isMultidimensionalArray(receiver)")
+        static StaticObject doMultidimensionalArray(Klass receiver, Object[] arguments,
+                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) throws ArityException, UnsupportedTypeException {
+            ArrayKlass arrayKlass = (ArrayKlass) receiver;
+            assert arrayKlass.getElementalType().getJavaKind() != JavaKind.Void;
+            if (arrayKlass.getDimension() != arguments.length) {
+                throw ArityException.create(arrayKlass.getDimension(), arguments.length);
+            }
+            int[] dimensions = new int[arguments.length];
+            for (int i = 0; i < dimensions.length; ++i) {
+                dimensions[i] = convertLength(arguments[i], toEspressoNode, context.getMeta());
+            }
+
+            return context.getInterpreterToVM().newMultiArray(arrayKlass.getComponentType(), dimensions);
+        }
+
+        static final String INIT_NAME = Name._init_.toString();
+
+        @Specialization(guards = "isObjectKlass(receiver)")
+        static Object doObject(Klass receiver, Object[] arguments,
+                        @Exclusive @Cached LookupDeclaredMethod lookupMethod,
+                        @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+            ObjectKlass objectKlass = (ObjectKlass) receiver;
+            Method init = lookupMethod.execute(objectKlass, INIT_NAME, true, false, arguments.length);
+            if (init != null) {
+                assert !init.isStatic() && init.isPublic() && init.getName().toString().equals(INIT_NAME) && init.getParameterCount() == arguments.length;
+                StaticObject newObject = StaticObject.createNew(objectKlass);
+                invoke.execute(init, newObject, arguments);
+                return newObject;
+            }
+            // TODO(goltsova): throw ArityException whenever possible
+            throw UnsupportedMessageException.create();
+        }
     }
 
     // endregion Interop
