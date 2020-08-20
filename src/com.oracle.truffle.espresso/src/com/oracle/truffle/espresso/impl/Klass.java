@@ -39,7 +39,6 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -141,7 +140,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                     Object[] arguments,
                     @Cached LookupDeclaredMethod lookupMethod,
                     @Exclusive @Cached InvokeEspressoNode invoke)
-                    throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+                    throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method method = lookupMethod.execute(this, member, true, true, arguments.length);
         if (method != null) {
             assert method.isStatic() && method.isPublic() && member.equals(method.getName().toString()) && method.getParameterCount() == arguments.length;
@@ -1059,7 +1058,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     /**
      * Returns an identifier for the nest this klass is in. In practice, the nest is identified by
      * its nest host.
-     * 
+     *
      * @return The nest host of this klass.
      */
     public Klass nest() {

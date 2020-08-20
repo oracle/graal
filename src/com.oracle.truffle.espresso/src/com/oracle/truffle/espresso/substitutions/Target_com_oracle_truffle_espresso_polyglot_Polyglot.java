@@ -30,11 +30,11 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -71,22 +71,14 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             }
 
             InteropLibrary interopLibrary = InteropLibrary.getUncached();
-            checkHasAllFieldsOrThrow(value.rawForeignObject(), targetKlass, interopLibrary, meta);
+            try {
+                ToEspressoNode.checkHasAllFieldsOrThrow(value.rawForeignObject(), (ObjectKlass) targetKlass, interopLibrary, meta);
+            } catch (ClassCastException e) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Could not cast foreign object to " + targetKlass.getNameAsString() + ": " + e.getMessage());
+            }
             return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
         } else {
             return InterpreterToVM.checkCast(value, targetKlass);
-        }
-    }
-
-    private static void checkHasAllFieldsOrThrow(Object foreignObject, Klass klass, InteropLibrary interopLibrary, Meta meta) {
-        for (Field f : klass.getDeclaredFields()) {
-            if (!f.isStatic() && !interopLibrary.isMemberExisting(foreignObject, f.getNameAsString())) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                                "Field " + f.getNameAsString() + " not found");
-            }
-        }
-        if (klass.getSuperClass() != null) {
-            checkHasAllFieldsOrThrow(foreignObject, klass.getSuperKlass(), interopLibrary, meta);
         }
     }
 
