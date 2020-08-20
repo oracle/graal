@@ -1030,17 +1030,15 @@ public final class StaticObject implements TruffleObject {
     }
 
     private void setModule(Klass klass) {
-        if (klass instanceof ObjectKlass) {
-            StaticObject module = klass.module().module();
-            if (StaticObject.isNull(module)) {
-                if (klass.getRegistries().javaBaseDefined()) {
-                    setField(klass.getMeta().java_lang_Class_module, klass.getRegistries().getJavaBaseModule().module());
-                } else {
-                    klass.getRegistries().addToFixupList(klass);
-                }
+        StaticObject module = klass.module().module();
+        if (StaticObject.isNull(module)) {
+            if (klass.getRegistries().javaBaseDefined()) {
+                setField(klass.getMeta().java_lang_Class_module, klass.getRegistries().getJavaBaseModule().module());
             } else {
-                setField(klass.getMeta().java_lang_Class_module, module);
+                klass.getRegistries().addToFixupList(klass);
             }
+        } else {
+            setField(klass.getMeta().java_lang_Class_module, module);
         }
     }
 

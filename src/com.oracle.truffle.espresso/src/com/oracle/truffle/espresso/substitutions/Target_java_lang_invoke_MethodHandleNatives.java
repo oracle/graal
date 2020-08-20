@@ -253,6 +253,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             return memberName; // Already planted
         }
         StaticObject clazz = memberName.getField(meta.java_lang_invoke_MemberName_clazz);
+        if (StaticObject.isNull(clazz)) {
+            return StaticObject.NULL;
+        }
         Klass defKlass = clazz.getMirrorKlass();
 
         Field flagField = meta.java_lang_invoke_MemberName_flags;
@@ -260,10 +263,16 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         int refKind = getRefKind(flags);
 
         StaticObject name = memberName.getField(meta.java_lang_invoke_MemberName_name);
+        if (StaticObject.isNull(name)) {
+            return StaticObject.NULL;
+        }
         Symbol<Name> methodName;
         try {
-            methodName = meta.getEspressoLanguage().getNames().lookup(Meta.toHostString(name));
+            methodName = meta.getNames().lookup(Meta.toHostString(name));
         } catch (EspressoError e) {
+            methodName = null;
+        }
+        if (methodName == null) {
             profiler.profile(0);
             if ((flags & ALL_KINDS) == MN_IS_FIELD) {
                 throw Meta.throwException(meta.java_lang_NoSuchFieldException);
@@ -271,11 +280,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 throw Meta.throwException(meta.java_lang_NoSuchMethodException);
             }
         }
-        StaticObject type = (StaticObject) mnGetSignature.call(memberName);
 
-        if (defKlass == null) {
-            return StaticObject.NULL;
-        }
         PolySigIntrinsics mhMethodId = None;
         if (((flags & ALL_KINDS) == MN_IS_METHOD) &&
                         (defKlass.getType() == Type.java_lang_invoke_MethodHandle || defKlass.getType() == Type.java_lang_invoke_VarHandle)) {
@@ -291,6 +296,11 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         }
 
         Klass callerKlass = StaticObject.isNull(caller) ? meta.java_lang_Object : caller.getMirrorKlass();
+
+        StaticObject type = (StaticObject) mnGetSignature.call(memberName);
+        if (StaticObject.isNull(type)) {
+            return StaticObject.NULL;
+        }
         String desc = Meta.toHostString(type);
         switch (flags & ALL_KINDS) {
             case MN_IS_CONSTRUCTOR:

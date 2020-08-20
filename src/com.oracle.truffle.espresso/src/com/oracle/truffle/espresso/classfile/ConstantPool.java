@@ -82,32 +82,44 @@ public abstract class ConstantPool {
     public enum Tag {
         INVALID(0),
         UTF8(1),
-        INTEGER(3),
-        FLOAT(4),
-        LONG(5),
-        DOUBLE(6),
-        CLASS(7),
-        STRING(8),
+        INTEGER(3, true),
+        FLOAT(4, true),
+        LONG(5, true),
+        DOUBLE(6, true),
+        CLASS(7, true),
+        STRING(8, true),
         FIELD_REF(9),
         METHOD_REF(10),
         INTERFACE_METHOD_REF(11),
         NAME_AND_TYPE(12),
-        METHODHANDLE(15),
-        METHODTYPE(16),
-        DYNAMIC(17),
+        METHODHANDLE(15, true),
+        METHODTYPE(16, true),
+        DYNAMIC(17, true),
         INVOKEDYNAMIC(18),
         MODULE(19),
         PACKAGE(20);
 
         private final byte value;
+        private final boolean loadable;
 
         Tag(int value) {
             assert (byte) value == value;
             this.value = (byte) value;
+            this.loadable = false;
+        }
+
+        Tag(int value, boolean isLoadable) {
+            assert (byte) value == value;
+            this.value = (byte) value;
+            this.loadable = isLoadable;
         }
 
         public final int getValue() {
             return value;
+        }
+
+        public final boolean isLoadable() {
+            return loadable;
         }
 
         public static Tag fromValue(int value) {

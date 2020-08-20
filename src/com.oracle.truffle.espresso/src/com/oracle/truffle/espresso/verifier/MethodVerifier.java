@@ -348,6 +348,22 @@ public final class MethodVerifier implements ContextAccess {
         return thisKlass.getContext();
     }
 
+    private boolean earlierThan49() {
+        return majorVersion < ClassfileParser.JAVA_1_5_VERSION;
+    }
+
+    private boolean earlierThan51() {
+        return majorVersion < ClassfileParser.JAVA_7_VERSION;
+    }
+
+    private boolean version51OrEarlier() {
+        return majorVersion <= ClassfileParser.JAVA_7_VERSION;
+    }
+
+    private boolean version51OrLater() {
+        return majorVersion >= ClassfileParser.JAVA_7_VERSION;
+    }
+
     // TODO(garcia) intern Operands.
 
     // Define all operands that can appear on the stack / locals.
@@ -375,7 +391,7 @@ public final class MethodVerifier implements ContextAccess {
     static final Operand Null = new Operand(JavaKind.Object) {
         @Override
         boolean compliesWith(Operand other) {
-            return other == Invalid || other.isReference();
+            return other.isTopOperand() || other.isReference();
         }
 
         @Override
@@ -697,7 +713,7 @@ public final class MethodVerifier implements ContextAccess {
             int actualLocalOffset = 0;
             for (int i = 0; i < smf.getChopped(); i++) {
                 Operand op = newLocals[previous.lastLocal - actualLocalOffset];
-                if (op == Invalid && (previous.lastLocal - actualLocalOffset - 1 > 0)) {
+                if (op.isTopOperand() && (previous.lastLocal - actualLocalOffset - 1 > 0)) {
                     if (isType2(newLocals[previous.lastLocal - actualLocalOffset - 1])) {
                         actualLocalOffset++;
                     }
@@ -707,7 +723,7 @@ public final class MethodVerifier implements ContextAccess {
             }
             StackFrame res = new StackFrame(Operand.EMPTY_ARRAY, 0, 0, newLocals);
             res.lastLocal = previous.lastLocal - actualLocalOffset;
-            if (res.lastLocal > 0 && newLocals[res.lastLocal] == Invalid && res.lastLocal - 1 > 0 && isType2(newLocals[res.lastLocal - 1])) {
+            if (res.lastLocal > 0 && newLocals[res.lastLocal].isTopOperand() && res.lastLocal - 1 > 0 && isType2(newLocals[res.lastLocal - 1])) {
                 res.lastLocal = res.lastLocal - 1;
             }
             return res;
@@ -771,7 +787,7 @@ public final class MethodVerifier implements ContextAccess {
                 res.lastLocal = -1;
                 return res;
             }
-            if (locals[pos - 1] == Invalid && pos - 2 > 0 && isType2(locals[pos - 2])) {
+            if (locals[pos - 1].isTopOperand() && pos - 2 > 0 && isType2(locals[pos - 2])) {
                 res.lastLocal = pos - 2;
                 return res;
             }
@@ -1229,12 +1245,12 @@ public final class MethodVerifier implements ContextAccess {
             case CLASS:         return jlClass;
             case STRING:        return jlString;
             case METHODHANDLE:
-                if (majorVersion < ClassfileParser.JAVA_7_VERSION) {
+                if (earlierThan51()) {
                     throw new ClassFormatError("LDC for MethodHandleConstant in classfile version < 51");
                 }
                 return jliMethodHandle;
             case METHODTYPE:
-                if (majorVersion < ClassfileParser.JAVA_7_VERSION) {
+                if (earlierThan51()) {
                     throw new ClassFormatError("LDC for MethodType in classfile version < 51");
                 }
                 return jliMethodType;
@@ -1273,7 +1289,7 @@ public final class MethodVerifier implements ContextAccess {
         }
         // @formatter:off
         // Checkstyle: stop
-        
+
         // EXTREMELY dirty trick to handle WIDE. This is not supposed to be a loop ! (returns on
         // first iteration)
         // Executes a second time ONLY for wide instruction, with curOpcode being the opcode of the
@@ -1313,7 +1329,7 @@ public final class MethodVerifier implements ContextAccess {
                     if (isType2(op)) {
                         throw new VerifyError("Loading Long or Double with LDC or LDC_W, please use LDC2_W.");
                     }
-                    if ((majorVersion < 49) && !(op == Int || op == Float || op.getType() == jlString.getType())) {
+                    if (earlierThan49() && !(op == Int || op == Float || op.getType() == jlString.getType())) {
                         throw new VerifyError("Loading non Int, Float or String with LDC in classfile version < 49.0");
                     }
                     stack.push(op);
@@ -1350,7 +1366,7 @@ public final class MethodVerifier implements ContextAccess {
                 case FLOAD_1:
                 case FLOAD_2:
                 case FLOAD_3: locals.load(curOpcode - FLOAD_0, Float); stack.pushFloat(); break;
-                
+
                 case DLOAD_0:
                 case DLOAD_1:
                 case DLOAD_2:
@@ -1838,7 +1854,7 @@ public final class MethodVerifier implements ContextAccess {
         BytecodeLookupSwitch switchHelper = code.getBytecodeLookupSwitch();
         // Padding checks
         for (int j = bci + 1; j < switchHelper.getAlignedBci(bci); j++) {
-            if (code.readUByte(j) != 0) {
+            if (version51OrEarlier() && code.readUByte(j) != 0) {
                 throw new VerifyError("non-zero padding for LOOKUPSWITCH");
             }
         }
@@ -1868,7 +1884,7 @@ public final class MethodVerifier implements ContextAccess {
         BytecodeTableSwitch switchHelper = code.getBytecodeTableSwitch();
         // Padding checks
         for (int j = bci + 1; j < switchHelper.getAlignedBci(bci); j++) {
-            if (code.readUByte(j) != 0) {
+            if (version51OrEarlier() && code.readUByte(j) != 0) {
                 throw new VerifyError("non-zero padding for TABLESWITCH");
             }
         }
@@ -1885,7 +1901,7 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private void verifyJSR(int bci, OperandStack stack, Locals locals) {
-        if (majorVersion >= 51) {
+        if (version51OrLater()) {
             throw new VerifyError("JSR/RET bytecode in version >= 51");
         }
         if (stackFrames[bci] == null) {
@@ -1900,7 +1916,7 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private void verifyRET(int bci, OperandStack stack, Locals locals) {
-        if (majorVersion >= 51) {
+        if (version51OrLater()) {
             throw new VerifyError("JSR/RET bytecode in version >= 51");
         }
         int pos = 0;
@@ -2015,7 +2031,7 @@ public final class MethodVerifier implements ContextAccess {
         MethodRefConstant mrc = getMethodRefConstant(bci);
 
         // Checks versioning
-        if (majorVersion <= 51 && mrc.tag() == INTERFACE_METHOD_REF) {
+        if (version51OrEarlier() && mrc.tag() == INTERFACE_METHOD_REF) {
             throw new VerifyError("invokeStatic refers to an interface method with classfile version " + majorVersion);
         }
         Symbol<Name> calledMethodName = mrc.getName(pool);
@@ -2041,7 +2057,7 @@ public final class MethodVerifier implements ContextAccess {
         MethodRefConstant mrc = getMethodRefConstant(bci);
 
         // Checks versioning
-        if (majorVersion <= ClassfileParser.JAVA_7_VERSION && mrc.tag() == INTERFACE_METHOD_REF) {
+        if (version51OrEarlier() && mrc.tag() == INTERFACE_METHOD_REF) {
             throw new VerifyError("invokeSpecial refers to an interface method with classfile version " + majorVersion);
         }
         Symbol<Name> calledMethodName = mrc.getName(pool);
