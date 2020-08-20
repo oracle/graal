@@ -27,7 +27,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -43,7 +42,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public abstract class InvokeEspressoNode extends Node {
     static final int LIMIT = 4;
 
-    public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
+    public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
         Object result = executeMethod(method, receiver, arguments);
         /*
          * Unwrap foreign objects (invariant: foreign objects are always wrapped when coming in
@@ -67,7 +66,7 @@ public abstract class InvokeEspressoNode extends Node {
         return DirectCallNode.create(callTarget);
     }
 
-    abstract Object executeMethod(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedMessageException, UnsupportedTypeException;
+    abstract Object executeMethod(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException;
 
     @ExplodeLoop
     @Specialization(guards = "method == cachedMethod", limit = "LIMIT")
@@ -76,7 +75,7 @@ public abstract class InvokeEspressoNode extends Node {
                     @Cached("createToEspresso(method.getParameterCount())") ToEspressoNode[] toEspressoNodes,
                     @Cached(value = "createDirectCallNode(method.getCallTarget())") DirectCallNode directCallNode,
                     @Cached BranchProfile badArityProfile)
-                    throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
+                    throws ArityException, UnsupportedTypeException {
 
         EspressoError.guarantee(method.isStatic() && receiver == null, "Espresso interop only supports static methods");
 
@@ -100,7 +99,7 @@ public abstract class InvokeEspressoNode extends Node {
     Object doGeneric(Method method, Object receiver, Object[] arguments,
                     @Cached ToEspressoNode toEspressoNode,
                     @Cached IndirectCallNode indirectCallNode)
-                    throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
+                    throws ArityException, UnsupportedTypeException {
 
         EspressoError.guarantee(method.isStatic() && receiver == null, "Espresso interop only supports static methods");
 
