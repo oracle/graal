@@ -4235,7 +4235,7 @@ public class FlatNodeGenFactory {
 
         CodeTree useValue;
         if ((ElementUtils.isAssignable(type, types.Node) || ElementUtils.isAssignable(type, new ArrayCodeTypeMirror(types.Node))) &&
-                        (!cache.isAlwaysInitialized())) {
+                        (!cache.isAlwaysInitialized()) && cache.isAdopt()) {
             useValue = builder.create().startCall("super.insert").tree(value).end().build();
         } else {
             useValue = value;
