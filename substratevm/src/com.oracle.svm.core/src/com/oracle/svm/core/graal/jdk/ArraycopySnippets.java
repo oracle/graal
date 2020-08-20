@@ -101,7 +101,7 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
                 objectCopyBackward(fromArray, fromIndex, fromArray, toIndex, length, fromHub.getLayoutEncoding());
                 return;
-            } else if (fromHub == toHub || toHub.isAssignableFromHub(fromHub)) {
+            } else if (fromHub == toHub || DynamicHub.toClass(toHub).isAssignableFrom(DynamicHub.toClass(fromHub))) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
                 objectCopyForward(fromArray, fromIndex, toArray, toIndex, length, fromHub.getLayoutEncoding());
                 return;
