@@ -2275,12 +2275,14 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
+        // Notifications are only for Espresso objects
         if (instrumentation != null && (noForeignObjects.isValid() || receiver.isEspressoObject())) {
             instrumentation.notifyFieldModification(frame, index, field, receiver, value);
         }
     }
 
     public void notifyFieldAccess(VirtualFrame frame, int index, Field field, StaticObject receiver) {
+        // Notifications are only for Espresso objects
         if (instrumentation != null && (noForeignObjects.isValid() || receiver.isEspressoObject())) {
             instrumentation.notifyFieldAccess(frame, index, field, receiver);
         }
