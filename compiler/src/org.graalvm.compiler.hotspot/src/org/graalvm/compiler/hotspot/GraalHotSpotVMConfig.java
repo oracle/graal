@@ -29,8 +29,6 @@ import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
-
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -897,10 +895,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     private static final boolean JDK_8245443 = ((JDK == 11 && JDK_UPDATE >= 8) || JDK >= 15);
 
     // Checkstyle: stop
-    public final int VMINTRINSIC_FIRST_MH_SIG_POLY = getConstant("vmIntrinsics::FIRST_MH_SIG_POLY", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_2_b01) : false));
-    public final int VMINTRINSIC_LAST_MH_SIG_POLY = getConstant("vmIntrinsics::LAST_MH_SIG_POLY", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_2_b01) : false));
-    public final int VMINTRINSIC_INVOKE_GENERIC = getConstant("vmIntrinsics::_invokeGeneric", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_2_b01) : false));
-    public final int VMINTRINSIC_COMPILED_LAMBDA_FORM = getConstant("vmIntrinsics::_compiledLambdaForm", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_2_b01) : false));
+    public final int VMINTRINSIC_FIRST_MH_SIG_POLY = getConstant("vmIntrinsics::FIRST_MH_SIG_POLY", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK >= 16));
+    public final int VMINTRINSIC_LAST_MH_SIG_POLY = getConstant("vmIntrinsics::LAST_MH_SIG_POLY", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK >= 16));
+    public final int VMINTRINSIC_INVOKE_GENERIC = getConstant("vmIntrinsics::_invokeGeneric", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK >= 16));
+    public final int VMINTRINSIC_COMPILED_LAMBDA_FORM = getConstant("vmIntrinsics::_compiledLambdaForm", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK >= 16));
 
     public final boolean CPU_HAS_INTEL_JCC_ERRATUM = getFieldValue("VM_Version::_has_intel_jcc_erratum", Boolean.class, "bool",
                     true, "amd64".equals(osArch) && (JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK >= 15));
@@ -909,7 +907,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     private static void checkForMissingRequiredValue(HotSpotMarkId markId, boolean required) {
         if (!markId.isAvailable() && required) {
-            throw shouldNotReachHere("Unsupported Mark " + markId);
+            GraalHotSpotVMConfigAccess.reportError("Unsupported Mark " + markId);
         }
     }
 
@@ -925,29 +923,27 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
                 value = result.intValue();
             }
             markId.setValue(value);
-            if (!JVMCI_PRERELEASE) {
-                switch (markId) {
-                    case FRAME_COMPLETE:
-                        checkForMissingRequiredValue(markId, JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK_8245443);
-                        break;
-                    case DEOPT_MH_HANDLER_ENTRY:
-                        checkForMissingRequiredValue(markId, JVMCI ? jvmciGE(JVMCI_20_2_b01) : false);
-                        break;
-                    case NARROW_KLASS_BASE_ADDRESS:
-                    case CRC_TABLE_ADDRESS:
-                    case NARROW_OOP_BASE_ADDRESS:
-                    case LOG_OF_HEAP_REGION_GRAIN_BYTES:
-                        checkForMissingRequiredValue(markId, jdk13JvmciBackport);
-                        break;
-                    case VERIFY_OOPS:
-                    case VERIFY_OOP_BITS:
-                    case VERIFY_OOP_MASK:
-                    case VERIFY_OOP_COUNT_ADDRESS:
-                        checkForMissingRequiredValue(markId, verifyOopsMarkSupported);
-                        break;
-                    default:
-                        checkForMissingRequiredValue(markId, true);
-                }
+            switch (markId) {
+                case FRAME_COMPLETE:
+                    checkForMissingRequiredValue(markId, JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK_8245443);
+                    break;
+                case DEOPT_MH_HANDLER_ENTRY:
+                    checkForMissingRequiredValue(markId, JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK >= 16);
+                    break;
+                case NARROW_KLASS_BASE_ADDRESS:
+                case CRC_TABLE_ADDRESS:
+                case NARROW_OOP_BASE_ADDRESS:
+                case LOG_OF_HEAP_REGION_GRAIN_BYTES:
+                    checkForMissingRequiredValue(markId, jdk13JvmciBackport);
+                    break;
+                case VERIFY_OOPS:
+                case VERIFY_OOP_BITS:
+                case VERIFY_OOP_MASK:
+                case VERIFY_OOP_COUNT_ADDRESS:
+                    checkForMissingRequiredValue(markId, verifyOopsMarkSupported);
+                    break;
+                default:
+                    checkForMissingRequiredValue(markId, true);
             }
         }
     }

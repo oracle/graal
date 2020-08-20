@@ -136,7 +136,7 @@ public class GraalHotSpotVMConfigAccess {
     protected static final Version JVMCI_19_3_b07 = new Version3(19, 3, 7);
 
     public static boolean jvmciGE(Version v) {
-        return JVMCI_PRERELEASE || !JVMCI_VERSION.isLessThan(v);
+        return !JVMCI_VERSION.isLessThan(v);
     }
 
     public static final int JDK = JavaVersionUtil.JAVA_SPEC;
@@ -148,8 +148,8 @@ public class GraalHotSpotVMConfigAccess {
     static {
         String vmVersion = getProperty("java.vm.version");
         JVMCI_VERSION = Version.parse(vmVersion);
-        JVMCI_PRERELEASE = vmVersion.contains("SNAPSHOT") || vmVersion.contains("internal") || vmVersion.contains("-dev");
-        JVMCI = JVMCI_VERSION != null || JVMCI_PRERELEASE;
+        JVMCI_PRERELEASE = vmVersion.contains("SNAPSHOT") || vmVersion.contains("-dev");
+        JVMCI = JVMCI_VERSION != null;
     }
 
     private final List<String> missing = new ArrayList<>();
@@ -225,7 +225,18 @@ public class GraalHotSpotVMConfigAccess {
                 messages.add(String.format("VM config values not expected to be present in %s:%n    %s", runtime,
                                 unexpected.stream().sorted().collect(Collectors.joining(System.lineSeparator() + "    "))));
             }
-            throw new JVMCIError(String.join(System.lineSeparator(), messages));
+            reportError(String.join(System.lineSeparator(), messages));
+        }
+    }
+
+    static void reportError(String errorMessage) {
+        String value = System.getenv("JVMCI_CONFIG_CHECK");
+        if ("ignore".equals(value)) {
+            return;
+        } else if ("warn".equals(value) || JVMCI_PRERELEASE) {
+            System.err.println(errorMessage);
+        } else {
+            throw new JVMCIError(errorMessage);
         }
     }
 
