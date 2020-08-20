@@ -2341,7 +2341,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                             RootNode rootNode = rootCallTarget.getRootNode();
                             if (rootNode.isInternal()) {
                                 // skip internal root nodes
-                               return null;
+                                return null;
                             }
                             lastCallTarget[0] = rootCallTarget;
                             lastFrame[0] = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
