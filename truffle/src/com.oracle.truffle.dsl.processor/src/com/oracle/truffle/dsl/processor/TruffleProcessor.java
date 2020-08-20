@@ -41,7 +41,6 @@
 package com.oracle.truffle.dsl.processor;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -168,7 +167,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
 
     @Override
     public Set<String> getSupportedOptions() {
-        return new HashSet<>(Arrays.asList("truffle.dsl.GenerateSpecializationStatistics"));
+        return TruffleProcessorOptions.getSupportedOptions();
     }
 
     @Override

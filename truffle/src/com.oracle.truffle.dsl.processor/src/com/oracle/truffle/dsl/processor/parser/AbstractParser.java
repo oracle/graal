@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,12 +47,14 @@ import java.util.List;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.library.LibraryData;
@@ -67,6 +69,8 @@ public abstract class AbstractParser<M extends MessageContainer> {
     protected final ProcessorContext context;
     protected final ProcessingEnvironment processingEnv;
     protected final TruffleTypes types = ProcessorContext.getInstance().getTypes();
+    protected boolean generateSlowPathOnly;
+    protected final String generateSlowPathOnlyFilter;
 
     protected final Log log;
 
@@ -74,6 +78,30 @@ public abstract class AbstractParser<M extends MessageContainer> {
         this.context = ProcessorContext.getInstance();
         this.processingEnv = context.getEnvironment();
         this.log = context.getLog();
+        this.generateSlowPathOnly = TruffleProcessorOptions.generateSlowPathOnly(processingEnv);
+        this.generateSlowPathOnlyFilter = TruffleProcessorOptions.generateSlowPathOnlyFilter(processingEnv);
+    }
+
+    protected void setGenerateSlowPathOnly(boolean flag) {
+        this.generateSlowPathOnly = flag;
+    }
+
+    protected boolean isGenerateSlowPathOnly(NodeData node) {
+        return isGenerateSlowPathOnly(node.getTemplateType());
+    }
+
+    protected boolean isGenerateSlowPathOnly(TypeElement element) {
+        if (types.AlwaysSlowPath != null && ElementUtils.findAnnotationMirror(element, types.AlwaysSlowPath) != null) {
+            return true;
+        }
+        if (!generateSlowPathOnly) {
+            return false;
+        }
+        if (generateSlowPathOnlyFilter != null) {
+            String nodeQName = element.getQualifiedName().toString();
+            return nodeQName.startsWith(generateSlowPathOnlyFilter);
+        }
+        return true;
     }
 
     public final M parse(Element element, boolean emitErrors) {
