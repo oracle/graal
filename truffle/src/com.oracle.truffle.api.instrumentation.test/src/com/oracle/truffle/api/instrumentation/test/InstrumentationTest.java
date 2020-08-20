@@ -2337,7 +2337,13 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                     Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
                         @Override
                         public Void visitFrame(FrameInstance frameInstance) {
-                            lastCallTarget[0] = frameInstance.getCallTarget();
+                            RootCallTarget rootCallTarget = (RootCallTarget) frameInstance.getCallTarget();
+                            RootNode rootNode = rootCallTarget.getRootNode();
+                            if (rootNode.isInternal()) {
+                                // skip internal root nodes
+                               return null;
+                            }
+                            lastCallTarget[0] = rootCallTarget;
                             lastFrame[0] = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
                             return null;
                         }
