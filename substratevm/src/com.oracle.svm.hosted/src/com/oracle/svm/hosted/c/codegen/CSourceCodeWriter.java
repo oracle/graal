@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.c.codegen;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C11;
+import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C99;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -36,6 +37,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -78,6 +80,21 @@ public class CSourceCodeWriter {
         this.tempDirectory = tempDirectory;
         this.lines = new ArrayList<>();
         this.currentLine = new StringBuilder(100);
+    }
+
+    public void writeCStandardHeaders() {
+        if (NativeImageOptions.getCStandard().compatibleWith(C99)) {
+            if (!Platform.includedIn(Platform.WINDOWS.class)) {
+                /*
+                 * No stdbool.h in Windows SDK 7.1. If we add native-compiler version detection this
+                 * should only be omitted if cl.exe version is < 19.*.
+                 */
+                includeFiles(Collections.singletonList("<stdbool.h>"));
+            }
+        }
+        if (NativeImageOptions.getCStandard().compatibleWith(C11)) {
+            includeFiles(Collections.singletonList("<stdint.h>"));
+        }
     }
 
     public int currentLineNumber() {

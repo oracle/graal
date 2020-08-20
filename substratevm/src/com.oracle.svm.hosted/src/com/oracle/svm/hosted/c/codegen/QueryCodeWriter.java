@@ -25,20 +25,16 @@
 package com.oracle.svm.hosted.c.codegen;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C11;
-import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C99;
 import static com.oracle.svm.hosted.c.query.QueryResultFormat.DELIMINATOR;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.c.NativeImageHeaderPreamble;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumConstantInfo;
@@ -107,7 +103,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
         writer.includeFiles(Arrays.asList("<stdio.h>", "<stddef.h>", "<memory.h>"));
 
-        writeCStandardHeaders(writer);
+        writer.writeCStandardHeaders();
 
         /* Write general macro definitions. */
         writer.appendln();
@@ -128,21 +124,6 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.indents().appendln("return " + functionName + "();");
         writer.outdent();
         writer.appendln("}");
-    }
-
-    public static void writeCStandardHeaders(CSourceCodeWriter writer) {
-        if (NativeImageOptions.getCStandard().compatibleWith(C99)) {
-            if (!Platform.includedIn(Platform.WINDOWS.class)) {
-                /*
-                 * No stdbool.h in Windows SDK 7.1. If we add native-compiler version detection this
-                 * should only be omitted if cl.exe version is < 19.*.
-                 */
-                writer.includeFiles(Collections.singletonList("<stdbool.h>"));
-            }
-        }
-        if (NativeImageOptions.getCStandard().compatibleWith(C11)) {
-            writer.includeFiles(Collections.singletonList("<stdint.h>"));
-        }
     }
 
     @Override
