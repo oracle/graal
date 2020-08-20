@@ -304,10 +304,10 @@ public final class LLVMContext {
         }
         try {
             /*
-             * During context initialization the default internal libraries are parsed in reverse
-             * dependency order, but not initialised. (For C: libsulong / For C++: libsulong,
-             * libsulong++) The truffle cache in parse internal will catch future parsing of the
-             * default internal.
+             * The default internal libraries are parsed in reverse dependency order, but not
+             * initialised. (For C: libsulong / For C++: libsulong, libsulong++) The truffle cache
+             * and the llvm language cache will return the call target of future parsing of these
+             * libraries.
              */
             String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
             for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {

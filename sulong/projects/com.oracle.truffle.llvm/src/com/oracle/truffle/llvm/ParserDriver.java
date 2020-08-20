@@ -170,7 +170,7 @@ final class ParserDriver {
             }
 
             // renaming is attempted only for internal libraries.
-            resolveRenamedSymbols(result, language);
+            resolveRenamedSymbols(result, language, context);
         }
 
         addExternalSymbolsToScopes(result);
@@ -217,7 +217,7 @@ final class ParserDriver {
     static final String SULONG_RENAME_MARKER = "___sulong_import_";
     static final int SULONG_RENAME_MARKER_LEN = SULONG_RENAME_MARKER.length();
 
-    protected static void resolveRenamedSymbols(LLVMParserResult parserResult, LLVMLanguage language) {
+    protected static void resolveRenamedSymbols(LLVMParserResult parserResult, LLVMLanguage language, LLVMContext context) {
         ListIterator<FunctionSymbol> it = parserResult.getExternalFunctions().listIterator();
         while (it.hasNext()) {
             FunctionSymbol external = it.next();
@@ -239,6 +239,22 @@ final class ParserDriver {
                     lib = name.substring(SULONG_RENAME_MARKER_LEN, idx);
                     scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                     if (scope == null) {
+                        try {
+                            /*
+                             * If the library that contains the function is not in the language, and
+                             * therefore has not been parsed, then we will try to lazily parse the
+                             * library now.
+                             */
+                            String libName = lib + "." + language.getCapability(PlatformCapability.class).getLibrarySuffix();
+                            ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>");
+                            TruffleFile file = library.hasFile() ? library.getFile() : context.getEnv().getInternalTruffleFile(library.getPath().toUri());
+                            context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
+                            scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
+                        } catch (Exception e) {
+                            throw new IllegalStateException(e);
+                        }
+                    }
+                    if (scope == null) {
                         // The default internal libraries should be loaded when the context is
                         // initialised.
                         throw new LLVMLinkerException(String.format("The symbol %s could not be imported because library %s was not found during symbol renaming", external.getName(), lib));
@@ -250,6 +266,22 @@ final class ParserDriver {
                 ArrayList<String> namespaces = CXXDemangler.decodeNamespace(name);
                 lib = CXXDemangler.getAndRemoveLibraryName(namespaces);
                 scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
+                if (scope == null) {
+                    try {
+                        /*
+                         * If the library that contains the function is not in the language, and
+                         * therefore has not been parsed, then we will try to lazily parse the
+                         * library now.
+                         */
+                        String libName = lib + "." + language.getCapability(PlatformCapability.class).getLibrarySuffix();
+                        ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>");
+                        TruffleFile file = library.hasFile() ? library.getFile() : context.getEnv().getInternalTruffleFile(library.getPath().toUri());
+                        context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
+                        scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
+                    } catch (Exception e) {
+                        throw new IllegalStateException(e);
+                    }
+                }
                 if (scope == null) {
                     // The default internal libraries should be loaded when the context is
                     // initialised.
