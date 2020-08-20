@@ -58,8 +58,6 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     private final List<Object> elementForLineNumber;
 
-    private final boolean isWindows;
-
     private final String formatSInt64;
     private final String formatUInt64;
     private final String formatUInt64Hex;
@@ -70,7 +68,8 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     public QueryCodeWriter(Path tempDirectory) {
         writer = new CSourceCodeWriter(tempDirectory);
         elementForLineNumber = new ArrayList<>();
-        isWindows = Platform.includedIn(Platform.WINDOWS.class);
+
+        boolean isWindows = Platform.includedIn(Platform.WINDOWS.class);
 
         String formatL64 = "%" + (isWindows ? "ll" : "l");
         formatSInt64 = formatL64 + "d";
@@ -89,7 +88,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     public Path write(NativeCodeInfo nativeCodeInfo) {
         nativeCodeInfo.accept(this);
 
-        String srcFileExtension = isWindows ? CSourceCodeWriter.CXX_SOURCE_FILE_EXTENSION : CSourceCodeWriter.C_SOURCE_FILE_EXTENSION;
+        String srcFileExtension = CSourceCodeWriter.C_SOURCE_FILE_EXTENSION;
         String sourceFileName = nativeCodeInfo.getName().replaceAll("\\W", "_").concat(srcFileExtension);
         return writer.writeFile(sourceFileName);
     }
