@@ -80,6 +80,10 @@ abstract class HostToGuestRootNode extends RootNode {
         return true;
     }
 
+    protected boolean needsExceptionWrapping() {
+        return true;
+    }
+
     @Override
     public final Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
@@ -115,8 +119,12 @@ abstract class HostToGuestRootNode extends RootNode {
                 }
             }
         } catch (Throwable e) {
-            error.enter();
-            throw PolyglotImpl.guestToHostException((languageContext), e);
+            if (needsExceptionWrapping()) {
+                error.enter();
+                throw PolyglotImpl.guestToHostException((languageContext), e);
+            }
+            // no wrapping, just throw
+            throw e;
         }
     }
 
