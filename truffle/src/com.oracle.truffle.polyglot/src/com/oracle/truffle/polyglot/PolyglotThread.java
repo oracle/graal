@@ -114,6 +114,11 @@ final class PolyglotThread extends Thread {
         }
 
         @Override
+        public boolean isInternal() {
+            return true;
+        }
+
+        @Override
         @TruffleBoundary
         protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
             PolyglotThread thread = (PolyglotThread) receiver;
