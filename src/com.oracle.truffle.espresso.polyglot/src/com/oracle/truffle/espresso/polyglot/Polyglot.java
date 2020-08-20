@@ -74,8 +74,9 @@ public final class Polyglot {
      *
      * @throws ClassCastException
      *             <ul>
-     *             <li>if {@code value} is a foreign object and {@code targetClass} is an abstract
-     *             class
+     *             <li>if {@code value} is a foreign object, {@code targetClass} is an abstract
+     *             class and {@code value} was not previously cast to a concrete descendant of
+     *             {@code targetClass}
      *             <li>if {@code value} is a foreign object, {@code targetClass} is a primitive type
      *             but {@code value} does not represent an object of this primitive type
      *             <li>if {@code value} is a foreign object, {@code targetClass} is a class and a
