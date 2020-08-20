@@ -360,4 +360,21 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         callsInner1.call(noArguments);
         callsInner2.call(noArguments);
     }
+
+    @NodeChild
+    @ReportPolymorphism.Exclude
+    abstract static class HasInlineCacheNodeAndMegamorpic extends SplittingTestNode {
+
+        @Specialization(limit = "2", //
+                guards = "target.getRootNode() == cachedNode")
+        protected static Object doDirect(RootCallTarget target, @Cached("target.getRootNode()") @SuppressWarnings("unused") RootNode cachedNode) {
+            return target.call(noArguments);
+        }
+
+        @ReportPolymorphism.Megamorphic
+        @Specialization(replaces = "doDirect")
+        protected static Object doIndirect(RootCallTarget target) {
+            return target.call(noArguments);
+        }
+    }
 }

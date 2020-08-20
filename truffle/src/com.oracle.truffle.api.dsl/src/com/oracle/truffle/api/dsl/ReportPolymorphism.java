@@ -83,4 +83,8 @@ public @interface ReportPolymorphism {
     @interface Exclude {
 
     }
+
+    @interface Megamorphic {
+
+    }
 }
