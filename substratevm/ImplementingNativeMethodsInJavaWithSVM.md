@@ -115,7 +115,7 @@ then computed three times inside of the isolate.
 
 ## Calling JVM from Native Java
 
-There is a detailed [tutorial on the C interface](src/com.oracle.svm.tutorial/src/com/oracle/svm/tutorial/CInterfaceTutorial.java) of Substrate VM. The following example shows how to make a callback to JVM.
+There is a detailed [tutorial on the C interface](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.tutorial/src/com/oracle/svm/tutorial/CInterfaceTutorial.java) of Substrate VM. The following example shows how to make a callback to JVM.
 
 In the classical setup, when C needs to call into JVM, it uses [jni.h](JNI.md)
 header file. The file defines essential JVM structures (like `JNIEnv`) as well as

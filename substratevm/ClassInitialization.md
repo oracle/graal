@@ -20,7 +20,7 @@ Interfaces without default methods, however, are not initialized. To describe th
 
 To have the out-of-the-box experience of Native Image and still get the benefits of build-time initailization, Native Image does three things:
 
-* [Build-Time Initialization of the Native Image Runtime](#build-time-initialization-of-the-native-image-runtime)
+* [Build-time Initialization of Native Image Runtime](#build-time-initialization-of-native-image-runtime)
 * [Automatic Initialization of Safe Classes](#automatic-initialization-of-safe-classes)
 * [Explicitly Specifying Class Initialization](#explicitly-specifying-class-initialization)
 
@@ -49,7 +49,7 @@ This restriction is there to avoid the explosion of search space for the safety 
 * If it is substituted by Native Image. Running initializers of substituted methods would yield different results in the hosting VM than in the produced image.
 As a result, the safety analysis would consider some methods safe but their execution would lead to illegal states.
 
-A test that shows examples of classes that are proven safe can be found [here](src/com.oracle.svm.test/src/com/oracle/svm/test/TestClassInitializationMustBeSafe.java).
+A test that shows examples of classes that are proven safe can be found [here](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.test/src/com/oracle/svm/test/TestClassInitializationMustBeSafe.java).
 The list of all classes that are proven safe is displayed in a file when `-H:+PrintClassInitialization` is set on the command line.
 
 
