@@ -132,6 +132,22 @@ public class ArrayCompareToNode extends FixedWithNextNode implements LIRLowerabl
         return kind2;
     }
 
+    public ValueNode getArray1() {
+        return array1;
+    }
+
+    public ValueNode getArray2() {
+        return array2;
+    }
+
+    public ValueNode getLength1() {
+        return length1;
+    }
+
+    public ValueNode getLength2() {
+        return length2;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         if (UseGraalStubs.getValue(graph().getOptions())) {

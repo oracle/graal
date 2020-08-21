@@ -93,6 +93,14 @@ public class ArrayRegionEqualsNode extends FixedWithNextNode implements LIRLower
     @NodeIntrinsic
     public static native boolean regionEquals(Pointer array1, Pointer array2, int length, @ConstantNodeParameter JavaKind kind1, @ConstantNodeParameter JavaKind kind2);
 
+    public ValueNode getArray1() {
+        return array1;
+    }
+
+    public ValueNode getArray2() {
+        return array2;
+    }
+
     public JavaKind getKind1() {
         return kind1;
     }
