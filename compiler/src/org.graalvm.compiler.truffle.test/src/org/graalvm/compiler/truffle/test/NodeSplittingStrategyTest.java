@@ -468,7 +468,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
     @Test
     public void testPolymorphicInPolyAndMegamorpic() {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                new SplittingTestRootNode(NodeSplittingStrategyTestFactory.PolymorphicAndMegamorpicNodeGen.create(new ReturnsFirstArgumentNode())));
+                        new SplittingTestRootNode(NodeSplittingStrategyTestFactory.PolymorphicAndMegamorpicNodeGen.create(new ReturnsFirstArgumentNode())));
         // activates the first spec 2 times than the last (megamorphic)
         int[] args = {1, 2, 3, 4};
         final DirectCallNode callNode1 = runtime.createDirectCallNode(callTarget);
@@ -493,7 +493,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
     @Test
     public void testMegamorphicInPolyAndMegamorpic() {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                new SplittingTestRootNode(NodeSplittingStrategyTestFactory.PolymorphicAndMegamorpicNodeGen.create(new ReturnsFirstArgumentNode())));
+                        new SplittingTestRootNode(NodeSplittingStrategyTestFactory.PolymorphicAndMegamorpicNodeGen.create(new ReturnsFirstArgumentNode())));
         // activates the first spec 2 times than the last (megamorphic)
         int[] args = {1, 0, 3, 4};
         final DirectCallNode callNode1 = runtime.createDirectCallNode(callTarget);
