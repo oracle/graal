@@ -622,6 +622,15 @@ public final class VM extends NativeEnv implements ContextAccess {
     // endregion JNI Invocation Interface
 
     public static class StackElement {
+        /**
+         * @see StackTraceElement#isNativeMethod()
+         */
+        public static int NATIVE_BCI = -2;
+        /**
+         * @see StackTraceElement#toString()
+         */
+        public static int UNKNOWN_BCI = -1;
+
         private final Method m;
         private final int bci;
 

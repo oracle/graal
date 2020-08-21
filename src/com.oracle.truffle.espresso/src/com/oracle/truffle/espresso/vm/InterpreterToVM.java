@@ -23,6 +23,9 @@
 
 package com.oracle.truffle.espresso.vm;
 
+import static com.oracle.truffle.espresso.vm.VM.StackElement.NATIVE_BCI;
+import static com.oracle.truffle.espresso.vm.VM.StackElement.UNKNOWN_BCI;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.IntFunction;
@@ -559,14 +562,14 @@ public final class InterpreterToVM implements ContextAccess {
                 if (rootNode instanceof EspressoRootNode) {
                     m = ((EspressoRootNode) rootNode).getMethod();
                     if (c.checkFillIn(m) || c.checkThrowableInit(m)) {
-                        bci = -1;
+                        bci = UNKNOWN_BCI;
                         continue;
                     }
                     if (m.isNative()) {
-                        bci = -2;
+                        bci = NATIVE_BCI;
                     }
                     frames.add(new VM.StackElement(m, bci));
-                    bci = -1;
+                    bci = UNKNOWN_BCI;
                 }
             }
         }
