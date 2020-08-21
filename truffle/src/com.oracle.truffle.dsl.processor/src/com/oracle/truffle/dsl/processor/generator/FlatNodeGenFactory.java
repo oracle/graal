@@ -516,7 +516,7 @@ public class FlatNodeGenFactory {
 
         clazz.addOptional(createExecuteAndSpecialize());
         final ReportPolymorphismAction reportPolymorphismAction = reportPolymorphismAction(node, reachableSpecializations);
-        if (!reportPolymorphismAction.isNone()) {
+        if (reportPolymorphismAction.required()) {
             clazz.addOptional(createCheckForPolymorphicSpecialize(reportPolymorphismAction));
             if (requiresCacheCheck(reportPolymorphismAction)) {
                 clazz.addOptional(createCountCaches());
@@ -655,8 +655,8 @@ public class FlatNodeGenFactory {
             this.megamorphism = megamorphism;
         }
 
-        public boolean isNone() {
-            return !polymorphism && !megamorphism;
+        public boolean required() {
+            return polymorphism || megamorphism;
         }
     }
 
@@ -1594,10 +1594,10 @@ public class FlatNodeGenFactory {
             builder.tree(exclude.createLoad(frameState));
         }
         ReportPolymorphismAction reportPolymorphismAction = reportPolymorphismAction(node, reachableSpecializations);
-        if (!reportPolymorphismAction.isNone()) {
+        if (reportPolymorphismAction.required()) {
             generateSaveOldPolymorphismState(builder, frameState, reportPolymorphismAction);
         }
-        if (needsSpecializeLocking || !reportPolymorphismAction.isNone()) {
+        if (needsSpecializeLocking || reportPolymorphismAction.required()) {
             builder.startTryBlock();
         }
 
@@ -1611,9 +1611,9 @@ public class FlatNodeGenFactory {
             builder.tree(createThrowUnsupported(builder, originalFrameState));
         }
 
-        if (needsSpecializeLocking || !reportPolymorphismAction.isNone()) {
+        if (needsSpecializeLocking || reportPolymorphismAction.required()) {
             builder.end().startFinallyBlock();
-            if (!reportPolymorphismAction.isNone()) {
+            if (reportPolymorphismAction.required()) {
                 generateCheckNewPolymorphismState(builder, reportPolymorphismAction);
             }
             if (needsSpecializeLocking) {
