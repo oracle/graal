@@ -386,7 +386,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         testMegamorphicHelper(callTarget, args);
     }
 
-    private void testMegamorphicHelper(CallTarget callTarget, int[] args) {
+    private static void testMegamorphicHelper(CallTarget callTarget, int[] args) {
         final DirectCallNode callNode1 = runtime.createDirectCallNode(callTarget);
         final DirectCallNode callNode2 = runtime.createDirectCallNode(callTarget);
         // Goes monomorphic
@@ -422,7 +422,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = "doCached", guards = "val == 3")
         protected static Object doSpecific(int val) {
-            return 6;
+            return val + val;
         }
 
         @ReportPolymorphism.Megamorphic
