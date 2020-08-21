@@ -89,7 +89,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         nativeCodeInfo.accept(this);
 
         String srcFileExtension = CSourceCodeWriter.C_SOURCE_FILE_EXTENSION;
-        String sourceFileName = nativeCodeInfo.getName().replaceAll("\\W", "_").concat(srcFileExtension);
+        String sourceFileName = nativeCodeInfo.getName().replaceAll("\\W", "_") + srcFileExtension;
         return writer.writeFile(sourceFileName);
     }
 

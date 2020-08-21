@@ -241,7 +241,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             throw UserError.abort("Cannot determine header file name for directory %s", outDir);
         } else {
             String fileName = fileNamePath.resolve(header.name() + dynamicSuffix).toString();
-            writer.writeFile(fileName, false);
+            writer.writeFile(fileName);
         }
     }
 

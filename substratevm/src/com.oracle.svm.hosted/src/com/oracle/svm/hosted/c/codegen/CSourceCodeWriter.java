@@ -174,20 +174,9 @@ public class CSourceCodeWriter {
     }
 
     public Path writeFile(String fileName) {
-        return writeFile(fileName, true);
-    }
-
-    public Path writeFile(String fileName, boolean ensureCorrectExtension) {
         assert currentLine.length() == 0 : "last line not finished";
 
-        String fixedFileName = fileName;
-        String srcFileExtension = Platform.includedIn(Platform.WINDOWS.class) ? CXX_SOURCE_FILE_EXTENSION : C_SOURCE_FILE_EXTENSION;
-        if (!fileName.endsWith(srcFileExtension) && ensureCorrectExtension) {
-            fixedFileName = fileName.concat(srcFileExtension);
-        }
-
-        Path outputFile = tempDirectory.resolve(fixedFileName);
-
+        Path outputFile = tempDirectory.resolve(fileName);
         try (BufferedWriter writer = Files.newBufferedWriter(outputFile, Charset.forName("UTF-8"))) {
             for (String line : lines) {
                 writer.write(line);
