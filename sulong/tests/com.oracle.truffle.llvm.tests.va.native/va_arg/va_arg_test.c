@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,23 +27,38 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
+#include <stdio.h>
+#include <stdarg.h>
 
-class X86_64BitVarArgs {
+// Dummy functions whose call sites are manually replaced by va_arg invocations in the LL code
+double va_argDouble(va_list args);
+int va_argInt(va_list args);
 
-    // see https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
+double testVaArgDouble(int count, ...) {
+    double sum = 0;
+    va_list args;
+    va_start(args, count);
+    for (int i = 0; i < count; ++i) {
+        double num = va_argDouble(args);
+        sum += num;
+    }
+    va_end(args);
+    return sum;
+}
 
-    public static final int GP_OFFSET = 0;
-    public static final int FP_OFFSET = 4;
-    public static final int OVERFLOW_ARG_AREA = 8;
-    public static final int REG_SAVE_AREA = 16;
+int testVaArgInt(int count, ...) {
+    int sum = 0;
+    va_list args;
+    va_start(args, count);
+    for (int i = 0; i < count; ++i) {
+        double num = va_argInt(args);
+        sum += num;
+    }
+    va_end(args);
+    return sum;
+}
 
-    public static final int GP_LIMIT = 48;
-    public static final int GP_STEP = 8;
-    public static final int FP_LIMIT = 176;
-    public static final int FP_STEP = 16;
-    public static final int STACK_STEP = 8;
-
-    public static final int GP_REG_COUNT = GP_LIMIT / GP_STEP;
-
+int main(void) {
+    printf("Test int va_arg    : %d\n", testVaArgInt(8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
+    printf("Test double va_arg : %f\n", testVaArgDouble(8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
 }

@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.UnaryOperation;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -167,9 +168,10 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZe
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI32NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI64NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI8NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEndNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VAStartNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVACopyNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEndNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStartNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ComparisonNodeFactory.LLVMX86_CmpssNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionDoubleToIntNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionFloatToIntNodeGen;
@@ -345,9 +347,13 @@ public class BasicNodeFactory implements NodeFactory {
     protected final LLVMContext context;
     protected DataLayout dataLayout;
 
+    protected final Type vaListType;
+
     public BasicNodeFactory(LLVMContext context, DataLayout dataLayout) {
         this.context = context;
         this.dataLayout = dataLayout;
+
+        this.vaListType = this.context.getLanguage().getActiveConfiguration().getCapability(PlatformCapability.class).getVAListType();
     }
 
     @Override
@@ -950,8 +956,25 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
+    protected boolean isVAListType(Type type) {
+        // If type == vaListType, it is an indication that createAlloca is called from the toNative
+        // message implementation to obtain the stack allocation node. The condition type !=
+        // vaListType prevents from obtaining another managed va_list factory node. See
+        // LLVMX86_64VaListStorage.
+        return type != null && vaListType.equals(type) && type != vaListType;
+    }
+
     @Override
     public LLVMExpressionNode createAlloca(Type type, int alignment) {
+        if (isVAListType(type)) {
+            // Create a factory node for a managed va_list instead of the stack allocation node.
+            return LLVMVAListNodeGen.create();
+        } else {
+            return createAllocaNative(type, alignment);
+        }
+    }
+
+    protected LLVMExpressionNode createAllocaNative(Type type, int alignment) {
         try {
             long byteSize = getByteSize(type);
             LLVMGetStackForConstInstruction alloc = LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
@@ -1413,11 +1436,11 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.frameaddress":
                     return LLVMFrameAddressNodeGen.create(args[1]);
                 case "llvm.va_start":
-                    return LLVMX86_64VAStartNodeGen.create(callerArgumentCount, createVarargsAreaStackAllocation(), createMemMove(), args[1]);
+                    return LLVMVAStartNodeGen.create(callerArgumentCount, args[1]);
                 case "llvm.va_end":
-                    return LLVMX86_64BitVAEndNodeGen.create(args[1]);
+                    return LLVMVAEndNodeGen.create(args[1]);
                 case "llvm.va_copy":
-                    return LLVMX86_64BitVACopyNodeGen.create(args[1], args[2], callerArgumentCount);
+                    return LLVMVACopyNodeGen.create(args[1], args[2], callerArgumentCount);
                 case "llvm.eh.sjlj.longjmp":
                 case "llvm.eh.sjlj.setjmp":
                     return LLVMUnsupportedInstructionNode.createExpression(UnsupportedReason.SET_JMP_LONG_JMP);

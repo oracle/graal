@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,23 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
+#ifndef VAHANDLER_H
+#define VAHANDLER_H
 
-class X86_64BitVarArgs {
+#include <stdarg.h>
 
-    // see https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
+typedef double (*vahandler)(int, va_list *);
 
-    public static final int GP_OFFSET = 0;
-    public static final int FP_OFFSET = 4;
-    public static final int OVERFLOW_ARG_AREA = 8;
-    public static final int REG_SAVE_AREA = 16;
+struct A {
+    int x;
+    double y;
+};
 
-    public static final int GP_LIMIT = 48;
-    public static final int GP_STEP = 8;
-    public static final int FP_LIMIT = 176;
-    public static final int FP_STEP = 16;
-    public static final int STACK_STEP = 8;
+double sumDoublesNative(int count, va_list *args);
 
-    public static final int GP_REG_COUNT = GP_LIMIT / GP_STEP;
+double testVariousTypesNative(int count, va_list *args);
 
-}
+#endif // VAHANDLER_H

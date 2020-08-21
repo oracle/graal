@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
+import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
-public abstract class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
+/**
+ * The node handling the <code>va_arg</code> instruction. N.B. This instruction is rarely emitted.
+ */
+@NodeChild
+public abstract class LLVMVAArg extends LLVMExpressionNode {
 
-    @Child private LLVMExpressionNode target;
+    private final Type type;
 
-    public LLVMX86_64BitVAEnd(LLVMExpressionNode target) {
-        this.target = target;
+    public LLVMVAArg(Type type) {
+        this.type = type;
     }
 
-    @Specialization
-    Object doGeneric() {
-        // nop
-        return null;
+    @Specialization(limit = "1")
+    protected Object vaArg(LLVMManagedPointer targetAddress, @CachedLibrary("targetAddress.getObject()") LLVMVaListLibrary vaListLibrary) {
+        return vaListLibrary.shift(targetAddress.getObject(), type);
     }
 }

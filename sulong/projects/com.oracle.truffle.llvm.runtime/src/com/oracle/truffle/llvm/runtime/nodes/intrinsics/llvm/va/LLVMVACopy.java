@@ -27,23 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
-class X86_64BitVarArgs {
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
-    // see https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
+/**
+ * The node handling the <code>va_copy</code> instruction. It just delegates to
+ * {@link LLVMVaListLibrary}.
+ */
+@NodeChild(type = LLVMExpressionNode.class)
+@NodeChild(type = LLVMExpressionNode.class)
+@NodeField(type = int.class, name = "numberExplicitArguments")
+public abstract class LLVMVACopy extends LLVMBuiltin {
 
-    public static final int GP_OFFSET = 0;
-    public static final int FP_OFFSET = 4;
-    public static final int OVERFLOW_ARG_AREA = 8;
-    public static final int REG_SAVE_AREA = 16;
+    public LLVMVACopy() {
+    }
 
-    public static final int GP_LIMIT = 48;
-    public static final int GP_STEP = 8;
-    public static final int FP_LIMIT = 176;
-    public static final int FP_STEP = 16;
-    public static final int STACK_STEP = 8;
+    public abstract int getNumberExplicitArguments();
 
-    public static final int GP_REG_COUNT = GP_LIMIT / GP_STEP;
-
+    @Specialization(limit = "1")
+    protected Object doVoid(LLVMManagedPointer dest, LLVMManagedPointer source,
+                    @CachedLibrary("source.getObject()") LLVMVaListLibrary vaListLibrary) {
+        vaListLibrary.copy(source.getObject(), dest.getObject(), getNumberExplicitArguments());
+        return null;
+    }
 }

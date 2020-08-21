@@ -71,6 +71,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchInstructi
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.VaArgInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInstruction;
@@ -366,12 +367,15 @@ public final class Function implements ParserListener {
                 createFence(buffer);
                 break;
 
+            case INSTRUCTION_VAARG:
+                createVaArg(buffer);
+                break;
+
             default:
                 // differentiate between unknown and unsupported instructions
                 switch (opCode) {
                     case INSTRUCTION_SELECT:
                     case INSTRUCTION_CMP:
-                    case INSTRUCTION_VAARG:
                     case INSTRUCTION_STOREATOMIC_OLD:
                     case INSTRUCTION_CLEANUPRET:
                     case INSTRUCTION_CATCHRET:
@@ -718,6 +722,13 @@ public final class Function implements ParserListener {
         long synchronizationScope = buffer.read();
 
         emit(FenceInstruction.generate(atomicOrdering, synchronizationScope));
+    }
+
+    private void createVaArg(RecordBuffer buffer) {
+        readType(buffer);
+        int source = readIndex(buffer);
+        Type type = readType(buffer);
+        emit(VaArgInstruction.fromSymbols(scope.getSymbols(), type, source));
     }
 
     private void createBinaryOperation(RecordBuffer buffer) {

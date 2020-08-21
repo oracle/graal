@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2020, Oracle and/or its affiliates.
- * Copyright (c) 2020, Arm Limited.
  *
  * All rights reserved.
  *
@@ -28,49 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.factories;
+package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.aarch64.LinuxAArch64Syscall;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<LinuxAArch64Syscall> {
+public final class VaArgInstruction extends ValueInstruction {
 
-    LinuxAArch64PlatformCapability(boolean loadCxxLibraries) {
-        super(LinuxAArch64Syscall.class, loadCxxLibraries);
+    private SymbolImpl source;
+
+    private VaArgInstruction(Type type) {
+        super(type);
+    }
+
+    public static VaArgInstruction fromSymbols(SymbolTable symbols, Type type, int source) {
+        VaArgInstruction inst = new VaArgInstruction(type);
+        inst.source = symbols.getForwardReferenced(source, inst);
+        return inst;
+    }
+
+    public SymbolImpl getSource() {
+        return this.source;
     }
 
     @Override
-    protected LLVMSyscallOperationNode createSyscallNode(LinuxAArch64Syscall syscall) {
-        switch (syscall) {
-            case SYS_exit:
-            case SYS_exit_group: // TODO: implement difference to SYS_exit
-                return new LLVMSyscallExitNode();
-            default:
-                return new LLVMNativeSyscallNode(syscall);
+    public void accept(SymbolVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    @Override
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
+        if (source == original) {
+            source = replacement;
         }
-    }
-
-    // TODO: The following methods temporarily return X86 va_list objects until the AArch64 managed
-    // va_list is implemented.
-
-    @Override
-    public Object createVAListStorage() {
-        return new LLVMX86_64VaListStorage();
-    }
-
-    @Override
-    public Type getVAListType() {
-        return LLVMX86_64VaListStorage.VA_LIST_TYPE;
-    }
-
-    @Override
-    public Object createNativeVAListWrapper(LLVMNativePointer vaListPtr) {
-        return new LLVMX86_64VaListStorage.NativeVAListWrapper(vaListPtr);
     }
 
 }

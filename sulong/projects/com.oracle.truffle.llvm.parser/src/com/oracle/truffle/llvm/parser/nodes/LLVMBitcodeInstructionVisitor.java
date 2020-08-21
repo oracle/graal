@@ -93,6 +93,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstru
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.VaArgInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
@@ -466,6 +467,14 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         LLVMExpressionNode result = nodeFactory.createCompareExchangeInstruction(cmpxchg.getAggregateType(), cmp.getType(), ptrNode, cmpNode, newNode);
         createFrameWrite(result, cmpxchg);
+    }
+
+    @Override
+    public void visit(VaArgInstruction vaArgInst) {
+        LLVMExpressionNode source = resolveOptimized(vaArgInst.getSource());
+        LLVMExpressionNode result = CommonNodeFactory.createVaArg(vaArgInst.getType(), source);
+
+        createFrameWrite(result, vaArgInst);
     }
 
     public void initializeAggregateLocalVariable(SourceVariable variable) {
