@@ -65,6 +65,8 @@ InstrumentableNode {
 
 ### Controlling Automated Reporting of Polymorphic Specializations
 
+## Excluding particular nodes and specializations
+
 Applying the `ReportPolymorphism` annotation to all nodes of a language is the
 simplest way to facilitate the monomorphization, but it could cause reporting
 of polymorphic specializations in cases where that does not necessarily make
@@ -75,6 +77,24 @@ polymorphism the `@ReportPolymorphism.Exclude`
 was introduced which is applicable to classes (disabling automated reporting for the entire
 class) or to individual specializations (excluding those specializations from
 consideration when checking for polymorphism).
+
+## Reporting only on Megamorphic Cases
+
+As of version 20.3.0 a new annotation was added:
+[ReportPolymorphism.Megamorphic](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Megamorphic.html).
+This annotation can only be applyed to specializations, as marks that
+specialization as megamorphic as it is intented to be used on expensive
+"generic" specializations that should be fixed by monomorphization.  The effect
+of adding this annotation is that, once the annotated specialisation becomes
+active, the node will report polymorphism to the runtime independant of the
+state of other specializations.
+
+NOTE: This annotation can be used completely separatelly from
+`@ReportPolymorphism`, i.e. a node does *not* need to be annotated with
+`@ReportPolymorphism` for the megamorphic annotation to work.  Using both
+anottaions will have both effects: the node will report polymorphism every time
+a new specialization is activated as well as once the megamorphic one is
+activated.
 
 ### Tools Support
 
