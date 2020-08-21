@@ -22,12 +22,10 @@
  */
 package com.oracle.truffle.espresso.nodes.quick;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
@@ -35,8 +33,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class InstanceOfNode extends QuickNode {
 
-    @CompilerDirectives.CompilationFinal Klass typeToCheck;
-    final char cpIndex;
+    final Klass typeToCheck;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -56,9 +53,10 @@ public abstract class InstanceOfNode extends QuickNode {
         return instanceOf(typeToCheck, instanceKlass);
     }
 
-    InstanceOfNode(char cpIndex, int top, int curBCI) {
+    InstanceOfNode(Klass typeToCheck, int top, int curBCI) {
         super(top, curBCI);
-        this.cpIndex = cpIndex;
+        assert !typeToCheck.isPrimitive();
+        this.typeToCheck = typeToCheck;
     }
 
     @TruffleBoundary
@@ -67,20 +65,12 @@ public abstract class InstanceOfNode extends QuickNode {
         return typeToCheck.isAssignableFrom(instanceKlass);
     }
 
-    private boolean doInstanceOf(StaticObject receiver) {
-        if (typeToCheck == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            typeToCheck = getBytecodesNode().resolveType(Bytecodes.CHECKCAST, cpIndex);
-        }
-        return executeInstanceOf(receiver.getKlass());
-    }
-
     @Override
     public final int execute(final VirtualFrame frame) {
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = root.peekObject(frame, top - 1);
-        boolean result = StaticObject.notNull(receiver) && doInstanceOf(receiver);
+        boolean result = StaticObject.notNull(receiver) && executeInstanceOf(receiver.getKlass());
         root.putKind(frame, top - 1, result, JavaKind.Boolean);
         return 0; // stack effect -> pop receiver, push boolean
     }

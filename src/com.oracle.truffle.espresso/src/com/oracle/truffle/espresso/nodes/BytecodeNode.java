@@ -1448,6 +1448,10 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private int quickenCheckCast(final VirtualFrame frame, int top, int curBCI, int opcode) {
+        if (StaticObject.isNull(peekObject(frame, top - 1))) {
+            // Skip resolution.
+            return -Bytecodes.stackEffectOf(opcode);
+        }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == CHECKCAST;
         QuickNode quick;
@@ -1455,13 +1459,19 @@ public final class BytecodeNode extends EspressoMethodNode {
             if (bs.currentBC(curBCI) == QUICK) {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
-                quick = injectQuick(curBCI, CheckCastNodeGen.create(bs.readCPI(curBCI), top, curBCI));
+                Klass typeToCheck = resolveType(CHECKCAST, bs.readCPI(curBCI));
+                quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck, top, curBCI));
             }
         }
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
     private int quickenInstanceOf(final VirtualFrame frame, int top, int curBCI, int opcode) {
+        if (StaticObject.isNull(peekObject(frame, top - 1))) {
+            // Skip resolution.
+            putInt(frame, top - 1, 0);
+            return -Bytecodes.stackEffectOf(opcode);
+        }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == INSTANCEOF;
         QuickNode quick;
@@ -1469,7 +1479,8 @@ public final class BytecodeNode extends EspressoMethodNode {
             if (bs.currentBC(curBCI) == QUICK) {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
-                quick = injectQuick(curBCI, InstanceOfNodeGen.create(bs.readCPI(curBCI), top, curBCI));
+                Klass typeToCheck = resolveType(opcode, bs.readCPI(curBCI));
+                quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck, top, curBCI));
             }
         }
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
