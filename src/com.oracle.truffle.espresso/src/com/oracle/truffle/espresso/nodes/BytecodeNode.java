@@ -291,9 +291,17 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.InstanceOfNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.ByteArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.interop.CharArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.interop.DoubleArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.interop.FloatArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.interop.IntArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.interop.LongArrayLoadNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.interop.QuickenedPutFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.QuickenedGetFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ArrayLengthNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayLoadNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayLoadNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedGetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedSetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
@@ -687,20 +695,115 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case ALOAD_2: // fall through
                     case ALOAD_3: putObject(frame, top, getLocalObject(frame, curOpcode - ALOAD_0)); break;
 
-                    case IALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayInt(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
-                    case LALOAD: putLong(frame, top - 2, getInterpreterToVM().getArrayLong(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
-                    case FALOAD: putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
-                    case DALOAD: putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
-                    case AALOAD:
-                        putObject(frame, top - 2, getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        if (noForeignObjects.isValid() && peekObject(frame, top - 2).isForeignObject()) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            noForeignObjects.invalidate();
+                    case IALOAD:
+                        if (noForeignObjects.isValid()) {
+                            putInt(frame, top - 2, getInterpreterToVM().getArrayInt(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
+                        } else {
+                            StaticObject array = nullCheck(peekObject(frame, top - 2));
+                            if (array.isEspressoObject()) {
+                                releaseObject(frame, top - 2);
+                                putInt(frame, top - 2, getInterpreterToVM().getArrayInt(peekInt(frame, top - 1), array));
+                            } else {
+                                quickenIntArrayLoad(frame, top, curBCI);
+                            }
                         }
                         break;
-                    case BALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayByte(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
-                    case CALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayChar(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
-                    case SALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayShort(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
+                    case LALOAD:
+                        if (noForeignObjects.isValid()) {
+                            putLong(frame, top - 2, getInterpreterToVM().getArrayLong(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
+                        } else {
+                            StaticObject array = nullCheck(peekObject(frame, top - 2));
+                            if (array.isEspressoObject()) {
+                                releaseObject(frame, top - 2);
+                                putLong(frame, top - 2, getInterpreterToVM().getArrayLong(peekInt(frame, top - 1), array));
+                            } else {
+                                quickenLongArrayLoad(frame, top, curBCI);
+                            }
+                        }
+                        break;
+                    case FALOAD:
+                        if (noForeignObjects.isValid()) {
+                            putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
+                        } else {
+                            StaticObject array = nullCheck(peekObject(frame, top - 2));
+                            if (array.isEspressoObject()) {
+                                releaseObject(frame, top - 2);
+                                putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(peekInt(frame, top - 1), array));
+                            } else {
+                                quickenFloatArrayLoad(frame, top, curBCI);
+                            }
+                        }
+                        break;
+                    case DALOAD:
+                        if (noForeignObjects.isValid()) {
+                            putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
+                        } else {
+                            StaticObject array = nullCheck(peekObject(frame, top - 2));
+                            if (array.isEspressoObject()) {
+                                releaseObject(frame, top - 2);
+                                putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(peekInt(frame, top - 1), array));
+                            } else {
+                                quickenDoubleArrayLoad(frame, top, curBCI);
+                            }
+                        }
+                        break;
+                    case AALOAD:
+                        if (noForeignObjects.isValid()) {
+                            StaticObject arrayElement = getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)));
+                            putObject(frame, top - 2, arrayElement);
+                            if (arrayElement.isForeignObject()) {
+                                CompilerDirectives.transferToInterpreterAndInvalidate();
+                                noForeignObjects.invalidate();
+                            }
+                        } else {
+                            StaticObject array = nullCheck(peekObject(frame, top - 2));
+                            if (array.isEspressoObject()) {
+                                releaseObject(frame, top - 2);
+                                putObject(frame, top - 2, getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), array));
+                            } else {
+                                quickenReferenceArrayLoad(frame, top, curBCI);
+                            }
+                        }
+                        break;
+                    case BALOAD:
+                        if (noForeignObjects.isValid()) {
+                            putInt(frame, top - 2, getInterpreterToVM().getArrayByte(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
+                        } else {
+                            StaticObject array = nullCheck(peekObject(frame, top - 2));
+                            if (array.isEspressoObject()) {
+                                releaseObject(frame, top - 2);
+                                putInt(frame, top - 2, getInterpreterToVM().getArrayByte(peekInt(frame, top - 1), array));
+                            } else {
+                                quickenByteArrayLoad(frame, top, curBCI);
+                            }
+                        }
+                        break;
+                    case CALOAD:
+                        if (noForeignObjects.isValid()) {
+                            putInt(frame, top - 2, getInterpreterToVM().getArrayChar(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
+                        } else {
+                            StaticObject array = nullCheck(peekObject(frame, top - 2));
+                            if (array.isEspressoObject()) {
+                                releaseObject(frame, top - 2);
+                                putInt(frame, top - 2, getInterpreterToVM().getArrayChar(peekInt(frame, top - 1), array));
+                            } else {
+                                quickenCharArrayLoad(frame, top, curBCI);
+                            }
+                        }
+                        break;
+                    case SALOAD:
+                        if (noForeignObjects.isValid()) {
+                            putInt(frame, top - 2, getInterpreterToVM().getArrayShort(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
+                        } else {
+                            StaticObject array = nullCheck(peekObject(frame, top - 2));
+                            if (array.isEspressoObject()) {
+                                releaseObject(frame, top - 2);
+                                putInt(frame, top - 2, getInterpreterToVM().getArrayShort(peekInt(frame, top - 1), array));
+                            } else {
+                                quickenShortArrayLoad(frame, top, curBCI);
+                            }
+                        }
+                        break;
 
                     case ISTORE: setLocalInt(frame, bs.readLocalIndex(curBCI), peekInt(frame, top - 1)); break;
                     case LSTORE: setLocalLong(frame, bs.readLocalIndex(curBCI), peekLong(frame, top - 1)); break;
@@ -1029,15 +1132,18 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case NEWARRAY: putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1), getMeta())); break;
                     case ANEWARRAY: putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), peekInt(frame, top - 1))); break;
                     case ARRAYLENGTH:
-                        StaticObject array = nullCheck(peekObject(frame, top - 1));
-                        if (noForeignObjects.isValid() || !array.isForeignObject()) {
-                            releaseObject(frame, top - 1);
-                            putInt(frame, top - 1, InterpreterToVM.arrayLength(array));
+                        if (noForeignObjects.isValid()) {
+                            putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(peekAndReleaseObject(frame, top - 1))));
                         } else {
-                            quickenArrayLength(frame, top, curBCI);
+                            StaticObject array = nullCheck(peekObject(frame, top - 1));
+                            if (array.isEspressoObject()) {
+                                releaseObject(frame, top - 1);
+                                putInt(frame, top - 1, InterpreterToVM.arrayLength(array));
+                            } else {
+                                quickenArrayLength(frame, top, curBCI);
+                            }
                         }
                         break;
-
                     case ATHROW: throw Meta.throwException(nullCheck(peekAndReleaseObject(frame, top - 1)));
 
                     case CHECKCAST: top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
@@ -1553,6 +1659,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         return invoke.execute(frame);
     }
 
+    // region quickenForeign
     public int quickenGetField(final VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Field field) {
         CompilerDirectives.transferToInterpreter();
         assert opcode == GETFIELD;
@@ -1593,6 +1700,112 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
         arrayLengthNode.execute(frame);
     }
+
+    private void quickenByteArrayLoad(final VirtualFrame frame, int top, int curBCI) {
+        CompilerDirectives.transferToInterpreter();
+        QuickNode byteArrayLoadNode;
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                byteArrayLoadNode = nodes[curBCI];
+            } else {
+                byteArrayLoadNode = injectQuick(curBCI, ByteArrayLoadNodeGen.create(top, curBCI));
+            }
+        }
+        byteArrayLoadNode.execute(frame);
+    }
+
+    private void quickenCharArrayLoad(final VirtualFrame frame, int top, int curBCI) {
+        CompilerDirectives.transferToInterpreter();
+        QuickNode charArrayLoadNode;
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                charArrayLoadNode = nodes[curBCI];
+            } else {
+                charArrayLoadNode = injectQuick(curBCI, CharArrayLoadNodeGen.create(top, curBCI));
+            }
+        }
+        charArrayLoadNode.execute(frame);
+    }
+
+    private void quickenShortArrayLoad(final VirtualFrame frame, int top, int curBCI) {
+        CompilerDirectives.transferToInterpreter();
+        QuickNode shortArrayLoadNode;
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                shortArrayLoadNode = nodes[curBCI];
+            } else {
+                shortArrayLoadNode = injectQuick(curBCI, ShortArrayLoadNodeGen.create(top, curBCI));
+            }
+        }
+        shortArrayLoadNode.execute(frame);
+    }
+
+    private void quickenIntArrayLoad(final VirtualFrame frame, int top, int curBCI) {
+        CompilerDirectives.transferToInterpreter();
+        QuickNode intArrayLoadNode;
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                intArrayLoadNode = nodes[curBCI];
+            } else {
+                intArrayLoadNode = injectQuick(curBCI, IntArrayLoadNodeGen.create(top, curBCI));
+            }
+        }
+        intArrayLoadNode.execute(frame);
+    }
+
+    private void quickenLongArrayLoad(final VirtualFrame frame, int top, int curBCI) {
+        CompilerDirectives.transferToInterpreter();
+        QuickNode longArrayLoadNode;
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                longArrayLoadNode = nodes[curBCI];
+            } else {
+                longArrayLoadNode = injectQuick(curBCI, LongArrayLoadNodeGen.create(top, curBCI));
+            }
+        }
+        longArrayLoadNode.execute(frame);
+    }
+
+    private void quickenFloatArrayLoad(final VirtualFrame frame, int top, int curBCI) {
+        CompilerDirectives.transferToInterpreter();
+        QuickNode floatArrayLoadNode;
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                floatArrayLoadNode = nodes[curBCI];
+            } else {
+                floatArrayLoadNode = injectQuick(curBCI, FloatArrayLoadNodeGen.create(top, curBCI));
+            }
+        }
+        floatArrayLoadNode.execute(frame);
+    }
+
+    private void quickenDoubleArrayLoad(final VirtualFrame frame, int top, int curBCI) {
+        CompilerDirectives.transferToInterpreter();
+        QuickNode doubleArrayLoadNode;
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                doubleArrayLoadNode = nodes[curBCI];
+            } else {
+                doubleArrayLoadNode = injectQuick(curBCI, DoubleArrayLoadNodeGen.create(top, curBCI));
+            }
+        }
+        doubleArrayLoadNode.execute(frame);
+    }
+
+    private void quickenReferenceArrayLoad(final VirtualFrame frame, int top, int curBCI) {
+        CompilerDirectives.transferToInterpreter();
+        QuickNode referenceArrayLoadNode;
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                referenceArrayLoadNode = nodes[curBCI];
+            } else {
+                referenceArrayLoadNode = injectQuick(curBCI, ReferenceArrayLoadNodeGen.create(top, curBCI));
+            }
+        }
+        referenceArrayLoadNode.execute(frame);
+    }
+
+    // endregion quickenForeign
 
     private QuickNode dispatchQuickened(int top, int curBCI, int opcode, int statementIndex, Method resolutionSeed, boolean allowFieldAccessInlining) {
         assert !allowFieldAccessInlining || getContext().InlineFieldAccessors;
