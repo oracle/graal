@@ -26,27 +26,18 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.nio.file.Path;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugEnumTypeInfo;
+import org.graalvm.compiler.debug.DebugContext;
 
-/**
- * Tracks the directory associated with one or more source files.
- *
- * This is identified separately from each FileEntry identifying files that reside in the directory.
- * That is necessary because the line info generator needs to collect and write out directory names
- * into directory tables once only rather than once per file.
- */
-public class DirEntry {
-    private Path path;
-
-    public DirEntry(Path path) {
-        this.path = path;
+public class EnumClassEntry extends ClassEntry {
+    public EnumClassEntry(String typeName, FileEntry fileEntry, int size) {
+        super(typeName, fileEntry, size);
     }
 
-    public Path getPath() {
-        return path;
-    }
-
-    public String getPathString() {
-        return path.toString();
+    @Override
+    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugInfoProvider.DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
+        assert debugTypeInfo instanceof DebugEnumTypeInfo;
+        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
     }
 }

@@ -26,27 +26,36 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.nio.file.Path;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugArrayTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
+import org.graalvm.compiler.debug.DebugContext;
 
-/**
- * Tracks the directory associated with one or more source files.
- *
- * This is identified separately from each FileEntry identifying files that reside in the directory.
- * That is necessary because the line info generator needs to collect and write out directory names
- * into directory tables once only rather than once per file.
- */
-public class DirEntry {
-    private Path path;
+public class ArrayTypeEntry extends TypeEntry {
+    private TypeEntry elementType;
+    private int headerSize;
+    private int lengthOffset;
 
-    public DirEntry(Path path) {
-        this.path = path;
+    public ArrayTypeEntry(String typeName, int size) {
+        super(typeName, size);
     }
 
-    public Path getPath() {
-        return path;
+    @Override
+    public DebugTypeKind typeKind() {
+        return DebugTypeKind.ARRAY;
     }
 
-    public String getPathString() {
-        return path.toString();
+    @Override
+    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
+        DebugArrayTypeInfo debugArrayTypeInfo = (DebugArrayTypeInfo) debugTypeInfo;
+        String elementTypeName = TypeEntry.canonicalize(debugArrayTypeInfo.elementType());
+        elementType = debugInfoBase.lookupTypeEntry(elementTypeName);
+        this.headerSize = debugArrayTypeInfo.headerSize();
+        this.lengthOffset = debugArrayTypeInfo.lengthOffset();
+        debugContext.log("typename %s element type %s header size %d length offset %d\n", typeName, elementTypeName, headerSize, lengthOffset);
+    }
+
+    public TypeEntry getElementType() {
+        return elementType;
     }
 }

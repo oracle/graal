@@ -68,6 +68,8 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
     @Override
     public void createContent() {
+        assert !contentByteArrayCreated();
+
         int pos = 0;
 
         /*
@@ -82,6 +84,8 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
     @Override
     public void writeContent(DebugContext context) {
+        assert contentByteArrayCreated();
+
         byte[] buffer = getContent();
         int size = buffer.length;
         int pos = 0;
@@ -386,7 +390,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     protected abstract int writeInitialInstructions(byte[] buffer, int pos);
 
     /**
-     * The debug_frame section content depends on debug_line section content and offset.
+     * The debug_frame section depends on debug_line section.
      */
     private static final String TARGET_SECTION_NAME = DW_LINE_SECTION_NAME;
 
@@ -397,7 +401,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
     private final LayoutDecision.Kind[] targetSectionKinds = {
                     LayoutDecision.Kind.CONTENT,
-                    LayoutDecision.Kind.OFFSET
+                    LayoutDecision.Kind.SIZE
     };
 
     @Override

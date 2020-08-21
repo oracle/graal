@@ -143,6 +143,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     @Override
     public void createContent() {
+        assert !contentByteArrayCreated();
+
         /*
          * We need to create a header, dir table, file table and line number table encoding for each
          * CU.
@@ -155,15 +157,15 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         for (ClassEntry classEntry : getPrimaryClasses()) {
             if (classEntry.getFileName().length() != 0) {
                 int startPos = pos;
-                classEntry.setLineIndex(startPos);
+                setLineIndex(classEntry, startPos);
                 int headerSize = headerSize();
                 int dirTableSize = computeDirTableSize(classEntry);
                 int fileTableSize = computeFileTableSize(classEntry);
                 int prologueSize = headerSize + dirTableSize + fileTableSize;
-                classEntry.setLinePrologueSize(prologueSize);
+                setLinePrologueSize(classEntry, prologueSize);
                 int lineNumberTableSize = computeLineNUmberTableSize(classEntry);
                 int totalSize = prologueSize + lineNumberTableSize;
-                classEntry.setTotalSize(totalSize);
+                setLineSectionSize(classEntry, totalSize);
                 pos += totalSize;
             }
         }
@@ -280,6 +282,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     @Override
     public void writeContent(DebugContext context) {
+        assert contentByteArrayCreated();
+
         byte[] buffer = getContent();
 
         int pos = 0;
@@ -289,7 +293,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         for (ClassEntry classEntry : getPrimaryClasses()) {
             if (classEntry.getFileName().length() != 0) {
                 int startPos = pos;
-                assert classEntry.getLineIndex() == startPos;
+                assert getLineIndex(classEntry) == startPos;
                 log(context, "  [0x%08x] Compile Unit for %s", pos, classEntry.getFileName());
                 pos = writeHeader(classEntry, buffer, pos);
                 log(context, "  [0x%08x] headerSize = 0x%08x", pos, pos - startPos);
@@ -313,7 +317,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * 4 ubyte length field.
          */
-        pos = putInt(classEntry.getTotalSize() - 4, buffer, pos);
+        pos = putInt(getLineSectionSize(classEntry) - 4, buffer, pos);
         /*
          * 2 ubyte version is always 2.
          */
@@ -321,7 +325,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * 4 ubyte prologue length includes rest of header and dir + file table section.
          */
-        int prologueSize = classEntry.getLinePrologueSize() - (4 + 2 + 4);
+        int prologueSize = getLinePrologueSize(classEntry) - (4 + 2 + 4);
         pos = putInt(prologueSize, buffer, pos);
         /*
          * 1 ubyte min instruction length is always 1.
@@ -433,7 +437,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          * The primary file entry should always be first in the local files list.
          */
         assert classEntry.localFilesIdx(fileEntry) == 1;
-        String primaryClassName = classEntry.getClassName();
+        String primaryClassName = classEntry.getTypeName();
         String primaryFileName = classEntry.getFileName();
         String file = primaryFileName;
         int fileIdx = 1;
@@ -441,7 +445,6 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] primary file %s", pos, primaryFileName);
         for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
             Range primaryRange = primaryEntry.getPrimary();
-            assert primaryRange.getFileName().equals(primaryFileName);
             /*
              * Each primary represents a method i.e. a contiguous sequence of subranges. we assume
              * the default state at the start of each sequence because we always post an
@@ -459,7 +462,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             /*
              * Set state for primary.
              */
-            log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] %s:%d", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(), primaryRange.getFullMethodName(),
+            log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] %s:%d", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(), primaryRange.getFullMethodNameWithParams(),
                             primaryRange.getLine());
 
             /*
@@ -511,7 +514,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             for (Range subrange : primaryEntry.getSubranges()) {
                 assert subrange.getLo() >= primaryRange.getLo();
                 assert subrange.getHi() <= primaryRange.getHi();
-                FileEntry subFileEntry = primaryEntry.getSubrangeFileEntry(subrange);
+                FileEntry subFileEntry = subrange.getFileEntry();
                 if (subFileEntry == null) {
                     continue;
                 }
@@ -520,7 +523,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                 long subLine = subrange.getLine();
                 long subAddressLo = subrange.getLo();
                 long subAddressHi = subrange.getHi();
-                log(context, "  [0x%08x] sub range [0x%08x, 0x%08x] %s:%d", pos, debugTextBase + subAddressLo, debugTextBase + subAddressHi, subrange.getFullMethodName(), subLine);
+                log(context, "  [0x%08x] sub range [0x%08x, 0x%08x] %s:%d", pos, debugTextBase + subAddressLo, debugTextBase + subAddressHi, subrange.getFullMethodNameWithParams(), subLine);
                 if (subLine < 0) {
                     /*
                      * No line info so stay at previous file:line.
@@ -910,7 +913,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     /**
-     * The debug_line section content depends on debug_str section content and offset.
+     * The debug_line section depends on debug_str section.
      */
     private static final String TARGET_SECTION_NAME = DW_STR_SECTION_NAME;
 
@@ -921,7 +924,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private final LayoutDecision.Kind[] targetSectionKinds = {
                     LayoutDecision.Kind.CONTENT,
-                    LayoutDecision.Kind.OFFSET,
+                    LayoutDecision.Kind.SIZE,
     };
 
     @Override

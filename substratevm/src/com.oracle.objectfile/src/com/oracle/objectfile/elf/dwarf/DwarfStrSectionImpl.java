@@ -30,8 +30,8 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.StringEntry;
 import org.graalvm.compiler.debug.DebugContext;
 
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_INFO_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_STR_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.TEXT_SECTION_NAME;
 
 /**
  * Generator for debug_str section.
@@ -48,6 +48,8 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
 
     @Override
     public void createContent() {
+        assert !contentByteArrayCreated();
+
         int pos = 0;
         for (StringEntry stringEntry : dwarfSections.getStringTable()) {
             if (stringEntry.isAddToStrSection()) {
@@ -62,40 +64,39 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
 
     @Override
     public void writeContent(DebugContext context) {
+        assert contentByteArrayCreated();
+
         byte[] buffer = getContent();
         int size = buffer.length;
         int pos = 0;
 
         enableLog(context, pos);
 
+        verboseLog(context, " [0x%08x] DEBUG_STR", pos);
         for (StringEntry stringEntry : dwarfSections.getStringTable()) {
             if (stringEntry.isAddToStrSection()) {
                 assert stringEntry.getOffset() == pos;
                 String string = stringEntry.getString();
                 pos = putAsciiStringBytes(string, buffer, pos);
+                verboseLog(context, " [0x%08x] string = %s", pos, string);
             }
         }
         assert pos == size;
     }
 
     /**
-     * The debug_str section content depends on text section content and offset.
+     * The debug_str section depends on info section.
      */
-    private static final String TARGET_SECTION_NAME = TEXT_SECTION_NAME;
+    private static final String TARGET_SECTION_NAME = DW_INFO_SECTION_NAME;
 
     @Override
     public String targetSectionName() {
         return TARGET_SECTION_NAME;
     }
 
-    /**
-     * The debug_str section content depends on text section content and offset.
-     */
     private final LayoutDecision.Kind[] targetSectionKinds = {
                     LayoutDecision.Kind.CONTENT,
-                    LayoutDecision.Kind.OFFSET,
-                    /* Add this so we can use the text section base address for debug. */
-                    LayoutDecision.Kind.VADDR,
+                    LayoutDecision.Kind.SIZE,
     };
 
     @Override

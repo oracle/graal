@@ -132,9 +132,11 @@ def test():
     wildcard_pattern = '.*'
     # disable prompting to continue output
     execute("set pagination off")
-    # set a break point at hello.Hello.main
-    # expect "Breakpoint 1 at 0x[0-9a-f]+: file hello.Hello.java, line 67."
-    exec_string = execute("break hello.Hello.main")
+    # enable pretty printing of structures
+    execute("set print pretty on")
+    # set a break point at hello.Hello::main
+    # expect "Breakpoint 1 at 0x[0-9a-f]+: file _hello.Hello.java, line 67."
+    exec_string = execute("break _hello.Hello::main")
     rexp = r"Breakpoint 1 at %s: file hello/Hello\.java, line 67\."%address_pattern
     checker = Checker('break main', rexp)
     checker.check(exec_string)
@@ -149,36 +151,73 @@ def test():
     checker.check(exec_string, skip_fails=False)
 
     # run a backtrace
-    # expect "#0  hello.Hello.main(java.lang.String[]).* at hello.Hello.java:67"
+    # expect "#0  _hello.Hello.main(java.lang.String[]).* at hello.Hello.java:67"
     # expect "#1  0x[0-9a-f]+ in com.oracle.svm.core.code.IsolateEnterStub.JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
-    checker = Checker("backtrace hello.Hello.main",
-                      [r"#0%shello\.Hello\.main\(java\.lang\.String\[\]\)%s at hello/Hello\.java:67"%(spaces_pattern, wildcard_pattern),
-                       r"#1%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub\.JavaMainWrapper_run_%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern)
+    checker = Checker("backtrace hello.Hello::main",
+                      [r"#0%s_hello\.Hello::main\(java\.lang\.String\[\]\)%s at hello/Hello\.java:67"%(spaces_pattern, wildcard_pattern),
+                       r"#1%s%s in _com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern)
                        ])
+    checker.check(exec_string, skip_fails=False)
+
+    # print the contents of the arguments array which will be in rdi
+    exec_string = execute("print /x *(('java.lang.String[]')$rdi)")
+    checker = Checker("print String[] args",
+                      [r"%s = {"%(wildcard_pattern),
+                       r"%s<_arrhdrA> = {"%(spaces_pattern),
+                       r"%shub = %s,"%(spaces_pattern, address_pattern),
+                       r"%slen = 0x0,"%(spaces_pattern),
+                       r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                       r"%s},"%(spaces_pattern),
+                       r"%smembers of _java\.lang\.String\[\]:"%(spaces_pattern),
+                       r"%sdata = %s"%(spaces_pattern, address_pattern),
+                       "}"])
+
+    checker.check(exec_string, skip_fails=False)
+
+    # print the hub of the array and check it has a name field
+    exec_string = execute("print /x *(('java.lang.String[]')$rdi)->hub")
+    checker = Checker("print String[] hub",
+                      [r"%s = {"%(wildcard_pattern),
+                       r"%s<_java.lang.Object> = {"%(spaces_pattern),
+                       r"%s<_objhdr> = {"%(spaces_pattern),
+                       r"%shub = %s"%(spaces_pattern, address_pattern),
+                       r"%s}, <No data fields>},"%(spaces_pattern),
+                       r"%smembers of _java\.lang\.Class:"%(spaces_pattern),
+                       r"%sname = %s"%(spaces_pattern, address_pattern),
+                       "}"])
+
+    checker.check(exec_string, skip_fails=True)
+
+    # print the hub name field and check it is String[]
+    # n.b. the expected String text is not necessarily null terminated
+    # so we need a wild card before the final quote
+    exec_string = execute("x/s (('java.lang.String[]')$rdi)->hub->name->value->data")
+    checker = Checker("print String[] hub name",
+                      r"%s:%s\"\[Ljava.lang.String;.*\""%(address_pattern, spaces_pattern))
     checker.check(exec_string, skip_fails=False)
 
     # look up PrintStream.println methods
     # expect "All functions matching regular expression "java.io.PrintStream.println":"
     # expect ""
     # expect "File java.base/java/io/PrintStream.java:"
-    # expect "      void java.io.PrintStream.println(java.lang.Object)(void);"
-    # expect "      void java.io.PrintStream.println(java.lang.String)(void);"
-    exec_string = execute("info func java.io.PrintStream.println")
-    #    checker = Checker("info func java.io.PrintStream.println",
-    #                      ["All functions matching regular expression \"java\\.io\\.PrintStream\.println\":",
+    # expect "      void _java.io.PrintStream::println(java.lang.Object);"
+    # expect "      void _java.io.PrintStream::println(java.lang.String);"
+    exec_string = execute("info func java.io.PrintStream::println")
+    #    checker = Checker("info func java.io.PrintStream::println",
+    #                      ["All functions matching regular expression \"java\\.io\\.PrintStream::println\":",
     #                       "",
     #                       "File .*java/io/PrintStream.java:",
-    #                       "[ \t]*void java.io.PrintStream\.println\\(java\\.lang\\.Object\\)\\(void\\);",
-    #                       "[ \t]*void java.io.PrintStream\.println\\(java\\.lang\\.String\\)\\(void\\);",
+    #                       "[ \t]*void _java.io.PrintStream::println\\(java\\.lang\\.Object\\);",
+    #                       "[ \t]*void _java.io.PrintStream::println\\(java\\.lang\\.String\\);",
     #                      ])
-    checker = Checker("info func java.io.PrintStream.println",
-                      r"%svoid java.io.PrintStream\.println\(java\.lang\.String\)"%maybe_spaces_pattern)
+    checker = Checker("info func java.io.PrintStream::println",
+                      r"%svoid _java.io.PrintStream::println\(java\.lang\.String\)"%maybe_spaces_pattern)
     checker.check(exec_string)
 
     # set a break point at PrintStream.println(String)
     # expect "Breakpoint 2 at 0x[0-9a-f]+: java.base/java/io/PrintStream.java, line [0-9]+."
-    exec_string = execute("break java.io.PrintStream.println(java.lang.String)")
+    exec_string = execute("break _java.io.PrintStream::println(java.lang.String)")
     rexp = r"Breakpoint 2 at %s: file .*java/io/PrintStream\.java, line %s\."%(address_pattern, digits_pattern)
     checker = Checker('break println', rexp)
     checker.check(exec_string, skip_fails=False)
@@ -190,28 +229,81 @@ def test():
     # expect "34	            if (args.length == 0) {"
     exec_string = execute("list")
     rexp = r"34%sif \(args\.length == 0\) {"%spaces_pattern
-    checker = Checker('list hello.Hello.Greeter.greeter', rexp)
+    checker = Checker('list hello.Hello$Greeter.greeter', rexp)
     checker.check(exec_string, skip_fails=False)
 
+    # print details of greeter types
+    exec_string = execute("ptype 'hello.Hello$NamedGreeter'")
+    rexp = [r"type = class _hello\.Hello\$NamedGreeter : public _hello\.Hello\$Greeter {",
+            r"%sprivate:"%(spaces_pattern),
+            r"%sjava\.lang\.String name;"%(spaces_pattern),
+            r"",
+            r"%spublic:"%(spaces_pattern),
+            r"%svoid greet\(void\);"%(spaces_pattern),
+            r"} \*"]
+    checker = Checker('ptype NamedGreeter', rexp)
+    checker.check(exec_string, skip_fails=False)
+
+    exec_string = execute("ptype 'hello.Hello$Greeter'")
+    rexp = [r"type = class _hello\.Hello\$Greeter : public _java\.lang\.Object {",
+            r"%spublic:"%(spaces_pattern),
+            r"%sstatic hello\.Hello\$Greeter greeter\(java\.lang\.String\[\]\);"%(spaces_pattern),
+            r"} \*"]
+    
+    checker = Checker('ptype Greeter', rexp)
+    checker.check(exec_string, skip_fails=False)
+
+    exec_string = execute("ptype 'java.lang.Object'")
+    rexp = [r"type = class _java\.lang\.Object : public _objhdr {",
+            r"%spublic:"%(spaces_pattern),
+            r"%svoid Object\(void\);"%(spaces_pattern),
+            r"%sboolean equals\(java\.lang\.Object\);"%(spaces_pattern),
+            r"%sprivate:"%(spaces_pattern),
+            r"%sint hashCode\(void\);"%(spaces_pattern),
+            r"%sjava\.lang\.String toString\(void\);"%(spaces_pattern),
+            r"} \*"]
+    
+    checker = Checker('ptype Object', rexp)
+    checker.check(exec_string, skip_fails=True)
+
+    exec_string = execute("ptype _objhdr")
+    rexp = [r"type = struct _objhdr {",
+            r"%sjava\.lang\.Class hub;"%(spaces_pattern),
+            r"}"]
+    checker = Checker('ptype _objhdr', rexp)
+    checker.check(exec_string, skip_fails=True)
+
+    checker = Checker('ptype _objhdr', rexp)
+    checker.check(exec_string, skip_fails=True)
+
+    exec_string = execute("ptype _arrhdrA")
+    rexp = [r"type = struct _arrhdrA {",
+            r"%sjava\.lang\.Class hub;"%(spaces_pattern),
+            r"%sint len;"%(spaces_pattern),
+            r"%sint idHash;"%(spaces_pattern),
+            r"}"]
+    checker = Checker('ptype _objhdr', rexp)
+    checker.check(exec_string, skip_fails=True)
+
     # run a backtrace
-    # expect "#0  hello.Hello.greeter.greeter(java.lang.String[]).* at hello.Hello.java:34"
-    # expect "#1  0x[0-9a-f]+ in hello.Hello.main(java.lang.String[]).* at hello.Hello.java:67"
-    # expect "#2  0x[0-9a-f]+ in com.oracle.svm.core.code.IsolateEnterStub.JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
+    # expect "#0  _hello.Hello$Greeter::greeter(java.lang.String[]).* at hello.Hello.java:34"
+    # expect "#1  0x[0-9a-f]+ in _hello.Hello::main(java.lang.String[]).* at hello.Hello.java:67"
+    # expect "#2  0x[0-9a-f]+ in _com.oracle.svm.core.code.IsolateEnterStub.JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
-    checker = Checker("backtrace hello.Hello.Greeter.greeter",
-                      [r"#0%shello\.Hello\.Greeter\.greeter\(java\.lang\.String\[\]\)%s at hello/Hello\.java:34"%(spaces_pattern, wildcard_pattern),
-                       r"#1%s%s in hello\.Hello\.main\(java\.lang\.String\[\]\)%s at hello/Hello\.java:67"%(spaces_pattern, address_pattern, wildcard_pattern),
-                       r"#2%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub\.JavaMainWrapper_run_%s at [a-z/]+/JavaMainWrapper\.java:%s"%(spaces_pattern, address_pattern, wildcard_pattern, digits_pattern)
+    checker = Checker("backtrace hello.Hello.Greeter::greeter",
+                      [r"#0%s_hello\.Hello\$Greeter::greeter\(java\.lang\.String\[\]\)%s at hello/Hello\.java:34"%(spaces_pattern, wildcard_pattern),
+                       r"#1%s%s in _hello\.Hello::main\(java\.lang\.String\[\]\)%s at hello/Hello\.java:67"%(spaces_pattern, address_pattern, wildcard_pattern),
+                       r"#2%s%s in _com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s at [a-z/]+/JavaMainWrapper\.java:%s"%(spaces_pattern, address_pattern, wildcard_pattern, digits_pattern)
                        ])
     checker.check(exec_string, skip_fails=False)
 
     # now step into inlined code
     execute("next")
 
-    # check we are still in hello.Hello.Greeter.greeter but no longer in hello.Hello.java
+    # check we are still in hello.Hello$Greeter.greeter but no longer in hello.Hello.java
     exec_string = execute("backtrace 1")
     checker = Checker("backtrace inline",
-                      [r"#0%shello\.Hello\.Greeter\.greeter\(java\.lang\.String\[\]\)%s at (%s):%s"%(spaces_pattern, wildcard_pattern, package_file_pattern, digits_pattern)])
+                      [r"#0%s_hello\.Hello\$Greeter::greeter\(java\.lang\.String\[\]\)%s at (%s):%s"%(spaces_pattern, wildcard_pattern, package_file_pattern, digits_pattern)])
     matches = checker.check(exec_string, skip_fails=False)
     # n.b. can only get back here with one match
     match = matches[0]
@@ -224,11 +316,11 @@ def test():
     # continue to next breakpoint
     execute("continue")
 
-    # run backtrace to check we are in java.io.PrintStream.println(java.lang.String)
-    # expect "#0  java.io.PrintStream.println(java.lang.String).* at java.base/java/io/PrintStream.java:[0-9]+"
+    # run backtrace to check we are in java.io.PrintStream::println(java.lang.String)
+    # expect "#0  _java.io.PrintStream::println(java.lang.String).* at java.base/java/io/PrintStream.java:[0-9]+"
     exec_string = execute("backtrace 1")
-    checker = Checker("backtrace 1 PrintStream.println",
-                      [r"#0%sjava\.io\.PrintStream\.println\(java\.lang\.String\)%s at %sjava/io/PrintStream.java:%s"%(spaces_pattern, wildcard_pattern, wildcard_pattern, digits_pattern)])
+    checker = Checker("backtrace 1 PrintStream::println",
+                      [r"#0%s_java\.io\.PrintStream::println\(java\.lang\.String\)%s at %sjava/io/PrintStream.java:%s"%(spaces_pattern, wildcard_pattern, wildcard_pattern, digits_pattern)])
     checker.check(exec_string, skip_fails=False)
 
     # list current line
@@ -250,7 +342,38 @@ def test():
     checker = Checker('list println 2', rexp)
     checker.check(exec_string, skip_fails=False)
 
-    # continue to next breakpoint
+    # print the java.io.PrintStream instance and check its type
+    exec_string = execute("print /x *(('java.io.PrintStream')$rdi)")
+    checker = Checker("print DefaultGreeterSystem.out",
+                      [r"%s = {"%(wildcard_pattern),
+                       r"%s<_java.io.FilterOutputStream> = {"%(spaces_pattern),
+                       r"%s<_java.io.OutputStream> = {"%(spaces_pattern),
+                       r"%s<_java.lang.Object> = {"%(spaces_pattern),
+                       r"%s<_objhdr> = {"%(spaces_pattern),
+                       r"%shub = %s"%(spaces_pattern, address_pattern),
+                       r"%s}, <No data fields>}, <No data fields>},"%(spaces_pattern),
+                       r"%smembers of _java.io.FilterOutputStream:"%(spaces_pattern),
+                       r"%sout = %s,"%(spaces_pattern, address_pattern),
+                       r"%scloseLock = %s,"%(spaces_pattern, address_pattern),
+                       r"%sclosed = 0x0"%(spaces_pattern),
+                       r"%s},"%(spaces_pattern),
+                       r"%smembers of _java.io.PrintStream:"%(spaces_pattern),
+                       r"%sautoFlush = 0x1,"%(spaces_pattern),
+                       r"%sclosing = 0x0,"%(spaces_pattern),
+                       r"%stextOut = %s,"%(spaces_pattern, address_pattern),
+                       r"%scharOut = %s"%(spaces_pattern, address_pattern),
+                       r"}"])
+
+    checker.check(exec_string, skip_fails=True)
+
+    # print the hub name field and check it is java.io.PrintStream
+    # n.b. the expected String text is not necessarily null terminated
+    # so we need a wild card before the final quote
+    exec_string = execute("x/s (('java.io.PrintStream')$rdi)->hub->name->value->data")
+    checker = Checker("print PrintStream hub name",
+                      r"%s:%s\"java.io.PrintStream.*\""%(address_pattern, spaces_pattern))
+    checker.check(exec_string, skip_fails=False)
+
     print(execute("quit 0"))
 
 test()

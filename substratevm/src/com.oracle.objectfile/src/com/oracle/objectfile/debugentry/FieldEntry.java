@@ -26,27 +26,21 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.nio.file.Path;
+public class FieldEntry extends MemberEntry {
+    private final int size;
+    private final int offset;
 
-/**
- * Tracks the directory associated with one or more source files.
- *
- * This is identified separately from each FileEntry identifying files that reside in the directory.
- * That is necessary because the line info generator needs to collect and write out directory names
- * into directory tables once only rather than once per file.
- */
-public class DirEntry {
-    private Path path;
-
-    public DirEntry(Path path) {
-        this.path = path;
+    public FieldEntry(FileEntry fileEntry, String fieldName, StructureTypeEntry ownerType, TypeEntry valueType, int size, int offset, int modifiers) {
+        super(fileEntry, fieldName, ownerType, valueType, modifiers);
+        this.size = size;
+        this.offset = offset;
     }
 
-    public Path getPath() {
-        return path;
+    public int getSize() {
+        return size;
     }
 
-    public String getPathString() {
-        return path.toString();
+    public int getOffset() {
+        return offset;
     }
 }

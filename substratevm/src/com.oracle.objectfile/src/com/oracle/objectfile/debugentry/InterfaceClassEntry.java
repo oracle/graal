@@ -26,27 +26,40 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.nio.file.Path;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInterfaceTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
+import org.graalvm.compiler.debug.DebugContext;
 
-/**
- * Tracks the directory associated with one or more source files.
- *
- * This is identified separately from each FileEntry identifying files that reside in the directory.
- * That is necessary because the line info generator needs to collect and write out directory names
- * into directory tables once only rather than once per file.
- */
-public class DirEntry {
-    private Path path;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.stream.Stream;
 
-    public DirEntry(Path path) {
-        this.path = path;
+public class InterfaceClassEntry extends ClassEntry {
+    private List<ClassEntry> implementors;
+
+    public InterfaceClassEntry(String className, FileEntry fileEntry, int size) {
+        super(className, fileEntry, size);
+        implementors = new LinkedList<>();
     }
 
-    public Path getPath() {
-        return path;
+    @Override
+    public DebugTypeKind typeKind() {
+        return DebugTypeKind.INTERFACE;
     }
 
-    public String getPathString() {
-        return path.toString();
+    @Override
+    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
+        assert debugTypeInfo instanceof DebugInterfaceTypeInfo;
+        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
+    }
+
+    public void addImplementor(ClassEntry classEntry, DebugContext debugContext) {
+        implementors.add(classEntry);
+        debugContext.log("typename %s add implementor %s\n", typeName, classEntry.getTypeName());
+    }
+
+    public Stream<ClassEntry> implementors() {
+        return implementors.stream();
     }
 }

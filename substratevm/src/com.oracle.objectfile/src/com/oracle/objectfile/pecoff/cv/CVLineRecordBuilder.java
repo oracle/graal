@@ -82,7 +82,7 @@ public class CVLineRecordBuilder {
      */
     private void processRange(Range range) {
 
-        FileEntry file = cvDebugInfo.findFile(range.getFileAsPath());
+        FileEntry file = range.getFileEntry();
         if (file == null) {
             debug("processRange: range has no file: %s\n", range);
             return;
