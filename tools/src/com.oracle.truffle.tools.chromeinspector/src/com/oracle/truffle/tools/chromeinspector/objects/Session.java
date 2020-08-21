@@ -180,7 +180,7 @@ class Session extends AbstractInspectorObject {
         }
         InspectorExecutionContext execContext = contextSupplier.get();
         iss = InspectServerSession.create(execContext, false, new ConnectionWatcher());
-        iss.setJSONMessageListener(getListeners());
+        iss.open(getListeners());
         execContext.setSynchronous(true);
         // Enable the Runtime by default
         iss.sendCommand(new Command("{\"id\":0,\"method\":\"Runtime.enable\"}"));

@@ -293,7 +293,7 @@ public final class InspectorTester {
                 connectionWatcher = sessionInfo.getConnectionWatcher();
                 contextId = sessionInfo.getId();
                 inspectorContext = sessionInfo.getInspectorContext();
-                inspect.setMessageListener(this);
+                inspect.open(this);
                 Context context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
                 initialized.release();
                 Source source = null;
