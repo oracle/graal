@@ -942,8 +942,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         } else {
             if (resolutionSeed.isConstructor()) {
                 target = resolutionSeed;
-            } else {
+            } else if (resolutionSeed.isVirtualCall()) {
                 target = receiver.getKlass().vtableLookup(resolutionSeed.getVTableIndex());
+            } else {
+                target = resolutionSeed;
             }
         }
 

@@ -2690,6 +2690,10 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @SuppressWarnings("unused")
     @TruffleBoundary
+    /**
+     * Instant.now() uses System.currentTimeMillis() on a host Java 8. This might produce some loss
+     * of precision.
+     */
     public static long JVM_GetNanoTimeAdjustment(@Host(Class.class) StaticObject ignored, long offset) {
         Instant now = Instant.now();
         long secs = now.getEpochSecond();
