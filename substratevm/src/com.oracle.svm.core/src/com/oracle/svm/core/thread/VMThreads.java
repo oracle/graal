@@ -469,6 +469,12 @@ public abstract class VMThreads {
     protected abstract OSThreadId getCurrentOSThreadId();
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isCurrentThread(IsolateThread thread) {
+        OSThreadId osThreadId = getCurrentOSThreadId();
+        return OSThreadIdTL.get(thread).equal(osThreadId);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public IsolateThread findIsolateThreadForCurrentOSThread(boolean inCrashHandler) {
         OSThreadId osThreadId = getCurrentOSThreadId();
 
