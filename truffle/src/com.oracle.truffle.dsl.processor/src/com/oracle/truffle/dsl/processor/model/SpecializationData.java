@@ -92,7 +92,7 @@ public final class SpecializationData extends TemplateMethod {
     private final boolean reportMegamorphism;
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions, boolean hasUnexpectedResultRewrite,
-                              boolean reportPolymorphism, boolean reportMegamorphism) {
+                    boolean reportPolymorphism, boolean reportMegamorphism) {
         super(template);
         this.node = node;
         this.kind = kind;
@@ -164,7 +164,6 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public boolean isReportMegamorphism() {
-//        return false;
         return reportMegamorphism;
     }
 
