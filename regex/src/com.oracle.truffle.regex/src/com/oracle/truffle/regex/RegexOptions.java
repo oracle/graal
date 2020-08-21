@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.parser.RegexFeatureSet;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
+import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
 
 public final class RegexOptions {
 
@@ -65,6 +66,7 @@ public final class RegexOptions {
     private static final String FLAVOR_NAME = "Flavor";
     private static final String FLAVOR_PYTHON_STR = "PythonStr";
     private static final String FLAVOR_PYTHON_BYTES = "PythonBytes";
+    private static final String FLAVOR_RUBY = "Ruby";
     private static final String FLAVOR_ECMASCRIPT = "ECMAScript";
 
     private static final String FEATURE_SET_NAME = "FeatureSet";
@@ -150,10 +152,12 @@ public final class RegexOptions {
                 return PythonFlavor.STR_INSTANCE;
             case FLAVOR_PYTHON_BYTES:
                 return PythonFlavor.BYTES_INSTANCE;
+            case FLAVOR_RUBY:
+                return RubyFlavor.INSTANCE;
             case FLAVOR_ECMASCRIPT:
                 return null;
             default:
-                throw optionsSyntaxErrorUnexpectedValue(optionsString, FLAVOR_NAME, value, FLAVOR_PYTHON_STR, FLAVOR_PYTHON_BYTES, FLAVOR_ECMASCRIPT);
+                throw optionsSyntaxErrorUnexpectedValue(optionsString, FLAVOR_NAME, value, FLAVOR_PYTHON_STR, FLAVOR_PYTHON_BYTES, FLAVOR_RUBY, FLAVOR_ECMASCRIPT);
         }
     }
 
@@ -270,6 +274,8 @@ public final class RegexOptions {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_STR + ",");
         } else if (flavor == PythonFlavor.BYTES_INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_BYTES + ",");
+        } else if (flavor == RubyFlavor.INSTANCE) {
+            sb.append(FLAVOR_NAME + "=" + FLAVOR_RUBY + ",");
         }
         sb.append(FEATURE_SET_NAME + "=Default");
         return sb.toString();

@@ -67,6 +67,7 @@ import com.oracle.truffle.regex.runtime.nodes.ExpectByteArrayHostObjectNode;
 import com.oracle.truffle.regex.runtime.nodes.ExpectStringOrTruffleObjectNode;
 import com.oracle.truffle.regex.runtime.nodes.ToLongNode;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlags;
+import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlags;
 import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.util.TruffleNull;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
@@ -83,6 +84,7 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
  * <ul>
  * <li>{@link RegexFlags} if the flavor was {@code ECMAScript}</li>
  * <li>{@link PythonFlags} if the flavor was {@code PythonStr} or {@code PythonBytes}</li>
+ * <li>{@link RubyFlags} if the flavor was {@code Ruby}</li>
  * </ul>
  * </li>
  * <li>{@code int groupCount}: number of capture groups present in the regular expression, including
