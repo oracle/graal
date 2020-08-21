@@ -266,7 +266,14 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     @Override
     protected void visitPointerToInfo(PointerToInfo pointerToInfo) {
-        printUnsignedLong(pointerToInfo.getSizeInfo(), sizeOf(pointerToInfo));
+        String sizeOfExpr = sizeOf(pointerToInfo);
+        if (pointerToInfo.getKind() == ElementKind.POINTER && pointerToInfo.getName().startsWith("struct ")) {
+            /* Eliminate need for struct forward declarations */
+            sizeOfExpr = "sizeof(void *)";
+        } else {
+            sizeOfExpr = sizeOf(pointerToInfo);
+        }
+        printUnsignedLong(pointerToInfo.getSizeInfo(), sizeOfExpr);
 
         if (pointerToInfo.getKind() == ElementKind.INTEGER) {
             registerElementForCurrentLine(pointerToInfo.getAnnotatedElement());
