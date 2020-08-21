@@ -1118,7 +1118,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @TruffleBoundary
-    static Method getMethodFromFrame(FrameInstance frameInstance) {
+    public static Method getMethodFromFrame(FrameInstance frameInstance) {
         EspressoRootNode root = getEspressoRootFromFrame(frameInstance);
         if (root != null) {
             return root.getMethod();
