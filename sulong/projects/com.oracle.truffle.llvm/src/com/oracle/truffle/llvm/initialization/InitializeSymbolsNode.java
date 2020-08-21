@@ -65,7 +65,8 @@ import java.util.List;
 
 /**
  * {@link InitializeSymbolsNode} creates the symbol of all defined functions and globals, and put
- * them into the symbol table.
+ * them into the symbol table. Alias will be unwrapped before they are inserted into the symbol
+ * table.
  *
  * @see InitializeScopeNode
  * @see InitializeGlobalNode

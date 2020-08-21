@@ -141,12 +141,12 @@ final class ParserDriver {
      */
     private CallTarget parseWithDependencies(Source source, ByteSequence bytes, ExternalLibrary library) {
 
+        // Dependencies can either be Source or the call target if the library
+        // has already been parsed.
         ArrayList<Object> dependenciesSource = new ArrayList<>();
         insertDefaultDependencies(dependenciesSource, source.getName());
         // Process the bitcode file and its dependencies in the dynamic linking order
         LLVMParserResult result = parseLibraryWithSource(source, library, bytes, dependenciesSource);
-        boolean isInternalLibrary = context.isInternalLibrary(library);
-
         if (result == null) {
             // If result is null, then the file parsed does not contain bitcode.
             // The NFI can handle it later if it's a native file.
@@ -154,41 +154,40 @@ final class ParserDriver {
             if (nfiContextExtension != null) {
                 nfiContextExtension.addNativeLibrary(library);
             }
-            // An empty call target is returned.
+            // An empty call target is returned for native libraries.
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         }
         // ensures the library of the source is not native
         assert !library.isNative();
-
-        if (isInternalLibrary) {
+        if (context.isInternalLibrary(library)) {
             String libraryName = getSimpleLibraryName(library.getName());
             // Add the file scope of the source to the language
             language.addInternalFileScope(libraryName, result.getRuntime().getFileScope());
-
             if (libraryName.equals("libsulong")) {
                 context.addLibsulongDataLayout(result.getDataLayout());
             }
-
             // renaming is attempted only for internal libraries.
             resolveRenamedSymbols(result, language, context);
         }
-
         addExternalSymbolsToScopes(result);
         return createLibraryCallTarget(source.getName(), result, dependenciesSource, source);
     }
 
     /**
+     * The default libraries are created as the initial dependencies for every library parsed.
      *
-     * @param sourceDependencies
+     * @param sourceDependencies List of dependencies for a library. They can either be source or
+     *            the call target if the library has already been parsed.
      */
     private void insertDefaultDependencies(ArrayList<Object> sourceDependencies, String currentLib) {
         // There could be conflicts between the default libraries of Sulong and the ones that are
         // passed on the command-line. To resolve that, we add ours first but parse them later on.
         String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
         for (String sulongLibraryName : sulongLibraryNames) {
-            // don't add the library itself as one of it's own dependency.
+            // Don't add the library itself as one of it's own dependency.
             if (!currentLib.equalsIgnoreCase(sulongLibraryName)) {
                 ExternalLibrary lib = context.addInternalLibrary(sulongLibraryName, "<default bitcode library>");
+                // Look into the library cache in the language for the call target.
                 CallTarget calls = language.getCachedLibrary(lib.getPath().toString());
                 if (calls == null) {
                     sourceDependencies.add(createDependencySource(lib));
@@ -202,6 +201,7 @@ final class ParserDriver {
         List<String> externals = SulongEngineOption.getPolyglotOptionExternalLibraries(context.getEnv());
         for (String external : externals) {
             ExternalLibrary lib = context.addExternalLibraryDefaultLocator(external, "<command line>");
+            // Look into the library cache in the language for the call target.
             CallTarget calls = language.getCachedLibrary(lib.getPath().toString());
             if (calls == null) {
                 sourceDependencies.add(createDependencySource(lib));
@@ -240,11 +240,8 @@ final class ParserDriver {
                     scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                     if (scope == null) {
                         try {
-                            /*
-                             * If the library that contains the function is not in the language, and
-                             * therefore has not been parsed, then we will try to lazily parse the
-                             * library now.
-                             */
+                            // If the library that contains the function has not been parsed,
+                            // then the library will be lazily parse now.
                             String libName = lib + "." + language.getCapability(PlatformCapability.class).getLibrarySuffix();
                             ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>");
                             TruffleFile file = library.hasFile() ? library.getFile() : context.getEnv().getInternalTruffleFile(library.getPath().toUri());
@@ -268,11 +265,8 @@ final class ParserDriver {
                 scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                 if (scope == null) {
                     try {
-                        /*
-                         * If the library that contains the function is not in the language, and
-                         * therefore has not been parsed, then we will try to lazily parse the
-                         * library now.
-                         */
+                        // If the library that contains the function has not been parsed,
+                        // then the library will be lazily parse now.
                         String libName = lib + "." + language.getCapability(PlatformCapability.class).getLibrarySuffix();
                         ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>");
                         TruffleFile file = library.hasFile() ? library.getFile() : context.getEnv().getInternalTruffleFile(library.getPath().toUri());
@@ -446,10 +440,6 @@ final class ParserDriver {
         }
 
         // Mark default bitcode libraries as bitcode libraries.
-        // TODO (PLi): Remove this. The default libraries should not be created by the context as
-        // a native library first and then marked as a bitcode library. Also they should not be
-        // created
-        // as an ExternalLibrary first, and then converted into a source.
         if (lib.getName().equalsIgnoreCase(BasicPlatformCapability.LIBSULONG_FILENAME) || lib.getName().equalsIgnoreCase(BasicPlatformCapability.LIBSULONGXX_FILENAME)) {
             if (lib.isNative()) {
                 lib.makeBitcodeLibrary();

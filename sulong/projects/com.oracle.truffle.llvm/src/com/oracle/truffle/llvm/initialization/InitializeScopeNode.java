@@ -39,8 +39,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import java.util.ArrayList;
 
 /**
- * Initialization node for the global scope and the local scope of the module. The scopes are
- * allocated from the symbols in the file scope of the module.
+ * Initial the global scope and the local scope of the library. The scopes are allocated from the
+ * symbols in the file scope of the library.
  *
  * @see InitializeSymbolsNode
  * @see InitializeGlobalNode
@@ -56,6 +56,7 @@ public final class InitializeScopeNode extends LLVMNode {
         this.fileScope = result.getRuntime().getFileScope();
         ArrayList<AllocScopeNode> allocScopesList = new ArrayList<>();
         for (LLVMSymbol symbol : fileScope.values()) {
+            // Only exported symbols are allocated into the scope
             if (symbol.isExported()) {
                 allocScopesList.add(new AllocScopeNode(symbol));
             }

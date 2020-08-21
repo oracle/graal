@@ -70,21 +70,25 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The {@link LoadModulesNode} initialise all libraries. This involves building the scopes (local
+ * The {@link LoadModulesNode} initialise the library. This involves building the scopes (local
  * scope and global scope), allocating the symbol table, resolving external symbols, resolving
  * symbol resolution, allocating global symbols, initialising the context, and initialising the
  * constructor.
  *
- * At the start of initialisation the dependencies of the library is parsed, the start function and
- * main function are created, and the context initialisation and dispose symbols are defined. This
- * is only ever done once per library. (Soon the main function will be created lazily as it is not
- * necessary to look up the main function for every library.)
+ * At the start of initialisation process the dependencies of the library are parsed, the start
+ * function and main function are created, and the context initialisation and dispose symbols are
+ * defined. This is only done once per library.
  *
  * The initialisation of a library is broken down into nine phases. The scope building phase, the
- * (defined) symbol initialisation phase, the external symbol initialisation phase, creating the
- * global symbols,
+ * (defined) symbol initialisation phase, the external symbol initialisation phase, the global
+ * symbol creation phase, the symbol resolution phase, the constructor initialisation phase, and
+ * finally the caching or the done phase.
  *
- * one scope phase six initialise phase one done/mark phase
+ * The initialisation is done calling the {@see loadModule} method, the dependencies of the library
+ * are initialised by recursively call the loadModule method with the specific path that is being
+ * initialised, i.e. INIT_EXTERNALS for external symbol initialisation. Once the initialisation has
+ * been completed only the root library will return the non-null scope for the initialised library,
+ * while the dependencies will return null.
  *
  */
 public final class LoadModulesNode extends RootNode {
@@ -211,30 +215,28 @@ public final class LoadModulesNode extends RootNode {
                         }
                     }
                 }
-                // TODO (PLi): The main function can be created lazliy. The start function, the
-                // context initialise and
-                // dispose symbols should only be set once, when libsulong is first parsed.
+                // Set up the start and main functions, as well as the context initialise and dipose
+                // symbols.
                 LLVMFunctionDescriptor startFunctionDescriptor = findAndSetSulongSpecificFunctions(language, context);
                 LLVMFunction mainFunction = findMainFunction(parserResult);
+                // Not every library will have a main function, this will be done lazily in the
+                // future.
                 if (mainFunction != null) {
                     RootCallTarget startCallTarget = startFunctionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
                     Path applicationPath = mainFunction.getLibrary().getPath();
                     RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
                     mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
                 }
-                /*
-                 * check if the context already contain the initialization context -- only for
-                 * libsulong. only set once per context, only insert if it's not there.
-                 */
                 initContext = this.insert(context.createInitializeContextNode(getFrameDescriptor()));
                 hasInitialised = true;
             }
 
+            // Initialise the library. This will be recursively called to initialise the
+            // dependencies.
             LLVMScope scope = loadModule(frame, context);
 
-            // or just check that scope is not null,
-            if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
-                assert scope != null;
+            // Only the root library (not a dependency) will scope a non-null scope.
+            if (scope != null) {
                 return new SulongLibrary(sourceName, scope, mainFunctionCallTarget, context);
             }
         }
@@ -258,11 +260,15 @@ public final class LoadModulesNode extends RootNode {
             if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                 phase = (LLVMLoadingPhase) frame.getArguments()[0];
                 visited = (BitSet) frame.getArguments()[1];
+                // Additional arguments are required for building the scopes.
                 if (phase == LLVMLoadingPhase.BUILD_SCOPES) {
                     localScope = (LLVMLocalScope) frame.getArguments()[2];
                     que = (ArrayDeque<CallTarget>) frame.getArguments()[3];
                     resultScope = (LLVMScope) frame.getArguments()[4];
                 }
+                // For the root library, it is defined when either the frame has no argument, or
+                // when the
+                // first argument is not one of the loading phases.
             } else if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                 phase = LLVMLoadingPhase.ALL;
                 resultScope = createLLVMScope();
