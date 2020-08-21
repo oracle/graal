@@ -107,6 +107,10 @@ public final class InspectServerSession implements MessageEndpoint {
         }
     }
 
+    boolean isClosed() {
+        return processThread == null;
+    }
+
     // For tests only
     public DebuggerDomain getDebugger() {
         return debugger;
@@ -141,21 +145,32 @@ public final class InspectServerSession implements MessageEndpoint {
         }
     }
 
-    public synchronized void setMessageListener(MessageEndpoint messageListener) {
-        this.messageEndpoint = messageListener;
-        if (messageListener != null && processThread == null) {
-            EventHandler eh = new EventHandlerImpl();
-            runtime.setEventHandler(eh);
-            debugger.setEventHandler(eh);
-            profiler.setEventHandler(eh);
-            processThread = new CommandProcessThread();
-            processThread.start();
-        }
+    synchronized void clearMessageEndpoint() {
+        this.messageEndpoint = null;
     }
 
-    public synchronized void setJSONMessageListener(JSONMessageListener messageListener) {
+    /**
+     * Open the communication with a {@link MessageEndpoint}.
+     */
+    public synchronized void open(MessageEndpoint messageListener) {
+        assert messageListener != null : "Message listener must not be null";
+        this.messageEndpoint = messageListener;
+        startUp();
+    }
+
+    /**
+     * Open the communication with a {@link JSONMessageListener}.
+     */
+    public synchronized void open(JSONMessageListener messageListener) {
+        assert messageListener != null : "Message listener must not be null";
+        assert this.jsonMessageListener == null : "A message listener was set already.";
         this.jsonMessageListener = messageListener;
-        if (messageListener != null && processThread == null) {
+        startUp();
+    }
+
+    private void startUp() {
+        assert Thread.holdsLock(this);
+        if (processThread == null) {
             EventHandler eh = new EventHandlerImpl();
             runtime.setEventHandler(eh);
             debugger.setEventHandler(eh);

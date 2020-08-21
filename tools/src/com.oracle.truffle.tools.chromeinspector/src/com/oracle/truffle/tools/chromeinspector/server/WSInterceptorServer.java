@@ -49,18 +49,22 @@ public final class WSInterceptorServer implements InspectorWSConnection, Message
         this.token = token;
         this.connectionWatcher = connectionWatcher;
         this.iss = iss;
-        iss.setMessageListener(this);
+        iss.open(this);
+    }
+
+    public void resetSessionEndpoint() {
+        iss.clearMessageEndpoint();
     }
 
     public void newSession(InspectServerSession newIss) {
-        this.iss.setMessageListener(null);
+        assert this.iss.isClosed();
         this.iss = newIss;
-        this.iss.setMessageListener(this);
+        this.iss.open(this);
     }
 
     public void opened(MessageEndpoint endpoint) {
         this.inspectEndpoint = endpoint;
-        iss.setMessageListener(this);
+        this.iss.open(endpoint);
         this.connectionWatcher.notifyOpen();
     }
 
@@ -71,7 +75,7 @@ public final class WSInterceptorServer implements InspectorWSConnection, Message
 
     @Override
     public void close(Token tokenToClose) throws IOException {
-        iss.setMessageListener(null);
+        iss.dispose();
         if (inspectEndpoint != null) {
             if (tokenToClose.equals(this.token)) {
                 inspectEndpoint.sendClose();
