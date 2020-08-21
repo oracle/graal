@@ -270,8 +270,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return nextID;
     }
 
-    /*
-     * TODO: comments Call target
+    /**
+     * If a library has already been parsed, the call target will be retrieved from the language cache.
+     *
+     * @param request request for parsing
+     * @return calltarget of the library
      */
     @Override
     protected CallTarget parse(ParsingRequest request) {
@@ -282,6 +285,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             if (callTarget == null) {
                 callTarget = getCapability(Loader.class).load(getContext(), source, nextID);
                 CallTarget prev = libraryCache.putIfAbsent(source.getPath(), callTarget);
+                // To ensure the call target in the cache is always returned in case of concurrency.
                 if (prev != null) {
                     callTarget = prev;
                 }

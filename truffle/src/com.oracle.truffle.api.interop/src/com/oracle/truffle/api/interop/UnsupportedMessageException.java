@@ -81,7 +81,6 @@ public final class UnsupportedMessageException extends InteropException {
      *
      * @since 19.0
      */
-    @CompilerDirectives.TruffleBoundary
     public static UnsupportedMessageException create() {
         return new UnsupportedMessageException();
     }
@@ -106,7 +105,6 @@ public final class UnsupportedMessageException extends InteropException {
      * @param cause the guest language exception that caused the error.
      * @since 20.2
      */
-    @CompilerDirectives.TruffleBoundary
     public static UnsupportedMessageException create(Throwable cause) {
         return new UnsupportedMessageException(cause);
     }

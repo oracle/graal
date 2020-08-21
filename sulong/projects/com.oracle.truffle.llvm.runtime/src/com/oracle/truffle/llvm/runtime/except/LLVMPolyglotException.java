@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,7 +39,6 @@ public final class LLVMPolyglotException extends LLVMException {
 
     private static final long serialVersionUID = 1L;
 
-    @TruffleBoundary
     public LLVMPolyglotException(Node location, String message) {
         super(location, message);
     }
