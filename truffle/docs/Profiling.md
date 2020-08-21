@@ -19,7 +19,7 @@ which is part of the `/tools` suite and part of GraalVM. Simply pass `--cpusampl
 to your language launcher:
 
 ```shell
-$ my-language --cpusampler --cpusampler.Delay=MILLISECONDS -e 'p :hello'
+my-language --cpusampler --cpusampler.Delay=MILLISECONDS -e 'p :hello'
 ```
 
 You probably want to use a sampling delay with `--cpusampler.Delay=MILLISECONDS`
@@ -41,7 +41,7 @@ Creating the flame graph is a multi-stage process. First, we need to profile the
 with the JSON formatter:
 
 ```shell
-$ my-language --cpusampler --cpusampler.SampleInternal --cpusampler.Mode=roots --cpusampler.Output=json -e 'p :hello' > simple-app.json
+my-language --cpusampler --cpusampler.SampleInternal --cpusampler.Mode=roots --cpusampler.Output=json -e 'p :hello' > simple-app.json
 ```
 
 Use the `--cpusampler.SampleInternal=true` option if you want to profile internal sources, such as standard library functions.
@@ -64,7 +64,7 @@ into the parent directory. Now you can run the script to transform the output an
 pipe it into the script that will generate the SVG data:
 
 ```shell
-$ ../FlameGraph/stackcollapse-graalvm.rb simple-app.json | ../FlameGraph/flamegraph.pl > simple-app.svg
+../FlameGraph/stackcollapse-graalvm.rb simple-app.json | ../FlameGraph/flamegraph.pl > simple-app.svg
 ```
 
 At this point, you should open the SVG file in a Chromium-based web browser. Your system
@@ -85,13 +85,13 @@ Using Developer Studio Performance Analyser is straightforward, include the path
 and then prefix your normal command-line with `collect`, for example:
 
 ```shell
-$ collect js mybenchmark.js
+collect js mybenchmark.js
 ```
 
 On completion an "experiment" (.er) directory will have been created containing the profiling data for the command execution, `test.1.er` by default. To view the profiling results, use the `analyzer` tool:
 
 ```shell
-$ analyzer test.1.er
+analyzer test.1.er
 ```
 
 The `analyzer` GUI allows you to view the captured profiling information in several different ways, for example
