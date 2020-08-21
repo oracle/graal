@@ -68,17 +68,17 @@ public class SLParseError extends AbstractTruffleException {
     }
 
     @ExportMessage
-    public ExceptionType getExceptionType() {
+    ExceptionType getExceptionType() {
         return ExceptionType.SYNTAX_ERROR;
     }
 
     @ExportMessage
-    public boolean hasSourceLocation() {
+    boolean hasSourceLocation() {
         return source != null;
     }
 
     @ExportMessage(name = "getSourceLocation")
-    public SourceSection sourceLocation() throws UnsupportedMessageException {
+    SourceSection getSourceSection() throws UnsupportedMessageException {
         if (source == null) {
             throw UnsupportedMessageException.create();
         }

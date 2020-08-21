@@ -165,17 +165,17 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        public ExceptionType getExceptionType() {
+        ExceptionType getExceptionType() {
             return ExceptionType.SYNTAX_ERROR;
         }
 
         @ExportMessage
-        public boolean hasSourceLocation() {
+        boolean hasSourceLocation() {
             return location != null;
         }
 
         @ExportMessage(name = "getSourceLocation")
-        public SourceSection sourceLocation() throws UnsupportedMessageException {
+        SourceSection getSourceSection() throws UnsupportedMessageException {
             if (location == null) {
                 throw UnsupportedMessageException.create();
             }

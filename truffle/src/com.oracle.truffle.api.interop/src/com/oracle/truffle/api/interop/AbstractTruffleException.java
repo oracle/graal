@@ -46,29 +46,147 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * A base class for an exception thrown during the execution of a guest language program.
+ * A base class for an exception thrown during the execution of a guest language program.<br>
+ * The following snippet shows the guest language exception implementation.
  *
- * @since 20.2
+ * <pre>
+ * final class MyLanguageException extends AbstractTruffleException {
+ *     MyLanguageException(String message, Node location) {
+ *         super(message, location);
+ *     }
+ * }
+ * </pre>
+ *
+ * The following snippet shows a typical implementation of a syntax error exception supporting also
+ * incomplete sources.
+ *
+ * <pre>
+ * &#64;ExportLibrary(InteropLibrary.class)
+ * final class MyLanguageParseError extends AbstractTruffleException {
+ *     private final Source source;
+ *     private final int line;
+ *     private final int column;
+ *     private final int length;
+ *     private final boolean incompleteSource;
+ *
+ *     MyLanguageParseError(Source source, int line, int column, int length, boolean incomplete, String message) {
+ *         super(message);
+ *         this.source = source;
+ *         this.line = line;
+ *         this.column = column;
+ *         this.length = length;
+ *         this.incompleteSource = incomplete;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     ExceptionType getExceptionType() {
+ *         return ExceptionType.SYNTAX_ERROR;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     boolean isExceptionIncompleteSource() {
+ *         return incompleteSource;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     boolean hasSourceLocation() {
+ *         return source != null;
+ *     }
+ *
+ *     &#64;ExportMessage(name = "getSourceLocation")
+ *     SourceSection getSourceSection() throws UnsupportedMessageException {
+ *         if (source == null) {
+ *             throw UnsupportedMessageException.create();
+ *         }
+ *         return source.createSection(line, column, length);
+ *     }
+ * }
+ * </pre>
+ *
+ * The following snippet shows a typical implementation of an exit exception.
+ *
+ * <pre>
+ * &#64;ExportLibrary(InteropLibrary.class)
+ * final class MyLanguageExitException extends AbstractTruffleException {
+ *
+ *     private final int exitStatus;
+ *
+ *     MyLanguageExitException(String message, int exitStatus, Node location) {
+ *         super(message, location);
+ *         this.exitStatus = exitStatus;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     boolean isExceptionUnwind() {
+ *         return true;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     ExceptionType getExceptionType() {
+ *         return ExceptionType.EXIT;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     int getExceptionExitStatus() {
+ *         return exitStatus;
+ *     }
+ * }
+ * </pre>
+ *
+ * The following snippet shows a typical implementation of a cancel exception.
+ *
+ * <pre>
+ * &#64;ExportLibrary(InteropLibrary.class)
+ * final class MyLanguageCancelException extends AbstractTruffleException {
+ *
+ *     MyLanguageCancelException(String message, Node location) {
+ *         super(message, location);
+ *         this.unwind = unwind;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     boolean isExceptionUnwind() {
+ *         return true;
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     ExceptionType getExceptionType() {
+ *         return ExceptionType.CANCEL;
+ *     }
+ * }
+ * </pre>
+ *
+ * @since 20.3
  */
 @SuppressWarnings({"serial", "deprecation"})
 public abstract class AbstractTruffleException extends RuntimeException implements TruffleObject, com.oracle.truffle.api.TruffleException {
 
     private final int stackTraceElementLimit;
     private final Throwable internalCause;
+    private final Node location;
     private volatile Throwable lazyStackTrace;
 
     protected AbstractTruffleException() {
-        this(null, null, -1);
+        this(null, null, -1, null);
+    }
+
+    protected AbstractTruffleException(Node location) {
+        this(null, null, -1, location);
     }
 
     protected AbstractTruffleException(String message) {
-        this(message, null, -1);
+        this(message, null, -1, null);
     }
 
-    protected AbstractTruffleException(String message, Throwable internalCause, int stackTraceElementLimit) {
+    protected AbstractTruffleException(String message, Node location) {
+        this(message, null, -1, location);
+    }
+
+    protected AbstractTruffleException(String message, Throwable internalCause, int stackTraceElementLimit, Node location) {
         super(message, checkCause(internalCause));
         this.stackTraceElementLimit = stackTraceElementLimit;
         this.internalCause = internalCause;
+        this.location = location;
     }
 
     @Override
@@ -82,20 +200,31 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * may return <code>null</code> to indicate that the location is not available.
      *
      */
-    public Node getLocation() {
-        return null;
+    @Override
+    public final Node getLocation() {
+        return location;
     }
 
     /**
      * Returns a location where this exception occurred in the AST. This method may return
      * <code>null</code> to indicate that the location is not available.
      *
-     * @return the {@link SourceSection} or null
+     * @return the {@link SourceSection} or {@code null} Deprecated, use the
+     *         {@link InteropLibrary#getSourceLocation(Object)}.
      */
+    @Deprecated
     @Override
-    public SourceSection getSourceLocation() {
-        final Node node = getLocation();
-        return node == null ? null : node.getEncapsulatingSourceSection();
+    public final SourceSection getSourceLocation() {
+        InteropLibrary interop = InteropLibrary.getUncached();
+        if (interop.hasSourceLocation(this)) {
+            try {
+                return interop.getSourceLocation(this);
+            } catch (UnsupportedMessageException um) {
+                throw CompilerDirectives.shouldNotReachHere(um);
+            }
+        } else {
+            return null;
+        }
     }
 
     /**

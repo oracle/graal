@@ -1468,6 +1468,9 @@ public abstract class InteropLibrary extends Library {
                 return true;
             }
         }
+        if (receiver instanceof AbstractTruffleException) {
+            return DefaultAbstractTruffleExceptionExports.hasSourceLocation((AbstractTruffleException) receiver);
+        }
         return false;
     }
 
@@ -1493,6 +1496,9 @@ public abstract class InteropLibrary extends Library {
             if (location != null) {
                 return location;
             }
+        }
+        if (receiver instanceof AbstractTruffleException) {
+            return DefaultAbstractTruffleExceptionExports.getSourceLocation((AbstractTruffleException) receiver);
         }
         throw UnsupportedMessageException.create();
     }

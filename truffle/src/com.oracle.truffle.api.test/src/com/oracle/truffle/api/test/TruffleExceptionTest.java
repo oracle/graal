@@ -61,14 +61,13 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
-import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import org.graalvm.polyglot.Context;
@@ -91,8 +90,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         setupEnv(createContext(verifyingHandler), new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                TruffleExceptionImpl exception = new TruffleExceptionImpl("Test exception", false);
-                return createAST(AbstractTruffleException.class, languageInstance, exception, (node) -> exception.setLocation(node));
+                return createAST(AbstractTruffleException.class, languageInstance, (n) -> new TruffleExceptionImpl("Test exception", false, n));
             }
         });
         verifyingHandler.expect(BlockNode.Kind.TRY, BlockNode.Kind.CATCH, BlockNode.Kind.FINALLY);
@@ -104,8 +102,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         setupEnv(createContext(verifyingHandler), new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                TruffleExceptionImpl exception = new TruffleExceptionImpl("Test unwind exception", true);
-                return createAST(AbstractTruffleException.class, languageInstance, exception, (node) -> exception.setLocation(node));
+                return createAST(AbstractTruffleException.class, languageInstance, (n) -> new TruffleExceptionImpl("Test unwind exception", true, n));
             }
         });
         verifyingHandler.expect(BlockNode.Kind.TRY);
@@ -116,9 +113,8 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         return Context.newBuilder().option(String.format("log.%s.level", handler.loggerName), "FINE").logHandler(handler).build();
     }
 
-    static CallTarget createAST(Class<?> testClass, TruffleLanguage<ProxyLanguage.LanguageContext> lang, Object exceptionObject, Consumer<Node> throwNodeConsumer) {
-        ThrowNode throwNode = new ThrowNode(exceptionObject);
-        throwNodeConsumer.accept(throwNode);
+    static CallTarget createAST(Class<?> testClass, TruffleLanguage<ProxyLanguage.LanguageContext> lang, Function<Node, Object> exceptionObjectFactroy) {
+        ThrowNode throwNode = new ThrowNode(exceptionObjectFactroy);
         TryCatchNode tryCatch = new TryCatchNode(new BlockNode(testClass, BlockNode.Kind.TRY, throwNode),
                         new BlockNode(testClass, BlockNode.Kind.CATCH),
                         new BlockNode(testClass, BlockNode.Kind.FINALLY));
@@ -307,8 +303,8 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         private final Object exceptionObject;
         @Child InteropLibrary interop;
 
-        ThrowNode(Object exceptionObject) {
-            this.exceptionObject = exceptionObject;
+        ThrowNode(Function<Node, Object> exceptionObjectFactroy) {
+            this.exceptionObject = exceptionObjectFactroy.apply(this);
             interop = InteropLibrary.getFactory().create(exceptionObject);
         }
 
@@ -327,44 +323,20 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
     static final class TruffleExceptionImpl extends AbstractTruffleException {
 
         private final boolean unwind;
-        private Node location;
 
-        TruffleExceptionImpl(String message, boolean unwind) {
-            super(message);
+        TruffleExceptionImpl(String message, boolean unwind, Node location) {
+            super(message, location);
             this.unwind = unwind;
         }
 
-        @Override
-        public Node getLocation() {
-            return location;
-        }
-
-        void setLocation(Node node) {
-            this.location = node;
-        }
-
         @ExportMessage
-        public boolean isExceptionUnwind() {
+        boolean isExceptionUnwind() {
             return unwind;
         }
 
         @ExportMessage
-        public ExceptionType getExceptionType() {
+        ExceptionType getExceptionType() {
             return unwind ? ExceptionType.CANCEL : ExceptionType.LANGUAGE_ERROR;
-        }
-
-        @ExportMessage
-        public boolean hasSourceLocation() {
-            return location != null && location.getEncapsulatingSourceSection() != null;
-        }
-
-        @ExportMessage(name = "getSourceLocation")
-        public SourceSection sourceLocation() throws UnsupportedMessageException {
-            SourceSection res;
-            if (location == null || ((res = location.getEncapsulatingSourceSection()) == null)) {
-                throw UnsupportedMessageException.create();
-            }
-            return res;
         }
     }
 

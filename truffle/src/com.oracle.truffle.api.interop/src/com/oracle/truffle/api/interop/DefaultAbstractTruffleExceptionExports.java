@@ -45,6 +45,7 @@ import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -86,16 +87,18 @@ final class DefaultAbstractTruffleExceptionExports {
 
     @ExportMessage
     static boolean hasSourceLocation(AbstractTruffleException receiver) {
-        return receiver.getSourceLocation() != null;
+        Node location = receiver.getLocation();
+        return location != null && location.getEncapsulatingSourceSection() != null;
     }
 
     @ExportMessage
     static SourceSection getSourceLocation(AbstractTruffleException receiver) throws UnsupportedMessageException {
-        SourceSection sourceLocation = receiver.getSourceLocation();
-        if (sourceLocation == null) {
+        Node location = receiver.getLocation();
+        SourceSection sourceSection = location != null ? location.getEncapsulatingSourceSection() : null;
+        if (sourceSection == null) {
             throw UnsupportedMessageException.create();
         }
-        return sourceLocation;
+        return sourceSection;
     }
 
     @ExportMessage

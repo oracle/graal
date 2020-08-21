@@ -74,10 +74,12 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
         setupEnv(createContext(verifyingHandler), new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                LegacyCatchableException exception = new LegacyCatchableException("Test exception");
-                LangObject exceptionObject = new LangObject(exception, false);
-                exception.setExceptionObject(exceptionObject);
-                return createAST(LegacyTruffleExceptionTest.class, languageInstance, exceptionObject, (node) -> exception.setLocation(node));
+                return createAST(LegacyTruffleExceptionTest.class, languageInstance, (n) -> {
+                    LegacyCatchableException exception = new LegacyCatchableException("Test exception", n);
+                    LangObject exceptionObject = new LangObject(exception, false);
+                    exception.setExceptionObject(exceptionObject);
+                    return exceptionObject;
+                });
             }
         });
         verifyingHandler.expect(BlockNode.Kind.TRY, BlockNode.Kind.CATCH, BlockNode.Kind.FINALLY);
@@ -89,10 +91,12 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
         setupEnv(createContext(verifyingHandler), new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                LegacyUnCatchableException exception = new LegacyUnCatchableException();
-                LangObject exceptionObject = new LangObject(exception, true);
-                exception.setExceptionObject(exceptionObject);
-                return createAST(LegacyTruffleExceptionTest.class, languageInstance, exceptionObject, (node) -> exception.setLocation(node));
+                return createAST(LegacyTruffleExceptionTest.class, languageInstance, (n) -> {
+                    LegacyUnCatchableException exception = new LegacyUnCatchableException(n);
+                    LangObject exceptionObject = new LangObject(exception, true);
+                    exception.setExceptionObject(exceptionObject);
+                    return exceptionObject;
+                });
             }
         });
         verifyingHandler.expect(BlockNode.Kind.TRY);
@@ -148,19 +152,16 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
     @SuppressWarnings({"serial", "deprecation"})
     static final class LegacyCatchableException extends RuntimeException implements com.oracle.truffle.api.TruffleException, TruffleObject {
 
-        private Node location;
+        private final Node location;
         private Object exeptionObject;
 
-        LegacyCatchableException(String message) {
+        LegacyCatchableException(String message, Node location) {
             super(message);
+            this.location = location;
         }
 
         void setExceptionObject(Object exeptionObject) {
             this.exeptionObject = exeptionObject;
-        }
-
-        void setLocation(Node node) {
-            this.location = node;
         }
 
         @Override
@@ -180,16 +181,13 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
         private Node location;
         private Object exeptionObject;
 
-        LegacyUnCatchableException() {
+        LegacyUnCatchableException(Node location) {
             super();
+            this.location = location;
         }
 
         void setExceptionObject(Object exeptionObject) {
             this.exeptionObject = exeptionObject;
-        }
-
-        void setLocation(Node node) {
-            this.location = node;
         }
 
         @Override

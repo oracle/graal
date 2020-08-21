@@ -41,21 +41,16 @@
 package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.interop.AbstractTruffleException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.nodes.Node;
 
+@ExportLibrary(InteropLibrary.class)
 class NFIPreBindException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 1L;
 
-    private final Node location;
-
     NFIPreBindException(String message, Node location) {
-        super(message);
-        this.location = location;
-    }
-
-    @Override
-    public Node getLocation() {
-        return location;
+        super(message, location);
     }
 }
