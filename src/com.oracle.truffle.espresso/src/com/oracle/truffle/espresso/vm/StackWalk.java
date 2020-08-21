@@ -47,6 +47,10 @@ public class StackWalk {
     // -1 and 0 are reserved values.
     private final AtomicLong walkerIds = new AtomicLong(1);
 
+    /**
+     * Contains frame walkers that are currently anchored (ie: the call to callStackWalk has not yet
+     * returned).
+     */
     private final Map<Long, FrameWalker> walkers = new ConcurrentHashMap<>();
 
     private static final long JVM_STACKWALK_FILL_CLASS_REFS_ONLY = 0x2;
@@ -73,14 +77,18 @@ public class StackWalk {
     public StackWalk() {
     }
 
-    public StaticObject walk(@Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
-                    int batchSize, int startIndex,
-                    @Host(Object[].class) StaticObject frames,
-                    Meta meta) {
-        return fetchFirstBatch(stackStream, mode, skipframes, batchSize, startIndex, frames, meta);
-    }
-
-    private StaticObject fetchFirstBatch(@Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
+    /**
+     * initializes the stack walking, and anchors the Frame Walker instance to a particular frame
+     * and fetches the first batch of frames requested by guest.
+     * 
+     * Upon return, unanchors the Frame Walker, and it is then not possible to continue walking for
+     * this walker anymore.
+     * 
+     * @return The result of invoking guest
+     *         {@link java.lang.StackStreamFactory.AbstractStackWalker#doStackWalk(long, int, int, int, int)}
+     *         .
+     */
+    public StaticObject fetchFirstBatch(@Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
                     int batchSize, int startIndex,
                     @Host(Object[].class) StaticObject frames,
                     Meta meta) {
@@ -97,6 +105,12 @@ public class StackWalk {
         return (StaticObject) result;
     }
 
+    /**
+     * After {@link #fetchFirstBatch(StaticObject, long, int, int, int, StaticObject, Meta)}, this
+     * method allows to continue frame walking, starting from where the previous calls left off.
+     * 
+     * @return The position in the buffer at the end of fetching.
+     */
     public int fetchNextBatch(
                     @SuppressWarnings("unused") @Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream,
                     long mode, long anchor,
@@ -304,10 +318,16 @@ public class StackWalk {
             } else if (needMethodInfo(mode)) {
                 fillFrame(frameInstance, m, index);
             } else {
+                // Only class info is needed.
                 frames.putObject(m.getDeclaringKlass().mirror(), index, meta);
             }
         }
 
+        /**
+         * Initializes the {@link java.lang.StackFrameInfo} in the {@link #frames} array at index
+         * {@code index}. This means initializing the associated {@link java.lang.invoke.MemberName}
+         * , and injecting a BCI.
+         */
         public void fillFrame(FrameInstance frameInstance, Method m, int index) {
             StaticObject frame = frames.get(index);
             StaticObject memberName = frame.getField(meta.java_lang_StackFrameInfo_memberName);

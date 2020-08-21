@@ -2832,7 +2832,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     int batchSize, int startIndex,
                     @Host(Object[].class) StaticObject frames) {
         checkStackWalkArguments(batchSize, startIndex, frames);
-        return stackWalk.walk(stackStream, mode, skipframes, batchSize, startIndex, frames, getMeta());
+        return stackWalk.fetchFirstBatch(stackStream, mode, skipframes, batchSize, startIndex, frames, getMeta());
     }
 
     @VmImpl

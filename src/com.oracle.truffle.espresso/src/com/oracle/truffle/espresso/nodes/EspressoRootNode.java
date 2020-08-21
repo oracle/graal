@@ -55,6 +55,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     @Child protected EspressoInstrumentableNode methodNode;
 
     private final FrameSlot monitorSlot;
+    /**
+     * Shared slot for some VM method implementations that needs to leave a mark of passage in a
+     * particular frame. See {@link FrameCookie}.
+     */
     private final FrameSlot cookieSlot;
 
     private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
