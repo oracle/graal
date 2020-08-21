@@ -63,7 +63,7 @@ import jdk.vm.ci.meta.Value;
  * Compares two arrays with the same length.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128, allowedUsageTypes = {Memory})
-public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
+public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
     public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.create(ArrayEqualsNode.class);
     /** {@link JavaKind} of the arrays to compare. */
@@ -81,7 +81,11 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
     @OptionalInput(Memory) MemoryKill lastLocationAccess;
 
     public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
+        this(TYPE, array1, array2, length, kind);
+    }
+
+    protected ArrayEqualsNode(NodeClass<? extends ArrayEqualsNode> c, ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind) {
+        super(c, StampFactory.forKind(JavaKind.Boolean));
         this.kind = kind;
         this.array1 = array1;
         this.array2 = array2;

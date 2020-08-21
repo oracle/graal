@@ -53,7 +53,7 @@ import jdk.vm.ci.meta.Value;
  * Compares two array regions with a given length.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public final class ArrayRegionEqualsNode extends FixedWithNextNode implements LIRLowerable, MemoryAccess {
+public class ArrayRegionEqualsNode extends FixedWithNextNode implements LIRLowerable, MemoryAccess {
 
     public static final NodeClass<ArrayRegionEqualsNode> TYPE = NodeClass.create(ArrayRegionEqualsNode.class);
 
@@ -73,7 +73,12 @@ public final class ArrayRegionEqualsNode extends FixedWithNextNode implements LI
     @OptionalInput(Memory) private MemoryKill lastLocationAccess;
 
     public ArrayRegionEqualsNode(ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind1, @ConstantNodeParameter JavaKind kind2) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
+        this(TYPE, array1, array2, length, kind1, kind2);
+    }
+
+    protected ArrayRegionEqualsNode(NodeClass<? extends ArrayRegionEqualsNode> c, ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind1,
+                    @ConstantNodeParameter JavaKind kind2) {
+        super(c, StampFactory.forKind(JavaKind.Boolean));
         this.kind1 = kind1;
         this.kind2 = kind2;
         this.array1 = array1;

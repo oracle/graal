@@ -59,7 +59,7 @@ import jdk.vm.ci.meta.Value;
  * Compares two arrays lexicographically.
  */
 @NodeInfo(cycles = CYCLES_1024, size = SIZE_1024)
-public final class ArrayCompareToNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
+public class ArrayCompareToNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
     public static final NodeClass<ArrayCompareToNode> TYPE = NodeClass.create(ArrayCompareToNode.class);
 
@@ -84,7 +84,12 @@ public final class ArrayCompareToNode extends FixedWithNextNode implements LIRLo
     @OptionalInput(Memory) MemoryKill lastLocationAccess;
 
     public ArrayCompareToNode(ValueNode array1, ValueNode array2, ValueNode length1, ValueNode length2, @ConstantNodeParameter JavaKind kind1, @ConstantNodeParameter JavaKind kind2) {
-        super(TYPE, StampFactory.forKind(JavaKind.Int));
+        this(TYPE, array1, array2, length1, length2, kind1, kind2);
+    }
+
+    protected ArrayCompareToNode(NodeClass<? extends ArrayCompareToNode> c, ValueNode array1, ValueNode array2, ValueNode length1, ValueNode length2, @ConstantNodeParameter JavaKind kind1,
+                    @ConstantNodeParameter JavaKind kind2) {
+        super(c, StampFactory.forKind(JavaKind.Int));
         this.kind1 = kind1;
         this.kind2 = kind2;
         this.array1 = array1;
