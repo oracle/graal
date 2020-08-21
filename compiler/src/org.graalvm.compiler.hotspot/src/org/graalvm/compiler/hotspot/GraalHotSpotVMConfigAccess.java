@@ -26,6 +26,7 @@ package org.graalvm.compiler.hotspot;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Formatter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -144,11 +145,11 @@ public class GraalHotSpotVMConfigAccess {
     public static final boolean IS_OPENJDK = getProperty("java.vm.name", "").startsWith("OpenJDK");
     public static final Version JVMCI_VERSION;
     public static final boolean JVMCI;
-    public static final boolean JVMCI_PRERELEASE;
+    public static final boolean JDK_PRERELEASE;
     static {
         String vmVersion = getProperty("java.vm.version");
         JVMCI_VERSION = Version.parse(vmVersion);
-        JVMCI_PRERELEASE = vmVersion.contains("SNAPSHOT") || vmVersion.contains("-dev");
+        JDK_PRERELEASE = vmVersion.contains("SNAPSHOT") || vmVersion.contains("-dev");
         JVMCI = JVMCI_VERSION != null;
     }
 
@@ -180,7 +181,7 @@ public class GraalHotSpotVMConfigAccess {
     private boolean deferErrors = this instanceof GraalHotSpotVMConfig;
 
     private void recordError(String name, List<String> list, String unexpectedValue) {
-        if (JVMCI_PRERELEASE) {
+        if (JDK_PRERELEASE) {
             return;
         }
         String message = name;
@@ -229,14 +230,21 @@ public class GraalHotSpotVMConfigAccess {
         }
     }
 
-    static void reportError(String errorMessage) {
-        String value = System.getenv("JVMCI_CONFIG_CHECK");
+    static void reportError(String rawErrorMessage) {
+        String value = getProperty("JVMCI_CONFIG_CHECK");
+        Formatter errorMessage = new Formatter().format(rawErrorMessage);
+        String javaHome = getProperty("java.home");
+        String vmName = getProperty("java.vm.name");
+        errorMessage.format("%nSet the JVMCI_CONFIG_CHECK system property to \"ignore\" to suppress ");
+        errorMessage.format("this error or to \"warn\" to emit a warning and continue execution.%n");
+        errorMessage.format("Currently used Java home directory is %s.%n", javaHome);
+        errorMessage.format("Currently used VM configuration is: %s%n", vmName);
         if ("ignore".equals(value)) {
             return;
-        } else if ("warn".equals(value) || JVMCI_PRERELEASE) {
-            System.err.println(errorMessage);
+        } else if ("warn".equals(value) || JDK_PRERELEASE) {
+            System.err.println(errorMessage.toString());
         } else {
-            throw new JVMCIError(errorMessage);
+            throw new JVMCIError(errorMessage.toString());
         }
     }
 
