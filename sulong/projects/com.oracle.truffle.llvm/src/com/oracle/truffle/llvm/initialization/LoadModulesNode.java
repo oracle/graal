@@ -84,8 +84,8 @@ import java.util.Objects;
  * symbol creation phase, the symbol resolution phase, the constructor initialisation phase, and
  * finally the caching or the done phase.
  *
- * The initialisation is done calling the {@see loadModule} method, the dependencies of the library
- * are initialised by recursively call the loadModule method with the specific path that is being
+ * The initialisation is done calling the loadModule method, the dependencies of the library are
+ * initialised by recursively call the loadModule method with the specific path that is being
  * initialised, i.e. INIT_EXTERNALS for external symbol initialisation. Once the initialisation has
  * been completed only the root library will return the non-null scope for the initialised library,
  * while the dependencies will return null.
