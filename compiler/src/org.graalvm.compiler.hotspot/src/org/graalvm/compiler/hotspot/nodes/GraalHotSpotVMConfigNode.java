@@ -25,6 +25,7 @@
 package org.graalvm.compiler.hotspot.nodes;
 
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.core.common.GraalOptions.AOTVerifyOops;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
@@ -142,6 +143,7 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
     @Override
     public Node canonical(CanonicalizerTool tool) {
         boolean generatePIC = GeneratePIC.getValue(tool.getOptions());
+        boolean aotVerifyOops = AOTVerifyOops.getValue(tool.getOptions());
         if (!generatePIC || !markId.isAvailable()) {
             if (markId == HotSpotMarkId.CARD_TABLE_ADDRESS) {
                 return ConstantNode.forLong(config.cardtableStartAddress);
@@ -159,6 +161,16 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
                 return ConstantNode.forLong(config.verifyOopCounterAddress);
             } else {
                 throw GraalError.shouldNotReachHere(markId.toString());
+            }
+        } else if (generatePIC && !aotVerifyOops) {
+            if (markId == HotSpotMarkId.VERIFY_OOPS) {
+                return ConstantNode.forBoolean(false);
+            } else if (markId == HotSpotMarkId.VERIFY_OOP_BITS) {
+                return ConstantNode.forLong(0L);
+            } else if (markId == HotSpotMarkId.VERIFY_OOP_MASK) {
+                return ConstantNode.forLong(0L);
+            } else if (markId == HotSpotMarkId.VERIFY_OOP_COUNT_ADDRESS) {
+                return ConstantNode.forLong(0L);
             }
         }
         return this;
