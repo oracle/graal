@@ -57,7 +57,10 @@ public final class Polyglot {
     }
 
     /**
-     * If {@code value} is a {@link Polyglot#isForeignObject foreign} object:
+     * If a regular {@link Class#cast} of {@code value} to {@code targetClass} succeeds,
+     * {@code Polyglot.cast} succeeds too.
+     *
+     * In addition, if {@code value} is a {@link Polyglot#isForeignObject foreign} object:
      * <ul>
      * <li>if {@code targetClass} is a primitive class, converts the foreign value to this type and
      * returns the result as a boxed type.
@@ -66,25 +69,22 @@ public final class Polyglot {
      * <li>if {@code targetClass} is a (non-abstract) class, checks that all the instance fields
      * defined in the class or its ancestors exist in the foreign object. Returns the foreign object
      * as {@code targetClass}.
-     * <li>if {@code targetClass} is an interface, returns the foreign object as a
+     * <li>if {@code targetClass} is an interface, returns the foreign object as
      * {@code targetClass}. The existence of methods, defined in {@code targetClass}, is not
      * verified and if a method does not exist, an exception will be thrown only when the method is
      * invoked.
      * </ul>
      * <p>
-     * If {@code value} is a regular Espresso object, performs {@link Class#cast checkcast}.
      *
      * @throws ClassCastException
      *             <ul>
-     *             <li>if {@code value} is a foreign object, {@code targetClass} is an abstract
-     *             class and {@code value} was not previously cast to a concrete descendant of
-     *             {@code targetClass}
      *             <li>if {@code value} is a foreign object, {@code targetClass} is a primitive type
      *             but {@code value} does not represent an object of this primitive type
      *             <li>if {@code value} is a foreign object, {@code targetClass} is an array type
      *             but {@code value} does not have array elements
-     *             <li>if {@code value} is a foreign object and {@code targetClass} is an abstract
-     *             class
+     *             <li>if {@code value} is a foreign object, {@code targetClass} is an abstract
+     *             class and {@code value} was not previously cast to a concrete descendant of
+     *             {@code targetClass}
      *             <li>if {@code value} is a foreign object, {@code targetClass} is a class and a
      *             field of {@code targetClass} does not exist in the object
      *             <li>if {@code value} is a regular Espresso object and cannot be cast to
