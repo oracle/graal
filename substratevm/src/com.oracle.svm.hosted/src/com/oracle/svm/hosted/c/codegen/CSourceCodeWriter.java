@@ -31,7 +31,7 @@ import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C99;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.channels.ClosedByInterruptException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -68,7 +68,6 @@ public class CSourceCodeWriter {
 
     private static final String INDENT4 = "    ";
     public static final String C_SOURCE_FILE_EXTENSION = ".c";
-    public static final String CXX_SOURCE_FILE_EXTENSION = ".cpp";
 
     private final List<String> lines;
     private final StringBuilder currentLine;
@@ -111,7 +110,7 @@ public class CSourceCodeWriter {
 
     public void includeFiles(List<String> headerFiles) {
         for (String headerFile : headerFiles) {
-            String headerFileName = null;
+            String headerFileName;
             if (headerFile.startsWith("<") && headerFile.endsWith(">")) {
                 headerFileName = headerFile.substring(1, headerFile.length() - 1);
                 Path headerFilePath = Paths.get(headerFileName);
@@ -177,7 +176,7 @@ public class CSourceCodeWriter {
         assert currentLine.length() == 0 : "last line not finished";
 
         Path outputFile = tempDirectory.resolve(fileName);
-        try (BufferedWriter writer = Files.newBufferedWriter(outputFile, Charset.forName("UTF-8"))) {
+        try (BufferedWriter writer = Files.newBufferedWriter(outputFile, StandardCharsets.UTF_8)) {
             for (String line : lines) {
                 writer.write(line);
                 writer.write("\n");
@@ -260,7 +259,6 @@ public class CSourceCodeWriter {
             case Byte:
                 return prefix + (c11Compatible ? "int8_t" : "char");
             case Char:
-                return prefix + (c11Compatible ? "int16_t" : "short");
             case Short:
                 return prefix + (c11Compatible ? "int16_t" : "short");
             case Int:
