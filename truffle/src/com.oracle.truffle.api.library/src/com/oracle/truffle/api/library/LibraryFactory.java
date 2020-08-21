@@ -266,7 +266,11 @@ public abstract class LibraryFactory<T extends Library> {
      */
     @TruffleBoundary
     public final T createDispatched(int limit) {
-        if (limit <= 0) {
+        if (limit < 0) {
+            throw new IllegalArgumentException(String.format("Negative limit: %d, expected greater than or equal to 0", limit));
+        }
+
+        if (limit == 0) {
             return getUncached();
         } else {
             ensureLibraryInitialized();

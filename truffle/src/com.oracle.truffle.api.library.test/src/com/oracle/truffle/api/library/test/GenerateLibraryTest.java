@@ -162,8 +162,13 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             // expected
         }
 
-        // not really useful but shouldn't fail
-        createCachedDispatch(SampleLibrary.class, -1);
+        // Test create a dispatched library with negative limit
+        try {
+            createCachedDispatch(SampleLibrary.class, -1);
+            fail();
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
 
         try {
             createCachedDispatch(InvalidLibrary.class, 0);
