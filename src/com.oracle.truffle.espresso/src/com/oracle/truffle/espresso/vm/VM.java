@@ -291,6 +291,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownIdentifierException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
+        if (getJavaVersion().java9OrLater()) {
+            stackWalk = new StackWalk();
+        } else {
+            stackWalk = null;
+        }
     }
 
     @Override
@@ -2820,7 +2825,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         ste.setIntField(getMeta().java_lang_StackTraceElement_lineNumber, m.bciToLineNumber(element.getBCI()));
     }
 
-    private final StackWalk stackWalk = new StackWalk();
+    private final StackWalk stackWalk;
 
     private void checkStackWalkArguments(int batchSize, int startIndex, @Host(Object[].class) StaticObject frames) {
         if (StaticObject.isNull(frames)) {

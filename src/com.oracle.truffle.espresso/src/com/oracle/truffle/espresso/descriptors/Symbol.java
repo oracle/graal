@@ -646,6 +646,7 @@ public final class Symbol<T> extends ByteSequence {
 
         // Stack walking API
         public static final Symbol<Type> java_lang_StackWalker = StaticSymbols.putType("Ljava/lang/StackWalker;");
+        public static final Symbol<Type> java_lang_StackStreamFactory = StaticSymbols.putType("Ljava/lang/StackStreamFactory;");
         public static final Symbol<Type> java_lang_AbstractStackWalker = StaticSymbols.putType("Ljava/lang/StackStreamFactory$AbstractStackWalker;");
         public static final Symbol<Type> java_lang_StackFrameInfo = StaticSymbols.putType("Ljava/lang/StackFrameInfo;");
 
