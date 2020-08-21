@@ -52,7 +52,7 @@ Make sure `LLVM_TOOLCHAIN` resolves to the GraalVM LLVM toolchain (`lli --print-
 then compile _cpart.c_ with (the polyglot-mock library defines the polyglot
 API functions used in the example):
 ```shell
-$ $LLVM_TOOLCHAIN/clang -shared cpart.c -lpolyglot-mock -o cpart.so
+$LLVM_TOOLCHAIN/clang -shared cpart.c -lpolyglot-mock -o cpart.so
 ```
 
 You can access your C/C++ code from other languages like JavaScript:
@@ -95,7 +95,7 @@ cpart.freeNativePoint(pointArray);
 
 Run this JavaScript file with:
 ```shell
-$ js --polyglot jspart.js
+js --polyglot jspart.js
 Point<5.000000,7.000000>
 Point<3.000000,6.000000>
 Point<17.000000,42.000000>
@@ -126,14 +126,14 @@ int main() {
 Compile it to LLVM bitcode:
 
 ```shell
-$ $LLVM_TOOLCHAIN/clang polyglot.c -lpolyglot-mock -o polyglot
+$LLVM_TOOLCHAIN/clang polyglot.c -lpolyglot-mock -o polyglot
 ```
 
 And run it, using the `--jvm` argument to run GraalVM in the JVM mode, since we are
 using a Java type:
 
 ```shell
-$ lli --jvm polyglot
+lli --jvm polyglot
 24
 ```
 
@@ -162,8 +162,8 @@ class Polyglot {
 
 Compiling and running it:
 ```shell
-$ javac Polyglot.java
-$ java Polyglot
+javac Polyglot.java
+java Polyglot
 24
 ```
 

@@ -9,7 +9,7 @@ where `filename` is a single executable that contains LLVM bitcode.
 The following options to `lli` are available:
 
 * `--llvm.managed` enable a managed execution mode for LLVM IR code, which means memory
-allocations from LLVM bitcode are done on the managed heap. Learn more from [Limitations and Differences to Native Execution](native-execution.md).
+allocations from LLVM bitcode are done on the managed heap. Learn more from [Limitations and Differences to Native Execution](NativeExecution.md).
 Note: Managed execution mode for LLVM IR code is possible with GraalVM Enterprise only.
 
 * `--print-toolchain-path`: print the path of the LLVM toolchain bundled with GraalVM.

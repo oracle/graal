@@ -21,13 +21,13 @@ To simplify compiling C/C++ to executables with embedded bitcode, GraalVM comes 
 The LLVM toolchain can be installed using the `gu` command:
 
 ```shell
-$ $GRAALVM_HOME/bin/gu install llvm-toolchain
+$GRAALVM_HOME/bin/gu install llvm-toolchain
 ```
 
 To get the location of the toolchain, use the `--print-toolchain-path` argument of `lli`:
 
 ```shell
-$ export LLVM_TOOLCHAIN=$($GRAALVM_HOME/bin/lli --print-toolchain-path)
+export LLVM_TOOLCHAIN=$($GRAALVM_HOME/bin/lli --print-toolchain-path)
 ```
 
 The toolchain contains compilers such as `clang` for C or `clang++` for C++, but also other tools that are needed
@@ -35,7 +35,7 @@ for building native projects such as a linker (`ld`), or an archiver (`ar`) for 
 the toolchain path for a list of available tools:
 
 ```shell
-$ ls $LLVM_TOOLCHAIN
+ls $LLVM_TOOLCHAIN
 ```
 
 Use those tools just as you would do for native compilation. For example, the C code file `hello.c`:
@@ -50,12 +50,12 @@ int main() {
 
 You can compile `hello.c` to an executable with embedded LLVM bitcode as follows:
 ```shell
-$ $LLVM_TOOLCHAIN/clang hello.c -o hello
+$LLVM_TOOLCHAIN/clang hello.c -o hello
 ```
 
 The resulting executable `hello` can be executed with GraalVM using `lli`:
 ```shell
-$ $GRAALVM_HOME/bin/lli hello
+$GRAALVM_HOME/bin/lli hello
 ```
 
 ### External library dependencies
@@ -77,8 +77,8 @@ int main() {
 
 This can be run with:
 ```shell
-$ $LLVM_TOOLCHAIN/clang hello-curses.c -lncurses -o hello-curses
-$ lli hello-curses
+$LLVM_TOOLCHAIN/clang hello-curses.c -lncurses -o hello-curses
+lli hello-curses
 ```
 
 ## Running C++
@@ -98,8 +98,8 @@ int main() {
 Compile the code with `clang++`:
 
 ```shell
-$ $LLVM_TOOLCHAIN/clang++ hello-c++.cpp -o hello-c++
-$ lli hello-c++
+$LLVM_TOOLCHAIN/clang++ hello-c++.cpp -o hello-c++
+lli hello-c++
 Hello, C++ World!
 ```
 
@@ -109,7 +109,7 @@ The LLVM toolchain that is bundled with GraalVM does not come with the Rust
 compiler. To install Rust, run the following in your terminal, then follow the
 onscreen instructions:
 ```shell
-$ curl https://sh.rustup.rs -sSf | sh
+curl https://sh.rustup.rs -sSf | sh
 ```
 
 Here is an example Rust program:
@@ -122,13 +122,13 @@ fn main() {
 
 This can be compiled to bitcode with the `--emit=llvm-bc` flag:
 ```shell
-$ rustc --emit=llvm-bc hello-rust.rs
+rustc --emit=llvm-bc hello-rust.rs
 ```
 
 To run the Rust program, we have to tell GraalVM where to find the Rust
 standard libraries.
 
 ```shell
-$ lli --lib $(rustc --print sysroot)/lib/libstd-* hello-rust.bc
+lli --lib $(rustc --print sysroot)/lib/libstd-* hello-rust.bc
 Hello Rust!
 ```
