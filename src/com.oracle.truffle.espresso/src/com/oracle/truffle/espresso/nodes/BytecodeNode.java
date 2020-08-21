@@ -1595,7 +1595,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         QuickNode quick;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
-                quick = nodes[bs.readCPI(curBCI)];
+                quick = nodes[curBCI];
             } else {
                 Klass typeToCheck;
                 typeToCheck = resolveType(opcode, bs.readCPI(curBCI));
@@ -1611,7 +1611,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         QuickNode quick;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
-                quick = nodes[bs.readCPI(curBCI)];
+                quick = nodes[curBCI];
             } else {
                 Klass typeToCheck;
                 typeToCheck = resolveType(opcode, bs.readCPI(curBCI));
@@ -1628,7 +1628,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         QuickNode quick;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
-                quick = nodes[bs.readCPI(curBCI)];
+                quick = nodes[curBCI];
             } else {
                 // During resolution of the symbolic reference to the method, any of the exceptions
                 // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
@@ -1666,7 +1666,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         QuickNode getField;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
-                getField = nodes[bs.readCPI(curBCI)];
+                getField = nodes[curBCI];
             } else {
                 getField = injectQuick(curBCI, new QuickenedGetFieldNode(top, curBCI, statementIndex, field));
             }
@@ -1680,7 +1680,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         QuickNode putField;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
-                putField = nodes[bs.readCPI(curBCI)];
+                putField = nodes[curBCI];
             } else {
                 putField = injectQuick(curBCI, new QuickenedPutFieldNode(top, curBCI, field, statementIndex));
             }
@@ -1921,7 +1921,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
                 // Check if someone did the job for us. Defer the call until we are out of the lock.
-                quick = nodes[bs.readCPI(curBCI)];
+                quick = nodes[curBCI];
             } else {
                 // fetch indy under lock.
                 indyIndex = bs.readCPI(curBCI);
@@ -1939,7 +1939,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
                 // someone beat us to it, just trust him.
-                quick = nodes[bs.readCPI(curBCI)];
+                quick = nodes[curBCI];
             } else {
                 quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(inDy.getMemberName(), inDy.getUnboxedAppendix(), inDy.getParsedSignature(), getMeta(), top, curBCI));
             }
