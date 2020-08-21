@@ -22,11 +22,9 @@
  */
 package com.oracle.truffle.espresso.nodes.quick;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoInstrumentableQuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -35,13 +33,22 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
 
     public static final QuickNode[] EMPTY_ARRAY = new QuickNode[0];
 
+    private final BranchProfile exceptionProfile;
+
     protected final int top;
 
     private final int callerBCI;
 
     protected QuickNode(int top, int callerBCI) {
+        this(top, callerBCI, true);
+    }
+
+    protected QuickNode(int top, int callerBCI, boolean exceptionProfile) {
         this.top = top;
         this.callerBCI = callerBCI;
+        this.exceptionProfile = exceptionProfile
+                        ? BranchProfile.create()
+                        : BranchProfile.getUncached();
     }
 
     @Override
@@ -49,13 +56,10 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
 
     public abstract boolean producedForeignObject(VirtualFrame frame);
 
-    // TODO(peterssen): Make this a node?
-    public static StaticObject nullCheck(StaticObject value) {
+    protected final StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {
-            CompilerDirectives.transferToInterpreter();
-            // TODO(peterssen): Profile whether null was hit or not.
-            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-            throw meta.throwNullPointerException();
+            getExceptionProfile().enter();
+            throw getBytecodesNode().getMeta().throwNullPointerException();
         }
         return value;
     }
@@ -71,5 +75,9 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
     @Override
     public SourceSection getSourceSection() {
         return getBytecodesNode().getSourceSectionAtBCI(callerBCI);
+    }
+
+    public final BranchProfile getExceptionProfile() {
+        return exceptionProfile;
     }
 }
