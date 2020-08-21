@@ -307,7 +307,7 @@ Name                                                                       Count
   ...
 ```
 
-`--engine.NodeExpansionStatistics=truffleTier` prints statistics on expanded Truffle nodes during partial evaluation at the end of a run. This can be useful to detect code that produces too much or certain Graal nodes unexpectedly. It also shows individual specialization combinations as they were observed during compilation. 
+`--engine.NodeExpansionStatistics=truffleTier` prints statistics on expanded Truffle nodes during partial evaluation at the end of a run. This can be useful to detect code that produces too much or certain Graal nodes unexpectedly. It also shows individual specialization combinations as they were observed during compilation.
 
 ```
 [engine] Node expansion statistics after truffleTier:
@@ -496,7 +496,7 @@ To make best use of the former options, limit what is compiled to the methods th
 
 ### Ideal Graph Visualizer
 
-[Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/20/guide/tools/ideal-graph-visualizer/) is a tool to understand Truffle ASTs and the GraalVM compiler graphs.
+[Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/20/docs/tools/igv/) is a tool to understand Truffle ASTs and the GraalVM compiler graphs.
 
 Typical usage is to run with `--vm.Dgraal.Dump=Truffle:1 --vm.Dgraal.PrintGraph=Network`,
 which will show you Truffle ASTs, guest-language call graphs, and the Graal

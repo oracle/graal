@@ -14,4 +14,4 @@ Next Steps:
 * Start to subclass [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) for your own language implementation.
 * Fork [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language that demonstrates how to use many Truffle features.
 * Embed Truffle languages in Java host applications using the [Polyglot API](http://www.graalvm.org/docs/reference-manual/embed-languages/).
-* Read [GraalVM/Truffle publications](../../docs/Publications.md)
+* Read [GraalVM/Truffle publications](https://github.com/oracle/graal/blob/master/docs/Publications.md)
