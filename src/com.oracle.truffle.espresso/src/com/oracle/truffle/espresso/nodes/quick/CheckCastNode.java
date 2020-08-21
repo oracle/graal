@@ -65,6 +65,11 @@ public abstract class CheckCastNode extends QuickNode {
     }
 
     @Override
+    public boolean producedForeignObject(VirtualFrame frame) {
+        return false;
+    }
+
+    @Override
     public final int execute(final VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = root.peekObject(frame, top - 1);

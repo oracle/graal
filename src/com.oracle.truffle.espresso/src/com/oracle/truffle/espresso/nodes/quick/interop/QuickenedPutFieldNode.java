@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes.quick.invoke;
+package com.oracle.truffle.espresso.nodes.quick.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.helper.AbstractSetFieldNode;
+import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 
-public final class LeafAssumptionSetterNode extends InlinedSetterNode {
+public final class QuickenedPutFieldNode extends QuickNode {
+    private final int slotCount;
+    private final int statementIndex;
 
-    private final int curBCI;
-    private final int opcode;
+    @Child AbstractSetFieldNode setFieldNode;
 
-    protected LeafAssumptionSetterNode(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
-        super(inlinedMethod, top, opCode, curBCI, statementIndex);
-        this.curBCI = curBCI;
-        this.opcode = opCode;
+    public QuickenedPutFieldNode(int top, int callerBCI, Field field, int statementIndex) {
+        super(top, callerBCI);
+        assert !field.isStatic();
+        this.setFieldNode = AbstractSetFieldNode.create(field);
+        this.slotCount = field.getKind().getSlotCount();
+        this.statementIndex = statementIndex;
     }
 
     @Override
     public int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
-        if (inlinedMethod.leafAssumption()) {
-            setFieldNode.setField(frame, root, top, statementIndex);
-            return -slotCount + stackEffect;
-        } else {
-            return root.reQuickenInvoke(frame, top, curBCI, opcode, statementIndex, inlinedMethod);
-        }
+        setFieldNode.setField(frame, root, top, statementIndex);
+        return -slotCount - 1; // -receiver
     }
 
+    @Override
+    public boolean producedForeignObject(VirtualFrame frame) {
+        return false;
+    }
 }

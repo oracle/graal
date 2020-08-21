@@ -47,6 +47,8 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
     @Override
     public abstract int execute(VirtualFrame frame);
 
+    public abstract boolean producedForeignObject(VirtualFrame frame);
+
     // TODO(peterssen): Make this a node?
     public static StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {

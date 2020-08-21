@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes.quick.invoke;
+package com.oracle.truffle.espresso.nodes.quick.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.helper.AbstractGetFieldNode;
+import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class LeafAssumptionGetterNode extends InlinedGetterNode {
+public final class QuickenedGetFieldNode extends QuickNode {
+    private final Field field;
+    private final int statementIndex;
 
-    protected final int opCode;
-    protected final int curBCI;
+    @Child AbstractGetFieldNode getFieldNode;
 
-    protected LeafAssumptionGetterNode(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
-        super(inlinedMethod, top, curBCI, statementIndex);
-        this.opCode = opCode;
-        this.curBCI = curBCI;
+    public QuickenedGetFieldNode(int top, int callerBCI, int statementIndex, Field field) {
+        super(top, callerBCI);
+        assert !field.isStatic();
+        this.getFieldNode = AbstractGetFieldNode.create(field);
+        this.field = field;
+        this.statementIndex = statementIndex;
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(final VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
-        if (inlinedMethod.leafAssumption()) {
-            StaticObject receiver = field.isStatic()
-                            ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                            : nullCheck(root.peekAndReleaseObject(frame, top - 1));
-            int resultAt = inlinedMethod.isStatic() ? top : (top - 1);
-            return (resultAt - top) + getFieldNode.getField(frame, root, receiver, resultAt, statementIndex);
-        } else {
-            return root.reQuickenInvoke(frame, top, curBCI, opCode, statementIndex, inlinedMethod);
-        }
+        StaticObject receiver = nullCheck(root.peekAndReleaseObject(frame, top - 1));
+        return getFieldNode.getField(frame, root, receiver, top - 1, statementIndex) - 1; // -receiver
     }
 
+    @Override
+    public boolean producedForeignObject(VirtualFrame frame) {
+        return field.getKind().isObject() && getBytecodesNode().peekObject(frame, top - 1).isForeignObject();
+    }
 }

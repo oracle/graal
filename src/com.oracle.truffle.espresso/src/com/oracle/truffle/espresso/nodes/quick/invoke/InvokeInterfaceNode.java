@@ -96,7 +96,15 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         final Object[] args = root.peekAndReleaseArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver == args[0] : "receiver must be the first argument";
         Object result = executeInterface(receiver, args);
-        int resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
-        return (resultAt - top) + root.putKind(frame, resultAt, result, Signatures.returnKind(resolutionSeed.getParsedSignature()));
+        return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, Signatures.returnKind(resolutionSeed.getParsedSignature()));
+    }
+
+    @Override
+    public boolean producedForeignObject(VirtualFrame frame) {
+        return resolutionSeed.getReturnKind().isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
+    }
+
+    private int getResultAt() {
+        return top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
     }
 }

@@ -67,8 +67,15 @@ public final class InvokeHandleNode extends QuickNode {
         }
         root.peekAndReleaseBasicArgumentsWithArray(frame, top, parsedSignature, args, parameterCount, hasReceiver ? 1 : 0);
         Object result = intrinsic.processReturnValue(intrinsic.call(args), rKind);
-        int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - (hasReceiver ? 1 : 0); // -receiver
-        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind());
+        return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, method.getReturnKind());
     }
 
+    @Override
+    public boolean producedForeignObject(VirtualFrame frame) {
+        return method.getReturnKind().isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
+    }
+
+    private int getResultAt() {
+        return top - Signatures.slotsForParameters(method.getParsedSignature()) - (hasReceiver ? 1 : 0); // -receiver
+    }
 }
