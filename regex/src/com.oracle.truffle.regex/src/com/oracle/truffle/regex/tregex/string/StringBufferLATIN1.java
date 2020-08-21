@@ -40,73 +40,46 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
-import java.util.Arrays;
+import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+public final class StringBufferLATIN1 extends ByteArrayBuffer implements AbstractStringBuffer {
 
-public final class StringUTF32 implements AbstractString {
+    public StringBufferLATIN1() {
+        this(16);
+    }
 
-    @CompilationFinal(dimensions = 1) private final int[] str;
-
-    public StringUTF32(int[] str) {
-        this.str = str;
+    public StringBufferLATIN1(int capacity) {
+        super(capacity);
     }
 
     @Override
-    public int encodedLength() {
-        return str.length;
+    public Encoding getEncoding() {
+        return Encodings.LATIN_1;
     }
 
     @Override
-    public Object content() {
-        return str;
+    public void append(int codepoint) {
+        assert codepoint <= Encodings.LATIN_1.getMaxValue();
+        add((byte) codepoint);
     }
 
     @Override
-    public String toString() {
-        return defaultToString();
+    public void appendOR(int c1, int c2) {
+        assert c1 <= Encodings.LATIN_1.getMaxValue();
+        assert c2 <= Encodings.LATIN_1.getMaxValue();
+        add((byte) (c1 | c2));
     }
 
     @Override
-    public StringUTF32 substring(int start, int end) {
-        return new StringUTF32(Arrays.copyOfRange(str, start, end));
+    public void appendXOR(int c1, int c2) {
+        assert c1 <= Encodings.LATIN_1.getMaxValue();
+        assert c2 <= Encodings.LATIN_1.getMaxValue();
+        add((byte) (c1 ^ c2));
     }
 
     @Override
-    public boolean regionMatches(int offset, AbstractString other, int ooffset, int encodedLength) {
-        int[] o = ((StringUTF32) other).str;
-        if (offset + encodedLength > str.length || ooffset + encodedLength > o.length) {
-            return false;
-        }
-        for (int i = 0; i < encodedLength; i++) {
-            if (str[offset + i] != o[ooffset + i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    @Override
-    public AbstractStringIterator iterator() {
-        return new StringUTF32Iterator(str);
-    }
-
-    private static final class StringUTF32Iterator extends AbstractStringIterator {
-
-        private final int[] str;
-
-        private StringUTF32Iterator(int[] str) {
-            this.str = str;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return i < str.length;
-        }
-
-        @Override
-        public int nextInt() {
-            return str[i++];
-        }
+    public StringLATIN1 materialize() {
+        return new StringLATIN1(toArray());
     }
 }
