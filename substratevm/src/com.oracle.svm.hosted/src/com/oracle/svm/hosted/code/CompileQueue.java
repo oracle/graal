@@ -105,6 +105,7 @@ import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
@@ -267,6 +268,10 @@ public class CompileQueue {
         public Description getDescription() {
             return new Description(method, compilationIdentifier.toString(Verbosity.ID));
         }
+
+        public CompileReason getReason() {
+            return reason;
+        }
     }
 
     protected class TrivialInlineTask implements DebugContextRunnable {
@@ -320,12 +325,16 @@ public class CompileQueue {
         this.runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
         this.deoptimizeAll = deoptimizeAll;
         this.dataCache = new ConcurrentHashMap<>();
-        this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
+        this.executor = createCompletionExecutor(universe.getBigBang(), executorService);
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
 
         // let aotjs override the replacements registration
         callForReplacements(debug, runtimeConfig);
+    }
+
+    public CompletionExecutor createCompletionExecutor(BigBang bb, ForkJoinPool executorService) {
+        return new CompletionExecutor(bb, executorService, bb.getHeartbeatCallback());
     }
 
     public static OptimisticOptimizations getOptimisticOpts() {
