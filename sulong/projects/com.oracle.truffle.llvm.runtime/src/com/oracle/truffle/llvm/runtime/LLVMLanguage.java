@@ -271,7 +271,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     /**
-     * If a library has already been parsed, the call target will be retrieved from the language cache.
+     * If a library has already been parsed, the call target will be retrieved from the language
+     * cache.
      *
      * @param request request for parsing
      * @return calltarget of the library
