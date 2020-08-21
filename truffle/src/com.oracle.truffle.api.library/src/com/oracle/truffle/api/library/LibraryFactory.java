@@ -761,6 +761,7 @@ public abstract class LibraryFactory<T extends Library> {
             return (LibraryExport<T>) lib;
         }
 
+        /** NOTE: this method is called reflectively by downstream projects. */
         @TruffleBoundary
         static ResolvedDispatch lookup(Class<?> receiverClass) {
             ResolvedDispatch type = CACHE.get(receiverClass);
