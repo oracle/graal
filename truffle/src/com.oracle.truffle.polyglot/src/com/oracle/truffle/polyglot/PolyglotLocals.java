@@ -76,7 +76,7 @@ final class PolyglotLocals {
             for (InstrumentContextLocal<?> local : locals) {
                 local.instrument = polyglotInstrument;
             }
-            locations = polyglotInstrument.engine.addContextLocals(locals, true);
+            locations = polyglotInstrument.engine.addContextLocals(locals);
         }
         polyglotInstrument.contextLocalLocations = locations;
 
@@ -109,7 +109,7 @@ final class PolyglotLocals {
             } else {
                 PolyglotLanguage language = polyglotLanguageInstance.language;
                 PolyglotEngineImpl engine = language.engine;
-                language.previousContextLocalLocations = locations = engine.addContextLocals(locals, false);
+                language.previousContextLocalLocations = locations = engine.addContextLocals(locals);
                 assert locations.length == locals.size();
             }
         }
@@ -126,7 +126,7 @@ final class PolyglotLocals {
             for (InstrumentContextThreadLocal<?> local : locals) {
                 local.instrument = polyglotInstrument;
             }
-            locations = polyglotInstrument.engine.addContextThreadLocals(locals, true);
+            locations = polyglotInstrument.engine.addContextThreadLocals(locals);
         }
         polyglotInstrument.contextThreadLocalLocations = locations;
     }
@@ -159,7 +159,7 @@ final class PolyglotLocals {
             } else {
                 PolyglotLanguage language = polyglotLanguageInstance.language;
                 PolyglotEngineImpl engine = language.engine;
-                language.previousContextThreadLocalLocations = locations = engine.addContextThreadLocals(locals, false);
+                language.previousContextThreadLocalLocations = locations = engine.addContextThreadLocals(locals);
                 assert locations.length == locals.size();
             }
         }

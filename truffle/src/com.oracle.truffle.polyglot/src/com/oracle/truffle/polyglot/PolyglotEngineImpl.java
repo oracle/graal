@@ -1730,7 +1730,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
     }
 
-    LocalLocation[] addContextLocals(List<? extends AbstractContextLocal<?>> newLocals, boolean invokeFactory) {
+    LocalLocation[] addContextLocals(List<? extends AbstractContextLocal<?>> newLocals) {
         List<PolyglotContextImpl> aliveContexts;
         LocalLocation[] newLocations;
         StableLocalLocations newStableLocations;
@@ -1759,15 +1759,12 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     continue;
                 }
                 context.resizeContextLocals(newStableLocations);
-                if (invokeFactory) {
-                    context.invokeContextLocalsFactory(context.contextLocals, newLocations);
-                }
             }
         }
         return newLocations;
     }
 
-    LocalLocation[] addContextThreadLocals(List<? extends AbstractContextThreadLocal<?>> newLocals, boolean invokeFactory) {
+    LocalLocation[] addContextThreadLocals(List<? extends AbstractContextThreadLocal<?>> newLocals) {
         List<PolyglotContextImpl> aliveContexts;
         LocalLocation[] newLocations;
         StableLocalLocations newStableLocations;
@@ -1795,9 +1792,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     continue;
                 }
                 context.resizeContextThreadLocals(newStableLocations);
-                if (invokeFactory) {
-                    context.invokeContextThreadLocalFactory(newLocations);
-                }
             }
         }
         return newLocations;

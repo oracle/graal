@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -685,6 +686,10 @@ public class ContextLocalTest extends AbstractPolyglotTest {
         }
     }
 
+    public void testInstrumentCreatedBeforeContextsInitialized() {
+
+    }
+
     @TruffleLanguage.Registration(id = VALID_EXCLUSIVE_LANGUAGE, name = VALID_EXCLUSIVE_LANGUAGE)
     public static class ValidExclusiveLanguage extends TruffleLanguage<TruffleLanguage.Env> {
 
@@ -780,15 +785,30 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     @TruffleInstrument.Registration(id = VALID_INSTRUMENT, name = VALID_INSTRUMENT, services = ValidInstrument.class)
     public static class ValidInstrument extends TruffleInstrument {
 
-        final ContextLocal<TruffleContext> local0 = createContextLocal((e) -> e);
+        final ContextLocal<TruffleContext> local0 = createContextLocal(this::createInstrumentContextLocal);
         final ContextLocal<Object> localDynamic = createContextLocal((e) -> contextLocalDynamicValue);
 
-        final ContextThreadLocal<InstrumentThreadLocalValue> threadLocal0 = createContextThreadLocal(InstrumentThreadLocalValue::new);
+        final ContextThreadLocal<InstrumentThreadLocalValue> threadLocal0 = createContextThreadLocal(this::newInstrumentThreadLocal);
         final ContextThreadLocal<Object> threadLocalDynamic = createContextThreadLocal((c, t) -> threadLocalDynamicValue);
+
+        private Env environment;
 
         @Override
         protected void onCreate(Env env) {
+            this.environment = env;
             env.registerService(this);
+        }
+
+        InstrumentThreadLocalValue newInstrumentThreadLocal(TruffleContext context, Thread t) {
+            // must be guaranteed that onCreate is called before any context thread local inits
+            assertNotNull(environment);
+            return new InstrumentThreadLocalValue(context, t);
+        }
+
+        TruffleContext createInstrumentContextLocal(TruffleContext context) {
+            // must be guaranteed that onCreate is called before any context local inits
+            assertNotNull(environment);
+            return context;
         }
 
         public ContextLocal<String> createContextLocal0() {

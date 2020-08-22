@@ -1402,7 +1402,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
         Thread thread = threadInfo.getThread();
         for (PolyglotInstrument instrument : engine.idToInstrument.values()) {
-            if (instrument.isInitialized()) {
+            if (instrument.isCreated()) {
                 invokeContextThreadFactory(locals, instrument.contextThreadLocalLocations, thread);
             }
         }
@@ -1422,7 +1422,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         Object[] locals = new Object[locations.locations.length];
 
         for (PolyglotInstrument instrument : engine.idToInstrument.values()) {
-            if (instrument.isInitialized()) {
+            if (instrument.isCreated()) {
                 invokeContextLocalsFactory(locals, instrument.contextLocalLocations);
             }
         }
