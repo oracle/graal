@@ -14,8 +14,8 @@ during debugging. This option is not enabled by default as it decreases the prog
 Starting from GraalVM 20.1, this option is not needed anymore and thus deprecated.
 
 To start debugging, run `lli` with the `--inspect` option:
-```
-$ $GRAALVM_HOME/bin/lli --inspect <bitcode file>
+```shell
+$GRAALVM_HOME/bin/lli --inspect <bitcode file>
 ```
 
 When launched, the inspector will suspend execution at the first instruction of the program and print
