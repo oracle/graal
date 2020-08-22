@@ -67,6 +67,14 @@ public class InstrumentOptionsTest extends AbstractPolyglotTest {
 
     static class TestInstrument extends ProxyInstrument {
 
+        private boolean created;
+
+        @Override
+        protected void onCreate(Env env) {
+            super.onCreate(env);
+            created = true;
+        }
+
         @Override
         protected OptionDescriptors getOptionDescriptors() {
             return new EngineOptionsOptionDescriptors();
@@ -149,11 +157,11 @@ public class InstrumentOptionsTest extends AbstractPolyglotTest {
 
     @Test
     public void testInitializeByContextOption() {
-        ProxyInstrument.setDelegate(new TestInstrument());
+        TestInstrument instrument = new TestInstrument();
+        ProxyInstrument.setDelegate(instrument);
         Engine engine = Engine.create();
         Context c = Context.newBuilder().engine(engine).option(ProxyInstrument.ID + ".ContextOption1", "contextValue").build();
-        ProxyInstrument instrument = ProxyInstrument.getCurrent();
-        assertNotNull(instrument);
+        assertTrue(instrument.created);
         c.close();
         engine.close();
     }

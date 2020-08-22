@@ -262,6 +262,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.statementLimit = config.limits != null ? config.limits.statementLimit : Long.MAX_VALUE - 1;
         this.statementCounter = statementLimit;
         this.volatileStatementCounter.set(statementLimit);
+
+        PolyglotEngineImpl.ensureInstrumentsCreated(config.getConfiguredInstruments());
+
         notifyContextCreated();
         PolyglotContextImpl.initializeStaticContext(this);
     }

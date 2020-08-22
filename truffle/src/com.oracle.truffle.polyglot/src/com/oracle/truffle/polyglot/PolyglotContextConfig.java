@@ -43,8 +43,11 @@ package com.oracle.truffle.polyglot;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
@@ -88,6 +91,7 @@ final class PolyglotContextConfig {
     private volatile ZoneId timeZone;
     final PolyglotLimits limits;
     final ClassLoader hostClassLoader;
+    private final List<PolyglotInstrument> configuredInstruments;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
@@ -120,6 +124,7 @@ final class PolyglotContextConfig {
         this.timeZone = timeZone;
         this.limits = limits;
         this.logLevels = new HashMap<>(engine.logLevels);
+        List<PolyglotInstrument> instruments = null;
         for (String optionKey : options.keySet()) {
             final String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
             if (group.equals(PolyglotEngineImpl.OPTION_GROUP_LOG)) {
@@ -138,6 +143,10 @@ final class PolyglotContextConfig {
                 PolyglotInstrument instrument = (PolyglotInstrument) object;
                 id = instrument.getId();
                 engineOptionValues = instrument.getEngineOptionValues();
+                if (instruments == null) {
+                    instruments = new ArrayList<>();
+                }
+                instruments.add(instrument);
             } else {
                 throw new AssertionError("invalid vm object");
             }
@@ -148,6 +157,7 @@ final class PolyglotContextConfig {
             }
             targetOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions);
         }
+        this.configuredInstruments = instruments == null ? Collections.emptyList() : instruments;
         this.processHandler = processHandler;
         this.environmentAccess = environmentAccess;
         this.environment = environment == null ? Collections.emptyMap() : environment;
@@ -219,6 +229,14 @@ final class PolyglotContextConfig {
             values = instrument.getEngineOptionValues();
         }
         return values.copy();
+    }
+
+    /**
+     * Returns a list of instruments with options for this context. Does not include instruments
+     * only configured for the engine.
+     */
+    Collection<? extends PolyglotInstrument> getConfiguredInstruments() {
+        return configuredInstruments;
     }
 
     Map<String, String> getEnvironment() {

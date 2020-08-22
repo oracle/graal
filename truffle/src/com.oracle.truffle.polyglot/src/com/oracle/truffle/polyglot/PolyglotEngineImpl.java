@@ -488,7 +488,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         ensureInstrumentsCreated(instrumentsOptions.keySet());
     }
 
-    private static void ensureInstrumentsCreated(Collection<? extends PolyglotInstrument> instruments) {
+    static void ensureInstrumentsCreated(Collection<? extends PolyglotInstrument> instruments) {
         for (PolyglotInstrument instrument : instruments) {
             // we got options for this instrument -> create it.
             instrument.ensureCreated();
