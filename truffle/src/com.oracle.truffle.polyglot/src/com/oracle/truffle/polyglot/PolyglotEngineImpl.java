@@ -886,15 +886,15 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             allContexts = collectAliveContexts();
         }
         for (PolyglotContextImpl context : allContexts) {
-            listener.onContextCreated(context.truffleContext);
+            listener.onContextCreated(context.creatorTruffleContext);
             for (PolyglotLanguageContext lc : context.contexts) {
                 LanguageInfo language = lc.language.info;
                 if (lc.eventsEnabled && lc.env != null) {
-                    listener.onLanguageContextCreated(context.truffleContext, language);
+                    listener.onLanguageContextCreated(context.creatorTruffleContext, language);
                     if (lc.isInitialized()) {
-                        listener.onLanguageContextInitialized(context.truffleContext, language);
+                        listener.onLanguageContextInitialized(context.creatorTruffleContext, language);
                         if (lc.finalized) {
-                            listener.onLanguageContextFinalized(context.truffleContext, language);
+                            listener.onLanguageContextFinalized(context.creatorTruffleContext, language);
                         }
                     }
                 }
@@ -916,7 +916,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 threads = context.getSeenThreads().keySet().toArray(new Thread[0]);
             }
             for (Thread thread : threads) {
-                listener.onThreadInitialized(context.truffleContext, thread);
+                listener.onThreadInitialized(context.creatorTruffleContext, thread);
             }
         }
     }

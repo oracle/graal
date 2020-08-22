@@ -373,7 +373,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             finalized = true;
             LANGUAGE.finalizeContext(env);
             if (eventsEnabled && notifyInstruments) {
-                EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.truffleContext, language.info);
+                EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.creatorTruffleContext, language.info);
             }
             return true;
         }
@@ -406,7 +406,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     void notifyDisposed(boolean notifyInstruments) {
         if (eventsEnabled && notifyInstruments) {
-            EngineAccessor.INSTRUMENT.notifyLanguageContextDisposed(context.engine, context.truffleContext, language.info);
+            EngineAccessor.INSTRUMENT.notifyLanguageContextDisposed(context.engine, context.creatorTruffleContext, language.info);
         }
         language.freeInstance(lazy.languageInstance);
     }
@@ -440,7 +440,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             context.engine.leave(prev, context);
             seenThreads.remove(thread);
         }
-        EngineAccessor.INSTRUMENT.notifyThreadFinished(context.engine, context.truffleContext, thread);
+        EngineAccessor.INSTRUMENT.notifyThreadFinished(context.engine, context.creatorTruffleContext, thread);
     }
 
     boolean isCreated() {
@@ -507,7 +507,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                             this.languageServices = languageServicesCollector;
                             lang.language.profile.notifyContextCreate(this, localEnv);
                             if (eventsEnabled) {
-                                EngineAccessor.INSTRUMENT.notifyLanguageContextCreated(context.engine, context.truffleContext, language.info);
+                                EngineAccessor.INSTRUMENT.notifyLanguageContextCreated(context.engine, context.creatorTruffleContext, language.info);
                             }
                             context.weakReference.freeInstances.add(lang);
                             context.invokeContextLocalsFactory(context.contextLocals, lang.contextLocalLocations);
@@ -608,7 +608,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             }
         }
         if (wasInitialized && eventsEnabled) {
-            EngineAccessor.INSTRUMENT.notifyLanguageContextInitialized(context.engine, context.truffleContext, language.info);
+            EngineAccessor.INSTRUMENT.notifyLanguageContextInitialized(context.engine, context.creatorTruffleContext, language.info);
         }
         return wasInitialized;
     }

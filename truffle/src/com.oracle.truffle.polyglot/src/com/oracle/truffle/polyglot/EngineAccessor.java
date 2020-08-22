@@ -330,7 +330,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public TruffleContext getTruffleContext(Object polyglotLanguageContext) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
-            return languageContext.context.truffleContext;
+            return languageContext.context.currentTruffleContext;
         }
 
         @SuppressWarnings("unchecked")
@@ -699,7 +699,7 @@ final class EngineAccessor extends Accessor {
         public TruffleContext getParentContext(Object polyglotContext) {
             PolyglotContextImpl parent = ((PolyglotContextImpl) polyglotContext).parent;
             if (parent != null) {
-                return parent.truffleContext;
+                return parent.currentTruffleContext;
             } else {
                 return null;
             }
@@ -723,27 +723,21 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config, TruffleContext spiContext) {
+        public TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config) {
             PolyglotLanguageContext creator = ((PolyglotLanguageContext) sourcePolyglotLanguageContext);
             PolyglotContextImpl impl;
             synchronized (creator.context) {
-                impl = new PolyglotContextImpl(creator, config, spiContext);
+                impl = new PolyglotContextImpl(creator, config);
                 impl.creatorApi = impl.getAPIAccess().newContext(impl);
                 impl.currentApi = impl.getAPIAccess().newContext(impl);
             }
             synchronized (impl) {
                 impl.initializeContextLocals();
+                impl.engine.initializeMultiContext(creator.context);
+                impl.notifyContextCreated();
+                impl.initializeLanguage(creator.language.getId());
             }
-            return impl;
-        }
-
-        @Override
-        public void initializeInternalContext(Object sourcePolyglotLanguageContext, Object polyglotContext) {
-            PolyglotLanguageContext creator = ((PolyglotLanguageContext) sourcePolyglotLanguageContext);
-            PolyglotContextImpl impl = (PolyglotContextImpl) polyglotContext;
-            impl.engine.initializeMultiContext(creator.context);
-            impl.notifyContextCreated();
-            impl.initializeLanguage(creator.language.getId());
+            return impl.creatorTruffleContext;
         }
 
         @Override

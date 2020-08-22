@@ -298,9 +298,7 @@ public abstract class Accessor {
 
         public abstract boolean inContextPreInitialization(Object polyglotObject);
 
-        public abstract Object createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config, TruffleContext spiContext);
-
-        public abstract void initializeInternalContext(Object sourcePolyglotLanguageContext, Object polyglotContext);
+        public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config);
 
         public abstract Object enterInternalContext(Object polyglotContext);
 
@@ -514,7 +512,7 @@ public abstract class Accessor {
 
         public abstract Object createEnvContext(Env localEnv, List<Object> servicesCollector);
 
-        public abstract TruffleContext createTruffleContext(Object impl);
+        public abstract TruffleContext createTruffleContext(Object impl, boolean creator);
 
         public abstract void postInitEnv(Env env);
 

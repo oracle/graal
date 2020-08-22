@@ -189,7 +189,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     Context creatorApi; // effectively final
     Context currentApi; // effectively final
 
-    final TruffleContext truffleContext;
+    final TruffleContext creatorTruffleContext;
+    final TruffleContext currentTruffleContext;
     final PolyglotContextImpl parent;
     volatile Map<String, Value> polyglotBindings; // for direct legacy access
     volatile Value polyglotHostBindings; // for accesses from the polyglot api
@@ -232,7 +233,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.engine = null;
         this.contexts = null;
         this.contextImpls = null;
-        this.truffleContext = null;
+        this.creatorTruffleContext = null;
+        this.currentTruffleContext = null;
         this.parent = null;
         this.polyglotHostBindings = null;
         this.polyglotBindings = null;
@@ -253,7 +255,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.config = config;
         this.creator = null;
         this.creatorArguments = Collections.emptyMap();
-        this.truffleContext = EngineAccessor.LANGUAGE.createTruffleContext(this);
+        this.creatorTruffleContext = EngineAccessor.LANGUAGE.createTruffleContext(this, true);
+        this.currentTruffleContext = EngineAccessor.LANGUAGE.createTruffleContext(this, false);
         this.weakReference = new ContextWeakReference(this);
         this.contextImpls = new Object[engine.contextLength];
         this.contexts = createContextArray();
@@ -269,13 +272,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
         notifyContextCreated();
         PolyglotContextImpl.initializeStaticContext(this);
+
     }
 
     /*
      * Constructor for inner contexts.
      */
     @SuppressWarnings("hiding")
-    PolyglotContextImpl(PolyglotLanguageContext creator, Map<String, Object> langConfig, TruffleContext spiContext) {
+    PolyglotContextImpl(PolyglotLanguageContext creator, Map<String, Object> langConfig) {
         super(creator.getEngine().impl);
         PolyglotContextImpl parent = creator.context;
         this.parent = parent;
@@ -286,7 +290,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.statementLimit = 0; // inner context limit must not be used anyway
         this.weakReference = new ContextWeakReference(this);
         this.parent.addChildContext(this);
-        this.truffleContext = spiContext;
+        this.creatorTruffleContext = EngineAccessor.LANGUAGE.createTruffleContext(this, true);
+        this.currentTruffleContext = EngineAccessor.LANGUAGE.createTruffleContext(this, false);
         if (!parent.config.logLevels.isEmpty()) {
             EngineAccessor.LANGUAGE.configureLoggers(this, parent.config.logLevels, getAllLoggers(engine));
         }
@@ -305,7 +310,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     @Override
     public void resetLimits() {
         PolyglotLimits.reset(this);
-        EngineAccessor.INSTRUMENT.notifyContextResetLimit(engine, truffleContext);
+        EngineAccessor.INSTRUMENT.notifyContextResetLimit(engine, creatorTruffleContext);
     }
 
     private PolyglotLanguageContext[] createContextArray() {
@@ -400,7 +405,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     void notifyContextCreated() {
-        EngineAccessor.INSTRUMENT.notifyContextCreated(engine, truffleContext);
+        EngineAccessor.INSTRUMENT.notifyContextCreated(engine, creatorTruffleContext);
     }
 
     private synchronized void addChildContext(PolyglotContextImpl child) {
@@ -552,7 +557,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
 
         if (needsInitialization) {
-            EngineAccessor.INSTRUMENT.notifyThreadStarted(engine, truffleContext, current);
+            EngineAccessor.INSTRUMENT.notifyThreadStarted(engine, creatorTruffleContext, current);
         }
         return prev;
     }
@@ -1236,9 +1241,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
             if (notifyInstruments) {
                 for (Thread thread : remainingThreads) {
-                    EngineAccessor.INSTRUMENT.notifyThreadFinished(engine, truffleContext, thread);
+                    EngineAccessor.INSTRUMENT.notifyThreadFinished(engine, creatorTruffleContext, thread);
                 }
-                EngineAccessor.INSTRUMENT.notifyContextClosed(engine, truffleContext);
+                EngineAccessor.INSTRUMENT.notifyContextClosed(engine, creatorTruffleContext);
             }
             synchronized (this) {
                 if (!currentThreadActive) {
@@ -1569,11 +1574,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         for (PolyglotLanguageContext lc : contexts) {
             LanguageInfo language = lc.language.info;
             if (lc.eventsEnabled && lc.env != null) {
-                EngineAccessor.INSTRUMENT.notifyLanguageContextCreated(this, truffleContext, language);
+                EngineAccessor.INSTRUMENT.notifyLanguageContextCreated(this, creatorTruffleContext, language);
                 if (lc.isInitialized()) {
-                    EngineAccessor.INSTRUMENT.notifyLanguageContextInitialized(this, truffleContext, language);
+                    EngineAccessor.INSTRUMENT.notifyLanguageContextInitialized(this, creatorTruffleContext, language);
                     if (lc.finalized) {
-                        EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(this, truffleContext, language);
+                        EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(this, creatorTruffleContext, language);
                     }
                 }
             }

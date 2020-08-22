@@ -97,7 +97,7 @@ final class PolyglotThreadInfo {
 
     void enter(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
         assert Thread.currentThread() == getThread();
-        EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.truffleContext);
+        EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
         if (!engine.noPriorityChangeNeeded.isValid() && !deprioritized) {
             lowerPriority();
             deprioritized = true;
@@ -171,7 +171,7 @@ final class PolyglotThreadInfo {
 
     void leave(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
         assert Thread.currentThread() == getThread();
-        EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.truffleContext);
+        EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
 
         int count = --enteredCount;
         if (!engine.customHostClassLoader.isValid()) {

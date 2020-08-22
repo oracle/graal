@@ -48,7 +48,6 @@ import java.util.ServiceConfigurationError;
 
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
-import com.oracle.truffle.api.impl.Accessor.JDKSupport;
 
 /**
  * Class for obtaining the Truffle runtime singleton object of this virtual machine.

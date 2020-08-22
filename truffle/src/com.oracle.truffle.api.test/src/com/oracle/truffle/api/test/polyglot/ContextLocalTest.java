@@ -394,7 +394,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                 c0.initialize(VALID_SHARED_LANGUAGE);
                 c0.enter();
                 try {
-                    assertSame(tc0, ValidSharedLanguage.getCurrentLanguage().local0.get().getContext());
+                    assertEquals(tc0, ValidSharedLanguage.getCurrentLanguage().local0.get().getContext());
                 } finally {
                     c0.leave();
                 }
@@ -402,7 +402,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                 c1.initialize(VALID_SHARED_LANGUAGE);
                 c1.enter();
                 try {
-                    assertSame(tc1, ValidSharedLanguage.getCurrentLanguage().local1.get().getContext());
+                    assertEquals(tc1, ValidSharedLanguage.getCurrentLanguage().local1.get().getContext());
                 } finally {
                     c1.leave();
                 }
@@ -450,7 +450,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                     c0.initialize(VALID_SHARED_LANGUAGE);
                     c0.enter();
                     try {
-                        assertSame(tc0.context, ValidSharedLanguage.getCurrentLanguage().contextThreadLocal0.get().env.getContext());
+                        assertEquals(tc0.context, ValidSharedLanguage.getCurrentLanguage().contextThreadLocal0.get().env.getContext());
                     } finally {
                         c0.leave();
                     }
@@ -458,7 +458,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                     c1.initialize(VALID_SHARED_LANGUAGE);
                     c1.enter();
                     try {
-                        assertSame(tc1.context, ValidSharedLanguage.getCurrentLanguage().contextThreadLocal1.get().env.getContext());
+                        assertEquals(tc1.context, ValidSharedLanguage.getCurrentLanguage().contextThreadLocal1.get().env.getContext());
                     } finally {
                         c1.leave();
                     }

@@ -340,7 +340,7 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
     private static void assertList(List<TruffleContext> list, TruffleContext... expectedContexts) {
         assertEquals(expectedContexts.length, list.size());
         for (int i = 0; i < expectedContexts.length; i++) {
-            assertSame(expectedContexts[i], list.get(i));
+            assertEquals(expectedContexts[i], list.get(i));
         }
     }
 }
