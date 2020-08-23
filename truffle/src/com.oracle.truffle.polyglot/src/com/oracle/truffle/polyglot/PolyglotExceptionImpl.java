@@ -185,7 +185,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
 
     private static boolean isResourceLimit(Throwable e) {
         if (e instanceof CancelExecution) {
-            return true;
+            return ((CancelExecution) e).isResourceLimit();
         }
         Throwable toCheck;
         if (e instanceof HostException) {

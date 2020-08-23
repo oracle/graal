@@ -86,6 +86,7 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
@@ -171,6 +172,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
      */
     volatile boolean cancelling;
     volatile String invalidMessage;
+    volatile boolean invalidResourceLimit;
     volatile Thread closingThread;
     private final ReentrantLock closingLock = new ReentrantLock();
     /*
@@ -774,7 +776,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     void checkClosed() {
         if (invalid && closingThread != Thread.currentThread()) {
             // try closing if this is the last thread
-            throw new CancelExecution(null, invalidMessage);
+            throw createCancelException(null);
         }
         if (closed) {
             throw PolyglotEngineException.illegalState("The Context is already closed.");
@@ -967,19 +969,30 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     public void close(Context sourceContext, boolean cancelIfExecuting) {
         try {
             checkCreatorAccess(sourceContext, "closed");
-            boolean closeCompleted = closeImpl(cancelIfExecuting, cancelIfExecuting, true);
-            if (cancelIfExecuting) {
-                engine.getCancelHandler().cancel(Arrays.asList(this));
-            } else if (!closeCompleted) {
-                throw PolyglotEngineException.illegalState(String.format("The context is currently executing on another thread. " +
-                                "Set cancelIfExecuting to true to stop the execution on this thread."));
-            }
-            checkSubProcessFinished();
-            if (engine.boundEngine && parent == null) {
-                engine.ensureClosed(cancelIfExecuting, true);
-            }
+            closeAndMaybeWait(cancelIfExecuting);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(engine, t);
+        }
+    }
+
+    void cancel(boolean resourceLimit, String message, boolean wait) {
+        boolean invalidated = invalidate(resourceLimit, message == null ? "Context execution was cancelled." : message);
+        if (wait && invalidated && !closed) {
+            closeAndMaybeWait(true);
+        }
+    }
+
+    void closeAndMaybeWait(boolean cancelIfExecuting) {
+        boolean closeCompleted = closeImpl(cancelIfExecuting, cancelIfExecuting, true);
+        if (cancelIfExecuting) {
+            engine.getCancelHandler().cancel(Arrays.asList(this));
+        } else if (!closeCompleted) {
+            throw PolyglotEngineException.illegalState(String.format("The context is currently executing on another thread. " +
+                            "Set cancelIfExecuting to true to stop the execution on this thread."));
+        }
+        checkSubProcessFinished();
+        if (engine.boundEngine && parent == null) {
+            engine.ensureClosed(cancelIfExecuting, true);
         }
     }
 
@@ -1039,6 +1052,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             }
         }
         return false;
+    }
+
+    synchronized boolean isActive(Thread thread) {
+        PolyglotThreadInfo info = threads.get(thread);
+        if (info == null || info == PolyglotThreadInfo.NULL) {
+            return false;
+        }
+        return info.isActive();
     }
 
     PolyglotThreadInfo getFirstActiveOtherThread(boolean includePolyglotThread) {
@@ -1683,7 +1704,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     }
 
-    synchronized boolean invalidate(String message) {
+    CancelExecution createCancelException(Node location) {
+        return new CancelExecution(location, invalidMessage, invalidResourceLimit);
+    }
+
+    synchronized boolean invalidate(boolean resourceLimit, String message) {
         if (!invalid) {
             setCachedThreadInfo(PolyglotThreadInfo.NULL);
             /*
@@ -1691,6 +1716,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
              * when the context was disabled.
              */
             invalidMessage = message;
+            invalidResourceLimit = resourceLimit;
             invalid = true;
             return true;
         }

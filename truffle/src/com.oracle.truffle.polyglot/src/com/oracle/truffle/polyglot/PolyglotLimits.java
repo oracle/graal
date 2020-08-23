@@ -78,7 +78,6 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
 /**
  * Limits objects that backs the {@link ResourceLimits} API object.
@@ -208,14 +207,14 @@ final class PolyglotLimits {
             if (limitReached) {
                 String message = String.format("Statement count limit of %s exceeded. Statements executed %s.",
                                 limit, actualCount);
-                boolean invalidated = context.invalidate(message);
+                boolean invalidated = context.invalidate(true, message);
                 if (invalidated) {
                     context.close(context.creatorApi, true);
                     RuntimeException e = limits.notifyEvent(context);
                     if (e != null) {
                         throw e;
                     }
-                    throw new CancelExecution(eventContext, message);
+                    throw context.createCancelException(eventContext.getInstrumentedNode());
                 }
             }
 
@@ -262,7 +261,7 @@ final class PolyglotLimits {
                     String message = String.format("Time resource limit of %sms exceeded. Time executed %sms.",
                                     c.config.limits.timeLimit.toMillis(),
                                     Duration.ofNanos(timeActiveNS).toMillis());
-                    boolean invalidated = c.invalidate(message);
+                    boolean invalidated = c.invalidate(true, message);
                     /*
                      * We immediately set the context invalid so it can no longer be entered. The
                      * cancel executor closes the context on a parallel thread and closes the

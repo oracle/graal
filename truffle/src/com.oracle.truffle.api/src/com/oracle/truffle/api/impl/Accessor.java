@@ -306,9 +306,11 @@ public abstract class Accessor {
 
         public abstract void leaveInternalContext(Object polyglotContext, Object prev);
 
-        public abstract void closeInternalContext(Object polyglotContext);
+        public abstract void closeContext(Object polyglotContext, boolean force, Node closeLocation, boolean resourceExhaused, String resourceExhausedReason);
 
-        public abstract boolean isInternalContextEntered(Object polyglotContext);
+        public abstract boolean isContextEntered(Object polyglotContext);
+
+        public abstract boolean isContextActive(Object polyglotContext);
 
         public abstract void reportAllLanguageContexts(Object polyglotEngine, Object contextsListener);
 
@@ -490,6 +492,8 @@ public abstract class Accessor {
         public abstract <T> ContextLocal<T> createInstrumentContextLocal(Object factory);
 
         public abstract OptionValues getInstrumentContextOptions(Object polyglotInstrument, Object polyglotContext);
+
+        public abstract boolean isContextClosed(Object polyglotContext);
     }
 
     public abstract static class LanguageSupport extends Support {

@@ -48,6 +48,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Instrument;
 import org.junit.After;
 
 import com.oracle.truffle.api.CallTarget;
@@ -172,6 +173,7 @@ public abstract class AbstractPolyglotTest {
         usedLanguage.setOnCreate(null);
 
         this.context = localContext;
+        usedInstrument.setOnCreate(null);
     }
 
     protected final void setupEnv(Context context) {
@@ -212,14 +214,14 @@ public abstract class AbstractPolyglotTest {
         }
     }
 
-    public static void assertFails(Runnable callable, Class<? extends Throwable> exceptionType) {
+    public static void assertFails(Runnable callable, Class<?> exceptionType) {
         assertFails((Callable<?>) () -> {
             callable.run();
             return null;
         }, exceptionType);
     }
 
-    public static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
+    public static void assertFails(Callable<?> callable, Class<?> exceptionType) {
         try {
             callable.call();
         } catch (Throwable t) {
@@ -231,7 +233,7 @@ public abstract class AbstractPolyglotTest {
         fail("expected " + exceptionType.getName() + " but no exception was thrown");
     }
 
-    public static <T extends Throwable> void assertFails(Runnable run, Class<T> exceptionType, Consumer<T> verifier) {
+    public static <T> void assertFails(Runnable run, Class<T> exceptionType, Consumer<T> verifier) {
         try {
             run.run();
         } catch (Throwable t) {
@@ -244,7 +246,7 @@ public abstract class AbstractPolyglotTest {
         fail("expected " + exceptionType.getName() + " but no exception was thrown");
     }
 
-    public static <T extends Throwable> void assertFails(Callable<?> callable, Class<T> exceptionType, Consumer<T> verifier) {
+    public static <T> void assertFails(Callable<?> callable, Class<T> exceptionType, Consumer<T> verifier) {
         try {
             callable.call();
         } catch (Throwable t) {

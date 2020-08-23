@@ -1341,7 +1341,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     private void cancelExecution(EventContext eventContext) {
                         PolyglotContextImpl context = PolyglotContextImpl.requireContext();
                         if (context.invalid || context.cancelling) {
-                            throw new CancelExecution(eventContext, context.invalidMessage);
+                            throw context.createCancelException(eventContext.getInstrumentedNode());
                         }
                     }
                 });
@@ -1364,16 +1364,22 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @SuppressWarnings("serial")
     static final class CancelExecution extends ThreadDeath implements TruffleException {
 
-        private final Node node;
+        private final Node location;
         private final String cancelMessage;
+        private final boolean resourceLimit;
 
-        CancelExecution(EventContext context, String cancelMessage) {
-            this.node = context != null ? context.getInstrumentedNode() : null;
+        CancelExecution(Node location, String cancelMessage, boolean resourceLimit) {
+            this.location = location;
             this.cancelMessage = cancelMessage;
+            this.resourceLimit = resourceLimit;
         }
 
         public Node getLocation() {
-            return node;
+            return location;
+        }
+
+        public boolean isResourceLimit() {
+            return resourceLimit;
         }
 
         @Override

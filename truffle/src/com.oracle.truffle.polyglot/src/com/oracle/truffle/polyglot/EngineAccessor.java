@@ -103,11 +103,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.polyglot.PolyglotSource.EmbedderFileSystemContext;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
+import com.oracle.truffle.polyglot.PolyglotSource.EmbedderFileSystemContext;
 
 final class EngineAccessor extends Accessor {
 
@@ -718,17 +718,7 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        @CompilerDirectives.TruffleBoundary
-        public void closeInternalContext(Object impl) {
-            PolyglotContextImpl context = (PolyglotContextImpl) impl;
-            if (context.isActive()) {
-                throw new IllegalStateException("The context is currently entered and cannot be closed.");
-            }
-            context.closeImpl(false, false, true);
-        }
-
-        @Override
-        public boolean isInternalContextEntered(Object impl) {
+        public boolean isContextEntered(Object impl) {
             return PolyglotContextImpl.currentNotEntered() == impl;
         }
 
@@ -1213,6 +1203,44 @@ final class EngineAccessor extends Accessor {
             PolyglotInstrument instrument = (PolyglotInstrument) polyglotInstrument;
             PolyglotContextImpl context = (PolyglotContextImpl) polyglotContext;
             return context.getInstrumentContextOptions(instrument);
+        }
+
+        @Override
+        public boolean isContextClosed(Object polyglotContext) {
+            PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
+            if (context.invalid && context.closingThread != Thread.currentThread()) {
+                return true;
+            }
+            return context.closed;
+        }
+
+        @Override
+        public boolean isContextActive(Object polyglotContext) {
+            PolyglotContextImpl context = (PolyglotContextImpl) polyglotContext;
+            return context.isActive(Thread.currentThread());
+        }
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        public void closeContext(Object impl, boolean force, Node closeLocation, boolean resourceExhaused, String resourceExhausedReason) {
+            PolyglotContextImpl context = (PolyglotContextImpl) impl;
+            if (force) {
+                boolean isActive = isContextActive(context);
+                boolean entered = isContextEntered(context);
+                if (isActive && !entered) {
+                    throw PolyglotEngineException.illegalState(String.format("The context is currently active on the current thread but another different context is entered as top-most context. " +
+                                    "Leave or close the top-most context first or close the context on a separte thread to resolve this problem."));
+                }
+                context.cancel(resourceExhaused, resourceExhausedReason, !entered);
+                if (entered) {
+                    throw context.createCancelException(closeLocation);
+                }
+            } else {
+                if (context.isActive()) {
+                    throw new IllegalStateException("The context is currently entered and cannot be closed. Make sure no thread is running or call force closing the context to resolve this.");
+                }
+                context.closeImpl(false, false, true);
+            }
         }
 
     }
