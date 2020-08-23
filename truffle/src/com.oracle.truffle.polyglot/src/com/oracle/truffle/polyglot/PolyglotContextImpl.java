@@ -1677,22 +1677,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    synchronized long getTimeActive() {
-        long timeExecuted = 0;
-        Collection<PolyglotThreadInfo> polyglotThreads = getSeenThreads().values();
-        for (PolyglotThreadInfo threadInfo : polyglotThreads) {
-            timeExecuted += threadInfo.getTimeExecuted();
-        }
-        return timeExecuted;
-    }
-
-    synchronized void resetTiming() {
-        Collection<PolyglotThreadInfo> polyglotThreads = getSeenThreads().values();
-        for (PolyglotThreadInfo threadInfo : polyglotThreads) {
-            threadInfo.resetTiming();
-        }
-    }
-
     private static Object[] getAllLoggers(PolyglotEngineImpl engine) {
         Object defaultLoggers = EngineAccessor.LANGUAGE.getDefaultLoggers();
         Object engineLoggers = engine.getEngineLoggers();
