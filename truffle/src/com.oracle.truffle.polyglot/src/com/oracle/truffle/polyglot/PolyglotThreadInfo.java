@@ -95,8 +95,9 @@ final class PolyglotThreadInfo {
         return getThread() == Thread.currentThread();
     }
 
-    void enter(PolyglotEngineImpl engine) {
+    void enter(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
         assert Thread.currentThread() == getThread();
+        EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.truffleContext);
         if (!engine.noPriorityChangeNeeded.isValid() && !deprioritized) {
             lowerPriority();
             deprioritized = true;
@@ -168,8 +169,10 @@ final class PolyglotThreadInfo {
         return false;
     }
 
-    void leave(PolyglotEngineImpl engine) {
+    void leave(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
         assert Thread.currentThread() == getThread();
+        EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.truffleContext);
+
         int count = --enteredCount;
         if (!engine.customHostClassLoader.isValid()) {
             restoreContextClassLoader();

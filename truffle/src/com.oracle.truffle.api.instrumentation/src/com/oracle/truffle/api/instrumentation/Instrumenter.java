@@ -46,6 +46,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -325,6 +326,20 @@ public abstract class Instrumenter {
      * @since 0.30
      */
     public abstract <T extends ThreadsListener> EventBinding<T> attachThreadsListener(T listener, boolean includeInitializedThreads);
+
+    /**
+     * Attach a {@link ThreadsActivationListener listener} to be notified about when a thread gets
+     * entered or left in guest language applications.
+     * <p>
+     * The event notification starts after the listener is registration completed. This means that
+     * currently activated threads won't get a notification. It is also possible that
+     * {@link ThreadsActivationListener#onLeaveThread(TruffleContext)} is called without ever
+     * invoking {@link ThreadsActivationListener#onEnterThread(TruffleContext)}.
+     *
+     * @return a handle for unregistering the listener.
+     * @since 20.3
+     */
+    public abstract EventBinding<? extends ThreadsActivationListener> attachThreadsActivationListener(ThreadsActivationListener listener);
 
     /**
      * Returns a filtered list of loaded {@link SourceSection} instances.

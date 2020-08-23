@@ -61,7 +61,7 @@ public class ProxyInstrument extends TruffleInstrument {
         delegate.wrapper = false;
     }
     private boolean wrapper = true;
-    protected ProxyInstrument languageInstance;
+    protected ProxyInstrument instrument;
     private Consumer<Env> onCreate;
 
     public static <T extends ProxyInstrument> T setDelegate(T delegate) {
@@ -79,7 +79,7 @@ public class ProxyInstrument extends TruffleInstrument {
         env.registerService(new Initialize() {
         });
         if (wrapper) {
-            delegate.languageInstance = this;
+            delegate.instrument = this;
             delegate.onCreate(env);
         }
         if (onCreate != null) {
@@ -90,7 +90,7 @@ public class ProxyInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         if (wrapper) {
-            delegate.languageInstance = this;
+            delegate.instrument = this;
             delegate.onDispose(env);
         }
     }
@@ -98,7 +98,7 @@ public class ProxyInstrument extends TruffleInstrument {
     @Override
     protected void onFinalize(Env env) {
         if (wrapper) {
-            delegate.languageInstance = this;
+            delegate.instrument = this;
             delegate.onFinalize(env);
         }
     }

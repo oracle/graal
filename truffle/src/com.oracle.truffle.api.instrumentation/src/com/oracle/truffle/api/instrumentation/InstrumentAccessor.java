@@ -49,6 +49,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.io.MessageTransport;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleContext;
@@ -58,6 +59,7 @@ import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.ContextLocalFactory;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.ContextThreadLocalFactory;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -306,6 +308,26 @@ final class InstrumentAccessor extends Accessor {
                 throw new IllegalStateException(String.format("%s.create is not allowed to return null.", ContextThreadLocalFactory.class.getSimpleName()));
             }
             return result;
+        }
+
+        @Override
+        @ExplodeLoop
+        public void notifyEnter(Object instrumentationHandler, TruffleContext truffleContext) {
+            InstrumentationHandler handler = (InstrumentationHandler) instrumentationHandler;
+            CompilerAsserts.partialEvaluationConstant(handler);
+            for (ThreadsActivationListener listener : handler.getThreadsActivationListeners()) {
+                listener.onEnterThread(truffleContext);
+            }
+        }
+
+        @Override
+        @ExplodeLoop
+        public void notifyLeave(Object instrumentationHandler, TruffleContext truffleContext) {
+            InstrumentationHandler handler = (InstrumentationHandler) instrumentationHandler;
+            CompilerAsserts.partialEvaluationConstant(handler);
+            for (ThreadsActivationListener listener : handler.getThreadsActivationListeners()) {
+                listener.onLeaveThread(truffleContext);
+            }
         }
 
     }

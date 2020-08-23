@@ -712,6 +712,10 @@ public abstract class Accessor {
 
         public abstract Object invokeContextThreadLocalFactory(Object factory, TruffleContext truffleContext, Thread t);
 
+        public abstract void notifyEnter(Object instrumentationHandler, TruffleContext truffleContext);
+
+        public abstract void notifyLeave(Object instrumentationHandler, TruffleContext truffleContext);
+
     }
 
     public abstract static class FrameSupport extends Support {

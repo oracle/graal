@@ -461,6 +461,21 @@ public class ImplicitCastTest {
     }
 
     @TypeSystemReference(ImplicitCast4Types.class)
+    public abstract static class ImplicitCastExecuteTestNode extends Node {
+
+        public abstract Object execute(int duration);
+
+        public abstract Object execute(long duration);
+
+        public abstract Object execute(Object duration);
+
+        @Specialization
+        public long sleep(long duration) {
+            return duration;
+        }
+    }
+
+    @TypeSystemReference(ImplicitCast4Types.class)
     public abstract static class ExecuteChildWithImplicitCast1Node extends ExampleNode {
 
         @Specialization
