@@ -193,6 +193,11 @@ public abstract class TruffleInstrument {
      * will automatically be {@link #onCreate(Env) created} if one of the specified options was
      * provided by the engine. To construct option descriptors from a list then
      * {@link OptionDescriptors#create(List)} can be used.
+     * <p>
+     * By default option descriptors may only be specified per engine or bound engine, but option
+     * values may also be specified per context. In this case the context specific options can be
+     * specified with {@link #getContextOptionDescriptors()} and the values can be accessed with be
+     * accessed with {@link Env#getOptions(TruffleContext)}.
      *
      * @see Option For an example of declaring the option descriptor using an annotation.
      * @since 0.27
@@ -201,6 +206,39 @@ public abstract class TruffleInstrument {
         return OptionDescriptors.EMPTY;
     }
 
+    /**
+     * Returns a set of option descriptors for instrument options that can be specified per context.
+     * This can be specified in addition to options specified on the engine level, instruments may
+     * specify options for each context. Option descriptors specified per context must not overlap
+     * with option descriptors specified per instrument instance.
+     * <p>
+     * Example usage:
+     *
+     * <pre>
+     *
+     * &#64;Option.Group(MyInstrument.ID)
+     * final class MyContext {
+     *
+     *     &#64;Option(category = OptionCategory.EXPERT, help = "Description...")
+     *     static final OptionKey<Boolean> MyContextOption = new OptionKey<>(Boolean.FALSE);
+     * }
+     *
+     * &#64;Registration(...)
+     * class MyInstrument extends TruffleInstruement {
+     *
+     *   static final OptionDescriptors CONTEXT_OPTIONS = new MyContextOptionDescriptors();
+     *
+     *   //...
+     *
+     *   protected OptionDescriptors getContextOptionDescriptors() {
+     *      return CONTEXT_OPTIONS;
+     *   }
+     * }
+     * </pre>
+     *
+     * @see Env#getOptions(TruffleContext) to lookup the option values for a context.
+     * @since 20.3
+     */
     protected OptionDescriptors getContextOptionDescriptors() {
         return OptionDescriptors.EMPTY;
     }
@@ -609,14 +647,31 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Returns option values for the options described in
+         * Returns the context independent option values for the options described in
          * {@link TruffleInstrument#getOptionDescriptors()}. The returned options are never
          * <code>null</code>.
          *
+         * @see #getOptions(TruffleContext) to return the context specific options for this
+         *      instrument.
          * @since 0.27
          */
         public OptionValues getOptions() {
             return options;
+        }
+
+        /**
+         * Returns the context specific option values for the options described in
+         * {@link TruffleInstrument#getContextOptionDescriptors()} and
+         * {@link TruffleInstrument#getOptionDescriptors()}. Instrument context options can be
+         * different for each TruffleContext, whereas regular options cannot.
+         *
+         * @see #getOptions() to get the context independent options set for this instrument
+         * @since 20.3
+         */
+        @TruffleBoundary
+        public OptionValues getOptions(TruffleContext context) {
+            Objects.requireNonNull(context);
+            return InstrumentAccessor.ENGINE.getInstrumentContextOptions(polyglotInstrument, InstrumentAccessor.LANGUAGE.getPolyglotContext(context));
         }
 
         /**
@@ -1209,6 +1264,7 @@ public abstract class TruffleInstrument {
                 }
             }
         }
+
     }
 
     /**

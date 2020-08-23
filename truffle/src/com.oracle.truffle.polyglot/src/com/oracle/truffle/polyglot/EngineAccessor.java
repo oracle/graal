@@ -1159,6 +1159,7 @@ final class EngineAccessor extends Accessor {
             return PolyglotReferences.invalidSharingError((PolyglotEngineImpl) polyglotEngine);
         }
 
+        @Override
         public <T> ContextLocal<T> createInstrumentContextLocal(Object factory) {
             return PolyglotLocals.createInstrumentContextLocal(factory);
         }
@@ -1205,6 +1206,13 @@ final class EngineAccessor extends Accessor {
         @Override
         public void initializeLanguageContextThreadLocal(List<? extends ContextThreadLocal<?>> local, Object polyglotLanguageInstance) {
             PolyglotLocals.initializeLanguageContextThreadLocals((List<LanguageContextThreadLocal<?>>) local, (PolyglotLanguageInstance) polyglotLanguageInstance);
+        }
+
+        @Override
+        public OptionValues getInstrumentContextOptions(Object polyglotInstrument, Object polyglotContext) {
+            PolyglotInstrument instrument = (PolyglotInstrument) polyglotInstrument;
+            PolyglotContextImpl context = (PolyglotContextImpl) polyglotContext;
+            return context.getInstrumentContextOptions(instrument);
         }
 
     }

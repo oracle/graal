@@ -129,11 +129,22 @@ final class InstrumentAccessor extends Accessor {
         }
 
         @Override
-        public OptionDescriptors describeOptions(Object instrumentationHandler, Object key, String requiredGroup) {
+        public OptionDescriptors describeEngineOptions(Object instrumentationHandler, Object key, String requiredGroup) {
             InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) ((InstrumentationHandler) instrumentationHandler).instrumenterMap.get(key);
             OptionDescriptors descriptors = instrumenter.instrument.getOptionDescriptors();
+            return validateOptions(requiredGroup, instrumenter, descriptors);
+        }
+
+        @Override
+        public OptionDescriptors describeContextOptions(Object instrumentationHandler, Object key, String requiredGroup) {
+            InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) ((InstrumentationHandler) instrumentationHandler).instrumenterMap.get(key);
+            OptionDescriptors descriptors = instrumenter.instrument.getContextOptionDescriptors();
+            return validateOptions(requiredGroup, instrumenter, descriptors);
+        }
+
+        private static OptionDescriptors validateOptions(String requiredGroup, InstrumentClientInstrumenter instrumenter, OptionDescriptors descriptors) {
             if (descriptors == null) {
-                descriptors = OptionDescriptors.EMPTY;
+                return OptionDescriptors.EMPTY;
             }
             String groupPlusDot = requiredGroup + ".";
             for (OptionDescriptor descriptor : descriptors) {

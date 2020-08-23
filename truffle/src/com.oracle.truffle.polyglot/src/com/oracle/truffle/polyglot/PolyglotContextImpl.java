@@ -65,6 +65,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
@@ -290,6 +291,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         // notifyContextCreated() is called after spiContext.impl is set to this.
         this.engine.noInnerContexts.invalidate();
         initializeStaticContext(this);
+    }
+
+    OptionValues getInstrumentContextOptions(PolyglotInstrument instrument) {
+        return config.getInstrumentOptionValues(instrument);
     }
 
     @Override
@@ -1221,15 +1226,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     Object[] impls = this.contextImpls;
                     if (impls != null) {
                         Arrays.fill(impls, null);
-                    }
-                    if (contextLocals != null) {
-                        Arrays.fill(contextLocals, null);
-                    }
-                    for (PolyglotThreadInfo thread : threads.values()) {
-                        Object[] threadLocals = thread.getContextThreadLocals();
-                        if (threadLocals != null) {
-                            Arrays.fill(threadLocals, null);
-                        }
                     }
                 }
             }

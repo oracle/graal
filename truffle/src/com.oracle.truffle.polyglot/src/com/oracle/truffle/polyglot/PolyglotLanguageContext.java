@@ -474,7 +474,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
             Map<String, Object> creatorConfig = context.creator == language ? context.creatorArguments : Collections.emptyMap();
             PolyglotContextConfig envConfig = context.config;
-            PolyglotLanguageInstance lang = language.allocateInstance(envConfig.getOptionValues(language));
+            PolyglotLanguageInstance lang = language.allocateInstance(envConfig.getLanguageOptionValues(language));
             try {
                 synchronized (context) {
                     if (lazy == null) {
@@ -482,7 +482,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                         envConfig.err,
                                         envConfig.in,
                                         creatorConfig,
-                                        envConfig.getOptionValues(language),
+                                        envConfig.getLanguageOptionValues(language),
                                         envConfig.getApplicationArguments(language));
                         Lazy localLazy = new Lazy(lang, envConfig);
                         PolyglotValue.createDefaultValues(getImpl(), this, localLazy.valueCache);
@@ -636,7 +636,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     boolean patch(PolyglotContextConfig newConfig) {
         if (isCreated()) {
             try {
-                OptionValuesImpl newOptionValues = newConfig.getOptionValues(language);
+                OptionValuesImpl newOptionValues = newConfig.getLanguageOptionValues(language);
                 lazy.computeAccessPermissions(newConfig);
                 Env newEnv = LANGUAGE.patchEnvContext(env, newConfig.out, newConfig.err, newConfig.in,
                                 Collections.emptyMap(), newOptionValues, newConfig.getApplicationArguments(language));

@@ -488,6 +488,8 @@ public abstract class Accessor {
         public abstract <T> ContextLocal<T> createLanguageContextLocal(Object factory);
 
         public abstract <T> ContextLocal<T> createInstrumentContextLocal(Object factory);
+
+        public abstract OptionValues getInstrumentContextOptions(Object polyglotInstrument, Object polyglotContext);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -676,7 +678,9 @@ public abstract class Accessor {
             return out.getOut();
         }
 
-        public abstract OptionDescriptors describeOptions(Object instrumentationHandler, Object key, String requiredGroup);
+        public abstract OptionDescriptors describeEngineOptions(Object instrumentationHandler, Object key, String requiredGroup);
+
+        public abstract OptionDescriptors describeContextOptions(Object instrumentationHandler, Object key, String requiredGroup);
 
         public abstract Object getEngineInstrumenter(Object instrumentationHandler);
 

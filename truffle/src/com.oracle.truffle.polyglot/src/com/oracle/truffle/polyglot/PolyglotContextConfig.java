@@ -58,6 +58,7 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 
 final class PolyglotContextConfig {
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
@@ -74,7 +75,7 @@ final class PolyglotContextConfig {
     final Predicate<String> classFilter;
     private final Map<String, String[]> applicationArguments;
     final EconomicSet<String> allowedPublicLanguages;
-    private final Map<String, OptionValuesImpl> optionsByLanguage;
+    private final Map<String, OptionValuesImpl> optionsById;
     @CompilationFinal FileSystem fileSystem;
     @CompilationFinal FileSystem internalFileSystem;
     final Map<String, Level> logLevels;    // effectively final
@@ -114,7 +115,7 @@ final class PolyglotContextConfig {
         this.allowedPublicLanguages = allowedPublicLanguages;
         this.fileSystem = publicFileSystem;
         this.internalFileSystem = internalFileSystem;
-        this.optionsByLanguage = new HashMap<>();
+        this.optionsById = new HashMap<>();
         this.logHandler = logHandler;
         this.timeZone = timeZone;
         this.limits = limits;
@@ -126,13 +127,26 @@ final class PolyglotContextConfig {
                 continue;
             }
 
-            final PolyglotLanguage language = findLanguageForOption(engine, optionKey, group);
-            OptionValuesImpl languageOptions = optionsByLanguage.get(language.getId());
-            if (languageOptions == null) {
-                languageOptions = language.getOptionValues().copy();
-                optionsByLanguage.put(language.getId(), languageOptions);
+            VMObject object = findObjectForContextOption(engine, optionKey, group);
+            String id;
+            OptionValuesImpl engineOptionValues;
+            if (object instanceof PolyglotLanguage) {
+                PolyglotLanguage language = (PolyglotLanguage) object;
+                id = language.getId();
+                engineOptionValues = language.getOptionValues();
+            } else if (object instanceof PolyglotInstrument) {
+                PolyglotInstrument instrument = (PolyglotInstrument) object;
+                id = instrument.getId();
+                engineOptionValues = instrument.getEngineOptionValues();
+            } else {
+                throw new AssertionError("invalid vm object");
             }
-            languageOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions);
+            OptionValuesImpl targetOptions = optionsById.get(id);
+            if (targetOptions == null) {
+                targetOptions = engineOptionValues.copy();
+                optionsById.put(id, targetOptions);
+            }
+            targetOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions);
         }
         this.processHandler = processHandler;
         this.environmentAccess = environmentAccess;
@@ -191,10 +205,18 @@ final class PolyglotContextConfig {
         return args;
     }
 
-    OptionValuesImpl getOptionValues(PolyglotLanguage lang) {
-        OptionValuesImpl values = optionsByLanguage.get(lang.getId());
+    OptionValuesImpl getLanguageOptionValues(PolyglotLanguage lang) {
+        OptionValuesImpl values = optionsById.get(lang.getId());
         if (values == null) {
             values = lang.getOptionValues();
+        }
+        return values.copy();
+    }
+
+    OptionValuesImpl getInstrumentOptionValues(PolyglotInstrument instrument) {
+        OptionValuesImpl values = optionsById.get(instrument.getId());
+        if (values == null) {
+            values = instrument.getEngineOptionValues();
         }
         return values.copy();
     }
@@ -224,10 +246,20 @@ final class PolyglotContextConfig {
         return result;
     }
 
-    private static PolyglotLanguage findLanguageForOption(PolyglotEngineImpl engine, final String optionKey, String group) {
+    private static VMObject findObjectForContextOption(PolyglotEngineImpl engine, final String optionKey, String group) {
         PolyglotLanguage language = engine.idToLanguage.get(group);
         if (language == null) {
-            if (engine.isEngineGroup(group)) {
+            PolyglotInstrument instrument = engine.idToInstrument.get(group);
+            if (instrument != null) {
+                if (instrument.getEngineOptionsInternal().get(optionKey) != null) {
+                    throw PolyglotEngineException.illegalArgument(
+                                    "Option " + optionKey +
+                                                    " is an engine level instrument option. Engine level instrument options can only be configured for contexts without an explicit engine set." +
+                                                    " To resolve this, configure the option when creating the Engine or create a context without a shared engine.");
+                }
+                return instrument;
+            }
+            if (group.equals(PolyglotEngineImpl.OPTION_GROUP_ENGINE)) {
                 // Test that "engine options" are not present among the options designated for
                 // this context
                 if (engine.getAllOptions().get(optionKey) != null) {
@@ -239,7 +271,7 @@ final class PolyglotContextConfig {
             throw OptionValuesImpl.failNotFound(engine.getAllOptions(), optionKey);
         } else {
             // there should not be any overlaps -> engine creation should already fail
-            assert !engine.isEngineGroup(group);
+            assert !group.equals(PolyglotEngineImpl.OPTION_GROUP_ENGINE);
         }
         return language;
     }

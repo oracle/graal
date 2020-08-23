@@ -380,7 +380,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             OptionValuesImpl prototypeOptions = prototype.idToInstrument.get(instrumentId).getOptionValuesIfExists();
             if (prototypeOptions != null) {
                 PolyglotInstrument instrument = idToInstrument.get(instrumentId);
-                prototypeOptions.copyInto(instrument.getOptionValues());
+                prototypeOptions.copyInto(instrument.getEngineOptionValues());
                 instrumentsToCreate.add(instrument);
             }
         }
@@ -463,7 +463,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         // Set instruments options but do not call onCreate. OnCreate is called only in case of
         // successful context patch.
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
-            instrument.getOptionValues().putAll(instrumentsOptions.get(instrument), useAllowExperimentalOptions);
+            instrument.getEngineOptionValues().putAll(instrumentsOptions.get(instrument), useAllowExperimentalOptions);
         }
         registerShutDownHook();
         return true;
@@ -483,7 +483,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     private static void createInstruments(Map<PolyglotInstrument, Map<String, String>> instrumentsOptions, boolean allowExperimentalOptions) {
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
-            instrument.getOptionValues().putAll(instrumentsOptions.get(instrument), allowExperimentalOptions);
+            instrument.getEngineOptionValues().putAll(instrumentsOptions.get(instrument), allowExperimentalOptions);
         }
         ensureInstrumentsCreated(instrumentsOptions.keySet());
     }
@@ -613,14 +613,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
         }
         return options;
-    }
-
-    /**
-     * Find if there is an "engine option" (covers engine and instruments options) present among the
-     * given options.
-     */
-    boolean isEngineGroup(String group) {
-        return idToPublicInstrument.containsKey(group) || group.equals(OPTION_GROUP_ENGINE);
     }
 
     static String parseOptionGroup(String key) {
@@ -1181,7 +1173,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                         allDescriptors.add(language.getOptionsInternal());
                     }
                     for (PolyglotInstrument instrument : idToInstrument.values()) {
-                        allDescriptors.add(instrument.getOptionsInternal());
+                        allDescriptors.add(instrument.getAllOptionsInternal());
                     }
                     allOptions = OptionDescriptors.createUnion(allDescriptors.toArray(new OptionDescriptors[0]));
                 }

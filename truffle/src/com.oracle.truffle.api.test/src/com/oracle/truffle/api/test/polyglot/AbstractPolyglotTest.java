@@ -79,6 +79,18 @@ public abstract class AbstractPolyglotTest {
     protected boolean cleanupOnSetup = true;
     protected boolean enterContext = true;
 
+    protected final void setupEnv(Context.Builder contextBuilder, ProxyInstrument instrument) {
+        setupEnv(null, contextBuilder, null, instrument);
+    }
+
+    protected final void setupEnv(Context.Builder contextBuilder, ProxyLanguage language) {
+        setupEnv(null, contextBuilder, language, null);
+    }
+
+    protected final void setupEnv(Context.Builder contextBuilder, ProxyLanguage language, ProxyInstrument instrument) {
+        setupEnv(null, contextBuilder, language, instrument);
+    }
+
     protected final void setupEnv(Context newContext, ProxyInstrument instrument) {
         setupEnv(newContext, null, instrument);
     }
@@ -88,9 +100,15 @@ public abstract class AbstractPolyglotTest {
     }
 
     protected final void setupEnv(Context newContext, ProxyLanguage language, ProxyInstrument instrument) {
+        setupEnv(newContext, null, language, instrument);
+    }
+
+    private void setupEnv(Context originalContext, Context.Builder builder, ProxyLanguage language, ProxyInstrument instrument) {
         if (cleanupOnSetup) {
             cleanup();
         }
+        Context localContext = originalContext;
+
         final ProxyLanguage usedLanguage;
         if (language == null) {
             usedLanguage = new ProxyLanguage();
@@ -107,10 +125,13 @@ public abstract class AbstractPolyglotTest {
             this.languageEnv = c.env;
             this.language = usedLanguage.languageInstance;
         });
-        usedInstrument.setOnCreate((env) -> instrumentEnv = env);
 
         ProxyLanguage.setDelegate(usedLanguage);
         ProxyInstrument.setDelegate(usedInstrument);
+
+        if (localContext == null) {
+            localContext = builder.build();
+        }
 
         Class<?> currentInstrumentClass = usedInstrument.getClass();
         String instrumentId = null;
@@ -120,8 +141,14 @@ public abstract class AbstractPolyglotTest {
             currentInstrumentClass = currentInstrumentClass.getSuperclass();
         }
 
-        // forces initialization of instrument
-        newContext.getEngine().getInstruments().get(instrumentId).lookup(ProxyInstrument.Initialize.class);
+        Instrument embedderInstrument = localContext.getEngine().getInstruments().get(instrumentId);
+        if (embedderInstrument == null) {
+            throw new IllegalStateException("Test proxy instrument not installed. Inconsistent build?");
+        } else {
+            // forces initialization of instrument
+            embedderInstrument.lookup(ProxyInstrument.Initialize.class);
+        }
+        this.instrumentEnv = ProxyInstrument.getCurrent().getLastEnvironment();
         // force initialization of proxy language
 
         Class<?> currentLanguageClass = usedLanguage.getClass();
@@ -132,17 +159,19 @@ public abstract class AbstractPolyglotTest {
             currentLanguageClass = currentLanguageClass.getSuperclass();
         }
 
-        newContext.initialize(languageId);
+        localContext.initialize(languageId);
         // enter current context
         if (enterContext) {
-            newContext.enter();
+            localContext.enter();
         }
 
         assertNotNull(this.languageEnv);
         assertNotNull(this.language);
         assertNotNull(this.instrumentEnv);
 
-        this.context = newContext;
+        usedLanguage.setOnCreate(null);
+
+        this.context = localContext;
     }
 
     protected final void setupEnv(Context context) {
