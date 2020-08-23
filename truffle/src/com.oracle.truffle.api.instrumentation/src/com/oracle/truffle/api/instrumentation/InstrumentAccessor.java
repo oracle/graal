@@ -224,6 +224,12 @@ final class InstrumentAccessor extends Accessor {
         }
 
         @Override
+        public void notifyContextResetLimit(Object engine, TruffleContext context) {
+            InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);
+            instrumentationHandler.notifyContextResetLimit(context);
+        }
+
+        @Override
         public void notifyLanguageContextCreated(Object engine, TruffleContext context, LanguageInfo info) {
             InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);
             instrumentationHandler.notifyLanguageContextCreated(context, info);

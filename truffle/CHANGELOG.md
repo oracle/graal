@@ -14,7 +14,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `TruffleContext.isClosed()` to check whether a  truffle context is already closed. This is useful for instruments.
 * Added `TruffleContext.closeCancelled` and `TruffleContext.closeResourceExhausted`  to allow instruments and language that create inner contexts to cancel the execution of a context.
 * Added `TruffleContext.isActive` in addition to `TruffleContext.isEntered` and improved their documentation to indicate the difference.
-
+* Added `ContextsListener.onContextResetLimit` to allow instruments to listen to context limit reset events from the polyglot API.
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.

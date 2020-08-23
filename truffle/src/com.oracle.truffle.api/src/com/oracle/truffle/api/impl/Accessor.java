@@ -81,6 +81,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -88,7 +89,6 @@ import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleStackTraceElement;
-import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -695,6 +695,8 @@ public abstract class Accessor {
         public abstract void notifyContextCreated(Object engine, TruffleContext context);
 
         public abstract void notifyContextClosed(Object engine, TruffleContext context);
+
+        public abstract void notifyContextResetLimit(Object engine, TruffleContext context);
 
         public abstract void notifyLanguageContextCreated(Object engine, TruffleContext context, LanguageInfo info);
 

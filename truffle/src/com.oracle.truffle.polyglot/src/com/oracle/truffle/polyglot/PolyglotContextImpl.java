@@ -305,6 +305,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     @Override
     public void resetLimits() {
         PolyglotLimits.reset(this);
+        EngineAccessor.INSTRUMENT.notifyContextResetLimit(engine, truffleContext);
     }
 
     private PolyglotLanguageContext[] createContextArray() {

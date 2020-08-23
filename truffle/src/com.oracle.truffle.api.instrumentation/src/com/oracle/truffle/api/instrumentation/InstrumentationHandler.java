@@ -1047,6 +1047,12 @@ final class InstrumentationHandler {
         }
     }
 
+    void notifyContextResetLimit(TruffleContext context) {
+        for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
+            binding.getElement().onContextResetLimits(context);
+        }
+    }
+
     void notifyLanguageContextCreated(TruffleContext context, LanguageInfo language) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
             binding.getElement().onLanguageContextCreated(context, language);

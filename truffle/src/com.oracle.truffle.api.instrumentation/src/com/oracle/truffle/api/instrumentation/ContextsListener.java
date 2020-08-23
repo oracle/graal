@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import org.graalvm.polyglot.Context;
+
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 
@@ -108,4 +110,14 @@ public interface ContextsListener {
      * @since 0.30
      */
     void onContextClosed(TruffleContext context);
+
+    /**
+     * Invoked when the resource consumption limits were reset for a particular context. For exmple
+     * this is in invoked if {@link Context#resetLimits()} is called.
+     *
+     * @since 20.3
+     */
+    default void onContextResetLimits(@SuppressWarnings("unused") TruffleContext context) {
+    }
+
 }
