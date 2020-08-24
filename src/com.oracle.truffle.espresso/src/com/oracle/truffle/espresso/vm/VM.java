@@ -2683,6 +2683,21 @@ public final class VM extends NativeEnv implements ContextAccess {
          */
     }
 
+    /**
+     * Return the temporary directory that the VM uses for the attach and perf data files.
+     *
+     * It is important that this directory is well-known and the same for all VM instances. It
+     * cannot be affected by configuration variables such as java.io.tmpdir.
+     */
+    @VmImpl
+    @JniImpl
+    @TruffleBoundary
+    public @Host(String.class) StaticObject JVM_GetTemporaryDirectory() {
+        // TODO: use host VMSupport.getVMTemporaryDirectory(). Not implemented by SVM.
+        // host application temporary directory
+        return getMeta().toGuestString(System.getProperty("java.io.tmpdir"));
+    }
+
     private static final long ONE_BILLION = 1_000_000_000;
     private static final long MAX_DIFF = 0x0100000000L;
 
