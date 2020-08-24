@@ -199,9 +199,10 @@ public abstract class CCompilerInvoker {
              * On Windows `/Wall` corresponds to `-Wall -Wextra`. Therefore we use /W4 instead.
              * Options `/wd4244` and `/wd4245` are needed because our query code makes use of
              * implicit unsigned/signed conversions to detect signedness of types. `/wd4800`,
-             * `/wd4804` are needed to silence warnings when querying bool types.
+             * `/wd4804` are needed to silence warnings when querying bool types. `/wd4214` is
+             * needed to make older versions of cl.exe accept bitfields larger than int-size.
              */
-            return Arrays.asList("/WX", "/W4", "/wd4244", "/wd4245", "/wd4800", "/wd4804");
+            return Arrays.asList("/WX", "/W4", "/wd4244", "/wd4245", "/wd4800", "/wd4804", "/wd4214");
         }
     }
 
