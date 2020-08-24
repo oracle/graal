@@ -97,7 +97,7 @@ public class CAnnotationProcessor {
              * Generate C source file (the "Query") that will produce the information needed (e.g.,
              * size of struct/union and offsets to their fields, value of enum/macros etc.).
              */
-            writer = new QueryCodeWriter(queryCodeDirectory);
+            writer = new QueryCodeWriter(compilerInvoker, queryCodeDirectory);
             Path queryFile = writer.write(codeInfo);
             if (nativeLibs.getErrors().size() > 0) {
                 return codeInfo;
