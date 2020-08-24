@@ -1257,6 +1257,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     if (impls != null) {
                         Arrays.fill(impls, null);
                     }
+                    if (contextLocals != null) {
+                        Arrays.fill(contextLocals, null);
+                    }
+                    for (PolyglotThreadInfo thread : threads.values()) {
+                        Object[] threadLocals = thread.getContextThreadLocals();
+                        if (threadLocals != null) {
+                            Arrays.fill(threadLocals, null);
+                        }
+                    }
                 }
             }
             if (parent == null) {
