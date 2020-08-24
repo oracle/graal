@@ -2320,7 +2320,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     public static class AsynchronousStacksInstrument extends ProxyInstrument {
 
         private final int testDepth = 2;
-        private final int prgDepth = 4;
+        private final int prgDepth = 5;
         CountDownLatch instrumentationFinished;
 
         @Override
