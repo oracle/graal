@@ -105,6 +105,13 @@ import jdk.vm.ci.meta.Signature;
  * transitioning to a Java context and back to native code, for catching and retaining unhandled
  * exceptions, and if required, for unboxing object handle arguments and boxing an object return
  * value.
+ * 
+ * @see <a href=
+ *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">Java 8 JNI
+ *      functions documentation</a>
+ * 
+ * @see <a href="https://docs.oracle.com/en/java/javase/11/docs/specs/jni/functions.html">Java 11
+ *      JNI functions documentation</a>
  */
 public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
 
@@ -300,10 +307,16 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             ResolvedJavaType receiverClass = invokeMethod.getDeclaringClass();
             if (invokeMethod.isConstructor()) {
                 /*
-                 * Our target method is a constructor and we might be called via `NewObject`, in
-                 * which case we need to allocate the object before calling the constructor. We can
-                 * detect when this is the case because unlike with `Call<Type>Method`, we are
-                 * passed the object hub of our target class in place of the receiver object.
+                 * If the target method is a constructor, we can narrow down the JNI call to two
+                 * possible types of JNI functions: `Call<Type>Method` or `NewObject`.
+                 *
+                 * To distinguish `Call<Type>Method` from `NewObject`, we can look at JNI call
+                 * parameter 1, which is either `jobject obj` (the receiver object) in the case of
+                 * `Call<Type>Method`, or `jclass clazz` (the hub of the receiver object) in the
+                 * case of `NewObject`.
+                 *
+                 * If the constructor was called through `NewObject`, we must allocate the object
+                 * before calling the method.
                  */
                 Constant hub = providers.getConstantReflection().asObjectHub(receiverClass);
                 ConstantNode hubNode = kit.createConstant(hub, JavaKind.Object);
