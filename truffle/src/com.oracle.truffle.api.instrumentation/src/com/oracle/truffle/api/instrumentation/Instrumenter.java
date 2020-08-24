@@ -331,7 +331,7 @@ public abstract class Instrumenter {
      * Attach a {@link ThreadsActivationListener listener} to be notified about when a thread gets
      * entered or left in guest language applications.
      * <p>
-     * The event notification starts after the listener is registration completed. This means that
+     * The event notification starts after the listener registration is completed. This means that
      * currently activated threads won't get a notification. It is also possible that
      * {@link ThreadsActivationListener#onLeaveThread(TruffleContext)} is called without ever
      * invoking {@link ThreadsActivationListener#onEnterThread(TruffleContext)}.

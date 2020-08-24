@@ -319,9 +319,9 @@ final class InstrumentationHandler {
             disposeOutputBindingsBulk(err, outputErrBindings);
 
             synchronized (threadsActivationBindings) {
-                Collection<EventBinding<?>> disposedThreadsActivationBinBindings = filterBindingsForInstrumenter(threadsActivationBindings, disposedInstrumenter);
-                if (!disposedThreadsActivationBinBindings.isEmpty()) {
-                    disposeBindingsBulk(disposedThreadsActivationBinBindings);
+                Collection<EventBinding<?>> disposedThreadsActivationBindings = filterBindingsForInstrumenter(threadsActivationBindings, disposedInstrumenter);
+                if (!disposedThreadsActivationBindings.isEmpty()) {
+                    disposeBindingsBulk(disposedThreadsActivationBindings);
                     invalidateThreadsActivationListeners();
                 }
             }

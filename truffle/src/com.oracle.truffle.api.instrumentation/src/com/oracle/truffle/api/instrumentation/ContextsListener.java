@@ -112,8 +112,8 @@ public interface ContextsListener {
     void onContextClosed(TruffleContext context);
 
     /**
-     * Invoked when the resource consumption limits were reset for a particular context. For exmple
-     * this is in invoked if {@link Context#resetLimits()} is called.
+     * Invoked when the resource consumption limits were reset for a particular context. For example
+     * this is method each time the {@link Context#resetLimits()} method is called.
      *
      * @since 20.3
      */

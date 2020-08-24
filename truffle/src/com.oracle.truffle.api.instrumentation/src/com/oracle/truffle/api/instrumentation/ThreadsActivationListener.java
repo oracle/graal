@@ -68,7 +68,7 @@ public interface ThreadsActivationListener {
     /**
      * Notified when a context is entered on the {@link Thread#currentThread() current thread}.
      * Entering a thread indicates that the context is currently active. A context maybe entered
-     * multiple times per thread. This methods is executed frequently and must be designed for
+     * multiple times per thread. This method is executed frequently and must be designed for
      * compilation.
      *
      * @param context the context being entered on the current thread
@@ -79,7 +79,7 @@ public interface ThreadsActivationListener {
     /**
      * Notified when a context is entered on the {@link Thread#currentThread() current thread}.
      * Leaving a thread indicates that the context is no longer active on that thread. A context
-     * maybe entered multiple times per thread. This methods is executed frequently and must be
+     * maybe entered multiple times per thread. This method is executed frequently and must be
      * designed for compilation.
      *
      * @param context the context being entered on the current thread

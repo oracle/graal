@@ -1223,7 +1223,7 @@ final class EngineAccessor extends Accessor {
                 boolean entered = isContextEntered(context);
                 if (isActive && !entered) {
                     throw PolyglotEngineException.illegalState(String.format("The context is currently active on the current thread but another different context is entered as top-most context. " +
-                                    "Leave or close the top-most context first or close the context on a separte thread to resolve this problem."));
+                                    "Leave or close the top-most context first or close the context on a separate thread to resolve this problem."));
                 }
                 context.cancel(resourceExhaused, resourceExhausedReason, !entered);
                 if (entered) {
@@ -1231,7 +1231,7 @@ final class EngineAccessor extends Accessor {
                 }
             } else {
                 if (context.isActive()) {
-                    throw new IllegalStateException("The context is currently entered and cannot be closed. Make sure no thread is running or call force closing the context to resolve this.");
+                    throw new IllegalStateException("The context is currently active and cannot be closed. Make sure no thread is running or call closeCancelled on the context to resolve this.");
                 }
                 context.closeImpl(false, false, true);
             }
