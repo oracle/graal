@@ -192,11 +192,12 @@ public class QueryCodeWriter extends InfoTreeVisitor {
             registerElementForCurrentLine(fieldInfo.getParent().getAnnotatedElement());
             writer.indents().appendln("{");
             writer.indent();
+            writer.indents().appendln("int is_unsigned;");
+            writer.indents().appendln(uInt64 + " all_bits_set = -1;");
             writer.indents().appendln(fieldInfo.getParent().getName() + " fieldHolder;");
             writer.indents().appendln("memset(&fieldHolder, 0x0, sizeof(fieldHolder));");
-            writer.indents().appendln(uInt64 + " all_bits_set = -1;");
             writer.indents().appendln("fieldHolder." + fieldInfo.getName() + " = all_bits_set;");
-            writer.indents().appendln("int is_unsigned = fieldHolder." + fieldInfo.getName() + " > 0;");
+            writer.indents().appendln("is_unsigned = fieldHolder." + fieldInfo.getName() + " > 0;");
             printIsUnsigned(fieldInfo.getSignednessInfo(), "is_unsigned");
             writer.outdent();
             writer.indents().appendln("}");
@@ -222,11 +223,11 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.indents().appendln("unsigned int byte_offset;");
         writer.indents().appendln("int start_bit, end_bit;");
         writer.indents().appendln(uInt64 + " v;");
+        writer.indents().appendln(uInt64 + " all_bits_set = -1;");
         /* Set the structure to 0 bits (including the padding space). */
         writer.indents().appendln("memset(&w, 0x0, sizeof(w));");
         /* Fill the actual bitfield with 1 bits. Maximum size is 64 bits. */
         registerElementForCurrentLine(bitfieldInfo.getAnnotatedElement());
-        writer.indents().appendln(uInt64 + " all_bits_set = -1;");
         writer.indents().appendln("w.s." + bitfieldName + " = all_bits_set;");
         /* All bits are set, so signed bitfields are < 0; */
         writer.indents().appendln("is_unsigned = w.s." + bitfieldName + " > 0;");
@@ -279,9 +280,10 @@ public class QueryCodeWriter extends InfoTreeVisitor {
             registerElementForCurrentLine(pointerToInfo.getAnnotatedElement());
             writer.indents().appendln("{");
             writer.indent();
+            writer.indents().appendln("int is_unsigned;");
             writer.indents().appendln(uInt64 + " all_bits_set = -1;");
             writer.indents().appendln(pointerToInfo.getName() + " fieldHolder = all_bits_set;");
-            writer.indents().appendln("int is_unsigned = fieldHolder > 0;");
+            writer.indents().appendln("is_unsigned = fieldHolder > 0;");
             printIsUnsigned(pointerToInfo.getSignednessInfo(), "is_unsigned");
             writer.outdent();
             writer.indents().appendln("}");
