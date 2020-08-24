@@ -230,7 +230,10 @@ public abstract class ToEspressoNode extends Node {
     // TODO(goltsova): remove !isStringArray(klass) once array bytecodes support foreign arrays
     @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "!isStringArray(klass)"})
     Object doForeignArray(Object value, ArrayKlass klass,
-                    @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+        if (!interop.hasArrayElements(value)) {
+            throw UnsupportedTypeException.create(new Object[]{value}, "Cannot cast a non-array value to an array type");
+        }
         return StaticObject.createForeign(klass, value, interop);
     }
 

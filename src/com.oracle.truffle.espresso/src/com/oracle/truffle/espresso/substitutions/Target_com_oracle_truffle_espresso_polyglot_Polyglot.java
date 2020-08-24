@@ -66,17 +66,29 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 }
             }
 
-            if (targetKlass.isAbstract()) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a foreign object to an abstract class: " + targetKlass.getTypeAsString());
+            if (targetKlass.isArray()) {
+                InteropLibrary interopLibrary = InteropLibrary.getUncached();
+                if (!interopLibrary.hasArrayElements(value.rawForeignObject())) {
+                    throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-array value to an array type");
+                }
+                return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
             }
 
-            InteropLibrary interopLibrary = InteropLibrary.getUncached();
-            try {
-                ToEspressoNode.checkHasAllFieldsOrThrow(value.rawForeignObject(), (ObjectKlass) targetKlass, interopLibrary, meta);
-            } catch (ClassCastException e) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Could not cast foreign object to " + targetKlass.getNameAsString() + ": " + e.getMessage());
+            if (targetKlass instanceof ObjectKlass) {
+                if (targetKlass.isAbstract()) {
+                    throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a foreign object to an abstract class: " + targetKlass.getTypeAsString());
+                }
+
+                InteropLibrary interopLibrary = InteropLibrary.getUncached();
+                try {
+                    ToEspressoNode.checkHasAllFieldsOrThrow(value.rawForeignObject(), (ObjectKlass) targetKlass, interopLibrary, meta);
+                } catch (ClassCastException e) {
+                    throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Could not cast foreign object to " + targetKlass.getNameAsString() + ": " + e.getMessage());
+                }
+                return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
             }
-            return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
+
+            throw EspressoError.shouldNotReachHere("Klass is either Primitive, Object or Array");
         } else {
             return InterpreterToVM.checkCast(value, targetKlass);
         }
