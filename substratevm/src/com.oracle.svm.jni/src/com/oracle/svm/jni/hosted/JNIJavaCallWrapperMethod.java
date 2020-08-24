@@ -299,13 +299,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         List<Pair<ValueNode, ResolvedJavaType>> args = new ArrayList<>();
         loadAndUnboxReceiver(kit, providers, invokeMethod, metaAccess).ifPresent(args::add);
-        int javaIndex = 0;
-        javaIndex += metaAccess.lookupJavaType(JNIEnvironment.class).getJavaKind().getSlotCount();
-        javaIndex += metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind().getSlotCount();
-        if (nonVirtual) {
-            javaIndex += metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind().getSlotCount();
-        }
-        javaIndex += metaAccess.lookupJavaType(JNIMethodId.class).getJavaKind().getSlotCount();
+        int javaIndex = argumentsJavaIndex(metaAccess);
         int count = invokeSignature.getParameterCount(false);
         // Windows and iOS CallVariant.VA_LIST is identical to CallVariant.ARRAY
         // iOS CallVariant.VARARGS stores values as an array on the stack
@@ -432,6 +426,16 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             receiver = unboxed;
         }
         return Optional.of(Pair.create(receiver, receiverClass));
+    }
+
+    /**
+     * Returns the index of the frame state local for the first argument.
+     */
+    private int argumentsJavaIndex(MetaAccessProvider metaAccess) {
+        return metaAccess.lookupJavaType(JNIEnvironment.class).getJavaKind().getSlotCount() +
+                        metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind().getSlotCount() +
+                        (nonVirtual ? metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind().getSlotCount() : 0) +
+                        metaAccess.lookupJavaType(JNIMethodId.class).getJavaKind().getSlotCount();
     }
 
     private static Stamp getNarrowStamp(HostedProviders providers, JavaKind kind) {
