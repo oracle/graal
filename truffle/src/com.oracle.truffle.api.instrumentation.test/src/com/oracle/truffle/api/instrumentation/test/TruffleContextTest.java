@@ -149,15 +149,17 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         tc.closeCancelled(null, "testreason");
 
         for (int i = 0; i < threads.size(); i++) {
-            assertNotNull(exceptions.get(i).get());
-            assertTrue(((TruffleException) exceptions.get(i).get()).isCancelled());
-            assertEquals("testreason", exceptions.get(i).get().getMessage());
-            assertTrue(tc.isClosed());
+            threads.get(i).join();
         }
 
         for (int i = 0; i < threads.size(); i++) {
-            threads.get(i).join();
+            Throwable e = exceptions.get(i).get();
+            assertNotNull(e);
+            assertTrue(((TruffleException) e).isCancelled());
+            assertEquals("testreason", e.getMessage());
+            assertTrue(tc.isClosed());
         }
+
     }
 
     @Test
