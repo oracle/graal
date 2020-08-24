@@ -196,8 +196,8 @@ public abstract class TruffleInstrument {
      * <p>
      * By default option descriptors may only be specified per engine or bound engine, but option
      * values may also be specified per context. In this case the context specific options can be
-     * specified with {@link #getContextOptionDescriptors()} and the values can be accessed with be
-     * accessed with {@link Env#getOptions(TruffleContext)}.
+     * specified with {@link #getContextOptionDescriptors()} and the values can be accessed with
+     * {@link Env#getOptions(TruffleContext)}.
      *
      * @see Option For an example of declaring the option descriptor using an annotation.
      * @since 0.27
