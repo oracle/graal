@@ -919,9 +919,6 @@ public class CompileQueue {
             // Do the specialization: replace the argument locals with the constant arguments.
             StructuredGraph graph = method.compilationInfo.graph;
 
-            /* Check that graph is in good shape before compilation. */
-            assert GraphOrder.assertSchedulableGraph(graph);
-
             int idx = 0;
             for (ConstantNode argument : method.compilationInfo.specializedArguments) {
                 ParameterNode local = graph.getParameter(idx++);

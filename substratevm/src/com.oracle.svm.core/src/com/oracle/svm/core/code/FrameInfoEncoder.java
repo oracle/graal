@@ -38,6 +38,7 @@ import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -350,6 +351,13 @@ public class FrameInfoEncoder {
             result.data = stackSlot.getOffset(data.totalFrameSize);
             result.isCompressedReference = isCompressedReference(stackSlot);
             ImageSingletons.lookup(Counters.class).stackValueCount.inc();
+
+        } else if (ReservedRegisters.singleton().isAllowedInFrameState(value)) {
+            RegisterValue register = (RegisterValue) value;
+            result.type = ValueType.ReservedRegister;
+            result.data = ValueUtil.asRegister(register).number;
+            result.isCompressedReference = isCompressedReference(register);
+            ImageSingletons.lookup(Counters.class).registerValueCount.inc();
 
         } else if (CalleeSavedRegisters.supportedByPlatform() && value instanceof RegisterValue) {
             if (isDeoptEntry) {

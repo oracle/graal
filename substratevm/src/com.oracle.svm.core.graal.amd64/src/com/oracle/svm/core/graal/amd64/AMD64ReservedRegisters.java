@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package com.oracle.svm.core.graal.amd64;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
+import static jdk.vm.ci.amd64.AMD64.r14;
+import static jdk.vm.ci.amd64.AMD64.r15;
 
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.ReservedRegisters;
+
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-public final class ReadIsolateThreadFixedNode extends ReadRegisterFixedNode {
-    public static final NodeClass<ReadIsolateThreadFixedNode> TYPE = NodeClass.create(ReadIsolateThreadFixedNode.class);
+public final class AMD64ReservedRegisters extends ReservedRegisters {
 
-    public ReadIsolateThreadFixedNode() {
-        super(TYPE);
+    public static final Register THREAD_REGISTER_CANDIDATE = r15;
+    public static final Register HEAP_BASE_REGISTER_CANDIDATE = r14;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    AMD64ReservedRegisters() {
+        super(AMD64.rsp, THREAD_REGISTER_CANDIDATE, HEAP_BASE_REGISTER_CANDIDATE);
     }
-
-    @Override
-    protected Register getReadRegister(SubstrateRegisterConfig registerConfig) {
-        return registerConfig.getThreadRegister();
-    }
-
 }

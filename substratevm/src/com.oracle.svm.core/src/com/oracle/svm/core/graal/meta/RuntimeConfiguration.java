@@ -41,7 +41,6 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.meta.SharedMethod;
 
-import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -149,16 +148,6 @@ public final class RuntimeConfiguration {
     public int getVMThreadStatusOffset() {
         assert SubstrateOptions.MultiThreaded.getValue() && vmThreadStatusOffset != -1;
         return vmThreadStatusOffset;
-    }
-
-    public Register getThreadRegister() {
-        Register result = getThreadRegister(ConfigKind.NORMAL);
-        assert result.equals(getThreadRegister(ConfigKind.NATIVE_TO_JAVA));
-        return result;
-    }
-
-    private Register getThreadRegister(ConfigKind config) {
-        return ((SubstrateRegisterConfig) backends.get(config).getCodeCache().getRegisterConfig()).getThreadRegister();
     }
 
     public SnippetReflectionProvider getSnippetReflection() {

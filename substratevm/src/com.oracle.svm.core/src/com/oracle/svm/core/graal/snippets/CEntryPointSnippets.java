@@ -354,9 +354,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             IsolateThread thread = CurrentIsolate.getCurrentThread();
             result = runtimeCall(DETACH_THREAD_MT, thread);
         }
-        if (SpawnIsolates.getValue()) {
-            writeCurrentVMHeapBase(WordFactory.nullPointer());
-        }
+        /*
+         * Note that we do not reset the fixed registers used for the thread and isolate to null:
+         * Since these values are not copied to different registers when they are used, we need to
+         * keep the registers intact until the last possible point where we are in Java code.
+         */
         return result;
     }
 
@@ -366,7 +368,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static int detachThreadMT(IsolateThread currentThread) {
         try {
             VMThreads.singleton().detachThread(currentThread);
-            writeCurrentVMThread(WordFactory.nullPointer());
         } catch (Throwable t) {
             return CEntryPointErrors.UNCAUGHT_EXCEPTION;
         }

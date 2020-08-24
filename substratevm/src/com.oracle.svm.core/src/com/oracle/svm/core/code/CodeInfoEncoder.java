@@ -40,6 +40,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
@@ -490,6 +491,12 @@ class CodeInfoVerifier {
             int expectedOffset = ((StackSlot) expectedValue).getOffset(compilation.getTotalFrameSize());
             long actualOffset = actualValue.getData();
             assert expectedOffset == actualOffset;
+
+        } else if (ReservedRegisters.singleton().isAllowedInFrameState(expectedValue)) {
+            assert actualValue.getType() == ValueType.ReservedRegister;
+            int expectedNumber = ValueUtil.asRegister((RegisterValue) expectedValue).number;
+            long actualNumber = actualValue.getData();
+            assert expectedNumber == actualNumber;
 
         } else if (CalleeSavedRegisters.supportedByPlatform() && expectedValue instanceof RegisterValue) {
             assert actualValue.getType() == ValueType.Register;
