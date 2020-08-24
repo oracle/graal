@@ -1390,9 +1390,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         private List<TruffleStackTraceElement> createStackTraceElements() {
             List<TruffleStackTraceElement> elements = new ArrayList<>(callNodes.size());
             for (Node callNode : callNodes) {
-                if (callNode.getRootNode() == null) {
-                    continue;
-                }
                 RootCallTarget callTarget = callNode.getRootNode().getCallTarget();
                 Frame frame;
                 if (previous != null) {
