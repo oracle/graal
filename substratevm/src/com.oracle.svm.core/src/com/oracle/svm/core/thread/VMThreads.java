@@ -122,7 +122,10 @@ public abstract class VMThreads {
      */
     private static AtomicWord<OSThreadHandle> detachedOsThreadToCleanup = new AtomicWord<>();
 
-    /** The next element in the linked list of {@link IsolateThread}s. */
+    /**
+     * The next element in the linked list of {@link IsolateThread}s. A thread points to itself with
+     * this field after being removed from the linked list.
+     */
     public static final FastThreadLocalWord<IsolateThread> nextTL = FastThreadLocalFactory.createWord();
     private static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord();
     protected static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord();
@@ -375,6 +378,8 @@ public abstract class VMThreads {
                 } else {
                     nextTL.set(previous, next);
                 }
+                // Set to the sentinel value denoting the thread is detached
+                nextTL.set(thread, thread);
                 break;
             } else {
                 previous = current;
@@ -468,8 +473,13 @@ public abstract class VMThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract OSThreadId getCurrentOSThreadId();
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isCurrentThread(IsolateThread thread) {
+    @Uninterruptible(reason = "Called from uninterruptible verification code.", mayBeInlined = true)
+    public boolean verifyThreadIsAttached(IsolateThread thread) {
+        return nextThread(thread) != thread;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible verification code.", mayBeInlined = true)
+    public boolean verifyIsCurrentThread(IsolateThread thread) {
         OSThreadId osThreadId = getCurrentOSThreadId();
         return OSThreadIdTL.get(thread).equal(osThreadId);
     }

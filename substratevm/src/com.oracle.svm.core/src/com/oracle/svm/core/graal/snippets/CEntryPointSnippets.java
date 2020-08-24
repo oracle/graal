@@ -485,11 +485,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Thread state not set up yet")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static int verifyIsolateThread(IsolateThread thread) {
-        // The verification code below may only be executed if the current thread does not own the
-        // THREADS_MUTEX. Otherwise, deadlocks could occur as the thread mutex would get locked a
-        // second time.
         VMError.guarantee(CurrentIsolate.getCurrentThread() == thread, "Threads must match for the call below");
-        if (!VMThreads.singleton().isCurrentThread(thread)) {
+        if (!VMThreads.singleton().verifyIsCurrentThread(thread) || !VMThreads.singleton().verifyThreadIsAttached(thread)) {
             throw VMError.shouldNotReachHere("A call from native code to Java code provided the wrong JNI environment or the wrong IsolateThread. " +
                             "The JNI environment / IsolateThread is a thread-local data structure and must not be shared between threads.");
 
