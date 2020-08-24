@@ -30,6 +30,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
@@ -297,40 +298,9 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
     private List<Pair<ValueNode, ResolvedJavaType>> loadAndUnboxArguments(JNIGraphKit kit, HostedProviders providers, ResolvedJavaMethod invokeMethod, Signature invokeSignature) {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         List<Pair<ValueNode, ResolvedJavaType>> args = new ArrayList<>();
+        loadAndUnboxReceiver(kit, providers, invokeMethod, metaAccess).ifPresent(args::add);
         int javaIndex = 0;
         javaIndex += metaAccess.lookupJavaType(JNIEnvironment.class).getJavaKind().getSlotCount();
-        if (!invokeMethod.isStatic()) {
-            JavaKind kind = metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind();
-            ValueNode handle = kit.loadLocal(javaIndex, kind);
-            ValueNode unboxed = kit.unboxHandle(handle);
-            ValueNode receiver;
-            ResolvedJavaType receiverClass = invokeMethod.getDeclaringClass();
-            if (invokeMethod.isConstructor()) {
-                /*
-                 * If the target method is a constructor, we can narrow down the JNI call to two
-                 * possible types of JNI functions: `Call<Type>Method` or `NewObject`.
-                 *
-                 * To distinguish `Call<Type>Method` from `NewObject`, we can look at JNI call
-                 * parameter 1, which is either `jobject obj` (the receiver object) in the case of
-                 * `Call<Type>Method`, or `jclass clazz` (the hub of the receiver object) in the
-                 * case of `NewObject`.
-                 *
-                 * If the constructor was called through `NewObject`, we must allocate the object
-                 * before calling the method.
-                 */
-                Constant hub = providers.getConstantReflection().asObjectHub(receiverClass);
-                ConstantNode hubNode = kit.createConstant(hub, JavaKind.Object);
-                kit.startIf(kit.unique(new ObjectEqualsNode(unboxed, hubNode)), BranchProbabilityNode.FAST_PATH_PROBABILITY);
-                kit.thenPart();
-                ValueNode created = kit.append(new NewInstanceNode(receiverClass, true));
-                AbstractMergeNode merge = kit.endIf();
-                receiver = kit.unique(new ValuePhiNode(StampFactory.object(), merge, new ValueNode[]{created, unboxed}));
-                merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
-            } else {
-                receiver = unboxed;
-            }
-            args.add(Pair.create(receiver, receiverClass));
-        }
         javaIndex += metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind().getSlotCount();
         if (nonVirtual) {
             javaIndex += metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind().getSlotCount();
@@ -415,6 +385,53 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             throw VMError.unsupportedFeature("Call variant: " + callVariant);
         }
         return args;
+    }
+
+    /**
+     * Loads the receiver information from the JNI call and creates the {@linkplain ValueNode IR
+     * node} for the method call receiver, if the method call needs one. If the JNI call was a
+     * {@code NewObject} call, the returned node instantiates the receiver.
+     *
+     * @return If the method call needs a receiver, the node for the receiver, and the type of the
+     *         node.
+     */
+    private Optional<Pair<ValueNode, ResolvedJavaType>> loadAndUnboxReceiver(JNIGraphKit kit, HostedProviders providers, ResolvedJavaMethod invokeMethod, MetaAccessProvider metaAccess) {
+        /* Static methods do not have a receiver. */
+        if (invokeMethod.isStatic()) {
+            return Optional.empty();
+        }
+
+        int javaIndex = metaAccess.lookupJavaType(JNIEnvironment.class).getJavaKind().getSlotCount();
+        JavaKind kind = metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind();
+        ValueNode handle = kit.loadLocal(javaIndex, kind);
+        ValueNode unboxed = kit.unboxHandle(handle);
+        ValueNode receiver;
+        ResolvedJavaType receiverClass = invokeMethod.getDeclaringClass();
+        if (invokeMethod.isConstructor()) {
+            /*
+             * If the target method is a constructor, we can narrow down the JNI call to two
+             * possible types of JNI functions: `Call<Type>Method` or `NewObject`.
+             *
+             * To distinguish `Call<Type>Method` from `NewObject`, we can look at JNI call parameter
+             * 1, which is either `jobject obj` (the receiver object) in the case of
+             * `Call<Type>Method`, or `jclass clazz` (the hub of the receiver object) in the case of
+             * `NewObject`.
+             *
+             * If the constructor was called through `NewObject`, we must allocate the object before
+             * calling the method.
+             */
+            Constant hub = providers.getConstantReflection().asObjectHub(receiverClass);
+            ConstantNode hubNode = kit.createConstant(hub, JavaKind.Object);
+            kit.startIf(kit.unique(new ObjectEqualsNode(unboxed, hubNode)), BranchProbabilityNode.FAST_PATH_PROBABILITY);
+            kit.thenPart();
+            ValueNode created = kit.append(new NewInstanceNode(receiverClass, true));
+            AbstractMergeNode merge = kit.endIf();
+            receiver = kit.unique(new ValuePhiNode(StampFactory.object(), merge, new ValueNode[]{created, unboxed}));
+            merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
+        } else {
+            receiver = unboxed;
+        }
+        return Optional.of(Pair.create(receiver, receiverClass));
     }
 
     private static Stamp getNarrowStamp(HostedProviders providers, JavaKind kind) {
