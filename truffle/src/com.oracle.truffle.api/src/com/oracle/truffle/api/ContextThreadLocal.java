@@ -54,14 +54,14 @@ import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
  *      Usage with languages.
  * @see com.oracle.truffle.api.instrumentation.TruffleInstrument#createContextThreadLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument.ContextThreadLocalFactory)
  *      Usage with instruments.
- * @since 20.2
+ * @since 20.3
  */
 public abstract class ContextThreadLocal<T> {
 
     /**
      * Custom subclasses of context local are not allowed.
      *
-     * @since 20.2
+     * @since 20.3
      */
     protected ContextThreadLocal(Object polyglotObject) {
         if (!ENGINE.isPolyglotObject(polyglotObject)) {
@@ -75,7 +75,7 @@ public abstract class ContextThreadLocal<T> {
      * <code>null</code>. Throws {@link IllegalStateException} if no current context is entered on
      * the current thread.
      *
-     * @since 20.2
+     * @since 20.3
      */
     public abstract T get();
 
@@ -85,7 +85,7 @@ public abstract class ContextThreadLocal<T> {
      * it requires synchronization between the threads. The return value is never <code>null</code>.
      * Throws {@link IllegalStateException} if no current context is entered on the current thread.
      *
-     * @since 20.2
+     * @since 20.3
      */
     public abstract T get(Thread t);
 
@@ -95,7 +95,7 @@ public abstract class ContextThreadLocal<T> {
      * <code>null</code>. Throws {@link IllegalStateException} if no current context is entered on
      * the current thread.
      *
-     * @since 20.2
+     * @since 20.3
      */
     public abstract T get(TruffleContext t);
 
@@ -106,7 +106,7 @@ public abstract class ContextThreadLocal<T> {
      * synchronization between the threads. The return value is never <code>null</code>. Throws
      * {@link IllegalStateException} if no current context is entered on the current thread.
      *
-     * @since 20.2
+     * @since 20.3
      */
     public abstract T get(TruffleContext context, Thread t);
 

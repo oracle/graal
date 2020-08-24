@@ -1558,7 +1558,7 @@ public abstract class TruffleLanguage<C> {
      * }
      * </pre>
      *
-     * @since 20.2
+     * @since 20.3
      */
     protected final <T> ContextLocal<T> createContextLocal(ContextLocalFactory<C, T> factory) {
         ContextLocal<T> local = ENGINE.createLanguageContextLocal(factory);
@@ -1627,7 +1627,7 @@ public abstract class TruffleLanguage<C> {
      * }
      * </pre>
      *
-     * @since 20.2
+     * @since 20.3
      */
     protected final <T> ContextThreadLocal<T> createContextThreadLocal(ContextThreadLocalFactory<C, T> factory) {
         ContextThreadLocal<T> local = ENGINE.createLanguageContextThreadLocal(factory);
@@ -1678,7 +1678,7 @@ public abstract class TruffleLanguage<C> {
     /**
      * Context local factory for Truffle languages. Creates a new value per context.
      *
-     * @since 20.2
+     * @since 20.3
      */
     @FunctionalInterface
     protected interface ContextLocalFactory<C, T> {
@@ -1690,7 +1690,7 @@ public abstract class TruffleLanguage<C> {
          * multiple instances of the same {@link TruffleLanguage}.
          *
          * @see TruffleLanguage#createContextLocal(ContextLocalFactory)
-         * @since 20.2
+         * @since 20.3
          */
         T create(C context);
     }
@@ -1699,7 +1699,7 @@ public abstract class TruffleLanguage<C> {
      * Context thread local factory for Truffle languages. Creates a new value per context and
      * thread.
      *
-     * @since 20.2
+     * @since 20.3
      */
     @FunctionalInterface
     protected interface ContextThreadLocalFactory<C, T> {
@@ -1712,7 +1712,7 @@ public abstract class TruffleLanguage<C> {
          * {@link TruffleLanguage}.
          *
          * @see TruffleLanguage#createContextThreadLocal(ContextThreadLocalFactory)
-         * @since 20.2
+         * @since 20.3
          */
         T create(C context, Thread thread);
     }

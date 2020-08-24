@@ -53,14 +53,14 @@ import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
  *      Usage with languages.
  * @see com.oracle.truffle.api.instrumentation.TruffleInstrument#createContextLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument.ContextLocalFactory)
  *      Usage with instruments.
- * @since 20.2
+ * @since 20.3
  */
 public abstract class ContextLocal<T> {
 
     /**
      * Custom subclasses of context local are not allowed.
      *
-     * @since 20.2
+     * @since 20.3
      */
     protected ContextLocal(Object polyglotObject) {
         if (!ENGINE.isPolyglotObject(polyglotObject)) {
@@ -73,7 +73,7 @@ public abstract class ContextLocal<T> {
      * be used on compiled code paths. The return value is never <code>null</code>. Throws
      * {@link IllegalStateException} if no current context is entered on the current thread.
      *
-     * @since 20.2
+     * @since 20.3
      */
     public abstract T get();
 
@@ -82,7 +82,7 @@ public abstract class ContextLocal<T> {
      * is intended to be used on compiled code paths. The return value is never <code>null</code>.
      * Throws {@link IllegalStateException} if no current context is entered on the current thread.
      *
-     * @since 20.2
+     * @since 20.3
      */
     public abstract T get(TruffleContext context);
 

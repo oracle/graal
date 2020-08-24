@@ -16,6 +16,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `TruffleContext.isActive` in addition to `TruffleContext.isEntered` and improved their documentation to indicate the difference.
 * Added `ContextsListener.onContextResetLimit` to allow instruments to listen to context limit reset events from the polyglot API.
 * All instances of `TruffleContext` accessible from instruments can now be closed by the instrument. Previously this was only possible for creators of the TruffleContext instance.
+* Added the ability to create context and context thread locals in languages and instruments. See [ContextLocal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ContextLocal.html) and [ContextThreadLocal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ContextThreadLocal.html) for details.
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.
@@ -46,7 +47,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added new `EncapsulatingNodeReference` class to lookup read and write the current encapsulating node. Deprecated encapsulating node methods in `NodeUtil`.
 * Added support for subclassing `DynamicObject` so that guest languages can directly base their object class hierarchy on it, add fields, and use `@ExportLibrary` on subclasses. Guest language object classes should implement `TruffleObject`.
 * Added new [DynamicObjectLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html) API for accessing and mutating properties and the shape of `DynamicObject` instances. This is the recommended API from now on. Other, low-level property access APIs will be deprecated and removed in a future release.
-* Added the ability to create context and context thread locals in languages and instruments. See [ContextLocal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ContextLocal.html) and [ContextThreadLocal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ContextThreadLocal.html) for details.
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.

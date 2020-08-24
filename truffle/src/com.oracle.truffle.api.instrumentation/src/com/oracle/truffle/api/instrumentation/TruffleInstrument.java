@@ -300,7 +300,7 @@ public abstract class TruffleInstrument {
      * }
      * </pre>
      *
-     * @since 20.2
+     * @since 20.3
      */
     protected final <T> ContextLocal<T> createContextLocal(ContextLocalFactory<T> factory) {
         ContextLocal<T> local = ENGINE.createInstrumentContextLocal(factory);
@@ -374,7 +374,7 @@ public abstract class TruffleInstrument {
      * }
      * </pre>
      *
-     * @since 20.2
+     * @since 20.3
      */
     protected final <T> ContextThreadLocal<T> createContextThreadLocal(ContextThreadLocalFactory<T> factory) {
         ContextThreadLocal<T> local = ENGINE.createInstrumentContextThreadLocal(factory);
@@ -392,7 +392,7 @@ public abstract class TruffleInstrument {
     /**
      * Context local factory for Truffle instruments. Creates a new value per context and thread.
      *
-     * @since 20.2
+     * @since 20.3
      */
     @FunctionalInterface
     protected interface ContextLocalFactory<T> {
@@ -404,7 +404,7 @@ public abstract class TruffleInstrument {
          * multiple instances of the same {@link TruffleInstrument}.
          *
          * @see TruffleInstrument#createContextLocal(ContextLocalFactory)
-         * @since 20.2
+         * @since 20.3
          */
         T create(TruffleContext context);
     }
@@ -412,7 +412,7 @@ public abstract class TruffleInstrument {
     /**
      * Context local factory for Truffle instruments. Creates a new value per context.
      *
-     * @since 20.2
+     * @since 20.3
      */
     @FunctionalInterface
     protected interface ContextThreadLocalFactory<T> {
@@ -425,7 +425,7 @@ public abstract class TruffleInstrument {
          * {@link TruffleInstrument}.
          *
          * @see TruffleInstrument#createContextThreadLocal(ContextThreadLocalFactory)
-         * @since 20.2
+         * @since 20.3
          */
         T create(TruffleContext context, Thread thread);
     }
