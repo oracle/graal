@@ -67,6 +67,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaTypeProfile.ProfiledType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 /**
  * Polymorphic inlining of m methods with n type checks (n &ge; m) in case that the profiling
@@ -82,8 +84,10 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     private final ArrayList<ProfiledType> ptypes;
     private final double notRecordedTypeProbability;
     private final Inlineable[] inlineableElements;
+    private final SpeculationReason speculation;
 
-    public MultiTypeGuardInlineInfo(Invoke invoke, ArrayList<ResolvedJavaMethod> concretes, ArrayList<ProfiledType> ptypes, ArrayList<Integer> typesToConcretes, double notRecordedTypeProbability) {
+    public MultiTypeGuardInlineInfo(Invoke invoke, ArrayList<ResolvedJavaMethod> concretes, ArrayList<ProfiledType> ptypes,
+                    ArrayList<Integer> typesToConcretes, double notRecordedTypeProbability, SpeculationReason speculation) {
         super(invoke);
         assert concretes.size() > 0 : "must have at least one method";
         assert ptypes.size() == typesToConcretes.size() : "array lengths must match";
@@ -96,6 +100,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         this.methodProbabilities = computeMethodProbabilities();
         this.maximumMethodProbability = maximumMethodProbability();
         assert maximumMethodProbability > 0;
+        this.speculation = speculation;
         assert assertUniqueTypes(ptypes);
     }
 
@@ -182,7 +187,8 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     private boolean shouldFallbackToInvoke() {
-        return notRecordedTypeProbability > 0;
+        SpeculationLog speculationLog = invoke.asNode().graph().getSpeculationLog();
+        return notRecordedTypeProbability > 0 || (speculationLog != null && !speculationLog.maySpeculate(speculation));
     }
 
     private EconomicSet<Node> inlineMultipleMethods(StructuredGraph graph, CoreProviders providers, String reason) {
@@ -226,7 +232,9 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         if (shouldFallbackToInvoke()) {
             unknownTypeSux = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, false);
         } else {
-            unknownTypeSux = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated));
+            SpeculationLog speculationLog = graph.getSpeculationLog();
+            unknownTypeSux = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated,
+                            speculationLog == null ? SpeculationLog.NO_SPECULATION : speculationLog.speculate(speculation)));
         }
         successors[successors.length - 1] = BeginNode.begin(unknownTypeSux);
 
@@ -465,8 +473,10 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         InliningUtil.replaceInvokeCallTarget(invoke, graph, kind, target);
     }
 
-    private static AbstractBeginNode createUnknownTypeSuccessor(StructuredGraph graph) {
-        return BeginNode.begin(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated)));
+    private AbstractBeginNode createUnknownTypeSuccessor(StructuredGraph graph) {
+        SpeculationLog speculationLog = graph.getSpeculationLog();
+        return BeginNode.begin(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated,
+                        speculationLog == null ? SpeculationLog.NO_SPECULATION : speculationLog.speculate(speculation))));
     }
 
     @Override

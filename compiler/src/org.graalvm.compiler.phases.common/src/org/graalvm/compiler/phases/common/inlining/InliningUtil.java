@@ -100,6 +100,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.util.ValueMergeUtil;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
@@ -108,6 +109,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public class InliningUtil extends ValueMergeUtil {
 
@@ -1011,6 +1013,14 @@ public class InliningUtil extends ValueMergeUtil {
             }
             return newReceiver;
         }
+    }
+
+    private static final SpeculationReasonGroup FALLBACK_DEOPT_SPECULATION = new SpeculationReasonGroup("FallbackDeopt", ResolvedJavaMethod.class, int.class, int.class);
+
+    public static SpeculationLog.SpeculationReason createSpeculation(Invoke invoke, int dispatchSize) {
+        FrameState frameState = invoke.stateAfter();
+        assert frameState != null;
+        return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), frameState.bci, dispatchSize);
     }
 
     /**
