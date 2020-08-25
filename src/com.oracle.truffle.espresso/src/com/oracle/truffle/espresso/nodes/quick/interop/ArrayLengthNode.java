@@ -23,12 +23,14 @@
 
 package com.oracle.truffle.espresso.nodes.quick.interop;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
@@ -53,11 +55,13 @@ public abstract class ArrayLengthNode extends QuickNode {
     abstract int executeGetLength(StaticObject array);
 
     @Specialization(guards = "array.isForeignObject()", limit = "3")
-    int doForeign(StaticObject array, @CachedLibrary("array.rawForeignObject()") InteropLibrary interop, @CachedContext(EspressoLanguage.class) EspressoContext context) {
+    int doForeign(StaticObject array, @CachedLibrary("array.rawForeignObject()") InteropLibrary interop, @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile exceptionProfile) {
         try {
             // TODO: error report?
             return (int) interop.getArraySize(array.rawForeignObject());
         } catch (UnsupportedMessageException e) {
+            exceptionProfile.enter();
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, "Called 'length' on a non-array object");
         }
     }

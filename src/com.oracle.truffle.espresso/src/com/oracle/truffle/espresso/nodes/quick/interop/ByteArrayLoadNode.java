@@ -32,6 +32,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -63,13 +64,16 @@ public abstract class ByteArrayLoadNode extends QuickNode {
     byte doForeign(StaticObject array, int index,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached ToEspressoNode toEspressoNode,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile exceptionProfile) {
         Object result;
         try {
             result = interop.readArrayElement(array.rawForeignObject(), index);
         } catch (UnsupportedMessageException e) {
+            exceptionProfile.enter();
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, "The foreign object is not a readable array");
         } catch (InvalidArrayIndexException e) {
+            exceptionProfile.enter();
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
 
@@ -77,6 +81,7 @@ public abstract class ByteArrayLoadNode extends QuickNode {
             try {
                 return (byte) toEspressoNode.execute(result, context.getMeta()._byte);
             } catch (UnsupportedTypeException e) {
+                exceptionProfile.enter();
                 throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the foreign array element to byte");
             }
         } else {
@@ -85,6 +90,7 @@ public abstract class ByteArrayLoadNode extends QuickNode {
                 boolean element = (boolean) toEspressoNode.execute(result, context.getMeta()._boolean);
                 return (byte) (element ? 1 : 0);
             } catch (UnsupportedTypeException e) {
+                exceptionProfile.enter();
                 throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the foreign array element to boolean");
             }
         }

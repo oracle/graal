@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.nodes.quick.interop;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -31,6 +32,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -61,15 +63,19 @@ public abstract class ByteArrayStoreNode extends QuickNode {
     @Specialization(guards = "array.isForeignObject()")
     void doForeign(StaticObject array, int index, byte value,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile exceptionProfile) {
         if (array.getKlass() == context.getMeta()._byte_array) {
             try {
                 interop.writeArrayElement(array.rawForeignObject(), index, value);
             } catch (UnsupportedMessageException e) {
+                exceptionProfile.enter();
                 throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, "The foreign object is not a writable array");
             } catch (UnsupportedTypeException e) {
+                exceptionProfile.enter();
                 throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the byte value " + value + " to the type of the foreign array elements");
             } catch (InvalidArrayIndexException e) {
+                exceptionProfile.enter();
                 throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
             }
         } else {
@@ -78,10 +84,13 @@ public abstract class ByteArrayStoreNode extends QuickNode {
             try {
                 interop.writeArrayElement(array.rawForeignObject(), index, booleanValue);
             } catch (UnsupportedMessageException e) {
+                exceptionProfile.enter();
                 throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, "The foreign object is not a writable array");
             } catch (UnsupportedTypeException e) {
+                exceptionProfile.enter();
                 throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the boolean value " + booleanValue + " to the type of the foreign array elements");
             } catch (InvalidArrayIndexException e) {
+                exceptionProfile.enter();
                 throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
             }
         }
