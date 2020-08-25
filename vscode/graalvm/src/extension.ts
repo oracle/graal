@@ -102,9 +102,14 @@ function config() {
 		if (process.platform === 'linux') {
 			section = 'env.linux';
 		} else if (process.platform === 'darwin') {
-			section = 'env.mac';
+			section = 'env.osx';
+		} else if (process.platform === 'win32') {
+			section = 'env.windows';
 		}
 		let env: any = termConfig.get(section);
+		if (env === undefined) {
+			throw new Error(`Unable to find platform-specific env for platform "${process.platform}"`);
+		}
 		env.GRAALVM_HOME = graalVMHome;
 		env.JAVA_HOME = graalVMHome;
 		let envPath = process.env.PATH;
