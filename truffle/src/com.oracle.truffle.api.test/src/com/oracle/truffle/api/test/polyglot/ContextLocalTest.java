@@ -174,8 +174,8 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                 }
             });
 
+            c1.initialize(VALID_EXCLUSIVE_LANGUAGE);
             runInParallel(() -> {
-                c1.initialize(VALID_EXCLUSIVE_LANGUAGE);
                 c1.enter();
                 try {
                     Env env1 = ValidExclusiveLanguage.getCurrentContext();
@@ -326,9 +326,9 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                     } finally {
                         c0.leave();
                     }
-                    c1.initialize(VALID_SHARED_LANGUAGE);
                 });
 
+                c1.initialize(VALID_SHARED_LANGUAGE);
                 runInParallel(() -> {
                     c1.enter();
                     try {
@@ -727,8 +727,6 @@ public class ContextLocalTest extends AbstractPolyglotTest {
         LanguageThreadLocalValue(Env env, Thread t) {
             this.env = env;
             this.thread = t;
-
-            assert Thread.currentThread() = t;
         }
 
     }
