@@ -182,15 +182,6 @@ public final class Support {
         return handlePtr.read();
     }
 
-    public static int getIntArgument(int slot) {
-        CIntPointer handlePtr = StackValue.get(CIntPointer.class);
-        JvmtiError error = jvmtiFunctions().GetLocalInt().invoke(jvmtiEnv(), nullHandle(), 0, slot, handlePtr);
-        if (error != JvmtiError.JVMTI_ERROR_NONE) {
-            throw new RuntimeException(error.toString());
-        }
-        return handlePtr.read();
-    }
-
     public static String getClassNameOr(JNIEnvironment env, JNIObjectHandle clazz, String forNullHandle, String forNullNameOrException) {
         if (clazz.notEqual(nullHandle())) {
             JNIObjectHandle clazzName = callObjectMethod(env, clazz, JvmtiAgentBase.singleton().handles().javaLangClassGetName);
@@ -242,18 +233,6 @@ public final class Support {
         }
 
         return methodName;
-    }
-
-    public static JNIObjectHandle getObjectField(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle obj, String name, String signature) {
-        try (CCharPointerHolder nameHolder = toCString(name);
-                        CCharPointerHolder sigHolder = toCString(signature);) {
-            JNIFieldId fieldId = jniFunctions().getGetFieldID().invoke(env, clazz, nameHolder.get(), sigHolder.get());
-            if (nullHandle().notEqual(fieldId)) {
-                return jniFunctions().getGetObjectField().invoke(env, obj, fieldId);
-            } else {
-                return nullHandle();
-            }
-        }
     }
 
     public static boolean clearException(JNIEnvironment localEnv) {

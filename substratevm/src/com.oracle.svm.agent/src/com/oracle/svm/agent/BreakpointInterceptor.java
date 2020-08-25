@@ -26,7 +26,6 @@ package com.oracle.svm.agent;
 
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
-import static com.oracle.svm.jvmtiagentbase.Support.callObjectMethod;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
 import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
@@ -38,7 +37,6 @@ import static com.oracle.svm.jvmtiagentbase.Support.getCallerMethod;
 import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOr;
 import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOrNull;
 import static com.oracle.svm.jvmtiagentbase.Support.getDirectCallerClass;
-import static com.oracle.svm.jvmtiagentbase.Support.getObjectField;
 import static com.oracle.svm.jvmtiagentbase.Support.getMethodDeclaringClass;
 import static com.oracle.svm.jvmtiagentbase.Support.getObjectArgument;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
@@ -133,7 +131,7 @@ final class BreakpointInterceptor {
     private static ReflectAccessVerifier accessVerifier;
     private static ProxyAccessVerifier proxyVerifier;
     private static ResourceAccessVerifier resourceVerifier;
-    private static SerializationAccessVerifier serializationAccessVerifier;
+    private static SerializationAccessVerifier serializationVerifier;
     private static NativeImageAgent agent;
 
     private static Map<Long, Breakpoint> installedBreakpoints;
@@ -166,8 +164,6 @@ final class BreakpointInterceptor {
     private static final ReentrantLock nativeBreakpointsInitLock = new ReentrantLock();
 
     private static final ThreadLocal<Boolean> recursive = ThreadLocal.withInitial(() -> Boolean.FALSE);
-
-    private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     private static void traceBreakpoint(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function, Object result, Object... args) {
         if (traceWriter != null) {
@@ -923,60 +919,22 @@ final class BreakpointInterceptor {
     private static boolean objectStreamClassConstructor(JNIEnvironment jni, Breakpoint bp) {
         JNIObjectHandle callerClass = getDirectCallerClass();
         JNIObjectHandle self = getObjectArgument(0);
-        JNIObjectHandle serializeTargetClass = getObjectArgument(1);
-        String serializeTargetClassName = getClassNameOrNull(jni, serializeTargetClass);
-        Object parameterTypeNames = EMPTY_STRING_ARRAY;
-        Object checkedExceptionNames = EMPTY_STRING_ARRAY;
-        int modifiers = 0;
-        String targetConstructorClassName = "";
+        JNIObjectHandle targetClass = getObjectArgument(1);
+        String targetClassName = getClassNameOrNull(jni, targetClass);
 
-        JNIObjectHandle objectStreamClassInstance = newObjectL(jni, bp.clazz, bp.method, serializeTargetClass);
-        Object result = nullHandle().notEqual(objectStreamClassInstance);
+        boolean result = nullHandle().notEqual(newObjectL(jni, bp.clazz, bp.method, targetClass));
         if (clearException(jni)) {
             result = false;
         }
-        if (result.equals(true)) {
-            JNIObjectHandle cons = getObjectField(jni, bp.clazz, objectStreamClassInstance, "cons", "Ljava/lang/reflect/Constructor;");
-            if (nullHandle().notEqual(cons)) {
-                JNIObjectHandle constructorClazz = jniFunctions().getGetObjectClass().invoke(jni, cons);
-                try (CCharPointerHolder getDeclaringClassNameHolder = toCString("getDeclaringClass");
-                     CCharPointerHolder getDeclaringClassSigHolder = toCString("()Ljava/lang/Class;");
-                     CCharPointerHolder getParaTypesNameHolder = toCString("getParameterTypes");
-                     CCharPointerHolder getCheckedExceptionNameHolder = toCString("getExceptionTypes");
-                     CCharPointerHolder classArrayRetSigHolder = toCString("()[Ljava/lang/Class;");
-                     CCharPointerHolder getModifiersNameHolder = toCString("getModifiers");
-                     CCharPointerHolder getModifiersSigHolder = toCString("()I");) {
-                    JNIMethodId getDeclaringClassMId = jniFunctions().getGetMethodID().invoke(jni, constructorClazz, getDeclaringClassNameHolder.get(), getDeclaringClassSigHolder.get());
-                    targetConstructorClassName = getClassNameOrNull(jni, callObjectMethod(jni, cons, getDeclaringClassMId));
-
-                    JNIMethodId getParameterTypesMid = jniFunctions().getGetMethodID().invoke(jni, constructorClazz, getParaTypesNameHolder.get(), classArrayRetSigHolder.get());
-                    parameterTypeNames = getClassArrayNames(jni, callObjectMethod(jni, cons, getParameterTypesMid));
-
-                    JNIMethodId getExceptionTypesMid = jniFunctions().getGetMethodID().invoke(jni, constructorClazz, getCheckedExceptionNameHolder.get(), classArrayRetSigHolder.get());
-                    checkedExceptionNames = getClassArrayNames(jni, callObjectMethod(jni, cons, getExceptionTypesMid));
-
-                    JNIMethodId getModifiersMid = jniFunctions().getGetMethodID().invoke(jni, constructorClazz, getModifiersNameHolder.get(), getModifiersSigHolder.get());
-                    modifiers = jniFunctions().getCallIntMethod().invoke(jni, cons, getModifiersMid);
-                }
-            }
-        }
 
         if (traceWriter != null) {
-            traceWriter.traceCall("serialization",
-                    "ObjectStreamClass.<init>",
-                    null,
-                    null,
-                    null,
-                    result,
-                    serializeTargetClassName, parameterTypeNames,
-                    checkedExceptionNames, modifiers, targetConstructorClassName);
+            traceWriter.traceCall("serialization", "<init>", "java.io.ObjectStreamClass", null, getClassNameOr(jni, callerClass, null, TraceWriter.UNKNOWN_VALUE), result, targetClassName);
             guarantee(!testException(jni));
         }
-        boolean allowed = (serializationAccessVerifier == null || serializationAccessVerifier.verifyObjectStreamClassConstructor(jni, serializeTargetClassName, (String[]) parameterTypeNames,
-                (String[]) checkedExceptionNames, modifiers, targetConstructorClassName, self, callerClass));
+        boolean allowed = (serializationVerifier == null || serializationVerifier.verifyObjectStreamClassConstructor(jni, targetClassName, self, callerClass));
         if (!allowed) {
             try (CCharPointerHolder message = toCString(
-                    NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit SerializationConstructorAccessor class for class: " + serializeTargetClassName)) {
+                            NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit ObjectStreamClass class for class: " + targetClassName)) {
                 jniFunctions().getThrowNew().invoke(jni, agent.handles().javaLangSecurityException, message.get());
             }
         }
@@ -1060,15 +1018,14 @@ final class BreakpointInterceptor {
     private static final CEntryPointLiteral<CFunctionPointer> onClassPrepareLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onClassPrepare",
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIObjectHandle.class);
 
-    public static void onLoad(JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, TraceWriter writer, ReflectAccessVerifier verifier,
-                    ProxyAccessVerifier prverifier, ResourceAccessVerifier resverifier, SerializationAccessVerifier serializationAccessVerifier, NativeImageAgent nativeImageTracingAgent,
-                    boolean exptlClassLoaderSupport) {
+    public static void onLoad(JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, TraceWriter writer, ReflectAccessVerifier verifier, ProxyAccessVerifier prverifier,
+                    ResourceAccessVerifier resverifier, SerializationAccessVerifier sznverifier, NativeImageAgent nativeImageTracingAgent, boolean exptlClassLoaderSupport) {
 
         BreakpointInterceptor.traceWriter = writer;
         BreakpointInterceptor.accessVerifier = verifier;
         BreakpointInterceptor.proxyVerifier = prverifier;
         BreakpointInterceptor.resourceVerifier = resverifier;
-        BreakpointInterceptor.serializationAccessVerifier = serializationAccessVerifier;
+        BreakpointInterceptor.serializationVerifier = sznverifier;
         BreakpointInterceptor.agent = nativeImageTracingAgent;
         BreakpointInterceptor.experimentalClassLoaderSupport = exptlClassLoaderSupport;
 
@@ -1291,6 +1248,7 @@ final class BreakpointInterceptor {
                                     "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;", BreakpointInterceptor::newProxyInstance),
 
                     brk("java/io/ObjectStreamClass", "<init>", "(Ljava/lang/Class;)V", BreakpointInterceptor::objectStreamClassConstructor),
+
                     optionalBrk("java/util/ResourceBundle",
                                     "getBundleImpl",
                                     "(Ljava/lang/String;Ljava/util/Locale;Ljava/lang/ClassLoader;Ljava/util/ResourceBundle$Control;)Ljava/util/ResourceBundle;",

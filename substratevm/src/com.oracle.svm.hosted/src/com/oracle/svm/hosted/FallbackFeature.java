@@ -24,8 +24,9 @@
  */
 package com.oracle.svm.hosted;
 
+import java.io.ObjectStreamClass;
+import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -33,7 +34,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -103,11 +103,11 @@ public class FallbackFeature implements Feature {
     }
 
     private static class ReflectionInvocationCheck {
-        private final Method reflectionMethod;
+        private final Executable reflectionMethod;
         private final InvokeChecker checker;
         private AnalysisMethod trackedReflectionMethod;
 
-        ReflectionInvocationCheck(Method reflectionMethod, InvokeChecker checker) {
+        ReflectionInvocationCheck(Executable reflectionMethod, InvokeChecker checker) {
             this.reflectionMethod = reflectionMethod;
             this.checker = checker;
             trackedReflectionMethod = null;
@@ -132,7 +132,7 @@ public class FallbackFeature implements Feature {
         }
     }
 
-    private void addCheck(Method reflectionMethod, InvokeChecker checker) {
+    private void addCheck(Executable reflectionMethod, InvokeChecker checker) {
         reflectionInvocationChecks.add(new ReflectionInvocationCheck(reflectionMethod, checker));
     }
 
@@ -170,10 +170,9 @@ public class FallbackFeature implements Feature {
 
             addCheck(System.class.getMethod("loadLibrary", String.class), this::collectJNIInvokes);
 
-            Class<?> generatorClass = Class.forName(Package_jdk_internal_reflect.getQualifiedName() + ".MethodAccessorGenerator");
-            Method generateMethod = generatorClass.getMethod("generateSerializationConstructor", Class.class, Class[].class, Class[].class, int.class, Class.class);
-            addCheck(generateMethod, this::collectSerializationInvokes);
-        } catch (NoSuchMethodException | ClassNotFoundException e) {
+            addCheck(ObjectStreamClass.class.getDeclaredConstructor(), this::collectSerializationInvokes);
+            addCheck(ObjectStreamClass.class.getDeclaredConstructor(Class.class), this::collectSerializationInvokes);
+        } catch (NoSuchMethodException e) {
             throw VMError.shouldNotReachHere("Registering ReflectionInvocationChecks failed", e);
         }
     }
@@ -308,7 +307,7 @@ public class FallbackFeature implements Feature {
             proxyFallback = new FallbackImageRequest(proxyCalls);
         }
         if (!serializationCalls.isEmpty()) {
-            serializationCalls.add(ABORT_MSG_PREFIX + " due to serialization use without configuration.");
+            serializationCalls.add(ABORT_MSG_PREFIX + " due to object serialization use without configuration.");
             serializationFallback = new FallbackImageRequest(serializationCalls);
         }
     }

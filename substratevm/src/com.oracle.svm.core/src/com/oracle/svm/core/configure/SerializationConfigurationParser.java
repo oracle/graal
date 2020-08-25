@@ -25,16 +25,17 @@
  */
 package com.oracle.svm.core.configure;
 
-import com.oracle.svm.core.util.json.JSONParser;
-
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Map;
+import java.util.function.Consumer;
+
+import com.oracle.svm.core.util.json.JSONParser;
 
 public class SerializationConfigurationParser extends ConfigurationParser {
-    private final SerializationParserFunction consumer;
+    private final Consumer<String> consumer;
 
-    public SerializationConfigurationParser(SerializationParserFunction consumer) {
+    public SerializationConfigurationParser(Consumer<String> consumer) {
         this.consumer = consumer;
     }
 
@@ -44,17 +45,8 @@ public class SerializationConfigurationParser extends ConfigurationParser {
         Object json = parser.parse();
         for (Object serializationKey : asList(json, "first level of document must be an array of serialization lists")) {
             Map<String, Object> data = asMap(serializationKey, "second level of document must be serialization descriptor objects ");
-            String targetSerializationClass = asString(data.get("name"));
-            String[] parameterTypes = asList(data.get("parameterTypes"), "parameterTypes must be a list of parameter types").toArray(new String[0]);
-            String[] checkedExceptions = asList(data.get("checkedExceptions"), "checkedExceptions must be a list of exceptions").toArray(new String[0]);
-            int modifiers = asInteger(data.get("modifiers"), "modifiers");
-            String targetConstructorClass = asString(data.get("targetConstructorClass"));
-            consumer.accept(targetSerializationClass, parameterTypes, checkedExceptions, modifiers, targetConstructorClass);
+            String targetClass = asString(data.get("name"));
+            consumer.accept(targetClass);
         }
-    }
-
-    @FunctionalInterface
-    public interface SerializationParserFunction {
-        void accept(String targetSerializationClass, String[] parameterTypes, String[] checkedExceptions, int modifiers, String targetConstructorClass);
     }
 }

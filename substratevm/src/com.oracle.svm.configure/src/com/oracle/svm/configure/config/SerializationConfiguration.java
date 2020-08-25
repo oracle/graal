@@ -25,37 +25,31 @@
  */
 package com.oracle.svm.configure.config;
 
-import com.oracle.svm.configure.json.JsonPrintable;
-import com.oracle.svm.configure.json.JsonWriter;
-
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonWriter;
+
 public class SerializationConfiguration implements JsonPrintable {
 
-    private final ConcurrentHashMap.KeySetView<SerializationKeyConfiguration, Boolean> serializations = ConcurrentHashMap.newKeySet();
+    private final ConcurrentHashMap.KeySetView<String, Boolean> classes = ConcurrentHashMap.newKeySet();
 
-    public void add(String serializationTargetClass, String[] parameterTypes, String[] checkedExceptions, int modifiers, String targetConstructorClass) {
-        SerializationKeyConfiguration key = new SerializationKeyConfiguration(serializationTargetClass, parameterTypes, checkedExceptions, modifiers, targetConstructorClass);
-        add(key);
+    public void add(String clazz) {
+        classes.add(clazz);
     }
 
-    public void add(SerializationKeyConfiguration key) {
-        serializations.add(key);
-    }
-
-    public boolean contains(String serializationTargetClass, String[] parameterTypes, String[] checkedExceptions, int modifiers, String targetConstructorClass) {
-        SerializationKeyConfiguration key = new SerializationKeyConfiguration(serializationTargetClass, parameterTypes, checkedExceptions, modifiers, targetConstructorClass);
-        return serializations.contains(key);
+    public boolean contains(String clazz) {
+        return classes.contains(clazz);
     }
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('[').indent();
         String prefix = "";
-        for (SerializationKeyConfiguration skc : serializations) {
-            writer.append(prefix);
-            skc.printJson(writer);
+        for (String s : classes) {
+            writer.append(prefix).newline();
+            writer.append('{').quote("name").append(":").quote(s).append('}');
             prefix = ",";
         }
         writer.unindent().newline();

@@ -36,7 +36,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 public class Package_jdk_internal_reflect implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        return getQualifiedName() + "." + annotation.className();
+        return getQualifiedName() + '.' + annotation.className();
     }
 
     public static String getQualifiedName() {

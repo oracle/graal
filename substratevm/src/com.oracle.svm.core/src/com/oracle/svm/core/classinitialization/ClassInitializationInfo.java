@@ -132,15 +132,14 @@ public final class ClassInitializationInfo {
 
     /**
      * Indicates if the class has a {@code <clinit>} method in its original JDK version, no matter
-     * if it should be initialized at native image's build time or run time . It is used for
-     * calculating serializationUID when it was not set.
+     * if it should be initialized at native image's build time or run time .
      */
-    private boolean hasOriginalInitializer;
+    private boolean hasClassInitializer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private ClassInitializationInfo(InitState initState, boolean hasOriginalInitializer) {
+    private ClassInitializationInfo(InitState initState, boolean hasClassInitializer) {
         this(initState);
-        this.hasOriginalInitializer = hasOriginalInitializer;
+        this.hasClassInitializer = hasClassInitializer;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -148,7 +147,7 @@ public final class ClassInitializationInfo {
         this.classInitializer = null;
         this.initState = initState;
         this.initLock = initState == InitState.FullyInitialized ? null : new ReentrantLock();
-        this.hasOriginalInitializer = true;
+        this.hasClassInitializer = true;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -156,11 +155,11 @@ public final class ClassInitializationInfo {
         this.classInitializer = classInitializer == null || classInitializer.isNull() ? null : new ClassInitializerFunctionPointerHolder(classInitializer);
         this.initState = InitState.Linked;
         this.initLock = new ReentrantLock();
-        this.hasOriginalInitializer = true;
+        this.hasClassInitializer = true;
     }
 
-    public boolean isHasOriginalInitializer() {
-        return hasOriginalInitializer;
+    public boolean hasClassInitializer() {
+        return hasClassInitializer;
     }
 
     public boolean isInitialized() {

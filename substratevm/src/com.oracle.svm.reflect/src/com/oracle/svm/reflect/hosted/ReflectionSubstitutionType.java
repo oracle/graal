@@ -69,6 +69,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.ExceptionHelpers;
 import com.oracle.svm.core.util.VMError;
@@ -79,6 +80,7 @@ import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.reflect.hosted.ReflectionSubstitutionType.ReflectionSubstitutionMethod;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -582,6 +584,22 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
     }
 
     private static class ReflectiveNewInstanceMethod extends ReflectionSubstitutionMethod {
+        private static final Class<?> ACCESSOR_INTERFACE;
+        private static final Class<?> SERIALIZATION_ACCESSOR_BASE_CLASS;
+        private static final Method CONSTRUCTOR_GET_ACCESSOR_METHOD;
+        private static final Method ACCESSOR_NEWINSTANCE_METHOD;
+
+        static {
+            try {
+                ACCESSOR_INTERFACE = Class.forName(Package_jdk_internal_reflect.getQualifiedName() + ".ConstructorAccessor");
+                SERIALIZATION_ACCESSOR_BASE_CLASS = Class.forName(Package_jdk_internal_reflect.getQualifiedName() + ".SerializationConstructorAccessorImpl");
+                assert ACCESSOR_INTERFACE.isAssignableFrom(SERIALIZATION_ACCESSOR_BASE_CLASS);
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+            CONSTRUCTOR_GET_ACCESSOR_METHOD = ReflectionUtil.lookupMethod(Constructor.class, "getConstructorAccessor");
+            ACCESSOR_NEWINSTANCE_METHOD = ReflectionUtil.lookupMethod(ACCESSOR_INTERFACE, "newInstance", Object[].class);
+        }
 
         private final Constructor<?> constructor;
 
@@ -594,6 +612,22 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         public StructuredGraph buildGraph(DebugContext ctx, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
             HostedGraphKit graphKit = new HostedGraphKit(ctx, providers, method);
 
+            Object accessor;
+            try {
+                accessor = CONSTRUCTOR_GET_ACCESSOR_METHOD.invoke(constructor);
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+            if (SERIALIZATION_ACCESSOR_BASE_CLASS.isInstance(accessor)) {
+                buildAccessorInstantiationGraph(providers, graphKit, accessor);
+            } else {
+                buildDirectInstantiationGraph(providers, graphKit);
+            }
+
+            return graphKit.finalizeGraph();
+        }
+
+        private void buildDirectInstantiationGraph(HostedProviders providers, HostedGraphKit graphKit) {
             ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(constructor.getDeclaringClass());
 
             graphKit.emitEnsureInitializedCall(type);
@@ -618,8 +652,17 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             graphKit.throwInvocationTargetException(graphKit.exceptionObject());
 
             graphKit.endInvokeWithException();
+        }
 
-            return graphKit.finalizeGraph();
+        private void buildAccessorInstantiationGraph(HostedProviders providers, HostedGraphKit graphKit, Object accessor) {
+            ResolvedJavaMethod method = providers.getMetaAccess().lookupJavaMethod(ACCESSOR_NEWINSTANCE_METHOD);
+
+            ValueNode[] args = new ValueNode[2];
+            args[0] = graphKit.createObject(accessor);
+            args[1] = graphKit.loadLocal(1, JavaKind.Object); // argument array
+
+            ValueNode ret = graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Virtual, method, args);
+            graphKit.createReturn(ret, JavaKind.Object);
         }
     }
 

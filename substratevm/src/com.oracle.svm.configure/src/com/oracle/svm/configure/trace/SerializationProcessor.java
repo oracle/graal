@@ -25,10 +25,10 @@
  */
 package com.oracle.svm.configure.trace;
 
-import com.oracle.svm.configure.config.SerializationConfiguration;
-
 import java.util.List;
 import java.util.Map;
+
+import com.oracle.svm.configure.config.SerializationConfiguration;
 
 public class SerializationProcessor extends AbstractProcessor {
     private final SerializationConfiguration serializationConfiguration;
@@ -47,17 +47,13 @@ public class SerializationProcessor extends AbstractProcessor {
         if (invalidResult) {
             return;
         }
+        String clazz = (String) entry.get("class");
         String function = (String) entry.get("function");
         List<?> args = (List<?>) entry.get("args");
-        if ("ObjectStreamClass.<init>".equals(function)) {
-            expectSize(args, 5);
-            if ((args.get(1) instanceof List) && (args.get(2) instanceof List)) {
-                List<?> paramTypes = (List<?>) args.get(1);
-                List<?> checkedExceptions = (List<?>) args.get(2);
-                serializationConfiguration.add((String) args.get(0), paramTypes.toArray(new String[0]), checkedExceptions.toArray(new String[0]), (Integer) args.get(3), (String) args.get(4));
-            } else {
-                throw new IllegalArgumentException("The second and third arguments should all be List.");
-            }
+        if (clazz.equals("java.io.ObjectStreamClass") && function.equals("<init>")) {
+            expectSize(args, 1);
+            String targetClass = (String) args.get(0);
+            serializationConfiguration.add(targetClass);
         }
     }
 }

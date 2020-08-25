@@ -38,11 +38,10 @@ public class SerializationAccessVerifier extends AbstractAccessVerifier {
         this.configuration = configuration;
     }
 
-    public boolean verifyObjectStreamClassConstructor(JNIEnvironment env, String serializationTargetClass, String[] parameterTypes, String[] checkedExceptions,
-                                                      int modifiers, String targetConstructorClass, JNIObjectHandle queriedClass, JNIObjectHandle callerClass) {
+    public boolean verifyObjectStreamClassConstructor(JNIEnvironment env, String targetClass, JNIObjectHandle queriedClass, JNIObjectHandle callerClass) {
         if (shouldApproveWithoutChecks(env, queriedClass, callerClass)) {
             return true;
         }
-        return configuration.contains(serializationTargetClass, parameterTypes, checkedExceptions, modifiers, targetConstructorClass);
+        return configuration.contains(targetClass);
     }
 }
