@@ -56,6 +56,7 @@ import org.graalvm.compiler.word.WordTypes;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
+import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.nodes.SubstrateMethodCallTargetNode;
@@ -128,7 +129,12 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
 
     @Override
     public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, JavaTypeProfile profile) {
-        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, getMethod().getProfilingInfo(), bci());
+        HostedBytecodeParser outermostScope = this;
+        while (outermostScope.getParent() != null) {
+            outermostScope = (HostedBytecodeParser) outermostScope.getParent();
+        }
+
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, outermostScope.getMethod().getProfilingInfo(), outermostScope.bci());
     }
 
     private void insertProxies(FixedNode deoptTarget, FrameStateBuilder state) {
@@ -169,8 +175,8 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
 
     @Override
     protected void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, IntrinsicContext calleeIntrinsicContext) {
-        assert calleeIntrinsicContext != null : "only inlining replacements";
         if (getMethod().compilationInfo.isDeoptEntry(bci(), false, false)) {
+            assert NativeImageGenerator.nativeImageInlineDuringParsingEnabled() || calleeIntrinsicContext != null : "only inlining replacements when inline during parsing disabled";
             /*
              * Replacements use the frame state before the invoke for all nodes that need a state,
              * i.e., we want to re-execute the whole replacement in case of deoptimization.
