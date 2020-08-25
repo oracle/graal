@@ -632,7 +632,7 @@ public final class ObjectKlass extends Klass {
         return result;
     }
 
-    public Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
+    public Method resolveInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
         assert isInterface();
         /*
          * 2. Otherwise, if C declares a method with the name and descriptor specified by the
@@ -667,33 +667,39 @@ public final class ObjectKlass extends Klass {
                  * methods declared in superInterf.
                  */
                 if (name == superM.getName() && signature == superM.getRawSignature()) {
-                    if (!superM.isAbstract() && (resolved == null || !superInterf.isAssignableFrom(resolved.getDeclaringKlass()))) {
+                    if (resolved == null) {
                         /*
                          * 4. Otherwise, if the maximally-specific superinterface methods
                          * (&sect;5.4.3.3) of C for the name and descriptor specified by the method
                          * reference include exactly one method that does not have its ACC_ABSTRACT
                          * flag set, then this method is chosen and method lookup succeeds.
-                         * 
+                         *
                          * Note: If there is more than one such method, we still select it, for it
                          * still complies with point 5.
                          */
-                        return superM;
-                    }
-                    /*
-                     * 5. Otherwise, if any superinterface of C declares a method with the name and
-                     * descriptor specified by the method reference that has neither its ACC_PRIVATE
-                     * flag nor its ACC_STATIC flag set, one of these is arbitrarily chosen and
-                     * method lookup succeeds.
-                     */
-                    if (resolved == null) {
-                        /*
-                         * Since interfaces are sorted superinterfaces first, and we traverse in
-                         * reverse order, we have the guarantee that the first such method we
-                         * encounter will be a maximally-specific method. Thus, the only way
-                         * returning this method is incorrect is if there is another
-                         * maximally-specific non-abstract method
-                         */
                         resolved = superM;
+                    } else {
+                        /*
+                         * 5. Otherwise, if any superinterface of C declares a method with the name
+                         * and descriptor specified by the method reference that has neither its
+                         * ACC_PRIVATE flag nor its ACC_STATIC flag set, one of these is arbitrarily
+                         * chosen and method lookup succeeds.
+                         * 
+                         * NOTE: Since java 9, we can invokespecial interface methods (ie: a call
+                         * directly to the resolved method, rather than after an interface lookup).
+                         * We are looking up a method taken from the implemented interface (and not
+                         * from a currently non-existing itable of the implementing interface). This
+                         * difference, and the possibility of invokespecial, means that we cannot
+                         * return the looked up method directly in case of multiple maximally
+                         * specific method. thus, we spawn a new method, attached to no method
+                         * table, just to fail if invokespecial.
+                         */
+                        resolved = InterfaceTables.resolveMaximallySpecific(resolved, superM);
+                        if (resolved.getITableIndex() == -1) {
+                            // multiple maximally specific: this method has a poison pill.
+                            assert (resolved.identity() == superM.identity());
+                            resolved.setITableIndex(superM.getITableIndex());
+                        }
                     }
                 }
             }
