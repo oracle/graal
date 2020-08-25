@@ -82,7 +82,8 @@ public abstract class ByteArrayLoadNode extends QuickNode {
         } else {
             assert array.getKlass() == context.getMeta()._boolean_array;
             try {
-                return (byte) toEspressoNode.execute(result, context.getMeta()._boolean);
+                boolean element = (boolean) toEspressoNode.execute(result, context.getMeta()._boolean);
+                return (byte) (element ? 1 : 0);
             } catch (UnsupportedTypeException e) {
                 throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the foreign array element to boolean");
             }
