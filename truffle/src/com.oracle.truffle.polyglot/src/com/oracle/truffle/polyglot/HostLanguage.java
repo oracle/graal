@@ -41,7 +41,7 @@
 package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-import com.oracle.truffle.api.interop.AbstractTruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;

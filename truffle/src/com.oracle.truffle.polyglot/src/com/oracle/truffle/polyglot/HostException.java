@@ -41,7 +41,7 @@
 package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.AbstractTruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.library.ExportLibrary;
 
 /**

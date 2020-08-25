@@ -146,7 +146,7 @@ final class DefaultLegacyTruffleExceptionExports {
         if (!isException(receiver) || !(receiver instanceof Throwable)) {
             return false;
         }
-        return DefaultAbstractTruffleExceptionExports.hasExceptionSuppressedImpl((Throwable) receiver);
+        return InteropAccessor.EXCEPTION.hasExceptionSuppressed(receiver);
     }
 
     @ExportMessage
@@ -155,7 +155,7 @@ final class DefaultLegacyTruffleExceptionExports {
         if (!isException(receiver) || !(receiver instanceof Throwable)) {
             throw UnsupportedMessageException.create();
         }
-        return DefaultAbstractTruffleExceptionExports.getExceptionSuppressedImpl((Throwable) receiver);
+        return InteropAccessor.EXCEPTION.getExceptionSuppressed(receiver);
     }
 
     @ExportMessage
@@ -190,7 +190,7 @@ final class DefaultLegacyTruffleExceptionExports {
         if (!isException(receiver) || !(receiver instanceof Throwable)) {
             throw UnsupportedMessageException.create();
         }
-        return DefaultAbstractTruffleExceptionExports.getExceptionStackTraceImpl((Throwable) receiver);
+        return InteropAccessor.EXCEPTION.getExceptionStackTrace(receiver);
     }
 
     @SuppressWarnings({"unchecked", "unused"})

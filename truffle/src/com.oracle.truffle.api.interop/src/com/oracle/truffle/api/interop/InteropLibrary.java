@@ -155,7 +155,7 @@ import com.oracle.truffle.api.utilities.TriState;
  * @see com.oracle.truffle.api.library Reference documentation of Truffle Libraries.
  * @since 19.0
  */
-@GenerateLibrary(assertions = Asserts.class, receiverType = TruffleObject.class)
+@GenerateLibrary(assertions = Asserts.class, receiverType = TruffleObject.class, defaultExportLookupEnabled = true)
 @DefaultExport(DefaultBooleanExports.class)
 @DefaultExport(DefaultIntegerExports.class)
 @DefaultExport(DefaultByteExports.class)
@@ -165,7 +165,6 @@ import com.oracle.truffle.api.utilities.TriState;
 @DefaultExport(DefaultDoubleExports.class)
 @DefaultExport(DefaultCharacterExports.class)
 @DefaultExport(DefaultStringExports.class)
-@DefaultExport(DefaultAbstractTruffleExceptionExports.class)
 @DefaultExport(DefaultLegacyTruffleExceptionExports.class)
 @SuppressWarnings("unused")
 public abstract class InteropLibrary extends Library {
@@ -1289,7 +1288,7 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"throwException"})
     @SuppressWarnings("deprecation")
     public boolean isException(Object receiver) {
-        return receiver instanceof AbstractTruffleException;
+        return InteropAccessor.EXCEPTION.isException(receiver);
     }
 
     /**
@@ -1305,16 +1304,16 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"isException"})
     public RuntimeException throwException(Object receiver) throws UnsupportedMessageException {
-        if (receiver instanceof AbstractTruffleException) {
-            throw DefaultAbstractTruffleExceptionExports.throwException((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            throw InteropAccessor.EXCEPTION.throwException(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
     }
 
     public boolean isExceptionUnwind(Object receiver) throws UnsupportedMessageException {
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.isExceptionUnwind((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return InteropAccessor.EXCEPTION.isExceptionUnwind(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1322,24 +1321,24 @@ public abstract class InteropLibrary extends Library {
 
     @Abstract(ifExported = {"isExceptionUnwind", "getExceptionExitStatus", "isExceptionIncompleteSource"})
     public ExceptionType getExceptionType(Object receiver) throws UnsupportedMessageException {
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.getExceptionType((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return (ExceptionType) InteropAccessor.EXCEPTION.getExceptionType(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
     }
 
     public boolean isExceptionIncompleteSource(Object receiver) throws UnsupportedMessageException {
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.isExceptionIncompleteSource((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return InteropAccessor.EXCEPTION.isExceptionIncompleteSource(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
     }
 
     public int getExceptionExitStatus(Object receiver) throws UnsupportedMessageException {
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.getExceptionExitStatus((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return InteropAccessor.EXCEPTION.getExceptionExitStatus(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1347,8 +1346,8 @@ public abstract class InteropLibrary extends Library {
 
     @Abstract(ifExported = {"getExceptionCause"})
     public boolean hasExceptionCause(Object receiver) {
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.hasExceptionCause((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return InteropAccessor.EXCEPTION.hasExceptionCause(receiver);
         } else {
             return false;
         }
@@ -1356,8 +1355,8 @@ public abstract class InteropLibrary extends Library {
 
     @Abstract(ifExported = {"hasExceptionCause"})
     public Object getExceptionCause(Object receiver) throws UnsupportedMessageException {
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.getExceptionCause((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return InteropAccessor.EXCEPTION.getExceptionCause(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1365,8 +1364,8 @@ public abstract class InteropLibrary extends Library {
 
     @Abstract(ifExported = {"getExceptionSuppressed"})
     public boolean hasExceptionSuppressed(Object receiver) {
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.hasExceptionSuppressed((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return InteropAccessor.EXCEPTION.hasExceptionSuppressed(receiver);
         } else {
             return false;
         }
@@ -1374,8 +1373,8 @@ public abstract class InteropLibrary extends Library {
 
     @Abstract(ifExported = {"hasExceptionSuppressed"})
     public Object getExceptionSuppressed(Object receiver) throws UnsupportedMessageException {
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.getExceptionSuppressed((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return InteropAccessor.EXCEPTION.getExceptionSuppressed(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1383,8 +1382,8 @@ public abstract class InteropLibrary extends Library {
 
     @Abstract(ifExported = {"getExceptionMessage"})
     public boolean hasExceptionMessage(Object receiver) {
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.hasExceptionMessage((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return InteropAccessor.EXCEPTION.hasExceptionMessage(receiver);
         } else {
             return false;
         }
@@ -1392,8 +1391,8 @@ public abstract class InteropLibrary extends Library {
 
     @Abstract(ifExported = {"hasExceptionMessage"})
     public Object getExceptionMessage(Object receiver) throws UnsupportedMessageException {
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.getExceptionMessage((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return InteropAccessor.EXCEPTION.getExceptionMessage(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1401,8 +1400,8 @@ public abstract class InteropLibrary extends Library {
 
     @Abstract(ifExported = {"getExceptionStackTrace"})
     public boolean hasExceptionStackTrace(Object receiver) {
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.hasExceptionStackTrace((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return InteropAccessor.EXCEPTION.hasExceptionStackTrace(receiver);
         } else {
             return false;
         }
@@ -1410,8 +1409,8 @@ public abstract class InteropLibrary extends Library {
 
     @Abstract(ifExported = {"hasExceptionStackTrace"})
     public Object getExceptionStackTrace(Object receiver) throws UnsupportedMessageException {
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.getExceptionStackTrace((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return InteropAccessor.EXCEPTION.getExceptionStackTrace(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1468,8 +1467,8 @@ public abstract class InteropLibrary extends Library {
                 return true;
             }
         }
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.hasSourceLocation((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return InteropAccessor.EXCEPTION.hasSourceLocation(receiver);
         }
         return false;
     }
@@ -1497,8 +1496,8 @@ public abstract class InteropLibrary extends Library {
                 return location;
             }
         }
-        if (receiver instanceof AbstractTruffleException) {
-            return DefaultAbstractTruffleExceptionExports.getSourceLocation((AbstractTruffleException) receiver);
+        if (InteropAccessor.EXCEPTION.isException(receiver)) {
+            return InteropAccessor.EXCEPTION.getSourceLocation(receiver);
         }
         throw UnsupportedMessageException.create();
     }

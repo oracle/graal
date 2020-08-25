@@ -517,7 +517,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             Throwable stackTrace;
             if (cause instanceof HostException) {
                 return findCause(((HostException) cause).getOriginal());
-            } else if ((stackTrace = EngineAccessor.INTEROP.getLazyStackTrace(cause)) != null) {
+            } else if ((stackTrace = EngineAccessor.EXCEPTION.getLazyStackTrace(cause)) != null) {
                 return stackTrace;
             } else {
                 while (cause.getCause() != null && cause.getStackTrace().length == 0) {

@@ -221,8 +221,6 @@ public abstract class Accessor {
 
         public abstract boolean isScopeObject(Object receiver);
 
-        public abstract Throwable getLazyStackTrace(Throwable exception);
-
         public abstract Object createDefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection);
     }
 
@@ -762,6 +760,49 @@ public abstract class Accessor {
         public abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
     }
 
+    public abstract static class ExceptionSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.exception.ExceptionAccessor$ExceptionSupportImpl";
+
+        protected ExceptionSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract Throwable getLazyStackTrace(Throwable exception);
+
+        public abstract boolean isException(Object receiver);
+
+        public abstract RuntimeException throwException(Object receiver);
+
+        public abstract boolean isExceptionUnwind(Object receiver);
+
+        public abstract Object getExceptionType(Object receiver);
+
+        public abstract boolean isExceptionIncompleteSource(Object receiver);
+
+        public abstract int getExceptionExitStatus(Object receiver);
+
+        public abstract boolean hasExceptionCause(Object receiver);
+
+        public abstract Object getExceptionCause(Object receiver);
+
+        public abstract boolean hasExceptionSuppressed(Object receiver);
+
+        public abstract Object getExceptionSuppressed(Object receiver);
+
+        public abstract boolean hasExceptionMessage(Object receiver);
+
+        public abstract Object getExceptionMessage(Object receiver);
+
+        public abstract boolean hasExceptionStackTrace(Object receiver);
+
+        public abstract Object getExceptionStackTrace(Object receiver);
+
+        public abstract boolean hasSourceLocation(Object receiver);
+
+        public abstract SourceSection getSourceLocation(Object receiver);
+    }
+
     public abstract static class IOSupport extends Support {
 
         static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.io.IOAccessor$IOSupportImpl";
@@ -874,6 +915,7 @@ public abstract class Accessor {
         private static final Accessor.InstrumentSupport INSTRUMENT;
         private static final Accessor.SourceSupport SOURCE;
         private static final Accessor.InteropSupport INTEROP;
+        private static final Accessor.ExceptionSupport EXCEPTION;
         private static final Accessor.IOSupport IO;
         private static final Accessor.FrameSupport FRAMES;
         private static final Accessor.EngineSupport ENGINE;
@@ -887,6 +929,7 @@ public abstract class Accessor {
             INSTRUMENT = loadSupport(InstrumentSupport.IMPL_CLASS_NAME);
             SOURCE = loadSupport(SourceSupport.IMPL_CLASS_NAME);
             INTEROP = loadSupport(InteropSupport.IMPL_CLASS_NAME);
+            EXCEPTION = loadSupport(ExceptionSupport.IMPL_CLASS_NAME);
             IO = loadSupport(IOSupport.IMPL_CLASS_NAME);
             FRAMES = loadSupport(FrameSupport.IMPL_CLASS_NAME);
             ENGINE = loadSupport(EngineSupport.IMPL_CLASS_NAME);
@@ -916,6 +959,7 @@ public abstract class Accessor {
             case "com.oracle.truffle.api.instrumentation.InstrumentAccessor":
             case "com.oracle.truffle.api.source.SourceAccessor":
             case "com.oracle.truffle.api.interop.InteropAccessor":
+            case "com.oracle.truffle.api.exception.ExceptionAccessor":
             case "com.oracle.truffle.api.io.IOAccessor":
             case "com.oracle.truffle.api.frame.FrameAccessor":
             case "com.oracle.truffle.polyglot.EngineAccessor":
@@ -956,6 +1000,10 @@ public abstract class Accessor {
 
     public final InteropSupport interopSupport() {
         return Constants.INTEROP;
+    }
+
+    public final ExceptionSupport exceptionSupport() {
+        return Constants.EXCEPTION;
     }
 
     public final SourceSupport sourceSupport() {

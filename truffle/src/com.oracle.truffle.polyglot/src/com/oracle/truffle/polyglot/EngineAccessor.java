@@ -120,6 +120,7 @@ final class EngineAccessor extends Accessor {
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
     static final JDKSupport JDKSERVICES = ACCESSOR.jdkSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
+    static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
 
     private static List<AbstractClassLoaderSupplier> locatorLoaders() {

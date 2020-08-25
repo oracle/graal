@@ -38,10 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.interop;
+package com.oracle.truffle.api.exception;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -372,7 +376,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
             synchronized (this) {
                 res = lazyStackTrace;
                 if (res == null) {
-                    res = InteropAccessor.LANGUAGE.createLazyStackTrace();
+                    res = ExceptionAccessor.LANGUAGE.createLazyStackTrace();
                     lazyStackTrace = res;
                 }
             }

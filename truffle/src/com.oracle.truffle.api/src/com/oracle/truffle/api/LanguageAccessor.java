@@ -102,6 +102,10 @@ final class LanguageAccessor extends Accessor {
         return ACCESSOR.interopSupport();
     }
 
+    static ExceptionSupport exceptionAccess() {
+        return ACCESSOR.exceptionSupport();
+    }
+
     static IOSupport ioAccess() {
         return ACCESSOR.ioSupport();
     }

@@ -54,6 +54,8 @@ final class InteropAccessor extends Accessor {
 
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
 
+    static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
+
     private InteropAccessor() {
     }
 
@@ -125,14 +127,6 @@ final class InteropAccessor extends Accessor {
                 return ((LegacyMetaObjectWrapper) receiver).delegate;
             }
             return receiver;
-        }
-
-        @Override
-        public Throwable getLazyStackTrace(Throwable exception) {
-            if (exception instanceof AbstractTruffleException) {
-                return ((AbstractTruffleException) exception).getLazyStackTrace();
-            }
-            return null;
         }
 
         @Override

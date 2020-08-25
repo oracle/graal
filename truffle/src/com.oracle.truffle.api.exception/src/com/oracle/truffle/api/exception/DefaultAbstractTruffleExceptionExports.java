@@ -38,11 +38,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.interop;
+package com.oracle.truffle.api.exception;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -52,7 +57,7 @@ import java.util.Collections;
 import java.util.List;
 
 @SuppressWarnings("unused")
-@ExportLibrary(value = InteropLibrary.class, receiverType = AbstractTruffleException.class)
+@ExportLibrary(value = InteropLibrary.class, receiverType = AbstractTruffleException.class, priority = 1)
 final class DefaultAbstractTruffleExceptionExports {
 
     @ExportMessage
@@ -81,7 +86,7 @@ final class DefaultAbstractTruffleExceptionExports {
     }
 
     @ExportMessage
-    static boolean isExceptionIncompleteSource(AbstractTruffleException receiver) throws UnsupportedMessageException {
+    static boolean isExceptionIncompleteSource(AbstractTruffleException receiver) {
         return false;
     }
 
