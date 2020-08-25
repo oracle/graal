@@ -727,6 +727,8 @@ public class ContextLocalTest extends AbstractPolyglotTest {
         LanguageThreadLocalValue(Env env, Thread t) {
             this.env = env;
             this.thread = t;
+
+            assert Thread.currentThread() = t;
         }
 
     }
