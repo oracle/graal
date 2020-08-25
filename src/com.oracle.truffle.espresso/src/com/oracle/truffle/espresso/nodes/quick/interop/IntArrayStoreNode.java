@@ -28,14 +28,10 @@ import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -65,18 +61,7 @@ public abstract class IntArrayStoreNode extends QuickNode {
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @CachedContext(EspressoLanguage.class) EspressoContext context,
                     @Cached BranchProfile exceptionProfile) {
-        try {
-            interop.writeArrayElement(array.rawForeignObject(), index, value);
-        } catch (UnsupportedMessageException e) {
-            exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, "The foreign object is not a writable array");
-        } catch (UnsupportedTypeException e) {
-            exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the int value " + value + " to the type of the foreign array elements");
-        } catch (InvalidArrayIndexException e) {
-            exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
-        }
+        ForeignArrayUtils.writeForeignArrayElement(array, index, value, interop, context.getMeta(), exceptionProfile);
     }
 
     @Specialization(guards = "array.isEspressoObject()")
