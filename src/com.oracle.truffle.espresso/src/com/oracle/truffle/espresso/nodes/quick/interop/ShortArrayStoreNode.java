@@ -65,7 +65,7 @@ public abstract class ShortArrayStoreNode extends QuickNode {
         try {
             interop.writeArrayElement(array.rawForeignObject(), index, value);
         } catch (UnsupportedMessageException e) {
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, "Array access on a non-array foreign object");
+            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, "The foreign object is not a writable array");
         } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the short value " + value + " to the type of the foreign array elements");
         } catch (InvalidArrayIndexException e) {

@@ -66,7 +66,7 @@ public abstract class ReferenceArrayStoreNode extends QuickNode {
             Object unwrappedValue = value.isForeignObject() ? value.rawForeignObject() : value;
             interop.writeArrayElement(array.rawForeignObject(), index, unwrappedValue);
         } catch (UnsupportedMessageException e) {
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, "Array access on a non-array foreign object");
+            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, "The foreign object is not a writable array");
         } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the object to the type of the foreign array elements");
         } catch (InvalidArrayIndexException e) {

@@ -68,7 +68,7 @@ public abstract class ByteArrayLoadNode extends QuickNode {
         try {
             result = interop.readArrayElement(array.rawForeignObject(), index);
         } catch (UnsupportedMessageException e) {
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, "Array access on a non-array foreign object");
+            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, "The foreign object is not a readable array");
         } catch (InvalidArrayIndexException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
