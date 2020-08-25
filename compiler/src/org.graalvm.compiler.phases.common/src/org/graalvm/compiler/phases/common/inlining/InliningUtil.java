@@ -107,6 +107,7 @@ import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -1015,12 +1016,12 @@ public class InliningUtil extends ValueMergeUtil {
         }
     }
 
-    private static final SpeculationReasonGroup FALLBACK_DEOPT_SPECULATION = new SpeculationReasonGroup("FallbackDeopt", ResolvedJavaMethod.class, int.class, int.class);
+    private static final SpeculationReasonGroup FALLBACK_DEOPT_SPECULATION = new SpeculationReasonGroup("FallbackDeopt", ResolvedJavaMethod.class, int.class, String.class);
 
-    public static SpeculationLog.SpeculationReason createSpeculation(Invoke invoke, int dispatchSize) {
+    public static SpeculationLog.SpeculationReason createSpeculation(Invoke invoke, JavaTypeProfile typeProfile) {
         FrameState frameState = invoke.stateAfter();
         assert frameState != null;
-        return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), frameState.bci, dispatchSize);
+        return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), frameState.bci, typeProfile.toString());
     }
 
     /**

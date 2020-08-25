@@ -127,7 +127,7 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
             LogicNode typeCheck = CompareNode.createCompareNode(graph, CanonicalCondition.EQ, receiverHub, typeHub, providers.getConstantReflection(), NodeView.DEFAULT);
             SpeculationLog speculationLog = graph.getSpeculationLog();
             FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile,
-                            speculationLog == null ? SpeculationLog.NO_SPECULATION : speculationLog.speculate(speculation), false));
+                            speculationLog != null && speculation != null ? speculationLog.speculate(speculation) : SpeculationLog.NO_SPECULATION, false));
             assert invoke.predecessor() != null;
 
             ValueNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, guard, type, nonNullReceiver, true);

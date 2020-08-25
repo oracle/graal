@@ -188,7 +188,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
     private boolean shouldFallbackToInvoke() {
         SpeculationLog speculationLog = invoke.asNode().graph().getSpeculationLog();
-        return notRecordedTypeProbability > 0 || (speculationLog != null && !speculationLog.maySpeculate(speculation));
+        return notRecordedTypeProbability > 0 || (speculationLog != null && speculation != null && !speculationLog.maySpeculate(speculation));
     }
 
     private EconomicSet<Node> inlineMultipleMethods(StructuredGraph graph, CoreProviders providers, String reason) {
@@ -234,7 +234,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         } else {
             SpeculationLog speculationLog = graph.getSpeculationLog();
             unknownTypeSux = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated,
-                            speculationLog == null ? SpeculationLog.NO_SPECULATION : speculationLog.speculate(speculation)));
+                            speculationLog != null && speculation != null ? speculationLog.speculate(speculation) : SpeculationLog.NO_SPECULATION));
         }
         successors[successors.length - 1] = BeginNode.begin(unknownTypeSux);
 
@@ -476,7 +476,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     private AbstractBeginNode createUnknownTypeSuccessor(StructuredGraph graph) {
         SpeculationLog speculationLog = graph.getSpeculationLog();
         return BeginNode.begin(graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated,
-                        speculationLog == null ? SpeculationLog.NO_SPECULATION : speculationLog.speculate(speculation))));
+                        speculationLog == null || speculation == null ? SpeculationLog.NO_SPECULATION : speculationLog.speculate(speculation))));
     }
 
     @Override
