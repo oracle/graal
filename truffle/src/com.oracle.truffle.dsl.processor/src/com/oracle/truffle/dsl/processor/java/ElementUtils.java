@@ -66,7 +66,6 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -1467,18 +1466,31 @@ public class ElementUtils {
             return false;
         } else if (element1.getKind() != element2.getKind()) {
             return false;
-        } else if (element1 instanceof VariableElement) {
-            return variableEquals((VariableElement) element1, (VariableElement) element2);
-        } else if (element1 instanceof ExecutableElement) {
-            return executableEquals((ExecutableElement) element1, (ExecutableElement) element2);
-        } else if (element1 instanceof TypeElement) {
-            return typeEquals(element1.asType(), element2.asType());
-        } else if (element1 instanceof PackageElement) {
-            return element1.getSimpleName().equals(element2.getSimpleName());
-        } else if (element1 instanceof TypeParameterElement) {
-            return element1.getSimpleName().toString().equals(element2.getSimpleName().toString());
-        } else {
-            throw new AssertionError("unsupported element type");
+        }
+        switch (element1.getKind()) {
+            case FIELD:
+            case ENUM_CONSTANT:
+            case PARAMETER:
+            case LOCAL_VARIABLE:
+            case EXCEPTION_PARAMETER:
+            case RESOURCE_VARIABLE:
+                return variableEquals((VariableElement) element1, (VariableElement) element2);
+            case CONSTRUCTOR:
+            case METHOD:
+            case INSTANCE_INIT:
+            case STATIC_INIT:
+                return executableEquals((ExecutableElement) element1, (ExecutableElement) element2);
+            case CLASS:
+            case ENUM:
+            case INTERFACE:
+            case ANNOTATION_TYPE:
+                return typeEquals(element1.asType(), element2.asType());
+            case PACKAGE:
+                return ((PackageElement) element1).getQualifiedName().equals(((PackageElement) element2).getQualifiedName());
+            case TYPE_PARAMETER:
+                return element1.getSimpleName().toString().equals(element2.getSimpleName().toString());
+            default:
+                throw new AssertionError("unsupported element type");
         }
     }
 
