@@ -100,6 +100,11 @@ public interface LogHandler {
      * that further describes the specific instance of the fatal error. Once the VM has written all
      * log messages related to the fatal error it will finally call {@link #fatalError()} from where
      * it is expected to never return.
+     * <p>
+     * Using this method allows to implement flood control for fatal errors. Summing up all log
+     * messages received between {@link #fatalContext()} and {@link #fatalError()} via
+     * {@link #log(CCharPointer, UnsignedWord)} into hash key allows implementors to identify fatal
+     * errors and decide if the given instance should be suppressed or recorded.
      *
      * @since 20.3
      */
