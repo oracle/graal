@@ -30,7 +30,6 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
@@ -200,21 +199,31 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
 
         ResolvedJavaMethod invokeMethod = providers.getMetaAccess().lookupJavaMethod(reflectMethod);
         Signature invokeSignature = invokeMethod.getSignature();
-        List<Pair<ValueNode, ResolvedJavaType>> argsWithTypes = loadAndUnboxArguments(kit, providers, invokeMethod, invokeSignature);
+        List<Pair<ValueNode, ResolvedJavaType>> argsWithTypes = loadAndUnboxArguments(kit, providers, invokeSignature);
         JavaKind returnKind = invokeSignature.getReturnKind();
         if (invokeMethod.isConstructor()) { // return `this` to implement NewObject
             assert returnKind == JavaKind.Void;
             returnKind = JavaKind.Object;
         }
 
-        IfNode ifNode = kit.startIf(null, BranchProbabilityNode.FAST_PATH_PROBABILITY);
+        /* Unbox handle if there is one. */
+        ValueNode unboxedHandle = null; // only available if there is a receiver
+        if (invokeMethod.hasReceiver()) {
+            int javaIndex = metaAccess.lookupJavaType(JNIEnvironment.class).getJavaKind().getSlotCount();
+            JavaKind handleKind = metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind();
+            ValueNode handle = kit.loadLocal(javaIndex, handleKind);
+            unboxedHandle = kit.unboxHandle(handle);
+        }
 
+        /* Dynamically type-check the call arguments. */
+        IfNode ifNode = kit.startIf(null, BranchProbabilityNode.FAST_PATH_PROBABILITY); // if 0
         kit.thenPart();
         LogicNode typeChecks = LogicConstantNode.tautology(kit.getGraph());
-        ValueNode[] args = new ValueNode[argsWithTypes.size()];
-        for (int i = 0; i < argsWithTypes.size(); i++) {
-            ValueNode value = argsWithTypes.get(i).getLeft();
-            ResolvedJavaType type = argsWithTypes.get(i).getRight();
+        int argIndex = invokeMethod.hasReceiver() ? 1 : 0;
+        ValueNode[] args = new ValueNode[argIndex + argsWithTypes.size()];
+        for (Pair<ValueNode, ResolvedJavaType> argsWithType : argsWithTypes) {
+            ValueNode value = argsWithType.getLeft();
+            ResolvedJavaType type = argsWithType.getRight();
             if (!type.isPrimitive() && !type.isJavaLangObject()) {
                 TypeReference typeRef = TypeReference.createTrusted(kit.getAssumptions(), type);
                 LogicNode instanceOf = kit.unique(InstanceOfNode.createAllowNull(typeRef, value, null, null));
@@ -222,18 +231,91 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 FixedGuardNode guard = kit.append(new FixedGuardNode(instanceOf, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
                 value = kit.append(PiNode.create(value, StampFactory.object(typeRef), guard));
             }
-            args[i] = value;
+            args[argIndex++] = value;
         }
         ifNode.setCondition(typeChecks); // safe because logic nodes are floating
 
-        InvokeKind kind = invokeMethod.isStatic() ? InvokeKind.Static : //
+        /* Dynamically type-check the receiver type, and invoke the method if it matches. */
+        InvokeKind invokeKind = invokeMethod.isStatic() ? InvokeKind.Static : //
                         ((nonVirtual || invokeMethod.isConstructor()) ? InvokeKind.Special : InvokeKind.Virtual);
-        ValueNode invokeResult = createInvoke(kit, invokeMethod, kind, state, kit.bci(), args);
-        if (invokeMethod.isConstructor()) {
-            invokeResult = args[0]; // return `this` to implement NewObject
+
+        ValueNode invokeResult;
+        if (!invokeMethod.hasReceiver()) {
+            invokeResult = createInvoke(kit, invokeMethod, invokeKind, state, kit.bci(), args);
+        } else if (invokeMethod.isConstructor()) {
+            /*
+             * If the target method is a constructor, we can narrow down the JNI call to two
+             * possible types of JNI functions: `Call<Type>Method` or `NewObject`.
+             *
+             * To distinguish `Call<Type>Method` from `NewObject`, we can look at JNI call parameter
+             * 1, which is either `jobject obj` (the receiver object) in the case of
+             * `Call<Type>Method`, or `jclass clazz` (the hub of the receiver object) in the case of
+             * `NewObject`.
+             */
+            ResolvedJavaType receiverClass = invokeMethod.getDeclaringClass();
+            Constant hub = providers.getConstantReflection().asObjectHub(receiverClass);
+            ConstantNode hubNode = kit.createConstant(hub, JavaKind.Object);
+            ObjectEqualsNode isNewObjectCall = kit.unique(new ObjectEqualsNode(unboxedHandle, hubNode));
+            kit.startIf(isNewObjectCall, BranchProbabilityNode.FAST_PATH_PROBABILITY); // if 1
+
+            /*
+             * If the constructor was called through `NewObject`, we must allocate the object before
+             * passing it as the receiver.
+             */
+            kit.thenPart();
+            ValueNode createdReceiver = kit.append(new NewInstanceNode(receiverClass, true));
+            args[0] = createdReceiver;
+            createInvoke(kit, invokeMethod, invokeKind, state, kit.bci(), args);
+
+            /*
+             * If the constructor was called through `Call<Type>Method`, we must check that the
+             * receiver has the expected type.
+             */
+            kit.elsePart();
+            TypeReference expectedTypeRef = TypeReference.createTrusted(kit.getAssumptions(), receiverClass);
+            /*
+             * Receiver must not be null. By default, instanceof returns false for null, so this
+             * works as a null check as well.
+             */
+            LogicNode instanceOf = kit.unique(InstanceOfNode.create(expectedTypeRef, unboxedHandle, null, null));
+            kit.startIf(instanceOf, BranchProbabilityNode.FAST_PATH_PROBABILITY); // if 2
+            kit.thenPart();
+            FixedGuardNode guard = kit.append(new FixedGuardNode(instanceOf, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
+            kit.append(PiNode.create(unboxedHandle, StampFactory.object(expectedTypeRef), guard));
+            args[0] = unboxedHandle;
+            createInvoke(kit, invokeMethod, invokeKind, state, kit.bci(), args);
+            kit.elsePart();
+            ConstantNode exceptionObject = kit.createObject(cachedArgumentClassCastException);
+            kit.setPendingException(exceptionObject);
+            AbstractMergeNode merge2 = kit.endIf(); // end if 2
+            merge2.setStateAfter(kit.getFrameState().create(kit.bci(), merge2));
+
+            /*
+             * If it is a constructor, the invoke result is always the receiver.
+             */
+            AbstractMergeNode merge1 = kit.endIf(); // end if 1
+            merge1.setStateAfter(kit.getFrameState().create(kit.bci(), merge1));
+            invokeResult = kit.unique(new ValuePhiNode(StampFactory.object(), merge1, new ValueNode[]{createdReceiver, unboxedHandle}));
+        } else {
+            /*
+             * This is a JNI call to `Call<Type>Method` to a non-static method. The instanceof check
+             * on the receiver can be placed in the same `if` as the type check for the method
+             * arguments (as long as the handle was unboxed before the if, because all other nodes
+             * are floating).
+             */
+            ResolvedJavaType receiverClass = invokeMethod.getDeclaringClass();
+            TypeReference expectedTypeRef = TypeReference.createTrusted(kit.getAssumptions(), receiverClass);
+            LogicNode instanceOf = kit.unique(InstanceOfNode.create(expectedTypeRef, unboxedHandle, null, null));
+            typeChecks = LogicConstantNode.and(typeChecks, instanceOf, BranchProbabilityNode.FAST_PATH_PROBABILITY);
+            ifNode.setCondition(typeChecks); // safe because logic nodes are floating
+            FixedGuardNode guard = kit.append(new FixedGuardNode(instanceOf, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
+            kit.append(PiNode.create(unboxedHandle, StampFactory.object(expectedTypeRef), guard));
+            args[0] = unboxedHandle;
+            invokeResult = createInvoke(kit, invokeMethod, invokeKind, state, kit.bci(), args);
         }
 
-        kit.elsePart(); // illegal parameter types
+        /* If argument types are wrong, throw an exception */
+        kit.elsePart(); // else 0
         ConstantNode exceptionObject = kit.createObject(cachedArgumentClassCastException);
         kit.setPendingException(exceptionObject);
         ValueNode typeMismatchResult = null;
@@ -241,15 +323,15 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             typeMismatchResult = kit.unique(ConstantNode.defaultForKind(returnKind.getStackKind()));
         }
 
-        AbstractMergeNode merge = kit.endIf();
+        AbstractMergeNode merge0 = kit.endIf(); // end if 0
 
         ValueNode returnValue = null;
         if (returnKind != JavaKind.Void) {
             ValueNode[] inputs = {invokeResult, typeMismatchResult};
-            returnValue = kit.getGraph().addWithoutUnique(new ValuePhiNode(invokeResult.stamp(NodeView.DEFAULT), merge, inputs));
+            returnValue = kit.getGraph().addWithoutUnique(new ValuePhiNode(invokeResult.stamp(NodeView.DEFAULT), merge0, inputs));
             state.push(returnKind, returnValue);
         }
-        merge.setStateAfter(state.create(kit.bci(), merge));
+        merge0.setStateAfter(state.create(kit.bci(), merge0));
         if (returnKind != JavaKind.Void) {
             state.pop(returnKind);
             if (returnKind.isObject()) {
@@ -295,10 +377,16 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         return returnValue;
     }
 
-    private List<Pair<ValueNode, ResolvedJavaType>> loadAndUnboxArguments(JNIGraphKit kit, HostedProviders providers, ResolvedJavaMethod invokeMethod, Signature invokeSignature) {
+    /**
+     * Creates {@linkplain ValueNode IR nodes} for the arguments passed to the JNI call. The
+     * arguments do not include the receiver of the call, but only the actual arguments passed to
+     * the JNI target function.
+     * 
+     * @return List of created argument nodes and their type
+     */
+    private List<Pair<ValueNode, ResolvedJavaType>> loadAndUnboxArguments(JNIGraphKit kit, HostedProviders providers, Signature invokeSignature) {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         List<Pair<ValueNode, ResolvedJavaType>> args = new ArrayList<>();
-        loadAndUnboxReceiver(kit, providers, invokeMethod, metaAccess).ifPresent(args::add);
         int javaIndex = argumentsJavaIndex(metaAccess);
         int count = invokeSignature.getParameterCount(false);
         // Windows and iOS CallVariant.VA_LIST is identical to CallVariant.ARRAY
@@ -379,53 +467,6 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             throw VMError.unsupportedFeature("Call variant: " + callVariant);
         }
         return args;
-    }
-
-    /**
-     * Loads the receiver information from the JNI call and creates the {@linkplain ValueNode IR
-     * node} for the method call receiver, if the method call needs one. If the JNI call was a
-     * {@code NewObject} call, the returned node instantiates the receiver.
-     *
-     * @return If the method call needs a receiver, the node for the receiver, and the type of the
-     *         node.
-     */
-    private Optional<Pair<ValueNode, ResolvedJavaType>> loadAndUnboxReceiver(JNIGraphKit kit, HostedProviders providers, ResolvedJavaMethod invokeMethod, MetaAccessProvider metaAccess) {
-        /* Static methods do not have a receiver. */
-        if (invokeMethod.isStatic()) {
-            return Optional.empty();
-        }
-
-        int javaIndex = metaAccess.lookupJavaType(JNIEnvironment.class).getJavaKind().getSlotCount();
-        JavaKind kind = metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind();
-        ValueNode handle = kit.loadLocal(javaIndex, kind);
-        ValueNode unboxed = kit.unboxHandle(handle);
-        ValueNode receiver;
-        ResolvedJavaType receiverClass = invokeMethod.getDeclaringClass();
-        if (invokeMethod.isConstructor()) {
-            /*
-             * If the target method is a constructor, we can narrow down the JNI call to two
-             * possible types of JNI functions: `Call<Type>Method` or `NewObject`.
-             *
-             * To distinguish `Call<Type>Method` from `NewObject`, we can look at JNI call parameter
-             * 1, which is either `jobject obj` (the receiver object) in the case of
-             * `Call<Type>Method`, or `jclass clazz` (the hub of the receiver object) in the case of
-             * `NewObject`.
-             *
-             * If the constructor was called through `NewObject`, we must allocate the object before
-             * calling the method.
-             */
-            Constant hub = providers.getConstantReflection().asObjectHub(receiverClass);
-            ConstantNode hubNode = kit.createConstant(hub, JavaKind.Object);
-            kit.startIf(kit.unique(new ObjectEqualsNode(unboxed, hubNode)), BranchProbabilityNode.FAST_PATH_PROBABILITY);
-            kit.thenPart();
-            ValueNode created = kit.append(new NewInstanceNode(receiverClass, true));
-            AbstractMergeNode merge = kit.endIf();
-            receiver = kit.unique(new ValuePhiNode(StampFactory.object(), merge, new ValueNode[]{created, unboxed}));
-            merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
-        } else {
-            receiver = unboxed;
-        }
-        return Optional.of(Pair.create(receiver, receiverClass));
     }
 
     /**
