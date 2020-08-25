@@ -318,7 +318,7 @@ public final class MethodVerifier implements ContextAccess {
     private boolean calledConstructor = false;
 
     // Instruction stack to visit
-    private WorkingQueue queue = new WorkingQueue();
+    private final WorkingQueue queue = new WorkingQueue();
 
     Symbol<Type>[] getSig() {
         return sig;
@@ -357,6 +357,10 @@ public final class MethodVerifier implements ContextAccess {
         return majorVersion < ClassfileParser.JAVA_7_VERSION;
     }
 
+    private boolean earlierThan55() {
+        return majorVersion < ClassfileParser.JAVA_11_VERSION;
+    }
+
     private boolean version51OrEarlier() {
         return majorVersion <= ClassfileParser.JAVA_7_VERSION;
     }
@@ -377,6 +381,37 @@ public final class MethodVerifier implements ContextAccess {
     static final PrimitiveOperand Long = new PrimitiveOperand(JavaKind.Long);
     static final PrimitiveOperand Void = new PrimitiveOperand(JavaKind.Void);
     static final PrimitiveOperand Invalid = new PrimitiveOperand(JavaKind.Illegal);
+
+    /*
+     * Special handling:
+     *
+     * is same as Byte for java 8 or earlier, becomes its own operand for Java >= 9
+     */
+    final PrimitiveOperand booleanOperand;
+
+    /* Special operand used for BA{LOAD, STORE}. Should never be pushed to stack */
+    static final PrimitiveOperand ByteOrBoolean = new PrimitiveOperand(JavaKind.Byte) {
+        @Override
+        boolean compliesWith(Operand other) {
+            return other.isTopOperand() || other.getKind() == JavaKind.Boolean || other.getKind() == JavaKind.Byte;
+        }
+
+        @Override
+        Operand mergeWith(Operand other) {
+            if (other == this) {
+                throw EspressoError.shouldNotReachHere("Invalid invariant: ByteOrBoolean operand in stack.");
+            }
+            if (other.isPrimitive()) {
+                if (other == Byte) {
+                    return Byte;
+                }
+                if (other.getKind() == JavaKind.Boolean) {
+                    return other;
+                }
+            }
+            return null;
+        }
+    };
 
     // We want to be able to share this instance between context, so its resolution must be
     // context-agnostic.
@@ -416,16 +451,6 @@ public final class MethodVerifier implements ContextAccess {
         @Override
         public String toString() {
             return "null";
-        }
-
-        @Override
-        boolean isPrimitive() {
-            return false;
-        }
-
-        @Override
-        Operand getComponent() {
-            return this;
         }
     };
 
@@ -520,6 +545,8 @@ public final class MethodVerifier implements ContextAccess {
         jliMethodType = new ReferenceOperand(Type.java_lang_invoke_MethodType, thisKlass);
         jliMethodHandle = new ReferenceOperand(Type.java_lang_invoke_MethodHandle, thisKlass);
         jlThrowable = new ReferenceOperand(Type.java_lang_Throwable, thisKlass);
+
+        booleanOperand = getJavaVersion().java9OrLater() ? new PrimitiveOperand(JavaKind.Boolean) : Byte;
 
         thisOperand = new ReferenceOperand(thisKlass, thisKlass);
         returnOperand = kindToOperand(Signatures.returnType(sig));
@@ -1256,7 +1283,7 @@ public final class MethodVerifier implements ContextAccess {
                 }
                 return jliMethodType;
             case DYNAMIC:
-                if (majorVersion < ClassfileParser.JAVA_11_VERSION) {
+                if (earlierThan55()) {
                     throw new ClassFormatError("LDC for Dynamic in classfile version < 55");
                 }
                 DynamicConstant constant = (DynamicConstant) pc;
@@ -1394,7 +1421,7 @@ public final class MethodVerifier implements ContextAccess {
                     break;
                 }
 
-                case BALOAD: xaload(stack, Byte);  break;
+                case BALOAD: xaload(stack, ByteOrBoolean);  break;
                 case CALOAD: xaload(stack, Char);  break;
                 case SALOAD: xaload(stack, Short); break;
 
@@ -1446,7 +1473,7 @@ public final class MethodVerifier implements ContextAccess {
                     break;
                 }
 
-                case BASTORE: xastore(stack, Byte); break;
+                case BASTORE: xastore(stack, ByteOrBoolean); break;
                 case CASTORE: xastore(stack, Char); break;
                 case SASTORE: xastore(stack, Short); break;
 
@@ -2414,10 +2441,10 @@ public final class MethodVerifier implements ContextAccess {
         return op;
     }
 
-    private static Operand fromJVMType(byte jvmType) {
+    private Operand fromJVMType(byte jvmType) {
         // @formatter:off
         switch (jvmType) {
-            case 4  : return new ArrayOperand(Byte);
+            case 4  : return new ArrayOperand(booleanOperand);
             case 5  : return new ArrayOperand(Char);
             case 6  : return new ArrayOperand(Float);
             case 7  : return new ArrayOperand(Double);
@@ -2450,7 +2477,7 @@ public final class MethodVerifier implements ContextAccess {
     private Operand kindToOperand(Symbol<Type> type) {
         // @formatter:off
         switch (Types.getJavaKind(type)) {
-            case Boolean: return Byte;
+            case Boolean: return booleanOperand;
             case Byte   : return Byte;
             case Short  : return Short;
             case Char   : return Char;
@@ -2477,17 +2504,17 @@ public final class MethodVerifier implements ContextAccess {
     private static void xaload(OperandStack stack, PrimitiveOperand kind) {
         stack.popInt();
         Operand op = stack.popArray();
-        if (op != Null && op.getComponent() != kind) {
+        if (op != Null && !kind.compliesWith(op.getComponent())) {
             throw new VerifyError("Loading " + kind + " from " + op + " array.");
         }
-        stack.push(kind);
+        stack.push(op.getComponent());
     }
 
     private static void xastore(OperandStack stack, PrimitiveOperand kind) {
         stack.pop(kind);
         stack.popInt();
         Operand array = stack.popArray();
-        if (array != Null && array.getComponent() != kind) {
+        if (array != Null && !kind.compliesWith(array.getComponent())) {
             throw new VerifyError("got array of type: " + array + ", while storing a " + kind);
         }
     }

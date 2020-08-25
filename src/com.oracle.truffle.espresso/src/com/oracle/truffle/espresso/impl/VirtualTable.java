@@ -47,7 +47,7 @@ public final class VirtualTable {
             tmp = new ArrayList<>();
         }
         for (Method m : declaredMethods) {
-            if (!m.isStatic() && !Name._clinit_.equals(m.getName()) && !Name._init_.equals(m.getName())) {
+            if (!m.isPrivate() && !m.isStatic() && !Name._clinit_.equals(m.getName()) && !Name._init_.equals(m.getName())) {
                 // Do not bloat the vtable with methods that cannot be called through
                 // virtual invocation.
                 checkOverride(superKlass, m, tmp, thisKlass, overrides);

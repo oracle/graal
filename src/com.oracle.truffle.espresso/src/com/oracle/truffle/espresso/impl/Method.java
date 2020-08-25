@@ -420,6 +420,16 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return ((getModifiers() & mask) == Modifier.PUBLIC) && getDeclaringKlass().isInterface();
     }
 
+    public boolean canOverride(Method other) {
+        if (isPrivate() || isStatic()) {
+            return false;
+        }
+        if (isPublic() || isProtected()) {
+            return true;
+        }
+        return getDeclaringKlass().sameRuntimePackage(other.getDeclaringKlass());
+    }
+
     public ObjectKlass[] getCheckedExceptions() {
         if (checkedExceptions == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

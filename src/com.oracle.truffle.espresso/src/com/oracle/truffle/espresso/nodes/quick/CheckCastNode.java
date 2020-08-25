@@ -39,6 +39,12 @@ public abstract class CheckCastNode extends QuickNode {
 
     protected abstract boolean executeCheckCast(Klass instanceKlass);
 
+    CheckCastNode(Klass typeToCheck, int top, int callerBCI) {
+        super(top, callerBCI);
+        assert !typeToCheck.isPrimitive();
+        this.typeToCheck = typeToCheck;
+    }
+
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "instanceKlass == cachedKlass")
     boolean checkCastCached(Klass instanceKlass,
@@ -51,12 +57,6 @@ public abstract class CheckCastNode extends QuickNode {
     boolean checkCastSlow(Klass instanceKlass) {
         // Brute checkcast, walk the whole klass hierarchy.
         return checkCast(typeToCheck, instanceKlass);
-    }
-
-    CheckCastNode(Klass typeToCheck, int top, int callerBCI) {
-        super(top, callerBCI);
-        assert !typeToCheck.isPrimitive();
-        this.typeToCheck = typeToCheck;
     }
 
     @TruffleBoundary

@@ -1722,6 +1722,10 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private int quickenCheckCast(final VirtualFrame frame, int top, int curBCI, int opcode) {
+        if (StaticObject.isNull(peekObject(frame, top - 1))) {
+            // Skip resolution.
+            return -Bytecodes.stackEffectOf(opcode);
+        }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == CHECKCAST;
         QuickNode quick;
@@ -1729,8 +1733,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             if (bs.currentBC(curBCI) == QUICK) {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
-                Klass typeToCheck;
-                typeToCheck = resolveType(opcode, bs.readCPI(curBCI));
+                Klass typeToCheck = resolveType(CHECKCAST, bs.readCPI(curBCI));
                 quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck, top, curBCI), QUICK);
             }
         }
@@ -1738,6 +1741,11 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private int quickenInstanceOf(final VirtualFrame frame, int top, int curBCI, int opcode) {
+        if (StaticObject.isNull(peekObject(frame, top - 1))) {
+            // Skip resolution.
+            putInt(frame, top - 1, 0);
+            return -Bytecodes.stackEffectOf(opcode);
+        }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == INSTANCEOF;
         QuickNode quick;
@@ -1745,8 +1753,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             if (bs.currentBC(curBCI) == QUICK) {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
-                Klass typeToCheck;
-                typeToCheck = resolveType(opcode, bs.readCPI(curBCI));
+                Klass typeToCheck = resolveType(opcode, bs.readCPI(curBCI));
                 quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck, top, curBCI), QUICK);
             }
         }
@@ -2187,7 +2194,8 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     // region Class/Method/Field resolution
 
-    private Klass resolveType(int opcode, char cpi) {
+    // Exposed to CheckCastNode and InstanceOfNode
+    public Klass resolveType(int opcode, char cpi) {
         assert opcode == INSTANCEOF || opcode == CHECKCAST || opcode == NEW || opcode == ANEWARRAY || opcode == MULTIANEWARRAY;
         return getConstantPool().resolvedKlassAt(getMethod().getDeclaringKlass(), cpi);
     }

@@ -1180,8 +1180,8 @@ JNIEXPORT jobject JNICALL JVM_InitAgentProperties(JNIEnv *env, jobject agent_pro
 }
 
 JNIEXPORT jstring JNICALL JVM_GetTemporaryDirectory(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_GetTemporaryDirectory);
-  return NULL;
+  IMPLEMENTED(JVM_GetTemporaryDirectory);
+  return (*getEnv())->JVM_GetTemporaryDirectory(env);
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetEnclosingMethodInfo(JNIEnv *env, jclass ofClass) {
