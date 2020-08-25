@@ -40,6 +40,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public abstract class ArrayLengthNode extends QuickNode {
+    protected static final int LIMIT = 3;
+
     protected ArrayLengthNode(int top, int callerBCI) {
         super(top, callerBCI);
     }
@@ -54,12 +56,18 @@ public abstract class ArrayLengthNode extends QuickNode {
 
     abstract int executeGetLength(StaticObject array);
 
-    @Specialization(guards = "array.isForeignObject()", limit = "3")
-    int doForeign(StaticObject array, @CachedLibrary("array.rawForeignObject()") InteropLibrary interop, @CachedContext(EspressoLanguage.class) EspressoContext context,
+    @Specialization(guards = "array.isForeignObject()")
+    int doForeign(StaticObject array,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
                     @Cached BranchProfile exceptionProfile) {
         try {
-            // TODO: error report?
-            return (int) interop.getArraySize(array.rawForeignObject());
+            long arrayLength = interop.getArraySize(array.rawForeignObject());
+            if (arrayLength > Integer.MAX_VALUE) {
+                exceptionProfile.enter();
+                throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "The foreign array length does not fit in int");
+            }
+            return (int) arrayLength;
         } catch (UnsupportedMessageException e) {
             exceptionProfile.enter();
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, "Called 'length' on a non-array object");
