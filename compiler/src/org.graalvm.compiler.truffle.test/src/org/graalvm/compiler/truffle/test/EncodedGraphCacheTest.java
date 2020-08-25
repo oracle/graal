@@ -195,12 +195,15 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
                         encodedGraphCacheContains(truffleCompiler, testMethod));
 
         // Retry again, the encoded graph is re-parsed without the (invalidated) assumption.
-        // Compilation succeeds.
-        callTarget = compileAST(rootTestNode);
+        boolean[] graphWasCached = {false};
+        for (int attempts = 0; attempts < 10 && !graphWasCached[0]; attempts++) {
+            // Compilation succeeds.
+            callTarget = compileAST(rootTestNode);
+            // But the cache can be purged anytime, retry if the graph is not cached.
+            graphWasCached[0] = encodedGraphCacheContains(truffleCompiler, testMethod);
+        }
 
-        assertTrue("Re-parsed graph is in the cache",
-                        encodedGraphCacheContains(truffleCompiler, testMethod));
-
+        Assert.assertTrue("Re-parsed graph was cached", graphWasCached[0]);
         Assert.assertEquals(42, (int) callTarget.call());
     }
 
@@ -218,27 +221,39 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
 
     @Test
     public void testCacheIsEnabled() {
-        testHelper(100, 100_000, compiler -> {
-            assertTrue("InvalidationTestNode.execute is cached",
-                            encodedGraphCacheContains(compiler, testMethod));
-        });
+        boolean[] cacheContainsTargetGraph = {false};
+        for (int attempts = 0; attempts < 10 && !cacheContainsTargetGraph[0]; attempts++) {
+            testHelper(100, 100_000, compiler -> {
+                cacheContainsTargetGraph[0] = encodedGraphCacheContains(compiler, testMethod);
+            });
+        }
+        Assert.assertTrue("InvalidationTestNode.execute is cached", cacheContainsTargetGraph[0]);
     }
 
     @Test
     public void testCacheCapacity() {
-        testHelper(1, 100_000, compiler -> {
-            EconomicMap<?, ?> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
-            // A single compilation should cache more than 1 graph.
-            Assert.assertEquals("Cache can hold at most 1 element", 1, cache.size());
-        });
+        boolean[] cacheHolds1Element = {false};
+        for (int attempts = 0; attempts < 10 && !cacheHolds1Element[0]; attempts++) {
+            testHelper(1, 100_000, compiler -> {
+                EconomicMap<?, ?> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
+                // The cache can have at most 1 element, but it can be purged anytime.
+                Assert.assertTrue("Cache holds at most 1 element", cache.size() <= 1);
+                cacheHolds1Element[0] = (cache.size() == 1); // can be empty
+            });
+        }
+        Assert.assertTrue("Cache holds exactly 1 element", cacheHolds1Element[0]);
     }
 
     @Test
     public void testUnboundedCacheCapacity() {
-        testHelper(-1, 100_000, compiler -> {
-            EconomicMap<?, ?> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
-            Assert.assertFalse("Cache has some elements", cache.isEmpty());
-        });
+        boolean[] nonEmptyGraphCache = {false};
+        for (int attempts = 0; attempts < 10 && !nonEmptyGraphCache[0]; attempts++) {
+            testHelper(-1, 100_000, compiler -> {
+                EconomicMap<?, ?> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
+                nonEmptyGraphCache[0] = !cache.isEmpty();
+            });
+        }
+        Assert.assertTrue("Unbounded cache was populated", nonEmptyGraphCache[0]);
     }
 
     @Test
