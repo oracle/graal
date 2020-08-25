@@ -1,5 +1,8 @@
 # Change Log
 
+## Version 0.0.11
+* GraalVM for Windows supported
+
 ## Version 0.0.10
 * Usability improvements
 
