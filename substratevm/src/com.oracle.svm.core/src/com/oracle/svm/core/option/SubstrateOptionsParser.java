@@ -595,7 +595,7 @@ public class SubstrateOptionsParser {
         } else {
             for (APIOption apiOption : apiOptions) {
                 String fixedValue = apiOption.fixedValue().length == 0 ? null : apiOption.fixedValue()[0];
-                if (apiOption.name().equals(apiOptionName)) {
+                if (apiOptionName == null || apiOption.name().equals(apiOptionName)) {
                     if (fixedValue == null) {
                         return APIOption.Utils.name(apiOption) + "=" + value;
                     } else if (value.equals(fixedValue)) {

@@ -52,4 +52,10 @@ public interface JvmtiCapabilities extends PointerBase {
 
     @CBitfield("can_generate_all_class_hook_events")
     void setCanGenerateAllClassHookEvents(int value);
+
+    @CBitfield("can_get_source_file_name")
+    void setCanGetSourceFileName(int value);
+
+    @CBitfield("can_get_line_numbers")
+    void setCanGetLineNumbers(int value);
 }

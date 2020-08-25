@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,37 +24,19 @@
  */
 package com.oracle.svm.jvmtiagentbase.jvmti;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.List;
-
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.OS;
+@CStruct("jvmtiLineNumberEntry")
+@CContext(JvmtiDirectives.class)
+public interface JvmtiLineNumberEntry extends PointerBase {
 
-class JvmtiDirectives implements CContext.Directives {
+    @CField("start_location")
+    long getStartLocation();
 
-    private final Path jdkIncludeDir = JavaVersionUtil.JAVA_SPEC <= 8
-                    ? Paths.get(System.getProperty("java.home")).getParent().resolve("include")
-                    : Paths.get(System.getProperty("java.home")).resolve("include");
+    @CField("line_number")
+    int getLineNumber();
 
-    @Override
-    public List<String> getHeaderFiles() {
-        return Collections.singletonList("\"" + jdkIncludeDir.resolve("jvmti.h") + "\"");
-    }
-
-    @Override
-    public List<String> getOptions() {
-        return Collections.singletonList("-I" + jdkIncludeDir.resolve(OS.getCurrent() == OS.WINDOWS ? "win32" : OS.getCurrent().asPackageName()));
-    }
-}
-
-class JvmtiDirectives11 extends JvmtiDirectives {
-
-    @Override
-    public boolean isInConfiguration() {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
-    }
 }

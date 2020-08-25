@@ -22,39 +22,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jvmtiagentbase.jvmti;
+package com.oracle.svm.hosted.agent;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.List;
+import static jdk.internal.org.objectweb.asm.Opcodes.ACC_STATIC;
+import static jdk.internal.org.objectweb.asm.Opcodes.ASM5;
+import static jdk.internal.org.objectweb.asm.Opcodes.RETURN;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.c.CContext;
+import jdk.internal.org.objectweb.asm.ClassVisitor;
+import jdk.internal.org.objectweb.asm.ClassWriter;
+import jdk.internal.org.objectweb.asm.MethodVisitor;
 
-import com.oracle.svm.core.OS;
+public class ClinitGenerationVisitor extends ClassVisitor {
 
-class JvmtiDirectives implements CContext.Directives {
+    private boolean hasClinit;
 
-    private final Path jdkIncludeDir = JavaVersionUtil.JAVA_SPEC <= 8
-                    ? Paths.get(System.getProperty("java.home")).getParent().resolve("include")
-                    : Paths.get(System.getProperty("java.home")).resolve("include");
-
-    @Override
-    public List<String> getHeaderFiles() {
-        return Collections.singletonList("\"" + jdkIncludeDir.resolve("jvmti.h") + "\"");
+    public ClinitGenerationVisitor(ClassWriter writer) {
+        super(ASM5, writer);
+        this.hasClinit = false;
     }
 
     @Override
-    public List<String> getOptions() {
-        return Collections.singletonList("-I" + jdkIncludeDir.resolve(OS.getCurrent() == OS.WINDOWS ? "win32" : OS.getCurrent().asPackageName()));
+    public void visitEnd() {
+        if (!hasClinit) {
+            MethodVisitor mv = visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
+            mv.visitInsn(RETURN);
+            mv.visitEnd();
+        }
+        super.visitEnd();
     }
-}
-
-class JvmtiDirectives11 extends JvmtiDirectives {
 
     @Override
-    public boolean isInConfiguration() {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
+    public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+        MethodVisitor methodVisitor = super.visitMethod(access, name, desc, signature, exceptions);
+        boolean isClinitMethod = "<clinit>".equals(name);
+        hasClinit = hasClinit || isClinitMethod;
+        return methodVisitor;
     }
+
 }

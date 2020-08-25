@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -251,8 +251,13 @@ public class SubstrateOptions {
     @Option(help = "Trace VMOperation execution.")//
     public static final HostedOptionKey<Boolean> TraceVMOperations = new HostedOptionKey<>(false);
 
-    @Option(help = "Instrument code to trace and report class initialization.")//
-    public static final HostedOptionKey<Boolean> TraceClassInitialization = new HostedOptionKey<>(false);
+    @APIOption(name = "trace-class-initialization")//
+    @Option(help = "Comma-separated list of fully qualified class names that class initialization is traced for.")//
+    public static final HostedOptionKey<String> TraceClassInitialization = new HostedOptionKey<>("");
+
+    @APIOption(name = "trace-object-instantiation")//
+    @Option(help = "Comma-separated list of fully qualified class names that object instantiation is traced for.")//
+    public static final HostedOptionKey<String> TraceObjectInstantiation = new HostedOptionKey<>("");
 
     @Option(help = "Prefix that is added to the names of entry point methods.")//
     public static final HostedOptionKey<String> EntryPointNamePrefix = new HostedOptionKey<>("");

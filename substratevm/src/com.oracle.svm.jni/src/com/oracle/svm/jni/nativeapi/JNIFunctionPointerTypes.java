@@ -60,6 +60,11 @@ public final class JNIFunctionPointerTypes {
         JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle obj);
     }
 
+    public interface CallVoidMethodAFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodId, JNIValue args);
+    }
+
     public interface CallObjectMethodAFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, JNIValue args);
