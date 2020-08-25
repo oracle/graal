@@ -128,12 +128,13 @@ public class NodeClassFeature implements Feature {
                 access.registerAsUnsafeAccessed(field);
             }
 
-            if (accessor.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.DATA) {
+            if (accessor.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.DATA &&
+                            com.oracle.truffle.api.nodes.NodeCloneable.class.isAssignableFrom(accessor.getType())) {
                 /*
-                 * It's a normal non-child data field of the node. Such fields are written with
+                 * It's a cloneable non-child data field of the node. Such fields are written with
                  * Unsafe in the NodeUtil.deepCopyImpl.
                  */
-                ((DuringAnalysisAccessImpl) access).registerAsFrozenUnsafeAccessed(field);
+                access.registerAsUnsafeAccessed(field);
             }
 
             /* All other fields are only read with Unsafe. */
