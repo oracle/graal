@@ -493,6 +493,8 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected static final CounterKey EXPLICIT_EXCEPTIONS = DebugContext.counter("ExplicitExceptions");
 
+    private boolean bciCanBeDuplicated = false;
+
     /**
      * A scoped object for tasks to be performed after inlining during parsing such as processing
      * {@linkplain BytecodeFrame#isPlaceholderBci(int) placeholder} frames states.
@@ -948,6 +950,21 @@ public class BytecodeParser implements GraphBuilderContext {
 
         int level = TraceBytecodeParserLevel.getValue(options);
         this.traceLevel = level != 0 ? refineTraceLevel(level) : 0;
+    }
+
+    /**
+     * Returns true if the current parse position is covered by an exception handler, including
+     * exception handlers of all outer scopes when inlining during parsing.
+     */
+    protected boolean insideTryBlock() {
+        BytecodeParser cur = this;
+        while (cur != null) {
+            if (cur.currentBlock.exceptionDispatchBlock() != null) {
+                return true;
+            }
+            cur = cur.parent;
+        }
+        return false;
     }
 
     private int refineTraceLevel(int level) {
@@ -1814,8 +1831,10 @@ public class BytecodeParser implements GraphBuilderContext {
         boolean previous = forceInliningEverything;
         forceInliningEverything = previous || inlineEverything;
         try {
+            setBciCanBeDuplicated(true);
             return appendInvoke(invokeKind, targetMethod, args);
         } finally {
+            setBciCanBeDuplicated(false);
             forceInliningEverything = previous;
         }
     }
@@ -3956,6 +3975,15 @@ public class BytecodeParser implements GraphBuilderContext {
     @Override
     public int bci() {
         return stream.currentBCI();
+    }
+
+    public void setBciCanBeDuplicated(boolean bciCanBeDuplicated) {
+        this.bciCanBeDuplicated = bciCanBeDuplicated;
+    }
+
+    @Override
+    public boolean bciCanBeDuplicated() {
+        return bciCanBeDuplicated || !blockMap.bciUnique();
     }
 
     public void loadLocal(int index, JavaKind kind) {

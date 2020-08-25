@@ -76,13 +76,13 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.compiler.EconomyPartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.compiler.EconomyPartialEvaluatorConfiguration;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierConfiguration;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
@@ -127,6 +127,9 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
+import com.oracle.svm.hosted.phases.ExperimentalNativeImageInlineDuringParsingSupport;
+import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
 import com.oracle.svm.truffle.api.SubstratePartialEvaluator;
@@ -367,6 +370,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             support = new Support();
         }
         imageClassLoader = a.getApplicationClassLoader();
+
+        /* Inline during parsing does not work well with deopt targets ATM. */
+        ImageSingletons.lookup(ExperimentalNativeImageInlineDuringParsingSupport.class).disableNativeImageInlineDuringParsing();
 
         TruffleRuntime runtime = Truffle.getRuntime();
         UserError.guarantee(runtime != null, "TruffleRuntime not available via Truffle.getRuntime()");
@@ -624,6 +630,16 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                  */
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             } else if (replacements.hasSubstitution(original)) {
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+            }
+
+            /*
+             * We can't inline methods that use intrnsifications. By inlining them we are opening a
+             * door for inconsistencies between parsing in analysis and parsing for runtime methods.
+             */
+            if (ImageSingletons.lookup(IntrinsifyMethodHandlesInvocationPlugin.IntrinsificationRegistry.class).hasIntrinsifications((AnalysisMethod) original)) {
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+            } else if (ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).hasIntrinsifications((AnalysisMethod) original)) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
 
