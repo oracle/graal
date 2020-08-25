@@ -805,10 +805,12 @@ public final class CompileTheWorld {
         float selector = Math.max(0, startAtCompile);
         float selectorStep = maxCompiles < allCompiles ? (float) allCompiles / maxCompiles : 1.0f;
         int repeat = Options.Repeat.getValue(harnessOptions);
+        long taskCount = 0;
         for (Map.Entry<HotSpotResolvedJavaMethod, Integer> e : toBeCompiled.entrySet()) {
             if (compilationNum >= startAtCompile && compilationNum < stopAtCompile) {
                 if (Math.round(selector) == compilationNum) {
                     for (int i = 0; i < repeat; i++) {
+                        taskCount++;
                         threadPool.submit(new Runnable() {
                             @Override
                             public void run() {
@@ -825,7 +827,6 @@ public final class CompileTheWorld {
         int wakeups = 0;
         long lastCompletedTaskCount = 0;
         int statsInterval = Options.StatsInterval.getValue(harnessOptions);
-        long taskCount = threadPool.getTaskCount();
         long completedTaskCount;
         do {
             completedTaskCount = threadPool.getCompletedTaskCount();
