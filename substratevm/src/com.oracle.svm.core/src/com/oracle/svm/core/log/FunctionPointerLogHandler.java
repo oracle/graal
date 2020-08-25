@@ -42,6 +42,7 @@ public class FunctionPointerLogHandler implements LogHandler {
 
     private LogFunctionPointer logFunctionPointer;
     private VoidFunctionPointer flushFunctionPointer;
+    private VoidFunctionPointer fatalContextFunctionPointer;
     private VoidFunctionPointer fatalErrorFunctionPointer;
 
     public FunctionPointerLogHandler(LogHandler delegate) {
@@ -64,6 +65,19 @@ public class FunctionPointerLogHandler implements LogHandler {
         } else if (delegate != null) {
             delegate.flush();
         }
+    }
+
+    @Override
+    public void fatalContext() {
+        if (fatalContextFunctionPointer.isNonNull()) {
+            fatalContextFunctionPointer.invoke();
+        } else if (delegate != null) {
+            delegate.fatalContext();
+        }
+    }
+
+    public CFunctionPointer getFatalContextFunctionPointer() {
+        return fatalContextFunctionPointer;
     }
 
     @Override
@@ -102,6 +116,9 @@ public class FunctionPointerLogHandler implements LogHandler {
             return true;
         } else if (optionString.equals("_flush_log")) {
             handler(optionString).flushFunctionPointer = (VoidFunctionPointer) extraInfo;
+            return true;
+        } else if (optionString.equals("_fatal_context")) {
+            handler(optionString).fatalContextFunctionPointer = (VoidFunctionPointer) extraInfo;
             return true;
         } else if (optionString.equals("_fatal")) {
             handler(optionString).fatalErrorFunctionPointer = (VoidFunctionPointer) extraInfo;

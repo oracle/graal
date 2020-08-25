@@ -66,6 +66,11 @@ public class WindowsLogHandler implements LogHandler {
     }
 
     @Override
+    public void fatalContext() {
+        /* Unused */
+    }
+
+    @Override
     public void fatalError() {
         if (SubstrateUtil.isPrintDiagnosticsInProgress()) {
             // Delay the shutdown a bit if another thread has something important to report.

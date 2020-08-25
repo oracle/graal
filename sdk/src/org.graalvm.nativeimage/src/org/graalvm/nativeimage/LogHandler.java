@@ -95,6 +95,17 @@ public interface LogHandler {
     void flush();
 
     /**
+     * If the VM finds itself in a fatal, non-recoverable error situation it will - before anything
+     * else - call this method. All subsequent log messages should be interpreted as information
+     * that further describes the specific instance of the fatal error. Once the VM has written all
+     * log messages related to the fatal error it will finally call {@link #fatalError()} from where
+     * it is expected to never return.
+     *
+     * @since 20.3
+     */
+    void fatalContext();
+
+    /**
      * Exit the VM because a fatal, non-recoverable error situation has been detected. The
      * implementation of this method must not return, and it must not throw a Java exception. A
      * valid implementation is, e.g., to ask the OS to kill the process.
