@@ -195,12 +195,15 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
                         encodedGraphCacheContains(truffleCompiler, testMethod));
 
         // Retry again, the encoded graph is re-parsed without the (invalidated) assumption.
-        // Compilation succeeds.
-        callTarget = compileAST(rootTestNode);
+        boolean[] graphWasCached = {false};
+        for (int attempts = 0; attempts < 10 && !graphWasCached[0]; attempts++) {
+            // Compilation succeeds.
+            callTarget = compileAST(rootTestNode);
+            // But the cache can be purged anytime, retry if the graph is not cached.
+            graphWasCached[0] = encodedGraphCacheContains(truffleCompiler, testMethod);
+        }
 
-        assertTrue("Re-parsed graph is in the cache",
-                        encodedGraphCacheContains(truffleCompiler, testMethod));
-
+        Assert.assertTrue("Re-parsed graph was cached", graphWasCached[0]);
         Assert.assertEquals(42, (int) callTarget.call());
     }
 
