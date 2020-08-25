@@ -223,6 +223,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SASTORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SIPUSH;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.SLIM_QUICK;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
@@ -348,6 +349,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     private static final DebugCounter QUICKENED_INVOKES = DebugCounter.create("Quickened invokes (excluding INDY)");
 
     @Children private QuickNode[] nodes = QuickNode.EMPTY_ARRAY;
+    @Children private QuickNode[] sparseNodes = QuickNode.EMPTY_ARRAY;
 
     @CompilationFinal(dimensions = 1) //
     private final FrameSlot[] locals;
@@ -1267,7 +1269,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                         throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
 
                     case INVOKEDYNAMIC: top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
-                    case QUICK: top += nodes[curBCI].execute(frame); break;
+                    case QUICK: top += nodes[bs.readCPI(curBCI)].execute(frame); break;
+                    case SLIM_QUICK: top += sparseNodes[curBCI].execute(frame); break;
 
                     default:
                         CompilerDirectives.transferToInterpreter();
@@ -1368,8 +1371,14 @@ public final class BytecodeNode extends EspressoMethodNode {
                 throw e;
             }
             // This check includes newly rewritten QUICK nodes, not just curOpcode == quick
-            if (noForeignObjects.isValid() && bs.currentBC(curBCI) == QUICK) {
-                QuickNode quickNode = nodes[curBCI];
+            if (noForeignObjects.isValid() && (bs.currentBC(curBCI) == QUICK || bs.currentBC(curBCI) == SLIM_QUICK)) {
+                QuickNode quickNode;
+                if (bs.currentBC(curBCI) == QUICK) {
+                    quickNode = nodes[bs.readCPI(curBCI)];
+                } else {
+                    assert bs.currentBC(curBCI) == SLIM_QUICK;
+                    quickNode = sparseNodes[curBCI];
+                }
                 if (quickNode.producedForeignObject(frame)) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     noForeignObjects.invalidate();
@@ -1664,33 +1673,51 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     // region Bytecode quickening
 
-    private void addQuickNode(QuickNode node, int curBCI) {
+    private char addQuickNode(QuickNode node) {
         CompilerAsserts.neverPartOfCompilation();
         Objects.requireNonNull(node);
-        if (nodes == QuickNode.EMPTY_ARRAY) {
-            nodes = new QuickNode[getMethod().getCode().length];
-        }
-        nodes[curBCI] = insert(node);
+        nodes = Arrays.copyOf(nodes, nodes.length + 1);
+        int nodeIndex = nodes.length - 1; // latest empty slot
+        nodes[nodeIndex] = insert(node);
+        return (char) nodeIndex;
     }
 
-    private void patchBci(int bci, byte opcode) {
+    private void addSlimQuickNode(QuickNode node, int curBCI) {
+        CompilerAsserts.neverPartOfCompilation();
+        Objects.requireNonNull(node);
+        if (sparseNodes == QuickNode.EMPTY_ARRAY) {
+            sparseNodes = new QuickNode[getMethod().getCode().length];
+        }
+        sparseNodes[curBCI] = insert(node);
+    }
+
+    private void patchBci(int bci, byte opcode, char nodeIndex) {
         CompilerAsserts.neverPartOfCompilation();
         assert Bytecodes.isQuickened(opcode);
         byte[] code = getMethodVersion().getCodeAttribute().getCode();
 
         int oldBC = code[bci];
         code[bci] = opcode;
+        if (opcode == (byte) QUICK) {
+            code[bci + 1] = (byte) ((nodeIndex >> 8) & 0xFF);
+            code[bci + 2] = (byte) ((nodeIndex) & 0xFF);
+        }
         // NOP-padding.
-        for (int i = 1; i < Bytecodes.lengthOf(oldBC); ++i) {
+        for (int i = Bytecodes.lengthOf(opcode); i < Bytecodes.lengthOf(oldBC); ++i) {
             code[bci + i] = (byte) NOP;
         }
     }
 
-    private QuickNode injectQuick(int curBCI, QuickNode quick) {
+    private QuickNode injectQuick(int curBCI, QuickNode quick, int opcode) {
         QUICKENED_BYTECODES.inc();
         CompilerAsserts.neverPartOfCompilation();
-        addQuickNode(quick, curBCI);
-        patchBci(curBCI, (byte) Bytecodes.QUICK);
+        if (opcode == SLIM_QUICK) {
+            addSlimQuickNode(quick, curBCI);
+            patchBci(curBCI, (byte) SLIM_QUICK, (char) 0);
+        } else {
+            char nodeIndex = addQuickNode(quick);
+            patchBci(curBCI, (byte) QUICK, nodeIndex);
+        }
         return quick;
     }
 
@@ -1700,11 +1727,11 @@ public final class BytecodeNode extends EspressoMethodNode {
         QuickNode quick;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
-                quick = nodes[curBCI];
+                quick = nodes[bs.readCPI(curBCI)];
             } else {
                 Klass typeToCheck;
                 typeToCheck = resolveType(opcode, bs.readCPI(curBCI));
-                quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck, top, curBCI));
+                quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck, top, curBCI), QUICK);
             }
         }
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
@@ -1716,11 +1743,11 @@ public final class BytecodeNode extends EspressoMethodNode {
         QuickNode quick;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
-                quick = nodes[curBCI];
+                quick = nodes[bs.readCPI(curBCI)];
             } else {
                 Klass typeToCheck;
                 typeToCheck = resolveType(opcode, bs.readCPI(curBCI));
-                quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck, top, curBCI));
+                quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck, top, curBCI), QUICK);
             }
         }
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
@@ -1733,13 +1760,13 @@ public final class BytecodeNode extends EspressoMethodNode {
         QuickNode quick;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
-                quick = nodes[curBCI];
+                quick = nodes[bs.readCPI(curBCI)];
             } else {
                 // During resolution of the symbolic reference to the method, any of the exceptions
                 // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
                 Method resolutionSeed = resolveMethod(opcode, bs.readCPI(curBCI));
                 QuickNode invoke = dispatchQuickened(top, curBCI, opcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors);
-                quick = injectQuick(curBCI, invoke);
+                quick = injectQuick(curBCI, invoke, QUICK);
             }
         }
         // Perform the call outside of the lock.
@@ -1771,9 +1798,9 @@ public final class BytecodeNode extends EspressoMethodNode {
         QuickNode getField;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
-                getField = nodes[curBCI];
+                getField = nodes[bs.readCPI(curBCI)];
             } else {
-                getField = injectQuick(curBCI, new QuickenedGetFieldNode(top, curBCI, statementIndex, field));
+                getField = injectQuick(curBCI, new QuickenedGetFieldNode(top, curBCI, statementIndex, field), QUICK);
             }
         }
         return getField.execute(frame) - Bytecodes.stackEffectOf(opcode);
@@ -1785,9 +1812,9 @@ public final class BytecodeNode extends EspressoMethodNode {
         QuickNode putField;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
-                putField = nodes[curBCI];
+                putField = nodes[bs.readCPI(curBCI)];
             } else {
-                putField = injectQuick(curBCI, new QuickenedPutFieldNode(top, curBCI, field, statementIndex));
+                putField = injectQuick(curBCI, new QuickenedPutFieldNode(top, curBCI, field, statementIndex), QUICK);
             }
         }
         return putField.execute(frame) - Bytecodes.stackEffectOf(opcode);
@@ -1797,10 +1824,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode arrayLengthNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                arrayLengthNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                arrayLengthNode = sparseNodes[curBCI];
             } else {
-                arrayLengthNode = injectQuick(curBCI, ArrayLengthNodeGen.create(top, curBCI));
+                arrayLengthNode = injectQuick(curBCI, ArrayLengthNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         arrayLengthNode.execute(frame);
@@ -1810,10 +1837,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode byteArrayLoadNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                byteArrayLoadNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                byteArrayLoadNode = sparseNodes[curBCI];
             } else {
-                byteArrayLoadNode = injectQuick(curBCI, ByteArrayLoadNodeGen.create(top, curBCI));
+                byteArrayLoadNode = injectQuick(curBCI, ByteArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         byteArrayLoadNode.execute(frame);
@@ -1823,10 +1850,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode charArrayLoadNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                charArrayLoadNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                charArrayLoadNode = sparseNodes[curBCI];
             } else {
-                charArrayLoadNode = injectQuick(curBCI, CharArrayLoadNodeGen.create(top, curBCI));
+                charArrayLoadNode = injectQuick(curBCI, CharArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         charArrayLoadNode.execute(frame);
@@ -1836,10 +1863,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode shortArrayLoadNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                shortArrayLoadNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                shortArrayLoadNode = sparseNodes[curBCI];
             } else {
-                shortArrayLoadNode = injectQuick(curBCI, ShortArrayLoadNodeGen.create(top, curBCI));
+                shortArrayLoadNode = injectQuick(curBCI, ShortArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         shortArrayLoadNode.execute(frame);
@@ -1849,10 +1876,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode intArrayLoadNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                intArrayLoadNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                intArrayLoadNode = sparseNodes[curBCI];
             } else {
-                intArrayLoadNode = injectQuick(curBCI, IntArrayLoadNodeGen.create(top, curBCI));
+                intArrayLoadNode = injectQuick(curBCI, IntArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         intArrayLoadNode.execute(frame);
@@ -1862,10 +1889,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode longArrayLoadNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                longArrayLoadNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                longArrayLoadNode = sparseNodes[curBCI];
             } else {
-                longArrayLoadNode = injectQuick(curBCI, LongArrayLoadNodeGen.create(top, curBCI));
+                longArrayLoadNode = injectQuick(curBCI, LongArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         longArrayLoadNode.execute(frame);
@@ -1875,10 +1902,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode floatArrayLoadNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                floatArrayLoadNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                floatArrayLoadNode = sparseNodes[curBCI];
             } else {
-                floatArrayLoadNode = injectQuick(curBCI, FloatArrayLoadNodeGen.create(top, curBCI));
+                floatArrayLoadNode = injectQuick(curBCI, FloatArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         floatArrayLoadNode.execute(frame);
@@ -1888,10 +1915,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode doubleArrayLoadNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                doubleArrayLoadNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                doubleArrayLoadNode = sparseNodes[curBCI];
             } else {
-                doubleArrayLoadNode = injectQuick(curBCI, DoubleArrayLoadNodeGen.create(top, curBCI));
+                doubleArrayLoadNode = injectQuick(curBCI, DoubleArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         doubleArrayLoadNode.execute(frame);
@@ -1901,10 +1928,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode referenceArrayLoadNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                referenceArrayLoadNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                referenceArrayLoadNode = sparseNodes[curBCI];
             } else {
-                referenceArrayLoadNode = injectQuick(curBCI, ReferenceArrayLoadNodeGen.create(top, curBCI));
+                referenceArrayLoadNode = injectQuick(curBCI, ReferenceArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         referenceArrayLoadNode.execute(frame);
@@ -1914,10 +1941,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode byteArrayStoreNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                byteArrayStoreNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                byteArrayStoreNode = sparseNodes[curBCI];
             } else {
-                byteArrayStoreNode = injectQuick(curBCI, ByteArrayStoreNodeGen.create(top, curBCI));
+                byteArrayStoreNode = injectQuick(curBCI, ByteArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         byteArrayStoreNode.execute(frame);
@@ -1927,10 +1954,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode charArrayStoreNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                charArrayStoreNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                charArrayStoreNode = sparseNodes[curBCI];
             } else {
-                charArrayStoreNode = injectQuick(curBCI, CharArrayStoreNodeGen.create(top, curBCI));
+                charArrayStoreNode = injectQuick(curBCI, CharArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         charArrayStoreNode.execute(frame);
@@ -1940,10 +1967,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode shortArrayStoreNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                shortArrayStoreNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                shortArrayStoreNode = sparseNodes[curBCI];
             } else {
-                shortArrayStoreNode = injectQuick(curBCI, ShortArrayStoreNodeGen.create(top, curBCI));
+                shortArrayStoreNode = injectQuick(curBCI, ShortArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         shortArrayStoreNode.execute(frame);
@@ -1953,10 +1980,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode intArrayStoreNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                intArrayStoreNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                intArrayStoreNode = sparseNodes[curBCI];
             } else {
-                intArrayStoreNode = injectQuick(curBCI, IntArrayStoreNodeGen.create(top, curBCI));
+                intArrayStoreNode = injectQuick(curBCI, IntArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         intArrayStoreNode.execute(frame);
@@ -1966,10 +1993,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode longArrayStoreNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                longArrayStoreNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                longArrayStoreNode = sparseNodes[curBCI];
             } else {
-                longArrayStoreNode = injectQuick(curBCI, LongArrayStoreNodeGen.create(top, curBCI));
+                longArrayStoreNode = injectQuick(curBCI, LongArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         longArrayStoreNode.execute(frame);
@@ -1979,10 +2006,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode floatArrayStoreNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                floatArrayStoreNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                floatArrayStoreNode = sparseNodes[curBCI];
             } else {
-                floatArrayStoreNode = injectQuick(curBCI, FloatArrayStoreNodeGen.create(top, curBCI));
+                floatArrayStoreNode = injectQuick(curBCI, FloatArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         floatArrayStoreNode.execute(frame);
@@ -1992,10 +2019,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode doubleArrayStoreNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                doubleArrayStoreNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                doubleArrayStoreNode = sparseNodes[curBCI];
             } else {
-                doubleArrayStoreNode = injectQuick(curBCI, DoubleArrayStoreNodeGen.create(top, curBCI));
+                doubleArrayStoreNode = injectQuick(curBCI, DoubleArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         doubleArrayStoreNode.execute(frame);
@@ -2005,10 +2032,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerDirectives.transferToInterpreter();
         QuickNode referenceArrayStoreNode;
         synchronized (this) {
-            if (bs.currentBC(curBCI) == QUICK) {
-                referenceArrayStoreNode = nodes[curBCI];
+            if (bs.currentBC(curBCI) == SLIM_QUICK) {
+                referenceArrayStoreNode = sparseNodes[curBCI];
             } else {
-                referenceArrayStoreNode = injectQuick(curBCI, ReferenceArrayStoreNodeGen.create(top, curBCI));
+                referenceArrayStoreNode = injectQuick(curBCI, ReferenceArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
         referenceArrayStoreNode.execute(frame);
@@ -2130,7 +2157,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
                 // Check if someone did the job for us. Defer the call until we are out of the lock.
-                quick = nodes[curBCI];
+                quick = nodes[bs.readCPI(curBCI)];
             } else {
                 // fetch indy under lock.
                 indyIndex = bs.readCPI(curBCI);
@@ -2148,9 +2175,9 @@ public final class BytecodeNode extends EspressoMethodNode {
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
                 // someone beat us to it, just trust him.
-                quick = nodes[curBCI];
+                quick = nodes[bs.readCPI(curBCI)];
             } else {
-                quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(inDy.getMemberName(), inDy.getUnboxedAppendix(), inDy.getParsedSignature(), getMeta(), top, curBCI));
+                quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(inDy.getMemberName(), inDy.getUnboxedAppendix(), inDy.getParsedSignature(), getMeta(), top, curBCI), QUICK);
             }
         }
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
