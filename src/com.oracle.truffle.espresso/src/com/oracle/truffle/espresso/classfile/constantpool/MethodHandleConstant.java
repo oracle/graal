@@ -114,13 +114,13 @@ public interface MethodHandleConstant extends PoolConstant {
             StaticObject[] paramsKlasses = paramCount > 0 ? new StaticObject[paramCount] : StaticObject.EMPTY_ARRAY;
             for (int i = 0; i < paramCount; ++i) {
                 Symbol<Symbol.Type> paramType = Signatures.parameterType(signature, i);
-                paramsKlasses[i] = meta.resolveSymbolOrFail(paramType, accessingKlass.getDefiningClassLoader()).mirror();
+                paramsKlasses[i] = meta.resolveSymbolAndAccessCheck(paramType, accessingKlass).mirror();
             }
             return paramsKlasses;
         }
 
         private static StaticObject resolveReturnType(Klass accessingKlass, Symbol<Symbol.Type>[] signature, Meta meta) {
-            return meta.resolveSymbolOrFail(Signatures.returnType(signature), accessingKlass.getDefiningClassLoader()).mirror();
+            return meta.resolveSymbolAndAccessCheck(Signatures.returnType(signature), accessingKlass).mirror();
         }
 
         @Override

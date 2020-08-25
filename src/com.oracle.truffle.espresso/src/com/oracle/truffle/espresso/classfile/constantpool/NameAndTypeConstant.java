@@ -102,8 +102,9 @@ public interface NameAndTypeConstant extends PoolConstant {
         @Override
         public void validateMethod(ConstantPool pool, boolean allowClinit) {
             pool.utf8At(nameIndex).validateMethodName(allowClinit);
-            boolean isInit = Name._init_.equals(pool.symbolAt(nameIndex));
-            pool.utf8At(typeIndex).validateSignature(isInit);
+            Symbol<?> symbol = pool.symbolAt(nameIndex);
+            boolean isInitOrClinit = Name._init_.equals(symbol) || Name._clinit_.equals(symbol);
+            pool.utf8At(typeIndex).validateSignature(isInitOrClinit);
         }
 
         @Override
