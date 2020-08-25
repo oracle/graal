@@ -7,6 +7,9 @@ vm_java_11: ${labsjdk-ce-11} {
 vm_java_15: ${oraclejdk15} {
   environment: { BASE_JDK_VERSION: "15" }
 }
+vm_java_15Debug: ${oraclejdk15Debug} {
+  environment: { BASE_JDK_VERSION: "15" }
+}
 svm_suite: /substratevm
 vm_extra_suites: "truffleruby,graalpython,fastr,/wasm"
 vm_extra_suites_aarch64: "/wasm,truffleruby"
