@@ -58,6 +58,10 @@ import jdk.vm.ci.meta.TriState;
 
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
+ * <p>
+ * A Java instanceof test normally returns {@code false} when the tested object is {@code null}.
+ * However, if the node {@linkplain #allowsNull() allows null}, the test should return {@code true}
+ * for {@code null} values.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
 @NodeIntrinsicFactory
