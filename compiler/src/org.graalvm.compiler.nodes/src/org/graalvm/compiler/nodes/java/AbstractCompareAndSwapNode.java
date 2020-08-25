@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.java;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.InputType.State;
 
+import jdk.vm.ci.code.MemoryBarriers;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -47,9 +48,11 @@ import org.graalvm.word.LocationIdentity;
 @NodeInfo(allowedUsageTypes = {InputType.Value, Memory})
 public abstract class AbstractCompareAndSwapNode extends FixedAccessNode implements StateSplit, LIRLowerableAccess, SingleMemoryKill {
     public static final NodeClass<AbstractCompareAndSwapNode> TYPE = NodeClass.create(AbstractCompareAndSwapNode.class);
+    protected static final int DEFAULT_MEMORY_BARRIER = MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_LOAD | MemoryBarriers.STORE_STORE;
     @Input ValueNode expectedValue;
     @Input ValueNode newValue;
     @OptionalInput(State) FrameState stateAfter;
+    protected final int memoryBarrier;
 
     @Override
     public FrameState stateAfter() {
@@ -76,12 +79,17 @@ public abstract class AbstractCompareAndSwapNode extends FixedAccessNode impleme
         return newValue;
     }
 
+    public final int getMemoryBarrier() {
+        return memoryBarrier;
+    }
+
     public AbstractCompareAndSwapNode(NodeClass<? extends AbstractCompareAndSwapNode> c, AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue,
-                    BarrierType barrierType, Stamp stamp) {
+                    BarrierType barrierType, Stamp stamp, int memoryBarrier) {
         super(c, address, location, stamp, barrierType);
         assert expectedValue.getStackKind() == newValue.getStackKind();
         this.expectedValue = expectedValue;
         this.newValue = newValue;
+        this.memoryBarrier = memoryBarrier;
     }
 
     @Override

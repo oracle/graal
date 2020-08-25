@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -63,9 +64,15 @@ public abstract class AbstractUnsafeCompareAndSwapNode extends AbstractMemoryChe
     @Input ValueNode newValue;
     protected final JavaKind valueKind;
     protected final LocationIdentity locationIdentity;
+    protected final int memoryBarrier;
 
     public AbstractUnsafeCompareAndSwapNode(NodeClass<? extends AbstractMemoryCheckpoint> c, Stamp stamp, ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue,
                     JavaKind valueKind, LocationIdentity locationIdentity) {
+        this(c, stamp, object, offset, expected, newValue, valueKind, locationIdentity, MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_LOAD | MemoryBarriers.STORE_STORE);
+    }
+
+    public AbstractUnsafeCompareAndSwapNode(NodeClass<? extends AbstractMemoryCheckpoint> c, Stamp stamp, ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue,
+                    JavaKind valueKind, LocationIdentity locationIdentity, int memoryBarrier) {
         super(c, stamp);
         this.object = object;
         this.offset = offset;
@@ -73,6 +80,7 @@ public abstract class AbstractUnsafeCompareAndSwapNode extends AbstractMemoryChe
         this.newValue = newValue;
         this.valueKind = valueKind;
         this.locationIdentity = locationIdentity;
+        this.memoryBarrier = memoryBarrier;
     }
 
     public ValueNode object() {
@@ -93,6 +101,10 @@ public abstract class AbstractUnsafeCompareAndSwapNode extends AbstractMemoryChe
 
     public JavaKind getValueKind() {
         return valueKind;
+    }
+
+    public final int getMemoryBarrier() {
+        return memoryBarrier;
     }
 
     @Override

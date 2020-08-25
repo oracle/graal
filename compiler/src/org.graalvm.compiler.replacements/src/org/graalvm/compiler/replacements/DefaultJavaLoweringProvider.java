@@ -664,7 +664,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
         BarrierType barrierType = barrierSet.guessStoreBarrierType(cas.object(), newValue);
-        LogicCompareAndSwapNode atomicNode = graph.add(new LogicCompareAndSwapNode(address, cas.getKilledLocationIdentity(), expectedValue, newValue, barrierType));
+        LogicCompareAndSwapNode atomicNode = graph.add(
+                        new LogicCompareAndSwapNode(address, cas.getKilledLocationIdentity(), expectedValue, newValue, barrierType, cas.getMemoryBarrier()));
         atomicNode.setStateAfter(cas.stateAfter());
         graph.replaceFixedWithFixed(cas, atomicNode);
     }
@@ -678,7 +679,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
         BarrierType barrierType = barrierSet.guessStoreBarrierType(cas.object(), newValue);
-        ValueCompareAndSwapNode atomicNode = graph.add(new ValueCompareAndSwapNode(address, expectedValue, newValue, cas.getKilledLocationIdentity(), barrierType));
+        ValueCompareAndSwapNode atomicNode = graph.add(
+                        new ValueCompareAndSwapNode(address, expectedValue, newValue, cas.getKilledLocationIdentity(), barrierType, cas.getMemoryBarrier()));
         ValueNode coercedNode = implicitLoadConvert(graph, valueKind, atomicNode, true);
         atomicNode.setStateAfter(cas.stateAfter());
         cas.replaceAtUsages(coercedNode);

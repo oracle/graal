@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import static jdk.vm.ci.code.MemoryBarriers.LOAD_LOAD;
+import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
+import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -57,6 +60,7 @@ public class AArch64AtomicMove {
         public static final LIRInstructionClass<CompareAndSwapOp> TYPE = LIRInstructionClass.create(CompareAndSwapOp.class);
 
         private final AArch64Kind accessKind;
+        private final int memoryBarrier;
 
         @Def protected AllocatableValue resultValue;
         @Alive protected Value expectedValue;
@@ -64,7 +68,8 @@ public class AArch64AtomicMove {
         @Alive protected AllocatableValue addressValue;
         @Temp protected AllocatableValue scratchValue;
 
-        public CompareAndSwapOp(AArch64Kind accessKind, AllocatableValue result, Value expectedValue, AllocatableValue newValue, AllocatableValue addressValue, AllocatableValue scratch) {
+        public CompareAndSwapOp(AArch64Kind accessKind, AllocatableValue result, Value expectedValue, AllocatableValue newValue, AllocatableValue addressValue, AllocatableValue scratch,
+                        int memoryBarrier) {
             super(TYPE);
             this.accessKind = accessKind;
             this.resultValue = result;
@@ -72,6 +77,7 @@ public class AArch64AtomicMove {
             this.newValue = newValue;
             this.addressValue = addressValue;
             this.scratchValue = scratch;
+            this.memoryBarrier = memoryBarrier;
         }
 
         @Override
@@ -83,9 +89,22 @@ public class AArch64AtomicMove {
             Register result = asRegister(resultValue);
             Register newVal = asRegister(newValue);
             Register expected = asRegister(expectedValue);
+
+            // For the atomics with "acquire/release" suffixes, the corresponding memory barrier has
+            // been inserted after/before the CAS respectively. Thus, the CAS operation here does
+            // not need the "acquire" semantics. Contrarily, the strong variants, i.e., atomics
+            // without "acquire/release" suffixes, are not surrounded by memory barriers. Thus, the
+            // CAS operation needs to use the variant of instruction that has the "acquire" effect.
+            boolean acquire = memoryBarrier >= (LOAD_LOAD | LOAD_STORE | STORE_STORE);
+
+            // The exclusive store is always using the "release" semantic. That is required to
+            // ensure visibility to other threads of the exclusive write (assuming it succeeds)
+            // before that of any subsequent writes.
+            boolean release = true;
+
             if (AArch64LIRFlagsVersioned.useLSE(masm.target.arch)) {
                 masm.mov(Math.max(size, 32), result, expected);
-                masm.cas(size, result, newVal, address, true /* acquire */, true /* release */);
+                masm.cas(size, result, newVal, address, acquire, release);
                 AArch64Compare.gpCompare(masm, resultValue, expectedValue);
             } else {
                 // We could avoid using a scratch register here, by reusing resultValue for the
@@ -95,10 +114,10 @@ public class AArch64AtomicMove {
                 Label retry = new Label();
                 Label fail = new Label();
                 masm.bind(retry);
-                masm.loadExclusive(size, result, address, true);
+                masm.loadExclusive(size, result, address, acquire);
                 AArch64Compare.gpCompare(masm, resultValue, expectedValue);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
-                masm.storeExclusive(size, scratch, newVal, address, true);
+                masm.storeExclusive(size, scratch, newVal, address, release);
                 // if scratch == 0 then write successful, else retry.
                 masm.cbnz(32, scratch, retry);
                 masm.bind(fail);

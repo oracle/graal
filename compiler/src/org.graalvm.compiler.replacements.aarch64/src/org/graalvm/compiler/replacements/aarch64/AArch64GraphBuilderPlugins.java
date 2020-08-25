@@ -25,6 +25,7 @@
 package org.graalvm.compiler.replacements.aarch64;
 
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerPlatformSpecificUnsafePlugins;
+import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerUnsafeAtomicsPlugins;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
@@ -86,8 +87,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     registerStringUTF16Plugins(invocationPlugins, replacements);
                 }
                 registerUnsafePlugins(invocationPlugins, replacements, explicitUnsafeNullChecks);
-                // This is temporarily disabled until we implement correct emitting of the CAS
-                // instructions of the proper width.
                 registerPlatformSpecificUnsafePlugins(invocationPlugins, replacements, explicitUnsafeNullChecks,
                                 new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object});
             }
@@ -318,13 +317,14 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements, boolean explicitUnsafeNullChecks) {
         registerUnsafePlugins(new Registration(plugins, Unsafe.class), explicitUnsafeNullChecks,
                         new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}, "Object");
+        Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
+        JavaKind[] supportedJavaKinds = {JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object};
         if (JavaVersionUtil.JAVA_SPEC > 8) {
-            Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
-            registerUnsafePlugins(r, explicitUnsafeNullChecks,
-                            new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object},
-                            JavaVersionUtil.JAVA_SPEC <= 11 ? "Object" : "Reference");
+            registerUnsafePlugins(r, explicitUnsafeNullChecks, supportedJavaKinds, JavaVersionUtil.JAVA_SPEC <= 11 ? "Object" : "Reference");
             registerUnsafeUnalignedPlugins(r, explicitUnsafeNullChecks);
         }
+        registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "weakCompareAndSet", new String[]{"", "Acquire", "Release", "Plain"}, supportedJavaKinds);
+        registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "compareAndExchange", new String[]{"Acquire", "Release"}, supportedJavaKinds);
     }
 
     private static void registerUnsafeUnalignedPlugins(Registration r, boolean explicitUnsafeNullChecks) {

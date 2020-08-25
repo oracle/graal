@@ -51,6 +51,11 @@ public final class UnsafeCompareAndSwapNode extends AbstractUnsafeCompareAndSwap
         assert expected.stamp(NodeView.DEFAULT).isCompatible(newValue.stamp(NodeView.DEFAULT));
     }
 
+    public UnsafeCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind valueKind, LocationIdentity locationIdentity, int memoryBarrier) {
+        super(TYPE, StampFactory.forInteger(JavaKind.Int, 0, 1), object, offset, expected, newValue, valueKind, locationIdentity, memoryBarrier);
+        assert expected.stamp(NodeView.DEFAULT).isCompatible(newValue.stamp(NodeView.DEFAULT));
+    }
+
     @Override
     protected void finishVirtualize(VirtualizerTool tool, LogicNode equalsNode, ValueNode currentValue) {
         ValueNode result = ConditionalNode.create(equalsNode, ConstantNode.forBoolean(true, graph()), ConstantNode.forBoolean(false, graph()), NodeView.DEFAULT);

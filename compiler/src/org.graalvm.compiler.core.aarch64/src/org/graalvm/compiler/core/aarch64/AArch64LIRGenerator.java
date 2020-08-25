@@ -152,8 +152,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
-        emitCompareAndSwap(accessKind, address, expectedValue, newValue);
+    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, int memoryBarrier) {
+        emitCompareAndSwap(accessKind, address, expectedValue, newValue, memoryBarrier);
         assert trueValue.getValueKind().equals(falseValue.getValueKind());
         assert isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0);
         Variable result = newVariable(trueValue.getValueKind());
@@ -162,14 +162,14 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue) {
-        return emitCompareAndSwap(accessKind, address, expectedValue, newValue);
+    public Variable emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, int memoryBarrier) {
+        return emitCompareAndSwap(accessKind, address, expectedValue, newValue, memoryBarrier);
     }
 
-    private Variable emitCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue) {
+    private Variable emitCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, int memoryBarrier) {
         Variable result = newVariable(expectedValue.getValueKind());
         Variable scratch = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new CompareAndSwapOp((AArch64Kind) accessKind.getPlatformKind(), result, loadReg(expectedValue), loadReg(newValue), asAllocatable(address), scratch));
+        append(new CompareAndSwapOp((AArch64Kind) accessKind.getPlatformKind(), result, loadReg(expectedValue), loadReg(newValue), asAllocatable(address), scratch, memoryBarrier));
         return result;
     }
 
