@@ -494,27 +494,30 @@ public class InfoTreeBuilder {
         String nameOfCType = pointerToAnnotation.nameOfCType();
 
         Class<?> pointerToType = pointerToAnnotation.value();
-        CStruct pointerToStructAnnotation;
+        CStruct pointerToCStructAnnotation;
+        RawStructure pointerToRawStructAnnotation;
         CPointerTo pointerToPointerAnnotation;
         do {
-            pointerToStructAnnotation = pointerToType.getAnnotation(CStruct.class);
+            pointerToCStructAnnotation = pointerToType.getAnnotation(CStruct.class);
+            pointerToRawStructAnnotation = pointerToType.getAnnotation(RawStructure.class);
             pointerToPointerAnnotation = pointerToType.getAnnotation(CPointerTo.class);
-            if (pointerToStructAnnotation != null || pointerToPointerAnnotation != null) {
+            if (pointerToCStructAnnotation != null || pointerToRawStructAnnotation != null || pointerToPointerAnnotation != null) {
                 break;
             }
             pointerToType = pointerToType.getInterfaces().length == 1 ? pointerToType.getInterfaces()[0] : null;
         } while (pointerToType != null);
 
-        int n = (nameOfCType.length() > 0 ? 1 : 0) + (pointerToStructAnnotation != null ? 1 : 0) + (pointerToPointerAnnotation != null ? 1 : 0);
+        int n = (nameOfCType.length() > 0 ? 1 : 0) + (pointerToCStructAnnotation != null ? 1 : 0) + (pointerToRawStructAnnotation != null ? 1 : 0) + (pointerToPointerAnnotation != null ? 1 : 0);
         if (n != 1) {
             nativeLibs.addError("Exactly one of " +  //
                             "1) literal C type name, " +  //
                             "2) class annotated with @" + CStruct.class.getSimpleName() + ", or " +  //
-                            "3) class annotated with @" + CPointerTo.class.getSimpleName() + " must be specified in @" + CPointerTo.class.getSimpleName() + " annotation", type);
+                            "3) class annotated with @" + RawStructure.class.getSimpleName() + ", or " + //
+                            "4) class annotated with @" + CPointerTo.class.getSimpleName() + " must be specified in @" + CPointerTo.class.getSimpleName() + " annotation", type);
             return "__error";
         }
 
-        if (pointerToStructAnnotation != null) {
+        if (pointerToCStructAnnotation != null || pointerToRawStructAnnotation != null) {
             return getStructName(getMetaAccess().lookupJavaType(pointerToType)) + "*";
         } else if (pointerToPointerAnnotation != null) {
             return getPointerToTypeName(getMetaAccess().lookupJavaType(pointerToType)) + "*";

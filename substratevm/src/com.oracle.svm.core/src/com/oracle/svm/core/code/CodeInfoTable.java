@@ -36,7 +36,9 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -138,8 +140,8 @@ public class CodeInfoTable {
         NonmovableArray<Byte> referenceMapEncoding = NonmovableArrays.nullArray();
         long referenceMapIndex = CodeInfoQueryResult.NO_REFERENCE_MAP;
         if (info.isNonNull()) {
-            referenceMapEncoding = CodeInfoAccess.getReferenceMapEncoding(info);
-            referenceMapIndex = CodeInfoAccess.lookupReferenceMapIndex(info, CodeInfoAccess.relativeIP(info, ip));
+            referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(info);
+            referenceMapIndex = CodeInfoAccess.lookupStackReferenceMapIndex(info, CodeInfoAccess.relativeIP(info, ip));
         }
         if (referenceMapIndex == CodeInfoQueryResult.NO_REFERENCE_MAP) {
             throw reportNoReferenceMap(sp, ip, info);
@@ -224,6 +226,7 @@ public class CodeInfoTable {
         codeCache.logMethodOperationEnd(num);
     }
 
+    @RestrictHeapAccess(access = Access.NO_ALLOCATION, reason = "Called by the GC")
     public static void invalidateNonStackCodeAtSafepoint(CodeInfo info) {
         VMOperation.guaranteeGCInProgress("Must only be called during a GC.");
         RuntimeCodeCache codeCache = getRuntimeCodeCache();

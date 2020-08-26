@@ -76,6 +76,16 @@ public final class UntetheredCodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
+    public static int getState(UntetheredCodeInfo info) {
+        return cast(info).getState();
+    }
+
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
+    public static String getName(UntetheredCodeInfo info) {
+        return getObjectFieldUnsafe(info, CodeInfoImpl.NAME_OBJFIELD);
+    }
+
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
     private static CodeInfoImpl cast(UntetheredCodeInfo info) {
         assert info.isNonNull();
         return (CodeInfoImpl) info;
