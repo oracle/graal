@@ -49,7 +49,7 @@ More information on the parameters of a command is available by running `mx help
 * `build`: Compile all Java and native code.
 * `clean`: Remove all compilation artifacts.
 * `ideinit`: Create project files for Eclipse and other common IDEs.
-See the [documentation on IDE integration](https://github.com/oracle/graal/blob/master/compiler/docs/IDEs.md) for details.
+See the [documentation on IDE integration](../compiler/docs/IDEs.md) for details.
 
 ## Building images
 
