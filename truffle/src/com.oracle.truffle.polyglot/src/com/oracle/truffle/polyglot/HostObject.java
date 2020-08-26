@@ -56,6 +56,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -1022,17 +1023,100 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isExceptionUnwind() throws UnsupportedMessageException {
+    boolean isExceptionUnwind(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         if (isException()) {
-            return obj instanceof ThreadDeath;
+            return false;
+        }
+        error.enter();
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    ExceptionType getExceptionType(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+        if (isException()) {
+            return ExceptionType.RUNTIME_ERROR;
+        }
+        error.enter();
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean isExceptionIncompleteSource(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+        if (isException()) {
+            return false;
+        }
+        error.enter();
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    int getExceptionExitStatus(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+        error.enter();
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean hasExceptionMessage() {
+        return isException() && ((Throwable) obj).getMessage() != null;
+    }
+
+    @ExportMessage
+    Object getExceptionMessage(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+        String message = isException() ? ((Throwable) obj).getMessage() : null;
+        if (message != null) {
+            return message;
+        }
+        error.enter();
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    @SuppressWarnings("deprecation")
+    boolean hasExceptionCause() {
+        return isException() && ((Throwable) obj).getCause() instanceof com.oracle.truffle.api.TruffleException;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    @SuppressWarnings("deprecation")
+    Object getExceptionCause() throws UnsupportedMessageException {
+        if (isException()) {
+            Throwable cause = ((Throwable) obj).getCause();
+            if (cause instanceof com.oracle.truffle.api.TruffleException) {
+                return cause;
+            }
         }
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
-    public ExceptionType getExceptionType() throws UnsupportedMessageException {
+    @TruffleBoundary
+    boolean hasExceptionSuppressed() {
+        return isException() && EngineAccessor.EXCEPTION.hasExceptionSuppressed(obj);
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getExceptionSuppressed() throws UnsupportedMessageException {
         if (isException()) {
-            return obj instanceof InterruptedException ? ExceptionType.CANCEL : ExceptionType.LANGUAGE_ERROR;
+            return EngineAccessor.EXCEPTION.getExceptionSuppressed(obj);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean hasExceptionStackTrace() {
+        return isException() && TruffleStackTrace.fillIn((Throwable) obj) != null;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getExceptionStackTrace() throws UnsupportedMessageException {
+        if (isException()) {
+            return EngineAccessor.EXCEPTION.getExceptionStackTrace(obj);
         }
         throw UnsupportedMessageException.create();
     }

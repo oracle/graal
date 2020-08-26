@@ -40,9 +40,22 @@
  */
 package com.oracle.truffle.api.exception;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 final class ExceptionAccessor extends Accessor {
 
@@ -69,107 +82,167 @@ final class ExceptionAccessor extends Accessor {
 
         @Override
         public RuntimeException throwException(Object receiver) {
-            throw DefaultAbstractTruffleExceptionExports.throwException((AbstractTruffleException) receiver);
+            throw (AbstractTruffleException) receiver;
         }
 
         @Override
         public boolean isExceptionUnwind(Object receiver) {
-            return DefaultAbstractTruffleExceptionExports.isExceptionUnwind((AbstractTruffleException) receiver);
+            return false;
         }
 
         @Override
         public Object getExceptionType(Object receiver) {
-            return DefaultAbstractTruffleExceptionExports.getExceptionType((AbstractTruffleException) receiver);
+            return ExceptionType.RUNTIME_ERROR;
         }
 
         @Override
         public boolean isExceptionIncompleteSource(Object receiver) {
-            return DefaultAbstractTruffleExceptionExports.isExceptionIncompleteSource((AbstractTruffleException) receiver);
+            return false;
         }
 
         @Override
         public int getExceptionExitStatus(Object receiver) {
-            try {
-                return DefaultAbstractTruffleExceptionExports.getExceptionExitStatus((AbstractTruffleException) receiver);
-            } catch (UnsupportedMessageException me) {
-                throw silenceException(RuntimeException.class, me);
-            }
+            throw throwUnsupportedMessageException();
         }
 
         @Override
         public boolean hasExceptionCause(Object receiver) {
-            return DefaultAbstractTruffleExceptionExports.hasExceptionCause((AbstractTruffleException) receiver);
+            return ((AbstractTruffleException) receiver).getCause() != null;
         }
 
         @Override
         public Object getExceptionCause(Object receiver) {
-            try {
-                return DefaultAbstractTruffleExceptionExports.getExceptionCause((AbstractTruffleException) receiver);
-            } catch (UnsupportedMessageException me) {
-                throw silenceException(RuntimeException.class, me);
+            Throwable throwable = ((AbstractTruffleException) receiver).getCause();
+            if (throwable != null) {
+                return throwable;
+            } else {
+                throw throwUnsupportedMessageException();
             }
         }
 
         @Override
+        @TruffleBoundary
         public boolean hasExceptionSuppressed(Object receiver) {
-            return DefaultAbstractTruffleExceptionExports.hasExceptionSuppressedImpl((Throwable) receiver);
+            for (Throwable se : ((Throwable) receiver).getSuppressed()) {
+                if (isTruffleException(se)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         @Override
+        @TruffleBoundary
         public Object getExceptionSuppressed(Object receiver) {
-            try {
-                return DefaultAbstractTruffleExceptionExports.getExceptionSuppressedImpl((Throwable) receiver);
-            } catch (UnsupportedMessageException me) {
-                throw silenceException(RuntimeException.class, me);
+            List<Throwable> suppressed = new ArrayList<>();
+            for (Throwable se : ((Throwable) receiver).getSuppressed()) {
+                if (isTruffleException(se)) {
+                    suppressed.add(se);
+                }
+            }
+            if (suppressed.isEmpty()) {
+                throw throwUnsupportedMessageException();
+            } else {
+                return new InteropList(suppressed.toArray(new Throwable[suppressed.size()]));
             }
         }
 
         @Override
         public boolean hasExceptionMessage(Object receiver) {
-            return DefaultAbstractTruffleExceptionExports.hasExceptionMessage((AbstractTruffleException) receiver);
+            return ((AbstractTruffleException) receiver).getMessage() != null;
         }
 
         @Override
         public Object getExceptionMessage(Object receiver) {
-            try {
-                return DefaultAbstractTruffleExceptionExports.getExceptionMessage((AbstractTruffleException) receiver);
-            } catch (UnsupportedMessageException me) {
-                throw silenceException(RuntimeException.class, me);
+            String message = ((AbstractTruffleException) receiver).getMessage();
+            if (message == null) {
+                throw throwUnsupportedMessageException();
+            } else {
+                return message;
             }
         }
 
         @Override
         public boolean hasExceptionStackTrace(Object receiver) {
-            return DefaultAbstractTruffleExceptionExports.hasExceptionStackTrace((AbstractTruffleException) receiver);
+            return true;
         }
 
         @Override
+        @TruffleBoundary
         public Object getExceptionStackTrace(Object receiver) {
-            try {
-                return DefaultAbstractTruffleExceptionExports.getExceptionStackTraceImpl((Throwable) receiver);
-            } catch (UnsupportedMessageException me) {
-                throw silenceException(RuntimeException.class, me);
+            List<TruffleStackTraceElement> stack = TruffleStackTrace.getStackTrace((Throwable) receiver);
+            if (stack == null) {
+                stack = Collections.emptyList();
             }
+            Object[] items = new Object[stack.size()];
+            for (int i = 0; i < items.length; i++) {
+                items[i] = stack.get(i).getGuestObject();
+            }
+            return new InteropList(items);
         }
 
         @Override
         public boolean hasSourceLocation(Object receiver) {
-            return DefaultAbstractTruffleExceptionExports.hasSourceLocation((AbstractTruffleException) receiver);
+            Node location = ((AbstractTruffleException) receiver).getLocation();
+            return location != null && location.getEncapsulatingSourceSection() != null;
         }
 
         @Override
         public SourceSection getSourceLocation(Object receiver) {
-            try {
-                return DefaultAbstractTruffleExceptionExports.getSourceLocation((AbstractTruffleException) receiver);
-            } catch (UnsupportedMessageException me) {
-                throw silenceException(RuntimeException.class, me);
+            Node location = ((AbstractTruffleException) receiver).getLocation();
+            SourceSection sourceSection = location != null ? location.getEncapsulatingSourceSection() : null;
+            if (sourceSection == null) {
+                throw throwUnsupportedMessageException();
             }
+            return sourceSection;
+        }
+
+        @SuppressWarnings("deprecation")
+        private static boolean isTruffleException(Throwable t) {
+            return t instanceof com.oracle.truffle.api.TruffleException;
+        }
+
+        private static RuntimeException throwUnsupportedMessageException() {
+            throw silenceException(RuntimeException.class, UnsupportedMessageException.create());
         }
 
         @SuppressWarnings({"unchecked", "unused"})
-        private static <E extends Throwable> RuntimeException silenceException(Class<E> type, Throwable ex) throws E {
+        private static <E extends Throwable> E silenceException(Class<E> type, Throwable ex) throws E {
             throw (E) ex;
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    static final class InteropList implements TruffleObject {
+
+        private final Object[] items;
+
+        InteropList(Object[] items) {
+            this.items = items;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return items.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < items.length;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (index < 0 || index >= items.length) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            return items[(int) index];
+        }
+    }
 }

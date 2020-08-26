@@ -132,7 +132,7 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
             if (exception == null) {
                 throw UnsupportedMessageException.create();
             }
-            return unwind ? ExceptionType.CANCEL : ExceptionType.LANGUAGE_ERROR;
+            return unwind ? ExceptionType.CANCEL : ExceptionType.RUNTIME_ERROR;
         }
 
         @ExportMessage
@@ -140,12 +140,7 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
             if (exception == null) {
                 throw UnsupportedMessageException.create();
             }
-            throw sthrow(RuntimeException.class, exception);
-        }
-
-        @SuppressWarnings({"unchecked", "unused"})
-        private static <T extends Throwable> T sthrow(Class<T> type, Throwable t) throws T {
-            throw (T) t;
+            throw TruffleExceptionTest.sthrow(RuntimeException.class, exception);
         }
     }
 

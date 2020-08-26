@@ -267,7 +267,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     @Deprecated
     @Override
     public final boolean isSyntaxError() {
-        return getExceptionType() == ExceptionType.SYNTAX_ERROR;
+        return getExceptionType() == ExceptionType.PARSE_ERROR;
     }
 
     /**

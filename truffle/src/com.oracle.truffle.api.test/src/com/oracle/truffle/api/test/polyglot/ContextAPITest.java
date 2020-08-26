@@ -166,7 +166,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
         @ExportMessage
         ExceptionType getExceptionType() {
-            return ExceptionType.SYNTAX_ERROR;
+            return ExceptionType.PARSE_ERROR;
         }
 
         @ExportMessage

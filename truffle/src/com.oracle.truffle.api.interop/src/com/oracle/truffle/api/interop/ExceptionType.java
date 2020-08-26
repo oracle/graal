@@ -65,12 +65,12 @@ public enum ExceptionType implements TruffleObject {
      *
      * @since 20.2
      */
-    LANGUAGE_ERROR,
+    RUNTIME_ERROR,
 
     /**
      * Indicates a parser or syntax error.
      *
      * @since 20.2
      */
-    SYNTAX_ERROR
+    PARSE_ERROR
 }

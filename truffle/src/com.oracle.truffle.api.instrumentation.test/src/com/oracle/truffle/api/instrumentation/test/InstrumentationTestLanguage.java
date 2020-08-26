@@ -1348,7 +1348,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
             @ExportMessage
             ExceptionType getExceptionType() {
-                return ExceptionType.LANGUAGE_ERROR;
+                return ExceptionType.RUNTIME_ERROR;
             }
 
             @ExportMessage

@@ -69,7 +69,7 @@ public class SLParseError extends AbstractTruffleException {
 
     @ExportMessage
     ExceptionType getExceptionType() {
-        return ExceptionType.SYNTAX_ERROR;
+        return ExceptionType.PARSE_ERROR;
     }
 
     @ExportMessage
