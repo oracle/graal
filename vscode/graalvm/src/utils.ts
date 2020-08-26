@@ -15,7 +15,14 @@ export function random(low: number, high: number): number {
 export function findExecutable(program: string, graalVMHome: string | undefined): string | undefined {
     if (graalVMHome) {
         let executablePath = path.join(graalVMHome, 'bin', program);
-        if (fs.existsSync(executablePath)) {
+        if (process.platform === 'win32') {
+            if (fs.existsSync(executablePath + '.cmd')) {
+                return executablePath + '.cmd';
+            }
+            if (fs.existsSync(executablePath + '.exe')) {
+                return executablePath + '.exe';
+            }
+        } else if (fs.existsSync(executablePath)) {
             return executablePath;
         }
     }
