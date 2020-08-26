@@ -938,7 +938,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
         Method target;
         if (resolutionSeed.getDeclaringKlass().isInterface()) {
-            target = ((ObjectKlass) receiver.getKlass()).itableLookup(resolutionSeed.getDeclaringKlass(), resolutionSeed.getITableIndex());
+            if (!resolutionSeed.isPrivate() && !resolutionSeed.isStatic()) {
+                target = ((ObjectKlass) receiver.getKlass()).itableLookup(resolutionSeed.getDeclaringKlass(), resolutionSeed.getITableIndex());
+            } else {
+                target = resolutionSeed;
+            }
         } else {
             if (resolutionSeed.isConstructor()) {
                 target = resolutionSeed;
@@ -2477,8 +2481,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      *         </ul>
      */
     @JniImpl
-    public static int GetVersion() {
-        return JniVersion.JNI_VERSION_ESPRESSO;
+    public int GetVersion() {
+        if (getJavaVersion().java8OrEarlier()) {
+            return JniVersion.JNI_VERSION_ESPRESSO_8;
+        } else {
+            return JniVersion.JNI_VERSION_ESPRESSO_11;
+        }
     }
 
     /**
@@ -2797,6 +2805,25 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             return true;
         }
         return InterpreterToVM.instanceOf(obj, clazz.getMirrorKlass());
+    }
+
+    /**
+     * <h3>jobject GetModule(JNIEnv* env, jclass clazz);</h3>
+     * <p>
+     * Obtains the module object associated with a given class.
+     *
+     * @param clazz a Java class object.
+     * @return the module object associated with the given class
+     */
+    @JniImpl
+    public @Host(typeName = "Ljava/lang/Module;") StaticObject GetModule(@Host(Class.class) StaticObject clazz) {
+        if (StaticObject.isNull(clazz)) {
+            throw Meta.throwException(getMeta().java_lang_NullPointerException);
+        }
+        if (!getMeta().java_lang_Class.isAssignableFrom(clazz.getKlass())) {
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "Invalid Class");
+        }
+        return clazz.getMirrorKlass().module().module();
     }
 
     // Checkstyle: resume method name check

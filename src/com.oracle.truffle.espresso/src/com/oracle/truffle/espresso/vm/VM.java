@@ -28,11 +28,13 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
+import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_10;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_1;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_2;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
+import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_9;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 import static com.oracle.truffle.espresso.runtime.EspressoContext.DEFAULT_STACK_SIZE;
@@ -913,12 +915,15 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // endregion Library support
     @VmImpl
-    public static boolean JVM_IsSupportedJNIVersion(int version) {
+    public boolean JVM_IsSupportedJNIVersion(int version) {
         return version == JNI_VERSION_1_1 ||
                         version == JNI_VERSION_1_2 ||
                         version == JNI_VERSION_1_4 ||
                         version == JNI_VERSION_1_6 ||
-                        version == JNI_VERSION_1_8;
+                        version == JNI_VERSION_1_8 ||
+                        (getJavaVersion().java9OrLater() &&
+                                        (version == JNI_VERSION_9 ||
+                                                        version == JNI_VERSION_10));
     }
 
     @VmImpl
