@@ -331,6 +331,9 @@ public abstract class TruffleInstrument {
      * stable or <code>null</code> then an {@link IllegalStateException} is thrown. These
      * restrictions allow the Truffle runtime to read the value more efficiently.
      * <p>
+     * Context thread locals should not contain a strong reference to the provided thread. Use a
+     * weak reference instance for that purpose.
+     * <p>
      * Usage example:
      *
      * <pre>
