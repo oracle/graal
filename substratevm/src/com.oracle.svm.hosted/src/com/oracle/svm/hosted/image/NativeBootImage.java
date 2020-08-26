@@ -98,7 +98,6 @@ import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CSourceCodeWriter;
-import com.oracle.svm.hosted.c.codegen.QueryCodeWriter;
 import com.oracle.svm.hosted.code.CEntryPointCallStubMethod;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
@@ -207,7 +206,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
         writer.appendln();
 
-        QueryCodeWriter.writeCStandardHeaders(writer);
+        writer.writeCStandardHeaders();
 
         List<String> dependencies = header.dependsOn().stream()
                         .map(NativeBootImage::instantiateCHeader)
@@ -242,7 +241,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             throw UserError.abort("Cannot determine header file name for directory %s", outDir);
         } else {
             String fileName = fileNamePath.resolve(header.name() + dynamicSuffix).toString();
-            writer.writeFile(fileName, false);
+            writer.writeFile(fileName);
         }
     }
 

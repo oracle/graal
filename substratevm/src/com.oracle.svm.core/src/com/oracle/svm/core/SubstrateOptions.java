@@ -455,6 +455,9 @@ public class SubstrateOptions {
     @Option(help = "Provide custom C compiler option used for query code compilation.", type = OptionType.User)//
     public static final HostedOptionKey<String[]> CCompilerOption = new HostedOptionKey<>(new String[0]);
 
+    @Option(help = "Use strict checks when performing query code compilation.", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> StrictQueryCodeCompilation = new HostedOptionKey<>(true);
+
     @APIOption(name = "native-image-info")//
     @Option(help = "Show native-toolchain information and image-build settings", type = User)//
     public static final HostedOptionKey<Boolean> DumpTargetInfo = new HostedOptionKey<>(false);

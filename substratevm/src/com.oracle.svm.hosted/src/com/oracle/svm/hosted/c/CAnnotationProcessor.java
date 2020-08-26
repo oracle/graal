@@ -35,7 +35,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -48,7 +50,6 @@ import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.query.QueryResultParser;
 import com.oracle.svm.hosted.c.query.RawStructureLayoutPlanner;
 import com.oracle.svm.hosted.c.query.SizeAndSignednessVerifier;
-import org.graalvm.nativeimage.Platform;
 
 /**
  * Processes native library information for one C Library header file (one { NativeCodeContext }).
@@ -96,7 +97,7 @@ public class CAnnotationProcessor {
              * Generate C source file (the "Query") that will produce the information needed (e.g.,
              * size of struct/union and offsets to their fields, value of enum/macros etc.).
              */
-            writer = new QueryCodeWriter(queryCodeDirectory);
+            writer = new QueryCodeWriter(compilerInvoker, queryCodeDirectory);
             Path queryFile = writer.write(codeInfo);
             if (nativeLibs.getErrors().size() > 0) {
                 return codeInfo;
@@ -160,7 +161,7 @@ public class CAnnotationProcessor {
         if (Platform.includedIn(Platform.LINUX.class)) {
             options.addAll(LibCBase.singleton().getAdditionalQueryCodeCompilerOptions());
         }
-        compilerInvoker.compileAndParseError(options, queryFile, binary, this::reportCompilerError, nativeLibs.debug);
+        compilerInvoker.compileAndParseError(SubstrateOptions.StrictQueryCodeCompilation.getValue(), options, queryFile, binary, this::reportCompilerError, nativeLibs.debug);
         return binary;
     }
 
