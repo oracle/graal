@@ -1800,7 +1800,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     // region quickenForeign
     public int quickenGetField(final VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Field field) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == GETFIELD;
         QuickNode getField;
         synchronized (this) {
@@ -1814,7 +1814,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     public int quickenPutField(final VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Field field) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == PUTFIELD;
         QuickNode putField;
         synchronized (this) {
@@ -1828,7 +1828,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenArrayLength(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode arrayLengthNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -1841,7 +1841,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenByteArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode byteArrayLoadNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -1854,7 +1854,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenCharArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode charArrayLoadNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -1867,7 +1867,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenShortArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode shortArrayLoadNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -1880,7 +1880,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenIntArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode intArrayLoadNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -1893,7 +1893,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenLongArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode longArrayLoadNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -1906,7 +1906,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenFloatArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode floatArrayLoadNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -1919,7 +1919,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenDoubleArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode doubleArrayLoadNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -1932,7 +1932,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenReferenceArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode referenceArrayLoadNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -1945,7 +1945,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenByteArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode byteArrayStoreNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -1958,7 +1958,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenCharArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode charArrayStoreNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -1971,7 +1971,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenShortArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode shortArrayStoreNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -1984,7 +1984,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenIntArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode intArrayStoreNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -1997,7 +1997,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenLongArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode longArrayStoreNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -2010,7 +2010,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenFloatArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode floatArrayStoreNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -2023,7 +2023,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenDoubleArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode doubleArrayStoreNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
@@ -2036,7 +2036,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private void quickenReferenceArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode referenceArrayStoreNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
