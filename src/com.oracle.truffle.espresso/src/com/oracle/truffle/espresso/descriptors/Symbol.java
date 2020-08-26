@@ -276,6 +276,14 @@ public final class Symbol<T> extends ByteSequence {
         // j.l.Shutdown
         public static final Symbol<Name> shutdown = StaticSymbols.putName("shutdown");
 
+        // j.l.StackStreamFactory
+        public static final Symbol<Name> doStackWalk = StaticSymbols.putName("doStackWalk");
+        public static final Symbol<Name> callStackWalk = StaticSymbols.putName("callStackWalk");
+
+        // j.l.StackFrameInfo
+        public static final Symbol<Name> memberName = StaticSymbols.putName("memberName");
+        public static final Symbol<Name> bci = StaticSymbols.putName("bci");
+
         // java.nio.ByteBuffer
         public static final Symbol<Name> wrap = StaticSymbols.putName("wrap");
 
@@ -636,6 +644,12 @@ public final class Symbol<T> extends ByteSequence {
         // Modules
         public static final Symbol<Type> java_lang_Module = StaticSymbols.putType("Ljava/lang/Module;");
 
+        // Stack walking API
+        public static final Symbol<Type> java_lang_StackWalker = StaticSymbols.putType("Ljava/lang/StackWalker;");
+        public static final Symbol<Type> java_lang_StackStreamFactory = StaticSymbols.putType("Ljava/lang/StackStreamFactory;");
+        public static final Symbol<Type> java_lang_AbstractStackWalker = StaticSymbols.putType("Ljava/lang/StackStreamFactory$AbstractStackWalker;");
+        public static final Symbol<Type> java_lang_StackFrameInfo = StaticSymbols.putType("Ljava/lang/StackFrameInfo;");
+
         // Special threads
         public static final Symbol<Type> java_lang_ref_Finalizer$FinalizerThread = StaticSymbols.putType("Ljava/lang/ref/Finalizer$FinalizerThread;");
         public static final Symbol<Type> java_lang_ref_Reference$ReferenceHandler = StaticSymbols.putType("Ljava/lang/ref/Reference$ReferenceHandler;");
@@ -706,6 +720,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_char_array = StaticSymbols.putSignature(Type._void, Type._char_array);
         public static final Symbol<Signature> _char_array = StaticSymbols.putSignature(Type._char_array);
         public static final Symbol<Signature> _int_boolean_boolean = StaticSymbols.putSignature(Type._int, Type._boolean, Type._boolean);
+        public static final Symbol<Signature> Object_long_int_int_int_int = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int, Type._int);
+        public static final Symbol<Signature> Object_long_int_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int,
+                        Type.java_lang_Object_array);
 
         public static final Symbol<Signature> Boolean_boolean = StaticSymbols.putSignature(Type.java_lang_Boolean, Type._boolean);
         public static final Symbol<Signature> Byte_byte = StaticSymbols.putSignature(Type.java_lang_Byte, Type._byte);

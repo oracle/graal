@@ -1301,8 +1301,8 @@ JNIEXPORT void JNICALL JVM_BeforeHalt() {
 JNIEXPORT jobject JNICALL JVM_CallStackWalk(JNIEnv *env, jobject stackStream, jlong mode,
                   jint skip_frames, jint frame_count, jint start_index,
                   jobjectArray frames) {
-  UNIMPLEMENTED(JVM_CallStackWalk);
-  return NULL;
+  IMPLEMENTED(JVM_CallStackWalk);
+  return (*getEnv())->JVM_CallStackWalk(env, stackStream, mode, skip_frames, frame_count, start_index, frames);
 }
 
 JNIEXPORT jint JNICALL JVM_ConstantPoolGetClassRefIndexAt(JNIEnv *env, jobject obj, jobject unused, jint index) {
@@ -1393,8 +1393,8 @@ JNIEXPORT void JNICALL JVM_InitStackTraceElementArray(JNIEnv *env, jobjectArray 
 JNIEXPORT jint JNICALL JVM_MoreStackWalk(JNIEnv *env, jobject stackStream, jlong mode, jlong anchor,
                   jint frame_count, jint start_index,
                   jobjectArray frames) {
-  UNIMPLEMENTED(JVM_MoreStackWalk);
-  return 0;
+  IMPLEMENTED(JVM_MoreStackWalk);
+  return (*getEnv())->JVM_MoreStackWalk(env, stackStream, mode, anchor, frame_count, start_index, frames);;
 }
 
 JNIEXPORT void JNICALL JVM_SetBootLoaderUnnamedModule(JNIEnv *env, jobject module) {

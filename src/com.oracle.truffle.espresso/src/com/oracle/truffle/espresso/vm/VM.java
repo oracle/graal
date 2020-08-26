@@ -291,6 +291,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownIdentifierException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
+        if (getJavaVersion().java9OrLater()) {
+            stackWalk = new StackWalk();
+        } else {
+            stackWalk = null;
+        }
     }
 
     @Override
@@ -622,6 +627,15 @@ public final class VM extends NativeEnv implements ContextAccess {
     // endregion JNI Invocation Interface
 
     public static class StackElement {
+        /**
+         * @see StackTraceElement#isNativeMethod()
+         */
+        public static int NATIVE_BCI = -2;
+        /**
+         * @see StackTraceElement#toString()
+         */
+        public static int UNKNOWN_BCI = -1;
+
         private final Method m;
         private final int bci;
 
@@ -1106,7 +1120,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @TruffleBoundary
-    private static EspressoRootNode getEspressoRootFromFrame(FrameInstance frameInstance) {
+    public static EspressoRootNode getEspressoRootFromFrame(FrameInstance frameInstance) {
         if (frameInstance.getCallTarget() instanceof RootCallTarget) {
             RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
             RootNode rootNode = callTarget.getRootNode();
@@ -1118,7 +1132,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @TruffleBoundary
-    private static Method getMethodFromFrame(FrameInstance frameInstance) {
+    public static Method getMethodFromFrame(FrameInstance frameInstance) {
         EspressoRootNode root = getEspressoRootFromFrame(frameInstance);
         if (root != null) {
             return root.getMethod();
@@ -2710,6 +2724,8 @@ public final class VM extends NativeEnv implements ContextAccess {
      * of precision.
      */
     public static long JVM_GetNanoTimeAdjustment(@Host(Class.class) StaticObject ignored, long offset) {
+        // Instant.now() uses System.currentTimeMillis() on a host Java 8. This might produce some
+        // loss of precision.
         Instant now = Instant.now();
         long secs = now.getEpochSecond();
         long nanos = now.getNano();
@@ -2732,8 +2748,22 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     @SuppressWarnings("unused")
-    public void JVM_InitStackTraceElement(@Host(StackTraceElement.class) StaticObject element, @Host(typeName = "Ljava/lang/StackFrameInfo;") StaticObject info) {
-        // TODO: this
+    public void JVM_InitStackTraceElement(@Host(StackTraceElement.class) StaticObject element, @Host(typeName = "Ljava/lang/StackFrameInfo;") StaticObject info,
+                    @GuestCall(target = "java_lang_Class_getName") DirectCallNode classGetName) {
+        if (StaticObject.isNull(element) || StaticObject.isNull(info)) {
+            throw Meta.throwException(getMeta().java_lang_NullPointerException);
+        }
+        StaticObject mname = info.getField(getMeta().java_lang_StackFrameInfo_memberName);
+        if (StaticObject.isNull(mname)) {
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_InternalError, "uninitialized StackFrameInfo !");
+        }
+        StaticObject clazz = mname.getField(getMeta().java_lang_invoke_MemberName_clazz);
+        Method m = (Method) mname.getHiddenField(getMeta().HIDDEN_VMTARGET);
+        if (m == null) {
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_InternalError, "uninitialized StackFrameInfo !");
+        }
+        int bci = info.getIntField(getMeta().java_lang_StackFrameInfo_bci);
+        fillInElement(element, new VM.StackElement(m, bci), classGetName);
     }
 
     @VmImpl
@@ -2793,6 +2823,41 @@ public final class VM extends NativeEnv implements ContextAccess {
         // Fill in source information
         ste.setField(getMeta().java_lang_StackTraceElement_fileName, getMeta().toGuestString(m.getSourceFile()));
         ste.setIntField(getMeta().java_lang_StackTraceElement_lineNumber, m.bciToLineNumber(element.getBCI()));
+    }
+
+    private final StackWalk stackWalk;
+
+    private void checkStackWalkArguments(int batchSize, int startIndex, @Host(Object[].class) StaticObject frames) {
+        if (StaticObject.isNull(frames)) {
+            throw Meta.throwException(getMeta().java_lang_NullPointerException);
+        }
+        assert frames.isArray();
+        int limit = startIndex + batchSize;
+        if (frames.length() < limit) {
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "Not enough space in buffers");
+        }
+    }
+
+    @VmImpl
+    @JniImpl
+    @TruffleBoundary
+    public @Host(Object.class) StaticObject JVM_CallStackWalk(
+                    @Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
+                    int batchSize, int startIndex,
+                    @Host(Object[].class) StaticObject frames) {
+        checkStackWalkArguments(batchSize, startIndex, frames);
+        return stackWalk.fetchFirstBatch(stackStream, mode, skipframes, batchSize, startIndex, frames, getMeta());
+    }
+
+    @VmImpl
+    @JniImpl
+    @TruffleBoundary
+    public int JVM_MoreStackWalk(
+                    @Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, long anchor,
+                    int batchSize, int startIndex,
+                    @Host(Object[].class) StaticObject frames) {
+        checkStackWalkArguments(batchSize, startIndex, frames);
+        return stackWalk.fetchNextBatch(stackStream, mode, anchor, batchSize, startIndex, frames, getMeta());
     }
     // Checkstyle: resume method name check
 }

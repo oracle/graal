@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import static com.oracle.truffle.espresso.vm.VM.StackElement.NATIVE_BCI;
+import static com.oracle.truffle.espresso.vm.VM.StackElement.UNKNOWN_BCI;
+
 import java.util.Arrays;
 
 import com.oracle.truffle.api.frame.Frame;
@@ -42,6 +45,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.FrameCookie;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -54,7 +58,11 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     @Child protected EspressoInstrumentableNode methodNode;
 
     private final FrameSlot monitorSlot;
-    private final FrameSlot frameIdSlot;
+    /**
+     * Shared slot for some VM method implementations that needs to leave a mark of passage in a
+     * particular frame. See {@link FrameCookie}.
+     */
+    private final FrameSlot cookieSlot;
 
     private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
 
@@ -62,14 +70,14 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
         this.methodNode = methodNode;
         this.monitorSlot = usesMonitors ? frameDescriptor.addFrameSlot("monitor", FrameSlotKind.Object) : null;
-        this.frameIdSlot = frameDescriptor.addFrameSlot("frameId", FrameSlotKind.Long);
+        this.cookieSlot = frameDescriptor.addFrameSlot("cookie", FrameSlotKind.Object);
     }
 
     private EspressoRootNode(EspressoRootNode split, FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
         super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
         this.methodNode = methodNode;
         this.monitorSlot = split.monitorSlot;
-        this.frameIdSlot = split.frameIdSlot;
+        this.cookieSlot = split.cookieSlot;
     }
 
     public final Method getMethod() {
@@ -153,19 +161,48 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     public final int readBCI(Frame frame) {
-        return ((BytecodeNode) getMethodNode()).readBCI(frame);
+        if (isBytecodeNode()) {
+            return ((BytecodeNode) getMethodNode()).readBCI(frame);
+        } else if (getMethod().isNative()) {
+            return NATIVE_BCI; // native
+        } else {
+            return UNKNOWN_BCI; // unknown
+        }
     }
 
     public final void setFrameId(Frame frame, long frameId) {
-        frame.setLong(frameIdSlot, frameId);
+        frame.setObject(cookieSlot, FrameCookie.createPrivilegedCookie(frameId));
     }
 
-    public final long readFrameIdOrZero(Frame frame) {
+    public final void setStackWalkAnchor(Frame frame, long anchor) {
+        frame.setObject(cookieSlot, FrameCookie.createStackWalkCookie(anchor));
+    }
+
+    private FrameCookie getCookie(Frame frame) {
         try {
-            return frame.isLong(frameIdSlot) ? frame.getLong(frameIdSlot) : 0L;
+            if (frame.isObject(cookieSlot)) {
+                return (FrameCookie) frame.getObject(cookieSlot);
+            }
+            return null;
         } catch (FrameSlotTypeException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
+    }
+
+    public final long readFrameIdOrZero(Frame frame) {
+        FrameCookie cookie = getCookie(frame);
+        if (cookie != null && cookie.isPrivileged()) {
+            return cookie.getData();
+        }
+        return 0L;
+    }
+
+    public final long readStackAnchorOrZero(Frame frame) {
+        FrameCookie cookie = getCookie(frame);
+        if (cookie != null && cookie.isStackWalk()) {
+            return cookie.getData();
+        }
+        return 0L;
     }
 
     public boolean usesMonitors() {
