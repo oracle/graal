@@ -1019,6 +1019,7 @@ public class InliningUtil extends ValueMergeUtil {
     private static final SpeculationReasonGroup FALLBACK_DEOPT_SPECULATION = new SpeculationReasonGroup("FallbackDeopt", ResolvedJavaMethod.class, int.class, String.class);
 
     public static SpeculationLog.SpeculationReason createSpeculation(Invoke invoke, JavaTypeProfile typeProfile) {
+        assert typeProfile.getNotRecordedProbability() == 0.0D;
         FrameState frameState = invoke.stateAfter();
         assert frameState != null;
         return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), frameState.bci, typeProfile.toString());

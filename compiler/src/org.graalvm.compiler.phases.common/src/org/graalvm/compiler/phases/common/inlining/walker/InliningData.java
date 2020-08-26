@@ -277,7 +277,7 @@ public class InliningData {
         OptionValues options = invoke.asNode().getOptions();
 
         SpeculationLog speculationLog = graph.getSpeculationLog();
-        SpeculationLog.SpeculationReason speculation = InliningUtil.createSpeculation(invoke, typeProfile);
+        SpeculationLog.SpeculationReason speculation = notRecordedTypeProbability == 0 ? InliningUtil.createSpeculation(invoke, typeProfile) : null;
 
         if (ptypes.length == 1 && notRecordedTypeProbability == 0 && (speculationLog == null || speculationLog.maySpeculate(speculation))) {
             if (!optimisticOpts.inlineMonomorphicCalls(options)) {
