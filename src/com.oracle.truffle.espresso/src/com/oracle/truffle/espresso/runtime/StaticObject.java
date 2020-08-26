@@ -1176,12 +1176,12 @@ public final class StaticObject implements TruffleObject {
 
     // Shallow copy.
     public StaticObject copy() {
+        if (isNull(this)) {
+            return this;
+        }
         if (isForeignObject()) {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
-        }
-        if (isNull(this)) {
-            return NULL;
         }
         if (getKlass().isArray()) {
             return createArray((ArrayKlass) getKlass(), cloneWrappedArray());
