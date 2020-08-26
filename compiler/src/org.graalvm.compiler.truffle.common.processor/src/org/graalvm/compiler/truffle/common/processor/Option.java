@@ -161,13 +161,6 @@ public class Option {
             .help("Disable call target splitting if the number of nodes created by splitting exceeds this factor times node count")
             .deprecatedBy("SplittingGrowthLimit"),
 
-        option("TruffleSplittingMaxNumberOfSplitNodes")
-            .type("Integer")
-            .category("INTERNAL")
-            .def("PolyglotCompilerOptions.SplittingMaxNumberOfSplitNodes.getDefaultValue()")
-            .help("Disable call target splitting if number of nodes created by splitting exceeds this limit")
-            .deprecatedBy("SplittingMaxNumberOfSplitNodes"),
-
         option("TruffleSplittingMaxPropagationDepth")
             .type("Integer")
             .category("INTERNAL")
