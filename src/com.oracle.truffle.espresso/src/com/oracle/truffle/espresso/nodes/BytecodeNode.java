@@ -705,7 +705,6 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case ALOAD_2: // fall through
                     case ALOAD_3: putObject(frame, top, getLocalObject(frame, curOpcode - ALOAD_0)); break;
 
-                    // TODO: check if the offsets in the node are correct (seems correct becasue nothing changes from long/double instruction to int etc)
                     case IALOAD:
                         if (noForeignObjects.isValid()) {
                             putInt(frame, top - 2, getInterpreterToVM().getArrayInt(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
@@ -715,7 +714,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 2);
                                 putInt(frame, top - 2, getInterpreterToVM().getArrayInt(peekInt(frame, top - 1), array));
                             } else {
-                                quickenIntArrayLoad(frame, top, curBCI);
+                                quickenArrayLoad(frame, top, curBCI, JavaKind.Int);
                             }
                         }
                         break;
@@ -728,7 +727,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 2);
                                 putLong(frame, top - 2, getInterpreterToVM().getArrayLong(peekInt(frame, top - 1), array));
                             } else {
-                                quickenLongArrayLoad(frame, top, curBCI);
+                                quickenArrayLoad(frame, top, curBCI, JavaKind.Long);
                             }
                         }
                         break;
@@ -741,7 +740,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 2);
                                 putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(peekInt(frame, top - 1), array));
                             } else {
-                                quickenFloatArrayLoad(frame, top, curBCI);
+                                quickenArrayLoad(frame, top, curBCI, JavaKind.Float);
                             }
                         }
                         break;
@@ -754,7 +753,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 2);
                                 putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(peekInt(frame, top - 1), array));
                             } else {
-                                quickenDoubleArrayLoad(frame, top, curBCI);
+                                quickenArrayLoad(frame, top, curBCI, JavaKind.Double);
                             }
                         }
                         break;
@@ -772,7 +771,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 2);
                                 putObject(frame, top - 2, getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), array));
                             } else {
-                                quickenReferenceArrayLoad(frame, top, curBCI);
+                                quickenArrayLoad(frame, top, curBCI, JavaKind.Object);
                             }
                         }
                         break;
@@ -785,7 +784,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 2);
                                 putInt(frame, top - 2, getInterpreterToVM().getArrayByte(peekInt(frame, top - 1), array));
                             } else {
-                                quickenByteArrayLoad(frame, top, curBCI);
+                                quickenArrayLoad(frame, top, curBCI, JavaKind.Byte);
                             }
                         }
                         break;
@@ -798,7 +797,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 2);
                                 putInt(frame, top - 2, getInterpreterToVM().getArrayChar(peekInt(frame, top - 1), array));
                             } else {
-                                quickenCharArrayLoad(frame, top, curBCI);
+                                quickenArrayLoad(frame, top, curBCI, JavaKind.Char);
                             }
                         }
                         break;
@@ -811,7 +810,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 2);
                                 putInt(frame, top - 2, getInterpreterToVM().getArrayShort(peekInt(frame, top - 1), array));
                             } else {
-                                quickenShortArrayLoad(frame, top, curBCI);
+                                quickenArrayLoad(frame, top, curBCI, JavaKind.Short);
                             }
                         }
                         break;
@@ -852,7 +851,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 3);
                                 getInterpreterToVM().setArrayInt(peekInt(frame, top - 1), peekInt(frame, top - 2), array);
                             } else {
-                                quickenIntArrayStore(frame, top, curBCI);
+                                quickenArrayStore(frame, top, curBCI, JavaKind.Int);
                             }
                         }
                         break;
@@ -865,7 +864,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 4);
                                 getInterpreterToVM().setArrayLong(peekLong(frame, top - 1), peekInt(frame, top - 3), array);
                             } else {
-                                quickenLongArrayStore(frame, top, curBCI);
+                                quickenArrayStore(frame, top, curBCI, JavaKind.Long);
                             }
                         }
                         break;
@@ -878,7 +877,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 3);
                                 getInterpreterToVM().setArrayFloat(peekFloat(frame, top - 1), peekInt(frame, top - 2), array);
                             } else {
-                                quickenFloatArrayStore(frame, top, curBCI);
+                                quickenArrayStore(frame, top, curBCI, JavaKind.Float);
                             }
                         }
                         break;
@@ -891,7 +890,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 4);
                                 getInterpreterToVM().setArrayDouble(peekDouble(frame, top - 1), peekInt(frame, top - 3), array);
                             } else {
-                                quickenDoubleArrayStore(frame, top, curBCI);
+                                quickenArrayStore(frame, top, curBCI, JavaKind.Double);
                             }
                         }
                         break;
@@ -904,7 +903,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 3);
                                 getInterpreterToVM().setArrayObject(peekObject(frame, top - 1), peekInt(frame, top - 2), array);
                             } else {
-                                quickenReferenceArrayStore(frame, top, curBCI);
+                                quickenArrayStore(frame, top, curBCI, JavaKind.Object);
                             }
                         }
                         break;
@@ -917,7 +916,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 3);
                                 getInterpreterToVM().setArrayByte((byte) peekInt(frame, top - 1), peekInt(frame, top - 2), array);
                             } else {
-                                quickenByteArrayStore(frame, top, curBCI);
+                                quickenArrayStore(frame, top, curBCI, JavaKind.Byte);
                             }
                         }
                         break;
@@ -930,7 +929,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 3);
                                 getInterpreterToVM().setArrayChar((char) peekInt(frame, top - 1), peekInt(frame, top - 2), array);
                             } else {
-                                quickenCharArrayStore(frame, top, curBCI);
+                                quickenArrayStore(frame, top, curBCI, JavaKind.Char);
                             }
                         }
                         break;
@@ -943,7 +942,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 releaseObject(frame, top - 3);
                                 getInterpreterToVM().setArrayShort((short) peekInt(frame, top - 1), peekInt(frame, top - 2), array);
                             } else {
-                                quickenShortArrayStore(frame, top, curBCI);
+                                quickenArrayStore(frame, top, curBCI, JavaKind.Short);
                             }
                         }
                         break;
@@ -1799,6 +1798,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     // region quickenForeign
+
     public int quickenGetField(final VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Field field) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == GETFIELD;
@@ -1840,212 +1840,66 @@ public final class BytecodeNode extends EspressoMethodNode {
         arrayLengthNode.execute(frame);
     }
 
-    private void quickenByteArrayLoad(final VirtualFrame frame, int top, int curBCI) {
+    private void quickenArrayLoad(final VirtualFrame frame, int top, int curBCI, JavaKind componentKind) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode byteArrayLoadNode;
+        QuickNode arrayLoadNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                byteArrayLoadNode = sparseNodes[curBCI];
+                arrayLoadNode = sparseNodes[curBCI];
             } else {
-                byteArrayLoadNode = injectQuick(curBCI, ByteArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
+                // @formatter:off
+                switch (componentKind)  {
+                    case Boolean: // fall-through
+                    case Byte:
+                        arrayLoadNode = ByteArrayLoadNodeGen.create(top, curBCI);
+                        break;
+                    case Short  : arrayLoadNode = ShortArrayLoadNodeGen.create(top, curBCI);  break;
+                    case Char   : arrayLoadNode = CharArrayLoadNodeGen.create(top, curBCI);   break;
+                    case Int    : arrayLoadNode = IntArrayLoadNodeGen.create(top, curBCI);    break;
+                    case Float  : arrayLoadNode = FloatArrayLoadNodeGen.create(top, curBCI);  break;
+                    case Long   : arrayLoadNode = LongArrayLoadNodeGen.create(top, curBCI);   break;
+                    case Double : arrayLoadNode = DoubleArrayLoadNodeGen.create(top, curBCI); break;
+                    case Object : arrayLoadNode = ReferenceArrayLoadNodeGen.create(top, curBCI); break;
+                    default:
+                        CompilerDirectives.transferToInterpreter();
+                        throw EspressoError.shouldNotReachHere("unexpected kind");
+                }
+                // @formatter:on
+                arrayLoadNode = injectQuick(curBCI, arrayLoadNode, SLIM_QUICK);
             }
         }
-        byteArrayLoadNode.execute(frame);
+        arrayLoadNode.execute(frame);
     }
 
-    private void quickenCharArrayLoad(final VirtualFrame frame, int top, int curBCI) {
+    private void quickenArrayStore(final VirtualFrame frame, int top, int curBCI, JavaKind componentKind) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode charArrayLoadNode;
+        QuickNode arrayStoreNode;
         synchronized (this) {
             if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                charArrayLoadNode = sparseNodes[curBCI];
+                arrayStoreNode = sparseNodes[curBCI];
             } else {
-                charArrayLoadNode = injectQuick(curBCI, CharArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
+                // @formatter:off
+                switch (componentKind)  {
+                    case Boolean: // fall-through
+                    case Byte:
+                        arrayStoreNode = ByteArrayStoreNodeGen.create(top, curBCI);
+                        break;
+                    case Short  : arrayStoreNode = ShortArrayStoreNodeGen.create(top, curBCI);  break;
+                    case Char   : arrayStoreNode = CharArrayStoreNodeGen.create(top, curBCI);   break;
+                    case Int    : arrayStoreNode = IntArrayStoreNodeGen.create(top, curBCI);    break;
+                    case Float  : arrayStoreNode = FloatArrayStoreNodeGen.create(top, curBCI);  break;
+                    case Long   : arrayStoreNode = LongArrayStoreNodeGen.create(top, curBCI);   break;
+                    case Double : arrayStoreNode = DoubleArrayStoreNodeGen.create(top, curBCI); break;
+                    case Object : arrayStoreNode = ReferenceArrayStoreNodeGen.create(top, curBCI); break;
+                    default:
+                        CompilerDirectives.transferToInterpreter();
+                        throw EspressoError.shouldNotReachHere("unexpected kind");
+                }
+                // @formatter:on
+                arrayStoreNode = injectQuick(curBCI, arrayStoreNode, SLIM_QUICK);
             }
         }
-        charArrayLoadNode.execute(frame);
-    }
-
-    private void quickenShortArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode shortArrayLoadNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                shortArrayLoadNode = sparseNodes[curBCI];
-            } else {
-                shortArrayLoadNode = injectQuick(curBCI, ShortArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        shortArrayLoadNode.execute(frame);
-    }
-
-    private void quickenIntArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode intArrayLoadNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                intArrayLoadNode = sparseNodes[curBCI];
-            } else {
-                intArrayLoadNode = injectQuick(curBCI, IntArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        intArrayLoadNode.execute(frame);
-    }
-
-    private void quickenLongArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode longArrayLoadNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                longArrayLoadNode = sparseNodes[curBCI];
-            } else {
-                longArrayLoadNode = injectQuick(curBCI, LongArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        longArrayLoadNode.execute(frame);
-    }
-
-    private void quickenFloatArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode floatArrayLoadNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                floatArrayLoadNode = sparseNodes[curBCI];
-            } else {
-                floatArrayLoadNode = injectQuick(curBCI, FloatArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        floatArrayLoadNode.execute(frame);
-    }
-
-    private void quickenDoubleArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode doubleArrayLoadNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                doubleArrayLoadNode = sparseNodes[curBCI];
-            } else {
-                doubleArrayLoadNode = injectQuick(curBCI, DoubleArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        doubleArrayLoadNode.execute(frame);
-    }
-
-    private void quickenReferenceArrayLoad(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode referenceArrayLoadNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                referenceArrayLoadNode = sparseNodes[curBCI];
-            } else {
-                referenceArrayLoadNode = injectQuick(curBCI, ReferenceArrayLoadNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        referenceArrayLoadNode.execute(frame);
-    }
-
-    private void quickenByteArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode byteArrayStoreNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                byteArrayStoreNode = sparseNodes[curBCI];
-            } else {
-                byteArrayStoreNode = injectQuick(curBCI, ByteArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        byteArrayStoreNode.execute(frame);
-    }
-
-    private void quickenCharArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode charArrayStoreNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                charArrayStoreNode = sparseNodes[curBCI];
-            } else {
-                charArrayStoreNode = injectQuick(curBCI, CharArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        charArrayStoreNode.execute(frame);
-    }
-
-    private void quickenShortArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode shortArrayStoreNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                shortArrayStoreNode = sparseNodes[curBCI];
-            } else {
-                shortArrayStoreNode = injectQuick(curBCI, ShortArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        shortArrayStoreNode.execute(frame);
-    }
-
-    private void quickenIntArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode intArrayStoreNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                intArrayStoreNode = sparseNodes[curBCI];
-            } else {
-                intArrayStoreNode = injectQuick(curBCI, IntArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        intArrayStoreNode.execute(frame);
-    }
-
-    private void quickenLongArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode longArrayStoreNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                longArrayStoreNode = sparseNodes[curBCI];
-            } else {
-                longArrayStoreNode = injectQuick(curBCI, LongArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        longArrayStoreNode.execute(frame);
-    }
-
-    private void quickenFloatArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode floatArrayStoreNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                floatArrayStoreNode = sparseNodes[curBCI];
-            } else {
-                floatArrayStoreNode = injectQuick(curBCI, FloatArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        floatArrayStoreNode.execute(frame);
-    }
-
-    private void quickenDoubleArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode doubleArrayStoreNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                doubleArrayStoreNode = sparseNodes[curBCI];
-            } else {
-                doubleArrayStoreNode = injectQuick(curBCI, DoubleArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        doubleArrayStoreNode.execute(frame);
-    }
-
-    private void quickenReferenceArrayStore(final VirtualFrame frame, int top, int curBCI) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        QuickNode referenceArrayStoreNode;
-        synchronized (this) {
-            if (bs.currentBC(curBCI) == SLIM_QUICK) {
-                referenceArrayStoreNode = sparseNodes[curBCI];
-            } else {
-                referenceArrayStoreNode = injectQuick(curBCI, ReferenceArrayStoreNodeGen.create(top, curBCI), SLIM_QUICK);
-            }
-        }
-        referenceArrayStoreNode.execute(frame);
+        arrayStoreNode.execute(frame);
     }
 
     // endregion quickenForeign
