@@ -52,7 +52,8 @@ public class NotificationMessage extends Message {
      * The notification's params.
      */
     public Object getParams() {
-        return jsonData.opt("params");
+        Object params = jsonData.opt("params");
+        return params.equals(null) ? null : params;
     }
 
     public NotificationMessage setParams(Object params) {
