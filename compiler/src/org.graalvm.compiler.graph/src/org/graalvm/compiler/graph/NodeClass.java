@@ -1404,7 +1404,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             for (int i = 0; i < list.size(); ++i) {
                 Node curNode = list.get(i);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Input not alive";
+                    assert curNode.isAlive() : "Input not alive " + curNode;
                     curNode.addUsage(node);
                 }
             }
