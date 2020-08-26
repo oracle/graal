@@ -1576,7 +1576,7 @@ public abstract class TruffleLanguage<C> {
     /**
      * Creates a new context thread local reference for this Truffle language. Context thread locals
      * for languages allow to store additional top-level values for each context and thread. The
-     * factory may be invoked on any thread other the thread of the context thread local value.
+     * factory may be invoked on any thread other than the thread of the context thread local value.
      * <p>
      * Context thread local references must be created during the invocation in the
      * {@link TruffleLanguage} constructor. Calling this method at a later point in time will throw

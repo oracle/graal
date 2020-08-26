@@ -318,7 +318,7 @@ public abstract class TruffleInstrument {
     /**
      * Creates a new context thread local reference for this Truffle language. Context thread locals
      * for languages allow to store additional top-level values for each context and thread. The
-     * factory may be invoked on any thread other the thread of the context thread local value.
+     * factory may be invoked on any thread other than the thread of the context thread local value.
      * Context thread local factories are guaranteed to be invoked after the instrument is
      * {@link #onCreate(Env) created}.
      * <p>
@@ -393,7 +393,7 @@ public abstract class TruffleInstrument {
     }
 
     /**
-     * Context local factory for Truffle instruments. Creates a new value per context and thread.
+     * Context local factory for Truffle instruments. Creates a new value per context.
      *
      * @since 20.3
      */
@@ -413,7 +413,7 @@ public abstract class TruffleInstrument {
     }
 
     /**
-     * Context local factory for Truffle instruments. Creates a new value per context.
+     * Context local factory for Truffle instruments. Creates a new value per context and thread.
      *
      * @since 20.3
      */

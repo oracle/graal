@@ -50,11 +50,12 @@ import com.oracle.truffle.api.TruffleContext;
  * needs to be taken to not unnecessarily slow down thread activation.
  * <p>
  * The event notification starts immediately after the listener is registered. It is therefore
- * possible that {@link #onLeaveThread(TruffleContext)} is called without ever
- * {@link #onEnterThread(TruffleContext)} being invoked, if the listener is attached in parallel.
- * When any of the listener methods are executed then the {@link ThreadsActivationListener} is
- * guaranteed to be a {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
- * constant}. The provided {@link TruffleContext} may be a PE constant, but it is not guaranteed.
+ * possible that {@link #onLeaveThread(TruffleContext)} is called without
+ * {@link #onEnterThread(TruffleContext)} ever being invoked, if the listener is attached in
+ * parallel. When any of the listener methods are executed then the
+ * {@link ThreadsActivationListener} is guaranteed to be a
+ * {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation constant}. The
+ * provided {@link TruffleContext} may be a PE constant, but it is not guaranteed.
  * <p>
  * Common use-cases for threads activation include capturing the time the context is active,
  * changing thread priorities or measuring thread allocated bytes of a context.
@@ -79,10 +80,10 @@ public interface ThreadsActivationListener {
     /**
      * Notified when a context is entered on the {@link Thread#currentThread() current thread}.
      * Leaving a thread indicates that the context is no longer active on that thread. A context
-     * maybe entered multiple times per thread. This method is executed frequently and must be
-     * designed for compilation.
+     * maybe left multiple times per thread. This method is executed frequently and must be designed
+     * for compilation.
      *
-     * @param context the context being entered on the current thread
+     * @param context the context being left on the current thread
      * @since 20.3
      */
     void onLeaveThread(TruffleContext context);
