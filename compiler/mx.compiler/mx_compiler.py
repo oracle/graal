@@ -1445,6 +1445,16 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJvmciComponent(
     graal_compiler='graal',
 ))
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmComponent(
+    suite=_suite,
+    name='Disassembler',
+    short_name='dis',
+    dir_name='graal',
+    license_files=[],
+    third_party_license_files=[],
+    support_libraries_distributions=['compiler:HSDIS'],
+))
+
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
