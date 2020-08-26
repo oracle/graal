@@ -53,7 +53,6 @@ import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -782,7 +781,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Duration timeLimit, Duration timeLimitAccuracy, Consumer<ResourceLimitEvent> onLimit) {
+        public Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Consumer<ResourceLimitEvent> onLimit) {
             throw noPolyglotImplementationFound();
         }
 

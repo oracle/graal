@@ -40,10 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadMXBean;
 import java.util.LinkedList;
-import java.util.concurrent.TimeUnit;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
@@ -60,93 +57,46 @@ final class PolyglotThreadInfo {
     private int enteredCount;
     final LinkedList<Object> explicitContextStack = new LinkedList<>();
     volatile boolean cancelled;
-    private volatile long lastEntered;
-    private volatile long timeExecuted;
-    private boolean deprioritized;
     private Object originalContextClassLoader = NULL_CLASS_LOADER;
     private ClassLoaderEntry prevContextClassLoader;
     private SpecializationStatisticsEntry executionStatisticsEntry;
 
-    private static volatile ThreadMXBean threadBean;
+    private volatile Object[] contextThreadLocals;
 
     PolyglotThreadInfo(PolyglotContextImpl context, Thread thread) {
         this.context = context;
         this.thread = new TruffleWeakReference<>(thread);
-        this.deprioritized = false;
     }
 
     Thread getThread() {
         return thread.get();
     }
 
+    public Object[] getContextThreadLocals() {
+        assert Thread.holdsLock(context);
+        return contextThreadLocals;
+    }
+
+    public void setContextThreadLocals(Object[] contextThreadLocals) {
+        assert Thread.holdsLock(context);
+        this.contextThreadLocals = contextThreadLocals;
+    }
+
     boolean isCurrent() {
         return getThread() == Thread.currentThread();
     }
 
-    void enter(PolyglotEngineImpl engine) {
+    void enter(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
         assert Thread.currentThread() == getThread();
-        if (!engine.noPriorityChangeNeeded.isValid() && !deprioritized) {
-            lowerPriority();
-            deprioritized = true;
-        }
-        int count = ++enteredCount;
-        if (!engine.noThreadTimingNeeded.isValid() && count == 1) {
-            lastEntered = getTime();
-        }
+        enteredCount++;
+
+        EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
         if (!engine.customHostClassLoader.isValid()) {
             setContextClassLoader();
         }
         if (engine.specializationStatistics != null) {
             engine.specializationStatistics.enter();
         }
-    }
-
-    @TruffleBoundary
-    private void lowerPriority() {
-        getThread().setPriority(Thread.MIN_PRIORITY);
-    }
-
-    @TruffleBoundary
-    private void raisePriority() {
-        // this will be ineffective unless the JVM runs with corresponding system privileges
-        getThread().setPriority(Thread.NORM_PRIORITY);
-    }
-
-    void resetTiming() {
-        if (enteredCount > 0) {
-            lastEntered = getTime();
-        }
-        this.timeExecuted = 0;
-    }
-
-    long getTimeExecuted() {
-        long totalTime = timeExecuted;
-        long last = this.lastEntered;
-        if (last > 0) {
-            totalTime += getTime() - last;
-        }
-        return totalTime;
-    }
-
-    @TruffleBoundary
-    private long getTime() {
-        Thread t = getThread();
-        if (t == null) {
-            return timeExecuted;
-        }
-        ThreadMXBean bean = threadBean;
-        if (bean == null) {
-            /*
-             * getThreadMXBean is synchronized so better cache in a local volatile field to avoid
-             * contention.
-             */
-            threadBean = bean = ManagementFactory.getThreadMXBean();
-        }
-        long time = bean.getThreadCpuTime(t.getId());
-        if (time == -1) {
-            return TimeUnit.MILLISECONDS.convert(System.currentTimeMillis(), TimeUnit.NANOSECONDS);
-        }
-        return time;
     }
 
     boolean isPolyglotThread(PolyglotContextImpl c) {
@@ -156,20 +106,12 @@ final class PolyglotThreadInfo {
         return false;
     }
 
-    void leave(PolyglotEngineImpl engine) {
+    void leave(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
         assert Thread.currentThread() == getThread();
-        int count = --enteredCount;
+        EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
+        enteredCount--;
         if (!engine.customHostClassLoader.isValid()) {
             restoreContextClassLoader();
-        }
-        if (!engine.noThreadTimingNeeded.isValid() && count == 0) {
-            long last = this.lastEntered;
-            this.lastEntered = 0;
-            this.timeExecuted += getTime() - last;
-        }
-        if (!engine.noPriorityChangeNeeded.isValid() && deprioritized && count == 0) {
-            raisePriority();
-            deprioritized = false;
         }
 
         if (engine.specializationStatistics != null) {

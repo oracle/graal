@@ -73,12 +73,15 @@ import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ContextLocal;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -86,7 +89,6 @@ import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleStackTraceElement;
-import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -296,17 +298,17 @@ public abstract class Accessor {
 
         public abstract boolean inContextPreInitialization(Object polyglotObject);
 
-        public abstract Object createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config, TruffleContext spiContext);
-
-        public abstract void initializeInternalContext(Object sourcePolyglotLanguageContext, Object polyglotContext);
+        public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config);
 
         public abstract Object enterInternalContext(Object polyglotContext);
 
         public abstract void leaveInternalContext(Object polyglotContext, Object prev);
 
-        public abstract void closeInternalContext(Object polyglotContext);
+        public abstract void closeContext(Object polyglotContext, boolean force, Node closeLocation, boolean resourceExhaused, String resourceExhausedReason);
 
-        public abstract boolean isInternalContextEntered(Object polyglotContext);
+        public abstract boolean isContextEntered(Object polyglotContext);
+
+        public abstract boolean isContextActive(Object polyglotContext);
 
         public abstract void reportAllLanguageContexts(Object polyglotEngine, Object contextsListener);
 
@@ -469,6 +471,27 @@ public abstract class Accessor {
 
         public abstract AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError;
 
+        public abstract boolean isPolyglotObject(Object polyglotObject);
+
+        public abstract void initializeLanguageContextLocal(List<? extends ContextLocal<?>> local, Object polyglotLanguageInstance);
+
+        public abstract void initializeLanguageContextThreadLocal(List<? extends ContextThreadLocal<?>> local, Object polyglotLanguageInstance);
+
+        public abstract void initializeInstrumentContextLocal(List<? extends ContextLocal<?>> local, Object polyglotInstrument);
+
+        public abstract void initializeInstrumentContextThreadLocal(List<? extends ContextThreadLocal<?>> local, Object polyglotInstrument);
+
+        public abstract <T> ContextThreadLocal<T> createLanguageContextThreadLocal(Object factory);
+
+        public abstract <T> ContextThreadLocal<T> createInstrumentContextThreadLocal(Object factory);
+
+        public abstract <T> ContextLocal<T> createLanguageContextLocal(Object factory);
+
+        public abstract <T> ContextLocal<T> createInstrumentContextLocal(Object factory);
+
+        public abstract OptionValues getInstrumentContextOptions(Object polyglotInstrument, Object polyglotContext);
+
+        public abstract boolean isContextClosed(Object polyglotContext);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -489,7 +512,7 @@ public abstract class Accessor {
 
         public abstract Object createEnvContext(Env localEnv, List<Object> servicesCollector);
 
-        public abstract TruffleContext createTruffleContext(Object impl);
+        public abstract TruffleContext createTruffleContext(Object impl, boolean creator);
 
         public abstract void postInitEnv(Env env);
 
@@ -603,6 +626,12 @@ public abstract class Accessor {
 
         public abstract Object getFileSystemEngineObject(Object fileSystemContext);
 
+        public abstract Object getPolyglotContext(TruffleContext context);
+
+        public abstract Object invokeContextLocalFactory(Object factory, Object contextImpl);
+
+        public abstract Object invokeContextThreadLocalFactory(Object factory, Object contextImpl, Thread thread);
+
     }
 
     public abstract static class InstrumentSupport extends Support {
@@ -651,7 +680,9 @@ public abstract class Accessor {
             return out.getOut();
         }
 
-        public abstract OptionDescriptors describeOptions(Object instrumentationHandler, Object key, String requiredGroup);
+        public abstract OptionDescriptors describeEngineOptions(Object instrumentationHandler, Object key, String requiredGroup);
+
+        public abstract OptionDescriptors describeContextOptions(Object instrumentationHandler, Object key, String requiredGroup);
 
         public abstract Object getEngineInstrumenter(Object instrumentationHandler);
 
@@ -662,6 +693,8 @@ public abstract class Accessor {
         public abstract void notifyContextCreated(Object engine, TruffleContext context);
 
         public abstract void notifyContextClosed(Object engine, TruffleContext context);
+
+        public abstract void notifyContextResetLimit(Object engine, TruffleContext context);
 
         public abstract void notifyLanguageContextCreated(Object engine, TruffleContext context, LanguageInfo info);
 
@@ -682,6 +715,14 @@ public abstract class Accessor {
         public abstract boolean isInputValueSlotIdentifier(Object identifier);
 
         public abstract boolean isInstrumentable(Node node);
+
+        public abstract Object invokeContextLocalFactory(Object factory, TruffleContext truffleContext);
+
+        public abstract Object invokeContextThreadLocalFactory(Object factory, TruffleContext truffleContext, Thread t);
+
+        public abstract void notifyEnter(Object instrumentationHandler, TruffleContext truffleContext);
+
+        public abstract void notifyLeave(Object instrumentationHandler, TruffleContext truffleContext);
 
     }
 
@@ -847,6 +888,7 @@ public abstract class Accessor {
     protected Accessor() {
         switch (this.getClass().getName()) {
             case "com.oracle.truffle.api.LanguageAccessor":
+            case "com.oracle.truffle.api.TruffleAccessor":
             case "com.oracle.truffle.api.nodes.NodeAccessor":
             case "com.oracle.truffle.api.instrumentation.InstrumentAccessor":
             case "com.oracle.truffle.api.source.SourceAccessor":
