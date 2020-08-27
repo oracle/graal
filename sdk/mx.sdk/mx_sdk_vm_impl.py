@@ -386,6 +386,13 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
         self._post_build_warnings = []
 
+        self.jimage_jars = set()
+        if is_graalvm and _src_jdk_version >= 9:
+            for component in registered_graalvm_components(stage1):
+                self.jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
+                if isinstance(component, mx_sdk.GraalVmJvmciComponent):
+                    self.jimage_jars.update(component.jvmci_jars)
+
         def _add(_layout, dest, src, component=None, with_sources=False):
             """
             :type _layout: dict[str, list[str] | str]
@@ -418,7 +425,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             for _src in list(src):
                 src_dict = mx.LayoutDistribution._as_source_dict(_src, name, dest)
                 if src_dict['source_type'] == 'dependency' and src_dict['path'] is None:
-                    if with_sources and _include_sources(src_dict['dependency']):
+                    if with_sources and _include_sources(src_dict['dependency']) and (_src_jdk_version == 8 or src_dict['dependency'] not in self.jimage_jars):
                         src_src_dict = {
                             'source_type': 'dependency',
                             'dependency': src_dict['dependency'],
@@ -2363,15 +2370,10 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             register_project(GraalVmJvmciParentClasspath(jvmci_parent_jars))
 
         if _src_jdk.javaCompliance >= '9':
-            jimage_jars = set()
-            for component in registered_graalvm_components(stage1=False):
-                jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
-                if isinstance(component, mx_sdk.GraalVmJvmciComponent):
-                    jimage_jars.update(component.jvmci_jars)
-
+            assert get_final_graalvm_distribution().jimage_jars
             register_project(GraalVmJImage(
                 suite=_suite,
-                jimage_jars=list(jimage_jars),
+                jimage_jars=list(get_final_graalvm_distribution().jimage_jars),
                 workingSets=None,
             ))
 
