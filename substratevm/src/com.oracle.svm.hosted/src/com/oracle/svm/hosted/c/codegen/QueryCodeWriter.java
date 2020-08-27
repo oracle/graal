@@ -53,9 +53,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     private static final String formatFloat = "%.15e";
     private static final String formatString = QueryResultFormat.STRING_MARKER + "%s" + QueryResultFormat.STRING_MARKER;
 
-    private final CCompilerInvoker compilerInvoker;
     private final CSourceCodeWriter writer;
-    private final boolean isWindows;
 
     private final List<Object> elementForLineNumber;
 
@@ -66,11 +64,10 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     private final String uInt64;
     private final String sInt64;
 
-    public QueryCodeWriter(CCompilerInvoker compilerInvoker, Path tempDirectory) {
-        this.compilerInvoker = compilerInvoker;
+    public QueryCodeWriter(Path tempDirectory) {
         writer = new CSourceCodeWriter(tempDirectory);
         elementForLineNumber = new ArrayList<>();
-        isWindows = Platform.includedIn(Platform.WINDOWS.class);
+        boolean isWindows = Platform.includedIn(Platform.WINDOWS.class);
 
         String formatL64 = "%" + (isWindows ? "ll" : "l");
         formatSInt64 = formatL64 + "d";
@@ -112,16 +109,6 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         List<String> macroDefinitions = nativeCodeInfo.getDirectives().getMacroDefinitions();
         if (!macroDefinitions.isEmpty()) {
             macroDefinitions.forEach(writer::appendMacroDefinition);
-            writer.appendln();
-        }
-
-        /* Workaround for missing bool-type Header file inclusions. */
-        if (isWindows && compilerInvoker.compilerInfo.versionMajor <= 16) {
-            writer.appendln("#ifndef bool");
-            writer.appendln("#define bool char");
-            writer.appendln("#define false ((bool)0)");
-            writer.appendln("#define true  ((bool)1)");
-            writer.appendln("#endif");
             writer.appendln();
         }
 
