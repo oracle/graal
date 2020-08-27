@@ -136,7 +136,7 @@ public class HostedField implements ReadableJavaField, OriginalFieldProvider, Sh
 
     @Override
     public int getOffset() {
-        return wrapped.getOffset();
+        return getLocation();
     }
 
     @Override
