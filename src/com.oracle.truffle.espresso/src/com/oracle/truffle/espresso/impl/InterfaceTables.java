@@ -382,6 +382,13 @@ final class InterfaceTables {
     /**
      * Returns the maximally specific method between the two given methods. If they are both
      * maximally-specific, returns a proxy of the second, to which a poison pill has been set.
+     * <p>
+     * Determining maximally specific method works as follow:
+     * <li>If both methods are abstract, return any of the two.
+     * <li>If exactly one is non-abstract, return it.
+     * <li>If both are non-abstract, check if one of the declaring class subclasses the other. If
+     * that is the case, return the method that is lower in the hierarchy. Otherwise, return a
+     * freshly spawned proxy method pointing to either of them, which is set to fail on invocation.
      */
     public static Method resolveMaximallySpecific(Method m1, Method m2) {
         boolean b1 = m1.isAbstract();
