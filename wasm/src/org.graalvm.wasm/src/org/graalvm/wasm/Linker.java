@@ -40,6 +40,25 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import org.graalvm.wasm.Linker.ResolutionDag.DataSym;
+import org.graalvm.wasm.Linker.ResolutionDag.ExportMemorySym;
+import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
+import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
+import org.graalvm.wasm.Linker.ResolutionDag.Sym;
+import org.graalvm.wasm.SymbolTable.FunctionType;
+import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.exception.WasmLinkerException;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.nodes.WasmBlockNode;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
+
 import static org.graalvm.wasm.Linker.ResolutionDag.CallsiteSym;
 import static org.graalvm.wasm.Linker.ResolutionDag.CodeEntrySym;
 import static org.graalvm.wasm.Linker.ResolutionDag.ElemSym;
@@ -52,26 +71,6 @@ import static org.graalvm.wasm.Linker.ResolutionDag.ImportTableSym;
 import static org.graalvm.wasm.Linker.ResolutionDag.InitializeGlobalSym;
 import static org.graalvm.wasm.Linker.ResolutionDag.NO_RESOLVE_ACTION;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.BiConsumer;
-
-import com.oracle.truffle.api.CallTarget;
-import org.graalvm.wasm.Linker.ResolutionDag.DataSym;
-import org.graalvm.wasm.Linker.ResolutionDag.ExportMemorySym;
-import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
-import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
-import org.graalvm.wasm.Linker.ResolutionDag.Sym;
-import org.graalvm.wasm.SymbolTable.FunctionType;
-import org.graalvm.wasm.constants.GlobalModifier;
-import org.graalvm.wasm.exception.WasmLinkerException;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.nodes.WasmBlockNode;
-
-import com.oracle.truffle.api.CompilerDirectives;
-
 public class Linker {
     private enum LinkState {
         notLinked,
@@ -79,12 +78,10 @@ public class Linker {
         linked
     }
 
-    private final WasmLanguage language;
     private final ResolutionDag resolutionDag;
     private @CompilerDirectives.CompilationFinal LinkState linkState;
 
-    Linker(WasmLanguage language) {
-        this.language = language;
+    Linker() {
         this.resolutionDag = new ResolutionDag();
         this.linkState = LinkState.notLinked;
     }
@@ -165,17 +162,6 @@ public class Linker {
                 function.setTypeEquivalenceClass(symtab.equivalenceClass(function.typeIndex()));
             }
         }
-    }
-
-    /**
-     * This method reinitializes the state of all global variables in the module.
-     *
-     * The intent is to use this functionality only in the test suite and the benchmark suite.
-     */
-    public void resetModuleState(WasmContext context, WasmInstance instance, boolean zeroMemory) {
-        final BinaryParser reader = new BinaryParser(language, instance.module());
-        reader.resetGlobalState(context, instance);
-        reader.resetMemoryState(context, instance, zeroMemory);
     }
 
     void resolveGlobalImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int globalIndex, byte valueType, byte mutability) {

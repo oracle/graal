@@ -38,26 +38,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.nodes;
+package org.graalvm.wasm.predefined.testutil;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmVoidResult;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-public class WasmEmptyRootNode extends RootNode {
+import static org.graalvm.wasm.WasmTracing.trace;
 
-    public WasmEmptyRootNode(WasmLanguage language) {
-        super(language, null);
+/**
+ * Reinitialize the memory and the globals of the instance.
+ */
+public class ReinitInstanceNode extends WasmBuiltinRootNode {
+    public ReinitInstanceNode(WasmLanguage language, WasmInstance module) {
+        super(language, module);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+        final Object[] args = frame.getArguments();
+        assert args.length == 1;
+        for (Object arg : args) {
+            trace("argument: %s", arg);
+        }
+        return reinitInstance((WasmInstance) args[0], context);
+    }
+
+    @Override
+    public String builtinNodeName() {
+        return TestutilModule.Names.REINIT_INSTANCE;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static WasmVoidResult reinitInstance(WasmInstance anInstance, WasmContext context) {
+        context.reinitInstance(anInstance);
         return WasmVoidResult.getInstance();
-    }
-
-    @Override
-    public String getName() {
-        return "wasm-empty-root-node";
     }
 }
