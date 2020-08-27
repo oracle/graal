@@ -34,7 +34,6 @@ import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 
-import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumConstantInfo;
@@ -111,16 +110,12 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     protected void visitNativeCodeInfo(NativeCodeInfo nativeCodeInfo) {
         /* Write general macro definitions. */
         List<String> macroDefinitions = nativeCodeInfo.getDirectives().getMacroDefinitions();
-        macroDefinitions.forEach(writer::appendMacroDefinition);
         if (!macroDefinitions.isEmpty()) {
+            macroDefinitions.forEach(writer::appendMacroDefinition);
             writer.appendln();
         }
 
-        writer.includeFiles(nativeCodeInfo.getDirectives().getHeaderFiles());
-        writer.includeFiles(Arrays.asList("<stdio.h>", "<stddef.h>", "<memory.h>"));
-        writer.writeCStandardHeaders();
-        writer.appendln();
-
+        /* Workaround for missing bool-type Header file inclusions. */
         if (isWindows && compilerInvoker.compilerInfo.versionMajor <= 16) {
             writer.appendln("#ifndef bool");
             writer.appendln("#define bool char");
@@ -130,12 +125,26 @@ public class QueryCodeWriter extends InfoTreeVisitor {
             writer.appendln();
         }
 
-        if (nativeCodeInfo.isBuiltin()) {
-            GraalIsolateHeader.getGraalIsolatePreamble().forEach(writer::appendln);
+        /* Standard header file inclusions. */
+        writer.includeFiles(Arrays.asList("<stdio.h>", "<stddef.h>", "<memory.h>"));
+        writer.writeCStandardHeaders();
+        writer.appendln();
+
+        /* Inject CContext specific C header file snippet. */
+        List<String> headerSnippet = nativeCodeInfo.getDirectives().getHeaderSnippet();
+        if (!headerSnippet.isEmpty()) {
+            headerSnippet.forEach(writer::appendln);
             writer.appendln();
         }
 
-        /* Write the main function with all the outputs for the children. */
+        /* CContext specific header file inclusions. */
+        List<String> headerFiles = nativeCodeInfo.getDirectives().getHeaderFiles();
+        if (!headerFiles.isEmpty()) {
+            writer.includeFiles(headerFiles);
+            writer.appendln();
+        }
+
+        /* Write query code for nativeCodeInfo. */
         String functionName = nativeCodeInfo.getName().replaceAll("\\W", "_");
         writer.appendln("int " + functionName + "() {");
         writer.indent();
@@ -144,6 +153,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.outdent();
         writer.appendln("}");
 
+        /* Write main function. */
         writer.appendln();
         writer.appendln("int main(void) {");
         writer.indent();

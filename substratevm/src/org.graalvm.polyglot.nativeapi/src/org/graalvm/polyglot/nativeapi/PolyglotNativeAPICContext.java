@@ -29,6 +29,8 @@ import java.util.List;
 
 import org.graalvm.nativeimage.c.CContext.Directives;
 
+import com.oracle.svm.core.c.function.GraalIsolateHeader;
+
 public class PolyglotNativeAPICContext implements Directives {
 
     @Override
@@ -39,5 +41,10 @@ public class PolyglotNativeAPICContext implements Directives {
     @Override
     public List<String> getOptions() {
         return Collections.singletonList("-I" + System.getProperty("org.graalvm.polyglot.nativeapi.libraryPath"));
+    }
+
+    @Override
+    public List<String> getHeaderSnippet() {
+        return GraalIsolateHeader.getGraalIsolatePreamble();
     }
 }

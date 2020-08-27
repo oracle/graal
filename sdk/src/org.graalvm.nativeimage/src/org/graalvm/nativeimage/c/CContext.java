@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -132,6 +132,16 @@ public @interface CContext {
          * @since 19.0
          */
         default List<String> getLibraryPaths() {
+            return Collections.emptyList();
+        }
+
+        /**
+         * Returns a C header file snippet that should be injected into the query code that gets
+         * generated for this CContext.
+         *
+         * @since 20.3
+         */
+        default List<String> getHeaderSnippet() {
             return Collections.emptyList();
         }
     }
