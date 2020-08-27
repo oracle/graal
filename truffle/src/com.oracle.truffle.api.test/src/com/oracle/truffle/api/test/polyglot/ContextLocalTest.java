@@ -423,11 +423,6 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                 ValidInstrument instrument = engine.getInstruments().get(VALID_INSTRUMENT).lookup(ValidInstrument.class);
                 runInParallel(() -> {
 
-                    // no context entered
-                    assertFails(() -> instrument.threadLocal0.get(), IllegalStateException.class);
-                    assertFails(() -> instrument.threadLocal0.get(Thread.currentThread()), IllegalStateException.class);
-                    assertFails(() -> instrument.threadLocal0.get(Thread.currentThread()), IllegalStateException.class);
-
                     c0.enter();
                     InstrumentThreadLocalValue tc0;
                     try {
@@ -446,8 +441,8 @@ public class ContextLocalTest extends AbstractPolyglotTest {
 
                     assertNotSame(tc0, tc1);
 
-                    assertSame(tc0, instrument.threadLocal0.get(tc0.context, Thread.currentThread()));
-                    assertSame(tc1, instrument.threadLocal0.get(tc1.context, Thread.currentThread()));
+                    assertEquals(tc0, instrument.threadLocal0.get(tc0.context, Thread.currentThread()));
+                    assertEquals(tc1, instrument.threadLocal0.get(tc1.context, Thread.currentThread()));
 
                     c0.initialize(VALID_SHARED_LANGUAGE);
                     c0.enter();
@@ -464,6 +459,11 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                     } finally {
                         c1.leave();
                     }
+
+                    // no context entered
+                    assertFails(() -> instrument.threadLocal0.get(), IllegalStateException.class);
+                    assertFails(() -> instrument.threadLocal0.get(Thread.currentThread()), IllegalStateException.class);
+                    assertFails(() -> instrument.threadLocal0.get(Thread.currentThread()), IllegalStateException.class);
                 });
             }
         }
