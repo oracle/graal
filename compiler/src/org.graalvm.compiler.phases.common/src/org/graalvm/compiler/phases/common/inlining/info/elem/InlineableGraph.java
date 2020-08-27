@@ -68,7 +68,7 @@ public class InlineableGraph implements Inlineable {
     private FixedNodeRelativeFrequencyCache probabilites = new FixedNodeRelativeFrequencyCache();
 
     public InlineableGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer, boolean trackNodeSourcePosition) {
-        StructuredGraph original = context.getReplacements().getSubstitution(method, invoke.bci(), trackNodeSourcePosition, null,
+        StructuredGraph original = context.getReplacements().getInlineSubstitution(method, invoke.bci(), invoke.getInlineControl(), trackNodeSourcePosition, null,
                         invoke.asNode().graph().allowAssumptions(), invoke.asNode().getOptions());
         if (original == null) {
             original = parseBytecodes(method, context, canonicalizer, invoke.asNode().graph(), trackNodeSourcePosition);
