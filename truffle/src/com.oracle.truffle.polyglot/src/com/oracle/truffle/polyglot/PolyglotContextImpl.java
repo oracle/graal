@@ -1113,7 +1113,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
          * 4) The close was not yet performed and no thread is executing -> perform close
          */
         boolean waitForClose = false;
-        boolean currentThreadActive = false;
         while (true) {
             if (waitForClose) {
                 closingLock.lock();
@@ -1141,8 +1140,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
                 // triggers a thread changed event which requires slow path enter
                 setCachedThreadInfo(PolyglotThreadInfo.NULL);
-
-                currentThreadActive = threadInfo.isActive();
                 if (cancelIfExecuting) {
                     cancelling = true;
                     if (threadInfo != PolyglotThreadInfo.NULL) {
