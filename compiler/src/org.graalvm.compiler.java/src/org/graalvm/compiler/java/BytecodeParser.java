@@ -388,7 +388,7 @@ import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadArrayComponentHubNode;
@@ -2304,7 +2304,8 @@ public class BytecodeParser implements GraphBuilderContext {
             receiver.get();
         }
 
-        InvokeWithExceptionNode withException = null;
+        WithExceptionNode withException = null;
+        boolean insertExceptionEdge = false;
         FixedWithNextNode replacee = lastInstr;
         try (DebugContext.Scope a = debug.scope("instantiate", substituteGraph)) {
             // Inline the snippet nodes, replacing parameters with the given args in the process
@@ -2334,38 +2335,32 @@ public class BytecodeParser implements GraphBuilderContext {
                         if (invoke.bci() == BytecodeFrame.UNKNOWN_BCI) {
                             invoke.setBci(bci());
                         }
-                        if (node instanceof InvokeWithExceptionNode) {
-                            // The graphs for MethodSubsitutions are produced assuming that
-                            // exceptions
-                            // must be dispatched. If the calling context doesn't want exception
-                            // then
-                            // convert back into a normal InvokeNode.
-                            assert withException == null : "only one invoke expected";
-                            withException = (InvokeWithExceptionNode) node;
-                            BytecodeParser intrinsicCallSiteParser = getNonIntrinsicAncestor();
-                            if (intrinsicCallSiteParser != null && intrinsicCallSiteParser.getActionForInvokeExceptionEdge(null) == ExceptionEdgeAction.OMIT) {
-                                InvokeNode newInvoke = graph.add(new InvokeNode(withException));
-                                newInvoke.setStateDuring(withException.stateDuring());
-                                newInvoke.setStateAfter(withException.stateAfter());
-                                withException.killExceptionEdge();
-                                AbstractBeginNode next = withException.killKillingBegin();
-                                FixedWithNextNode pred = (FixedWithNextNode) withException.predecessor();
-                                pred.setNext(newInvoke);
-                                withException.setNext(null);
-                                newInvoke.setNext(next);
-                                withException.replaceAndDelete(newInvoke);
-                            } else {
-                                // Disconnnect exception edge
-                                withException.killExceptionEdge();
-                            }
-                        }
-                    } else if (node instanceof ForeignCallNode) {
-                        ForeignCallNode call = (ForeignCallNode) node;
+                    } else if (node instanceof ForeignCall) {
+                        ForeignCall call = (ForeignCall) node;
                         if (call.bci() == BytecodeFrame.UNKNOWN_BCI) {
                             call.setBci(bci());
                             if (call.stateAfter() != null && call.stateAfter().bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
                                 call.setStateAfter(inlineScope.stateBefore);
                             }
+                        }
+                    }
+
+                    if (node instanceof WithExceptionNode) {
+                        /**
+                         * The graphs for MethodSubstitutions are produced assuming that exceptions
+                         * must be dispatched. If the calling context doesn't want exception then
+                         * convert back into a non throwing node
+                         */
+                        assert withException == null : "at most one exception edge expected";
+                        withException = (WithExceptionNode) node;
+                        BytecodeParser intrinsicCallSiteParser = getNonIntrinsicAncestor();
+                        if (intrinsicCallSiteParser != null && intrinsicCallSiteParser.getActionForInvokeExceptionEdge(null) == ExceptionEdgeAction.OMIT) {
+                            // Exception edge should be removed
+                            withException.replaceWithNonThrowing();
+                        } else {
+                            // Disconnnect exception edge
+                            insertExceptionEdge = true;
+                            withException.killExceptionEdge();
                         }
                     }
                 }
@@ -2385,7 +2380,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 // Exiting this scope causes processing of the placeholder frame states.
             }
 
-            if (withException != null && withException.isAlive()) {
+            if (insertExceptionEdge) {
                 // Connect exception edge into main graph
                 AbstractBeginNode exceptionEdge = handleException(null, bci(), false);
                 withException.setExceptionEdge(exceptionEdge);
