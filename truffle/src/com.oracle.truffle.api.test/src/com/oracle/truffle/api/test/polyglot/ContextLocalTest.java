@@ -420,8 +420,8 @@ public class ContextLocalTest extends AbstractPolyglotTest {
             try (Context c0 = Context.newBuilder().engine(engine).build();
                             Context c1 = Context.newBuilder().engine(engine).build()) {
 
+                ValidInstrument instrument = engine.getInstruments().get(VALID_INSTRUMENT).lookup(ValidInstrument.class);
                 runInParallel(() -> {
-                    ValidInstrument instrument = engine.getInstruments().get(VALID_INSTRUMENT).lookup(ValidInstrument.class);
 
                     // no context entered
                     assertFails(() -> instrument.threadLocal0.get(), IllegalStateException.class);
