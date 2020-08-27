@@ -1035,8 +1035,10 @@ public class InliningUtil extends ValueMergeUtil {
         @Override
         public void accept(Visitor v) {
             for (JavaTypeProfile.ProfiledType profiledType : typeProfile.getTypes()) {
+                // We speculate on the profiled types. When the speculation fails, we expect to see
+                // a new receiver type in the recompilation. Hence, the probability of each profiled
+                // type won't matter here.
                 v.visitObject(profiledType.getType());
-                // v.visitDouble(profiledType.getProbability());
             }
         }
     }
