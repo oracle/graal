@@ -22,15 +22,12 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
-import java.util.function.IntFunction;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -151,42 +148,6 @@ public abstract class ToEspressoNode extends Node {
         return StaticObject.createForeignNull(value);
     }
 
-    // TODO(goltsova): remove this when array bytecodes support foreign arrays
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "isStringArray(klass)"})
-    Object doArray(Object value,
-                    ArrayKlass klass,
-                    @Cached ToEspressoNode toEspressoNode,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @Cached BranchProfile exceptionProfile)
-                    throws UnsupportedTypeException {
-        int length = 0;
-        try {
-            length = (int) interop.getArraySize(value);
-        } catch (UnsupportedMessageException e) {
-            exceptionProfile.enter();
-            throw UnsupportedTypeException.create(new Object[]{value}, "Casting a non-array foreign object to an array");
-        }
-        final Klass jlString = klass.getComponentType();
-        return jlString.allocateReferenceArray(length, new IntFunction<StaticObject>() {
-            @Override
-            public StaticObject apply(int index) {
-                if (interop.isArrayElementReadable(value, index)) {
-                    try {
-                        Object elem = interop.readArrayElement(value, index);
-                        return (StaticObject) toEspressoNode.execute(elem, jlString);
-                    } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                        rethrow(UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString()));
-                    } catch (UnsupportedTypeException e) {
-                        rethrow(e);
-                    }
-                }
-                rethrow(UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString()));
-                throw EspressoError.shouldNotReachHere();
-            }
-        });
-    }
-
     @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "isString(klass)"})
     Object doString(Object value,
                     ObjectKlass klass,
@@ -227,8 +188,7 @@ public abstract class ToEspressoNode extends Node {
         throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
     }
 
-    // TODO(goltsova): remove !isStringArray(klass) once array bytecodes support foreign arrays
-    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "!isStringArray(klass)"})
+    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)"})
     Object doForeignArray(Object value, ArrayKlass klass,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
         if (!interop.hasArrayElements(value)) {
@@ -246,10 +206,5 @@ public abstract class ToEspressoNode extends Node {
         if (klass.getSuperClass() != null) {
             checkHasAllFieldsOrThrow(value, klass.getSuperKlass(), interopLibrary, meta);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T extends Throwable> void rethrow(Throwable e) throws T {
-        throw (T) e;
     }
 }

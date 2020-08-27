@@ -223,6 +223,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SASTORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SIPUSH;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.SLIM_QUICK;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
@@ -285,7 +286,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 /**
  * Should be a complete bytecode verifier. Given the version of the classfile from which the method
  * is taken, the type-checking or type-infering verifier is used.
- * 
+ *
  * Note that stack map tables are used only for classfile version >= 50, and even if stack maps are
  * given for lesser versions, they are ignored. No fallback for classfile v.50
  */
@@ -383,7 +384,7 @@ public final class MethodVerifier implements ContextAccess {
 
     /*
      * Special handling:
-     * 
+     *
      * is same as Byte for java 8 or earlier, becomes its own operand for Java >= 9
      */
     final PrimitiveOperand booleanOperand;
@@ -559,7 +560,7 @@ public final class MethodVerifier implements ContextAccess {
      * Utility for ease of use in Espresso.
      *
      * @param m the method to verify
-     * 
+     *
      * @throws VerifyError if verification fails
      * @throws NoClassDefFoundError if Class loading of an operand fails at any point
      * @throws ClassFormatError if classfile is malformed
@@ -583,7 +584,7 @@ public final class MethodVerifier implements ContextAccess {
         int opcode;
         while (bci < code.endBCI()) {
             opcode = code.currentBC(bci);
-            if (opcode > QUICK) {
+            if (opcode > SLIM_QUICK) {
                 throw new VerifyError("invalid bytecode: " + opcode);
             }
             bciStates[bci] = setStatus(bciStates[bci], UNSEEN);
@@ -1297,7 +1298,7 @@ public final class MethodVerifier implements ContextAccess {
     /**
      * Core of the verifier. Performs verification for a single bci, according (mostly) to the JVM
      * specs
-     * 
+     *
      * @param bci The bci of the opcode being verified
      * @param stack The current state of the stack at the point of verification
      * @param locals The current state of the local variables at the point of verification
@@ -1311,7 +1312,7 @@ public final class MethodVerifier implements ContextAccess {
         bciStates[bci] = setStatus(bciStates[bci], DONE);
         int curOpcode;
         curOpcode = code.opcode(bci);
-        if (!(curOpcode <= QUICK)) {
+        if (!(curOpcode <= SLIM_QUICK)) {
             throw new VerifyError("invalid bytecode: " + code.readUByte(bci));
         }
         // @formatter:off
@@ -1347,8 +1348,8 @@ public final class MethodVerifier implements ContextAccess {
 
                 case BIPUSH: stack.pushInt(); break;
                 case SIPUSH: stack.pushInt(); break;
-                
-                case LDC: 
+
+                case LDC:
                 case LDC_W: {
                     PoolConstant pc = poolAt(code.readCPI(bci));
                     pc.validate(pool);
@@ -1378,17 +1379,17 @@ public final class MethodVerifier implements ContextAccess {
                 case FLOAD: locals.load(code.readLocalIndex(bci), Float);   stack.pushFloat();  break;
                 case DLOAD: locals.load(code.readLocalIndex(bci), Double);  stack.pushDouble(); break;
                 case ALOAD: stack.push(locals.loadRef(code.readLocalIndex(bci))); break;
-                
+
                 case ILOAD_0:
                 case ILOAD_1:
                 case ILOAD_2:
                 case ILOAD_3: locals.load(curOpcode - ILOAD_0, Int); stack.pushInt(); break;
-                
+
                 case LLOAD_0:
                 case LLOAD_1:
                 case LLOAD_2:
                 case LLOAD_3: locals.load(curOpcode - LLOAD_0, Long); stack.pushLong(); break;
-                
+
                 case FLOAD_0:
                 case FLOAD_1:
                 case FLOAD_2:
@@ -1398,18 +1399,18 @@ public final class MethodVerifier implements ContextAccess {
                 case DLOAD_1:
                 case DLOAD_2:
                 case DLOAD_3: locals.load(curOpcode - DLOAD_0, Double); stack.pushDouble(); break;
-                
+
                 case ALOAD_0:
                 case ALOAD_1:
                 case ALOAD_2:
                 case ALOAD_3: stack.push(locals.loadRef(curOpcode - ALOAD_0)); break;
-                
+
 
                 case IALOAD: xaload(stack, Int);    break;
                 case LALOAD: xaload(stack, Long);   break;
                 case FALOAD: xaload(stack, Float);  break;
                 case DALOAD: xaload(stack, Double); break;
-                
+
                 case AALOAD: {
                     stack.popInt();
                     Operand op = stack.popArray();
@@ -1419,7 +1420,7 @@ public final class MethodVerifier implements ContextAccess {
                     stack.push(op.getComponent());
                     break;
                 }
-                
+
                 case BALOAD: xaload(stack, ByteOrBoolean);  break;
                 case CALOAD: xaload(stack, Char);  break;
                 case SALOAD: xaload(stack, Short); break;
@@ -1428,29 +1429,29 @@ public final class MethodVerifier implements ContextAccess {
                 case LSTORE: stack.popLong();    locals.store(code.readLocalIndex(bci), Long);   break;
                 case FSTORE: stack.popFloat();   locals.store(code.readLocalIndex(bci), Float);  break;
                 case DSTORE: stack.popDouble();  locals.store(code.readLocalIndex(bci), Double); break;
-                
+
                 case ASTORE: locals.store(code.readLocalIndex(bci), stack.popObjOrRA()); break;
 
                 case ISTORE_0:
                 case ISTORE_1:
                 case ISTORE_2:
                 case ISTORE_3: stack.popInt(); locals.store(curOpcode - ISTORE_0, Int); break;
-                
+
                 case LSTORE_0:
                 case LSTORE_1:
                 case LSTORE_2:
                 case LSTORE_3: stack.popLong(); locals.store(curOpcode - LSTORE_0, Long); break;
-                
+
                 case FSTORE_0:
                 case FSTORE_1:
                 case FSTORE_2:
                 case FSTORE_3: stack.popFloat(); locals.store(curOpcode - FSTORE_0, Float); break;
-                
+
                 case DSTORE_0:
                 case DSTORE_1:
                 case DSTORE_2:
                 case DSTORE_3: stack.popDouble(); locals.store(curOpcode - DSTORE_0, Double); break;
-                
+
                 case ASTORE_0:
                 case ASTORE_1:
                 case ASTORE_2:
@@ -1460,7 +1461,7 @@ public final class MethodVerifier implements ContextAccess {
                 case LASTORE: xastore(stack, Long);     break;
                 case FASTORE: xastore(stack, Float);    break;
                 case DASTORE: xastore(stack, Double);   break;
-                
+
                 case AASTORE: {
                     Operand toStore = stack.popRef();
                     stack.popInt();
@@ -1471,7 +1472,7 @@ public final class MethodVerifier implements ContextAccess {
                     // Other checks are done at runtime
                     break;
                 }
-                
+
                 case BASTORE: xastore(stack, ByteOrBoolean); break;
                 case CASTORE: xastore(stack, Char); break;
                 case SASTORE: xastore(stack, Short); break;
@@ -1556,10 +1557,10 @@ public final class MethodVerifier implements ContextAccess {
                 case I2S: stack.popInt(); stack.pushInt(); break;
 
                 case LCMP: stack.popLong(); stack.popLong(); stack.pushInt(); break;
-                
+
                 case FCMPL:
                 case FCMPG: stack.popFloat(); stack.popFloat(); stack.pushInt(); break;
-                
+
                 case DCMPL:
                 case DCMPG: stack.popDouble(); stack.popDouble(); stack.pushInt(); break;
 
@@ -1569,26 +1570,26 @@ public final class MethodVerifier implements ContextAccess {
                 case IFGE: // fall through
                 case IFGT: // fall through
                 case IFLE: stack.popInt(); branch(code.readBranchDest(bci), stack, locals); break;
-                
+
                 case IF_ICMPEQ: // fall through
                 case IF_ICMPNE: // fall through
                 case IF_ICMPLT: // fall through
                 case IF_ICMPGE: // fall through
                 case IF_ICMPGT: // fall through
                 case IF_ICMPLE: stack.popInt(); stack.popInt(); branch(code.readBranchDest(bci), stack, locals); break;
-                
+
                 case IF_ACMPEQ: // fall through
                 case IF_ACMPNE: stack.popRef(); stack.popRef(); branch(code.readBranchDest(bci), stack, locals); break;
 
                 case GOTO:
                 case GOTO_W: branch(code.readBranchDest(bci), stack, locals); return bci;
-                
+
                 case IFNULL: // fall through
                 case IFNONNULL: stack.popRef(); branch(code.readBranchDest(bci), stack, locals); break;
-                
+
                 case JSR: // fall through
                 case JSR_W: verifyJSR(bci, stack, locals); return bci;
-                    
+
                 case RET: verifyRET(bci, stack, locals); return bci;
 
                 case TABLESWITCH:  return verifyTableSwitch(bci, stack, locals);
@@ -1654,8 +1655,9 @@ public final class MethodVerifier implements ContextAccess {
                 case BREAKPOINT: break;
 
                 case INVOKEDYNAMIC: verifyInvokeDynamic(bci, stack); break;
-                
+
                 case QUICK: break;
+                case SLIM_QUICK: break;
                 default:
             }
             return code.nextBCI(bci);
@@ -2203,7 +2205,7 @@ public final class MethodVerifier implements ContextAccess {
      * raised bit in b1, raise the corresponding one in b2).
      * <p>
      * If the returns jumps over multiple JSRs, pop the stack accordingly. For example:
-     * 
+     *
      * <pre>
      * 0: jsr 4
      * 3: return
@@ -2302,7 +2304,7 @@ public final class MethodVerifier implements ContextAccess {
     private void checkProtectedField(Operand stackOp, Symbol<Type> fieldHolderType, int fieldCPI) {
         /**
          * 4.10.1.8.
-         * 
+         *
          * If the name of a class is not the name of any superclass, it cannot be a superclass, and
          * so it can safely be ignored.
          */
@@ -2524,7 +2526,7 @@ public final class MethodVerifier implements ContextAccess {
     /**
      * Computes the merging of the current stack/local status with the stack frame store in the
      * table.
-     * 
+     *
      * @return if merge succeeds, returns the given stackFrame, else returns a new StackFrame that
      *         represents the merging.
      */
