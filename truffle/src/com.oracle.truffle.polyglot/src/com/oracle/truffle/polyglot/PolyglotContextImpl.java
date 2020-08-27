@@ -518,6 +518,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 checkAllThreadAccesses(Thread.currentThread(), false);
             }
 
+            if (transitionToMultiThreading) {
+                /*
+                 * We need to do this early (before initializeMultiThreading) as entering or local
+                 * initialization depends on single thread per context.
+                 */
+                engine.singleThreadPerContext.invalidate();
+            }
+
             Thread closing = this.closingThread;
             if (needsInitialization) {
                 if (closing != null && closing != current) {
@@ -653,7 +661,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 LANGUAGE.initializeMultiThreading(context.env);
             }
         }
-        engine.singleThreadPerContext.invalidate();
         singleThreaded.invalidate();
 
         long statementsExecuted = statementLimit - statementCounter;
