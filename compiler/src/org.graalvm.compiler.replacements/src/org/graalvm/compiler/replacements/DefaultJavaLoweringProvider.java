@@ -166,6 +166,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -458,7 +459,11 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     public final JavaKind getStorageKind(ResolvedJavaField field) {
-        return metaAccessExtensionProvider.getStorageKind(field.getType());
+        return getStorageKind(field.getType());
+    }
+
+    public final JavaKind getStorageKind(JavaType type) {
+        return metaAccessExtensionProvider.getStorageKind(type);
     }
 
     protected void lowerLoadFieldNode(LoadFieldNode loadField, LoweringTool tool) {
