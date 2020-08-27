@@ -55,6 +55,11 @@
 					"default": true,
 					"description": "Start GraalVM Language Server within processes being run or debugged"
 				},
+				"graalvm.languageServer.enableDebugMode": {
+					"type": "boolean",
+					"default": false,
+					"description": "Run GraalVM Language Server in debug mode (via JDWP and port 8000)"
+				},
 				"graalvm.languageServer.delegateServers": {
 					"type": "string",
 					"default": "",

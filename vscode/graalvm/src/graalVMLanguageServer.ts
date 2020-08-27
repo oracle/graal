@@ -36,6 +36,9 @@ export function startLanguageServer(graalVMHome: string) {
                 lspArgs().then(args => {
 					const lspArg = args.find(arg => arg.startsWith('--lsp='));
 					const lsPort = lspArg ? parseInt(lspArg.substring(6)) : LSPORT;
+					if (vscode.workspace.getConfiguration('graalvm').get('languageServer.enableDebugMode')) {
+						args.push('--vm.Xrunjdwp:transport=dt_socket,server=y,address=8000,suspend=n');
+					}
 					const serverProcess = cp.spawn(re, args.concat(['--experimental-options', '--shell']), { cwd: serverWorkDir });
 					if (!serverProcess || !serverProcess.pid) {
 						reject(`Launching server using command ${re} failed.`);
