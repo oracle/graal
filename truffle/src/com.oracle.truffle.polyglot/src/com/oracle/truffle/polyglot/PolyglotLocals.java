@@ -545,7 +545,7 @@ final class PolyglotLocals {
 
             Object value = locals[index];
             if (value == null) {
-                return "Invalid local state: Locals is not initialized. Engine closed: " + engine.closed + ". Current context: " + context.toString();
+                return "Invalid local state: Local is not initialized. Engine closed: " + engine.closed + ". Current context: " + context.toString();
             } else if (locals[index].getClass() != profiledType) {
                 return "Invalid local state: Invalid profiled type. Expected " + profiledType.getName() + " but was " + value.getClass().getName();
             }
