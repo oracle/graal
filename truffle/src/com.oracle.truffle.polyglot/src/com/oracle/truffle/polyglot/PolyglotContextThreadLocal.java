@@ -81,11 +81,15 @@ final class PolyglotContextThreadLocal extends ThreadLocal<Object> {
      */
     public Object getEntered() {
         if (singleThread.isValid()) {
-            assert Thread.currentThread() == activeSingleThread;
+            assert Thread.currentThread() == activeSingleThread : failIllegalState();
             return activeSingleContextNonVolatile;
         } else {
             return getTL();
         }
+    }
+
+    private static String failIllegalState() {
+        throw new IllegalStateException("No context entered.");
     }
 
     @Override
