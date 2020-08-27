@@ -54,7 +54,7 @@ public class GlobalMetrics {
     /**
      * Clears all values in this object.
      */
-    public void clear() {
+    public synchronized void clear() {
         values = null;
     }
 
@@ -102,7 +102,7 @@ public class GlobalMetrics {
      * {@link DebugOptions#AggregatedMetricsFile} if present otherwise to
      * {@link DebugContext#getDefaultLogStream()}.
      */
-    public void print(OptionValues options) {
+    public synchronized void print(OptionValues options) {
         long[] vals = values;
         if (vals != null) {
             EconomicMap<MetricKey, Long> map = asKeyValueMap();

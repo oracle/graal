@@ -53,7 +53,7 @@ public abstract class LLVMI8LoadNode extends LLVMLoadNode {
     protected byte doI8Native(LLVMNativePointer addr,
                     @Cached("createIdentityProfile()") ByteValueProfile profile,
                     @CachedLanguage LLVMLanguage language) {
-        return profile.profile(language.getLLVMMemory().getI8(addr));
+        return profile.profile(language.getLLVMMemory().getI8(this, addr));
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")

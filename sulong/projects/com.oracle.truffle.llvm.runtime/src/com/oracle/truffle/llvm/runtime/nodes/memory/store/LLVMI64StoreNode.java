@@ -47,7 +47,7 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
     @Specialization(guards = "!isAutoDerefHandle(language, address)")
     protected void doOp(LLVMNativePointer address, long value,
                     @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putI64(address, value);
+        language.getLLVMMemory().putI64(this, address, value);
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
@@ -69,14 +69,14 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
     @Specialization(guards = "!isAutoDerefHandle(language, address)")
     protected void doOpNative(LLVMNativePointer address, LLVMNativePointer value,
                     @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putI64(address, value.asNative());
+        language.getLLVMMemory().putI64(this, address, value.asNative());
     }
 
     @Specialization(replaces = "doOpNative", guards = "!isAutoDerefHandle(language, addr)")
     protected void doOp(LLVMNativePointer addr, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress,
                     @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putI64(addr, toAddress.executeWithTarget(value).asNative());
+        language.getLLVMMemory().putI64(this, addr, toAddress.executeWithTarget(value).asNative());
     }
 
     @Specialization(limit = "3")

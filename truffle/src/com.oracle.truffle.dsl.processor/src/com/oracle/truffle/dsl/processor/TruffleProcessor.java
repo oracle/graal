@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.dsl.processor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -163,6 +164,11 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
     static void handleThrowable(AnnotationProcessor<?> generator, Throwable t, Element e) {
         String message = "Uncaught error in " + (generator != null ? generator.getClass().getSimpleName() : null) + " while processing " + e + " ";
         ProcessorContext.getInstance().getEnvironment().getMessager().printMessage(Kind.ERROR, message + ": " + ElementUtils.printException(t), e);
+    }
+
+    @Override
+    public Set<String> getSupportedOptions() {
+        return new HashSet<>(Arrays.asList("truffle.dsl.GenerateSpecializationStatistics"));
     }
 
     @Override

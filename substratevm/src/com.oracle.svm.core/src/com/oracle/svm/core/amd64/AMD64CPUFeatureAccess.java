@@ -160,6 +160,12 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
         if (cpuFeatures.fAVX512BW()) {
             features.add(AMD64.CPUFeature.AVX512BW);
         }
+        if (cpuFeatures.fSHA()) {
+            features.add(AMD64.CPUFeature.SHA);
+        }
+        if (cpuFeatures.fFMA()) {
+            features.add(AMD64.CPUFeature.FMA);
+        }
 
         return features;
     }

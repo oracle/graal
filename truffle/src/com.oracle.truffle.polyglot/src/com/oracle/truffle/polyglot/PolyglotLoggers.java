@@ -40,37 +40,53 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
 import java.util.ResourceBundle;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.logging.Formatter;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.StreamHandler;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import java.io.IOException;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.function.Supplier;
+import java.io.PrintStream;
 
 final class PolyglotLoggers {
+
+    private static final Map<Path, SharedFileHandler> fileHandlers = new HashMap<>();
+
+    private static final String GRAAL_COMPILER_LOG_ID = "graal";
+    private static final Set<String> INTERNAL_IDS;
+    static {
+        Set<String> s = new HashSet<>();
+        Collections.addAll(s, PolyglotEngineImpl.OPTION_GROUP_ENGINE, GRAAL_COMPILER_LOG_ID);
+        INTERNAL_IDS = Collections.unmodifiableSet(s);
+    }
 
     private PolyglotLoggers() {
     }
 
     static Set<String> getInternalIds() {
-        return Collections.singleton(PolyglotEngineImpl.OPTION_GROUP_ENGINE);
+        return INTERNAL_IDS;
     }
 
     static LoggerCache defaultSPI() {
@@ -78,7 +94,7 @@ final class PolyglotLoggers {
     }
 
     static LoggerCache createEngineSPI(PolyglotEngineImpl engine) {
-        return new LoggerCacheImpl(new PolyglotLogHandler(engine), engine, true);
+        return LoggerCacheImpl.newEngineLoggerCache(new PolyglotLogHandler(engine), engine, true, Collections.emptySet());
     }
 
     static PolyglotContextImpl getCurrentOuterContext() {
@@ -101,8 +117,12 @@ final class PolyglotLoggers {
         return false;
     }
 
-    static Supplier<TruffleLogger> createCompilerLoggerProvider(PolyglotEngineImpl engine) {
-        return new CompilerLoggerProvider(engine);
+    static Function<String, TruffleLogger> createEngineLoggerProvider(PolyglotEngineImpl engine) {
+        return new EngineLoggerProvider(engine);
+    }
+
+    static Function<String, TruffleLogger> createEngineLoggerProvider(String defaultLogFile) {
+        return new EngineLoggerProvider(defaultLogFile);
     }
 
     /**
@@ -137,7 +157,23 @@ final class PolyglotLoggers {
      * @param out the {@link OutputStream} to print log messages into
      */
     static Handler createDefaultHandler(final OutputStream out) {
-        return new PolyglotStreamHandler(out, false, true, true);
+        return new PolyglotStreamHandler(new RedirectNotificationOutputStream(out), false, true, true);
+    }
+
+    static Handler getFileHandler(String path) {
+        Path absolutePath = Paths.get(path).toAbsolutePath().normalize();
+        synchronized (fileHandlers) {
+            SharedFileHandler handler = fileHandlers.get(absolutePath);
+            if (handler == null) {
+                try {
+                    handler = new SharedFileHandler(absolutePath);
+                    fileHandlers.put(absolutePath, handler);
+                } catch (IOException ioe) {
+                    throw PolyglotEngineException.illegalArgument("Cannot open log file " + path + " for writing, IO error: " + (ioe.getMessage() != null ? ioe.getMessage() : null));
+                }
+            }
+            return handler.retain();
+        }
     }
 
     /**
@@ -175,30 +211,23 @@ final class PolyglotLoggers {
 
     private static final class LoggerCacheImpl implements LoggerCache {
 
-        static final LoggerCache DEFAULT = new LoggerCacheImpl(PolyglotLogHandler.INSTANCE, true, null);
-        static final LoggerCache DISABLED;
-        static {
-            Handler handler = new PolyglotStreamHandler(new OutputStream() {
-                @Override
-                public void write(int b) throws IOException {
-                }
-            }, false, false, false);
-            DISABLED = new LoggerCacheImpl(handler, false, Collections.emptyMap());
-        }
+        static final LoggerCache DEFAULT = new LoggerCacheImpl(PolyglotLogHandler.INSTANCE, null, true, null, Collections.emptySet());
 
         private final Handler handler;
         private final boolean useCurrentContext;
         private final Reference<PolyglotEngineImpl> engineRef;
         private final Map<String, Level> defaultValue;
+        private final Set<String> rawLoggerIds;
         private final Set<Level> implicitLevels;
 
-        LoggerCacheImpl(Handler handler, PolyglotEngineImpl engine, boolean useCurrentContext, Level... implicitLevels) {
+        private LoggerCacheImpl(Handler handler, PolyglotEngineImpl engine, boolean useCurrentContext, Map<String, Level> defaultValue,
+                        Set<String> rawLoggerIds, Level... implicitLevels) {
             Objects.requireNonNull(handler);
-            Objects.requireNonNull(engine);
             this.handler = handler;
             this.useCurrentContext = useCurrentContext;
-            this.engineRef = new WeakReference<>(engine);
-            this.defaultValue = null;
+            this.engineRef = engine == null ? null : new WeakReference<>(engine);
+            this.defaultValue = defaultValue;
+            this.rawLoggerIds = rawLoggerIds;
             if (implicitLevels.length == 0) {
                 this.implicitLevels = Collections.emptySet();
             } else {
@@ -207,13 +236,13 @@ final class PolyglotLoggers {
             }
         }
 
-        private LoggerCacheImpl(Handler handler, boolean useCurrentContext, Map<String, Level> defaultValue) {
-            Objects.requireNonNull(handler);
-            this.handler = handler;
-            this.useCurrentContext = useCurrentContext;
-            this.engineRef = null;
-            this.defaultValue = defaultValue;
-            this.implicitLevels = Collections.emptySet();
+        static LoggerCacheImpl newEngineLoggerCache(Handler handler, PolyglotEngineImpl engine, boolean useCurrentContext,
+                        Set<String> rawLoggerIds, Level... implicitLevels) {
+            return new LoggerCacheImpl(handler, Objects.requireNonNull(engine), useCurrentContext, null, rawLoggerIds, implicitLevels);
+        }
+
+        static LoggerCacheImpl newFallBackLoggerCache(Handler handler) {
+            return new LoggerCacheImpl(handler, null, false, Collections.emptyMap(), Collections.singleton(GRAAL_COMPILER_LOG_ID), Level.INFO);
         }
 
         @Override
@@ -243,7 +272,15 @@ final class PolyglotLoggers {
 
         @Override
         public LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown) {
-            return new ImmutableLogRecord(level, loggerName, message, className, methodName, parameters, thrown, implicitLevels.contains(level));
+            ImmutableLogRecord.FormatKind formaterKind;
+            if (rawLoggerIds.contains(loggerName)) {
+                formaterKind = ImmutableLogRecord.FormatKind.RAW;
+            } else if (implicitLevels.contains(level)) {
+                formaterKind = ImmutableLogRecord.FormatKind.NO_LEVEL;
+            } else {
+                formaterKind = ImmutableLogRecord.FormatKind.DEFAULT;
+            }
+            return new ImmutableLogRecord(level, loggerName, message, className, methodName, parameters, thrown, formaterKind);
         }
     }
 
@@ -297,10 +334,16 @@ final class PolyglotLoggers {
     private static final class ImmutableLogRecord extends LogRecord {
 
         private static final long serialVersionUID = 1L;
-        private final boolean implicit;
+        private final FormatKind formatKind;
+
+        enum FormatKind {
+            RAW,
+            NO_LEVEL,
+            DEFAULT
+        }
 
         ImmutableLogRecord(final Level level, final String loggerName, final String message, final String className, final String methodName, final Object[] parameters,
-                        final Throwable thrown, boolean implicit) {
+                        final Throwable thrown, FormatKind formatKind) {
             super(level, message);
             super.setLoggerName(loggerName);
             if (className != null) {
@@ -318,7 +361,7 @@ final class PolyglotLoggers {
             }
             super.setParameters(copy);
             super.setThrown(thrown);
-            this.implicit = implicit;
+            this.formatKind = formatKind;
         }
 
         @Override
@@ -382,8 +425,8 @@ final class PolyglotLoggers {
             throw new UnsupportedOperationException("Setting Throwable is not supported.");
         }
 
-        boolean isImplicit() {
-            return implicit;
+        FormatKind getFormatKind() {
+            return formatKind;
         }
 
         private static Object safeValue(final Object param) {
@@ -393,13 +436,12 @@ final class PolyglotLoggers {
             try {
                 return InteropLibrary.getFactory().getUncached().asString(InteropLibrary.getFactory().getUncached().toDisplayString(param));
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(e);
+                throw shouldNotReachHere(e);
             }
         }
     }
 
-    private static final class PolyglotStreamHandler extends StreamHandler {
+    private static class PolyglotStreamHandler extends StreamHandler {
 
         private final OutputStream sink;
         private final boolean closeStream;
@@ -455,8 +497,22 @@ final class PolyglotLoggers {
                     }
                     stackTrace = str.toString();
                 }
-                boolean implicit = record.getClass() == ImmutableLogRecord.class && ((ImmutableLogRecord) record).isImplicit();
-                return implicit ? String.format(FORMAT_NO_LEVEL, loggerName, message, stackTrace) : String.format(FORMAT_FULL, loggerName, record.getLevel().getName(), message, stackTrace);
+                String logEntry;
+                ImmutableLogRecord.FormatKind formatKind = ((ImmutableLogRecord) record).getFormatKind();
+                switch (formatKind) {
+                    case DEFAULT:
+                        logEntry = String.format(FORMAT_FULL, loggerName, record.getLevel().getName(), message, stackTrace);
+                        break;
+                    case NO_LEVEL:
+                        logEntry = String.format(FORMAT_NO_LEVEL, loggerName, message, stackTrace);
+                        break;
+                    case RAW:
+                        logEntry = message;
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Unsupported FormatKind " + formatKind);
+                }
+                return logEntry;
             }
 
             private static String formatLoggerName(final String loggerName) {
@@ -492,17 +548,24 @@ final class PolyglotLoggers {
         }
     }
 
-    private static final class CompilerLoggerProvider implements Supplier<TruffleLogger> {
+    private static final class EngineLoggerProvider implements Function<String, TruffleLogger> {
 
         private final PolyglotEngineImpl engine;
+        private final String logFile;
         private volatile Object loggers;
 
-        CompilerLoggerProvider(PolyglotEngineImpl engine) {
+        EngineLoggerProvider(PolyglotEngineImpl engine) {
             this.engine = engine;
+            this.logFile = null;
+        }
+
+        EngineLoggerProvider(String logFile) {
+            this.engine = null;
+            this.logFile = logFile;
         }
 
         @Override
-        public TruffleLogger get() {
+        public TruffleLogger apply(String loggerId) {
             Object loggersCache = loggers;
             if (loggersCache == null) {
                 synchronized (this) {
@@ -512,10 +575,16 @@ final class PolyglotLoggers {
                         Map<String, Level> levels;
                         if (engine != null) {
                             Handler useHandler = resolveHandler(engine.logHandler);
-                            spi = new LoggerCacheImpl(useHandler, engine, false, Level.INFO);
+                            spi = LoggerCacheImpl.newEngineLoggerCache(useHandler, engine, false, Collections.singleton(GRAAL_COMPILER_LOG_ID), Level.INFO);
                             levels = engine.logLevels;
                         } else {
-                            spi = LoggerCacheImpl.DISABLED;
+                            Handler useHandler;
+                            if (PolyglotEngineImpl.ALLOW_IO && logFile != null) {
+                                useHandler = getFileHandler(logFile);
+                            } else {
+                                useHandler = createDefaultHandler(System.err);
+                            }
+                            spi = LoggerCacheImpl.newFallBackLoggerCache(useHandler);
                             levels = Collections.emptyMap();
                         }
                         loggersCache = EngineAccessor.LANGUAGE.createEngineLoggers(spi, levels);
@@ -523,17 +592,12 @@ final class PolyglotLoggers {
                     }
                 }
             }
-            return EngineAccessor.LANGUAGE.getLogger(PolyglotEngineImpl.OPTION_GROUP_ENGINE, null, loggersCache);
+            return EngineAccessor.LANGUAGE.getLogger(loggerId, null, loggersCache);
         }
 
         private static Handler resolveHandler(Handler handler) {
             if (isDefaultHandler(handler)) {
-                OutputStream logOut = EngineAccessor.RUNTIME.getConfiguredLogStream();
-                if (logOut != null) {
-                    return createStreamHandler(logOut, false, true);
-                } else {
-                    return handler;
-                }
+                return handler;
             } else {
                 return new SafeHandler(handler);
             }
@@ -565,6 +629,80 @@ final class PolyglotLoggers {
 
         @Override
         public void close() throws SecurityException {
+            delegate.close();
+        }
+    }
+
+    private static final class SharedFileHandler extends PolyglotStreamHandler {
+
+        private final Path path;
+        private int refCount;
+
+        SharedFileHandler(Path path) throws IOException {
+            super(new FileOutputStream(path.toFile(), true), true, true, false);
+            this.path = path;
+        }
+
+        SharedFileHandler retain() {
+            assert Thread.holdsLock(fileHandlers);
+            refCount++;
+            return this;
+        }
+
+        @Override
+        public void close() {
+            synchronized (fileHandlers) {
+                refCount--;
+                if (refCount == 0) {
+                    fileHandlers.remove(path);
+                    super.close();
+                }
+            }
+        }
+    }
+
+    private static final class RedirectNotificationOutputStream extends OutputStream {
+
+        private static final String REDIRECT_FORMAT = "[To redirect Truffle log output to a file use one of the following options:%n" +
+                        "* '--log.file=<path>' if the option is passed using a guest language launcher.%n" +
+                        "* '-Dpolyglot.log.file=<path>' if the option is passed using the host Java launcher.%n" +
+                        "* Configure logging using the polyglot embedding API.]%n";
+
+        private final OutputStream delegate;
+        private volatile boolean notificationPrinted;
+
+        RedirectNotificationOutputStream(OutputStream delegate) {
+            this.delegate = Objects.requireNonNull(delegate, "Delegate must be non null.");
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            printNotification();
+            delegate.write(b);
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            printNotification();
+            delegate.write(b, off, len);
+        }
+
+        private void printNotification() {
+            if (notificationPrinted) {
+                return;
+            }
+            synchronized (this) {
+                if (!notificationPrinted) {
+                    PrintStream ps = new PrintStream(delegate);
+                    ps.printf(REDIRECT_FORMAT);
+                    ps.flush();
+                    notificationPrinted = true;
+                }
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
             delegate.close();
         }
     }

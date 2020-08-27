@@ -151,6 +151,9 @@ public class InstallCommand implements InstallerCommand {
     public InstallCommand() {
     }
 
+    /**
+     * Installers attached to individual parameters.
+     */
     Map<ComponentParam, Installer> realInstallers = new LinkedHashMap<>();
 
     private String current;
@@ -433,12 +436,19 @@ public class InstallCommand implements InstallerCommand {
                 }
                 return true;
             } else {
+                Installer toReplace = inst.isComplete() ? inst : existing;
                 // if dependencies are processed, move the installer to the front
                 // of the work queue, to maintain the depenency-first order.
                 if (installDependencies) {
-                    installers.remove(i);
-                    installers.add(0, inst);
+                    installers.remove(existing);
+                    installers.add(0, toReplace);
+                    installerMap.put(info.getId(), toReplace);
+                } else if (!existing.isComplete() && inst.isComplete()) {
+                    // replace proxy for real installer:
+                    installers.set(i, toReplace);
+                    installerMap.put(info.getId(), toReplace);
                 }
+
                 return false;
             }
         }
@@ -583,6 +593,7 @@ public class InstallCommand implements InstallerCommand {
             in = dependencies;
             // print required components prior to download
             printRequiredComponents();
+            installDependencies = true;
         } while (!in.isEmpty());
         dependencies = allDependencies;
         checkDependencyErrors();
@@ -599,7 +610,7 @@ public class InstallCommand implements InstallerCommand {
                     continue;
                 }
                 addLicenseToAccept(i, floader);
-                installers.add(i);
+                registerComponent(i, p);
 
                 if (validateBeforeInstall) {
                     current = i.getComponentInfo().getName();
@@ -615,7 +626,7 @@ public class InstallCommand implements InstallerCommand {
     }
 
     void doInstallation() throws IOException {
-        for (Installer i : realInstallers.values()) {
+        for (Installer i : installers) {
             current = i.getComponentInfo().getName();
             ensureExistingComponentRemoved(i.getComponentInfo());
             executedInstallers.add(i);
@@ -647,7 +658,14 @@ public class InstallCommand implements InstallerCommand {
         }
     }
 
+    /**
+     * Installers for individual component IDs.
+     */
     private final Map<String, Installer> installerMap = new HashMap<>();
+
+    /**
+     * The installation sequence; dependencies first.
+     */
     private final List<Installer> installers = new ArrayList<>();
     private final List<Installer> executedInstallers = new ArrayList<>();
 

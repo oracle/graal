@@ -24,21 +24,18 @@
  */
 package com.oracle.svm.hosted.c;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataImpl;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.GraalFeature;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
-import com.oracle.svm.core.c.CGlobalDataNonConstantRegistry;
-import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.image.RelocatableBuffer;
-import com.oracle.svm.util.ReflectionUtil;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import static org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
+import java.util.stream.IntStream;
+
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -67,18 +64,25 @@ import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
-import java.util.stream.IntStream;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataImpl;
+import com.oracle.svm.core.c.CGlobalDataNonConstantRegistry;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.image.RelocatableBuffer;
+import com.oracle.svm.util.ReflectionUtil;
 
-import static org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticFeature
 public class CGlobalDataFeature implements GraalFeature {
@@ -240,13 +244,14 @@ public class CGlobalDataFeature implements GraalFeature {
 
     public void writeData(RelocatableBuffer buffer, BiFunction<Integer, String, ?> createSymbol, BiFunction<Integer, String, ?> createSymbolReference) {
         assert isLayouted() : "Not layouted yet";
-        int start = buffer.getPosition();
-        assert IntStream.range(0, totalSize).allMatch(i -> buffer.getByte(i) == 0) : "Buffer must be zero-initialized";
+        ByteBuffer bufferBytes = buffer.getByteBuffer();
+        int start = bufferBytes.position();
+        assert IntStream.range(start, start + totalSize).allMatch(i -> bufferBytes.get(i) == 0) : "Buffer must be zero-initialized";
         for (CGlobalDataInfo info : map.values()) {
             byte[] bytes = info.getBytes();
             if (bytes != null) {
-                buffer.setPosition(start + info.getOffset());
-                buffer.putBytes(bytes, 0, bytes.length);
+                BufferUtil.asBaseBuffer(bufferBytes).position(start + info.getOffset());
+                bufferBytes.put(bytes, 0, bytes.length);
             }
             CGlobalDataImpl<?> data = info.getData();
             if (data.symbolName != null && !info.isSymbolReference()) {

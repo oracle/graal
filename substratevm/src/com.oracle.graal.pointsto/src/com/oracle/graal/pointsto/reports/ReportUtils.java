@@ -36,14 +36,21 @@ import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.function.Consumer;
 
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.WRITE;
+import static java.nio.file.StandardOpenOption.APPEND;
+
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import java.io.OutputStream;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ReportUtils {
+
     static final String CONNECTING_INDENT = "\u2502   "; // "| "
     static final String EMPTY_INDENT = "    ";
     static final String CHILD = "\u251c\u2500\u2500 "; // "|-- "
@@ -58,7 +65,7 @@ public class ReportUtils {
     /**
      * Print a report in the format: path/name_timeStamp.extension. The path is relative to the
      * working directory.
-     * 
+     *
      * @param description the description of the report
      * @param path the path (relative to the working directory if the argument represents a relative
      *            path)
@@ -118,4 +125,36 @@ public class ReportUtils {
         return imageName.substring(imageName.lastIndexOf(File.separatorChar) + 1);
     }
 
+    /**
+     * Print a report in the file given by {@code file} parameter. If the {@code file} is relative
+     * it's resolved to the working directory.
+     *
+     * @param description the description of the report
+     * @param file the path (relative to the working directory if the argument represents a relative
+     *            path) to file to store a report into.
+     * @param reporter a consumer that writes to a FileOutputStream
+     * @param append flag to append onto file
+     */
+    public static void report(String description, Path file, boolean append, Consumer<OutputStream> reporter) {
+        Path folder = file.getParent();
+        Path fileName = file.getFileName();
+        if (folder == null || fileName == null) {
+            throw new IllegalArgumentException("File parameter must be a file, got: " + file);
+        }
+        reportImpl(description, folder, fileName.toString(), reporter, append);
+    }
+
+    private static void reportImpl(String description, Path folder, String fileName, Consumer<OutputStream> reporter, boolean append) {
+        try {
+            Path reportDir = Files.createDirectories(folder);
+            Path file = reportDir.resolve(fileName);
+            try (OutputStream fos = Files.newOutputStream(file, CREATE, WRITE, append ? APPEND : TRUNCATE_EXISTING)) {
+                System.out.println("Printing " + description + " to " + file.toAbsolutePath());
+                reporter.accept(fos);
+                fos.flush();
+            }
+        } catch (IOException e) {
+            throw JVMCIError.shouldNotReachHere(e);
+        }
+    }
 }

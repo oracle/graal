@@ -48,7 +48,7 @@ js_windows_common: {
     NASM: {name: nasm, version: "2.14.02", platformspecific: true}
   }
   setup: [
-    ["set-export", "DEVKIT_ROOT", "$VS2017_15_5_5_1_0_ROOT"]
+    ["set-export", "DEVKIT_ROOT", "$VS2017_15_9_16_1_0_ROOT"]
     ["set-export", "DEVKIT_VERSION", "2017"]
   ]
 }
@@ -59,7 +59,7 @@ js_windows_jdk11: ${common_vm_windows-jdk11} ${js_windows_common} {
 
 js_windows: ${common_vm_windows} ${js_windows_common} {
   packages: {
-    "devkit:VS2017-15.5.5+1": "==0"
+	"devkit:VS2017-15.9.16+1" : "==0"
   }
   setup: ${common_vm_windows.setup} ${js_windows_common.setup}
 }
@@ -90,7 +90,7 @@ fastr: {
   }
   downloads: {
     F2C_BINARY: { name: "f2c-binary", version: "7", platformspecific: true },
-    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "6", platformspecific: true },
+    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "7", platformspecific: true },
   }
 }
 
@@ -107,6 +107,9 @@ fastr_linux: ${fastr} {
     PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.8.5/lib64"
     GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1-gcc4.8.5/lib64/R",
     FASTR_FC: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
+  }
+  downloads: {
+    BLAS_LAPACK_DIR: { name: "fastr-blas-lapack-gcc", version: "4.8.5", platformspecific: true }
   }
 }
 
@@ -247,6 +250,34 @@ full_vm_build_linux: ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_lin
 full_vm_build_linux_aarch64: ${svm-common-linux-aarch64} ${sulong_linux} ${custom_vm_linux}
 full_vm_build_darwin: ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin} ${fastr_darwin} ${graalpython_darwin} ${custom_vm_darwin}
 
+libgraal_build: [mx,
+    --env, ${libgraal_env},
+    "--extra-image-builder-argument=-J-esa",
+    "--extra-image-builder-argument=-J-ea",
+    "--extra-image-builder-argument=-ea",
+    build
+]
+libgraal_compiler: ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
+  run: [
+    # enable asserts in the JVM building the image and enable asserts in the resulting native image
+    ${libgraal_build}
+    [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Compiler"]
+  ]
+  timelimit: "1:00:00"
+  targets: [gate]
+}
+
+libgraal_truffle: ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
+  run: [
+    # enable asserts in the JVM building the image and enable asserts in the resulting native image
+    ${libgraal_build}
+    [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Truffle"]
+  ]
+  logs: ${common_vm.logs} ["*/graal-compiler.log"]
+  timelimit: "45:00"
+  targets: [gate]
+}
+
 builds += [
   #
   # Gates
@@ -257,27 +288,14 @@ builds += [
     ]
     name: gate-vm-style-linux-amd64
   }
-  ${vm_java_8} ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
-    run: [
-      # enable asserts in the JVM building the image and enable asserts in the resulting native image
-      [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa",  "--extra-image-builder-argument=-J-ea", "--extra-image-builder-argument=-ea", build]
-      [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Compiler"]
-    ]
-    timelimit: "1:00:00"
-    targets: [gate]
-    name: gate-vm-libgraal-compiler
-  }
-  ${vm_java_8} ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
-    run: [
-      # enable asserts in the JVM building the image and enable asserts in the resulting native image
-      [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa", "--extra-image-builder-argument=-J-ea", "--extra-image-builder-argument=-ea", build]
-      [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Truffle"]
-    ]
-    logs: ${common_vm.logs} ["*/graal-compiler.log"]
-    timelimit: "45:00"
-    targets: [gate]
-    name: gate-vm-libgraal-truffle
-  }
+  ${libgraal_compiler} ${vm_java_8}  { name: gate-vm-libgraal-compiler-8-linux-amd64 }
+  ${libgraal_compiler} ${vm_java_11} { name: gate-vm-libgraal-compiler-11-linux-amd64 }
+  ${libgraal_compiler} ${vm_java_15} { name: gate-vm-libgraal-compiler-15-linux-amd64 }
+
+  ${libgraal_truffle} ${vm_java_8}  { name: gate-vm-libgraal-truffle-8-linux-amd64 }
+  ${libgraal_truffle} ${vm_java_11} { name: gate-vm-libgraal-truffle-11-linux-amd64 }
+  ${libgraal_truffle} ${vm_java_15} { name: gate-vm-libgraal-truffle-15-linux-amd64 }
+
   ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]

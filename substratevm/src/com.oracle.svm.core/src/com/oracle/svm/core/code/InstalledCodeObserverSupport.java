@@ -58,12 +58,14 @@ public final class InstalledCodeObserverSupport {
     }
 
     public InstalledCodeObserver[] createObservers(DebugContext debug, SharedMethod method, CompilationResult compilation, Pointer code) {
-        InstalledCodeObserver[] observers = new InstalledCodeObserver[observerFactories.size()];
-        int index = 0;
+        List<InstalledCodeObserver> observers = new ArrayList<>();
         for (InstalledCodeObserver.Factory factory : observerFactories) {
-            observers[index++] = factory.create(debug, method, compilation, code);
+            InstalledCodeObserver observer = factory.create(debug, method, compilation, code);
+            if (observer != null) {
+                observers.add(observer);
+            }
         }
-        return observers;
+        return observers.toArray(new InstalledCodeObserver[0]);
     }
 
     public static NonmovableArray<InstalledCodeObserverHandle> installObservers(InstalledCodeObserver[] observers) {

@@ -35,7 +35,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.tests.interop.values.BoxedStringValue;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
@@ -44,7 +43,7 @@ import org.graalvm.polyglot.Value;
 @RunWith(TruffleRunner.class)
 public class PolyglotScopeTest extends InteropTestBase {
 
-    private static TruffleObject testLibrary;
+    private static Object testLibrary;
 
     @BeforeClass
     public static void loadTestBitcode() {

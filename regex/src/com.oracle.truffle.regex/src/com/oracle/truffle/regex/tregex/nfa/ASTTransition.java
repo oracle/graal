@@ -60,11 +60,13 @@ public class ASTTransition implements AbstractTransition<Term, ASTTransition>, J
         this.target = target;
     }
 
+    @TruffleBoundary
     @Override
     public int getId() {
         throw new UnsupportedOperationException();
     }
 
+    @TruffleBoundary
     @Override
     public Term getSource() {
         throw new UnsupportedOperationException();

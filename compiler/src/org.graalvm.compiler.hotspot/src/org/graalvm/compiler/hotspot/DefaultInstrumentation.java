@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import org.graalvm.compiler.core.Instrumentation;
+
 /**
  * Default version of {@link Instrumentation}.
  */

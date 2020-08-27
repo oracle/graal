@@ -44,6 +44,7 @@ public class EconomyMidTier extends BaseTier<MidTierContext> {
         appendPhase(new GuardLoweringPhase());
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER));
         appendPhase(new FrameStateAssignmentPhase());
+        appendPhase(canonicalizer);
         appendPhase(new WriteBarrierAdditionPhase());
     }
 }

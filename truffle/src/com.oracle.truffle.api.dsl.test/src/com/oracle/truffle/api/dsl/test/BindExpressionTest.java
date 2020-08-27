@@ -44,12 +44,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
+
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Introspectable;
+import com.oracle.truffle.api.dsl.Introspection;
+import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
@@ -65,6 +70,7 @@ import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveC
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveDynamicAndCachedNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveDynamicNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveDynamicWithLibraryNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.IntrospectableNodeGen;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
@@ -192,6 +198,40 @@ public class BindExpressionTest extends AbstractPolyglotTest {
             assertEquals(0, cachedCounter);
             return a0;
         }
+    }
+
+    /*
+     * We need to make sure introspectable does not include bind parameters.
+     */
+    @Test
+    public void testIntrospectable() {
+        IntrospectableNode node = IntrospectableNodeGen.create();
+        TestObject o = new TestObject();
+        node.execute(o);
+        List<SpecializationInfo> infos = Introspection.getSpecializations(node);
+        assertEquals(1, infos.size());
+        for (SpecializationInfo info : infos) {
+            assertEquals(1, info.getInstances());
+            List<Object> cachedData = info.getCachedData(0);
+            assertEquals(1, cachedData.size());
+            assertSame(o.storage, cachedData.iterator().next());
+        }
+    }
+
+    @Introspectable
+    abstract static class IntrospectableNode extends Node {
+
+        abstract Object execute(Object arg0);
+
+        @Specialization(guards = "storage == cachedStorage", limit = "2")
+        Object s0(TestObject a0,
+                        @Bind("a0.storage") Object storage,
+                        @Cached("storage") Object cachedStorage) {
+            assertSame(storage, cachedStorage);
+            assertSame(a0.storage, storage);
+            return a0;
+        }
+
     }
 
     /*

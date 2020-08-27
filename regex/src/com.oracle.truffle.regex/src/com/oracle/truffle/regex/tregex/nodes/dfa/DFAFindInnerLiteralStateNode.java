@@ -61,37 +61,24 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
         this.prefixMatcher = prefixMatcher;
     }
 
+    public InnerLiteral getInnerLiteral() {
+        return innerLiteral;
+    }
+
     @Override
     public DFAAbstractStateNode createNodeSplitCopy(short copyID) {
         return new DFAFindInnerLiteralStateNode(copyID, Arrays.copyOf(getSuccessors(), getSuccessors().length), innerLiteral, prefixMatcher);
     }
 
-    @Override
-    public void executeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
-        assert executor.isForward();
-        while (true) {
-            if (!executor.inputHasNext(locals)) {
-                locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
-                return;
-            }
-            locals.setIndex(indexOfNode.execute(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral.getLiteral(), innerLiteral.getMask()));
-            if (locals.getIndex() < 0) {
-                locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
-                return;
-            }
-            if (prefixMatcher == null || prefixMatcherMatches(locals, compactString)) {
-                if (prefixMatcher == null && executor.isSimpleCG()) {
-                    locals.getCGData().results[0] = locals.getIndex();
-                }
-                executor.inputIncRaw(locals, innerLiteral.getLiteral().encodedLength());
-                locals.setSuccessorIndex(0);
-                return;
-            }
-            executor.inputIncRaw(locals);
-        }
+    public boolean hasPrefixMatcher() {
+        return prefixMatcher != null;
     }
 
-    private boolean prefixMatcherMatches(TRegexDFAExecutorLocals locals, boolean compactString) {
+    int executeInnerLiteralSearch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        return indexOfNode.execute(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral.getLiteral().content(), innerLiteral.getMaskContent());
+    }
+
+    boolean prefixMatcherMatches(TRegexDFAExecutorLocals locals, boolean compactString) {
         Object result = prefixMatcher.execute(locals.toInnerLiteralBackwardLocals(), compactString);
         return prefixMatcher.isSimpleCG() ? result != null : (int) result != TRegexDFAExecutorNode.NO_MATCH;
     }
@@ -105,5 +92,4 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
                         Json.prop("loopToSelf", false),
                         Json.prop("transitions", Json.array(Json.obj(Json.prop("matcher", "innerLiteral(" + innerLiteral.getLiteral() + ")"), Json.prop("target", successors[0])))));
     }
-
 }

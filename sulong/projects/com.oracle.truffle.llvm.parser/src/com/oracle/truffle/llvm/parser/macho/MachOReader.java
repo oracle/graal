@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,16 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.macho;
 
-import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.filereader.ObjectFileReader;
+import com.oracle.truffle.llvm.runtime.Magic;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 
 public final class MachOReader extends ObjectFileReader {
-
-    private static final long MH_CIGAM = BinaryParser.Magic.MH_CIGAM.magic;
-    private static final long MH_MAGIC_64 = BinaryParser.Magic.MH_MAGIC_64.magic;
-    private static final long MH_CIGAM_64 = BinaryParser.Magic.MH_CIGAM_64.magic;
 
     private final boolean is64Bit;
 
@@ -73,11 +69,11 @@ public final class MachOReader extends ObjectFileReader {
     }
 
     private static boolean isMachO64MagicNumber(long magic) {
-        return magic == MH_MAGIC_64 || magic == MH_CIGAM_64;
+        return magic == Magic.MH_MAGIC_64.magic || magic == Magic.MH_CIGAM_64.magic;
     }
 
     private static boolean isReversedByteOrder(long magic) {
-        return magic == MH_CIGAM || magic == MH_CIGAM_64;
+        return magic == Magic.MH_CIGAM.magic || magic == Magic.MH_CIGAM_64.magic;
     }
 
 }

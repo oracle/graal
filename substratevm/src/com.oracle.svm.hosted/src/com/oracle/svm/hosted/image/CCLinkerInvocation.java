@@ -39,7 +39,7 @@ import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     public static class Options {
-        @Option(help = "Pass the provided raw option to the linker command that produces the final binary. The possible options are platform specific and passed through without any validation.")//
+        @Option(help = "Pass the provided raw option that will be appended to the linker command to produce the final binary. The possible options are platform specific and passed through without any validation.")//
         public static final HostedOptionKey<String[]> NativeLinkerOption = new HostedOptionKey<>(new String[0]);
     }
 
@@ -154,6 +154,14 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             cmd.add("-Wl,-rpath");
             cmd.add("-Wl," + rpath);
         }
+
+        cmd.addAll(getLibrariesCommand());
+        Collections.addAll(cmd, Options.NativeLinkerOption.getValue());
+        return cmd;
+    }
+
+    protected List<String> getLibrariesCommand() {
+        List<String> cmd = new ArrayList<>();
         for (String lib : libs) {
             if (lib.startsWith("-")) {
                 cmd.add("-Wl," + lib.replace(" ", ","));
@@ -161,8 +169,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 cmd.add("-l" + lib);
             }
         }
-
-        Collections.addAll(cmd, Options.NativeLinkerOption.getValue());
         return cmd;
     }
 

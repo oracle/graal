@@ -27,7 +27,10 @@ package com.oracle.svm.core.monitor;
 //Checkstyle: stop
 
 import java.lang.ref.ReferenceQueue;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
@@ -40,6 +43,8 @@ import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.WeakIdentityHashMap;
@@ -90,6 +95,62 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /**
+     * Types that are used to implement the secondary storage for monitor slots cannot themselves
+     * use the additionalMonitors map. That could result in recursive manipulation of the
+     * additionalMonitors map which could lead to table corruptions and double insertion of a
+     * monitor for the same object. Therefore these types will alawys get a monitor slot.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    public static final Set<Class<?>> FORCE_MONITOR_SLOT_TYPES;
+
+    static {
+        try {
+            /*
+             * The com.oracle.svm.core.WeakIdentityHashMap used to model the
+             * com.oracle.svm.core.monitor.MultiThreadedMonitorSupport#additionalMonitors map uses
+             * java.lang.ref.ReferenceQueue internally. The ReferenceQueue uses the inner static
+             * class Lock for all its locking needs.
+             */
+            HashSet<Class<?>> monitorTypes = new HashSet<>();
+            monitorTypes.add(Class.forName("java.lang.ref.ReferenceQueue$Lock"));
+            /* The WeakIdentityHashMap also synchronizes on its internal ReferenceQueue field. */
+            monitorTypes.add(java.lang.ref.ReferenceQueue.class);
+
+            /*
+             * Whenever the monitor allocation in
+             * MultiThreadedMonitorSupport.getOrCreateMonitorFromMap() is done via
+             * ThreadLocalAllocation.slowPathNewInstance() then
+             * LinuxPhysicalMemory$PhysicalMemorySupportImpl.sizeFromCGroup() is called which
+             * triggers file IO using the synchronized java.io.FileDescriptor.attach().
+             */
+            monitorTypes.add(java.io.FileDescriptor.class);
+
+            /*
+             * LinuxPhysicalMemory$PhysicalMemorySupportImpl.sizeFromCGroup() also calls
+             * java.io.FileInputStream.close() which synchronizes on a 'Object closeLock = new
+             * Object()' object. We cannot modify the type of the monitor since it is in JDK code.
+             * Adding a monitor slot to java.lang.Object doesn't impact any subtypes.
+             * 
+             * This should also take care of the synchronization in
+             * ReferenceInternals.processPendingReferences().
+             */
+            monitorTypes.add(java.lang.Object.class);
+
+            /*
+             * The map access in MultiThreadedMonitorSupport.getOrCreateMonitorFromMap() calls
+             * System.identityHashCode() which on the slow path calls
+             * IdentityHashCodeSupport.generateIdentityHashCode(). The hashcode generation calls
+             * SplittableRandomAccessors.initialize() which synchronizes on the a Lock object.
+             */
+            monitorTypes.add(Class.forName("com.oracle.svm.core.jdk.SplittableRandomAccessors$Lock"));
+
+            FORCE_MONITOR_SLOT_TYPES = Collections.unmodifiableSet(monitorTypes);
+        } catch (ClassNotFoundException e) {
+            throw VMError.shouldNotReachHere("Error building the list of types that always need a monitor slot.", e);
+        }
+    }
+
+    /**
      * {@link Target_java_util_concurrent_locks_ReentrantLock_NonfairSync#objectMonitorCondition}
      * marker to indicate that the associated lock is an object monitor, but does not have a
      * Condition yet. This marker value is needed to identify monitor conditions for
@@ -137,6 +198,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         try {
             singleton().monitorEnter(obj);
 
+        } catch (OutOfMemoryError ex) {
+            /*
+             * Exposing OutOfMemoryError to application. Note that since the foreign call from
+             * snippets to this method does not have an exception edge, it is possible this throw
+             * will miss the proper exception handler.
+             */
+            throw ex;
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we
@@ -174,6 +242,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         try {
             singleton().monitorExit(obj);
 
+        } catch (OutOfMemoryError ex) {
+            /*
+             * Exposing OutOfMemoryError to application. Note that since the foreign call from
+             * snippets to this method does not have an exception edge, it is possible this throw
+             * will miss the proper exception handler.
+             */
+            throw ex;
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we

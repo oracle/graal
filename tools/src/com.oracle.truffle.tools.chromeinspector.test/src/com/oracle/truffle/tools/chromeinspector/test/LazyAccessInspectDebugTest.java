@@ -169,6 +169,8 @@ public class LazyAccessInspectDebugTest {
                         "{\"result\":{},\"id\":100}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n"));
 
+        // Reset the delegate so that we can GC the tested Engine
+        ProxyLanguage.setDelegate(new ProxyLanguage());
         tester.finish();
     }
     // @formatter:on

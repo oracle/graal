@@ -40,8 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
@@ -75,8 +74,8 @@ public abstract class SingleCharMatcher extends InvertibleCharMatcher {
     }
 
     @Specialization
-    public boolean match(int m, boolean compactString) {
-        return result((!compactString || c < 256) && c == m);
+    public boolean match(int m) {
+        return result(c == m);
     }
 
     @Override

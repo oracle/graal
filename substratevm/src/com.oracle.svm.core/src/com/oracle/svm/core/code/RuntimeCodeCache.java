@@ -67,7 +67,7 @@ public class RuntimeCodeCache {
         public static final RuntimeOptionKey<Boolean> WriteableCodeCache = new RuntimeOptionKey<>(false);
     }
 
-    private final RingBuffer<CodeCacheLogEntry> recentCodeCacheOperations = new RingBuffer<>(30, () -> new CodeCacheLogEntry());
+    private final RingBuffer<CodeCacheLogEntry> recentCodeCacheOperations = new RingBuffer<>(30, CodeCacheLogEntry::new);
     private long codeCacheOperationSequenceNumber;
 
     private final Counter.Group counters = new Counter.Group(CodeInfoTable.Options.CodeCacheCounters, "RuntimeCodeInfo");
@@ -216,13 +216,14 @@ public class RuntimeCodeCache {
          */
         Deoptimizer.deoptimizeInRange(CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info), false);
 
-        finishInvalidation(info);
+        finishInvalidation(info, true);
     }
 
     protected void invalidateNonStackMethod(CodeInfo info) {
+        assert VMOperation.isGCInProgress() : "must only be called by the GC";
         prepareInvalidation(info);
         assert codeNotOnStackVerifier.verify(info);
-        finishInvalidation(info);
+        finishInvalidation(info, false);
     }
 
     private void prepareInvalidation(CodeInfo info) {
@@ -230,7 +231,7 @@ public class RuntimeCodeCache {
         invalidateMethodCount.inc();
         assert verifyTable();
         if (Options.TraceCodeCache.getValue()) {
-            Log.log().string("[" + INFO_INVALIDATE + " method: ");
+            Log.log().string("[").string(INFO_INVALIDATE).string(" method: ");
             logCodeInfo(Log.log(), info);
             Log.log().string("]").newline();
         }
@@ -245,10 +246,9 @@ public class RuntimeCodeCache {
              */
             installedCode.clearAddress();
         }
-
     }
 
-    private void finishInvalidation(CodeInfo info) {
+    private void finishInvalidation(CodeInfo info, boolean notifyGC) {
         /*
          * Now it is guaranteed that the InstalledCode is not on the stack and cannot be invoked
          * anymore, so we can free the code and all metadata.
@@ -261,7 +261,7 @@ public class RuntimeCodeCache {
         numCodeInfos--;
         NonmovableArrays.setWord(codeInfos, numCodeInfos, WordFactory.nullPointer());
 
-        RuntimeCodeInfoAccess.partialReleaseAfterInvalidate(info);
+        RuntimeCodeInfoAccess.partialReleaseAfterInvalidate(info, notifyGC);
 
         if (Options.TraceCodeCache.getValue()) {
             logTable();

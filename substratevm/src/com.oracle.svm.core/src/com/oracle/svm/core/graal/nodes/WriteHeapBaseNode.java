@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -37,6 +35,9 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.PointerBase;
+
+import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.ReservedRegisters;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
 public class WriteHeapBaseNode extends FixedWithNextNode implements LIRLowerable {
@@ -52,7 +53,7 @@ public class WriteHeapBaseNode extends FixedWithNextNode implements LIRLowerable
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
-        tool.emitWriteRegister(((SubstrateRegisterConfig) tool.getRegisterConfig()).getHeapBaseRegister(), gen.operand(value), tool.getLIRKind(FrameAccess.getWordStamp()));
+        tool.emitWriteRegister(ReservedRegisters.singleton().getHeapBaseRegister(), gen.operand(value), tool.getLIRKind(FrameAccess.getWordStamp()));
     }
 
     @NodeIntrinsic

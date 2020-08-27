@@ -43,8 +43,8 @@ package com.oracle.truffle.regex;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
+import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
 
 public abstract class RegexExecRootNode extends RegexBodyNode {
 

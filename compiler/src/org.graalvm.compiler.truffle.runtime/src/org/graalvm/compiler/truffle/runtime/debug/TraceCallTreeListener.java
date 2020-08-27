@@ -59,7 +59,7 @@ public final class TraceCallTreeListener extends AbstractGraalTruffleRuntimeList
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
         if (target.getOptionValue(PolyglotCompilerOptions.TraceCompilationCallTree)) {
-            runtime.logEvent(target, 0, "opt call tree", target.getDebugProperties(inliningDecision));
+            runtime.logEvent(target, 0, "opt call tree", target.getDebugProperties());
             logTruffleCallTree(target, inliningDecision);
         }
     }
@@ -78,8 +78,8 @@ public final class TraceCallTreeListener extends AbstractGraalTruffleRuntimeList
                         dispatched = "";
                     }
                     Map<String, Object> properties = new LinkedHashMap<>();
-                    GraalTruffleRuntimeListener.addASTSizeProperty(callNode.getCurrentCallTarget(), inliningDecision, properties);
-                    properties.putAll(callNode.getCurrentCallTarget().getDebugProperties(inliningDecision));
+                    GraalTruffleRuntimeListener.addASTSizeProperty(callNode.getCurrentCallTarget(), properties);
+                    properties.putAll(callNode.getCurrentCallTarget().getDebugProperties());
                     runtime.logEvent(compilable, depth, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties, null);
                 } else if (node instanceof OptimizedIndirectCallNode) {
                     int depth = decisionStack == null ? 0 : decisionStack.size() - 1;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,17 +94,11 @@ public final class NonmovableArrays {
         if (array.isNull()) {
             throw OUT_OF_MEMORY_ERROR;
         }
-        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(array, hub, HeapKind.Unmanaged);
+        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(array, hub, HeapKind.Unmanaged, true);
         array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
         // already zero-initialized thanks to calloc()
         trackUnmanagedArray((NonmovableArray<?>) array);
         return (T) array;
-    }
-
-    @Uninterruptible(reason = "Cast to object might not be valid.")
-    private static boolean isInImageHeap(NonmovableArray<?> array) {
-        Object obj = KnownIntrinsics.convertUnknownValue(((Word) array).toObject(), Object.class);
-        return obj != null && Heap.getHeap().isInImageHeap(obj);
     }
 
     /** Begins tracking an array, e.g. when it is handed over from a different isolate. */

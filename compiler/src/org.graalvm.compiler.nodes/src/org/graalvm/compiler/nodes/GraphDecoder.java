@@ -46,8 +46,10 @@ import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.util.TypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -460,6 +462,9 @@ public class GraphDecoder {
             return result;
         }
     }
+
+    private static final TimerKey MakeSuccessorStubsTimer = DebugContext.timer("PartialEvaluation-MakeSuccessorStubs").doc("Time spent in making successor stubs for the PE.");
+    private static final TimerKey ReadPropertiesTimer = DebugContext.timer("PartialEvaluation-ReadProperties").doc("Time spent in reading node properties in the PE.");
 
     protected final Architecture architecture;
     /** The target graph where decoded nodes are added to. */
@@ -888,6 +893,29 @@ public class GraphDecoder {
                 methodScope.loopExplosionHead = merge;
             }
 
+            /*
+             * Proxy generation and merge explosion: When doing merge-explode PE loops are detected
+             * after partial evaluation in a dedicated steps. Therefore, we create merge nodes
+             * instead of loop begins and loop exits and later replace them with the detected loop
+             * begin and loop exit nodes.
+             *
+             * However, in order to create the correct loop proxies, all values alive at a merge
+             * created for a loop begin/loop exit replacement merge, we create so called proxy
+             * placeholder nodes. These nodes are attached to a merge and proxy the corresponding
+             * node. Later, when we replace a merge with a loop exit, we visit all live nodes at
+             * that loop exit and replace the proxy placeholders with real value proxy nodes.
+             *
+             * Since we cannot (this would explode immediately) proxy all nodes for every merge
+             * during explosion, we only create nodes at the loop explosion begins for nodes that
+             * are alive at the framestate of the respective loop begin. This is fine as long as all
+             * values proxied out of a loop are alive at the loop header. However, this is not true
+             * for all values (imagine do-while loops). Thus, we may create, in very specific
+             * patterns, unschedulable graphs since we miss the creation of proxy nodes.
+             *
+             * There is currently no straight forward solution to this problem, thus we shift the
+             * work to the implementor side where such patterns can typically be easily fixed by
+             * creating loop phis and assigning them correctly.
+             */
             List<ValueNode> newFrameStateValues = new ArrayList<>();
             for (ValueNode frameStateValue : frameState.values) {
                 if (frameStateValue == null || frameStateValue.isConstant() || !graph.isNew(methodScope.methodStartMark, frameStateValue)) {
@@ -1253,23 +1281,26 @@ public class GraphDecoder {
         return false;
     }
 
+    @SuppressWarnings({"unused", "try"})
     protected void readProperties(MethodScope methodScope, Node node) {
-        NodeSourcePosition position = (NodeSourcePosition) readObject(methodScope);
-        Fields fields = node.getNodeClass().getData();
-        for (int pos = 0; pos < fields.getCount(); pos++) {
-            if (fields.getType(pos).isPrimitive()) {
-                long primitive = methodScope.reader.getSV();
-                fields.setRawPrimitive(node, pos, primitive);
-            } else {
-                Object value = readObject(methodScope);
-                fields.putObject(node, pos, value);
+        try (DebugCloseable a = ReadPropertiesTimer.start(debug)) {
+            NodeSourcePosition position = (NodeSourcePosition) readObject(methodScope);
+            Fields fields = node.getNodeClass().getData();
+            for (int pos = 0; pos < fields.getCount(); pos++) {
+                if (fields.getType(pos).isPrimitive()) {
+                    long primitive = methodScope.reader.getSV();
+                    fields.setRawPrimitive(node, pos, primitive);
+                } else {
+                    Object value = readObject(methodScope);
+                    fields.putObject(node, pos, value);
+                }
             }
-        }
-        if (graph.trackNodeSourcePosition() && position != null) {
-            NodeSourcePosition callerBytecodePosition = methodScope.getCallerBytecodePosition(position);
-            node.setNodeSourcePosition(callerBytecodePosition);
-            if (node instanceof DeoptimizingGuard) {
-                ((DeoptimizingGuard) node).addCallerToNoDeoptSuccessorPosition(callerBytecodePosition.getCaller());
+            if (graph.trackNodeSourcePosition() && position != null) {
+                NodeSourcePosition callerBytecodePosition = methodScope.getCallerBytecodePosition(position);
+                node.setNodeSourcePosition(callerBytecodePosition);
+                if (node instanceof DeoptimizingGuard) {
+                    ((DeoptimizingGuard) node).addCallerToNoDeoptSuccessorPosition(callerBytecodePosition.getCaller());
+                }
             }
         }
     }
@@ -1470,30 +1501,33 @@ public class GraphDecoder {
      * successor list, but no properties or edges are loaded yet. That is done when the successor is
      * on top of the worklist in {@link #processNextNode}.
      */
+    @SuppressWarnings({"unused", "try"})
     protected void makeSuccessorStubs(MethodScope methodScope, LoopScope loopScope, Node node, boolean updatePredecessors) {
-        Edges edges = node.getNodeClass().getSuccessorEdges();
-        for (int index = 0; index < edges.getDirectCount(); index++) {
-            if (skipDirectEdge(node, edges, index)) {
-                continue;
+        try (DebugCloseable a = MakeSuccessorStubsTimer.start(debug)) {
+            Edges edges = node.getNodeClass().getSuccessorEdges();
+            for (int index = 0; index < edges.getDirectCount(); index++) {
+                if (skipDirectEdge(node, edges, index)) {
+                    continue;
+                }
+                int orderId = readOrderId(methodScope);
+                Node value = makeStubNode(methodScope, loopScope, orderId);
+                edges.initializeNode(node, index, value);
+                if (updatePredecessors && value != null) {
+                    edges.update(node, null, value);
+                }
             }
-            int orderId = readOrderId(methodScope);
-            Node value = makeStubNode(methodScope, loopScope, orderId);
-            edges.initializeNode(node, index, value);
-            if (updatePredecessors && value != null) {
-                edges.update(node, null, value);
-            }
-        }
-        for (int index = edges.getDirectCount(); index < edges.getCount(); index++) {
-            int size = methodScope.reader.getSVInt();
-            if (size != -1) {
-                NodeList<Node> nodeList = new NodeSuccessorList<>(node, size);
-                edges.initializeList(node, index, nodeList);
-                for (int idx = 0; idx < size; idx++) {
-                    int orderId = readOrderId(methodScope);
-                    Node value = makeStubNode(methodScope, loopScope, orderId);
-                    nodeList.initialize(idx, value);
-                    if (updatePredecessors && value != null) {
-                        edges.update(node, null, value);
+            for (int index = edges.getDirectCount(); index < edges.getCount(); index++) {
+                int size = methodScope.reader.getSVInt();
+                if (size != -1) {
+                    NodeList<Node> nodeList = new NodeSuccessorList<>(node, size);
+                    edges.initializeList(node, index, nodeList);
+                    for (int idx = 0; idx < size; idx++) {
+                        int orderId = readOrderId(methodScope);
+                        Node value = makeStubNode(methodScope, loopScope, orderId);
+                        nodeList.initialize(idx, value);
+                        if (updatePredecessors && value != null) {
+                            edges.update(node, null, value);
+                        }
                     }
                 }
             }
@@ -1894,6 +1928,97 @@ class LoopDetector implements Runnable {
                 }
             }
         }
+        /*-
+         * Special case loop exits that merge on a common merge node. If the original, merge
+         * exploded loop, contains loop exit paths, where a loop exit path (a path already exiting
+         * the loop see loop exits vs natural loop exits) is already a natural one merge on a loop
+         * explosion merge, we run into troubles with phi nodes and proxy nodes.
+         *
+         * Consider the following piece of code outlining a loop exit path of a merge explode annotated loop
+         *
+         * <pre>
+         *      // merge exploded loop
+         *      mergeExplodedLoop: while(....)
+         *          ...
+         *          if(condition effectively exiting the loop) // natural loop exit
+         *
+         *              break mergeExplodedLoop;
+         *          ...
+         *
+         *      // outerLoopContinueCode that uses values proxied inside the loop
+         * </pre>
+         *
+         *
+         * However, once the exit path contains control flow like below
+         * <pre>
+         *      // merge exploded loop
+         *      mergeExplodedLoop: while(....)
+         *          ...
+         *          if(condition effectively exiting the loop) // natural loop exit
+         *              if(some unrelated condition) {
+         *                 ...
+         *              } else {
+         *                  ...
+         *              }
+         *              break mergeExplodedLoop;
+         *          ...
+         *
+         *      // outerLoopContinueCode that uses values proxied inside the loop
+         * </pre>
+         *
+         * We would produce two loop exits that merge booth on the outerLoopContinueCode.
+         * This would require the generation of complex phi and proxy constructs, thus we include the merge inside the
+         * loop if we find a subsequent loop explosion merge.
+         */
+        EconomicSet<MergeNode> merges = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        EconomicSet<MergeNode> mergesToRemove = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+
+        for (AbstractEndNode end : loop.exits) {
+            AbstractMergeNode merge = end.merge();
+            assert merge instanceof MergeNode;
+            if (merges.contains((MergeNode) merge)) {
+                mergesToRemove.add((MergeNode) merge);
+            } else {
+                merges.add((MergeNode) merge);
+            }
+        }
+        merges.clear();
+        merges.addAll(mergesToRemove);
+        mergesToRemove.clear();
+        outer: for (MergeNode merge : merges) {
+            for (EndNode end : merge.ends) {
+                if (!loop.exits.contains(end)) {
+                    continue outer;
+                }
+            }
+            mergesToRemove.add(merge);
+        }
+        // we found a shared merge as outlined above
+        if (mergesToRemove.size() > 0) {
+            assert merges.size() < loop.exits.size();
+            outer: for (MergeNode merge : mergesToRemove) {
+                FixedNode current = merge;
+                while (current != null) {
+                    if (current instanceof FixedWithNextNode) {
+                        current = ((FixedWithNextNode) current).next();
+                        continue;
+                    }
+                    if (current instanceof EndNode && methodScope.loopExplosionMerges.contains(((EndNode) current).merge())) {
+                        // we found the place for the loop exit introduction since the subsequent
+                        // merge has a frame state
+                        loop.exits.removeIf(x -> x.merge() == merge);
+                        loop.exits.add((EndNode) current);
+                        break;
+                    }
+                    /*
+                     * No next merge was found, this can only mean no immediate unroll happend next,
+                     * i.e., there is no subsequent iteration of any loop exploded directly after,
+                     * thus no loop exit possible.
+                     */
+                    continue outer;
+                }
+            }
+        }
     }
 
     private void insertLoopNodes(Loop loop) {
@@ -1974,9 +2099,15 @@ class LoopDetector implements Runnable {
                 }
             }
         }
-
         List<ValueNode> newValues = new ArrayList<>(oldState.values().size());
-        for (ValueNode v : oldState.values()) {
+        /* The framestate may contain a value multiple times */
+        EconomicMap<ValueNode, ValueNode> old2NewValues = EconomicMap.create();
+        for (ValueNode v : oldState.values) {
+            if (v != null && old2NewValues.containsKey(v)) {
+                newValues.add(old2NewValues.get(v));
+                continue;
+            }
+
             ValueNode value = v;
             ValueNode realValue = ProxyPlaceholder.unwrap(value);
 
@@ -1991,7 +2122,15 @@ class LoopDetector implements Runnable {
             }
 
             if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue) || !graph.isNew(methodScope.methodStartMark, realValue)) {
-                newValues.add(realValue);
+                /*
+                 * value v, input to the old state, can already be a proxy placeholder node to
+                 * another, dominating loop exit, we must not take the unwrapped value in this case
+                 * but the properly proxied one
+                 */
+                newValues.add(v);
+                if (v != null) {
+                    old2NewValues.put(v, v);
+                }
             } else {
                 /*
                  * The node is not in the FrameState of the LoopBegin, i.e., it is a value computed
@@ -2004,6 +2143,7 @@ class LoopDetector implements Runnable {
                 ValueProxyNode proxy = ProxyNode.forValue(proxyPlaceholder.value, loopExit);
                 proxyPlaceholder.setValue(proxy);
                 newValues.add(proxy);
+                old2NewValues.put(v, proxy);
             }
         }
 

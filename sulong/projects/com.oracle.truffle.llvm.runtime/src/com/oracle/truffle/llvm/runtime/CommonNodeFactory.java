@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime;
 import java.math.BigInteger;
 
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
@@ -116,6 +115,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugSimp
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugDeclaration;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAArgNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVM80BitFloatLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMDoubleLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMFloatLiteralNodeGen;
@@ -333,8 +333,8 @@ public class CommonNodeFactory {
         }
     }
 
-    public static TruffleObject toGenericDebuggerValue(Object llvmType, Object value, DataLayout dataLayout) {
-        final TruffleObject complexObject = asDebuggerIRValue(llvmType, value, dataLayout);
+    public static Object toGenericDebuggerValue(Object llvmType, Object value, DataLayout dataLayout) {
+        final Object complexObject = asDebuggerIRValue(llvmType, value, dataLayout);
         if (complexObject != null) {
             return complexObject;
         }
@@ -342,7 +342,7 @@ public class CommonNodeFactory {
         return LLVMDebugManagedValue.create(llvmType, value);
     }
 
-    private static TruffleObject asDebuggerIRValue(Object llvmType, Object value, DataLayout dataLayout) {
+    private static Object asDebuggerIRValue(Object llvmType, Object value, DataLayout dataLayout) {
         final Type type;
         if (llvmType instanceof Type) {
             type = (Type) llvmType;
@@ -587,6 +587,10 @@ public class CommonNodeFactory {
             int bits = resolvedResultType instanceof VariableBitWidthType ? ((VariableBitWidthType) resolvedResultType).getBitSizeInt() : 0;
             return createLoad(resolvedResultType, loadTarget, bits);
         }
+    }
+
+    public static LLVMExpressionNode createVaArg(Type type, LLVMExpressionNode source) {
+        return LLVMVAArgNodeGen.create(type, source);
     }
 
     private static LLVMLoadNode createLoadVector(VectorType resultType, LLVMExpressionNode loadTarget, int size) {
@@ -916,8 +920,7 @@ public class CommonNodeFactory {
         }
     }
 
-    @SuppressWarnings("unused")
-    public static LLVMExpressionNode createBitcast(LLVMExpressionNode fromNode, Type targetType, Type fromType) {
+    public static LLVMExpressionNode createBitcast(LLVMExpressionNode fromNode, Type targetType, @SuppressWarnings("unused") Type fromType) {
         // does a reinterpreting cast between pretty much anything as long as source and target have
         // the same bit width.
         assert targetType != null;

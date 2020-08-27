@@ -166,7 +166,4 @@ public abstract class SubstrateObjectConstant implements JavaConstant, Compressi
     @Override
     public abstract SubstrateObjectConstant uncompress();
 
-    public abstract boolean setRoot(Object newRoot);
-
-    public abstract Object getRoot();
 }

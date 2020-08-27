@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -48,9 +49,8 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.image.AbstractImageHeapLayouter.ImageHeapLayout;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedClass;
@@ -68,10 +68,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public final class NativeImageHeapWriter {
     private final NativeImageHeap heap;
-    private final ImageHeapLayout heapLayout;
+    private final ImageHeapLayoutInfo heapLayout;
     private long sectionOffsetOfARelocatablePointer;
 
-    public NativeImageHeapWriter(NativeImageHeap heap, ImageHeapLayout heapLayout) {
+    public NativeImageHeapWriter(NativeImageHeap heap, ImageHeapLayoutInfo heapLayout) {
         this.heap = heap;
         this.heapLayout = heapLayout;
         this.sectionOffsetOfARelocatablePointer = -1;
@@ -82,15 +82,18 @@ public final class NativeImageHeapWriter {
      * image.
      */
     @SuppressWarnings("try")
-    public long writeHeap(DebugContext debug, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
+    public long writeHeap(DebugContext debug, RelocatableBuffer buffer) {
         try (Indent perHeapIndent = debug.logAndIndent("BootImageHeap.writeHeap:")) {
             for (ObjectInfo info : heap.getObjects()) {
                 assert !heap.isBlacklisted(info.getObject());
-                writeObject(info, roBuffer, rwBuffer);
+                writeObject(info, buffer);
             }
+
             // Only static fields that are writable get written to the native image heap,
             // the read-only static fields have been inlined into the code.
-            writeStaticFields(rwBuffer);
+            writeStaticFields(buffer);
+
+            heap.getLayouter().writeMetadata(buffer.getByteBuffer());
         }
         return sectionOffsetOfARelocatablePointer;
     }
@@ -189,28 +192,30 @@ public final class NativeImageHeapWriter {
         write(buffer, index, con, info);
     }
 
-    private void writeDynamicHub(RelocatableBuffer buffer, int index, DynamicHub target) {
-        assert target != null : "Null DynamicHub found during native image generation.";
+    private void writeObjectHeader(RelocatableBuffer buffer, int index, ObjectInfo obj) {
         mustBeReferenceAligned(index);
 
-        ObjectInfo targetInfo = heap.getObjectInfo(target);
-        assert targetInfo != null : "Unknown object " + target.toString() + " found. Static field or an object referenced from a static field changed during native image generation?";
+        DynamicHub hub = obj.getClazz().getHub();
+        assert hub != null : "Null DynamicHub found during native image generation.";
+        ObjectInfo hubInfo = heap.getObjectInfo(hub);
+        assert hubInfo != null : "Unknown object " + hub.toString() + " found. Static field or an object referenced from a static field changed during native image generation?";
 
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
         if (NativeImageHeap.useHeapBase()) {
-            long targetOffset = targetInfo.getAddress();
-            long headerBits = objectHeader.encodeAsImageHeapObjectHeader(targetOffset);
+            long targetOffset = hubInfo.getAddress();
+            long headerBits = objectHeader.encodeAsImageHeapObjectHeader(obj, targetOffset);
             writeReferenceValue(buffer, index, headerBits);
         } else {
             // The address of the DynamicHub target will be added by the link editor.
-            long headerBits = objectHeader.encodeAsImageHeapObjectHeader(0L);
-            addDirectRelocationWithAddend(buffer, index, target, headerBits);
+            long headerBits = objectHeader.encodeAsImageHeapObjectHeader(obj, 0L);
+            addDirectRelocationWithAddend(buffer, index, hub, headerBits);
         }
     }
 
     private void addDirectRelocationWithoutAddend(RelocatableBuffer buffer, int index, int size, Object target) {
+        assert size == 4 || size == 8;
         assert !NativeImageHeap.spawnIsolates() || heapLayout.isReadOnlyRelocatable(index);
-        buffer.addDirectRelocationWithoutAddend(index, size, target);
+        buffer.addRelocationWithoutAddend(index, size == 8 ? ObjectFile.RelocationKind.DIRECT_8 : ObjectFile.RelocationKind.DIRECT_4, target);
         if (sectionOffsetOfARelocatablePointer == -1) {
             sectionOffsetOfARelocatablePointer = index;
         }
@@ -218,7 +223,7 @@ public final class NativeImageHeapWriter {
 
     private void addDirectRelocationWithAddend(RelocatableBuffer buffer, int index, DynamicHub target, long objectHeaderBits) {
         assert !NativeImageHeap.spawnIsolates() || heapLayout.isReadOnlyRelocatable(index);
-        buffer.addDirectRelocationWithAddend(index, referenceSize(), objectHeaderBits, target);
+        buffer.addRelocationWithAddend(index, referenceSize() == 8 ? ObjectFile.RelocationKind.DIRECT_8 : ObjectFile.RelocationKind.DIRECT_4, objectHeaderBits, target);
         if (sectionOffsetOfARelocatablePointer == -1) {
             sectionOffsetOfARelocatablePointer = index;
         }
@@ -242,7 +247,7 @@ public final class NativeImageHeapWriter {
     }
 
     private static void writePrimitive(RelocatableBuffer buffer, int index, JavaConstant con) {
-        ByteBuffer bb = buffer.getBuffer();
+        ByteBuffer bb = buffer.getByteBuffer();
         switch (con.getJavaKind()) {
             case Boolean:
                 bb.put(index, (byte) con.asInt());
@@ -275,36 +280,27 @@ public final class NativeImageHeapWriter {
 
     private void writeReferenceValue(RelocatableBuffer buffer, int index, long value) {
         if (referenceSize() == Long.BYTES) {
-            buffer.getBuffer().putLong(index, value);
+            buffer.getByteBuffer().putLong(index, value);
         } else if (referenceSize() == Integer.BYTES) {
-            buffer.getBuffer().putInt(index, NumUtil.safeToInt(value));
+            buffer.getByteBuffer().putInt(index, NumUtil.safeToInt(value));
         } else {
             throw shouldNotReachHere("Unsupported reference size: " + referenceSize());
         }
     }
 
-    private static RelocatableBuffer bufferForPartition(final ObjectInfo info, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
-        VMError.guarantee(info != null, "[BootImageHeap.bufferForPartition: info is null]");
-        VMError.guarantee(info.getPartition() != null, "[BootImageHeap.bufferForPartition: info.partition is null]");
-
-        return info.getPartition().isWritable() ? rwBuffer : roBuffer;
-    }
-
-    private void writeObject(ObjectInfo info, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
+    private void writeObject(ObjectInfo info, RelocatableBuffer buffer) {
         /*
          * Write a reference from the object to its hub. This lives at layout.getHubOffset() from
          * the object base.
          */
-        final RelocatableBuffer buffer = bufferForPartition(info, roBuffer, rwBuffer);
         ObjectLayout objectLayout = heap.getObjectLayout();
         final int indexInBuffer = info.getIndexInBuffer(objectLayout.getHubOffset());
         assert objectLayout.isAligned(indexInBuffer);
 
-        final HostedClass clazz = info.getClazz();
-        final DynamicHub hub = clazz.getHub();
+        writeObjectHeader(buffer, indexInBuffer, info);
 
-        writeDynamicHub(buffer, indexInBuffer, hub);
-
+        ByteBuffer bufferBytes = buffer.getByteBuffer();
+        HostedClass clazz = info.getClazz();
         if (clazz.isInstanceClass()) {
             JavaConstant con = SubstrateObjectConstant.forObject(info.getObject());
 
@@ -333,7 +329,7 @@ public final class NativeImageHeapWriter {
                             }
                             int mask = 1 << (bit % bitsPerByte);
                             assert mask < (1 << bitsPerByte);
-                            buffer.putByte(index, (byte) (buffer.getByte(index) | mask));
+                            bufferBytes.put(index, (byte) (bufferBytes.get(index) | mask));
                         }
                     }
                 }
@@ -349,15 +345,16 @@ public final class NativeImageHeapWriter {
                     writeField(buffer, info, field, con, info);
                 }
             }
+            DynamicHub hub = clazz.getHub();
             if (hub.getHashCodeOffset() != 0) {
-                buffer.putInt(info.getIndexInBuffer(hub.getHashCodeOffset()), info.getIdentityHashCode());
+                bufferBytes.putInt(info.getIndexInBuffer(hub.getHashCodeOffset()), info.getIdentityHashCode());
             }
             if (hybridArray != null) {
                 /*
                  * Write the hybrid array length and the array elements.
                  */
                 int length = Array.getLength(hybridArray);
-                buffer.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
+                bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
                 for (int i = 0; i < length; i++) {
                     final int elementIndex = info.getIndexInBuffer(hybridLayout.getArrayElementOffset(i));
                     final JavaKind elementStorageKind = hybridLayout.getArrayElementStorageKind();
@@ -370,8 +367,8 @@ public final class NativeImageHeapWriter {
             JavaKind kind = clazz.getComponentType().getStorageKind();
             Object array = info.getObject();
             int length = Array.getLength(array);
-            buffer.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
-            buffer.putInt(info.getIndexInBuffer(objectLayout.getArrayIdentityHashcodeOffset()), info.getIdentityHashCode());
+            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
+            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayIdentityHashcodeOffset()), info.getIdentityHashCode());
             if (array instanceof Object[]) {
                 Object[] oarray = (Object[]) array;
                 assert oarray.length == length;

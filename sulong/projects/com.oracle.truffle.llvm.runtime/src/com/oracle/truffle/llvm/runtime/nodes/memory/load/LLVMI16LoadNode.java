@@ -51,7 +51,7 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected short doShortNative(LLVMNativePointer addr,
                     @CachedLanguage LLVMLanguage language) {
-        return language.getLLVMMemory().getI16(addr);
+        return language.getLLVMMemory().getI16(this, addr);
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")

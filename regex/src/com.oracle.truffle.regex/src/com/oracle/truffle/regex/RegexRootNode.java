@@ -40,15 +40,13 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
-import com.oracle.truffle.api.CompilerAsserts;
 
 public final class RegexRootNode extends RootNode {
 

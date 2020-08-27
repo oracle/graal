@@ -41,8 +41,9 @@
 package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.BitSets;
 
 /**
  * Specialized {@link BitSetMatcher} that exists simply because ascii bit set matchers occur often
@@ -50,20 +51,20 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  */
 public abstract class NullHighByteBitSetMatcher extends InvertibleCharMatcher {
 
-    private final CompilationFinalBitSet bitSet;
+    @CompilationFinal(dimensions = 1) private final long[] bitSet;
 
-    NullHighByteBitSetMatcher(boolean inverse, CompilationFinalBitSet bitSet) {
+    NullHighByteBitSetMatcher(boolean inverse, long[] bitSet) {
         super(inverse);
         this.bitSet = bitSet;
     }
 
-    public static NullHighByteBitSetMatcher create(boolean inverse, CompilationFinalBitSet bitSet) {
+    public static NullHighByteBitSetMatcher create(boolean inverse, long[] bitSet) {
         return NullHighByteBitSetMatcherNodeGen.create(inverse, bitSet);
     }
 
     @Specialization
-    protected boolean match(int c, @SuppressWarnings("unused") boolean compactString) {
-        return result(bitSet.get(c));
+    protected boolean match(int c) {
+        return result(BitSets.get(bitSet, c));
     }
 
     @Override
@@ -74,6 +75,6 @@ public abstract class NullHighByteBitSetMatcher extends InvertibleCharMatcher {
     @Override
     @CompilerDirectives.TruffleBoundary
     public String toString() {
-        return modifiersToString() + "{ascii " + bitSet + "}";
+        return modifiersToString() + "{ascii " + BitSets.toString(bitSet) + "}";
     }
 }

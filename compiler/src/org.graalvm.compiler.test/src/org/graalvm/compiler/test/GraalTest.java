@@ -481,7 +481,7 @@ public class GraalTest {
         Runtime.getRuntime().addShutdownHook(new Thread("GlobalMetricsPrinter") {
             @Override
             public void run() {
-                // globalMetrics.print(new OptionValues(OptionValues.newOptionMap()));
+                globalMetrics.print(new OptionValues(OptionValues.newOptionMap()));
             }
         });
     }

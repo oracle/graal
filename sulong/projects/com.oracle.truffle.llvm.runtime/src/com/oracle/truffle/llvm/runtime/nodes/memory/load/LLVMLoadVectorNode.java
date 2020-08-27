@@ -83,7 +83,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             boolean[] vector = new boolean[getVectorLength()];
             long basePtr = addr.asNative();
             for (int byteOffset = 0; byteOffset < (vector.length / 8) + 1; byteOffset++) {
-                int b = memory.getI8(basePtr + byteOffset);
+                int b = memory.getI8(this, basePtr + byteOffset);
                 for (int bitOffset = 0; bitOffset < 8 && ((byteOffset * 8) + bitOffset) < vector.length; bitOffset++) {
                     int mask = (1 << bitOffset) & 0xFF;
                     vector[(byteOffset * 8) + bitOffset] = ((b & mask) >> bitOffset) == 1;
@@ -130,7 +130,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             byte[] vector = new byte[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {
-                vector[i] = memory.getI8(currentPtr);
+                vector[i] = memory.getI8(this, currentPtr);
                 currentPtr += I8_SIZE_IN_BYTES;
             }
             return LLVMI8Vector.create(vector);
@@ -174,7 +174,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             short[] vector = new short[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {
-                vector[i] = memory.getI16(currentPtr);
+                vector[i] = memory.getI16(this, currentPtr);
                 currentPtr += I16_SIZE_IN_BYTES;
             }
             return LLVMI16Vector.create(vector);
@@ -218,7 +218,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             int[] vector = new int[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {
-                vector[i] = memory.getI32(currentPtr);
+                vector[i] = memory.getI32(this, currentPtr);
                 currentPtr += I32_SIZE_IN_BYTES;
             }
             return LLVMI32Vector.create(vector);
@@ -262,7 +262,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             long[] vector = new long[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {
-                vector[i] = memory.getI64(currentPtr);
+                vector[i] = memory.getI64(this, currentPtr);
                 currentPtr += I64_SIZE_IN_BYTES;
             }
             return LLVMI64Vector.create(vector);
@@ -338,7 +338,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             LLVMPointer[] vector = new LLVMPointer[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {
-                vector[i] = memory.getPointer(currentPtr);
+                vector[i] = memory.getPointer(this, currentPtr);
                 currentPtr += ADDRESS_SIZE_IN_BYTES;
             }
             return LLVMPointerVector.create(vector);
@@ -382,7 +382,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             float[] vector = new float[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {
-                vector[i] = memory.getFloat(currentPtr);
+                vector[i] = memory.getFloat(this, currentPtr);
                 currentPtr += FLOAT_SIZE_IN_BYTES;
             }
             return LLVMFloatVector.create(vector);
@@ -426,7 +426,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             double[] vector = new double[getVectorLength()];
             long currentPtr = addr.asNative();
             for (int i = 0; i < vector.length; i++) {
-                vector[i] = memory.getDouble(currentPtr);
+                vector[i] = memory.getDouble(this, currentPtr);
                 currentPtr += DOUBLE_SIZE_IN_BYTES;
             }
             return LLVMDoubleVector.create(vector);

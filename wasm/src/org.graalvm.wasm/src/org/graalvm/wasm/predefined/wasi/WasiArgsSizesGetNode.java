@@ -42,20 +42,20 @@ package org.graalvm.wasm.predefined.wasi;
 
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
-    public WasiArgsSizesGetNode(WasmLanguage language, WasmModule module) {
+    public WasiArgsSizesGetNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        WasmMemory memory = module.symbolTable().memory();
+        WasmMemory memory = instance.memory();
         int argcAddress = (int) frame.getArguments()[0];
         int argvBufSizeAddress = (int) frame.getArguments()[1];
 

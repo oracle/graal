@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -86,7 +87,7 @@ public class ImageCodeInfo {
         info.setCodeSize(codeSize);
         info.setCodeInfoIndex(NonmovableArrays.fromImageHeap(codeInfoIndex));
         info.setCodeInfoEncodings(NonmovableArrays.fromImageHeap(codeInfoEncodings));
-        info.setReferenceMapEncoding(NonmovableArrays.fromImageHeap(referenceMapEncoding));
+        info.setStackReferenceMapEncoding(NonmovableArrays.fromImageHeap(referenceMapEncoding));
         info.setFrameInfoEncodings(NonmovableArrays.fromImageHeap(frameInfoEncodings));
         info.setFrameInfoObjectConstants(NonmovableArrays.fromImageHeap(frameInfoObjectConstants));
         info.setFrameInfoSourceClasses(NonmovableArrays.fromImageHeap(frameInfoSourceClasses));
@@ -121,7 +122,7 @@ public class ImageCodeInfo {
         }
 
         @Override
-        public NonmovableArray<Byte> getReferenceMapEncoding() {
+        public NonmovableArray<Byte> getStackReferenceMapEncoding() {
             return NonmovableArrays.fromImageHeap(referenceMapEncoding);
         }
 
@@ -156,7 +157,7 @@ public class ImageCodeInfo {
         }
 
         @Override
-        public void setReferenceMapEncoding(NonmovableArray<Byte> array) {
+        public void setStackReferenceMapEncoding(NonmovableArray<Byte> array) {
             referenceMapEncoding = NonmovableArrays.getHostedArray(array);
         }
 
@@ -241,22 +242,22 @@ public class ImageCodeInfo {
         }
 
         @Override
-        public NonmovableArray<Byte> getObjectsReferenceMapEncoding() {
+        public NonmovableArray<Byte> getCodeConstantsReferenceMapEncoding() {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
 
         @Override
-        public void setObjectsReferenceMapEncoding(NonmovableArray<Byte> objectsReferenceMapEncoding) {
+        public void setCodeConstantsReferenceMapEncoding(NonmovableArray<Byte> objectsReferenceMapEncoding) {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
 
         @Override
-        public long getObjectsReferenceMapIndex() {
+        public long getCodeConstantsReferenceMapIndex() {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
 
         @Override
-        public void setObjectsReferenceMapIndex(long objectsReferenceMapIndex) {
+        public void setCodeConstantsReferenceMapIndex(long objectsReferenceMapIndex) {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
 
@@ -297,6 +298,11 @@ public class ImageCodeInfo {
 
         @Override
         public void setCodeObserverHandles(NonmovableArray<InstalledCodeObserver.InstalledCodeObserverHandle> handles) {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public Word getGCData() {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
 

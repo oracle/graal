@@ -83,8 +83,10 @@ _vm_configs = []
 _graalvm_hostvm_configs = [
     ('jvm', [], ['--jvm'], 50),
     ('jvm-la-inline', [], ['--jvm', '--experimental-options', '--engine.LanguageAgnosticInlining'], 30),
+    ('jvm-no-truffle-compilation', [], ['--jvm', '--experimental-options', '--engine.Compilation=false'], 29),
     ('native', [], ['--native'], 100),
-    ('native-la-inline', [], ['--native', '--experimental-options', '--engine.LanguageAgnosticInlining'], 40)
+    ('native-la-inline', [], ['--native', '--experimental-options', '--engine.LanguageAgnosticInlining'], 40),
+    ('native-no-truffle-compilation', [], ['--native', '--experimental-options', '--engine.Compilation=false'], 39)
 ]
 
 
@@ -621,12 +623,34 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
                         continue
                     src_member = src_zip.read(i)
                     if i.filename == 'lib/security/default.policy':
-                        if 'grant codeBase "jrt:/com.oracle.graal.graal_enterprise"'.encode('utf-8') in src_member:
-                            policy_result = 'unmodified'
-                        else:
+                        policy_result = 'unmodified'
+                        if 'grant codeBase "jrt:/com.oracle.graal.graal_enterprise"'.encode('utf-8') not in src_member:
                             policy_result = 'modified'
                             src_member += """
 grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
+    permission java.security.AllPermission;
+};
+""".encode('utf-8')
+                        if 'grant codeBase "jrt:/org.graalvm.truffle"'.encode('utf-8') not in src_member:
+                            policy_result = 'modified'
+                            src_member += """
+grant codeBase "jrt:/org.graalvm.truffle" {
+    permission java.security.AllPermission;
+};
+
+grant codeBase "jrt:/org.graalvm.sdk" {
+    permission java.security.AllPermission;
+};
+
+grant codeBase "jrt:/org.graalvm.locator" {
+  permission java.io.FilePermission "<<ALL FILES>>", "read";
+  permission java.util.PropertyPermission "*", "read,write";
+  permission java.lang.RuntimePermission "createClassLoader";
+  permission java.lang.RuntimePermission "getClassLoader";
+  permission java.lang.RuntimePermission "getenv.*";
+};
+
+grant codeBase "file:${java.home}/languages/-" {
     permission java.security.AllPermission;
 };
 """.encode('utf-8')
@@ -721,7 +745,28 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
         lib_directory = join(jdk.home, 'lib', 'static')
         if exists(lib_directory):
             dst_lib_directory = join(dst_jdk_dir, 'lib', 'static')
-            mx.copytree(lib_directory, dst_lib_directory)
+            try:
+                mx.copytree(lib_directory, dst_lib_directory)
+            except shutil.Error as e:
+                # On AArch64, there can be a problem in the copystat part
+                # of copytree which occurs after file and directory copying
+                # has successfully completed. Since the metadata doesn't
+                # matter in this case, just ensure that the content was copied.
+                for root, _, lib_files in os.walk(lib_directory):
+                    relative_root = os.path.relpath(root, dst_lib_directory)
+                    for lib in lib_files:
+                        src_lib_path = join(root, lib)
+                        dst_lib_path = join(dst_lib_directory, relative_root, lib)
+                        if not exists(dst_lib_path):
+                            mx.abort('Error copying static libraries: {} missing in {}{}Original copytree error: {}'.format(
+                                join(relative_root, lib), dst_lib_directory, os.linesep, e))
+                        src_lib_hash = mx.sha1OfFile(src_lib_path)
+                        dst_lib_hash = mx.sha1OfFile(dst_lib_path)
+                        if src_lib_hash != dst_lib_hash:
+                            mx.abort('Error copying static libraries: {} (hash={}) and {} (hash={}) differ{}Original copytree error: {}'.format(
+                                src_lib_path, src_lib_hash,
+                                dst_lib_path, dst_lib_hash,
+                                os.linesep, e))
         # Allow older JDK versions to work
         else:
             lib_prefix = mx.add_lib_prefix('')

@@ -251,6 +251,11 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "oracle/jrockit/jfr/VMJFR.threadID()I");
 
         add(toBeInvestigated,
+                        "jdk/jfr/internal/JVM.counterTime()J",
+                        "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J",
+                        "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
+
+        add(toBeInvestigated,
                         // Similar to addExact
                         "java/lang/Math.negateExact(I)I",
                         // Similar to addExact
@@ -286,8 +291,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             // Emits a slow and a fast path and some dispatching logic
                             "jdk/internal/misc/Unsafe.allocateUninitializedArray0(Ljava/lang/Class;I)Ljava/lang/Object;",
 
-                            // Control flow, deopts, and a cast
-                            "jdk/internal/util/Preconditions.checkIndex(IILjava/util/function/BiFunction;)I",
                             // HotSpot MacroAssembler-based intrinsic
                             "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I");
 
@@ -423,6 +426,11 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
         }
 
+        if (isJDK16OrHigher()) {
+            add(toBeInvestigated,
+                            "sun/security/provider/MD5.implCompress0([BI)V");
+        }
+
         if (!config.inlineNotify()) {
             add(ignore, "java/lang/Object.notify()V");
         }
@@ -460,7 +468,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "sun/misc/Unsafe.getAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
 
             if (isJDK9OrHigher()) {
-                if (!(arch instanceof AArch64)) {
+                if (isSPARC(arch)) {
                     add(toBeInvestigated,
                                     "java/lang/StringLatin1.compareTo([B[B)I",
                                     "java/lang/StringLatin1.compareToUTF16([B[B)I",
@@ -470,19 +478,19 @@ public class CheckGraalIntrinsics extends GraalTest {
                                     "jdk/internal/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
                                     "jdk/internal/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
                                     "jdk/internal/misc/Unsafe.getAndSetLong(Ljava/lang/Object;JJ)J",
-                                    "jdk/internal/misc/Unsafe.getAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
+                                    "jdk/internal/misc/Unsafe.getAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;",
+                                    "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
+                                    "jdk/internal/misc/Unsafe.getIntUnaligned(Ljava/lang/Object;J)I",
+                                    "jdk/internal/misc/Unsafe.getLongUnaligned(Ljava/lang/Object;J)J",
+                                    "jdk/internal/misc/Unsafe.getShortUnaligned(Ljava/lang/Object;J)S",
+                                    "jdk/internal/misc/Unsafe.putCharUnaligned(Ljava/lang/Object;JC)V",
+                                    "jdk/internal/misc/Unsafe.putIntUnaligned(Ljava/lang/Object;JI)V",
+                                    "jdk/internal/misc/Unsafe.putLongUnaligned(Ljava/lang/Object;JJ)V",
+                                    "jdk/internal/misc/Unsafe.putShortUnaligned(Ljava/lang/Object;JS)V");
                 }
                 add(toBeInvestigated,
                                 "java/lang/Thread.onSpinWait()V",
-                                "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I",
-                                "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
-                                "jdk/internal/misc/Unsafe.getIntUnaligned(Ljava/lang/Object;J)I",
-                                "jdk/internal/misc/Unsafe.getLongUnaligned(Ljava/lang/Object;J)J",
-                                "jdk/internal/misc/Unsafe.getShortUnaligned(Ljava/lang/Object;J)S",
-                                "jdk/internal/misc/Unsafe.putCharUnaligned(Ljava/lang/Object;JC)V",
-                                "jdk/internal/misc/Unsafe.putIntUnaligned(Ljava/lang/Object;JI)V",
-                                "jdk/internal/misc/Unsafe.putLongUnaligned(Ljava/lang/Object;JJ)V",
-                                "jdk/internal/misc/Unsafe.putShortUnaligned(Ljava/lang/Object;JS)V");
+                                "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
             }
             if (isJDK10OrHigher()) {
                 add(toBeInvestigated,
@@ -591,6 +599,10 @@ public class CheckGraalIntrinsics extends GraalTest {
 
     private static boolean isJDK14OrHigher() {
         return JavaVersionUtil.JAVA_SPEC >= 14;
+    }
+
+    private static boolean isJDK16OrHigher() {
+        return JavaVersionUtil.JAVA_SPEC >= 16;
     }
 
     public interface Refiner {

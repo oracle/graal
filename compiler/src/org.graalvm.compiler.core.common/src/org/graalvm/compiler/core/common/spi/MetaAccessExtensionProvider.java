@@ -26,6 +26,7 @@ package org.graalvm.compiler.core.common.spi;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -47,4 +48,13 @@ public interface MetaAccessExtensionProvider {
      * exception at run time and therefore canonicalization would miss that exception.
      */
     boolean canConstantFoldDynamicAllocation(ResolvedJavaType type);
+
+    /**
+     * Checks if the invocation of the provided method is guaranteed to include a safepoint.
+     *
+     * @param isDirect Whether the method is being directly invoked. For indirect calls, a method is
+     *            guaranteed to have a safepoint only if all possible destinations are guaranteed to
+     *            contain a safepoint.
+     */
+    boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect);
 }

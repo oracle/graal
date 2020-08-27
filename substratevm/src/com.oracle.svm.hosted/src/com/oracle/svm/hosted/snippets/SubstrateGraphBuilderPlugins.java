@@ -58,6 +58,7 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
@@ -95,8 +96,10 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.nodes.AnalysisArraysCopyOfNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
@@ -112,9 +115,8 @@ import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.FarReturnNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
-import com.oracle.svm.core.graal.nodes.ReadHeapBaseFixedNode;
+import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 import com.oracle.svm.core.graal.nodes.ReadReturnAddressNode;
-import com.oracle.svm.core.graal.nodes.ReadStackPointerNode;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.nodes.SubstrateReflectionGetCallerClassNode;
@@ -460,9 +462,7 @@ public class SubstrateGraphBuilderPlugins {
                     RuntimeReflection.register(field);
 
                     // register the field for unsafe access
-                    AnalysisField targetField = (AnalysisField) metaAccess.lookupJavaField(field);
-                    targetField.registerAsAccessed();
-                    targetField.registerAsUnsafeAccessed();
+                    registerAsUnsafeAccessed(metaAccess, field);
                 } catch (NoSuchFieldException e) {
                     /*
                      * Ignore the exception. : If the field does not exist, there will be an error
@@ -474,6 +474,13 @@ public class SubstrateGraphBuilderPlugins {
                 }
             }
         }
+    }
+
+    private static void registerAsUnsafeAccessed(MetaAccessProvider metaAccess, Field field) {
+        AnalysisField targetField = (AnalysisField) metaAccess.lookupJavaField(field);
+        targetField.registerAsAccessed();
+        AnalysisUniverse universe = (AnalysisUniverse) ((UniverseMetaAccess) metaAccess).getUniverse();
+        targetField.registerAsUnsafeAccessed(universe);
     }
 
     private static void registerObjectPlugins(InvocationPlugins plugins) {
@@ -501,26 +508,49 @@ public class SubstrateGraphBuilderPlugins {
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe");
             registerUnsafePlugins(metaAccess, r, snippetReflection, analysis);
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                /* JDK 11 and later have Unsafe.objectFieldOffset(Class, String). */
-                r.register3("objectFieldOffset", Receiver.class, Class.class, String.class, new InvocationPlugin() {
-                    @Override
-                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classNode, ValueNode nameNode) {
-                        if (classNode.isConstant() && nameNode.isConstant()) {
-                            /* If the class and field name arguments are constant. */
-                            Class<?> clazz = snippetReflection.asObject(Class.class, classNode.asJavaConstant());
-                            String fieldName = snippetReflection.asObject(String.class, nameNode.asJavaConstant());
-                            try {
-                                Field targetField = clazz.getDeclaredField(fieldName);
-                                return processObjectFieldOffset(b, targetField, analysis, metaAccess);
-                            } catch (NoSuchFieldException | NoClassDefFoundError e) {
-                                return false;
-                            }
+
+            r.register3("objectFieldOffset", Receiver.class, Class.class, String.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classNode, ValueNode nameNode) {
+                    if (classNode.isConstant() && nameNode.isConstant()) {
+                        /* If the class and field name arguments are constant. */
+                        Class<?> clazz = snippetReflection.asObject(Class.class, classNode.asJavaConstant());
+                        String fieldName = snippetReflection.asObject(String.class, nameNode.asJavaConstant());
+                        try {
+                            Field targetField = clazz.getDeclaredField(fieldName);
+                            return processObjectFieldOffset(b, targetField, analysis, metaAccess);
+                        } catch (NoSuchFieldException | NoClassDefFoundError e) {
+                            return false;
                         }
-                        return false;
                     }
-                });
-            }
+                    return false;
+                }
+            });
+            r.register3("allocateUninitializedArray", Receiver.class, Class.class, int.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode componentTypeNode, ValueNode lengthNode) {
+                    BytecodeParser p = (BytecodeParser) b;
+                    /*
+                     * For simplicity, we only intrinsify if the componentType is a compile-time
+                     * constant. That also allows us to constant-fold the required check that the
+                     * component type is a primitive type.
+                     */
+                    if (componentTypeNode.isJavaConstant() && componentTypeNode.asJavaConstant().isNonNull()) {
+                        ResolvedJavaType componentType = b.getConstantReflection().asJavaType(componentTypeNode.asJavaConstant());
+                        if (componentType.isPrimitive()) {
+                            /* Emits a null-check for the otherwise unused receiver. */
+                            unsafe.get();
+
+                            LogicNode lengthNegative = b.append(IntegerLessThanNode.create(lengthNode, ConstantNode.forInt(0), NodeView.DEFAULT));
+                            p.emitBytecodeExceptionCheck(lengthNegative, false, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION,
+                                            ConstantNode.forConstant(snippetReflection.forObject("Negative length"), b.getMetaAccess(), b.getGraph()));
+                            b.addPush(JavaKind.Object, new NewArrayNode(componentType, lengthNode, false));
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            });
         }
     }
 
@@ -560,9 +590,7 @@ public class SubstrateGraphBuilderPlugins {
 
         if (analysis) {
             /* Register the field for unsafe access. */
-            AnalysisField analysisTargetField = (AnalysisField) metaAccess.lookupJavaField(targetField);
-            analysisTargetField.registerAsAccessed();
-            analysisTargetField.registerAsUnsafeAccessed();
+            registerAsUnsafeAccessed(metaAccess, targetField);
             /* Return false; the call is not replaced. */
             return false;
         } else {
@@ -679,7 +707,7 @@ public class SubstrateGraphBuilderPlugins {
         r.register0("heapBase", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Object, new ReadHeapBaseFixedNode());
+                b.addPush(JavaKind.Object, ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
                 return true;
             }
         });
@@ -709,7 +737,7 @@ public class SubstrateGraphBuilderPlugins {
         r.register0("readStackPointer", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Object, new ReadStackPointerNode());
+                b.addPush(JavaKind.Object, ReadReservedRegister.createReadStackPointerNode(b.getGraph()));
                 return true;
             }
         });
@@ -988,8 +1016,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
                 boolean result = ImageSingletons.contains(key);
-
-                b.notifyReplacedCall(targetMethod, b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(result)));
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(result));
                 return true;
             }
         });
@@ -998,8 +1025,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
                 Object result = ImageSingletons.lookup(key);
-
-                b.notifyReplacedCall(targetMethod, b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(result), b.getMetaAccess())));
+                b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(result), b.getMetaAccess()));
                 return true;
             }
         });
@@ -1013,8 +1039,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classNode) {
                 Class<? extends Platform> platform = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
                 boolean result = Platform.includedIn(platform);
-
-                b.notifyReplacedCall(targetMethod, b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(result)));
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(result));
                 return true;
             }
         });
@@ -1028,8 +1053,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<? extends PointerBase> clazz = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
                 int result = SizeOf.get(clazz);
-
-                b.notifyReplacedCall(targetMethod, b.addPush(JavaKind.Int, ConstantNode.forInt(result)));
+                b.addPush(JavaKind.Int, ConstantNode.forInt(result));
                 return true;
             }
         });
@@ -1039,8 +1063,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<? extends PointerBase> clazz = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
                 UnsignedWord result = SizeOf.unsigned(clazz);
-
-                b.notifyReplacedCall(targetMethod, b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(result), b.getMetaAccess())));
+                b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(result), b.getMetaAccess()));
                 return true;
             }
         });

@@ -31,7 +31,7 @@ import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.UseIndexMasking;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTIndexMasking;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.branchlessMin;
@@ -475,7 +475,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ReadNode memoryRead = null;
         BarrierType barrierType = barrierSet.fieldLoadBarrierType(field, getStorageKind(field));
         if (loadField.isVolatile()) {
-            memoryRead = graph.add(new VolatileReadNode(address, fieldLocationIdentity(field), loadStamp, barrierType));
+            memoryRead = graph.add(new VolatileReadNode(address, loadStamp, barrierType));
         } else {
             memoryRead = graph.add(new ReadNode(address, fieldLocationIdentity(field), loadStamp, barrierType));
         }
@@ -551,7 +551,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         GuardingNode boundsCheck = getBoundsCheck(loadIndexed, array, tool);
         ValueNode index = loadIndexed.index();
-        if (UseIndexMasking.getValue(graph.getOptions())) {
+        if (SpectrePHTIndexMasking.getValue(graph.getOptions())) {
             index = proxyIndex(loadIndexed, index, array, tool);
         }
         AddressNode address = createArrayIndexAddress(graph, array, elementKind, index, boundsCheck);
@@ -767,7 +767,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         AddressNode address = createUnsafeAddress(graph, load.object(), load.offset());
         ReadNode memoryRead = null;
         if (load.isVolatile()) {
-            memoryRead = new VolatileReadNode(address, load.getLocationIdentity(), loadStamp, barrierSet.readBarrierType(load));
+            memoryRead = new VolatileReadNode(address, loadStamp, barrierSet.readBarrierType(load));
         } else {
             memoryRead = new ReadNode(address, load.getLocationIdentity(), loadStamp, barrierSet.readBarrierType(load));
         }

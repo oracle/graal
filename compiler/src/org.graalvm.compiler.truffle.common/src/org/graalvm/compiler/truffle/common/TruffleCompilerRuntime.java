@@ -318,7 +318,11 @@ public interface TruffleCompilerRuntime {
      * @param compilable the currently compiled AST
      * @param message message to log
      */
-    void log(CompilableTruffleAST compilable, String message);
+    default void log(CompilableTruffleAST compilable, String message) {
+        log("engine", compilable, message);
+    }
+
+    void log(String loggerId, CompilableTruffleAST compilable, String message);
 
     /**
      * Formats a message describing a Truffle event as a single line of text. A representative event
@@ -459,4 +463,9 @@ public interface TruffleCompilerRuntime {
      * Determines if {@code method} is annotated by {@code TruffleBoundary}.
      */
     boolean isTruffleBoundary(ResolvedJavaMethod method);
+
+    /**
+     * Determines if {@code method} is annotated by {@code TruffleBoundary}.
+     */
+    boolean isSpecializationMethod(ResolvedJavaMethod method);
 }

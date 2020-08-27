@@ -296,6 +296,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     private Object module;
 
+    /**
+     * JDK 11 and later: the class that serves as the host for the nest. All nestmates have the same
+     * host.
+     */
+    private final Class<?> nestHost;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setModule(Object module) {
         this.module = module;
@@ -334,7 +340,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, HubType hubType, ReferenceType referenceType, boolean isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName,
-                    int modifiers, ClassLoader classLoader, boolean isHidden) {
+                    int modifiers, ClassLoader classLoader, boolean isHidden, Class<?> nestHost) {
         this.name = name;
         this.hubType = hubType.getValue();
         this.referenceType = referenceType.getValue();
@@ -346,6 +352,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.modifiers = modifiers;
         this.classLoader = classLoader;
         this.isHidden = isHidden;
+        this.nestHost = nestHost;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -1328,6 +1335,33 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @SuppressWarnings({"unused"})
     List<Method> getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes) {
         throw VMError.unsupportedFeature("JDK11OrLater: DynamicHub.getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes)");
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    public Class<?> getNestHost() {
+        return nestHost;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    public boolean isNestmateOf(Class<?> c) {
+        return nestHost == DynamicHub.fromClass(c).nestHost;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private Class<?>[] getNestMembers() {
+        /*
+         * Supporting all nest members is not as easy as supporting only the nest host. It is not
+         * enough to just preserve the result of Class.getNestMembers() returned during image
+         * generation. This would significantly worsen the static analysis quality, because it would
+         * make all nest members reachable if only a single class of the nest is reachable. A full
+         * solution would need to filter the nest members based on reachability, i.e., only add nest
+         * members when they are reachable by the static analysis. If necessary, this can be
+         * implemented though.
+         */
+        throw VMError.unsupportedFeature("Class.getNestMembers is not supported yet");
     }
 
     /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,7 +45,7 @@ public abstract class LLVMTruffleDerefHandleToManaged extends LLVMIntrinsic {
     @Specialization
     protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        LLVMNativePointer handle = context.getDerefHandleContainer().allocate(value.getObject());
+        LLVMNativePointer handle = context.getDerefHandleContainer().allocate(this, value.getObject());
         if (value.getOffset() != 0) {
             return handle.increment(value.getOffset());
         }

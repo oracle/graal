@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.agentscript.impl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -131,4 +132,23 @@ final class EventContextObject implements TruffleObject {
         return MEMBERS.contains(member);
     }
 
+    @ExportMessage
+    static Object invokeMember(EventContextObject obj, String member, Object[] args) throws ArityException, UnknownIdentifierException {
+        if ("returnNow".equals(member)) {
+            throw AgentExecutionNode.returnNow(obj.context, args);
+        }
+        if ("returnValue".equals(member)) {
+            if (args.length == 0 || !(args[0] instanceof VariablesObject)) {
+                return NullObject.nullCheck(null);
+            }
+            VariablesObject vars = (VariablesObject) args[0];
+            return vars.getReturnValue();
+        }
+        throw UnknownIdentifierException.create(member);
+    }
+
+    @ExportMessage
+    static boolean isMemberInvocable(EventContextObject obj, String member) {
+        return "returnNow".equals(member) || "returnValue".equals(member);
+    }
 }

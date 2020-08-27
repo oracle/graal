@@ -44,7 +44,6 @@ package com.oracle.truffle.regex.tregex.buffer;
 import java.util.Iterator;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.RangesBuffer;
 
@@ -69,16 +68,6 @@ public class IntRangesBuffer extends IntArrayBuffer implements RangesBuffer {
 
     public IntRangesBuffer(int initialSize) {
         super(initialSize);
-    }
-
-    @Override
-    public int getMinValue() {
-        return CodePointSet.MIN_VALUE;
-    }
-
-    @Override
-    public int getMaxValue() {
-        return CodePointSet.MAX_VALUE;
     }
 
     @Override

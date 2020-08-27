@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReadModifyWrite
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SelectInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnaryOperationInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.VaArgInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 
 public abstract class ValueInstructionVisitor implements SymbolVisitor {
@@ -122,6 +123,11 @@ public abstract class ValueInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(LoadInstruction load) {
         visitValueInstruction(load);
+    }
+
+    @Override
+    public void visit(VaArgInstruction vaArg) {
+        visitValueInstruction(vaArg);
     }
 
     @Override

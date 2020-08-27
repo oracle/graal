@@ -1058,11 +1058,17 @@ public abstract class Source {
         SourceImpl.Key key = null;
         String relativePathInLanguageHome = null;
         if (useTruffleFile != null) {
-            relativePathInLanguageHome = SourceAccessor.ACCESSOR.engineSupport().getPreinitializedRelativePathInLanguageHome(useTruffleFile);
+            // The relativePathInLanguageHome has to be calculated also for Sources created in the
+            // image execution time. They have to have the same hash code as sources created during
+            // the context pre-initialization.
+            relativePathInLanguageHome = SourceAccessor.ACCESSOR.engineSupport().getRelativePathInLanguageHome(useTruffleFile);
             if (relativePathInLanguageHome != null) {
-                key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language,
-                                useUrl, useUri, useName, usePath, internal, interactive, cached,
-                                relativePathInLanguageHome);
+                Object fsEngineObject = SourceAccessor.ACCESSOR.languageSupport().getFileSystemEngineObject(SourceAccessor.ACCESSOR.languageSupport().getFileSystemContext(useTruffleFile));
+                if (SourceAccessor.ACCESSOR.engineSupport().inContextPreInitialization(fsEngineObject)) {
+                    key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language,
+                                    useUrl, useUri, useName, usePath, internal, interactive, cached,
+                                    relativePathInLanguageHome);
+                }
             }
         }
         if (key == null) {

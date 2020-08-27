@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI11_RELEASES_URL;
+import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI8_RELEASES_URL;
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 import java.io.IOException;
@@ -31,11 +33,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.nio.file.FileSystems;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -54,7 +53,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -162,6 +160,8 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.NoLibC;
+import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
+import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
@@ -225,6 +225,7 @@ import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
 import com.oracle.svm.hosted.c.CConstantValueSupportImpl;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.c.OffsetOfSupportImpl;
 import com.oracle.svm.hosted.c.SizeOfSupportImpl;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperSubstitutionProcessor;
@@ -298,6 +299,7 @@ public class NativeImageGenerator {
     private AtomicBoolean buildStarted = new AtomicBoolean();
 
     private Pair<Method, CEntryPointData> mainEntryPoint;
+    private TemporaryBuildDirectoryProviderImpl buildDirectoryProvider;
 
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint) {
         this.loader = loader;
@@ -440,6 +442,17 @@ public class NativeImageGenerator {
                 throw UserError.abort("An image build has already been performed with this generator.");
             }
 
+            try {
+                /*
+                 * JVMCI 20.2-b01 introduced new methods for linking and querying whether an
+                 * interface has default methods. Fail early if these methods are missing.
+                 */
+                ResolvedJavaType.class.getDeclaredMethod("link");
+            } catch (ReflectiveOperationException ex) {
+                throw UserError.abort("JVMCI version provided %s is missing the 'ResolvedJavaType.link()' method added in jvmci-20.2-b01. " +
+                                "Please use the latest JVMCI JDK from %s or %s.", System.getProperty("java.home"), JVMCI8_RELEASES_URL, JVMCI11_RELEASES_URL);
+            }
+
             setSystemPropertiesForImageLate(k);
 
             int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(new OptionValues(optionProvider.getHostedValues()));
@@ -450,6 +463,8 @@ public class NativeImageGenerator {
                 ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
                 watchdog = new DeadlockWatchdog();
                 try {
+                    buildDirectoryProvider = new TemporaryBuildDirectoryProviderImpl();
+                    ImageSingletons.add(TemporaryBuildDirectoryProvider.class, buildDirectoryProvider);
                     doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
                 } catch (Throwable t) {
                     try {
@@ -478,8 +493,8 @@ public class NativeImageGenerator {
     }
 
     private void cleanup() {
-        if (deleteTempDirectory) {
-            deleteAll(tempDirectory());
+        if (buildDirectoryProvider != null) {
+            buildDirectoryProvider.clean();
         }
         featureHandler.forEachFeature(Feature::cleanup);
     }
@@ -590,8 +605,7 @@ public class NativeImageGenerator {
                 throw FallbackFeature.reportAsFallback(ufe);
             }
 
-            ImageHeapLayouter heapLayouter = ImageSingletons.lookup(ImageHeapLayouter.class);
-            heap = new NativeImageHeap(aUniverse, hUniverse, hMetaAccess, heapLayouter);
+            heap = new NativeImageHeap(aUniverse, hUniverse, hMetaAccess, ImageSingletons.lookup(ImageHeapLayouter.class));
 
             BeforeCompilationAccessImpl beforeCompilationConfig = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, hMetaAccess, heap, debug, runtime);
             featureHandler.forEachFeature(feature -> feature.beforeCompilation(beforeCompilationConfig));
@@ -608,7 +622,8 @@ public class NativeImageGenerator {
                 /* release memory taken by graphs for the image writing */
                 hUniverse.getMethods().forEach(HostedMethod::clear);
 
-                codeCache = NativeImageCodeCacheFactory.get().newCodeCache(compileQueue, heap, loader.platform, tempDirectory());
+                codeCache = NativeImageCodeCacheFactory.get().newCodeCache(compileQueue, heap, loader.platform,
+                                ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory());
                 codeCache.layoutConstants();
                 codeCache.layoutMethods(debug, imageName, bigbang, compilationExecutor);
 
@@ -628,14 +643,11 @@ public class NativeImageGenerator {
                         // Finish building the model of the native image heap.
                         heap.addTrailingObjects();
 
-                        heapLayouter.initialize();
-                        heapLayouter.assignPartitionRelativeOffsets(heap);
-
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, heap, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
                         this.image = AbstractBootImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, loader.getClassLoader());
-                        image.build(debug, heapLayouter);
+                        image.build(debug);
                         if (NativeImageOptions.PrintUniverse.getValue()) {
                             /*
                              * This debug output must be printed _after_ and not _during_ image
@@ -661,7 +673,7 @@ public class NativeImageGenerator {
                  * image implementation, because whether the debug info and image share a file or
                  * not is an implementation detail of the image.
                  */
-                Path tmpDir = tempDirectory();
+                Path tmpDir = ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory();
                 LinkerInvocation inv = image.write(debug, generatedFiles(HostedOptionValues.singleton()), tmpDir, imageName, beforeConfig);
                 if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
                     return;
@@ -821,7 +833,6 @@ public class NativeImageGenerator {
                 ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
                 ClassInitializationFeature.processClassInitializationOptions(classInitializationSupport);
 
-                ImageSingletons.add(TemporaryBuildDirectoryProvider.class, this::tempDirectory);
                 featureHandler.registerFeatures(loader, debug);
                 AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
                 featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
@@ -848,8 +859,11 @@ public class NativeImageGenerator {
                 WordTypes aWordTypes = new SubstrateWordTypes(aMetaAccess, FrameAccess.getWordKind());
                 HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider((SVMHost) aUniverse.hostVM(), aWordTypes);
 
-                if (!(NativeImageOptions.ExitAfterRelocatableImageWrite.getValue() && CAnnotationProcessorCache.Options.UseCAPCache.getValue())) {
-                    CCompilerInvoker compilerInvoker = CCompilerInvoker.create(tempDirectory());
+                boolean withoutCompilerInvoker = CAnnotationProcessorCache.Options.ExitAfterQueryCodeGeneration.getValue() ||
+                                (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue() && CAnnotationProcessorCache.Options.UseCAPCache.getValue());
+
+                if (!withoutCompilerInvoker) {
+                    CCompilerInvoker compilerInvoker = CCompilerInvoker.create(ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory());
                     compilerInvoker.verifyCompiler();
                     ImageSingletons.add(CCompilerInvoker.class, compilerInvoker);
                 }
@@ -1019,16 +1033,23 @@ public class NativeImageGenerator {
     private NativeLibraries setupNativeLibraries(String imageName, ConstantReflectionProvider aConstantReflection, MetaAccessProvider aMetaAccess,
                     SnippetReflectionProvider aSnippetReflection, CEnumCallWrapperSubstitutionProcessor cEnumProcessor, ClassInitializationSupport classInitializationSupport, DebugContext debug) {
         try (StopTimer ignored = new Timer(imageName, "(cap)").start()) {
-            NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, aMetaAccess, aSnippetReflection, ConfigurationValues.getTarget(), classInitializationSupport, tempDirectory(), debug);
+            NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, aMetaAccess, aSnippetReflection, ConfigurationValues.getTarget(), classInitializationSupport,
+                            ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory(), debug);
             cEnumProcessor.setNativeLibraries(nativeLibs);
             processNativeLibraryImports(nativeLibs, aMetaAccess, classInitializationSupport);
 
             ImageSingletons.add(SizeOfSupport.class, new SizeOfSupportImpl(nativeLibs, aMetaAccess));
+            ImageSingletons.add(OffsetOf.Support.class, new OffsetOfSupportImpl(nativeLibs, aMetaAccess));
             ImageSingletons.add(CConstantValueSupport.class, new CConstantValueSupportImpl(nativeLibs, aMetaAccess));
+
+            if (CAnnotationProcessorCache.Options.ExitAfterQueryCodeGeneration.getValue()) {
+                throw new InterruptImageBuilding("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(CAnnotationProcessorCache.Options.ExitAfterQueryCodeGeneration, "+"));
+            }
 
             if (CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue()) {
                 throw new InterruptImageBuilding("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(CAnnotationProcessorCache.Options.ExitAfterCAPCache, "+"));
             }
+
             return nativeLibs;
         }
     }
@@ -1662,48 +1683,6 @@ public class NativeImageGenerator {
             throw VMError.shouldNotReachHere("Output path is not a directory: " + pathName);
         }
         return path.toAbsolutePath();
-    }
-
-    private Path tempDirectory;
-    private boolean deleteTempDirectory;
-
-    public synchronized Path tempDirectory() {
-        if (tempDirectory == null) {
-            try {
-                String tempName = NativeImageOptions.TempDirectory.getValue();
-                if (tempName == null || tempName.isEmpty()) {
-                    tempDirectory = Files.createTempDirectory("SVM-");
-                    deleteTempDirectory = true;
-                } else {
-                    tempDirectory = FileSystems.getDefault().getPath(tempName).resolve("SVM-" + System.currentTimeMillis());
-                    assert !Files.exists(tempDirectory);
-                    Files.createDirectories(tempDirectory);
-                }
-            } catch (IOException ex) {
-                throw VMError.shouldNotReachHere(ex);
-            }
-        }
-        return tempDirectory.toAbsolutePath();
-    }
-
-    private static void deleteAll(Path path) {
-        try {
-            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    Files.delete(file);
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                    Files.delete(dir);
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-        } catch (IOException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
     }
 
     private static <T extends Enum<T>> Set<T> parseCSVtoEnum(Class<T> enumType, String[] csvEnumValues, T[] availValues) {

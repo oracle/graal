@@ -28,7 +28,6 @@ package com.oracle.svm.core.c.libc;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
@@ -101,13 +100,20 @@ public interface LibCBase {
     String getName();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    void prepare(Path directory);
+    String getTargetCompiler();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     List<String> getAdditionalQueryCodeCompilerOptions();
 
+    /**
+     * Checks if static JDK libraries compiled with the target libC are mandatory for building the
+     * native-image.
+     *
+     * This exists to support building native-images on older JDK versions as well as to support
+     * special cases, like Bionic libc.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
-    List<String> getCCompilerOptions();
+    boolean requiresLibCSpecificStaticJDKLibraries();
 
     static LibCBase singleton() {
         return ImageSingletons.lookup(LibCBase.class);

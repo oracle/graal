@@ -119,18 +119,6 @@ public class Inflation extends BigBang {
     }
 
     @Override
-    public boolean addRoot(JavaConstant constant, Object root) {
-        SubstrateObjectConstant sConstant = (SubstrateObjectConstant) constant;
-        return sConstant.setRoot(root);
-    }
-
-    @Override
-    public Object getRoot(JavaConstant constant) {
-        SubstrateObjectConstant sConstant = (SubstrateObjectConstant) constant;
-        return sConstant.getRoot();
-    }
-
-    @Override
     protected void checkObjectGraph(ObjectScanner objectScanner) {
         universe.getFields().forEach(this::handleUnknownValueField);
         universe.getTypes().forEach(this::checkType);

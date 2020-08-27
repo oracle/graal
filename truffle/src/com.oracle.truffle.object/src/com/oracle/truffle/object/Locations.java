@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -111,14 +111,14 @@ public abstract class Locations {
         @SuppressWarnings("deprecation")
         @Override
         public boolean canStore(Object val) {
-            return valueEquals(this.value, val);
+            return CoreLocation.valueEquals(this.value, val);
         }
 
         /** @since 0.17 or earlier */
         @Override
-        public final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
+        public final void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
             if (!canStore(value)) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new UnsupportedOperationException();
             }
         }

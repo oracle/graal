@@ -377,11 +377,15 @@ public class CompileQueue {
 
     private void createSuites() {
         regularSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
+        modifyRegularSuites(regularSuites);
         deoptTargetSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
         removeDeoptTargetOptimizations(deoptTargetSuites);
         regularLIRSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
         deoptTargetLIRSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
         removeDeoptTargetOptimizations(deoptTargetLIRSuites);
+    }
+
+    protected void modifyRegularSuites(@SuppressWarnings("unused") Suites suites) {
     }
 
     public static PhaseSuite<HighTierContext> afterParseCanonicalization() {
@@ -914,9 +918,6 @@ public class CompileQueue {
         if (method.compilationInfo.specializedArguments != null) {
             // Do the specialization: replace the argument locals with the constant arguments.
             StructuredGraph graph = method.compilationInfo.graph;
-
-            /* Check that graph is in good shape before compilation. */
-            assert GraphOrder.assertSchedulableGraph(graph);
 
             int idx = 0;
             for (ConstantNode argument : method.compilationInfo.specializedArguments) {

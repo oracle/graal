@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.AbstractState;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
 
 /**
@@ -64,7 +65,10 @@ public abstract class Term extends RegexASTNode implements AbstractState<Term, A
     }
 
     @Override
-    public abstract Term copy(RegexAST ast, boolean recursive);
+    public abstract Term copy(RegexAST ast);
+
+    @Override
+    public abstract Term copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer);
 
     public int getSeqIndex() {
         return seqIndex;

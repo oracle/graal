@@ -73,19 +73,17 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
     }
 
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress)", "cachedDescriptor != null"})
-    @SuppressWarnings("unused")
     protected static LLVMFunctionDescriptor doHandleCached(@SuppressWarnings("unused") LLVMNativePointer pointer,
                     @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
-                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
+                    @CachedContext(LLVMLanguage.class) @SuppressWarnings("unused") ContextReference<LLVMContext> ctxRef,
                     @Cached("lookupFunction(ctxRef, pointer)") LLVMFunctionDescriptor cachedDescriptor) {
         return cachedDescriptor;
     }
 
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress)", "cachedDescriptor == null"})
-    @SuppressWarnings("unused")
     protected static LLVMNativePointer doNativeFunctionCached(LLVMNativePointer pointer,
                     @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
-                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
+                    @CachedContext(LLVMLanguage.class) @SuppressWarnings("unused") ContextReference<LLVMContext> ctxRef,
                     @Cached("lookupFunction(ctxRef, pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor) {
         return pointer;
     }

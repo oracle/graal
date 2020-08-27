@@ -1,7 +1,7 @@
 suite = {
-    "mxversion": "5.263.7",
+    "mxversion": "5.270.0",
     "name": "substratevm",
-    "version" : "20.2.0",
+    "version" : "20.3.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -37,17 +37,29 @@ suite = {
     },
 
     "libraries" : {
-        "RENAISSANCE_HARNESS_11" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance_harness_11.tar.gz"],
+        "RENAISSANCE_HARNESS_v0.9" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.9.0.tar.gz"],
             "sha1" : "0bef46df4699d896034005d6f3f0422a7075482b",
             "packedResource": True,
         },
-
+        "RENAISSANCE_HARNESS_v0.10" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.10.0.tar.gz"],
+            "sha1" : "842e60f56d9871a1fa5700dcc446acbd041e875b",
+            "packedResource": True,
+        },
+        "RENAISSANCE_HARNESS_v0.11" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.11.0.tar.gz"],
+            "sha1" : "8d402c1e7c972badfcffdd6c64ed4e791b0dea02",
+            "packedResource": True,
+        },
         "DACAPO_SVM" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-native-image.jar"],
             "sha1" : "5d534f0b7aa9124d9797a180688468d2f126039a",
         },
-
+        "SPARK_BREEZE_PATCHED" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/breeze_2.11-0.11.2-patched.jar"],
+            "sha1" : "e3327f5d890b5af0f7363a8b3cd95b6ce24bc1ea",
+        },
         "XERCES_IMPL" : {
             "sha1" : "006898f2bdfeca5ac996cfff1b76ef98af5aa6f2",
             "maven" : {
@@ -215,6 +227,8 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.loader",
+                    "jdk.internal.misc",
+                    "sun.invoke.util",
                 ],
             },
             "javaCompliance": "15+",
@@ -643,6 +657,20 @@ suite = {
             "workingSets": "SVM",
         },
 
+        "com.oracle.svm.bench": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core",
+            ],
+            "checkstyle": "com.oracle.svm.truffle",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.truffle": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -816,6 +844,24 @@ suite = {
                 "JVMTI_AGENT_BASE",
                 "com.oracle.svm.configure",
                 "com.oracle.svm.driver",
+            ],
+            "checkstyle": "com.oracle.svm.driver",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+        },
+
+        "com.oracle.svm.diagnosticsagent": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources"
+            ],
+            "dependencies": [
+                "JVMTI_AGENT_BASE",
             ],
             "checkstyle": "com.oracle.svm.driver",
             "workingSets": "SVM",
@@ -1033,6 +1079,18 @@ suite = {
                 "SVM_CONFIGURE",
             ],
             # vm: included as binary, tool descriptor intentionally not copied
+        },
+
+        "SVM_DIAGNOSTICS_AGENT": {
+            "subDir": "src",
+            "description" : "Native-image diagnostics agent",
+            "dependencies": [
+                "com.oracle.svm.diagnosticsagent",
+            ],
+            "distDependencies": [
+                "JVMTI_AGENT_BASE",
+                "LIBRARY_SUPPORT",
+            ],
         },
 
         "SVM_CONFIGURE": {

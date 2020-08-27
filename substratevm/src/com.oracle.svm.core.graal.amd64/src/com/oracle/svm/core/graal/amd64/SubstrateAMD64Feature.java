@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -62,6 +63,8 @@ class SubstrateAMD64Feature implements Feature {
                 return new SubstrateAMD64RegisterConfig(config, metaAccess, target, preserveFramePointer);
             }
         });
+
+        ImageSingletons.add(ReservedRegisters.class, new AMD64ReservedRegisters());
 
         if (!SubstrateOptions.useLLVMBackend()) {
             AMD64CalleeSavedRegisters.createAndRegister();

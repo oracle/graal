@@ -76,13 +76,13 @@ public class AArch64TruffleCallBoundaryInstumentationFactory extends TruffleCall
                             Label doProlog = new Label();
                             if (config.useCompressedOops) {
                                 CompressEncoding encoding = config.getOopEncoding();
-                                masm.ldr(32, spillRegister, AArch64Address.createPairUnscaledImmediateAddress(thisRegister, installedCodeOffset));
+                                masm.ldr(32, spillRegister, AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thisRegister, installedCodeOffset));
                                 Register base = encoding.hasBase() ? registers.getHeapBaseRegister() : null;
                                 AArch64HotSpotMove.UncompressPointer.emitUncompressCode(masm, spillRegister, spillRegister, base, encoding.getShift(), true);
                             } else {
-                                masm.ldr(64, spillRegister, AArch64Address.createPairUnscaledImmediateAddress(thisRegister, installedCodeOffset));
+                                masm.ldr(64, spillRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thisRegister, installedCodeOffset));
                             }
-                            masm.ldr(64, spillRegister, AArch64Address.createPairUnscaledImmediateAddress(spillRegister, entryPointOffset));
+                            masm.ldr(64, spillRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, spillRegister, entryPointOffset));
                             masm.cbz(64, spillRegister, doProlog);
                             masm.jmp(spillRegister);
                             masm.nop();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
@@ -61,11 +60,11 @@ public class ExceptionNFITest extends NFITest {
 
     public class NativeCallbackNode extends NFITestRootNode {
 
-        final TruffleObject throwingCallback = new TestCallback(0, (args) -> {
+        final Object throwingCallback = new TestCallback(0, (args) -> {
             throw new MyException();
         });
 
-        final TruffleObject nativeJustCall = lookupAndBind("native_just_call", "(():void) : void");
+        final Object nativeJustCall = lookupAndBind("native_just_call", "(():void) : void");
 
         @Child InteropLibrary nativeJustCallInterop = getInterop(nativeJustCall);
 

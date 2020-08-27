@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,7 +78,7 @@ final class HostException extends RuntimeException implements TruffleException {
     @Override
     public Object getExceptionObject() {
         Throwable exception = getOriginal();
-        return HostObject.forException(exception, PolyglotContextImpl.requireContext().getHostContext(), this);
+        return HostObject.forException(exception, PolyglotContextImpl.currentNotEntered().getHostContext(), this);
     }
 
     public Node getLocation() {

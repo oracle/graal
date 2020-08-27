@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
@@ -52,9 +55,6 @@ import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-
-import java.util.Arrays;
-import java.util.Collection;
 
 public final class NFA implements StateIndex<NFAState>, JsonConvertible {
 
@@ -96,6 +96,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
                             (short) transitionIDCounter.inc(),
                             getUnAnchoredInitialState(),
                             getUnAnchoredInitialState(),
+                            ast.getEncoding().getFullSet(),
                             GroupBoundaries.getEmptyInstance());
             this.transitions[initialLoopBack.getId()] = initialLoopBack;
         }

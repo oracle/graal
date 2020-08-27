@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -38,6 +37,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -46,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
 /**
  * Converts value to the target type. For fast path code, targetType will typically be constant in
@@ -98,10 +99,21 @@ public abstract class ToLLVM extends LLVMNode {
             return pointer;
         }
 
-        @Fallback
-        LLVMPointer doOther(Object value, LLVMInteropType.Structured type) {
-            LLVMTypedForeignObject typed = LLVMTypedForeignObject.create(value, type);
-            return LLVMManagedPointer.create(typed);
+        static boolean isPointer(Object value) {
+            return LLVMPointer.isInstance(value);
+        }
+
+        @Specialization(limit = "3", guards = {"!isPointer(value)", "type != null", "!nativeTypes.hasNativeType(value)"})
+        LLVMPointer doTyped(Object value, LLVMInteropType.Structured type,
+                        @SuppressWarnings("unused") @CachedLibrary("value") NativeTypeLibrary nativeTypes) {
+            return LLVMManagedPointer.create(LLVMTypedForeignObject.create(value, type));
+        }
+
+        @Specialization(limit = "3", guards = {"!isPointer(value)", "type == null || nativeTypes.hasNativeType(value)"})
+        LLVMPointer doUntyped(Object value, LLVMInteropType.Structured type,
+                        @SuppressWarnings("unused") @CachedLibrary("value") NativeTypeLibrary nativeTypes) {
+            assert type == null;
+            return LLVMManagedPointer.create(value);
         }
     }
 
@@ -234,7 +246,7 @@ public abstract class ToLLVM extends LLVMNode {
 
         @Specialization(guards = "targetType == FLOAT")
         static float doFloat(int value, @SuppressWarnings("unused") ForeignToLLVMType targetType) {
-            return Float.floatToIntBits(value);
+            return Float.intBitsToFloat(value);
         }
 
         @Specialization(guards = "targetType == DOUBLE")
@@ -244,7 +256,12 @@ public abstract class ToLLVM extends LLVMNode {
 
         @Specialization(guards = "targetType == DOUBLE")
         static double doDouble(long value, @SuppressWarnings("unused") ForeignToLLVMType targetType) {
-            return Double.doubleToRawLongBits(value);
+            return Double.longBitsToDouble(value);
+        }
+
+        @Specialization(guards = "targetType == DOUBLE")
+        double doDouble(@SuppressWarnings("unused") LLVMPointer value, ForeignToLLVMType targetType) {
+            throw new LLVMPolyglotException(this, "Cannot convert a pointer to %s", targetType);
         }
 
         @Specialization(guards = "targetType == POINTER")
@@ -255,6 +272,11 @@ public abstract class ToLLVM extends LLVMNode {
         @Specialization(guards = "targetType == POINTER")
         static LLVMPointer doPointer(long value, @SuppressWarnings("unused") ForeignToLLVMType targetType) {
             return LLVMNativePointer.create(value);
+        }
+
+        @Specialization(guards = "targetType == POINTER")
+        LLVMPointer doPointer(@SuppressWarnings("unused") double value, ForeignToLLVMType targetType) {
+            throw new LLVMPolyglotException(this, "Cannot convert a double to %s", targetType);
         }
     }
 

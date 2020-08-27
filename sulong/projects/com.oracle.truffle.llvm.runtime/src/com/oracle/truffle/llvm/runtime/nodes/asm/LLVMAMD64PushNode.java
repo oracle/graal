@@ -58,10 +58,10 @@ public abstract class LLVMAMD64PushNode extends LLVMStatementNode {
                         @CachedLanguage LLVMLanguage language) {
             LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
-            long sp = basePointer.get(memory);
+            long sp = basePointer.get(this, memory);
             sp -= LLVMExpressionNode.I16_SIZE_IN_BYTES;
             basePointer.set(sp);
-            memory.putI16(sp, value);
+            memory.putI16(this, sp, value);
         }
     }
 
@@ -72,10 +72,10 @@ public abstract class LLVMAMD64PushNode extends LLVMStatementNode {
                         @CachedLanguage LLVMLanguage language) {
             LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
-            long sp = basePointer.get(memory);
+            long sp = basePointer.get(this, memory);
             sp -= LLVMExpressionNode.I32_SIZE_IN_BYTES;
             basePointer.set(sp);
-            memory.putI32(sp, value);
+            memory.putI32(this, sp, value);
         }
     }
 
@@ -86,10 +86,10 @@ public abstract class LLVMAMD64PushNode extends LLVMStatementNode {
                         @CachedLanguage LLVMLanguage language) {
             LLVMMemory memory = language.getLLVMMemory();
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
-            long sp = basePointer.get(memory);
+            long sp = basePointer.get(this, memory);
             sp -= LLVMExpressionNode.I64_SIZE_IN_BYTES;
             basePointer.set(sp);
-            memory.putI64(sp, value);
+            memory.putI64(this, sp, value);
         }
     }
 }

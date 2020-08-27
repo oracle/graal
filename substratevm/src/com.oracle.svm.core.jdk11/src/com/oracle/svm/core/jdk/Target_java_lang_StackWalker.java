@@ -71,7 +71,7 @@ final class Target_java_lang_StackWalker {
         JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), new JavaStackFrameVisitor() {
             @Override
             public boolean visitFrame(FrameInfoQueryResult frameInfo) {
-                if (StackTraceUtils.shouldShowFrame(frameInfo, showReflectFrames, showHiddenFrames)) {
+                if (StackTraceUtils.shouldShowFrame(frameInfo, showHiddenFrames, showReflectFrames, showHiddenFrames)) {
                     action.accept(new StackFrameImpl(frameInfo));
                 }
                 return true;
@@ -100,7 +100,7 @@ final class Target_java_lang_StackWalker {
          * with.
          */
 
-        Class<?> result = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer());
+        Class<?> result = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), false);
         if (result == null) {
             throw new IllegalCallerException("No calling frame");
         }
@@ -154,7 +154,7 @@ final class Target_java_lang_StackWalker {
                     FrameInfoQueryResult frameInfo = curDeoptimizedFrame.getFrameInfo();
                     curDeoptimizedFrame = curDeoptimizedFrame.getCaller();
 
-                    if (StackTraceUtils.shouldShowFrame(frameInfo, showReflectFrames, showHiddenFrames)) {
+                    if (StackTraceUtils.shouldShowFrame(frameInfo, showHiddenFrames, showReflectFrames, showHiddenFrames)) {
                         action.accept(new StackFrameImpl(frameInfo));
                         return true;
                     }
@@ -163,7 +163,7 @@ final class Target_java_lang_StackWalker {
                     FrameInfoQueryResult frameInfo = curRegularFrame;
                     curRegularFrame = curRegularFrame.getCaller();
 
-                    if (StackTraceUtils.shouldShowFrame(frameInfo, showReflectFrames, showHiddenFrames)) {
+                    if (StackTraceUtils.shouldShowFrame(frameInfo, showHiddenFrames, showReflectFrames, showHiddenFrames)) {
                         action.accept(new StackFrameImpl(frameInfo));
                         return true;
                     }

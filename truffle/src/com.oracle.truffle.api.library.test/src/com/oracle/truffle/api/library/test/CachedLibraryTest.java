@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -70,6 +71,7 @@ import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.DoubleNodeGe
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.ExcludeNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.FromCached1NodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.FromCached2NodeGen;
+import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.ReplaceCachedLibraryTestNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.SimpleDispatchedNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.SimpleNodeGen;
 import com.oracle.truffle.api.nodes.Node;
@@ -252,12 +254,6 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         AssumptionNode.a = Truffle.getRuntime().createAssumption();
         assertEquals("cached_s0", node.execute(s3));
 
-        Assumption uncached = AssumptionNode.a = Truffle.getRuntime().createAssumption();
-        assertEquals("uncached_s0", node.execute(s1));
-
-        assertEquals("uncached_s0", node.execute(s2));
-        assertEquals("uncached_s0", node.execute(s3));
-        uncached.invalidate();
         assertEquals("cached_s1", node.execute(s1));
         assertEquals("cached_s1", node.execute(s2));
         assertEquals("uncached_s1", node.execute(s3));
@@ -513,6 +509,43 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         } catch (UnsupportedSpecializationException e) {
         }
         assertEquals(5, node.invocationCount);
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class ReplaceCachedLibraryTest extends Node {
+
+        static final String TEST_STRING = "test";
+
+        static int limit = 2;
+
+        abstract String execute(Object a0);
+
+        @Specialization(limit = "2")
+        public static String s0(Object a0,
+                        @CachedLibrary("a0") SomethingLibrary lib1) {
+            return "s0_" + lib1.call(a0);
+        }
+
+        @Specialization(replaces = "s0")
+        public static String s1(Object a0) {
+            return "s1";
+        }
+
+    }
+
+    @Test
+    public void testReplace() {
+        Something s1 = new Something("1");
+        Something s2 = new Something("2");
+        Something s3 = new Something("3");
+        ReplaceCachedLibraryTest node = adopt(ReplaceCachedLibraryTestNodeGen.create());
+        assertEquals("s0_1_cached", node.execute(s1));
+        assertEquals("s0_2_cached", node.execute(s2));
+        assertEquals("s1", node.execute(s3));
+        node.execute(2);
+        node.execute(3);
+        node.execute(3);
+        node.execute(5);
     }
 
     @SuppressWarnings("unused")
@@ -805,4 +838,21 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         }
 
     }
+
+    /*
+     * This test was crashing in GR-24920 as the uncached library lookup was accidently using lib1
+     * to match lib2 for the generated uncached specializations.
+     */
+    abstract static class DispatchedAndExpressionLibraryNode extends Node {
+
+        public abstract int execute(Object arg) throws UnsupportedMessageException;
+
+        @Specialization(limit = "2")
+        static int doBoxed(Object arg,
+                        @CachedLibrary(limit = "2") InteropLibrary lib1,
+                        @SuppressWarnings("unused") @CachedLibrary("arg") InteropLibrary lib2) throws UnsupportedMessageException {
+            return lib1.asInt(arg);
+        }
+    }
+
 }

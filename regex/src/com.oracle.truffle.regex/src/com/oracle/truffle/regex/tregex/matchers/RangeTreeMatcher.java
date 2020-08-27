@@ -96,8 +96,7 @@ public abstract class RangeTreeMatcher extends InvertibleCharMatcher {
     }
 
     @Specialization
-    public boolean match(int c, boolean compactString) {
-        assert !compactString : "this matcher should be avoided via ProfilingCharMatcher on compact strings";
+    public boolean match(int c) {
         CompilerAsserts.partialEvaluationConstant(this);
         return matchTree(0, (sortedRanges.length >>> 1) - 1, c);
     }

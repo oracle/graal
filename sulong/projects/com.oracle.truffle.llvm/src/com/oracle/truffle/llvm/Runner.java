@@ -79,6 +79,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyLLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMGetStackFromFrameNode;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLocalScope;
@@ -133,11 +134,11 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import java.io.IOException;
+import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.List;
@@ -199,14 +200,7 @@ final class Runner {
                 library = ExternalLibrary.createFromName("<STREAM-" + UUID.randomUUID().toString() + ">", false, source.isInternal());
             }
         } else if (source.hasCharacters()) {
-            switch (source.getMimeType()) {
-                case LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE:
-                    bytes = ByteSequence.create(decodeBase64(source.getCharacters()));
-                    library = ExternalLibrary.createFromName("<STREAM-" + UUID.randomUUID().toString() + ">", false, source.isInternal());
-                    break;
-                default:
-                    throw new LLVMParserException("Character-based source with unexpected mime type: " + source.getMimeType());
-            }
+            throw new LLVMParserException("Unexpected character-based source with mime type: " + source.getMimeType());
         } else {
             throw new LLVMParserException("Should not reach here: Source is neither char-based nor byte-based!");
         }
@@ -959,7 +953,7 @@ final class Runner {
             return !ctx.isScopeLoaded(fileScope);
         }
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtypes"})
         public void initializeSymbolTable(LLVMContext context) {
             context.registerSymbolTable(bitcodeID, new AssumedValue[globalLength]);
             context.registerScope(fileScope);
@@ -1040,8 +1034,11 @@ final class Runner {
         return global.getAlign() > 0 ? 1 << (global.getAlign() - 1) : type.getAlignment(dataLayout);
     }
 
+    /**
+     * Globals of pointer type need to be handles specially because they can potentially contain a
+     * foreign object.
+     */
     private static boolean isSpecialGlobalSlot(Type type) {
-        // globals of pointer type can potentially contain a TruffleObject
         return type instanceof PointerType;
     }
 
@@ -1262,6 +1259,9 @@ final class Runner {
         LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source, context);
         TargetDataLayout layout = module.getTargetDataLayout();
         DataLayout targetDataLayout = new DataLayout(layout.getDataLayout());
+        if (targetDataLayout.getByteOrder() != ByteOrder.LITTLE_ENDIAN) {
+            throw new LLVMParserException("Byte order " + targetDataLayout.getByteOrder() + " of file " + library.getPath() + " is not supported");
+        }
         NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(context, targetDataLayout);
         // This needs to be removed once the nodefactory is taken out of the language.
         LLVMScope fileScope = new LLVMScope();
@@ -1807,7 +1807,7 @@ final class Runner {
                 final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(indexedTypeLength, functionType, loadedStruct, oneLiteralNode);
                 final LLVMExpressionNode loadedFunction = CommonNodeFactory.createLoad(functionType, functionLoadTarget);
                 final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
-                                CommonNodeFactory.createFrameRead(PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
+                                LLVMGetStackFromFrameNode.create(rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
                 final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(CommonNodeFactory.createFunctionCall(loadedFunction, argNodes, functionType));
 
                 final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
@@ -1820,16 +1820,6 @@ final class Runner {
         } catch (TypeOverflowException e) {
             return new LLVMStatementNode[]{Type.handleOverflowStatement(e)};
         }
-    }
-
-    static byte[] decodeBase64(CharSequence charSequence) {
-        byte[] result = new byte[charSequence.length()];
-        for (int i = 0; i < result.length; i++) {
-            char ch = charSequence.charAt(i);
-            assert ch >= 0 && ch <= Byte.MAX_VALUE;
-            result[i] = (byte) ch;
-        }
-        return Base64.getDecoder().decode(result);
     }
 
     private CallTarget createLibraryCallTarget(String name, List<LLVMParserResult> parserResults, InitializationOrder initializationOrder) {

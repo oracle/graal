@@ -24,21 +24,18 @@
  */
 package com.oracle.svm.core.posix.linux.libc;
 
-import com.oracle.svm.core.c.libc.LibCBase;
-
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.c.libc.LibCBase;
+
 public class GLibC implements LibCBase {
+
+    public static final String NAME = "glibc";
 
     @Override
     public String getName() {
-        return "glibc";
-    }
-
-    @Override
-    public void prepare(Path directory) {
+        return NAME;
     }
 
     @Override
@@ -47,12 +44,17 @@ public class GLibC implements LibCBase {
     }
 
     @Override
-    public List<String> getCCompilerOptions() {
-        return Collections.emptyList();
+    public String getTargetCompiler() {
+        return "gcc";
     }
 
     @Override
     public boolean hasIsolatedNamespaces() {
         return true;
+    }
+
+    @Override
+    public boolean requiresLibCSpecificStaticJDKLibraries() {
+        return false;
     }
 }

@@ -43,15 +43,15 @@ package org.graalvm.wasm.predefined.emscripten;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
 public class GetTimeOfDay extends WasmBuiltinRootNode {
-    public GetTimeOfDay(WasmLanguage language, WasmModule module) {
+    public GetTimeOfDay(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
@@ -68,7 +68,7 @@ public class GetTimeOfDay extends WasmBuiltinRootNode {
         trace("GetTimeOfDay EXECUTE");
 
         long now = getCurrentTime();
-        WasmMemory memory = module.symbolTable().memory();
+        WasmMemory memory = instance.memory();
         memory.store_i32(this, ptr, (int) (now / 1000));
         memory.store_i32(this, ptr + 4, (int) (now % 1000 * 1000));
 

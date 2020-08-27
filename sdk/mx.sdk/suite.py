@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.251.0",
+  "mxversion" : "5.270.1",
   "name" : "sdk",
-  "version" : "20.2.0",
+  "version" : "20.3.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -88,22 +88,23 @@ suite = {
       "license" : "BSD-new"
     },
     "LLVM_ORG" : {
-      "version" : "9.0.0-5-g80b1d876fd-bgb66b241662",
+      "version" : "9.0.0-5-g80b1d876fd-bg83994d0b4b",
+      "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "os_arch" : {
         "linux" : {
           "amd64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
-            "sha1" : "7fd347a6ebe38b02b7cfe1a9e4352e297962a4fc",
+            "urls" : ["{host}/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
+            "sha1" : "9343a50712a5cce4d6c0376c409cced4a6c9d90c",
           },
           "aarch64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
-            "sha1" : "8061112dd5cf95ed5e43128199fd2d2959bd9fbf",
+            "urls" : ["{host}/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
+            "sha1" : "08c612ee826c6df031caa0d40b26dc0e8977c2a2",
           }
         },
         "darwin" : {
           "amd64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "sha1" : "a863230a50eddeef4a808742ddb987475c61fd10",
+            "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
+            "sha1" : "4d51403d4d891573dc321d106494b391d964f3a0",
           }
         },
         "<others>": {
@@ -115,17 +116,19 @@ suite = {
       }
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
-      "version" : "9.0.0-5-g80b1d876fd-bgb66b241662",
+      "version" : "9.0.0-5-g80b1d876fd-bg83994d0b4b",
+      "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
-      "sha1" : "0fde45454791eff6b1cd1dbed21645ebe073c0d2",
+      "urls" : ["{host}/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
+      "sha1" : "43e65c50e38f45f7777ff91481508921031f9ca6",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      # version difference since the sources where repackaged
+      # version difference as the binaries were repackaged but the sources stayed the same
       "version" : "9.0.0-5-g80b1d876fd-bg0c808efbe5",
+      "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-src-llvmorg-{version}.tar.gz"],
+      "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
       "sha1" : "27bea70346768ee43893df3f65cf785c5b5d0342",
       "license" : "Apache-2.0-LLVM",
       },
@@ -362,7 +365,87 @@ suite = {
       "description": "LLVM with general purpose patches used by Sulong and Native Image",
       "layout": {
         "./": [
-          "extracted-dependency:LLVM_ORG",
+          {
+            "source_type": "extracted-dependency",
+            "dependency": "LLVM_ORG",
+            "path": ".",
+            "dereference": "never",
+            "exclude": [
+              "./bin/bugpoint",
+              "./bin/c-index-test",
+              "./bin/clang-check",
+              "./bin/clang-extdef-mapping",
+              "./bin/clang-import-test",
+              "./bin/clang-offload-bundler",
+              "./bin/clang-refactor",
+              "./bin/clang-rename",
+              "./bin/clang-scan-deps",
+              "./bin/diagtool",
+              "./bin/dsymutil",
+              "./bin/git-clang-format",
+              "./bin/hmaptool",
+              "./bin/llvm-addr2line",
+              "./bin/llvm-bcanalyzer",
+              "./bin/llvm-cat",
+              "./bin/llvm-cfi-verify",
+              "./bin/llvm-cov",
+              "./bin/llvm-c-test",
+              "./bin/llvm-cvtres",
+              "./bin/llvm-cxxdump",
+              "./bin/llvm-cxxfilt",
+              "./bin/llvm-cxxmap",
+              "./bin/llvm-dwp",
+              "./bin/llvm-elfabi",
+              "./bin/llvm-exegesis",
+              "./bin/llvm-jitlink",
+              "./bin/llvm-lipo",
+              "./bin/llvm-lto",
+              "./bin/llvm-lto2",
+              "./bin/llvm-mc",
+              "./bin/llvm-mca",
+              "./bin/llvm-modextract",
+              "./bin/llvm-mt",
+              "./bin/llvm-opt-report",
+              "./bin/llvm-pdbutil",
+              "./bin/llvm-profdata",
+              "./bin/llvm-rc",
+              "./bin/llvm-rtdyld",
+              "./bin/llvm-size",
+              "./bin/llvm-split",
+              "./bin/llvm-stress",
+              "./bin/llvm-strings",
+              "./bin/llvm-symbolizer",
+              "./bin/llvm-tblgen",
+              "./bin/llvm-undname",
+              "./bin/llvm-xray",
+              "./bin/obj2yaml",
+              "./bin/sancov",
+              "./bin/sanstats",
+              "./bin/scan-build",
+              "./bin/scan-view",
+              "./bin/verify-uselistorder",
+              "./bin/yaml2obj",
+              "./bin/set-xcode-analyzer",
+              "./share",
+              "./include/clang",
+              "./include/clang-c",
+              "./include/lld",
+              "./include/llvm",
+              "./include/llvm-c",
+              "./lib/cmake",
+              "./lib/Checker*",
+              "./lib/Sample*",
+              "./lib/libRemarks*",
+              "./lib/libLLVM*.a",
+              "./lib/libclang.so*",
+              "./lib/libclang.dylib*",
+              "./lib/libclang*.a",
+              "./lib/liblld*.a",
+              "./libexec",
+              # the following is added by COMPILER_RT
+              "./lib/clang/*/lib/linux/*clang_rt*",
+            ]
+          },
           "extracted-dependency:LLVM_ORG_COMPILER_RT_LINUX",
           "file:3rd_party_license_llvm-toolchain.txt",
         ],
@@ -373,7 +456,24 @@ suite = {
           "file:../sulong/patches/*",
         ],
         "./patches/native-image/" : [
-          # "file:../substratevm/patches/*"
+          "file:../substratevm/patches/*"
+        ],
+      },
+      "platformDependent" : True,
+      "maven": False,
+      "license" : "Apache-2.0-LLVM",
+    },
+    "LLVM_TOOLCHAIN_FULL": {
+      "description": "Distribution including all of LLVM. Use only for building/testing. Only the content of LLVM_TOOLCHAIN will be included in the llvm-toolchain installable.",
+      "native": True,
+      "layout": {
+        "./": [
+          {
+            "source_type": "extracted-dependency",
+            "dependency": "LLVM_ORG",
+            "path": ".",
+            "dereference": "never",
+          },
         ],
       },
       "platformDependent" : True,

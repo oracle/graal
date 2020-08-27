@@ -45,7 +45,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
@@ -64,7 +63,7 @@ public class InteropTestBase {
     private static final Path testBase = Paths.get(TestOptions.TEST_SUITE_PATH, "interop");
     public static final String TEST_FILE_NAME = "O1." + NFIContextExtension.getNativeLibrarySuffix();
 
-    protected static TruffleObject loadTestBitcodeInternal(String name) {
+    protected static Object loadTestBitcodeInternal(String name) {
         File file = Paths.get(testBase.toString(), name + BaseSuiteHarness.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
         TruffleFile tf = runWithPolyglot.getTruffleTestEnv().getPublicTruffleFile(file.toURI());
         Source source;
@@ -74,7 +73,7 @@ public class InteropTestBase {
             throw new AssertionError(ex);
         }
         CallTarget target = runWithPolyglot.getTruffleTestEnv().parsePublic(source);
-        return (TruffleObject) target.call();
+        return target.call();
     }
 
     protected static Value loadTestBitcodeValue(String name) {
@@ -93,7 +92,7 @@ public class InteropTestBase {
         private final Object function;
         @Child InteropLibrary interop;
 
-        protected SulongTestNode(TruffleObject testLibrary, String fnName) {
+        protected SulongTestNode(Object testLibrary, String fnName) {
             super(null);
             try {
                 function = InteropLibrary.getFactory().getUncached().readMember(testLibrary, fnName);

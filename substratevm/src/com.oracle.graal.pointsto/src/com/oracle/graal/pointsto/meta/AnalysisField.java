@@ -24,8 +24,6 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -257,15 +255,11 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         }
     }
 
-    public void registerAsUnsafeAccessed() {
-        registerAsUnsafeAccessed(DefaultUnsafePartition.get());
+    public void registerAsUnsafeAccessed(AnalysisUniverse universe) {
+        registerAsUnsafeAccessed(universe, DefaultUnsafePartition.get());
     }
 
-    public void registerAsUnsafeAccessed(UnsafePartitionKind partitionKind) {
-
-        if (isStatic()) {
-            throw shouldNotReachHere("Unsafe access of static fields is not supported.");
-        }
+    public void registerAsUnsafeAccessed(AnalysisUniverse universe, UnsafePartitionKind partitionKind) {
 
         /*
          * A field can potentially be registered as unsafe accessed multiple times. This is
@@ -287,9 +281,14 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
             registerAsWritten(null);
 
-            /* Register the field as unsafe accessed on the declaring type. */
-            AnalysisType declaringType = getDeclaringClass();
-            declaringType.registerUnsafeAccessedField(this, partitionKind);
+            if (isStatic()) {
+                /* Register the static field as unsafe accessed with the analysis universe. */
+                universe.registerUnsafeAccessedStaticField(this);
+            } else {
+                /* Register the instance field as unsafe accessed on the declaring type. */
+                AnalysisType declaringType = getDeclaringClass();
+                declaringType.registerUnsafeAccessedField(this, partitionKind);
+            }
         }
 
     }

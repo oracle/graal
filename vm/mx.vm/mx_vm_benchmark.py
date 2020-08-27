@@ -79,10 +79,10 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
 
     def run_launcher(self, cmd, args, cwd):
         """Run the 'cmd' command in the 'bin' directory."""
-        self.extract_vm_info(args)
-        out = mx.TeeOutputCapture(mx.OutputCapture())
         args = self.post_process_launcher_command_line_args(args)
+        self.extract_vm_info(args)
         mx.log("Running '{}' on '{}' with args: '{}'".format(cmd, self.name(), " ".join(args)))
+        out = mx.TeeOutputCapture(mx.OutputCapture())
         code = mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', cmd)] + args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
         out = out.underlying.data
         dims = self.dimensions(cwd, args, code, out)
@@ -112,9 +112,10 @@ class NativeImageVM(GraalVm):
             self.log_dir = None
             self.pgo_iteration_num = None
             self.params = ['extra-image-build-argument', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
-                           'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages']
+                           'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
             self.stages = {'agent', 'instrument-image', 'instrument-run', 'image', 'run'}
             self.last_stage = 'run'
+            self.skip_agent_assertions = False
 
         def parse(self, args):
             def add_to_list(arg, name, arg_list):
@@ -143,6 +144,10 @@ class NativeImageVM(GraalVm):
                         stages_list = trimmed_arg[len(self.params[6] + '='):].split(',')
                         self.stages = set(stages_list)
                         self.last_stage = stages_list.pop()
+                        found = True
+
+                    if trimmed_arg.startswith(self.params[7] + '='):
+                        self.skip_agent_assertions = trimmed_arg[len(self.params[7] + '='):] == 'true'
                         found = True
 
                     # not for end-users
@@ -324,7 +329,7 @@ class NativeImageVM(GraalVm):
                 if include_bench_out:
                     self.bench_out(s)
                 else:
-                    mx.logv(s)
+                    mx.logv(s, end='')
                 return v
             return writeFun
 
@@ -334,7 +339,7 @@ class NativeImageVM(GraalVm):
                 if include_bench_err:
                     self.bench_err(s)
                 else:
-                    mx.logv(s)
+                    mx.logv(s, end='')
                 return v
             return writeFun
 
@@ -375,7 +380,7 @@ class NativeImageVM(GraalVm):
             final_image_name = executable_name + '-' + self.config_name()
             stages = NativeImageVM.Stages(config, out, err, final_image_name, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
 
-            bench_suite = mx.suite('vm-enterprise')
+            bench_suite = mx.suite('vm')
             root_dir = config.benchmark_output_dir if config.benchmark_output_dir else mx.join(bench_suite.dir, 'mxbuild')
             config.output_dir = mx.join(os.path.abspath(root_dir), 'native-image-bench-' + executable_name + '-' + self.config_name())
             if not os.path.exists(config.output_dir):
@@ -392,7 +397,7 @@ class NativeImageVM(GraalVm):
 
             if stages.change_stage('agent'):
                 profile_path = profile_path_no_extension + '-agent' + profile_file_extension
-                hotspot_vm_args = ['-ea', '-esa'] if self.is_gate else []
+                hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not config.skip_agent_assertions else []
                 hotspot_run_args = []
                 hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir), '-XX:-UseJVMCINativeLibrary']
 
@@ -415,7 +420,7 @@ class NativeImageVM(GraalVm):
 
             base_image_build_args = [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
             base_image_build_args += ['--no-fallback', '--no-server', '-g', '--allow-incomplete-classpath']
-            base_image_build_args += ['-J-ea', '-J-esa', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '-H:+TraceClassInitialization'] if self.is_gate else []
+            base_image_build_args += ['-J-ea', '-J-esa', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases'] if self.is_gate else []
             base_image_build_args += system_properties
             base_image_build_args += classpath_arguments
             base_image_build_args += executable

@@ -137,7 +137,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         int configWritePeriodInitialDelay = 1; // in seconds
 
         if (options.length() == 0) {
-            System.err.println(MESSAGE_PREFIX + "invalid option string. Please read CONFIGURE.md.");
+            System.err.println(MESSAGE_PREFIX + "invalid option string. Please read Configuration.md.");
             return 1;
         }
         for (String token : options.split(",")) {
@@ -202,7 +202,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             } else if (token.startsWith("build=")) {
                 build = Boolean.parseBoolean(getTokenValue(token));
             } else {
-                System.err.println(MESSAGE_PREFIX + "unsupported option: '" + token + "'. Please read CONFIGURE.md.");
+                System.err.println(MESSAGE_PREFIX + "unsupported option: '" + token + "'. Please read Configuration.md.");
                 return 1;
             }
         }

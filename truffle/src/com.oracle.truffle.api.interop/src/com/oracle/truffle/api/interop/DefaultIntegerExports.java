@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -75,7 +74,7 @@ final class DefaultIntegerExports {
     static boolean fitsInFloat(Integer receiver) {
         int i = receiver;
         float f = i;
-        return f == i;
+        return (int) f == i;
     }
 
     @ExportMessage
@@ -85,7 +84,6 @@ final class DefaultIntegerExports {
         if (b == i) {
             return b;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -96,7 +94,6 @@ final class DefaultIntegerExports {
         if (s == i) {
             return s;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -104,10 +101,9 @@ final class DefaultIntegerExports {
     static float asFloat(Integer receiver) throws UnsupportedMessageException {
         int i = receiver;
         float f = i;
-        if (f == i) {
+        if ((int) f == i) {
             return f;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 

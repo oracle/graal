@@ -1370,6 +1370,29 @@ public final class TruffleFile {
     }
 
     /**
+     * Reads the target of a symbolic link.
+     * 
+     * @return the {@link TruffleFile} representing the target of the symbolic link
+     * @throws NotLinkException if the {@link TruffleFile} is not a symbolic link
+     * @throws IOException in case of IO error
+     * @throws UnsupportedOperationException if the {@link FileSystem} implementation does not
+     *             support symbolic links
+     * @throws SecurityException if the {@link FileSystem} denied the operation
+     * @since 20.3
+     */
+    @TruffleBoundary
+    public TruffleFile readSymbolicLink() throws IOException {
+        try {
+            checkFileOperationPreconditions();
+            return new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.readSymbolicLink(normalizedPath));
+        } catch (IOException | SecurityException | UnsupportedOperationException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw wrapHostException(t);
+        }
+    }
+
+    /**
      * Returns the owner of the file.
      *
      * @param options the options determining how the symbolic links should be handled
@@ -1597,6 +1620,47 @@ public final class TruffleFile {
     @TruffleBoundary
     public String detectMimeType() {
         return detectMimeType(null);
+    }
+
+    /**
+     * Tests if this and the given {@link TruffleFile} refer to the same physical file. If both
+     * {@code TruffleFile} objects are {@link TruffleFile#equals(Object) equal} then this method
+     * returns {@code true} without any checks. If the {@link TruffleFile}s have different
+     * filesystems then this method returns {@code false}. Otherwise, this method checks if both
+     * {@link TruffleFile}s refer to the same physical file. Depending on the {@link FileSystem}
+     * implementation it may require to read the files attributes. This implies:
+     * <ul>
+     * <li>Public and Internal files with disabled IO are never the same.
+     * <li>Public and Internal files with allowed IO are potentially the same.
+     * <li>Files created by different languages are potentially the same.
+     * <li>Files created during the Context pre-initialization and files created during Context
+     * execution are potentially the same.
+     * </ul>
+     *
+     * @param other the other {@link TruffleFile}
+     * @return {@code true} if this and the given {@link TruffleFile} refer to the same physical
+     *         file
+     * @throws IOException in case of IO error
+     * @throws SecurityException if the {@link FileSystem} denied the operation
+     * @since 20.2.0
+     */
+    @TruffleBoundary
+    public boolean isSameFile(TruffleFile other, LinkOption... options) throws IOException {
+        try {
+            checkFileOperationPreconditions();
+            other.checkFileOperationPreconditions();
+            if (this.equals(other)) {
+                return true;
+            }
+            if (!fileSystemContext.fileSystem.equals(other.fileSystemContext.fileSystem)) {
+                return false;
+            }
+            return fileSystemContext.fileSystem.isSameFile(normalizedPath, other.normalizedPath, options);
+        } catch (IOException | SecurityException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw wrapHostException(t);
+        }
     }
 
     @TruffleBoundary

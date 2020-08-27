@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,8 @@ import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
     @Override
@@ -42,7 +44,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         LoopsData loops = new LoopsData(graph);
         loops.detectedCountedLoops();
         for (LoopEx loop : loops.countedLoops()) {
-            if (loop.loop().getChildren().isEmpty() && loop.counted().getStamp().getBits() <= 32) {
+            if (loop.loop().getChildren().isEmpty() && (loop.counted().getStamp().getBits() <= 32 || loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop())) {
                 boolean hasSafepoint = false;
                 for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                     hasSafepoint |= loopEnd.canSafepoint();
@@ -67,7 +69,15 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                 blocks: while (b != loop.loop().getHeader()) {
                     assert b != null;
                     for (FixedNode node : b.getNodes()) {
-                        if (node instanceof Invoke || (node instanceof ForeignCallNode && ((ForeignCallNode) node).isGuaranteedSafepoint())) {
+                        boolean canDisableSafepoint = false;
+                        if (node instanceof Invoke) {
+                            Invoke invoke = (Invoke) node;
+                            ResolvedJavaMethod method = invoke.getTargetMethod();
+                            canDisableSafepoint = context.getMetaAccessExtensionProvider().isGuaranteedSafepoint(method, invoke.getInvokeKind().isDirect());
+                        } else if (node instanceof ForeignCallNode) {
+                            canDisableSafepoint = ((ForeignCallNode) node).isGuaranteedSafepoint();
+                        }
+                        if (canDisableSafepoint) {
                             loopEnd.disableSafepoint();
                             break blocks;
                         }

@@ -37,7 +37,6 @@ import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
@@ -59,24 +58,6 @@ public class AMD64StringLatin1Substitutions {
 
     /** Marker value for the {@link InjectedParameter} injected parameter. */
     static final MetaAccessProvider INJECTED = null;
-
-    /**
-     * @param value is byte[]
-     * @param other is byte[]
-     */
-    @MethodSubstitution
-    public static int compareTo(byte[] value, byte[] other) {
-        return ArrayCompareToNode.compareTo(value, other, value.length, other.length, JavaKind.Byte, JavaKind.Byte);
-    }
-
-    /**
-     * @param value is byte[]
-     * @param other is char[]
-     */
-    @MethodSubstitution
-    public static int compareToUTF16(byte[] value, byte[] other) {
-        return ArrayCompareToNode.compareTo(value, other, value.length, other.length, JavaKind.Byte, JavaKind.Char);
-    }
 
     private static Word pointer(byte[] target) {
         return Word.objectToTrackedPointer(target).add(byteArrayBaseOffset(INJECTED));

@@ -820,7 +820,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle callerClass = nullHandle();
         JvmtiFrameInfo frameInfo = StackValue.get(JvmtiFrameInfo.class);
         CIntPointer frameCountPtr = StackValue.get(CIntPointer.class);
-        if (jvmtiFunctions().GetStackTrace().invoke(jvmtiEnv(), nullHandle(), 1, 1, frameInfo, frameCountPtr) == JvmtiError.JVMTI_ERROR_NONE && frameCountPtr.read() == 1) {
+        if (jvmtiFunctions().GetStackTrace().invoke(jvmtiEnv(), nullHandle(), 1, 1, (WordPointer) frameInfo, frameCountPtr) == JvmtiError.JVMTI_ERROR_NONE && frameCountPtr.read() == 1) {
             callerClass = getMethodDeclaringClass(frameInfo.getMethod());
             if (callerClass.notEqual(nullHandle()) && jniFunctions().getIsAssignableFrom().invoke(jni, callerClass, agent.handles().javaLangClassLoader)) {
                 // ignore recursive class loader calls, we must have seen the root invocation

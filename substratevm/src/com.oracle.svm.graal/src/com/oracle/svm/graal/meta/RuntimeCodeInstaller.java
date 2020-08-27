@@ -44,6 +44,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
@@ -65,10 +66,12 @@ import com.oracle.svm.core.graal.code.NativeImagePatcher;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.util.VMError;
@@ -100,6 +103,7 @@ public class RuntimeCodeInstaller {
     private final int tier;
     private final boolean testTrampolineJumps;
     private SubstrateCompilationResult compilation;
+    private final DebugContext debug;
 
     private Pointer code;
     private int codeSize;
@@ -112,11 +116,12 @@ public class RuntimeCodeInstaller {
         this.compilation = (SubstrateCompilationResult) compilation;
         this.tier = compilation.getName().endsWith(TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX) ? TruffleCompiler.FIRST_TIER_INDEX : TruffleCompiler.LAST_TIER_INDEX;
         this.testTrampolineJumps = testTrampolineJumps;
+        this.debug = new DebugContext.Builder(RuntimeOptionValues.singleton()).build();
     }
 
     @SuppressWarnings("try")
     private void prepareCodeMemory() {
-        try (Indent indent = DebugContext.forCurrentThread().logAndIndent("create installed code of %s.%s", method.getDeclaringClass().getName(), method.getName())) {
+        try (Indent indent = debug.logAndIndent("create installed code of %s.%s", method.getDeclaringClass().getName(), method.getName())) {
             TargetDescription target = ConfigurationValues.getTarget();
 
             if (target.arch.getPlatformKind(JavaKind.Object).getSizeInBytes() != 8) {
@@ -186,7 +191,7 @@ public class RuntimeCodeInstaller {
                 makeDataSectionNX(code.add(constantsOffset), constantsSize);
             }
 
-            codeObservers = ImageSingletons.lookup(InstalledCodeObserverSupport.class).createObservers(DebugContext.forCurrentThread(), method, compilation, code);
+            codeObservers = ImageSingletons.lookup(InstalledCodeObserverSupport.class).createObservers(debug, method, compilation, code);
         }
     }
 
@@ -317,6 +322,10 @@ public class RuntimeCodeInstaller {
             adjuster.setConstantTargetAt(code.add(objectConstants.offsets[i]), objectConstants.lengths[i], constant);
         }
         CodeInfoAccess.setState(runtimeMethodInfo, CodeInfo.STATE_CODE_CONSTANTS_LIVE);
+        if (!SubstrateUtil.HOSTED) {
+            // after patching all the object data, notify the GC
+            Heap.getHeap().getRuntimeCodeInfoGCSupport().registerCodeConstants(runtimeMethodInfo);
+        }
     }
 
     private void createCodeChunkInfos(CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {

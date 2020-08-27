@@ -44,15 +44,13 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.graal.GraalFeature;
-import com.oracle.svm.core.graal.nodes.ReadIsolateThreadFixedNode;
-import com.oracle.svm.core.graal.nodes.ReadIsolateThreadFloatingNode;
+import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 import com.oracle.svm.core.graal.thread.AddressOfVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
-import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
@@ -112,7 +110,7 @@ public class VMThreadMTFeature implements GraalFeature {
             r.register3("compareAndSet", Receiver.class, valueClass, valueClass, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode expect, ValueNode update) {
-                    ValueNode threadNode = currentThread(b, false);
+                    ValueNode threadNode = currentThread(b);
                     return handleCompareAndSet(b, targetMethod, receiver, threadNode, expect, update);
                 }
             });
@@ -132,7 +130,7 @@ public class VMThreadMTFeature implements GraalFeature {
             r.register1("getAddress", Receiver.class, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    ValueNode threadNode = currentThread(b, true);
+                    ValueNode threadNode = currentThread(b);
                     return handleGetAddress(b, targetMethod, receiver, threadNode);
                 }
             });
@@ -153,7 +151,7 @@ public class VMThreadMTFeature implements GraalFeature {
         r.register1("get" + suffix, Receiver.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode threadNode = currentThread(b, false);
+                ValueNode threadNode = currentThread(b);
                 return handleGet(b, targetMethod, receiver, threadNode, isVolatile);
             }
         });
@@ -168,7 +166,7 @@ public class VMThreadMTFeature implements GraalFeature {
         r.register2("set" + suffix, Receiver.class, valueClass, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode valueNode) {
-                ValueNode threadNode = currentThread(b, false);
+                ValueNode threadNode = currentThread(b);
                 return handleSet(b, receiver, threadNode, valueNode, isVolatile);
             }
         });
@@ -181,23 +179,8 @@ public class VMThreadMTFeature implements GraalFeature {
         });
     }
 
-    private static ValueNode currentThread(GraphBuilderContext b, boolean usedForAddress) {
-        /*
-         * A floating node to access the VMThread is more efficient: it allows value numbering of
-         * multiple accesses, and it does not copy the VMThread from the fixed register into a
-         * virtual register. But for deoptimization target methods, we must not do value numbering
-         * because the VMThread is not part of the FrameState and therefore not restored during
-         * deoptimization. And when computing the address of a VMThreadLocal, we must not have the
-         * VMThread in a fixed register because the it can end up in a FrameState (and a FrameState
-         * must not directly reference a fixed register).
-         */
-        boolean isDeoptTarget = b.getMethod() instanceof SharedMethod && ((SharedMethod) b.getMethod()).isDeoptTarget();
-
-        if (isDeoptTarget || usedForAddress) {
-            return b.add(new ReadIsolateThreadFixedNode());
-        } else {
-            return b.add(new ReadIsolateThreadFloatingNode());
-        }
+    private static ValueNode currentThread(GraphBuilderContext b) {
+        return b.add(ReadReservedRegister.createReadIsolateThreadNode(b.getGraph()));
     }
 
     private boolean handleGet(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode, boolean isVolatile) {

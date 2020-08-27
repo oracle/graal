@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -765,7 +765,7 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue);
 
-    public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Duration timeLimit, Duration timeLimitAccuracy, Consumer<ResourceLimitEvent> onLimit);
+    public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Consumer<ResourceLimitEvent> onLimit);
 
     public abstract Context getLimitEventContext(Object impl);
 

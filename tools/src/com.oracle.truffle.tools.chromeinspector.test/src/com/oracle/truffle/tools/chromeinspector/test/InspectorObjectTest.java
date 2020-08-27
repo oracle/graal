@@ -75,8 +75,8 @@ public class InspectorObjectTest {
         Value testOpen = context.getBindings("sl").getMember("testOpen");
         testOpen.execute(inspector);
         String output = out.toString();
-        Assert.assertTrue(output, output.startsWith("Debugger listening on port"));
-        Assert.assertTrue(output, output.indexOf("ws=") > 0);
+        Assert.assertTrue(output, output.startsWith("Debugger listening "));
+        Assert.assertTrue(output, output.indexOf("ws://") > 0);
         Assert.assertTrue(output, output.indexOf(":" + freePort + "/") > 0);
     }
 

@@ -1,10 +1,10 @@
-# The polyglot API based Test Compatibility Kit
+# Polyglot API Based Test Compatibility Kit
 
-## Overview
-The test compatibility kit (TCK) is a collection of tests verifying the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html)
-inter-operability and instrumentation. The TCK is based on the org.graalvm.polyglot API.
+The Test Compatibility Kit (TCK) is a collection of tests verifying the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html)
+inter-operability and instrumentation. The TCK is based on the `org.graalvm.polyglot` API.
 
-## Adding a language
+## Adding a Language
+
 To test your language implement the [LanguageProvider](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html).
 The `LanguageProvider`s are loaded using the `java.util.ServiceLoader` therefore you need to register your
 implementation in the `META-INF/services/org.graalvm.polyglot.tck.LanguageProvider` file.
@@ -15,7 +15,8 @@ the [Snippet.Builder](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglo
 The `LanguageProvider` should also provide simple but representative scripts which the TCK can use to test
 instrumentation.
 
-## Running TCK tests with mx
+## Running TCK Tests with mx
+
 The tests are executed using `mx unitest`. When running the tests all `LanguageProvider`s in the primary suite
 and dependent suites are used. The `truffle` suite provides the `java-host` `LanguageProvider` creating java data
 types and [Proxies](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/proxy/Proxy.html) to
@@ -60,8 +61,8 @@ You can also disable output and error output for all tests but one:
 
 `mx tck -Dtck.verbose=false -Dtck.ErrorTypeTest.verbose=true`
 
-## Running TCK tests without mx
-The python [TCK runner](../mx.truffle/tck.py) can be used to execute the Truffle TCK on top of the GraalVM. The script requires
+## Running TCK Tests without mx
+The python [TCK runner](https://github.com/oracle/graal/blob/master/truffle/mx.truffle/tck.py) can be used to execute the Truffle TCK on top of the GraalVM. The script requires
 a Maven for downloading the TCK artifacts.
 
 To execute TCK tests on given GraalVM use:

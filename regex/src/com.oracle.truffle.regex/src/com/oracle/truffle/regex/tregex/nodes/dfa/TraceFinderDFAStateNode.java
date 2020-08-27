@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
-
 public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
 
     public static final byte NO_PRE_CALC_RESULT = (byte) 0xff;
@@ -49,9 +47,9 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
     private final byte preCalculatedUnAnchoredResult;
     private final byte preCalculatedAnchoredResult;
 
-    public TraceFinderDFAStateNode(short id, byte flags, LoopOptimizationNode loopOptimizationNode, short[] successors, CharMatcher[] matchers,
+    public TraceFinderDFAStateNode(short id, byte flags, short loopTransitionIndex, LoopOptimizationNode loopOptimizationNode, short[] successors, Matchers matchers,
                     AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher, byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult) {
-        super(id, flags, loopOptimizationNode, successors, matchers, null, allTransitionsInOneTreeMatcher);
+        super(id, flags, loopTransitionIndex, loopOptimizationNode, successors, matchers, null, allTransitionsInOneTreeMatcher);
         this.preCalculatedUnAnchoredResult = preCalculatedUnAnchoredResult;
         this.preCalculatedAnchoredResult = initPreCalculatedAnchoredResult(preCalculatedUnAnchoredResult, preCalculatedAnchoredResult);
     }

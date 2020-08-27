@@ -11,16 +11,17 @@ addons:
 
 # Use Trusty to get enough RAM
 sudo: required
-dist: trusty
+dist: xenial
 
 jdk:
     - openjdk11
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-20.1-b02"
-    - JDK8_UPDATE_VERSION="252"
-    - JDK8_UPDATE_VERSION_SUFFIX="+09"
+    - JVMCI_VERSION="jvmci-20.2-b03"
+    - JDK8_UPDATE_VERSION="262"
+    - JDK8_UPDATE_VERSION_SUFFIX="+10"
+    - JDK11_VERSION="11.0.8+10"
 
 matrix:
   include:
@@ -45,7 +46,24 @@ matrix:
           - libc++1
           - libc++abi1
   - os: linux
-    env: JDK="jdk8" GATE="build,debuginfotest" PRIMARY="substratevm"
+    env:
+      - JDK="jdk8" GATE="build,debuginfotest" PRIMARY="substratevm"
+    addons:
+      apt:
+        packages:
+          - gdb
+  - os: linux
+    env:
+      - JDK="jdk11" GATE="build,debuginfotest" PRIMARY="substratevm"
+    addons:
+      apt:
+        packages:
+          - gdb
+  - os: linux
+    env:
+      - JDK="jdk11" GATE="build,debuginfotest" PRIMARY="substratevm"
+    arch:
+      - arm64
     addons:
       apt:
         packages:
@@ -55,10 +73,15 @@ matrix:
   - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
   - os: linux
     arch: arm64
-    env: JDK="jdk11" GATE="fullbuild,test" PRIMARY="compiler"
+    env: JDK="jdk11" GATE="fullbuild,test:1:100" PRIMARY="compiler"
+  - os: linux
+    arch: arm64
+    env: JDK="jdk11" GATE="build,test:0:1" PRIMARY="compiler"
   - os: linux
     arch: arm64
     env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
+  - os: linux
+    env: JDK="jdk11" WITHOUT_VCS=true
 # GR-16977
 #  - env: JDK="jdk11" GATE="build,test,helloworld" PRIMARY="substratevm"
 
@@ -76,7 +99,7 @@ install:
         pip install pylint==1.1.0
 
         export ECLIPSE_TAR=${TRAVIS_BUILD_DIR}/../eclipse.tar.gz
-        wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/eclipse-SDK-4.5.2-linux-gtk-x86_64.tar.gz -O ${ECLIPSE_TAR}
+        wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/eclipse-SDK-4.14-linux-gtk-x86_64.tar.gz  -O ${ECLIPSE_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${ECLIPSE_TAR}
         export ECLIPSE_EXE=${TRAVIS_BUILD_DIR}/../eclipse/eclipse
 
@@ -94,26 +117,42 @@ install:
         fi
       fi
   - |
+      if [ "${TRAVIS_CPU_ARCH}" == "arm64" ]
+      then
+        export TRAVIS_CPU_ARCH="aarch64"
+      fi
+      JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
       if [ "${JDK}" == "jdk8" ]
       then
-        JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-        wget https://github.com/graalvm/graal-jvmci-8/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}${JDK8_UPDATE_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
-        tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
-        export JAVA_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
+        wget https://github.com/graalvm/graal-jvmci-8/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}${JDK8_UPDATE_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-${TRAVIS_CPU_ARCH}.tar.gz -O ${JDK_TAR}
       fi
-  - |
       if [ "${JDK}" == "jdk11" ]
       then
-        # Set the JAVA_HOME to openjdk11 if it is not set
-        if [ "${JAVA_HOME}" == "" ]
-        then
-          export JAVA_HOME=$(realpath $(dirname $(which java | xargs realpath))/../)
-        fi
+      wget https://github.com/graalvm/labs-openjdk-11/releases/download/${JVMCI_VERSION}/labsjdk-ce-${JDK11_VERSION}-${JVMCI_VERSION}-linux-${TRAVIS_CPU_ARCH}.tar.gz -O ${JDK_TAR}
       fi
+      mkdir -p ${TRAVIS_BUILD_DIR}/../jdk
+      tar -C ${TRAVIS_BUILD_DIR}/../jdk -xzf ${JDK_TAR} --strip-components=1
+      export JAVA_HOME=${TRAVIS_BUILD_DIR}/../jdk
 
 script:
   - echo ${JAVA_HOME}
   - ${JAVA_HOME}/bin/java -version
-  - mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+  - |
+      if [[ ${WITHOUT_VCS} ]]
+      then
+        rm -rf .git
+        mx --primary-suite-path ${TRAVIS_BUILD_DIR}/substratevm native-image --help
+      else
+        mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+      fi
 after_failure:
   - cat hs_err*
+notifications:
+  # Send a notification of a build failure on the master branch to
+  # travis-ci channel in public GraalVM workspace
+  slack:
+    secure: RqC8efMebgYxxZeS63zTpNFIrJtgisOEjHNzlQBRDgIZ2JXcIoRL3xL6d3I+BoW8iGdOPJuNGC1WgDr8O4ZJOf5A32xZKpLU+aVR79Lq5LOezsoa8PCNXlZmxcc9oKFaM1a0cJGxLLg3F1wq9RUUHwfOMS8YuW7dmqFCtUOGmcIF1Rsal8vHyOqCYbiu7wxmUNmkqlJtXnztgQhLCGhd6ya0k6Dw8EVYoMWpHOTB6+9irNAp0BP0b1SvPQm9a5KzuASXSahapt/6CeCSrizN5RBKrMzVjcZhTarLm0Lt+3Ah7j1BQw2YBcDVYIEFUqABquXnuKb4+Hu6L8QRfmJzJ2w1cxC49WTEWWZu31gk2/0oSMsH58LovFG21ZHgQ/UZH1N7UYzS/rnHr2dzjZHaBIiWsRADoqSg9eNoz0ld2k8Up6k/T9YxUYN72+/TWKmRUDGF7gpkN097G1klaJb1MiLXDE5bvxbnH3+wVmfpzAVkE5Q0nfkZL53B5ymw1E8EtGvppcbnvHv0L3ccyRiX3iIgJcvINf+6sRXBqdB7HSZOEmRGiH7EsaUOdMxRhfLo1zA5xK+7k0fRBhViPJKEosflRkG7qhUNeqXDH6lrlCee5yqLoBsn0Xb6WDgCBQrVOSj2sHrvp0qO0UWKH8InDkhMPXddVq5RECnMjsusQ5g=
+    if: branch = master AND repo = oracle/graal
+    on_failure: always
+    on_success: never
+    on_pull_requests: false

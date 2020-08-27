@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -193,6 +193,17 @@ public abstract class CCompilerInvoker {
             }
         }
 
+        @Override
+        protected List<String> compileStrictOptions() {
+            /*
+             * On Windows `/Wall` corresponds to `-Wall -Wextra`. Therefore we use /W4 instead.
+             * Options `/wd4244` and `/wd4245` are needed because our query code makes use of
+             * implicit unsigned/signed conversions to detect signedness of types. `/wd4800`,
+             * `/wd4804` are needed to silence warnings when querying bool types. `/wd4214` is
+             * needed to make older versions of cl.exe accept bitfields larger than int-size.
+             */
+            return Arrays.asList("/WX", "/W4", "/wd4244", "/wd4245", "/wd4800", "/wd4804", "/wd4214");
+        }
     }
 
     private static class LinuxCCompilerInvoker extends CCompilerInvoker {
@@ -203,7 +214,7 @@ public abstract class CCompilerInvoker {
 
         @Override
         protected String getDefaultCompiler() {
-            return "gcc";
+            return LibCBase.singleton().getTargetCompiler();
         }
 
         @Override
@@ -393,7 +404,8 @@ public abstract class CCompilerInvoker {
     }
 
     @SuppressWarnings("try")
-    public void compileAndParseError(List<String> options, Path source, Path target, CompilerErrorHandler handler, DebugContext debug) {
+    public void compileAndParseError(boolean strict, List<String> compileOptions, Path source, Path target, CompilerErrorHandler handler, DebugContext debug) {
+        List<String> options = strict ? createStrictOptions(compileOptions) : compileOptions;
         ProcessBuilder pb = new ProcessBuilder()
                         .command(createCompilerCommand(options, target.normalize(), source.normalize()))
                         .directory(tempDirectory.toFile());
@@ -435,6 +447,16 @@ public abstract class CCompilerInvoker {
         }
     }
 
+    private List<String> createStrictOptions(List<String> compileOptions) {
+        ArrayList<String> strictCompileOptions = new ArrayList<>(compileStrictOptions());
+        strictCompileOptions.addAll(compileOptions);
+        return strictCompileOptions;
+    }
+
+    protected List<String> compileStrictOptions() {
+        return Arrays.asList("-Wall", "-Werror");
+    }
+
     protected boolean detectError(String line) {
         return line.contains(": error:") || line.contains(": fatal error:");
     }
@@ -442,7 +464,7 @@ public abstract class CCompilerInvoker {
     public static Optional<Path> lookupSearchPath(String name) {
         return Arrays.stream(System.getenv("PATH").split(File.pathSeparator))
                         .map(entry -> Paths.get(entry, name))
-                        .filter(Files::isExecutable)
+                        .filter(p -> Files.isExecutable(p) && !Files.isDirectory(p))
                         .findFirst();
     }
 
@@ -495,8 +517,6 @@ public abstract class CCompilerInvoker {
             command.add(elem.toString());
         }
 
-        LibCBase currentLibc = ImageSingletons.lookup(LibCBase.class);
-        command.addAll(currentLibc.getCCompilerOptions());
         return command;
     }
 

@@ -146,7 +146,7 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
         executionContext.logMessage("CLIENT ws connection opened at ", getURI());
         iss = InspectServerSession.create(executionContext, debugBreak, connectionWatcher);
         connectionWatcher.notifyOpen();
-        iss.setMessageListener(new MessageEndpoint() {
+        iss.open(new MessageEndpoint() {
             @Override
             public void sendText(String message) {
                 executionContext.logMessage("SERVER: ", message);
@@ -176,7 +176,11 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
     @Override
     public void onMessage(String message) {
         executionContext.logMessage("CLIENT: ", message);
-        iss.sendText(message);
+        try {
+            iss.sendText(message);
+        } catch (IOException e) {
+            executionContext.logException(e);
+        }
     }
 
     @Override

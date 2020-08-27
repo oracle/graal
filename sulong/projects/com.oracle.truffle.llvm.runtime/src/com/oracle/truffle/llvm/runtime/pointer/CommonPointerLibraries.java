@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -45,18 +46,19 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetIndexPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
-import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode.LLVMPointerEqualsNode;
-import com.oracle.truffle.llvm.spi.ReferenceLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
-@ExportLibrary(value = ReferenceLibrary.class, receiverType = LLVMPointerImpl.class)
-@SuppressWarnings("static-method")
+@ExportLibrary(value = com.oracle.truffle.llvm.spi.ReferenceLibrary.class, receiverType = LLVMPointerImpl.class)
+@SuppressWarnings({"static-method", "deprecation"})
+// implements deprecated ReferenceLibrary for backwards compatibility
 abstract class CommonPointerLibraries {
 
     @ExportMessage
@@ -64,8 +66,12 @@ abstract class CommonPointerLibraries {
         return receiver.getExportType() instanceof LLVMInteropType.Struct;
     }
 
+    /**
+     * @param receiver
+     * @param includeInternal
+     * @see InteropLibrary#getMembers(Object, boolean)
+     */
     @ExportMessage
-    @SuppressWarnings("unused")
     static Object getMembers(LLVMPointerImpl receiver, boolean includeInternal,
                     @Shared("isObject") @Cached ConditionProfile isObject) throws UnsupportedMessageException {
         if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
@@ -113,8 +119,12 @@ abstract class CommonPointerLibraries {
         }
     }
 
+    /**
+     * @param receiver
+     * @param ident
+     * @see InteropLibrary#isMemberInsertable(Object, String)
+     */
     @ExportMessage
-    @SuppressWarnings("unused")
     static boolean isMemberInsertable(LLVMPointerImpl receiver, String ident) {
         return false;
     }
@@ -178,8 +188,12 @@ abstract class CommonPointerLibraries {
         }
     }
 
+    /**
+     * @param receiver
+     * @param idx
+     * @see InteropLibrary#isArrayElementInsertable(Object, long)
+     */
     @ExportMessage
-    @SuppressWarnings("unused")
     static boolean isArrayElementInsertable(LLVMPointerImpl receiver, long idx) {
         // native arrays have fixed size, new elements can't be inserted
         return false;
@@ -234,19 +248,25 @@ abstract class CommonPointerLibraries {
 
         @Specialization
         static boolean doNative(LLVMPointerImpl receiver, LLVMPointerImpl other,
-                        @Cached LLVMPointerEqualsNode equals) {
-            return equals.execute(receiver, other);
+                        @Cached LLVMAddressEqualsNode equals) {
+            return equals.executeWithTarget(receiver, other);
         }
 
+        /**
+         * @param receiver
+         * @param other
+         */
         @Fallback
-        @SuppressWarnings("unused")
         static boolean doOther(LLVMPointerImpl receiver, Object other) {
             return false;
         }
     }
 
+    /**
+     * @param receiver
+     * @see InteropLibrary#hasLanguage(Object)
+     */
     @ExportMessage
-    @SuppressWarnings("unused")
     static boolean hasLanguage(LLVMPointerImpl receiver) {
         return true;
     }
@@ -276,4 +296,24 @@ abstract class CommonPointerLibraries {
         return receiver.getExportType() != null;
     }
 
+    @ExportMessage
+    static class IsIdenticalOrUndefined {
+
+        @Specialization
+        static TriState doPointer(LLVMPointerImpl receiver, LLVMPointerImpl other,
+                        @Cached LLVMAddressEqualsNode equals) {
+            return TriState.valueOf(equals.executeWithTarget(receiver, other));
+        }
+
+        @Fallback
+        static TriState doOther(@SuppressWarnings("unused") LLVMPointerImpl receiver, @SuppressWarnings("unused") Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    static int identityHashCode(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new AbstractMethodError(); // overridden in {Native,Managed}PointerLibraries
+    }
 }

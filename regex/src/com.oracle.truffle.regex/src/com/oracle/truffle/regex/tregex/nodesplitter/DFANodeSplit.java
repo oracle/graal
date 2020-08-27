@@ -46,6 +46,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
@@ -272,6 +273,7 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
         for (GraphNode n : scc) {
             if (n.getHeader() != headerNode) {
                 if (nextId == TRegexOptions.TRegexMaxDFASizeAfterNodeSplitting) {
+                    CompilerDirectives.transferToInterpreter();
                     throw new DFANodeSplitBailoutException();
                 }
                 n.createCopy(this, nextId++);

@@ -57,7 +57,7 @@ public abstract class EmptyMatcher extends CharMatcher {
 
     @Specialization
     @SuppressWarnings("unused")
-    boolean match(int c, boolean compactString) {
+    boolean match(int c) {
         return false;
     }
 

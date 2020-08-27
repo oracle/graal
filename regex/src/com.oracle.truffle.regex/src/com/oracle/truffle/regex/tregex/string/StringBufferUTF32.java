@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.string;
 
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 public final class StringBufferUTF32 extends IntArrayBuffer implements AbstractStringBuffer {
 
@@ -50,6 +51,11 @@ public final class StringBufferUTF32 extends IntArrayBuffer implements AbstractS
 
     public StringBufferUTF32(int capacity) {
         super(capacity);
+    }
+
+    @Override
+    public Encoding getEncoding() {
+        return Encodings.UTF_32;
     }
 
     @Override

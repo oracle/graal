@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,7 @@ package com.oracle.truffle.api.impl;
 import java.io.Closeable;
 import java.util.Objects;
 import java.util.function.BiFunction;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.graalvm.options.OptionValues;
 
@@ -169,7 +169,7 @@ public abstract class TVMCI {
      * The resulting instance is cached in the Engine.
      */
     @SuppressWarnings("unchecked")
-    protected static <T> T getOrCreateRuntimeData(RootNode rootNode, BiFunction<OptionValues, Supplier<TruffleLogger>, T> constructor) {
+    protected static <T> T getOrCreateRuntimeData(RootNode rootNode, BiFunction<OptionValues, Function<String, TruffleLogger>, T> constructor) {
         Objects.requireNonNull(constructor);
         final Accessor.NodeSupport nodesAccess = DefaultRuntimeAccessor.NODES;
         final EngineSupport engineAccess = DefaultRuntimeAccessor.ENGINE;

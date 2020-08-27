@@ -67,7 +67,7 @@ public class DotExport {
                     replacement = "\\\\\\\\";
                     break;
                 default:
-                    throw new IllegalStateException();
+                    throw Exceptions.shouldNotReachHere();
             }
             m.appendReplacement(escapedString, replacement);
         }

@@ -92,6 +92,7 @@ import com.oracle.svm.hosted.code.InliningUtilities;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -126,19 +127,8 @@ public final class SVMHost implements HostVM {
     private final ConcurrentMap<AnalysisMethod, Set<AnalysisType>> initializedClasses = new ConcurrentHashMap<>();
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
-    private static final Method isHiddenMethod;
-
-    static {
-        if (JavaVersionUtil.JAVA_SPEC >= 15) {
-            try {
-                isHiddenMethod = Class.class.getMethod("isHidden");
-            } catch (NoSuchMethodException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        } else {
-            isHiddenMethod = null;
-        }
-    }
+    private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
+    private static final Method getNestHostMethod = JavaVersionUtil.JAVA_SPEC >= 11 ? ReflectionUtil.lookupMethod(Class.class, "getNestHost") : null;
 
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport, UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
         this.options = options;
@@ -331,8 +321,17 @@ public final class SVMHost implements HostVM {
             }
         }
 
+        Class<?> nestHost = null;
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            try {
+                nestHost = (Class<?>) getNestHostMethod.invoke(javaClass);
+            } catch (ReflectiveOperationException ex) {
+                throw VMError.shouldNotReachHere(ex);
+            }
+        }
+
         final DynamicHub dynamicHub = new DynamicHub(className, computeHubType(type), computeReferenceType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
-                        modifiers, hubClassLoader, isHidden);
+                        modifiers, hubClassLoader, isHidden, nestHost);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         }
@@ -433,14 +432,13 @@ public final class SVMHost implements HostVM {
     public void checkType(ResolvedJavaType type, AnalysisUniverse universe) {
         Class<?> originalClass = OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), type);
         ClassLoader originalClassLoader = originalClass.getClassLoader();
-        if (originalClassLoader instanceof NativeImageClassLoader && !originalClassLoader.equals(classLoader)) {
+        if (NativeImageSystemClassLoader.singleton().isDisallowedClassLoader(originalClassLoader)) {
             String message = "Class " + originalClass.getName() + " was loaded by " + originalClassLoader + " and not by the current image class loader " + classLoader + ". ";
             message += "This usually means that some objects from a previous build leaked in the current build. ";
             message += "This can happen when using the image build server. ";
             message += "To fix the issue you must reset all static state from the bootclasspath and application classpath that points to the application objects. ";
             message += "If the offending code is in JDK code please file a bug with GraalVM. ";
             message += "As an workaround you can disable the image build server by adding " + SubstrateOptions.NO_SERVER + " to the command line. ";
-
             throw new UnsupportedFeatureException(message);
         }
     }

@@ -46,9 +46,11 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
@@ -57,18 +59,21 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceInternals;
-import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.core.util.UserError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -86,6 +91,7 @@ public final class HeapImpl extends Heap {
     private final HeapChunkProvider chunkProvider = new HeapChunkProvider();
     private final ObjectHeaderImpl objectHeaderImpl = new ObjectHeaderImpl();
     private final GCImpl gcImpl;
+    private final RuntimeCodeInfoGCSupportImpl runtimeCodeInfoGcSupport;
     private final HeapPolicy heapPolicy;
     private final ImageHeapInfo imageHeapInfo = new ImageHeapInfo();
     private HeapVerifier heapVerifier;
@@ -107,6 +113,7 @@ public final class HeapImpl extends Heap {
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapImpl(FeatureAccess access) {
         this.gcImpl = new GCImpl(access);
+        this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
         this.heapPolicy = new HeapPolicy(access);
         if (getVerifyHeapBeforeGC() || getVerifyHeapAfterGC() || getVerifyStackBeforeGC() || getVerifyStackAfterGC() || getVerifyDirtyCardBeforeGC() || getVerifyDirtyCardAfterGC()) {
             this.heapVerifier = new HeapVerifier();
@@ -207,9 +214,16 @@ public final class HeapImpl extends Heap {
         return objectHeaderImpl;
     }
 
+    @Fold
     @Override
     public GC getGC() {
         return getGCImpl();
+    }
+
+    @Fold
+    @Override
+    public RuntimeCodeInfoGCSupport getRuntimeCodeInfoGCSupport() {
+        return runtimeCodeInfoGcSupport;
     }
 
     GCImpl getGCImpl() {
@@ -373,25 +387,39 @@ public final class HeapImpl extends Heap {
     /** Return a list of all the classes in the heap. */
     @Override
     public List<Class<?>> getClassList() {
+        /* Two threads might race to set classList, but they compute the same result. */
         if (classList == null) {
-            /* Two threads might race to set classList, but they compute the same result. */
             List<Class<?>> list = new ArrayList<>(1024);
-            Object firstObject = imageHeapInfo.firstReadOnlyReferenceObject;
-            Object lastObject = imageHeapInfo.lastReadOnlyReferenceObject;
-            Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
-            Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
-            Pointer currentPointer = firstPointer;
-            while (currentPointer.belowOrEqual(lastPointer)) {
-                Object currentObject = KnownIntrinsics.convertUnknownValue(currentPointer.toObject(), Object.class);
-                if (currentObject instanceof Class<?>) {
-                    Class<?> asClass = (Class<?>) currentObject;
-                    list.add(asClass);
-                }
-                currentPointer = LayoutEncoding.getObjectEnd(currentObject);
-            }
+            ImageHeapWalker.walkRegions(imageHeapInfo, new ClassListBuilderVisitor(list));
             classList = Collections.unmodifiableList(list);
         }
         return classList;
+    }
+
+    private static class ClassListBuilderVisitor implements MemoryWalker.ImageHeapRegionVisitor, ObjectVisitor {
+        private final List<Class<?>> list;
+
+        ClassListBuilderVisitor(List<Class<?>> list) {
+            this.list = list;
+        }
+
+        @Override
+        public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
+            if (!access.isWritable(region) && access.containsReferences(region)) {
+                access.visitObjects(region, this);
+            }
+            return true;
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, //
+                        reason = "Allocation is fine: this method traverses only the image heap.")
+        public boolean visitObject(Object o) {
+            if (o instanceof Class<?>) {
+                list.add(KnownIntrinsics.convertUnknownValue(o, Class.class));
+            }
+            return true;
+        }
     }
 
     /*
@@ -457,7 +485,6 @@ public final class HeapImpl extends Heap {
         }
         if (getVerifyDirtyCardBeforeGC()) {
             assert heapVerifier != null : "No heap verifier!";
-            Log.log().string("[Verify dirtyCard before GC: ");
             HeapVerifier.verifyDirtyCard(false);
         }
         trace.string("]").newline();
@@ -481,7 +508,6 @@ public final class HeapImpl extends Heap {
         }
         if (getVerifyDirtyCardAfterGC()) {
             assert heapVerifier != null : "No heap verifier!";
-            Log.log().string("[Verify dirtyCard after GC: ");
             HeapVerifier.verifyDirtyCard(true);
         }
     }
@@ -544,6 +570,38 @@ public final class HeapImpl extends Heap {
     }
 
     @Fold
+    public static boolean usesImageHeapChunks() {
+        // Chunks are needed for card marking and not very useful without it
+        return usesImageHeapCardMarking();
+    }
+
+    @Fold
+    public static boolean usesImageHeapCardMarking() {
+        Boolean enabled = HeapOptions.ImageHeapCardMarking.getValue();
+        if (enabled == Boolean.FALSE) {
+            return false;
+        } else if (enabled == null) {
+            return CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment() &&
+                            HeapPolicyOptions.MaxSurvivorSpaces.getValue() == 0;
+        }
+        UserError.guarantee(CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment(),
+                        "Enabling option %s requires a custom image heap alignment at runtime, which cannot be ensured with the current configuration (option %s might be disabled)",
+                        HeapOptions.ImageHeapCardMarking, SubstrateOptions.SpawnIsolates);
+        UserError.guarantee(HeapPolicyOptions.MaxSurvivorSpaces.getValue() == 0,
+                        "Enabling option %s is currently not supported together with non-zero %s", HeapOptions.ImageHeapCardMarking, HeapPolicyOptions.MaxSurvivorSpaces);
+        return true;
+    }
+
+    @Fold
+    @Override
+    public int getPreferredAddressSpaceAlignment() {
+        if (usesImageHeapChunks()) {
+            return UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkAlignment());
+        }
+        return ConfigurationValues.getObjectLayout().getAlignment();
+    }
+
+    @Fold
     @Override
     public int getImageHeapOffsetInAddressSpace() {
         return 0;
@@ -565,7 +623,7 @@ public final class HeapImpl extends Heap {
         return getYoungGeneration().walkObjects(visitor) && getOldGeneration().walkObjects(visitor);
     }
 
-    boolean walkNativeImageHeapRegions(MemoryWalker.Visitor visitor) {
+    boolean walkNativeImageHeapRegions(MemoryWalker.ImageHeapRegionVisitor visitor) {
         return ImageHeapWalker.walkRegions(imageHeapInfo, visitor) &&
                         (!AuxiliaryImageHeap.isPresent() || AuxiliaryImageHeap.singleton().walkRegions(visitor));
     }

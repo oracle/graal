@@ -14,6 +14,8 @@ import { StreamInfo } from 'vscode-languageclient';
 
 const POLYGLOT: string = "polyglot";
 
+let rTermArgs: string[] | undefined;
+
 export class GraalVMDebugAdapterTracker implements vscode.DebugAdapterTrackerFactory {
 
 	createDebugAdapterTracker(session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
@@ -39,6 +41,12 @@ export class GraalVMDebugAdapterTracker implements vscode.DebugAdapterTrackerFac
 						}));
 					}
 				}
+			},
+			onWillStopSession() {
+				if (rTermArgs) {
+					const conf = vscode.workspace.getConfiguration('r');
+					conf.update('rterm.option', rTermArgs, true);
+				}
 			}
 		};
 	}
@@ -49,54 +57,67 @@ export class GraalVMConfigurationProvider implements vscode.DebugConfigurationPr
 	resolveDebugConfiguration(_folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration, _token?: vscode.CancellationToken): vscode.ProviderResult<vscode.DebugConfiguration> {
 		return new Promise<vscode.DebugConfiguration>(resolve => {
 			if (config.request === 'launch' && config.name === 'Launch R Term') {
-				vscode.commands.executeCommand('r.createRTerm');
 				config.request = 'attach';
-			}
-		    const inProcessServer = vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean;
-			const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
-			if (graalVMHome) {
-				config.graalVMHome = graalVMHome;
-				const graalVMBin = path.join(graalVMHome, 'bin');
-				if (config.env) {
-					config.env['PATH'] = updatePath(config.env['PATH'], graalVMBin);
-				} else {
-					config.env = { 'PATH': graalVMBin };
+				const conf = vscode.workspace.getConfiguration('r');
+				rTermArgs = conf.get('rterm.option') as string[];
+				let args = config.runtimeArgs ? rTermArgs.slice().concat(config.runtimeArgs) : rTermArgs.slice();
+				if (!args.find((arg: string) => arg.startsWith('--inspect'))) {
+					args.push('--inspect.Suspend=false');
 				}
-				if (config.request === 'launch' && inProcessServer) {
-					stopLanguageServer().then(() => {
-                        lspArgs().then(args => {
-							const lspArg = args.find(arg => arg.startsWith('--lsp='));
-							if (lspArg) {
-								config._lsPort = parseInt(lspArg.substring(6));
-							}
-							if (config.runtimeArgs) {
-								config.runtimeArgs = config.runtimeArgs.filter((arg: string) => !arg.startsWith('--lsp'));
-								config.runtimeArgs = config.runtimeArgs.concat(args);
-								let idx = config.runtimeArgs.indexOf('--experimental-options');
-								if (idx < 0) {
-									config.runtimeArgs = config.runtimeArgs.concat('--experimental-options');
+				conf.update('rterm.option', args, true);
+				setTimeout(() => {
+					vscode.commands.executeCommand('r.createRTerm');
+					setTimeout(() => {
+						resolve(config);
+					}, config.timeout | 3000);
+				}, 1000);
+			} else {
+				const inProcessServer = vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean;
+				const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
+				if (graalVMHome) {
+					config.graalVMHome = graalVMHome;
+					const graalVMBin = path.join(graalVMHome, 'bin');
+					if (config.env) {
+						config.env['PATH'] = updatePath(config.env['PATH'], graalVMBin);
+					} else {
+						config.env = { 'PATH': graalVMBin };
+					}
+					if (config.request === 'launch' && inProcessServer) {
+						stopLanguageServer().then(() => {
+							lspArgs().then(args => {
+								const lspArg = args.find(arg => arg.startsWith('--lsp='));
+								if (lspArg) {
+									config._lsPort = parseInt(lspArg.substring(6));
 								}
-								if (config.runtimeExecutable !== POLYGLOT) {
-									let idx = config.runtimeArgs.indexOf('--polyglot');
+								if (config.runtimeArgs) {
+									config.runtimeArgs = config.runtimeArgs.filter((arg: string) => !arg.startsWith('--lsp'));
+									config.runtimeArgs = config.runtimeArgs.concat(args);
+									let idx = config.runtimeArgs.indexOf('--experimental-options');
 									if (idx < 0) {
-										config.runtimeArgs = config.runtimeArgs.concat('--polyglot');
+										config.runtimeArgs = config.runtimeArgs.concat('--experimental-options');
 									}
+									if (config.runtimeExecutable !== POLYGLOT) {
+										let idx = config.runtimeArgs.indexOf('--polyglot');
+										if (idx < 0) {
+											config.runtimeArgs = config.runtimeArgs.concat('--polyglot');
+										}
+									}
+								} else {
+									args = args.concat('--experimental-options');
+									if (config.runtimeExecutable !== POLYGLOT) {
+										args = args.concat('--polyglot');
+									}
+									config.runtimeArgs = args;
 								}
-							} else {
-								args = args.concat('--experimental-options');
-								if (config.runtimeExecutable !== POLYGLOT) {
-									args = args.concat('--polyglot');
-								}
-								config.runtimeArgs = args;
-							}
-							resolve(config);
+								resolve(config);
+							});
 						});
-					});
+					} else {
+						resolve(config);
+					}
 				} else {
 					resolve(config);
 				}
-			} else {
-				resolve(config);
 			}
 		});
 	}

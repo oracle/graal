@@ -1,19 +1,19 @@
-# Implementing Native Methods in Java with Substrate VM
+# Implementing Native Methods in Java with Native Image
 
-Substrate VM can be used to implement low-level system operations in Java and
+Native Image can be used to implement low-level system operations in Java and
 make them available via JNI to Java code executing on a standard JVM. As
 a result one can use the same language to write the application logic
 as well as the system calls.
 
 Note that this document describes the opposite of what is commonly done via JNI:
 Usually low-level system operations are implemented in C and invoked from Java
-using JNI. If you are interested in how Substrate VM supports the common use case,
-read the documentation about [Substrate VM JNI support](JNI.md) instead.
+using JNI. If you are interested in how Native Image supports the common use case,
+continue reading to [Native Image JNI support](JNI.md) guide instead.
 
 ## Create a Shared Library
 
 First of all one has to use the `native-image` command to generate a shared library
-with some JNI-compatible [entry points](README.md#images-and-entry-points).
+with some JNI-compatible [entry points](SubstrateVM.md#images-and-entry-points).
 Let's start with the Java code:
 ```java
 package org.pkg.implnative;
@@ -37,7 +37,7 @@ to the `jclass` value for the class declaring the method. The third parameter is
 portable (e.g. `long`) identifier of the [SubstrateVM isolatethread](C-API.md).
 The rest of the parameters are the actual parameters of the Java `Native.add`
 method described in the next section. Compile the code with shared option on:
-```bash
+```
 $GRAALVM/bin/native-image --shared -H:Name=libnativeimpl -cp nativeimpl
 ```
 and the `libnativeimpl.so` is generated. We are ready to use it from standard
@@ -77,12 +77,12 @@ or `java.library.path` Java property is properly set.
 
 Before making calls to the `Native.add` method, we need to create a Substrate VM
 isolate. Substrate VM provides special built-in to allow that:
-`CEntryPoint.Builtin.CreateIsolate`. Define another method along your other
-existing `@CEntryPoint` methods. Let it return `long` and take no parameters:
+`CEntryPoint.Builtin.CREATE_ISOLATE`. Define another method along your other
+existing `@CEntryPoint` methods. Let it return `IsolateThread` and take no parameters:
 ```java
 public final class NativeImpl {
-    @CEntryPoint(name = "Java_org_pkg_apinative_Native_createIsolate", builtin=CEntryPoint.Builtin.CreateIsolate)
-    public static native long createIsolate();
+    @CEntryPoint(name = "Java_org_pkg_apinative_Native_createIsolate", builtin=CEntryPoint.Builtin.CREATE_ISOLATE)
+    public static native IsolateThread createIsolate();
 }
 ```
 SubstrateVM then generates default native implementation of the
@@ -115,10 +115,7 @@ then computed three times inside of the isolate.
 
 ## Calling JVM from Native Java
 
-There is a detailed [tutorial on the C interface](src/com.oracle.svm.tutorial/src/com/oracle/svm/tutorial/CInterfaceTutorial.java)
-of Substrate VM. Rather than repeating it here, let's apply some of its
-principles to a related topic, the implementation of native methods. Let's make
-a callback to JVM!
+There is a detailed [tutorial on the C interface](src/com.oracle.svm.tutorial/src/com/oracle/svm/tutorial/CInterfaceTutorial.java) of Substrate VM. The following example shows how to make a callback to JVM.
 
 In the classical setup, when C needs to call into JVM, it uses [jni.h](JNI.md)
 header file. The file defines essential JVM structures (like `JNIEnv`) as well as
@@ -255,7 +252,7 @@ before the call happens. The method `hello` is defined in the class `Native`
 and just prints values of all parameters to verify they are properly
 propagated from the `NativeImpl.add` caller:
 
-```java
+```
 public class Native {
     public static void hello(boolean z, char c, byte b, short s, int i, long j, float f, double d) {
         System.err.println("Hi, I have just been called back!");

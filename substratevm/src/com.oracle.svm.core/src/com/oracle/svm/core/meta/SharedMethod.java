@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,11 @@
  */
 package com.oracle.svm.core.meta;
 
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
+import org.graalvm.util.DirectAnnotationAccess;
+
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -58,4 +63,29 @@ public interface SharedMethod extends ResolvedJavaMethod {
     int getCodeOffsetInImage();
 
     int getDeoptOffsetInImage();
+
+    static boolean isGuaranteedSafepoint(SharedMethod method) {
+        if (DirectAnnotationAccess.isAnnotationPresent(method, Uninterruptible.class)) {
+            /*
+             * Methods annotated with {@link Uninterruptible} do not have safepoints.
+             */
+            return false;
+        }
+        if ((DirectAnnotationAccess.isAnnotationPresent(method, CFunction.class) && DirectAnnotationAccess.getAnnotation(method, CFunction.class).transition() == CFunction.Transition.NO_TRANSITION) ||
+                        (DirectAnnotationAccess.isAnnotationPresent(method, InvokeCFunctionPointer.class) &&
+                                        DirectAnnotationAccess.getAnnotation(method, InvokeCFunctionPointer.class).transition() == CFunction.Transition.NO_TRANSITION)) {
+            /*
+             * If a method transfers from Java to C without a transition, then safepoint is not
+             * guaranteed.
+             */
+            return false;
+        }
+        if (method.isEntryPoint()) {
+            /*
+             * If a method is transferring from C to Java, then safepoint is not guaranteed.
+             */
+            return false;
+        }
+        return true;
+    }
 }

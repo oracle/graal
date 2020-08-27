@@ -35,6 +35,9 @@ export class GraalVMDebugAdapter extends ChromeDebugAdapter {
     }
 
     public async launch(args: ILaunchRequestArguments): Promise<void> {
+        if (!args.breakOnLoadStrategy) {
+            args.breakOnLoadStrategy = 'regex';
+        }
         if (args.console && args.console !== 'internalConsole' && typeof args._suppressConsoleOutput === 'undefined') {
             args._suppressConsoleOutput = true;
         }
@@ -149,6 +152,9 @@ export class GraalVMDebugAdapter extends ChromeDebugAdapter {
 
     public async attach(args: IAttachRequestArguments): Promise<void> {
         try {
+            if (!args.breakOnLoadStrategy) {
+                args.breakOnLoadStrategy = 'regex';
+            }
             if (typeof args.enableSourceMapCaching !== 'boolean') {
                 args.enableSourceMapCaching = true;
             }

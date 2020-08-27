@@ -55,7 +55,7 @@ POSTCOMPILE = @mv -f deps/$*.Td deps/$*.d && touch $@
 $(shell mkdir -p deps bin >/dev/null)
 
 ifeq ($(OS), darwin)
-CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+CLANG_PREFIX=/usr/bin/xcrun
 ORIGIN_TOKEN='@loader_path'
 LD_FLAGS+=-Wl,-sectcreate,__LLVM,__bundle,$< -Wl,-undefined,suppress -Wl,-flat_namespace -Wl,-install_name,@rpath/$(notdir $@)
 else

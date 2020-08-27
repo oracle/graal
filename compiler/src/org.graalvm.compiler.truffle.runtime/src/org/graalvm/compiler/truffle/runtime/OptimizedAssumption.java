@@ -177,11 +177,11 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                 if (engineOptions == null) {
                     if (callTarget != null) {
                         engineOptions = callTarget.getOptionValues();
-                        logger = callTarget.engine.getLogger();
+                        logger = callTarget.engine.getEngineLogger();
                     } else {
                         EngineData engineData = GraalTVMCI.getEngineData(null);
                         engineOptions = engineData.engineOptions;
-                        logger = engineData.getLogger();
+                        logger = engineData.getEngineLogger();
                     }
                 }
 

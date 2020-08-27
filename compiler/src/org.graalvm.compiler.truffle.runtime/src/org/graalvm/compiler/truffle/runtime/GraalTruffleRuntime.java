@@ -29,7 +29,6 @@ import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGrap
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.Disable;
 
 import java.io.CharArrayWriter;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
@@ -40,6 +39,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.concurrent.ExecutionException;
@@ -86,6 +86,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -107,6 +108,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.LayoutFactory;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -209,11 +212,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return testTvmci;
     }
 
+    private static boolean useInlining(TruffleCompilationTask task, OptimizedCallTarget sourceTarget) {
+        return sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining) && (task.isLastTier() || sourceTarget.getOptionValue(PolyglotCompilerOptions.FirstTierInlining));
+    }
+
     @Override
     public TruffleInlining createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task) {
         final OptimizedCallTarget sourceTarget = (OptimizedCallTarget) compilable;
         final TruffleInliningPolicy policy;
-        if (task != null && task.isLastTier() && sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining)) {
+        if (task != null && useInlining(task, sourceTarget)) {
             policy = TruffleInliningPolicy.getInliningPolicy();
         } else {
             policy = TruffleInliningPolicy.getNoInliningPolicy();
@@ -369,6 +376,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         AbstractAssumption.class,
                         MaterializedFrame.class,
                         FrameWithoutBoxing.class,
+                        BranchProfile.class,
+                        ConditionProfile.class,
+                        Objects.class,
         }) {
             m.put(c.getName(), c);
         }
@@ -713,7 +723,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 if (decision.shouldInline()) {
                     OptimizedCallTarget target = decision.getTarget();
                     if (target != optimizedCallTarget) {
-                        target.cancelInstalledTask(decision.getProfile().getCallNode(), "Inlining caller compiled.");
+                        target.cancelCompilation("Inlining caller compiled.");
                     }
                     dequeueInlinedCallSites(decision, optimizedCallTarget);
                 }
@@ -728,15 +738,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         Priority priority = lastTierCompilation ? Priority.LAST_TIER : Priority.FIRST_TIER;
         return getCompileQueue().submitTask(priority, optimizedCallTarget, new BackgroundCompileQueue.Request() {
             @Override
-            protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
+            protected void execute(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef) {
                 OptimizedCallTarget callTarget = targetRef.get();
-                if (callTarget != null) {
+                if (callTarget != null && task.start()) {
                     try {
-                        if (!task.isCancelled()) {
-                            doCompile(callTarget, task);
-                        }
+                        doCompile(callTarget, task);
                     } finally {
-                        callTarget.resetCompilationTask();
+                        task.finished();
                     }
                 }
             }
@@ -792,17 +800,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
-    public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
-        if (task != null) {
-            if (task.cancel()) {
-                getListener().onCompilationDequeued(optimizedCallTarget, source, reason);
-                return true;
-            }
-        }
-        return false;
-    }
-
     public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException {
         CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
         if (task != null && !task.isCancelled()) {
@@ -818,10 +815,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     public int getCompilationQueueSize() {
         return getCompileQueue().getQueueSize();
-    }
-
-    public boolean isCompiling(OptimizedCallTarget optimizedCallTarget) {
-        return optimizedCallTarget.isCompiling();
     }
 
     /**
@@ -932,29 +925,22 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public JavaKind getJavaKindForFrameSlotKind(int frameSlotKindTag) {
         if (frameSlotKindTag == FrameSlotKind.Boolean.tag) {
             return JavaKind.Boolean;
-        }
-        if (frameSlotKindTag == FrameSlotKind.Byte.tag) {
+        } else if (frameSlotKindTag == FrameSlotKind.Byte.tag) {
             return JavaKind.Byte;
-        }
-        if (frameSlotKindTag == FrameSlotKind.Int.tag) {
+        } else if (frameSlotKindTag == FrameSlotKind.Int.tag) {
             return JavaKind.Int;
-        }
-        if (frameSlotKindTag == FrameSlotKind.Float.tag) {
+        } else if (frameSlotKindTag == FrameSlotKind.Float.tag) {
             return JavaKind.Float;
-        }
-        if (frameSlotKindTag == FrameSlotKind.Long.tag) {
+        } else if (frameSlotKindTag == FrameSlotKind.Long.tag) {
             return JavaKind.Long;
-        }
-        if (frameSlotKindTag == FrameSlotKind.Double.tag) {
+        } else if (frameSlotKindTag == FrameSlotKind.Double.tag) {
             return JavaKind.Double;
-        }
-        if (frameSlotKindTag == FrameSlotKind.Object.tag) {
+        } else if (frameSlotKindTag == FrameSlotKind.Object.tag) {
             return JavaKind.Object;
-        }
-        if (frameSlotKindTag == FrameSlotKind.Illegal.tag) {
+        } else if (frameSlotKindTag == FrameSlotKind.Illegal.tag) {
             return JavaKind.Illegal;
         }
-        throw new IllegalArgumentException("Unknown FrameSlotKind tag: " + frameSlotKindTag);
+        return JavaKind.Illegal;
     }
 
     @Override
@@ -977,7 +963,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             case Illegal:
                 return FrameSlotKind.Illegal.tag;
         }
-        throw new IllegalArgumentException("No FrameSlotKind for Java kind " + kind);
+        return FrameSlotKind.Illegal.tag;
     }
 
     @Override
@@ -1015,11 +1001,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public void log(CompilableTruffleAST compilable, String message) {
-        ((OptimizedCallTarget) compilable).engine.getLogger().log(Level.INFO, message);
+    public boolean isSpecializationMethod(ResolvedJavaMethod method) {
+        return getAnnotation(Specialization.class, method) != null;
     }
 
-    protected abstract OutputStream getDefaultLogStream();
+    @Override
+    public void log(String loggerId, CompilableTruffleAST compilable, String message) {
+        ((OptimizedCallTarget) compilable).engine.getLogger(loggerId).log(Level.INFO, message);
+    }
 
     // https://bugs.openjdk.java.net/browse/JDK-8209535
 
@@ -1057,8 +1046,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     /**
      * Gets a closeable that will be used in a try-with-resources statement surrounding the run-loop
-     * of a Truffle compiler thread. In conjunction with {@link #getCompilerIdleDelay()}, this can
-     * be used to release resources held by idle Truffle compiler threads.
+     * of a Truffle compiler thread. In conjunction with
+     * {@link #getCompilerIdleDelay(OptimizedCallTarget)}, this can be used to release resources
+     * held by idle Truffle compiler threads.
      *
      * If a non-null value is returned, its {@link AutoCloseable#close()} must not throw an
      * exception.
@@ -1069,10 +1059,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     /**
      * Gets the time in milliseconds an idle Truffle compiler thread will wait for new tasks before
-     * terminating. A value of {@code < 0} means that Truffle compiler threads block indefinitely
+     * terminating. A value of {@code <= 0} means that Truffle compiler threads block indefinitely
      * waiting for a task and thus never terminate.
      */
-    protected long getCompilerIdleDelay() {
-        return -1;
+    protected long getCompilerIdleDelay(@SuppressWarnings("unused") OptimizedCallTarget callTarget) {
+        return 0;
     }
 }

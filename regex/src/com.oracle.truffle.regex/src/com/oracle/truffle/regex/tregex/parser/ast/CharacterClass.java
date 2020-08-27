@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -82,14 +83,19 @@ public class CharacterClass extends QuantifiableTerm {
         this.charSet = charSet;
     }
 
-    private CharacterClass(CharacterClass copy) {
+    private CharacterClass(CharacterClass copy, CodePointSet charSet) {
         super(copy);
-        charSet = copy.charSet;
+        this.charSet = charSet;
     }
 
     @Override
-    public CharacterClass copy(RegexAST ast, boolean recursive) {
-        return ast.register(new CharacterClass(this));
+    public CharacterClass copy(RegexAST ast) {
+        return ast.register(new CharacterClass(this, charSet));
+    }
+
+    @Override
+    public CharacterClass copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        return ast.register(new CharacterClass(this, ast.getEncoding().getFullSet().createIntersection(charSet, compilationBuffer)));
     }
 
     @Override
@@ -152,7 +158,10 @@ public class CharacterClass extends QuantifiableTerm {
     public void extractSingleChar(AbstractStringBuffer literal, AbstractStringBuffer mask) {
         if (charSet.matchesSingleChar()) {
             literal.append(charSet.getMin());
-            mask.append(0);
+            assert mask.getEncoding().getEncodedSize(0) == 1;
+            for (int i = 0; i < mask.getEncoding().getEncodedSize(charSet.getMin()); i++) {
+                mask.append(0);
+            }
         } else {
             assert charSet.matches2CharsWith1BitDifference();
             int c1 = charSet.getMin();

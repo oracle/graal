@@ -388,11 +388,11 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         @ExportMessage
         @TruffleBoundary
-        @SuppressWarnings("unused")
         boolean fitsInByte() {
             Object v = getValue();
             if (v instanceof BigInteger) {
                 try {
+                    @SuppressWarnings("unused")
                     byte b = ((BigInteger) v).byteValueExact();
                     return true;
                 } catch (ArithmeticException e) {
@@ -405,11 +405,11 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         @ExportMessage
         @TruffleBoundary
-        @SuppressWarnings("unused")
         boolean fitsInShort() {
             Object v = getValue();
             if (v instanceof BigInteger) {
                 try {
+                    @SuppressWarnings("unused")
                     short s = ((BigInteger) v).shortValueExact();
                     return true;
                 } catch (ArithmeticException e) {
@@ -422,11 +422,11 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         @ExportMessage
         @TruffleBoundary
-        @SuppressWarnings("unused")
         boolean fitsInInt() {
             Object v = getValue();
             if (v instanceof BigInteger) {
                 try {
+                    @SuppressWarnings("unused")
                     int i = ((BigInteger) v).intValueExact();
                     return true;
                 } catch (ArithmeticException e) {
@@ -439,11 +439,11 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         @ExportMessage
         @TruffleBoundary
-        @SuppressWarnings("unused")
         boolean fitsInLong() {
             Object v = getValue();
             if (v instanceof BigInteger) {
                 try {
+                    @SuppressWarnings("unused")
                     long l = ((BigInteger) v).longValueExact();
                     return true;
                 } catch (ArithmeticException e) {

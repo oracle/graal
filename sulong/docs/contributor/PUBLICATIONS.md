@@ -17,14 +17,13 @@ ECOOP 2016 Doctoral Symposium, July 18, 2016, Rome, Italy<br>
 Int. Workshop on Implementation, Compilation, Optimization of
 Object-Oriented Languages, Programs and Systems (ICOOOLPS'16),
 July 18, 2016, Rome, Italy, (accepted for publication)<br>
-[Download paper](http://2016.ecoop.org/event?action-call-with-get-request-type=1&action2130960991518b7028a4055ff711ea5fc5c3395d1b0-b717-403e-aa7f-b592d9e4a8e8=1&__ajax_runtime_request__=1&context=ecoop-2016&event=icooolps-2016-sulong-execution-of-llvm-based-languages-on-the-jvm)
 
 * Kreindl, J.; Rigger, M.; Mössenböck, H.:<br>
 [Debugging Native Extensions of Dynamic Languages](http://ssw.jku.at/manlang18)<br>
 15th International Conference on Managed Languages & Runtimes (ManLang'18), September 12-14, 2018, Linz, Austria<br>
 [Download paper](http://ssw.jku.at/General/Staff/Kreindl/papers/ManLang_2018_SulongDebugging.pdf)
 
-There is also a [list of general](../../../docs/Publications.md) about GraalVM and Truffle in general.
+There is also a [list of general publications](../../../docs/Publications.md) about GraalVM and Truffle in general.
 
 ## Presentations
 

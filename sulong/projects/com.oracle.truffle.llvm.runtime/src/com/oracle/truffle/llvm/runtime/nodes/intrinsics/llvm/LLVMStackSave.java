@@ -57,6 +57,6 @@ public abstract class LLVMStackSave extends LLVMBuiltin {
     protected LLVMNativePointer doPointee(VirtualFrame frame,
                     @CachedLanguage LLVMLanguage language) {
         StackPointer pointer = (StackPointer) FrameUtil.getObjectSafe(frame, getStackPointerSlot());
-        return LLVMNativePointer.create(pointer.get(language.getLLVMMemory()));
+        return LLVMNativePointer.create(pointer.get(this, language.getLLVMMemory()));
     }
 }

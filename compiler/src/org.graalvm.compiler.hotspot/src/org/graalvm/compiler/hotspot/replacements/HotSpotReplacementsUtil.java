@@ -41,6 +41,7 @@ import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.CanonicalizableLocation;
 import org.graalvm.compiler.nodes.CompressionNode;
@@ -192,16 +193,12 @@ public class HotSpotReplacementsUtil {
         return config.useG1GC;
     }
 
-    @Fold
-    public static boolean verifyOops(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.verifyOops;
-    }
-
     /**
      * @see GraalHotSpotVMConfig#doingUnsafeAccessOffset
      */
     @Fold
     public static int doingUnsafeAccessOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        assert config.doingUnsafeAccessOffset != Integer.MAX_VALUE;
         return config.doingUnsafeAccessOffset;
     }
 
@@ -724,7 +721,7 @@ public class HotSpotReplacementsUtil {
     }
 
     public static Object verifyOop(Object object) {
-        if (verifyOops(INJECTED_VMCONFIG)) {
+        if (GraalHotSpotVMConfigNode.verifyOops()) {
             verifyOopStub(VERIFY_OOP, object);
         }
         return object;
@@ -847,7 +844,10 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity CLASS_MIRROR_LOCATION = NamedLocationIdentity.immutable("Klass::_java_mirror");
 
-    public static final LocationIdentity CLASS_MIRROR_HANDLE_LOCATION = NamedLocationIdentity.immutable("Klass::_java_mirror handle");
+    /**
+     * This represents the contents of OopHandles used for some internal fields.
+     */
+    public static final LocationIdentity HOTSPOT_OOP_HANDLE_LOCATION = NamedLocationIdentity.immutable("OopHandle contents");
 
     @Fold
     public static int layoutHelperHeaderSizeShift(@InjectedParameter GraalHotSpotVMConfig config) {

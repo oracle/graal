@@ -32,10 +32,12 @@ package com.oracle.objectfile.debugentry;
 public class FileEntry {
     private String fileName;
     private DirEntry dirEntry;
+    private String cachePath;
 
-    public FileEntry(String fileName, DirEntry dirEntry) {
+    public FileEntry(String fileName, DirEntry dirEntry, String cachePath) {
         this.fileName = fileName;
         this.dirEntry = dirEntry;
+        this.cachePath = cachePath;
     }
 
     /**
@@ -58,5 +60,12 @@ public class FileEntry {
      */
     public DirEntry getDirEntry() {
         return dirEntry;
+    }
+
+    /**
+     * The compilation directory in which to look for source files as a {@link String}.
+     */
+    public String getCachePath() {
+        return cachePath;
     }
 }

@@ -134,7 +134,10 @@ public final class PolyglotNativeAPI {
 
     private static class ErrorStateHolder {
         public PolyglotExtendedErrorInfo info = WordFactory.nullPointer();
-        public CCharPointerHolder messageHolder = CTypeConversion.toCString("");
+
+        // will be assigned to CTypeConversionSupportImpl::NULL_HOLDER by default
+        public CCharPointerHolder messageHolder = CTypeConversion.toCString(null);
+
         public PolyglotException polyglotException = null;
     }
 
@@ -941,15 +944,14 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_remove_array_element", documentation = {
-                    "Sets the value at a given index.",
+                    "Removes an array element at a given index.",
                     "",
                     "Polyglot arrays start with index `0`, independent of the guest language. The given array index must ",
                     "be greater or equal 0.",
                     "",
                     " @param value value that we are checking.",
                     " @param index index of the element starting from 0.",
-                    " @param element to be written into the array.",
-                    " @return true if the value has array elements.",
+                    " @param result true if the underlying array element could be removed, otherwise false.",
                     " @return poly_ok if all works, poly_generic_failure if the array index does not exist, if index is not removable, if the ",
                     "         underlying context was closed, if guest language error occurred during execution, poly_array_expected if the ",
                     "         value has no array elements.",

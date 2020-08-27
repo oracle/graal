@@ -37,6 +37,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 class HeapBreakdownJsonObject extends JsonObject {
@@ -52,6 +54,10 @@ class HeapBreakdownJsonObject extends JsonObject {
 
     HeapBreakdownJsonObject(Feature.AfterHeapLayoutAccess access) {
         this.access = access;
+    }
+
+    Map<String, Long[]> getData() {
+        return sizes.entrySet().stream().collect(Collectors.toMap(Entry::getKey, (Entry<String, Statistics> e) -> new Long[]{e.getValue().size, e.getValue().count}));
     }
 
     @Override

@@ -475,7 +475,7 @@ public class MethodTypeFlowBuilder {
     /**
      * Fixed point analysis state. It stores the type flows for all nodes of the method's graph.
      */
-    private class TypeFlowsOfNodes extends MergeableState<TypeFlowsOfNodes> implements Cloneable {
+    protected class TypeFlowsOfNodes extends MergeableState<TypeFlowsOfNodes> implements Cloneable {
 
         private final Map<Node, TypeFlowBuilder<?>> flows;
 
@@ -1435,6 +1435,8 @@ public class MethodTypeFlowBuilder {
                 });
 
                 state.add(node, resultBuilder);
+            } else {
+                delegateNodeProcessing(n, state);
             }
         }
 
@@ -1515,6 +1517,11 @@ public class MethodTypeFlowBuilder {
                 state.add(node, loadBuilder);
             }
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected void delegateNodeProcessing(FixedNode n, TypeFlowsOfNodes state) {
+        // Hook for subclasses to do their own processing.
     }
 
     /**

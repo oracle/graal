@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2017, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -37,18 +37,12 @@ CLANG?=clang
 CFLAGS+=-g -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.mock
 
 ifeq ($(OS), darwin)
-CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+CLANG_PREFIX=/usr/bin/xcrun
 LDFLAGS=-dynamiclib -g
-bin/${LIBPOLYGLOT_MOCK}: LDFLAGS+=-install_name ${LIBPOLYGLOT_MOCK}
+LDFLAGS+=-Wl,-install_name,@rpath/$(notdir $@)
 else
 CLANG_PREFIX=
 LDFLAGS=-shared -g
-endif
-
-ifeq ($(OS), darwin)
-CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
-else
-CLANG_PREFIX=
 endif
 
 LDFLAGS+= ${EXTRA_LDFLAGS}

@@ -100,6 +100,14 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
             return true;
         }
 
+        if (currentMode != EffectsClosureMode.REGULAR_VIRTUALIZATION) {
+            /*
+             * PEA closure decided it has to give up for this loop nest, do the same and stop
+             * processing nodes.
+             */
+            return false;
+        }
+
         if (node instanceof LoadFieldNode) {
             return processLoadField((LoadFieldNode) node, state, effects);
         } else if (node instanceof StoreFieldNode) {
@@ -179,6 +187,10 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     private boolean processUnsafeLoad(RawLoadNode load, PEReadEliminationBlockState state, GraphEffectList effects) {
+        if (load.isVolatile()) {
+            state.killReadCache();
+            return false;
+        }
         if (load.offset().isConstant()) {
             ResolvedJavaType type = StampTool.typeOrNull(load.object());
             if (type != null && type.isArray()) {
@@ -205,6 +217,10 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     private boolean processUnsafeStore(RawStoreNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
+        if (store.isVolatile()) {
+            state.killReadCache();
+            return false;
+        }
         ResolvedJavaType type = StampTool.typeOrNull(store.object());
         if (type != null && type.isArray()) {
             JavaKind accessKind = store.accessKind();
@@ -326,7 +342,6 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     @Override
     protected void processLoopExit(LoopExitNode exitNode, PEReadEliminationBlockState initialState, PEReadEliminationBlockState exitState, GraphEffectList effects) {
         super.processLoopExit(exitNode, initialState, exitState, effects);
-
         if (exitNode.graph().hasValueProxies()) {
             MapCursor<ReadCacheEntry, ValueNode> entry = exitState.getReadCache().getEntries();
             while (entry.advance()) {

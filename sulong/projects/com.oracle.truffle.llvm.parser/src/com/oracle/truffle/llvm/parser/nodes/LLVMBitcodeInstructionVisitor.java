@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.nodes;
 
+import static com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -91,6 +93,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstru
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.VaArgInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
@@ -104,6 +107,7 @@ import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMGetStackFromFrameNode;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -131,8 +135,6 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
-
-import static com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
 
 public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
@@ -393,7 +395,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final TypeArrayBuilder argTypes = new TypeArrayBuilder(argumentCount);
         int argIndex = 0;
         // stack pointer
-        argNodes[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        argNodes[argIndex] = LLVMGetStackFromFrameNode.create(getStackSlot());
         argTypes.set(argIndex, new PointerType(null));
         argIndex++;
 
@@ -442,7 +444,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             // cannot optimize reads here - landingpad doesn't evaluate all arguments
             entries[i] = symbols.resolve(landingpadInstruction.getClauseSymbols()[i]);
         }
-        LLVMExpressionNode getStack = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        LLVMExpressionNode getStack = LLVMGetStackFromFrameNode.create(getStackSlot());
         LLVMExpressionNode landingPad = nodeFactory.createLandingPad(allocateLandingPadValue, getExceptionSlot(), landingpadInstruction.isCleanup(), landingpadInstruction.getClauseTypes(),
                         entries, getStack);
         createFrameWrite(landingPad, landingpadInstruction);
@@ -465,6 +467,14 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         LLVMExpressionNode result = nodeFactory.createCompareExchangeInstruction(cmpxchg.getAggregateType(), cmp.getType(), ptrNode, cmpNode, newNode);
         createFrameWrite(result, cmpxchg);
+    }
+
+    @Override
+    public void visit(VaArgInstruction vaArgInst) {
+        LLVMExpressionNode source = resolveOptimized(vaArgInst.getSource());
+        LLVMExpressionNode result = CommonNodeFactory.createVaArg(vaArgInst.getType(), source);
+
+        createFrameWrite(result, vaArgInst);
     }
 
     public void initializeAggregateLocalVariable(SourceVariable variable) {
@@ -567,7 +577,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final TypeArrayBuilder argTypes = new TypeArrayBuilder(argumentCount);
 
         int argIndex = 0;
-        argNodes[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        argNodes[argIndex] = LLVMGetStackFromFrameNode.create(getStackSlot());
         argTypes.set(argIndex, new PointerType(null));
         argIndex++;
 
@@ -611,7 +621,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[argumentCount];
         final TypeArrayBuilder argTypes = new TypeArrayBuilder(argumentCount);
         int argIndex = 0;
-        argNodes[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        argNodes[argIndex] = LLVMGetStackFromFrameNode.create(getStackSlot());
         argTypes.set(argIndex, new PointerType(null));
         argIndex++;
         final SymbolImpl target = call.getCallTarget();
@@ -664,7 +674,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final TypeArrayBuilder argsType = new TypeArrayBuilder(argumentCount);
 
         int argIndex = 0;
-        args[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        args[argIndex] = LLVMGetStackFromFrameNode.create(getStackSlot());
         argsType.set(argIndex, new PointerType(null));
         argIndex++;
 

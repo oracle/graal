@@ -45,6 +45,12 @@ class DashboardOptions {
     @Option(help = "In the dashboard dump, include the information about the points-to analysis.", type = OptionType.Expert)//
     static final HostedOptionKey<Boolean> DashboardPointsTo = new HostedOptionKey<>(false);
 
-    @Option(help = "Set dashboard to use pretty print.", type = OptionType.Expert)//
+    @Option(help = "Set dashboard to use pretty print in JSON format.", type = OptionType.Expert)//
     static final HostedOptionKey<Boolean> DashboardPretty = new HostedOptionKey<>(false);
+
+    @Option(help = "Set dashboard to use JSON format for dump.", type = OptionType.Expert)//
+    static final HostedOptionKey<Boolean> DashboardJson = new HostedOptionKey<>(false);
+
+    @Option(help = "Set dashboard to use BGV format for dump.", type = OptionType.Expert)//
+    static final HostedOptionKey<Boolean> DashboardBgv = new HostedOptionKey<>(true);
 }

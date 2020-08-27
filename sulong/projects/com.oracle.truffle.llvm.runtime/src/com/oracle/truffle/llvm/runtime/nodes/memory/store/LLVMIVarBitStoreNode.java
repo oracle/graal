@@ -51,7 +51,7 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected void doOp(LLVMNativePointer addr, LLVMIVarBit value,
                     @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putIVarBit(addr, value);
+        language.getLLVMMemory().putIVarBit(this, addr, value);
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")

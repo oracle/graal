@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,9 +45,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.polyglot.PolyglotException;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * A handle on a context of a set of Truffle languages. This context handle is designed to be used
@@ -92,33 +95,42 @@ public final class TruffleContext implements AutoCloseable {
     final Object polyglotContext;
     final boolean closeable;
 
-    TruffleContext(Object impl) {
-        this.polyglotContext = impl;
-        this.closeable = false;
-    }
-
-    private TruffleContext(TruffleLanguage.Env env, Map<String, Object> config) {
-        try {
-            this.polyglotContext = LanguageAccessor.engineAccess().createInternalContext(env.getPolyglotLanguageContext(), config, this);
-            this.closeable = false;
-            // Initialized after this TruffleContext instance is fully set up
-            LanguageAccessor.engineAccess().initializeInternalContext(env.getPolyglotLanguageContext(), polyglotContext);
-        } catch (Throwable t) {
-            throw Env.engineToLanguageException(t);
-        }
-    }
-
-    /**
-     * Creates closeable context representation for use by a language.
-     */
-    private TruffleContext(Object polyglotContext, boolean closeable) {
+    TruffleContext(Object polyglotContext, boolean closeable) {
         this.polyglotContext = polyglotContext;
         this.closeable = closeable;
     }
 
+    /*
+     * Constructor necessary for inner builder.
+     */
     private TruffleContext() {
         this.polyglotContext = null;
         this.closeable = false;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 20.3
+     */
+    @Override
+    @TruffleBoundary
+    public boolean equals(Object obj) {
+        if (!(obj instanceof TruffleContext)) {
+            return false;
+        }
+        TruffleContext c = (TruffleContext) obj;
+        return polyglotContext.equals(c.polyglotContext);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 20.3
+     */
+    @Override
+    public int hashCode() {
+        return polyglotContext.hashCode();
     }
 
     /**
@@ -169,6 +181,56 @@ public final class TruffleContext implements AutoCloseable {
     }
 
     /**
+     * Checks whether the context is entered on the current thread and the context is the currently
+     * active context on this thread. There can be multiple contexts {@link #isActive() active} on a
+     * single thread, but this method only returns <code>true</code> if it is the top-most context.
+     * This method is thread-safe and may be used from multiple threads.
+     *
+     * @since 20.0
+     * @return {@code true} if the context is active, {@code false} otherwise
+     */
+    public boolean isEntered() {
+        try {
+            return LanguageAccessor.engineAccess().isContextEntered(polyglotContext);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if the context is currently active on the current thread, else
+     * <code>false</code>. Checks whether the context has been previously entered by this thread
+     * with {@link #enter()} and hasn't been left yet with {@link #leave(java.lang.Object)} methods.
+     * Multiple contexts can be active on a single thread. See {@link #isEntered()} for checking
+     * whether it is the top-most entered context. This method is thread-safe and may be used from
+     * multiple threads.
+     *
+     * @since 20.3
+     */
+    public boolean isActive() {
+        try {
+            return LanguageAccessor.engineAccess().isContextActive(polyglotContext);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if the context was closed else <code>false</code>. A context may be
+     * closed if {@link #close()} or {@link #closeCancelled(Node, String)} was called previously.
+     *
+     * @since 20.3
+     */
+    @TruffleBoundary
+    public boolean isClosed() {
+        try {
+            return LanguageAccessor.engineAccess().isContextClosed(polyglotContext);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
      * Leaves this context and sets the previous context as the new current context.
      * <p>
      * Leaving a language context is designed for compilation and is most efficient if the
@@ -184,32 +246,6 @@ public final class TruffleContext implements AutoCloseable {
                 verifyLeave(prev);
             }
             LanguageAccessor.engineAccess().leaveInternalContext(polyglotContext, prev);
-        } catch (Throwable t) {
-            throw Env.engineToLanguageException(t);
-        }
-    }
-
-    /**
-     * Closes this context and disposes its resources. A context cannot be closed if it is currently
-     * {@link #enter() entered} by any thread. If a closed context is attempted to be accessed or
-     * entered, then an {@link IllegalStateException} is thrown. If the context is not closed
-     * explicitly, then it is automatically closed together with the parent context. If an attempt
-     * to close a context was successful then consecutive calls to close have no effect.
-     * <p>
-     * Only contexts created by {@link Builder#build()} can be explicitly closed. Other instances
-     * throw {@link UnsupportedOperationException} on close attempts.
-     *
-     * @throws UnsupportedOperationException when not created by {@link Builder#build()}.
-     * @since 0.27
-     */
-    @Override
-    @TruffleBoundary
-    public void close() {
-        if (!closeable) {
-            throw new UnsupportedOperationException("It's not possible to close a foreign context.");
-        }
-        try {
-            LanguageAccessor.engineAccess().closeInternalContext(polyglotContext);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }
@@ -232,17 +268,95 @@ public final class TruffleContext implements AutoCloseable {
     }
 
     /**
-     * Checks whether the context is entered. Checks whether the context has been previously entered
-     * by this thread with {@link #enter()} and hasn't been left yet with
-     * {@link #leave(java.lang.Object)} methods. This method is thread-safe and may be used from
-     * multiple threads.
+     * Closes this context and disposes its resources. Closes this context and disposes its
+     * resources. A context cannot be closed if it is currently {@link #enter() entered} or active
+     * by any thread. If a closed context is attempted to be accessed or entered, then an
+     * {@link IllegalStateException} is thrown. If the context is not closed explicitly, then it is
+     * automatically closed together with the parent context. If an attempt to close a context was
+     * successful then consecutive calls to close have no effect.
      *
-     * @since 20.0.0
-     * @return {@code true} if the context is active, {@code false} otherwise
+     * @throws UnsupportedOperationException if the close operation is not supported on this context
+     * @throws IllegalStateException if the context is {@link #isActive() active}.
+     * @since 0.27
+     * @see #closeCancelled(Node, String)
+     * @see #closeResourceExhausted(Node, String)
      */
-    public boolean isEntered() {
+    @Override
+    @TruffleBoundary
+    public void close() {
+        if (!closeable) {
+            throw new UnsupportedOperationException("This context instance has no permission to close. " +
+                            "Only the original creator of the truffle context or instruments can close.");
+        }
         try {
-            return LanguageAccessor.engineAccess().isInternalContextEntered(polyglotContext);
+            LanguageAccessor.engineAccess().closeContext(polyglotContext, false, null, false, null);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Force closes the context as cancelled and stops all the execution on all active threads using
+     * a {@link TruffleException#isCancelled() cancelled} exception. If this context is not
+     * currently {@link #isEntered() entered} on the current thread then this method waits until the
+     * close operation is complete and {@link #isClosed()} returns <code>true</code>, else it throws
+     * the cancelled exception upon its completion of this method. If an attempt to close a context
+     * was successful then consecutive calls to close have no effect.
+     * <p>
+     * If forced and this context currently {@link #isEntered() entered} on the current thread and
+     * no other context is entered on the current thread then this method directly throws a
+     * {@link TruffleException} error that is marked {@link TruffleException#isCancelled()
+     * cancelled} instead of completing to indicate that the current thread should be stopped. The
+     * thrown {@link TruffleException} is must not be caught by the guest language and freely
+     * propagated to the guest application to cancel the execution on the current thread. If a
+     * context is {@link #isActive() active} on the current thread, but not {@link #isEntered()
+     * entered}, then an {@link IllegalStateException} is thrown, as parent contexts that are active
+     * on the current thread cannot be cancelled.
+     *
+     * @param closeLocation the node where the close occurred. If the context is currently entered
+     *            on the thread, then this node will be used as location, for the exception thrown.
+     *            If the context is not entered, then the closeLocation parameter will be ignored.
+     * @param message exception text for humans provided to the embedder and tools that observe the
+     *            cancellation.
+     * @throws UnsupportedOperationException if the close operation is not supported on this context
+     * @throws IllegalStateException if the context is {@link #isActive() active} but not
+     *             {@link #isEntered() entered} on the current thread.
+     * @see #close()
+     * @see #closeResourceExhausted(Node, String)
+     * @since 20.3
+     */
+    @TruffleBoundary
+    public void closeCancelled(Node closeLocation, String message) {
+        if (!closeable) {
+            throw new UnsupportedOperationException("This context instance has no permission to close. " +
+                            "Only the original creator of the truffle context or instruments can close.");
+        }
+        try {
+            LanguageAccessor.engineAccess().closeContext(polyglotContext, true, closeLocation, false, message);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Force closes the context due to resource exhaustion. This method is equivalent to calling
+     * {@link #closeCancelled(Node, String) closeCancelled(location, message)} except in addition
+     * the thrown {@link PolyglotException} returns <code>true</code> for
+     * {@link PolyglotException#isResourceExhausted()}.
+     *
+     * @see PolyglotException#isResourceExhausted()
+     * @see #close()
+     * @see #closeCancelled(Node, String)
+     * @since 20.3
+     */
+    @TruffleBoundary
+    public void closeResourceExhausted(Node location, String message) {
+        if (!closeable) {
+            throw new UnsupportedOperationException("This context instance has no permission to cancel. " +
+                            "Only the original creator of the truffle context or instruments can close.");
+        }
+        try {
+            LanguageAccessor.engineAccess().closeContext(polyglotContext, true, location, true, message);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }
@@ -284,10 +398,14 @@ public final class TruffleContext implements AutoCloseable {
          */
         @TruffleBoundary
         public TruffleContext build() {
-            TruffleContext context = new TruffleContext(sourceEnvironment, config);
-            return new TruffleContext(context.polyglotContext, true);
+            try {
+                return LanguageAccessor.engineAccess().createInternalContext(sourceEnvironment.getPolyglotLanguageContext(), config);
+            } catch (Throwable t) {
+                throw Env.engineToLanguageException(t);
+            }
         }
     }
+
 }
 
 class TruffleContextSnippets {

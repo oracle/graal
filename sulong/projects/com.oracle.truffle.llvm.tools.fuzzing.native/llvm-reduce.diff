@@ -1,0 +1,180 @@
+#
+# Copyright (c) 2020, Oracle and/or its affiliates.
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+# conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+# conditions and the following disclaimer in the documentation and/or other materials provided
+# with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+# endorse or promote products derived from this software without specific prior written
+# permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+--- a/llvm-reduce.cpp
++++ b/llvm-reduce.cpp
+@@ -18,9 +18,13 @@
+ #include "llvm/FuzzMutate/FuzzerCLI.h"
+ #include "llvm/FuzzMutate/IRMutator.h"
+ #include "llvm/FuzzMutate/Operations.h"
++#include "llvm/FuzzMutate/RandomIRBuilder.h"
+ #include "llvm/IR/Constants.h"
+ #include "llvm/IR/LLVMContext.h"
+ #include "llvm/IR/LegacyPassManager.h"
++#include "llvm/IR/Instructions.h"
++#include "llvm/IR/InstIterator.h"
++#include "llvm/IR/IRPrintingPasses.h"
+ #include "llvm/IR/Module.h"
+ #include "llvm/IR/Verifier.h"
+ #include "llvm/IRReader/IRReader.h"
+@@ -30,6 +34,7 @@
+ #include "llvm/Support/TargetRegistry.h"
+ #include "llvm/Support/TargetSelect.h"
+ #include "llvm/Target/TargetMachine.h"
++#include "llvm/Support/ToolOutputFile.h"
+ 
+ #define DEBUG_TYPE "isel-fuzzer"
+ 
+@@ -45,38 +50,52 @@
+ 
+ static cl::opt<std::string>
+ TargetTriple("mtriple", cl::desc("Override target triple for module"));
++static cl::opt<unsigned>
++NumberMutations("nrmutations", cl::desc("Number of reduction mutations to be performed"), cl::init(1));
++static cl::opt<unsigned>
++Seed("seed", cl::desc("Random seed used when selecting instructions for mutation"), cl::init(0));
++static cl::opt<std::string>
++OutputFilename("o", 
++         cl::desc("Override output filename"),
++         cl::value_desc("filename"),
++         cl::init("-"));
+ 
+ static std::unique_ptr<TargetMachine> TM;
+ static std::unique_ptr<IRMutator> Mutator;
+ 
+-std::unique_ptr<IRMutator> createISelMutator() {
++class InstReducerIRStrategy : public InstDeleterIRStrategy {
++public:
++  using InstDeleterIRStrategy::mutate;
++ void mutate(Function &F, RandomIRBuilder &IB) override {
++  auto RS = makeSampler<Instruction *>(IB.Rand);
++  for (Instruction &Inst : instructions(F)) {
++    // TODO: We can't handle these instructions.
++    if (Inst.isTerminator() || Inst.isEHPad() ||
++	Inst.isSwiftError() || isa<PHINode>(Inst))
++      continue;
++
++    RS.sample(&Inst, /*Weight=*/1);
++  }
++  if (RS.isEmpty())
++    return;
++
++  // Delete the instruction.
++  mutate(*RS.getSelection(), IB);
++  
++ }
++};
++
++std::unique_ptr<IRMutator> createReductionMutator() {
+   std::vector<TypeGetter> Types{
+       Type::getInt1Ty,  Type::getInt8Ty,  Type::getInt16Ty, Type::getInt32Ty,
+       Type::getInt64Ty, Type::getFloatTy, Type::getDoubleTy};
+ 
+   std::vector<std::unique_ptr<IRMutationStrategy>> Strategies;
+-  Strategies.emplace_back(
+-      new InjectorIRStrategy(InjectorIRStrategy::getDefaultOps()));
+-  Strategies.emplace_back(new InstDeleterIRStrategy());
++  Strategies.emplace_back(new InstReducerIRStrategy());
+ 
+   return llvm::make_unique<IRMutator>(std::move(Types), std::move(Strategies));
+ }
+ 
+-extern "C" LLVM_ATTRIBUTE_USED size_t LLVMFuzzerCustomMutator(
+-    uint8_t *Data, size_t Size, size_t MaxSize, unsigned int Seed) {
+-  LLVMContext Context;
+-  std::unique_ptr<Module> M;
+-  if (Size <= 1)
+-    // We get bogus data given an empty corpus - just create a new module.
+-    M.reset(new Module("M", Context));
+-  else
+-    M = parseModule(Data, Size, Context);
+-
+-  Mutator->mutateModule(*M, Seed, Size, MaxSize);
+-
+-  return writeModule(*M, Data, MaxSize);
+-}
+-
+ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
+   if (Size <= 1)
+     // We get bogus data given an empty corpus - ignore it.
+@@ -89,23 +108,30 @@
+     return 0;
+   }
+ 
+-  // Set up the module to build for our target.
+-  M->setTargetTriple(TM->getTargetTriple().normalize());
+-  M->setDataLayout(TM->createDataLayout());
+-
+-  // Build up a PM to do instruction selection.
+-  legacy::PassManager PM;
+-  TargetLibraryInfoImpl TLII(TM->getTargetTriple());
+-  PM.add(new TargetLibraryInfoWrapperPass(TLII));
+-  raw_null_ostream OS;
+-  TM->addPassesToEmitFile(PM, OS, nullptr, TargetMachine::CGFT_Null);
++  srand(Seed);
++  for(unsigned i = 0; i < NumberMutations; i++){
++     Mutator->mutateModule(*M, rand(), 1000, 1000);
++  }    
++
++  legacy::PassManager PM;  
++
++  std::unique_ptr<ToolOutputFile> Out;
++
++  std::error_code EC;
++  Out.reset(new ToolOutputFile(OutputFilename, EC, sys::fs::F_None));
++  if (EC) {
++    errs() << EC.message() << '\n';
++    return 1;
++  }
++
++  PM.add(createPrintModulePass(Out->os()));
+   PM.run(*M);
++  Out->keep();
+ 
+   return 0;
+ }
+ 
+ static void handleLLVMFatalError(void *, const std::string &Message, bool) {
+-  // TODO: Would it be better to call into the fuzzer internals directly?
+   dbgs() << "LLVM ERROR: " << Message << "\n"
+          << "Aborting to trigger fuzzer exit handling.\n";
+   abort();
+@@ -164,6 +190,11 @@
+   install_fatal_error_handler(handleLLVMFatalError, nullptr);
+ 
+   // Finally, create our mutator.
+-  Mutator = createISelMutator();
++  Mutator = createReductionMutator();
+   return 0;
+ }
++
++int main(int argc, char *argv[]) {
++  return llvm::runFuzzerOnInputs(argc, argv, LLVMFuzzerTestOneInput,
++                                 LLVMFuzzerInitialize);
++}

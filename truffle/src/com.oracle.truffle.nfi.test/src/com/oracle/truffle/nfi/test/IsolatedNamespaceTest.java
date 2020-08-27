@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,14 +46,13 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public class IsolatedNamespaceTest extends NFITest {
 
-    private static TruffleObject isolatedTestLibrary; // test library is loaded 'again' in the
-                                                      // isolated namespace
+    private static Object isolatedTestLibrary; // test library is loaded 'again' in the
+                                               // isolated namespace
 
     @BeforeClass
     public static void loadIsolatedTestLibrary() {
@@ -68,8 +67,8 @@ public class IsolatedNamespaceTest extends NFITest {
     public void testIsolatedNamespace() throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
         // getAndSet mutates some static state, this test ensures that the static state is
         // effectively isolated.
-        TruffleObject getAndSet = lookupAndBind(testLibrary, "getAndSet", "(sint32) : sint32");
-        TruffleObject isolatedGetAndSet = lookupAndBind(isolatedTestLibrary, "getAndSet", "(sint32) : sint32");
+        Object getAndSet = lookupAndBind(testLibrary, "getAndSet", "(sint32) : sint32");
+        Object isolatedGetAndSet = lookupAndBind(isolatedTestLibrary, "getAndSet", "(sint32) : sint32");
         UNCACHED_INTEROP.execute(getAndSet, 123);
         UNCACHED_INTEROP.execute(isolatedGetAndSet, 456);
         Assert.assertEquals(123, (int) UNCACHED_INTEROP.execute(getAndSet, 321));

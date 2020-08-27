@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.tests.interop.values;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -62,17 +63,26 @@ public final class ArrayObject implements TruffleObject {
     }
 
     @ExportMessage(name = "readArrayElement")
-    public Object get(long i) {
+    public Object get(long i) throws InvalidArrayIndexException {
+        if (!inBounds(i)) {
+            throw InvalidArrayIndexException.create(i);
+        }
         return array[(int) i];
     }
 
     @ExportMessage
-    void writeArrayElement(long idx, Object value) {
+    void writeArrayElement(long idx, Object value) throws InvalidArrayIndexException {
+        if (!inBounds(idx)) {
+            throw InvalidArrayIndexException.create(idx);
+        }
         array[(int) idx] = value;
     }
 
     @ExportMessage
-    void removeArrayElement(long idx) {
+    void removeArrayElement(long idx) throws InvalidArrayIndexException {
+        if (!inBounds(idx)) {
+            throw InvalidArrayIndexException.create(idx);
+        }
         array[(int) idx] = "<removed>";
     }
 

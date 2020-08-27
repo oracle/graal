@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -278,31 +279,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
 
             ResolvedJavaType resultType = method.getSignature().getReturnType(null).resolve(null);
 
-            if (isClassType(resultType, providers.getMetaAccess())) {
-                /* Accessor of an annotation element that has a Class type. */
-
-                /* Check if it stores a TypeNotPresentExceptionProxy. */
-                ResolvedJavaType exceptionProxyType = providers.getMetaAccess().lookupJavaType(TypeNotPresentExceptionProxy.class);
-                TypeReference exceptionProxyTypeRef = TypeReference.createTrusted(kit.getAssumptions(), exceptionProxyType);
-
-                LogicNode condition = kit.append(InstanceOfNode.create(exceptionProxyTypeRef, loadField));
-                kit.startIf(condition, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
-                kit.thenPart();
-
-                /* Generate the TypeNotPresentException exception and throw it. */
-                PiNode casted = kit.createPiNode(loadField, StampFactory.object(exceptionProxyTypeRef, true));
-                ResolvedJavaMethod generateExceptionMethod = kit.findMethod(TypeNotPresentExceptionProxy.class, "generateException", false);
-                ValueNode exception = kit.createJavaCallWithExceptionAndUnwind(InvokeKind.Virtual, generateExceptionMethod, casted);
-                kit.append(new UnwindNode(exception));
-
-                kit.elsePart();
-
-                /* Cast the value to the original type. */
-                TypeReference resultTypeRef = TypeReference.createTrusted(kit.getAssumptions(), resultType);
-                loadField = kit.createPiNode(loadField, StampFactory.object(resultTypeRef, true));
-
-                kit.endIf();
-            }
+            loadField = unpackAttribute(providers, kit, loadField, resultType);
 
             if (resultType.isArray()) {
                 /* From the specification: Arrays with length > 0 need to be cloned. */
@@ -387,17 +364,17 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
             kit.append(new ReturnNode(falseValue));
             kit.endIf();
 
-            for (String attribute : findAttributes(annotationType)) {
+            for (Pair<String, ResolvedJavaType> attributePair : findAttributes(annotationType)) {
+                String attribute = attributePair.getLeft();
                 ResolvedJavaField ourField = findField(annotationType, attribute);
                 ResolvedJavaMethod otherMethod = findMethod(annotationInterfaceType, attribute);
-                ResolvedJavaType attributeType = ourField.getType().resolve(null);
-                // assert attributeType.equals(otherMethod.getSignature().getReturnType(null));
+                ResolvedJavaType attributeType = attributePair.getRight();
 
                 /*
                  * Access other value. The other object can be any implementation of the annotation
                  * interface, so we need to invoke the accessor method.
                  */
-                ValueNode otherAttribute = kit.createInvokeWithExceptionAndUnwind(otherMethod, InvokeKind.Interface, state, bci++, bci++, other);
+                ValueNode otherAttribute = kit.createInvokeWithExceptionAndUnwind(otherMethod, InvokeKind.Interface, state, bci++, other);
 
                 /* Access our value. We know that it is in a field. */
                 ValueNode ourAttribute = kit.append(LoadFieldNode.create(null, receiver, ourField));
@@ -414,15 +391,23 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                     otherAttribute = kit.append(BoxNode.create(otherAttribute, boxedAttributeType, attributeType.getJavaKind()));
                 }
 
+                ourAttribute = unpackAttribute(providers, kit, ourAttribute, attributeType);
+                /*
+                 * The otherAttribute doesn't need any unpacking as it is accessed by invoking the
+                 * accessor method. If it is our special annotation implementation the accessor
+                 * method already does the unpacking. If it is another implementation of the
+                 * annotation interface no unpacking is necessary.
+                 */
+
                 ValueNode attributeEqual;
                 if (attributeType.isArray()) {
                     /* Call the appropriate Arrays.equals() method for our attribute type. */
                     ResolvedJavaMethod m = findMethod(providers.getMetaAccess().lookupJavaType(Arrays.class), "equals", attributeType, attributeType);
-                    attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Static, state, bci++, bci++, ourAttribute, otherAttribute);
+                    attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Static, state, bci++, ourAttribute, otherAttribute);
                 } else {
                     /* Just call Object.equals(). Primitive values are already boxed. */
                     ResolvedJavaMethod m = kit.findMethod(Object.class, "equals", false);
-                    attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, bci++, ourAttribute, otherAttribute);
+                    attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, ourAttribute, otherAttribute);
                 }
 
                 kit.startIf(graph.unique(new IntegerEqualsNode(attributeEqual, trueValue)), BranchProbabilityNode.LIKELY_PROBABILITY);
@@ -462,9 +447,10 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
             ValueNode receiver = state.loadLocal(0, JavaKind.Object);
             ValueNode result = ConstantNode.forInt(0, graph);
 
-            for (String attribute : findAttributes(annotationType)) {
+            for (Pair<String, ResolvedJavaType> attributePair : findAttributes(annotationType)) {
+                String attribute = attributePair.getLeft();
                 ResolvedJavaField ourField = findField(annotationType, attribute);
-                ResolvedJavaType attributeType = ourField.getType().resolve(null);
+                ResolvedJavaType attributeType = attributePair.getRight();
 
                 /* Access our value. We know that it is in a field. */
                 ValueNode ourAttribute = kit.append(LoadFieldNode.create(null, receiver, ourField));
@@ -475,15 +461,17 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                     ourAttribute = kit.append(BoxNode.create(ourAttribute, boxedAttributeType, attributeType.getJavaKind()));
                 }
 
+                ourAttribute = unpackAttribute(providers, kit, ourAttribute, attributeType);
+
                 ValueNode attributeHashCode;
                 if (attributeType.isArray()) {
                     /* Call the appropriate Arrays.hashCode() method for our attribute type. */
                     ResolvedJavaMethod m = findMethod(providers.getMetaAccess().lookupJavaType(Arrays.class), "hashCode", attributeType);
-                    attributeHashCode = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Static, state, bci++, bci++, ourAttribute);
+                    attributeHashCode = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Static, state, bci++, ourAttribute);
                 } else {
                     /* Just call Object.hashCode(). Primitive values are already boxed. */
                     ResolvedJavaMethod m = kit.findMethod(Object.class, "hashCode", false);
-                    attributeHashCode = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, bci++, ourAttribute);
+                    attributeHashCode = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, ourAttribute);
                 }
 
                 /* From the specification: sum up "name.hashCode() * 127 ^ value.hashCode()" */
@@ -494,6 +482,47 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
 
             return kit.finalizeGraph();
         }
+    }
+
+    private static ValueNode unpackAttribute(HostedProviders providers, HostedGraphKit kit, ValueNode attribute, ResolvedJavaType attributeType) {
+        if (isClassType(attributeType, providers.getMetaAccess())) {
+            /* An annotation element that has a Class or Class[] type. */
+            return unpackClassAttribute(providers, kit, attributeType, attribute);
+        }
+        return attribute;
+    }
+
+    /**
+     * Attributes of type Class or Class[] are stored as Object since they can also encode a
+     * TypeNotPresentExceptionProxy. Unpack the attribute, throw the TypeNotPresentExceptionProxy if
+     * present, otherwise cast the value to the concrete Class or Class[] type.
+     */
+    private static ValueNode unpackClassAttribute(HostedProviders providers, HostedGraphKit kit, ResolvedJavaType attributeType, ValueNode inputAttribute) {
+        ValueNode attribute = inputAttribute;
+
+        /* Check if it stores a TypeNotPresentExceptionProxy. */
+        ResolvedJavaType exceptionProxyType = providers.getMetaAccess().lookupJavaType(TypeNotPresentExceptionProxy.class);
+        TypeReference exceptionProxyTypeRef = TypeReference.createTrusted(kit.getAssumptions(), exceptionProxyType);
+
+        LogicNode condition = kit.append(InstanceOfNode.create(exceptionProxyTypeRef, attribute));
+        kit.startIf(condition, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+        kit.thenPart();
+
+        /* Generate the TypeNotPresentException exception and throw it. */
+        PiNode casted = kit.createPiNode(attribute, StampFactory.object(exceptionProxyTypeRef, true));
+        ResolvedJavaMethod generateExceptionMethod = kit.findMethod(TypeNotPresentExceptionProxy.class, "generateException", false);
+        ValueNode exception = kit.createJavaCallWithExceptionAndUnwind(InvokeKind.Virtual, generateExceptionMethod, casted);
+        kit.append(new UnwindNode(exception));
+
+        kit.elsePart();
+
+        /* Cast the value to the original type. */
+        TypeReference resultTypeRef = TypeReference.createTrusted(kit.getAssumptions(), attributeType);
+        attribute = kit.createPiNode(attribute, StampFactory.object(resultTypeRef, true));
+
+        kit.endIf();
+
+        return attribute;
     }
 
     static class AnnotationToStringMethod extends AnnotationSubstitutionMethod {

@@ -24,50 +24,30 @@
  */
 package com.oracle.svm.core.posix.linux.libc;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 public class MuslLibC implements LibCBase {
 
-    private Path specFilePath;
+    public MuslLibC() {
+        if (!SubstrateOptions.StaticExecutable.getValue()) {
+            throw UserError.abort("Musl can only be used for statically linked executables.");
+        }
+        if (JavaVersionUtil.JAVA_SPEC != 11) {
+            throw UserError.abort("Musl can only be used with labsjdk 11.");
+        }
+    }
 
-    private static final String GCC_MUSL_TEMPLATE_PATH = "specs/gcc-musl-specs.input";
-    private static final String GCC_MUSL_SPEC_PATH = "gcc-musl.specs";
-    private static final String PATH_PLACEHOLDER = "__BASE_PATH__";
+    public static final String NAME = "musl";
 
     @Override
     public String getName() {
-        return "musl";
-    }
-
-    @Override
-    public void prepare(Path directory) {
-        String useMuslCFlag = SubstrateOptionsParser.commandArgument(AlternativeLibCFeature.LibCOptions.UseMuslC, "+");
-        if (!SubstrateOptions.StaticExecutable.getValue()) {
-            String staticExecutableFlag = SubstrateOptionsParser.commandArgument(SubstrateOptions.StaticExecutable, "+");
-            UserError.abort(useMuslCFlag + " can only be used when producing a static executable. Please add " + staticExecutableFlag + " to the command line arguments, or remove " +
-                            useMuslCFlag + ".");
-        }
-        if (JavaVersionUtil.JAVA_SPEC != 11) {
-            UserError.abort(useMuslCFlag + " can only be used with JDK 11.");
-        }
-        setUpSpecFile(directory);
+        return NAME;
     }
 
     @Override
@@ -77,34 +57,17 @@ public class MuslLibC implements LibCBase {
     }
 
     @Override
-    public List<String> getCCompilerOptions() {
-        return Arrays.asList("-specs", getSpecFilePath().toString());
-    }
-
-    public void setUpSpecFile(Path directory) {
-        VMError.guarantee(specFilePath == null);
-        specFilePath = directory.resolve(GCC_MUSL_SPEC_PATH);
-
-        InputStream stream = MuslLibC.class.getResourceAsStream(GCC_MUSL_TEMPLATE_PATH);
-        BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
-        String content = reader.lines().collect(Collectors.joining(System.lineSeparator()));
-        String muslPath = Paths.get(AlternativeLibCFeature.LibCOptions.UseMuslC.getValue()).toAbsolutePath().toString();
-
-        content = content.replaceAll(PATH_PLACEHOLDER, muslPath);
-        try {
-            Files.write(specFilePath, content.getBytes());
-        } catch (IOException e) {
-            UserError.abort("Unable to write the specs file to the temporary directory " + directory.toAbsolutePath().toString() + ". Please check if you have write access in the directory.");
-        }
-    }
-
-    public Path getSpecFilePath() {
-        VMError.guarantee(specFilePath != null);
-        return specFilePath.toAbsolutePath();
+    public String getTargetCompiler() {
+        return "musl-gcc";
     }
 
     @Override
     public boolean hasIsolatedNamespaces() {
         return false;
+    }
+
+    @Override
+    public boolean requiresLibCSpecificStaticJDKLibraries() {
+        return true;
     }
 }

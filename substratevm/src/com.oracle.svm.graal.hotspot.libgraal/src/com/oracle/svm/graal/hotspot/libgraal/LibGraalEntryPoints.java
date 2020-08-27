@@ -33,13 +33,18 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.debug.GlobalMetrics;
+import org.graalvm.compiler.hotspot.CompilationContext;
 import org.graalvm.compiler.hotspot.CompilationTask;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
+import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.nativeimage.Isolate;
@@ -78,6 +83,12 @@ public final class LibGraalEntryPoints {
      */
     static final CGlobalData<Pointer> LOG_FILE_BARRIER = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
 
+    /**
+     * The spin lock field for the
+     * {@code org.graalvm.compiler.hotspot.management.libgraal.MBeanProxy#defineClassesInHotSpot}.
+     */
+    static final CGlobalData<Pointer> MANAGEMENT_BARRIER = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
+
     @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_org_graalvm_libgraal_LibGraalScope_getIsolateThreadIn")
     private static native IsolateThread getIsolateThreadIn(PointerBase env, PointerBase hsClazz, @IsolateContext Isolate isolate);
 
@@ -87,11 +98,21 @@ public final class LibGraalEntryPoints {
     @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalScope_detachThreadFrom", builtin = CEntryPoint.Builtin.DETACH_THREAD)
     static native void detachThreadFrom(PointerBase env, PointerBase hsClazz, @CEntryPoint.IsolateThreadContext long isolateThread);
 
-    private static long cachedOptionsHash;
-    private static OptionValues cachedOptions;
+    static class CachedOptions {
+        final OptionValues options;
+        final long hash;
 
-    private static synchronized OptionValues decodeOptions(long address, int size, int hash) {
-        if (cachedOptionsHash != hash) {
+        CachedOptions(OptionValues options, long hash) {
+            this.options = options;
+            this.hash = hash;
+        }
+    }
+
+    private static final ThreadLocal<CachedOptions> cachedOptions = new ThreadLocal<>();
+
+    private static OptionValues decodeOptions(long address, int size, int hash) {
+        CachedOptions options = cachedOptions.get();
+        if (options == null || options.hash != hash) {
             byte[] buffer = new byte[size];
             UNSAFE.copyMemory(null, address, buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET, size);
             int actualHash = Arrays.hashCode(buffer);
@@ -106,10 +127,11 @@ public final class LibGraalEntryPoints {
                 final Object optionValue = e.getValue();
                 OptionsParser.parseOption(optionName, optionValue, dstMap, loader);
             }
-            cachedOptionsHash = hash;
-            cachedOptions = new OptionValues(dstMap);
+
+            options = new CachedOptions(new OptionValues(dstMap), hash);
+            cachedOptions.set(options);
         }
-        return cachedOptions;
+        return options.options;
     }
 
     @SuppressWarnings({"unused"})
@@ -126,6 +148,18 @@ public final class LibGraalEntryPoints {
         }
     }
 
+    @SuppressWarnings({"unused"})
+    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalScope_getIsolateId")
+    public static long getIsolateId(PointerBase jniEnv,
+                    PointerBase jclass,
+                    @CEntryPoint.IsolateThreadContext long isolateThreadId) {
+        try {
+            return IsolateUtil.getIsolateID();
+        } catch (Throwable t) {
+            return 0L;
+        }
+    }
+
     /**
      * The implementation of
      * {@code org.graalvm.compiler.hotspot.test.CompileTheWorld.compileMethodInLibgraal()}.
@@ -135,6 +169,7 @@ public final class LibGraalEntryPoints {
      * @param useProfilingInfo specifies if profiling info should be used during the compilation
      * @param installAsDefault specifies if the compiled code should be installed for the
      *            {@code Method*} associated with {@code methodHandle}
+     * @param printMetrics specifies if global metrics should be printed and reset
      * @param optionsAddress native byte buffer storing a serialized {@link OptionValues} object
      * @param optionsSize the number of bytes in the buffer
      * @param optionsHash hash code of bytes in the buffer (computed with
@@ -164,6 +199,7 @@ public final class LibGraalEntryPoints {
                     long methodHandle,
                     boolean useProfilingInfo,
                     boolean installAsDefault,
+                    boolean printMetrics,
                     long optionsAddress,
                     int optionsSize,
                     int optionsHash,
@@ -176,11 +212,20 @@ public final class LibGraalEntryPoints {
             int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
             HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
-            OptionValues options = decodeOptions(optionsAddress, optionsSize, optionsHash);
-            CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, installAsDefault);
-            task.runCompilation(options);
-            HotSpotInstalledCode installedCode = task.getInstalledCode();
-            return LibGraal.translate(installedCode);
+            try (CompilationContext scope = HotSpotGraalServices.openLocalCompilationContext(request)) {
+
+                OptionValues options = decodeOptions(optionsAddress, optionsSize, optionsHash);
+                CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, installAsDefault);
+                task.runCompilation(options);
+                HotSpotInstalledCode installedCode = task.getInstalledCode();
+
+                if (printMetrics) {
+                    GlobalMetrics metricValues = ((HotSpotGraalRuntime) compiler.getGraalRuntime()).getMetricValues();
+                    metricValues.print(options);
+                    metricValues.clear();
+                }
+                return LibGraal.translate(installedCode);
+            }
         } catch (Throwable t) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             t.printStackTrace(new PrintStream(baos));

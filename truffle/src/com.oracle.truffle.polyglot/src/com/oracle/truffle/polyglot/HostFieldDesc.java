@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.polyglot;
+
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -113,8 +115,7 @@ abstract class HostFieldDesc {
             try {
                 return reflectGet(field, receiver);
             } catch (IllegalAccessException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw shouldNotReachHere(e);
             }
         }
 
@@ -123,8 +124,7 @@ abstract class HostFieldDesc {
             try {
                 reflectSet(field, receiver, value);
             } catch (IllegalAccessException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw shouldNotReachHere(e);
             }
         }
 

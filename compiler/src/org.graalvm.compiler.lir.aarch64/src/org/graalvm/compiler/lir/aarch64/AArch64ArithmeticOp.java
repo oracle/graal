@@ -85,7 +85,6 @@ public enum AArch64ArithmeticOp {
     FSUB,
     FMUL,
     FDIV,
-    FREM,
     FNEG,
     FABS,
     FRINTM,
@@ -393,9 +392,6 @@ public enum AArch64ArithmeticOp {
                     break;
                 case UREM:
                     masm.urem(size, dst, src1, src2);
-                    break;
-                case FREM:
-                    masm.frem(size, dst, src1, src2);
                     break;
                 default:
                     throw GraalError.shouldNotReachHere();

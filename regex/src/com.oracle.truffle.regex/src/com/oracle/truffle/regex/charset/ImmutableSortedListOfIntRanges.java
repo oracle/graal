@@ -43,6 +43,8 @@ package com.oracle.truffle.regex.charset;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.util.BitSets;
 
 public abstract class ImmutableSortedListOfIntRanges implements ImmutableSortedListOfRanges {
 
@@ -110,27 +112,27 @@ public abstract class ImmutableSortedListOfIntRanges implements ImmutableSortedL
      * Returns {@code true} iff not all values of this range set have the same high byte, but that
      * would be the case in the inverse of this range set.
      */
-    public boolean inverseIsSameHighByte() {
+    public boolean inverseIsSameHighByte(Encoding encoding) {
         if (isEmpty()) {
             return false;
         }
-        if (CharMatchers.highByte(getMin()) == CharMatchers.highByte(getMax())) {
+        if (BitSets.highByte(getMin()) == BitSets.highByte(getMax())) {
             return false;
         }
-        return matchesMinAndMax() && CharMatchers.highByte(getHi(0) + 1) == CharMatchers.highByte(getLo(size() - 1) - 1);
+        return matchesMinAndMax(encoding) && BitSets.highByte(getHi(0) + 1) == BitSets.highByte(getLo(size() - 1) - 1);
     }
 
-    protected static int[] createInverseArray(SortedListOfRanges src) {
-        int[] invRanges = new int[src.sizeOfInverse() * 2];
+    protected static int[] createInverseArray(SortedListOfRanges src, Encoding encoding) {
+        int[] invRanges = new int[src.sizeOfInverse(encoding) * 2];
         int i = 0;
-        if (src.getMin() > src.getMinValue()) {
-            setRange(invRanges, i++, src.getMinValue(), src.getMin() - 1);
+        if (src.getMin() > encoding.getMinValue()) {
+            setRange(invRanges, i++, encoding.getMinValue(), src.getMin() - 1);
         }
         for (int ia = 1; ia < src.size(); ia++) {
             setRange(invRanges, i++, src.getHi(ia - 1) + 1, src.getLo(ia) - 1);
         }
-        if (src.getMax() < src.getMaxValue()) {
-            setRange(invRanges, i++, src.getMax() + 1, src.getMaxValue());
+        if (src.getMax() < encoding.getMaxValue()) {
+            setRange(invRanges, i++, src.getMax() + 1, encoding.getMaxValue());
         }
         return invRanges;
     }

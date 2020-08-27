@@ -51,7 +51,7 @@ public abstract class LLVMI1LoadNode extends LLVMLoadNode {
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected boolean doI1Native(LLVMNativePointer addr,
                     @CachedLanguage LLVMLanguage language) {
-        return language.getLLVMMemory().getI1(addr);
+        return language.getLLVMMemory().getI1(this, addr);
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")

@@ -51,6 +51,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.string.AbstractString;
 import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisitor {
 
@@ -120,7 +121,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
 
     @Override
     protected void visit(BackReference backReference) {
-        throw new IllegalArgumentException();
+        throw Exceptions.shouldNotReachHere();
     }
 
     @Override
@@ -158,12 +159,12 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
 
     @Override
     protected void visit(LookBehindAssertion assertion) {
-        throw new IllegalArgumentException();
+        throw Exceptions.shouldNotReachHere();
     }
 
     @Override
     protected void visit(LookAheadAssertion assertion) {
-        throw new IllegalArgumentException();
+        throw Exceptions.shouldNotReachHere();
     }
 
     @Override

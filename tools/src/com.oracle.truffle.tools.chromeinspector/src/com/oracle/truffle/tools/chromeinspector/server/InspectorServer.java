@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,13 +84,17 @@ import sun.net.util.IPAddressUtil;
  */
 public final class InspectorServer extends NanoWSD implements InspectorWSConnection {
 
+    private static final String WS_PREFIX = "ws://";
+    private static final String WS_PREFIX_SECURE = "wss://";
+    private static final String DEV_TOOLS_PREFIX = "devtools://devtools/bundled/js_app.html?";
     private static final Map<InetSocketAddress, InspectorServer> SERVERS = new HashMap<>();
 
     private final int port;
+    private final boolean secure;
     private final Map<Token, ServerPathSession> sessions = new ConcurrentHashMap<>();
 
-    private InspectorServer(InetSocketAddress isa) {
-        super(isa.getHostName(), isa.getPort());
+    private InspectorServer(InetSocketAddress isa, KeyStoreOptions keyStoreOptions) throws IOException {
+        super(isa.getAddress().getHostAddress(), isa.getPort());
         this.port = isa.getPort();
         // Note that the DNS rebind attack protection does not apply to WebSockets, because they are
         // handled with a higher-priority HTTP interceptor. We probably could add the protection in
@@ -99,6 +103,14 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
         // since they are not protected by same-origin policy.
         addHTTPInterceptor(new DNSRebindProtectionHandler());
         addHTTPInterceptor(new JSONHandler());
+        if (keyStoreOptions != null) {
+            if (TruffleOptions.AOT) {
+                throw new IOException("Secure connection is not available in the native-image yet.");
+            } else {
+                makeSecure(createSSLFactory(keyStoreOptions), null);
+            }
+        }
+        secure = keyStoreOptions != null;
     }
 
     public static InspectorServer get(InetSocketAddress isa, Token token, String pathContainingToken, InspectorExecutionContext context, boolean debugBrk,
@@ -109,15 +121,8 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
         synchronized (SERVERS) {
             wss = SERVERS.get(isa);
             if (wss == null) {
-                wss = new InspectorServer(isa);
+                wss = new InspectorServer(isa, secure ? keyStoreOptions : null);
                 context.logMessage("", "New WebSocketServer at " + isa);
-                if (secure) {
-                    if (TruffleOptions.AOT) {
-                        throw new IOException("Secure connection is not available in the native-image yet.");
-                    } else {
-                        wss.makeSecure(createSSLFactory(keyStoreOptions), null);
-                    }
-                }
                 startServer = true;
                 SERVERS.put(isa, wss);
             }
@@ -197,12 +202,19 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
 
     }
 
-    private static Response handleDnsRebind(IHTTPSession ihttpSession) {
-        if (!isHostOk(ihttpSession.getHeaders().get("host"))) {
+    private Response handleDnsRebind(IHTTPSession ihttpSession) {
+        String host = ihttpSession.getHeaders().get("host");
+        if (!isHostOk(host)) {
+            String badHost = host != null ? "Bad host " + host + ". Please use IP address." : "Missing host header. Use an up-to-date client.";
+            String message = badHost + " This request cannot be served because it looks like DNS rebind attack.";
+            Iterator<ServerPathSession> sessionIterator = sessions.values().iterator();
+            if (sessionIterator.hasNext()) {
+                sessionIterator.next().getContext().getErr().println("Bad connection from " + ihttpSession.getRemoteIpAddress() + ". " + message);
+            }
             return Response.newFixedLengthResponse(
                             Status.BAD_REQUEST,
                             "text/plain; charset=UTF-8",
-                            "Bad host. Please use IP address. This request cannot be served because it looks like DNS rebind attack.");
+                            message);
         } else {
             return null;
         }
@@ -225,6 +237,24 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
         return host.startsWith("[") && host.endsWith("]") && IPAddressUtil.isIPv6LiteralAddress(host.substring(1, host.length() - 1));
     }
 
+    public String getWSAddress(Token token) {
+        ServerPathSession serverSession = sessions.get(token);
+        return getWSAddress(serverSession);
+    }
+
+    private String getWSAddress(ServerPathSession serverSession) {
+        String prefix = secure ? WS_PREFIX_SECURE : WS_PREFIX;
+        return prefix + getHostname() + ":" + getPort() + serverSession.pathContainingToken;
+    }
+
+    public String getDevtoolsAddress(Token token) {
+        return getDevtoolsAddress(getWSAddress(token));
+    }
+
+    private static String getDevtoolsAddress(String wsAddress) {
+        return DEV_TOOLS_PREFIX + wsAddress.replace("://", "=");
+    }
+
     private class JSONHandler implements IHandler<IHTTPSession, Response> {
 
         @Override
@@ -245,12 +275,12 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
                         JSONObject info = new JSONObject();
                         info.put("description", "GraalVM");
                         info.put("faviconUrl", "https://assets-cdn.github.com/images/icons/emoji/unicode/1f680.png");
-                        String ws = getHostname() + ":" + getListeningPort() + path;
-                        info.put("devtoolsFrontendUrl", "chrome-devtools://devtools/bundled/js_app.html?ws=" + ws);
+                        String ws = getWSAddress(serverPathSession);
+                        info.put("devtoolsFrontendUrl", getDevtoolsAddress(ws));
                         info.put("id", path.substring(1));
                         info.put("title", "GraalVM");
                         info.put("type", "node");
-                        info.put("webSocketDebuggerUrl", "ws://" + ws);
+                        info.put("webSocketDebuggerUrl", ws);
                         json.put(info);
                     }
                     responseJson = json.toString();
@@ -443,7 +473,7 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
         public void onOpen() {
             iss.context.logMessage("CLIENT web socket connection opened.", "");
             connectionWatcher.notifyOpen();
-            iss.setMessageListener(new MessageEndpoint() {
+            iss.open(new MessageEndpoint() {
                 @Override
                 public void sendText(String message) throws IOException {
                     iss.context.logMessage("SERVER: ", message);
@@ -478,7 +508,11 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
             if (sps != null) {
                 sps.activeWS = null;
             }
-            iss.sendClose();
+            try {
+                iss.sendClose();
+            } catch (IOException e) {
+                iss.context.logException(e);
+            }
         }
 
         @Override
@@ -494,7 +528,11 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
         public void onMessage(WebSocketFrame frame) {
             String message = frame.getTextPayload();
             iss.context.logMessage("CLIENT: ", message);
-            iss.sendText(message);
+            try {
+                iss.sendText(message);
+            } catch (IOException e) {
+                iss.context.logException(e);
+            }
         }
 
         @Override

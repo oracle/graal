@@ -37,7 +37,8 @@ By default, the following locations are searched for an already installed GraalV
     * `GRAALVM_HOME` environment variable content
     * `JAVA_HOME` environment variable content
 
-* __Install GraalVM__ - Downloads the latest GraalVM release from [Github](https://github.com/graalvm/graalvm-ce-builds/releases) and installs it within the extension's global storage.
+* __Install GraalVM__ - Downloads the latest GraalVM release from [Github](https://github.com/graalvm/graalvm-ce-builds/releases) and installs it within the extension's global storage. If you are behind a proxy,
+do not forget to setup your proxy configuration in `File -> Preferences -> Settings`, or run your VS Code instance with the `http_proxy` and `https_proxy` environment variables exported.
 
 Once the path to the GraalVM home directory is provided, the GraalVM is checked for presence of the optional components:
 * [Native image](https://www.graalvm.org/docs/reference-manual/aot-compilation/)
@@ -60,7 +61,7 @@ All three commands can be invoked at any time from the Command Palette (Ctrl+Shi
 
 ### JavaScript and Node.js Debugging
 
-To debug a JavaScript or Node.js application running on GraalVM, creating a launch configuration for the application is necessary. To do so, open the applicarion project folder in VS Code (File > Open Folder) and then select the Configure gear icon on the Debug view top bar. If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets. Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
+To debug a JavaScript or Node.js application running on GraalVM, creating a launch configuration for the application is necessary. To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel, and then select the Configure "gear" icon on the Debug view top bar. If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets. Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
 * Use IntelliSense if your cursor is located inside the configurations array.
 * Press the Add Configuration button to invoke snippet IntelliSense at the start of the array.
 * Choose Add Configuration option in the Debug menu.
@@ -85,7 +86,7 @@ In order to start a debug session, first select the proper configuration using t
 
 To run a polyglot application using the GraalVM, user has to either pass the `--polyglot` option to any of the existing application lauchers (e.g. `js --polyglot`, `node --polyglot`) or use an experimental launcher called `polyglot` that runs code for JavaScript, Ruby, and R without requiring the selection of a primary language. The `polyglot` launcher does not require the `--polyglot` option, it is enabled by default. For more information see the [GraalVM polyglot documentation](https://www.graalvm.org/docs/reference-manual/polyglot/).
 
-To debug a polyglot application using the GraalVM, creating a launch configuration for the application is necessary. To do so, open the applicarion project folder in VS Code (File > Open Folder) and then select the Configure gear icon on the Debug view top bar. If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets. Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
+To debug a polyglot application using the GraalVM, creating a launch configuration for the application is necessary. To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel, and then select the Configure "gear" icon on the Debug view top bar. If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets. Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
 * Use IntelliSense if your cursor is located inside the configurations array.
 * Press the Add Configuration button to invoke snippet IntelliSense at the start of the array.
 * Choose Add Configuration option in the Debug menu.
@@ -101,7 +102,7 @@ Alternatively, to pass the `--polyglot` option to any of the existing applicatio
 
 ### Python Debugging
 
-To debug a Python application running on GraalVM, creating a launch configuration for the application is necessary. To do so, open the applicarion project folder in VS Code (File > Open Folder) and then select the Configure gear icon on the Debug view top bar. If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets. Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
+To debug a Python application running on GraalVM, creating a launch configuration for the application is necessary. To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel, and then select the Configure "gear" icon on the Debug view top bar. If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets. Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
 * Use IntelliSense if your cursor is located inside the configurations array.
 * Press the Add Configuration button to invoke snippet IntelliSense at the start of the array.
 * Choose Add Configuration option in the Debug menu.
@@ -121,7 +122,7 @@ In order to start a debug session, first select the proper configuration using t
 
 ### R Debugging
 
-To debug an R application running on GraalVM, creating a launch configuration for the application is necessary. To do so, open the applicarion project folder in VS Code (File > Open Folder) and then select the Configure gear icon on the Debug view top bar. If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets. Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
+To debug an R application running on GraalVM, creating a launch configuration for the application is necessary. To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel, and then select the Configure "gear" icon on the Debug view top bar. If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets. Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
 * Use IntelliSense if your cursor is located inside the configurations array.
 * Press the Add Configuration button to invoke snippet IntelliSense at the start of the array.
 * Choose Add Configuration option in the Debug menu.
@@ -142,7 +143,7 @@ In order to start a debug session, first select the proper configuration using t
 
 ### Ruby Debugging
 
-To debug a Ruby application running on GraalVM, creating a launch configuration for the application is necessary. To do so, open the applicarion project folder in VS Code (File > Open Folder) and then select the Configure gear icon on the Debug view top bar. If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets. Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
+To debug a Ruby application running on GraalVM, creating a launch configuration for the application is necessary. To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel, and then select the Configure "gear" icon on the Debug view top bar. If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets. Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
 * Use IntelliSense if your cursor is located inside the configurations array.
 * Press the Add Configuration button to invoke snippet IntelliSense at the start of the array.
 * Choose Add Configuration option in the Debug menu.

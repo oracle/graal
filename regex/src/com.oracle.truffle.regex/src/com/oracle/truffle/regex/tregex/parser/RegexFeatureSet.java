@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import java.util.Optional;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
-
-import java.util.Optional;
 
 /**
  * A predicate that describes the set of regular expressions supported by the regex compilers being
@@ -79,45 +78,4 @@ public interface RegexFeatureSet {
     }
 
     RegexFeatureSet DEFAULT = (RegexSource source, RegexFeatures features) -> Optional.empty();
-
-    RegexFeatureSet TREGEX = (RegexSource source, RegexFeatures features) -> {
-        return Optional.empty();
-    };
-
-    RegexFeatureSet JONI = (RegexSource source, RegexFeatures features) -> {
-        if (RegexFlags.parseFlags(source.getFlags()).isUnicode()) {
-            return Optional.of("unicode mode not supported");
-        }
-        if (features.hasBackReferencesInLookBehind()) {
-            return Optional.of("backreferences inside lookbehind assertions not supported");
-        }
-        if (features.hasNonTrivialQuantifiersInLookBehind()) {
-            return Optional.of("quantifiers inside lookbehind assertions not supported");
-        }
-        if (features.hasWordBoundaryAssertionsInLookBehind()) {
-            return Optional.of("word boundary assertions inside lookbehind assertions not supported");
-        }
-        if (features.hasEndOfStringAssertionsInLookBehind()) {
-            return Optional.of("end of string assertions inside lookbehind assertions not supported");
-        }
-        if (features.hasNegativeLookBehindAssertionsInLookBehind()) {
-            return Optional.of("negative lookbehind assertions inside lookbehind assertions not supported");
-        }
-        if (features.hasLookAheadAssertionsInLookBehind()) {
-            return Optional.of("lookahead assertions inside lookbehind assertions not supported");
-        }
-        return Optional.empty();
-    };
-
-    RegexFeatureSet TREGEX_JONI = (RegexSource source, RegexFeatures features) -> {
-        Optional<String> tregexBailout = TREGEX.testSupport(source, features);
-        if (tregexBailout.isPresent()) {
-            Optional<String> joniBailout = JONI.testSupport(source, features);
-            if (joniBailout.isPresent()) {
-                String bailoutReasons = String.format("TRegex: %s; Joni: %s", tregexBailout.get(), joniBailout.get());
-                throw new UnsupportedRegexException(bailoutReasons, source);
-            }
-        }
-        return Optional.empty();
-    };
 }

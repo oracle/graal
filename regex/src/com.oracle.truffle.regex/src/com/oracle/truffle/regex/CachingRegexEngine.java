@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.regex;
 
+import java.util.Collections;
+import java.util.Map;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.util.CompilationResult;
 import com.oracle.truffle.regex.util.LRUCache;
-
-import java.util.Collections;
-import java.util.Map;
 
 public class CachingRegexEngine extends RegexEngine {
 

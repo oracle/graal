@@ -2,11 +2,17 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 20.3.0
+* Added a `log.file` option that allows redirection of all language, instrument or engine logging to a file. The handler configured with the `Context.Builder.logHandler` method has precedence over the new option.
+* The option `-Dgraal.LogFile` is no longer inherited by the polyglot engine. Use the `log.file` option or configure a log handler instead.
+
 ## Version 20.2.0
 * Added `-Dpolyglot.engine.AllowExperimentalOptions=true` to allow experimental options for all polyglot engines of a host VM. This system property is intended to be used for testing only and should not be enabled in production environments.
 * Added [a factory method](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#newDefaultFileSystem--) creating a FileSystem based on the host Java NIO. The obtained instance can be used as a delegate in a decorating filesystem.
 * Added `PolyglotException.isResourceExhausted()` to determine if an error was caused by a resource limit (e.g. OutOfMemoryError) that was exceeded.
 * Added `Context.parse(Source)` to parse but not evaluate a source. Parsing a source allows to trigger e.g. syntax validation prior to executing the code.
+* Added optional [FileSystem.isSameFile](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#isSameFile-java.nio.file.Path-java.nio.file.Path-java.nio.file.LinkOption...-) method testing if the given paths refer to the same physical file. The method can be overridden by the `FileSystem` implementer with a more efficient test.
+* Added `EconomicMap.putIfAbsent(K, V)` to associate a value with the specified key if not already present in the map.
 
 ## Version 20.1.0
 * The `PerformanceWarningsAreFatal` and `TracePerformanceWarnings` engine options take a comma separated list of performance warning types. Allowed warning types are `call` to enable virtual call warnings, `instanceof` to enable virtual instance of warnings and `store` to enables virtual store warnings. There are also `all` and `none` types to enable (disable) all performance warnings.

@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -65,18 +66,22 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
     Sequence() {
     }
 
-    private Sequence(Sequence copy, RegexAST ast, boolean recursive) {
+    private Sequence(Sequence copy) {
         super(copy);
-        if (recursive) {
-            for (Term t : copy.terms) {
-                add(t.copy(ast, true));
-            }
-        }
     }
 
     @Override
-    public Sequence copy(RegexAST ast, boolean recursive) {
-        return ast.register(new Sequence(this, ast, recursive));
+    public Sequence copy(RegexAST ast) {
+        return ast.register(new Sequence(this));
+    }
+
+    @Override
+    public Sequence copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        Sequence copy = copy(ast);
+        for (Term t : terms) {
+            copy.add(t.copyRecursive(ast, compilationBuffer));
+        }
+        return copy;
     }
 
     @Override

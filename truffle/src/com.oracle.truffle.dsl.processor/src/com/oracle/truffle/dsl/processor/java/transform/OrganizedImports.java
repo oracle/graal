@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,12 +45,14 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.getDeclaredType
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getPackageName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSuperTypes;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.elementEquals;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -209,7 +211,8 @@ public final class OrganizedImports {
         } else if (importPackagName.equals("java.lang")) {
             return false;
         } else if (importPackagName.equals(getPackageName(topLevelClass)) &&
-                        anyEqualEnclosingTypes(enclosed, ElementUtils.castTypeElement(importType))) {
+                        (anyEqualEnclosingTypes(enclosed, ElementUtils.castTypeElement(importType)) ||
+                                        importFromEnclosingScope(enclosedType, ElementUtils.castTypeElement(importType)))) {
             return false; // same enclosing element -> no import
         } else if (importType instanceof GeneratedTypeMirror && ElementUtils.getPackageName(importType).isEmpty()) {
             return false;
@@ -260,6 +263,18 @@ public final class OrganizedImports {
             return true;
         }
         return anyEqualEnclosingTypes(enclosingElement, importElement) || anyEqualEnclosingTypes(importElement, enclosingElement);
+    }
+
+    private static boolean importFromEnclosingScope(TypeElement enclosed, TypeElement importElement) {
+        Element importEnclosingElement = importElement.getEnclosingElement();
+        Element current = enclosed;
+        while (current != null) {
+            if (elementEquals(importElement, current) || elementEquals(importEnclosingElement, current)) {
+                return true;
+            }
+            current = current.getEnclosingElement();
+        }
+        return false;
     }
 
     private Set<CodeImport> generateImports(Map<String, String> symbols) {
@@ -501,7 +516,7 @@ public final class OrganizedImports {
                         DeclaredType declared = (DeclaredType) type;
                         String declaredName = ElementUtils.getDeclaredName(declared, false);
                         String enclosedQualifiedName = ElementUtils.getEnclosedQualifiedName(declared);
-                        registerSymbol(classImportUsage, enclosedQualifiedName, declaredName);
+                        registerSymbol(classImportUsage, enclosedQualifiedName, declaredName, type);
                         if (!needsImport(enclosedType, type)) {
                             noImportSymbols.putIfAbsent(declaredName, Boolean.FALSE);
                         } else {
@@ -532,7 +547,19 @@ public final class OrganizedImports {
             }
         }
 
-        private void registerSymbol(Map<String, String> symbolUsage, String elementQualifiedName, String elementName) {
+        private boolean isImportDeprecated(TypeMirror type) {
+            Optional<TypeElement> optional = Optional.ofNullable(ElementUtils.castTypeElement(type));
+            while (optional.isPresent()) {
+                TypeElement element = optional.get();
+                if (ElementUtils.isDeprecated(element)) {
+                    return true;
+                }
+                optional = ElementUtils.findParentEnclosingType(element);
+            }
+            return false;
+        }
+
+        private void registerSymbol(Map<String, String> symbolUsage, String elementQualifiedName, String elementName, TypeMirror type) {
             if (symbolUsage.containsKey(elementName)) {
                 String otherQualifiedName = symbolUsage.get(elementName);
                 if (otherQualifiedName == null) {
@@ -542,6 +569,8 @@ public final class OrganizedImports {
                 if (!otherQualifiedName.equals(elementQualifiedName)) {
                     symbolUsage.put(elementName, null);
                 }
+            } else if (isImportDeprecated(type)) {
+                symbolUsage.put(elementName, null);
             } else {
                 symbolUsage.put(elementName, elementQualifiedName);
             }

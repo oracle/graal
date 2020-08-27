@@ -41,6 +41,8 @@
 package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
@@ -68,8 +70,13 @@ public class MatchFound extends Term {
     private RegexASTNode next;
 
     @Override
-    public MatchFound copy(RegexAST ast, boolean recursive) {
-        throw new UnsupportedOperationException();
+    public MatchFound copy(RegexAST ast) {
+        throw Exceptions.shouldNotReachHere();
+    }
+
+    @Override
+    public MatchFound copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        throw Exceptions.shouldNotReachHere();
     }
 
     public RegexASTNode getNext() {

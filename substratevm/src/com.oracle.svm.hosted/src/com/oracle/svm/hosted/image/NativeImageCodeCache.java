@@ -292,7 +292,7 @@ public abstract class NativeImageCodeCache {
     public abstract void writeCode(RelocatableBuffer buffer);
 
     public void writeConstants(NativeImageHeapWriter writer, RelocatableBuffer buffer) {
-        ByteBuffer bb = buffer.getBuffer();
+        ByteBuffer bb = buffer.getByteBuffer();
         dataSection.buildDataSection(bb, (position, constant) -> {
             writer.writeReference(buffer, position, SubstrateObjectConstant.asObject(constant), "VMConstant: " + constant);
         });

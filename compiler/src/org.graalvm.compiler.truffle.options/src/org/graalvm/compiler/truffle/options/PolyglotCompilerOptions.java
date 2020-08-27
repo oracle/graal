@@ -24,6 +24,11 @@
  */
 package org.graalvm.compiler.truffle.options;
 
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
+import java.util.function.Function;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -32,13 +37,8 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.polyglot.Engine;
 
-import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.CallTarget;
-
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Set;
-import java.util.function.Function;
+import com.oracle.truffle.api.Option;
 
 /**
  * Truffle compilation options that can be configured per {@link Engine engine} instance. These
@@ -56,17 +56,16 @@ public final class PolyglotCompilerOptions {
         LATENCY
     }
 
-    static final OptionType<EngineModeEnum> ENGINE_MODE_TYPE = new OptionType<>("EngineMode",
-                    new Function<String, EngineModeEnum>() {
-                        @Override
-                        public EngineModeEnum apply(String s) {
-                            try {
-                                return EngineModeEnum.valueOf(s.toUpperCase());
-                            } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("Mode can be: 'default', 'latency' or 'throughput'.");
-                            }
-                        }
-                    });
+    static final OptionType<EngineModeEnum> ENGINE_MODE_TYPE = new OptionType<>("EngineMode", new Function<String, EngineModeEnum>() {
+        @Override
+        public EngineModeEnum apply(String s) {
+            try {
+                return EngineModeEnum.valueOf(s.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Mode can be: 'default', 'latency' or 'throughput'.");
+            }
+        }
+    });
 
     public enum PerformanceWarningKind {
         VIRTUAL_RUNTIME_CALL("call", "Enables virtual call warnings"),
@@ -97,6 +96,37 @@ public final class PolyglotCompilerOptions {
             return kind;
         }
     }
+
+    public enum CompilationTier {
+        peTier,
+        truffleTier,
+        lowTier;
+
+        static CompilationTier parse(String name) {
+            try {
+                return CompilationTier.valueOf(name);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(String.format("Unknown tier option value '%s'. %s", name, EXPANSION_VALUES));
+            }
+        }
+    }
+
+    static final OptionType<Set<CompilationTier>> COMPILATION_TIERS_TYPE = new OptionType<>("Tier", new Function<String, Set<CompilationTier>>() {
+        @Override
+        public Set<CompilationTier> apply(String s) {
+            if (s.equals("true")) {
+                return Collections.singleton(CompilationTier.truffleTier);
+            } else if (s.equals("false")) {
+                return Collections.emptySet();
+            }
+            String[] strings = s.split(",");
+            EnumSet<CompilationTier> tiers = EnumSet.noneOf(CompilationTier.class);
+            for (int i = 0; i < strings.length; i++) {
+                tiers.add(CompilationTier.parse(strings[i]));
+            }
+            return Collections.unmodifiableSet(tiers);
+        }
+    });
 
     /**
      * Actions to take upon an exception being raised during Truffle compilation. The actions are
@@ -140,59 +170,56 @@ public final class PolyglotCompilerOptions {
                         "    ExitVM - Exit the VM process.";
     }
 
-    static final OptionType<ExceptionAction> EXCEPTION_ACTION_TYPE = new OptionType<>("ExceptionAction",
-                    new Function<String, ExceptionAction>() {
-                        @Override
-                        public ExceptionAction apply(String s) {
-                            try {
-                                return ExceptionAction.valueOf(s);
-                            } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException(ExceptionAction.HELP);
-                            }
-                        }
-                    });
+    static final OptionType<ExceptionAction> EXCEPTION_ACTION_TYPE = new OptionType<>("ExceptionAction", new Function<String, ExceptionAction>() {
+        @Override
+        public ExceptionAction apply(String s) {
+            try {
+                return ExceptionAction.valueOf(s);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(ExceptionAction.HELP);
+            }
+        }
+    });
 
-    static final OptionType<Set<PerformanceWarningKind>> PERFORMANCE_WARNING_TYPE = new OptionType<>("PerformanceWarningKind",
-                    new Function<String, Set<PerformanceWarningKind>>() {
-                        @Override
-                        public Set<PerformanceWarningKind> apply(String value) {
-                            if ("none".equals(value)) {
-                                return EnumSet.noneOf(PerformanceWarningKind.class);
-                            } else if ("all".equals(value)) {
-                                return EnumSet.allOf(PerformanceWarningKind.class);
-                            } else {
-                                Set<PerformanceWarningKind> result = EnumSet.noneOf(PerformanceWarningKind.class);
-                                for (String name : value.split(",")) {
-                                    if ("bailout".equals(name)) {
-                                        /*
-                                         * The PerformanceWarningKind.BAILOUT was removed but
-                                         * 'bailout' can still appear in option value due to
-                                         * backward compatibility. We need to ignore the 'bailout'
-                                         * option value.
-                                         */
-                                        continue;
-                                    }
-                                    try {
-                                        result.add(PerformanceWarningKind.forName(name));
-                                    } catch (IllegalArgumentException e) {
-                                        String message = String.format("The \"%s\" is not a valid performance warning kind. Valid values are%n", name);
-                                        for (PerformanceWarningKind kind : PerformanceWarningKind.values()) {
-                                            message = message + String.format("%s%s%s%n", kind.name, indent(kind.name.length()), kind.help);
-                                        }
-                                        message = message + String.format("all%sEnables all performance warnings%n", indent(3));
-                                        message = message + String.format("none%sDisables performance warnings%n", indent(4));
-                                        throw new IllegalArgumentException(message);
-                                    }
-                                }
-                                return result;
-                            }
+    static final OptionType<Set<PerformanceWarningKind>> PERFORMANCE_WARNING_TYPE = new OptionType<>("PerformanceWarningKind", new Function<String, Set<PerformanceWarningKind>>() {
+        @Override
+        public Set<PerformanceWarningKind> apply(String value) {
+            if ("none".equals(value)) {
+                return EnumSet.noneOf(PerformanceWarningKind.class);
+            } else if ("all".equals(value)) {
+                return EnumSet.allOf(PerformanceWarningKind.class);
+            } else {
+                Set<PerformanceWarningKind> result = EnumSet.noneOf(PerformanceWarningKind.class);
+                for (String name : value.split(",")) {
+                    if ("bailout".equals(name)) {
+                        /*
+                         * The PerformanceWarningKind.BAILOUT was removed but 'bailout' can still
+                         * appear in option value due to backward compatibility. We need to ignore
+                         * the 'bailout' option value.
+                         */
+                        continue;
+                    }
+                    try {
+                        result.add(PerformanceWarningKind.forName(name));
+                    } catch (IllegalArgumentException e) {
+                        String message = String.format("The \"%s\" is not a valid performance warning kind. Valid values are%n", name);
+                        for (PerformanceWarningKind kind : PerformanceWarningKind.values()) {
+                            message = message + String.format("%s%s%s%n", kind.name, indent(kind.name.length()), kind.help);
                         }
+                        message = message + String.format("all%sEnables all performance warnings%n", indent(3));
+                        message = message + String.format("none%sDisables performance warnings%n", indent(4));
+                        throw new IllegalArgumentException(message);
+                    }
+                }
+                return result;
+            }
+        }
 
-                        private String indent(int nameLength) {
-                            int len = Math.max(1, 16 - nameLength);
-                            return new String(new char[len]).replace('\0', ' ');
-                        }
-                    });
+        private String indent(int nameLength) {
+            int len = Math.max(1, 16 - nameLength);
+            return new String(new char[len]).replace('\0', ' ');
+        }
+    });
 
     // @formatter:off
 
@@ -202,7 +229,7 @@ public final class PolyglotCompilerOptions {
             category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
     public static final OptionKey<EngineModeEnum> Mode = new OptionKey<>(EngineModeEnum.DEFAULT, ENGINE_MODE_TYPE);
 
-    @Option(help = "Enable or disable Truffle compilation.", category = OptionCategory.INTERNAL)
+    @Option(help = "Enable or disable Truffle compilation.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> Compilation = new OptionKey<>(true);
 
     @Option(help = "Restrict compilation to ','-separated list of includes (or excludes prefixed with '~').", category = OptionCategory.INTERNAL)
@@ -215,7 +242,14 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> BackgroundCompilation = new OptionKey<>(true);
 
     @Option(help = "Manually set the number of compiler threads", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> CompilerThreads = new OptionKey<>(0);
+    public static final OptionKey<Integer> CompilerThreads = new OptionKey<>(-1);
+
+    @Option(help = "Set the time in milliseconds an idle Truffle compiler thread will wait for new tasks before terminating. " +
+            "New compiler threads will be started once new compilation tasks are submitted. " +
+            "Select '0' to never terminate the Truffle compiler thread. " +
+            "The option is not supported by all Truffle runtimes. On the runtime which doesn't support it the option has no effect.",
+            category = OptionCategory.EXPERT)
+    public static final OptionKey<Long> CompilerIdleDelay = new OptionKey<>(1000L);
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root.",
                     category = OptionCategory.EXPERT)
@@ -244,12 +278,21 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Whether to use multiple Truffle compilation tiers by default.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> MultiTier = new OptionKey<>(false);
 
+    @Option(help = "Whether to use inlining for the first tier compilations.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> FirstTierInlining = new OptionKey<>(false);
+
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
             category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(100);
 
     @Option(help = "Minimum number of calls before a call target is compiled in the first tier.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierMinInvokeThreshold = new OptionKey<>(1);
+
+    @Option(help = "Whether to use the economy configuration in the first-tier compilations.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> FirstTierUseEconomy = new OptionKey<>(true);
+
+    @Option(help = "Whether to emit look-back-edge counters in the first-tier compilations.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> FirstTierBackedgeCounts = new OptionKey<>(true);
 
     // Failed compilation behavior
 
@@ -265,7 +308,7 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Treat performance warnings as fatal occurrences that will exit the applications", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=ExitVM' 'engine.TreatPerformanceWarningsAsErrors=<PerformanceWarningKinds>'")
     public static final OptionKey<Set<PerformanceWarningKind>> PerformanceWarningsAreFatal = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
 
-    @Option(help = ExceptionAction.HELP, category = OptionCategory.EXPERT)
+    @Option(help = ExceptionAction.HELP, category = OptionCategory.INTERNAL)
     public static final OptionKey<ExceptionAction> CompilationFailureAction = new OptionKey<>(ExceptionAction.Silent, EXCEPTION_ACTION_TYPE);
 
     @Option(help = "Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value", category = OptionCategory.INTERNAL)
@@ -276,7 +319,7 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print information for compilation results.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> TraceCompilation = new OptionKey<>(false);
 
-    @Option(help = "Print information for compilation queuing.", category = OptionCategory.EXPERT)
+    @Option(help = "Print information for compilation queuing.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceCompilationDetails = new OptionKey<>(false);
 
     @Option(help = "Print all polymorphic and generic nodes after each compilation", category = OptionCategory.INTERNAL)
@@ -288,10 +331,10 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print the inlined call tree for each compiled method", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceCompilationCallTree = new OptionKey<>(false);
 
-    @Option(help = "Print information for inlining decisions.", category = OptionCategory.EXPERT)
+    @Option(help = "Print information for inlining decisions.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
 
-    @Option(help = "Print information for splitting decisions.", category = OptionCategory.EXPERT)
+    @Option(help = "Print information for splitting decisions.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceSplitting = new OptionKey<>(false);
 
     @Option(help = "Print stack trace on assumption invalidation", category = OptionCategory.INTERNAL)
@@ -308,6 +351,30 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Print stack trace on transfer to interpreter.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceTransferToInterpreter = new OptionKey<>(false);
+
+    private static final String EXPANSION_VALUES = "Accepted values are:%n" +
+                    "    true - Collect data for the default tier 'truffleTier'.%n" +
+                    "    false - No data will be collected.%n" +
+                    "Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier) :%n" +
+                    "    peTier - After partial evaluation without additional phases applied.%n" +
+                    "    truffleTier - After partial evaluation with additional phases applied.%n" +
+                    "    lowTier - After low tier phases were applied.%n";
+
+    @Option(help = "Print a tree of all expanded Java methods with statistics after each compilation. " + EXPANSION_VALUES, category = OptionCategory.INTERNAL)
+    public static final OptionKey<Set<CompilationTier>> TraceMethodExpansion = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
+
+    @Option(help = "Print a tree of all expanded Truffle nodes with statistics after each compilation. " + EXPANSION_VALUES, category = OptionCategory.INTERNAL)
+    public static final OptionKey<Set<CompilationTier>> TraceNodeExpansion = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
+
+    @Option(help = "Print statistics on expanded Java methods during partial evaluation at the end of a run." + EXPANSION_VALUES, category = OptionCategory.INTERNAL)
+    public static final OptionKey<Set<CompilationTier>> MethodExpansionStatistics = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
+
+    @Option(help = "Print statistics on expanded Truffle nodes during partial evaluation at the end of a run." + EXPANSION_VALUES, category = OptionCategory.INTERNAL)
+    public static final OptionKey<Set<CompilationTier>> NodeExpansionStatistics = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
+
+    @Option(help = "Prints a histogram of all expanded Java methods.", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage =
+                    "The expansion histogram was superseeded by engine.TraceMethodExpansion, engine.TraceNodeExpansion, engine.MethodExpansionHistogram and engine.NodeExpansionHistogram.")
+    public static final OptionKey<Boolean> PrintExpansionHistogram = new OptionKey<>(false);
 
     // Inlining
 
@@ -341,16 +408,16 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Propagate info about a polymorphic specialize through maximum this many call targets", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> SplittingMaxPropagationDepth = new OptionKey<>(5);
 
-    @Option(help = "Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown", category = OptionCategory.EXPERT)
+    @Option(help = "Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceSplittingSummary = new OptionKey<>(false);
 
-    @Option(help = "Trace details of splitting events and decisions.", category = OptionCategory.EXPERT)
+    @Option(help = "Trace details of splitting events and decisions.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> SplittingTraceEvents = new OptionKey<>(false);
 
-    @Option(help = "Dumps to IGV information on polymorphic events", category = OptionCategory.EXPERT)
+    @Option(help = "Dumps to IGV information on polymorphic events", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> SplittingDumpDecisions = new OptionKey<>(false);
 
-    @Option(help = "Should forced splits be allowed.", category = OptionCategory.EXPERT)
+    @Option(help = "Should forced splits be allowed.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> SplittingAllowForcedSplits = new OptionKey<>(true);
 
     // OSR
@@ -376,51 +443,57 @@ public final class PolyglotCompilerOptions {
     */
 
     //Compiler options
-    @Option(help = "Enable inlining across Truffle boundary", category = OptionCategory.EXPERT)
+    @Option(help = "Enable inlining across Truffle boundary", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> InlineAcrossTruffleBoundary = new OptionKey<>(false);
 
     @Option(help = "Print potential performance problems", category = OptionCategory.INTERNAL)
     public static final OptionKey<Set<PerformanceWarningKind>> TracePerformanceWarnings = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
 
-    @Option(help = "Prints a histogram of all expanded Java methods.", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> PrintExpansionHistogram = new OptionKey<>(false);
-
     @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> IterativePartialEscape = new OptionKey<>(false);
 
-    @Option(help = "Method filter for host methods in which to add instrumentation.", category = OptionCategory.EXPERT)
+    @Option(help = "Method filter for host methods in which to add instrumentation.", category = OptionCategory.INTERNAL)
     public static final OptionKey<String> InstrumentFilter = new OptionKey<>("*.*.*");
 
-    @Option(help = "Maximum number of instrumentation counters available.", category = OptionCategory.EXPERT)
+    @Option(help = "Maximum number of instrumentation counters available.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> InstrumentationTableSize = new OptionKey<>(10000);
 
-    @Option(help = "Stop partial evaluation when the graph exceeded this many nodes.", category = OptionCategory.EXPERT)
+    @Option(help = "Stop partial evaluation when the graph exceeded this many nodes.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> MaximumGraalNodeCount = new OptionKey<>(400000);
 
-    @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.", category = OptionCategory.EXPERT)
+    @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> MaximumInlineNodeCount = new OptionKey<>(150000);
 
-    @Option(help = "Exclude assertion code from Truffle compilations", category = OptionCategory.EXPERT)
+    @Option(help = "Exclude assertion code from Truffle compilations", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> ExcludeAssertions = new OptionKey<>(true);
 
-    @Option(help = "Enable node source positions in truffle partial evaluations.", category = OptionCategory.EXPERT)
+    @Option(help = "Enable node source positions in truffle partial evaluations.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> NodeSourcePositions = new OptionKey<>(false);
 
-    @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.", category = OptionCategory.EXPERT)
+    @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> InstrumentBoundaries = new OptionKey<>(false);
 
-    @Option(help = "Instrument Truffle boundaries by considering different inlining sites as different branches.", category = OptionCategory.EXPERT)
+    @Option(help = "Instrument Truffle boundaries by considering different inlining sites as different branches.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> InstrumentBoundariesPerInlineSite = new OptionKey<>(false);
 
-    @Option(help = "Instrument branches and output profiling information to the standard output.", category = OptionCategory.EXPERT)
+    @Option(help = "Instrument branches and output profiling information to the standard output.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> InstrumentBranches = new OptionKey<>(false);
 
-    @Option(help = "Instrument branches by considering different inlining sites as different branches.", category = OptionCategory.EXPERT)
+    @Option(help = "Instrument branches by considering different inlining sites as different branches.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> InstrumentBranchesPerInlineSite = new OptionKey<>(false);
+
+    @Option(help = "Maximum number of entries in the encoded graph cache (< 0 unbounded, 0 disabled).", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> EncodedGraphCacheCapacity = new OptionKey<>(0);
+
+    @Option(help = "Delay, in milliseconds, after which the encoded graph cache is dropped when the compile queue becomes idle." +
+            "The option is only supported on the HotSpot (non-libgraal) Truffle runtime." +
+            "On runtimes which doesn't support it the option has no effect.",
+            category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
 
     // Language agnostic inlining
 
-    @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.EXPERT)
+    @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceInliningDetails = new OptionKey<>(false);
 
     @Option(help = "Explicitly pick a inlining policy by name. Highest priority chosen by default.", category = OptionCategory.EXPERT)

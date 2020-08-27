@@ -25,6 +25,7 @@
 package org.graalvm.compiler.replacements.test;
 
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+import static org.junit.Assume.assumeTrue;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -49,6 +50,7 @@ import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Test;
@@ -159,6 +161,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
 
     @Test
     public void testSingleImplementor() {
+        assumeTrue(GraalServices.hasLookupReferencedType());
         EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = EconomicMap.create();
         // Parse and cache doIncrement before the single implementor is loaded
         test("doIncrement", graphCache);

@@ -71,8 +71,8 @@ public abstract class TwoCharMatcher extends InvertibleCharMatcher {
     }
 
     @Specialization
-    public boolean match(int m, boolean compactString) {
-        return result((!compactString || c1 < 256) && m == c1 || (!compactString || c2 < 256) && m == c2);
+    public boolean match(int m) {
+        return result(m == c1 || m == c2);
     }
 
     @Override
