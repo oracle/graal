@@ -1230,7 +1230,7 @@ final class EngineAccessor extends Accessor {
                     throw context.createCancelException(closeLocation);
                 }
             } else {
-                if (context.isActive()) {
+                if (context.isActiveNotCancelled()) {
                     throw new IllegalStateException("The context is currently active and cannot be closed. Make sure no thread is running or call closeCancelled on the context to resolve this.");
                 }
                 context.closeImpl(false, false, true);

@@ -570,7 +570,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     synchronized void checkMultiThreadedAccess(PolyglotThread newThread) {
-        boolean singleThread = singleThreaded.isValid() ? !isActive() : false;
+        boolean singleThread = singleThreaded.isValid() ? !isActiveNotCancelled() : false;
         checkAllThreadAccesses(newThread, singleThread);
     }
 
@@ -1050,6 +1050,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         return threads;
     }
 
+    synchronized boolean isActiveNotCancelled() {
+        for (PolyglotThreadInfo seenTinfo : threads.values()) {
+            if (seenTinfo.isActiveNotCancelled()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     synchronized boolean isActive() {
         for (PolyglotThreadInfo seenTinfo : threads.values()) {
             if (seenTinfo.isActive()) {
@@ -1057,6 +1066,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             }
         }
         return false;
+    }
+
+    synchronized boolean isActiveNotCancelled(Thread thread) {
+        PolyglotThreadInfo info = threads.get(thread);
+        if (info == null || info == PolyglotThreadInfo.NULL) {
+            return false;
+        }
+        return info.isActiveNotCancelled();
     }
 
     synchronized boolean isActive(Thread thread) {
@@ -1074,7 +1091,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             if (!includePolyglotThread && otherInfo.isPolyglotThread(this)) {
                 continue;
             }
-            if (!otherInfo.isCurrent() && otherInfo.isActive()) {
+            if (!otherInfo.isCurrent() && otherInfo.isActiveNotCancelled()) {
                 return otherInfo;
             }
         }
@@ -1250,7 +1267,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                             langContext.close();
                         }
                     }
-                    setCachedThreadInfo(PolyglotThreadInfo.NULL);
                     Object[] impls = this.contextImpls;
                     if (impls != null) {
                         Arrays.fill(impls, null);
@@ -1330,7 +1346,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             return;
         }
         for (PolyglotThreadInfo threadInfo : threads.values()) {
-            if (!threadInfo.isCurrent() && threadInfo.isActive()) {
+            if (!threadInfo.isCurrent() && threadInfo.isActiveNotCancelled()) {
                 /*
                  * We send an interrupt to the thread to wake up and to run some guest language code
                  * in case they are waiting in some async primitive. The interrupt is then cleared
