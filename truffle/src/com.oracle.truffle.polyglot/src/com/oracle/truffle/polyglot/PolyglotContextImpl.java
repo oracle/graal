@@ -1508,8 +1508,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         try {
             for (int i = 0; i < locations.length; i++) {
                 LocalLocation location = locations[i];
-                assert locals[location.index] == null : "local already initialized";
-                locals[location.index] = location.invokeFactory(this, null);
+                if (locals[location.index] == null) {
+                    locals[location.index] = location.invokeFactory(this, null);
+                }
             }
         } catch (Throwable t) {
             // reset values again the language failed to initialize
@@ -1538,8 +1539,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         try {
             for (int i = 0; i < locations.length; i++) {
                 LocalLocation location = locations[i];
-                assert threadLocals[location.index] == null : "local already initialized";
-                threadLocals[location.index] = location.invokeFactory(this, thread);
+                if (threadLocals[location.index] == null) {
+                    threadLocals[location.index] = location.invokeFactory(this, thread);
+                }
             }
         } catch (Throwable t) {
             // reset values again the language failed to initialize
