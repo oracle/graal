@@ -169,7 +169,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         return environment;
     }
 
-    private void setWaitForClose() {
+    public void setWaitForClose() {
         waitForClose = true;
     }
 
@@ -200,7 +200,6 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         builder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(truffleAdapter));
         ContextAwareExecutor executorWrapper = new ContextAwareExecutorImpl(builder);
 
-        setWaitForClose();
         executorWrapper.executeWithDefaultContext(() -> {
             HostAndPort hostAndPort = options.get(Lsp);
             try {
@@ -217,7 +216,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
                 InetAddress address = socketAddress.getAddress();
                 ServerSocket serverSocket = new ServerSocket(port, backlog, address);
                 List<Pair<String, SocketAddress>> delegates = createDelegateSockets(options.get(Delegates));
-                LanguageServerImpl.create(truffleAdapter, info, err).start(serverSocket, delegates).thenRun(() -> {
+                LanguageServerImpl.create(truffleAdapter, info, err).start(this, serverSocket, delegates).thenRun(() -> {
                     try {
                         executorWrapper.executeWithDefaultContext(() -> {
                             context.leave();
