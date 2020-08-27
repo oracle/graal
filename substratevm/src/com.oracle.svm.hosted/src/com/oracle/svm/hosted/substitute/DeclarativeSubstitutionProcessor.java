@@ -322,6 +322,10 @@ class DeleteImpl extends AnnotationImpl implements Delete {
 
 @SuppressWarnings("all")
 class SubstituteImpl extends AnnotationImpl implements Substitute {
+    @Override
+    public boolean polymorphicSignature() {
+        return false;
+    }
 }
 
 @SuppressWarnings("all")
