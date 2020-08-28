@@ -69,10 +69,12 @@ final class ExceptionAccessor extends Accessor {
 
         @Override
         public Throwable getLazyStackTrace(Throwable exception) {
-            if (exception instanceof AbstractTruffleException) {
-                return ((AbstractTruffleException) exception).getLazyStackTrace();
-            }
-            return null;
+            return ((AbstractTruffleException) exception).getLazyStackTrace();
+        }
+
+        @Override
+        public void setLazyStackTrace(Throwable exception, Throwable stackTrace) {
+            ((AbstractTruffleException) exception).setLazyStackTrace(stackTrace);
         }
 
         @Override

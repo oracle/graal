@@ -603,8 +603,6 @@ public abstract class Accessor {
 
         public abstract boolean isTruffleStackTrace(Throwable t);
 
-        public abstract Throwable createLazyStackTrace();
-
         public abstract StackTraceElement[] getInternalStackTraceElements(Throwable t);
 
         public abstract void materializeHostFrames(Throwable original);
@@ -769,6 +767,8 @@ public abstract class Accessor {
         }
 
         public abstract Throwable getLazyStackTrace(Throwable exception);
+
+        public abstract void setLazyStackTrace(Throwable exception, Throwable stackTrace);
 
         public abstract boolean isException(Object receiver);
 

@@ -242,10 +242,6 @@ public final class TruffleStackTrace extends Exception {
 
     private static LazyStackTrace findImpl(Throwable t) {
         assert !(t instanceof ControlFlowException);
-        LazyStackTrace lazyStackTrace = (LazyStackTrace) LanguageAccessor.exceptionAccess().getLazyStackTrace(t);
-        if (lazyStackTrace != null) {
-            return lazyStackTrace;
-        }
         Throwable cause = getCause(t);
         while (cause != null) {
             if (cause instanceof LazyStackTrace) {
@@ -294,14 +290,7 @@ public final class TruffleStackTrace extends Exception {
         if (throwable instanceof ControlFlowException) {
             return EMPTY;
         }
-        LazyStackTrace lazy = findImpl(throwable);
-        if (lazy == null) {
-            Throwable insertCause = findInsertCause(throwable);
-            if (insertCause == null) {
-                return null;
-            }
-            insert(insertCause, lazy = new LazyStackTrace());
-        }
+        LazyStackTrace lazy = getOrCreateLazyStackTrace(throwable);
         if (lazy.stackTrace != null) {
             // stack trace already exists
             return lazy.stackTrace;
@@ -441,8 +430,14 @@ public final class TruffleStackTrace extends Exception {
         }
 
         int stackTraceElementLimit = ((TruffleException) t).getStackTraceElementLimit();
-        LazyStackTrace lazy = (LazyStackTrace) LanguageAccessor.exceptionAccess().getLazyStackTrace(t);
-        if (lazy == null) {
+        LazyStackTrace lazy;
+        if (LanguageAccessor.exceptionAccess().isException(t)) {
+            lazy = (LazyStackTrace) LanguageAccessor.exceptionAccess().getLazyStackTrace(t);
+            if (lazy == null) {
+                lazy = new LazyStackTrace();
+                LanguageAccessor.exceptionAccess().setLazyStackTrace(t, lazy);
+            }
+        } else {
             Throwable cause = getCause(t);
             if (cause == null) {
                 insert(t, lazy = new LazyStackTrace());
@@ -458,16 +453,30 @@ public final class TruffleStackTrace extends Exception {
 
     @TruffleBoundary
     private static void addStackFrameInfoSlowPath(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame, int stackTraceElementLimit) {
-        LazyStackTrace lazy = findImpl(t);
-        if (lazy == null) {
-            Throwable insertCause = findInsertCause(t);
-            if (insertCause == null) {
-                // we don't have a way to store information
-                return;
-            }
-            insert(insertCause, lazy = new LazyStackTrace());
-        }
+        LazyStackTrace lazy = getOrCreateLazyStackTrace(t);
         appendLazyStackTrace(callNode, root, currentFrame, lazy, stackTraceElementLimit);
+    }
+
+    private static LazyStackTrace getOrCreateLazyStackTrace(Throwable throwable) {
+        LazyStackTrace lazy;
+        if (LanguageAccessor.exceptionAccess().isException(throwable)) {
+            lazy = (LazyStackTrace) LanguageAccessor.exceptionAccess().getLazyStackTrace(throwable);
+            if (lazy == null) {
+                lazy = new LazyStackTrace();
+                LanguageAccessor.exceptionAccess().setLazyStackTrace(throwable, lazy);
+            }
+            return lazy;
+        } else {
+            lazy = findImpl(throwable);
+            if (lazy == null) {
+                Throwable insertCause = findInsertCause(throwable);
+                if (insertCause == null) {
+                    return null;
+                }
+                insert(insertCause, lazy = new LazyStackTrace());
+            }
+        }
+        return lazy;
     }
 
     private static void appendLazyStackTrace(Node callNode, RootCallTarget root, MaterializedFrame currentFrame, LazyStackTrace lazy, int stackTraceElementLimit) {

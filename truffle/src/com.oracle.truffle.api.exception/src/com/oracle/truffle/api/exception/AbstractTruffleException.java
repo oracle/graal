@@ -48,6 +48,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A base class for an exception thrown during the execution of a guest language program.<br>
@@ -168,7 +169,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     private final int stackTraceElementLimit;
     private final Throwable internalCause;
     private final Node location;
-    private volatile Throwable lazyStackTrace;
+    private Throwable lazyStackTrace;
 
     protected AbstractTruffleException() {
         this(null, null, -1, null);
@@ -371,17 +372,11 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     }
 
     Throwable getLazyStackTrace() {
-        Throwable res = lazyStackTrace;
-        if (res == null) {
-            synchronized (this) {
-                res = lazyStackTrace;
-                if (res == null) {
-                    res = ExceptionAccessor.LANGUAGE.createLazyStackTrace();
-                    lazyStackTrace = res;
-                }
-            }
-        }
-        return res;
+        return lazyStackTrace;
+    }
+
+    void setLazyStackTrace(Throwable stackTrace) {
+        this.lazyStackTrace = stackTrace;
     }
 
     private ExceptionType getExceptionType() {

@@ -24,19 +24,17 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import static org.graalvm.compiler.truffle.test.TruffleExceptionPartialEvaluationTest.createCallerChain;
+
+import org.graalvm.compiler.truffle.test.TruffleExceptionPartialEvaluationTest.NodeFactory;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
-import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 
-public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest {
+public class LegacyTruffleExceptionPartialEvaluationTest extends PartialEvaluationTest {
+
     public static Object constant42() {
         return 42;
     }
@@ -50,39 +48,35 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
         assertPartialEvalEquals("constant42", createCallerChain(4, 4, nodeFactory));
     }
 
-    static RootTestNode createCallerChain(int framesAbove, int framesBelow, NodeFactory factory) {
-        FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode calleeNode = factory.createThrowNode(-1, true);
-        RootTestNode calleeRoot = new RootTestNode(fd, "testTruffleException", calleeNode);
-        for (int i = 0; i < framesAbove; i++) {
-            AbstractTestNode call = new CallTestNode(Truffle.getRuntime().createCallTarget(calleeRoot));
-            calleeRoot = new RootTestNode(fd, "testTruffleException", call);
-        }
-        AbstractTestNode callerNode = new CallTestNode(Truffle.getRuntime().createCallTarget(calleeRoot));
-        AbstractTestNode catchNode = factory.createCatchNode(callerNode);
-        RootTestNode callerRoot = new RootTestNode(fd, "testTruffleException", catchNode);
-        for (int i = 0; i < framesBelow; i++) {
-            AbstractTestNode call = new CallTestNode(Truffle.getRuntime().createCallTarget(callerRoot));
-            callerRoot = new RootTestNode(fd, "testTruffleException", call);
-        }
-        return callerRoot;
-    }
-
-    private static final class TestTruffleException extends AbstractTruffleException {
+    private static final class TestTruffleException extends RuntimeException implements com.oracle.truffle.api.TruffleException {
 
         private static final long serialVersionUID = -6105288741119318027L;
 
+        private final int stackTraceElementLimit;
+        private final Node location;
         private final boolean property;
 
         TestTruffleException(int stackTraceElementLimit, Node location, boolean property) {
-            super(null, null, stackTraceElementLimit, location);
+            this.stackTraceElementLimit = stackTraceElementLimit;
+            this.location = location;
             this.property = property;
         }
-    }
 
-    interface NodeFactory {
-        AbstractTestNode createThrowNode(int stackTraceElementLimit, boolean property);
-        AbstractTestNode createCatchNode(AbstractTestNode child);
+        @SuppressWarnings("sync-override")
+        @Override
+        public Throwable fillInStackTrace() {
+            return this;
+        }
+
+        @Override
+        public Node getLocation() {
+            return location;
+        }
+
+        @Override
+        public int getStackTraceElementLimit() {
+            return stackTraceElementLimit;
+        }
     }
 
     private static final class NodeFactoryImpl implements NodeFactory {
@@ -132,20 +126,6 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
         @Override
         public int execute(VirtualFrame frame) {
             throw new TestTruffleException(limit, this, property);
-        }
-    }
-
-    private static class CallTestNode extends AbstractTestNode {
-        @Child private DirectCallNode callNode;
-
-        public CallTestNode(CallTarget callTarget) {
-            this.callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
-            this.callNode.forceInlining();
-        }
-
-        @Override
-        public int execute(VirtualFrame frame) {
-            return (int) callNode.call(new Object[0]);
         }
     }
 }

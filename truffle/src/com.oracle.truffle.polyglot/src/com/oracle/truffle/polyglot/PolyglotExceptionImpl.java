@@ -514,11 +514,10 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
 
         private Throwable findCause(Throwable throwable) {
             Throwable cause = throwable;
-            Throwable stackTrace;
             if (cause instanceof HostException) {
                 return findCause(((HostException) cause).getOriginal());
-            } else if ((stackTrace = EngineAccessor.EXCEPTION.getLazyStackTrace(cause)) != null) {
-                return stackTrace;
+            } else if (EngineAccessor.EXCEPTION.isException(cause)) {
+                return EngineAccessor.EXCEPTION.getLazyStackTrace(cause);
             } else {
                 while (cause.getCause() != null && cause.getStackTrace().length == 0) {
                     if (cause instanceof HostException) {
