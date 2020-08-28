@@ -100,6 +100,6 @@ public final class WasmTable {
 
     @SuppressWarnings({"unused", "static-method"})
     public boolean grow(long delta) {
-        throw new WasmExecutionException(null, "Tables cannot be grown.");
+        throw WasmExecutionException.create(null, "Tables cannot be grown.");
     }
 }

@@ -40,10 +40,10 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
+import static org.graalvm.wasm.WasmTracing.trace;
+
 import java.util.function.Consumer;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
@@ -51,7 +51,8 @@ import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class WasiFdWrite extends WasmBuiltinRootNode {
 
@@ -86,7 +87,7 @@ public class WasiFdWrite extends WasmBuiltinRootNode {
                 charPrinter = System.err::print;
                 break;
             default:
-                throw new WasmTrap(this, "WasiFdWrite: invalid file stream");
+                throw WasmTrap.create(this, "WasiFdWrite: invalid file stream");
         }
 
         trace("WasiFdWrite EXECUTE");
