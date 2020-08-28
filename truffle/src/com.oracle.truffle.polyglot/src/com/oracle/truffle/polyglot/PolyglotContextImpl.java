@@ -544,7 +544,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
             // enter the thread info already
             prev = (PolyglotContextImpl) singleContextState.contextThreadLocal.setReturnParent(this);
-            threadInfo.enter(engine, this, !closed);
+            threadInfo.enter(engine, this);
 
             if (transitionToMultiThreading) {
                 // we need to verify that all languages give access
@@ -557,10 +557,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             }
 
             // never cache last thread on close or when closingThread
-            if (!closed && closing == null && !invalid) {
-                setCachedThreadInfo(threadInfo);
-            }
-
+            setCachedThreadInfo(threadInfo);
         }
 
         if (needsInitialization) {
@@ -571,9 +568,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     void setCachedThreadInfo(PolyglotThreadInfo info) {
         assert Thread.holdsLock(this);
-        currentThreadInfo = info;
-        if (engine.singleThreadPerContext.isValid() && engine.singleContext.isValid()) {
-            constantCurrentThreadInfo = info;
+        if (closed || closingThread != null || invalid) {
+            // never set the cached thread when closed closing or invalid
+            currentThreadInfo = PolyglotThreadInfo.NULL;
+        } else {
+            currentThreadInfo = info;
+            if (engine.singleThreadPerContext.isValid() && engine.singleContext.isValid()) {
+                constantCurrentThreadInfo = info;
+            }
         }
     }
 
@@ -626,7 +628,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             if (cancelling && info.isLastActive()) {
                 notifyThreadClosed();
             }
-            info.leave(engine, this, !closed);
+            info.leave(engine, this);
             if (!closed && !cancelling && !invalid) {
                 setCachedThreadInfo(threadInfo);
             }
@@ -1266,9 +1268,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 EngineAccessor.INSTRUMENT.notifyContextClosed(engine, creatorTruffleContext);
             }
             synchronized (this) {
+                // sends all threads to do slow-path enter/leave
+                setCachedThreadInfo(PolyglotThreadInfo.NULL);
+                /*
+                 * This should be reworked. We shouldn't need to check isActive here. When a context
+                 * is closed from within an entered thread we should just throw an error that
+                 * propagates the cancel for the current thread only. This might require some
+                 * changes in language launchers (Node.js).
+                 */
                 if (!isActive()) {
-                    setCachedThreadInfo(PolyglotThreadInfo.NULL);
-
                     if (contexts != null) {
                         for (PolyglotLanguageContext langContext : contexts) {
                             langContext.close();
