@@ -66,6 +66,9 @@ public class Unistd {
     public static native int _SC_CLK_TCK();
 
     @CConstant
+    public static native int _SC_OPEN_MAX();
+
+    @CConstant
     public static native int _SC_PAGESIZE();
 
     @CConstant
