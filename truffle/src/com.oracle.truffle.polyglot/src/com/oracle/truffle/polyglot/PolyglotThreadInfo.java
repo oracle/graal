@@ -42,6 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import java.util.LinkedList;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
 import com.oracle.truffle.api.utilities.TruffleWeakReference;
@@ -93,9 +94,21 @@ final class PolyglotThreadInfo {
      * Volatile increment is safe if only one thread does it.
      */
     @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
-    void enter(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext, boolean notify) {
+    void enter(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
         assert Thread.currentThread() == getThread();
         enteredCount++;
+
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, profiledContext.closed)) {
+            /*
+             * This event should be very rare. The context was closed between the volatile read of
+             * the cached thread info read and the entered count increment. Maybe we should change
+             * this to an assumption check to speed it up.
+             */
+            CompilerDirectives.transferToInterpreter();
+            enteredCount--;
+            profiledContext.checkClosed();
+            assert false : "checkClosed must throw";
+        }
 
         if (!engine.customHostClassLoader.isValid()) {
             setContextClassLoader();
@@ -103,13 +116,7 @@ final class PolyglotThreadInfo {
         if (engine.specializationStatistics != null) {
             engine.specializationStatistics.enter();
         }
-
-        if (notify) {
-            /*
-             * Notify might be false if the context was closed already.
-             */
-            EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
-        }
+        EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
     }
 
     boolean isPolyglotThread(PolyglotContextImpl c) {
@@ -123,14 +130,12 @@ final class PolyglotThreadInfo {
      * Volatile decrement is safe if only one thread does it.
      */
     @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
-    void leave(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext, boolean notify) {
+    void leave(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
         assert Thread.currentThread() == getThread();
-        if (notify) {
-            /*
-             * Notify might be false if the context was closed already.
-             */
-            EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
-        }
+        /*
+         * Notify might be false if the context was closed already on a second thread.
+         */
+        EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
         enteredCount--;
         if (!engine.customHostClassLoader.isValid()) {
             restoreContextClassLoader();
