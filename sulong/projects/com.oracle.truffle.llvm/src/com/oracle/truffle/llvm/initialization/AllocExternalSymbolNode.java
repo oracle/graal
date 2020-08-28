@@ -94,7 +94,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
     /**
      * Allocating symbols to the symbol table as provided by the local scope.
      */
-    static abstract class AllocExistingLocalSymbolsNode extends AllocExternalSymbolNode {
+    abstract static class AllocExistingLocalSymbolsNode extends AllocExternalSymbolNode {
 
         AllocExistingLocalSymbolsNode(LLVMSymbol symbol) {
             super(symbol);
@@ -153,7 +153,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
         /**
          * Allocating symbols to the symbol table as provided by the global scope.
          */
-        static abstract class AllocExistingGlobalSymbolsNode extends AllocExistingLocalSymbolsNode {
+        abstract static class AllocExistingGlobalSymbolsNode extends AllocExistingLocalSymbolsNode {
 
             AllocExistingGlobalSymbolsNode(LLVMSymbol symbol) {
                 super(symbol);
@@ -203,7 +203,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             /**
              * Allocating a native global symbol to the symbol table as provided by the nfi context.
              */
-            static abstract class AllocExternalGlobalNode extends AllocExistingGlobalSymbolsNode {
+            abstract static class AllocExternalGlobalNode extends AllocExistingGlobalSymbolsNode {
 
                 AllocExternalGlobalNode(LLVMSymbol symbol) {
                     super(symbol);
@@ -237,7 +237,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
              * Allocates a managed pointer for the newly constructed function descriptors of a
              * native function and intrinsic function.
              */
-            static abstract class AllocExternalFunctionNode extends AllocExistingGlobalSymbolsNode {
+            abstract static class AllocExternalFunctionNode extends AllocExistingGlobalSymbolsNode {
 
                 private final NodeFactory nodeFactory;
 
@@ -290,5 +290,4 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             }
         }
     }
-
 }
