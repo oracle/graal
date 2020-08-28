@@ -244,8 +244,6 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
 public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     /**
@@ -2344,7 +2342,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case F32_DEMOTE_F64: {
-                    throw new NotImplementedException();
+                    throw WasmExecutionException.create(this, "not implemented: F32_DEMOTE_F64");
                 }
                 case F64_CONVERT_I32_S:
                 case F64_CONVERT_I32_U: {
@@ -2367,7 +2365,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case F64_PROMOTE_F32: {
-                    throw new NotImplementedException();
+                    throw WasmExecutionException.create(this, "not implemented: F64_PROMOTE_F32");
                 }
                 case I32_REINTERPRET_F32: {
                     // As we don't store type information for the frame slots (everything is stored
