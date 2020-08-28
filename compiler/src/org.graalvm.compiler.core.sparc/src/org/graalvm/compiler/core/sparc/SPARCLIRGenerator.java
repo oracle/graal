@@ -420,9 +420,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, boolean directPointers) {
+    public Variable emitArrayEquals(JavaKind kind, int arrayBaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
         Variable result = newVariable(LIRKind.value(SPARCKind.WORD));
-        append(new SPARCArrayEqualsOp(this, kind, result, load(array1), load(array2), asAllocatable(length), directPointers));
+        append(new SPARCArrayEqualsOp(this, kind, arrayBaseOffset, result, load(array1), load(array2), asAllocatable(length), directPointers));
         return result;
     }
 

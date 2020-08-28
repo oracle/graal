@@ -534,7 +534,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayCompareTo(JavaKind kind1, JavaKind kind2, Value array1, Value array2, Value length1, Value length2) {
+    public Variable emitArrayCompareTo(JavaKind kind1, JavaKind kind2, int arrayBaseOffset1, int arrayBaseOffset2, Value array1, Value array2, Value length1, Value length2) {
         LIRKind resultKind = LIRKind.value(AArch64Kind.DWORD);
         // DMS TODO: check calling conversion and registers used
         RegisterValue res = AArch64.r0.asValue(resultKind);
@@ -542,16 +542,16 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         RegisterValue cnt2 = AArch64.r2.asValue(length2.getValueKind());
         emitMove(cnt1, length1);
         emitMove(cnt2, length2);
-        append(new AArch64ArrayCompareToOp(this, kind1, kind2, res, array1, array2, cnt1, cnt2));
+        append(new AArch64ArrayCompareToOp(this, kind1, kind2, arrayBaseOffset1, arrayBaseOffset2, res, array1, array2, cnt1, cnt2));
         Variable result = newVariable(resultKind);
         emitMove(result, res);
         return result;
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, boolean directPointers) {
+    public Variable emitArrayEquals(JavaKind kind, int arrayBaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64ArrayEqualsOp(this, kind, result, array1, array2, asAllocatable(length), directPointers));
+        append(new AArch64ArrayEqualsOp(this, kind, arrayBaseOffset, result, array1, array2, asAllocatable(length), directPointers));
         return result;
     }
 

@@ -55,6 +55,7 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.Value;
 
 // JaCoCo Exclude
@@ -249,8 +250,14 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
                 return;
             }
         }
-        Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, gen.operand(array1), gen.operand(array2), gen.operand(length), false);
+        int arrayBaseOffset = getArrayBaseOffset(gen.getLIRGeneratorTool().getMetaAccess(), array1);
+        Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, arrayBaseOffset, gen.operand(array1), gen.operand(array2), gen.operand(length),
+                        false);
         gen.setResult(this, result);
+    }
+
+    protected int getArrayBaseOffset(MetaAccessProvider metaAccessProvider, @SuppressWarnings("unused") ValueNode array) {
+        return metaAccessProvider.getArrayBaseOffset(kind);
     }
 
     @Override

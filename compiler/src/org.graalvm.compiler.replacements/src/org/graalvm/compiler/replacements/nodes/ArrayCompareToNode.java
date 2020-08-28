@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.Value;
 
 // JaCoCo Exclude
@@ -158,9 +159,16 @@ public class ArrayCompareToNode extends FixedWithNextNode implements LIRLowerabl
                 return;
             }
         }
-
-        Value result = gen.getLIRGeneratorTool().emitArrayCompareTo(kind1, kind2, gen.operand(array1), gen.operand(array2), gen.operand(length1), gen.operand(length2));
+        MetaAccessProvider metaAccess = gen.getLIRGeneratorTool().getMetaAccess();
+        int arrayBaseOffset1 = getArrayBaseOffset(metaAccess, array1, kind1);
+        int arrayBaseOffset2 = getArrayBaseOffset(metaAccess, array2, kind2);
+        Value result = gen.getLIRGeneratorTool().emitArrayCompareTo(kind1, kind2, arrayBaseOffset1, arrayBaseOffset2, gen.operand(array1), gen.operand(array2), gen.operand(length1),
+                        gen.operand(length2));
         gen.setResult(this, result);
+    }
+
+    protected int getArrayBaseOffset(MetaAccessProvider metaAccessProvider, @SuppressWarnings("unused") ValueNode array, JavaKind kind) {
+        return metaAccessProvider.getArrayBaseOffset(kind);
     }
 
     @Override

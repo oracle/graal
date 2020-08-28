@@ -45,6 +45,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.Value;
 
 // JaCoCo Exclude
@@ -124,12 +125,19 @@ public class ArrayRegionEqualsNode extends FixedWithNextNode implements LIRLower
             }
         }
         Value result;
+        MetaAccessProvider metaAccess = gen.getLIRGeneratorTool().getMetaAccess();
+        int arrayBaseOffset1 = getArrayBaseOffset(metaAccess, array1, kind1);
         if (kind1 == kind2) {
-            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, gen.operand(array1), gen.operand(array2), gen.operand(length), true);
+            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, arrayBaseOffset1, gen.operand(array1), gen.operand(array2), gen.operand(length), true);
         } else {
-            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, kind2, gen.operand(array1), gen.operand(array2), gen.operand(length), true);
+            int arrayBaseOffset2 = getArrayBaseOffset(metaAccess, array1, kind1);
+            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, kind2, arrayBaseOffset1, arrayBaseOffset2, gen.operand(array1), gen.operand(array2), gen.operand(length), true);
         }
         gen.setResult(this, result);
+    }
+
+    protected int getArrayBaseOffset(MetaAccessProvider metaAccessProvider, @SuppressWarnings("unused") ValueNode array, JavaKind kind) {
+        return metaAccessProvider.getArrayBaseOffset(kind);
     }
 
     @Override

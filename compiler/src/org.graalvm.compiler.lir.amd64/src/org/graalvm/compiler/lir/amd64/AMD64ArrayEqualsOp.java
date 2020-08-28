@@ -95,7 +95,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) private Value vectorTemp3;
     @Temp({REG, ILLEGAL}) private Value vectorTemp4;
 
-    public AMD64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind1, JavaKind kind2, Value result, Value array1, Value array2, Value length,
+    public AMD64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind1, JavaKind kind2, int arrayBaseOffset1, int arrayBaseOffset2, Value result, Value array1, Value array2, Value length,
                     boolean directPointers, int maxVectorSize) {
         super(TYPE);
         this.kind1 = kind1;
@@ -104,8 +104,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
 
         assert kind1.isNumericInteger() && kind2.isNumericInteger() || kind1 == kind2;
 
-        this.arrayBaseOffset1 = directPointers ? 0 : tool.getProviders().getMetaAccess().getArrayBaseOffset(kind1);
-        this.arrayBaseOffset2 = directPointers ? 0 : tool.getProviders().getMetaAccess().getArrayBaseOffset(kind2);
+        this.arrayBaseOffset1 = directPointers ? 0 : arrayBaseOffset1;
+        this.arrayBaseOffset2 = directPointers ? 0 : arrayBaseOffset2;
         this.arrayIndexScale1 = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(kind1)));
         this.arrayIndexScale2 = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(kind2)));
         this.vectorSize = ((AMD64) tool.target().arch).getFeatures().contains(CPUFeature.AVX2) && (maxVectorSize < 0 || maxVectorSize >= 32) ? AVXKind.AVXSize.YMM : AVXKind.AVXSize.XMM;
