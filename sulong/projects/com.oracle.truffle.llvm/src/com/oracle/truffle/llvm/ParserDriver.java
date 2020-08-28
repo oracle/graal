@@ -116,7 +116,7 @@ final class ParserDriver {
         if (source.hasBytes()) {
             bytes = source.getBytes();
             if (language.containsInternalExternalLibrary(source)) {
-                library = language.getinternalExternalLibrary(source);
+                library = language.getInternalExternalLibrary(source);
             } else if (source.getPath() != null) {
                 library = ExternalLibrary.createFromFile(context.getEnv().getInternalTruffleFile(source.getPath()), false, source.isInternal());
             } else {
@@ -185,7 +185,7 @@ final class ParserDriver {
         String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
         for (String sulongLibraryName : sulongLibraryNames) {
             // Don't add the library itself as one of it's own dependency.
-            if (!currentLib.equalsIgnoreCase(sulongLibraryName)) {
+            if (!currentLib.equals(sulongLibraryName)) {
                 ExternalLibrary lib = context.addInternalLibrary(sulongLibraryName, "<default bitcode library>");
                 // Look into the library cache in the language for the call target.
                 CallTarget calls = language.getCachedLibrary(lib.getPath().toString());
@@ -380,8 +380,9 @@ final class ParserDriver {
 
     /**
      * Converts the {@link BinaryParserResult#getLibraries() dependencies} of a
-     * {@link BinaryParserResult} into {@link ExternalLibrary}s and add them to the if not already
-     * in there.
+     * {@link BinaryParserResult} first into {@link ExternalLibrary}s and then into either a
+     * {@link Source} or a {@link CallTarget}, if the library has already been parsed. Finally they
+     * are added into the list of dependencies for this library.
      */
     private void processDependencies(ExternalLibrary library, BinaryParserResult binaryParserResult, ArrayList<Object> dependenciesSource) {
         for (String lib : context.preprocessDependencies(library, binaryParserResult.getLibraries())) {

@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLocalScope;
@@ -64,13 +65,12 @@ public final class InitializeScopeNode extends LLVMNode {
         this.allocScopes = allocScopesList.toArray(AllocScopeNode.EMPTY);
     }
 
+    @ExplodeLoop
     public void execute(LLVMContext context, LLVMLocalScope localScope) {
-        synchronized (context) {
-            localScope.addMissingLinkageName(fileScope);
-            for (int i = 0; i < allocScopes.length; i++) {
-                AllocScopeNode allocScope = allocScopes[i];
-                allocScope.allocateScope(context, localScope);
-            }
+        localScope.addMissingLinkageName(fileScope);
+        for (int i = 0; i < allocScopes.length; i++) {
+            AllocScopeNode allocScope = allocScopes[i];
+            allocScope.allocateScope(context, localScope);
         }
     }
 

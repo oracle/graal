@@ -200,7 +200,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         internalFileScopes.put(libraryName, scope);
     }
 
-    public ExternalLibrary getinternalExternalLibrary(Source source) {
+    public ExternalLibrary getInternalExternalLibrary(Source source) {
         return internalExternalLibraries.get(source);
     }
 

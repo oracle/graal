@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.initialization;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNodeFactory.AllocExistingLocalSymbolsNodeGen.AllocExistingGlobalSymbolsNodeGen.AllocExternalFunctionNodeGen;
+import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNodeFactory.AllocExistingLocalSymbolsNodeGen.AllocExistingGlobalSymbolsNodeGen.AllocExternalGlobalNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
@@ -112,23 +114,19 @@ public final class InitializeExternalNode extends LLVMNode {
      * functions/globals.
      */
     @ExplodeLoop
-    public void execute(LLVMContext context, int id) {
+    public void execute(LLVMContext context, LLVMLocalScope localScope) {
         LLVMScope globalScope = context.getGlobalScope();
         LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
         NFIContextExtension nfiContextExtension = getNfiContextExtension(context);
-
-        synchronized (context) {
-            // functions and globals
-            for (int i = 0; i < allocExternalSymbols.length; i++) {
-                AllocExternalSymbolNode function = allocExternalSymbols[i];
-                LLVMLocalScope localScope = context.getLocalScope(id);
-                LLVMPointer pointer = function.execute(localScope, globalScope, intrinsicProvider, nfiContextExtension);
-                // skip allocating fallbacks
-                if (pointer == null) {
-                    continue;
-                }
-                writeSymbols.execute(pointer, function.symbol);
+        // functions and globals
+        for (int i = 0; i < allocExternalSymbols.length; i++) {
+            AllocExternalSymbolNode function = allocExternalSymbols[i];
+            LLVMPointer pointer = function.execute(localScope, globalScope, intrinsicProvider, nfiContextExtension);
+            // skip allocating fallbacks
+            if (pointer == null) {
+                continue;
             }
+            writeSymbols.execute(pointer, function.symbol);
         }
     }
 

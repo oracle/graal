@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.initialization;
 
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNodeFactory.AllocExistingLocalSymbolsNodeGen;
+import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNodeFactory.AllocExistingLocalSymbolsNodeGen.AllocExistingGlobalSymbolsNodeGen.AllocExternalGlobalNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
@@ -98,9 +100,8 @@ public final class InitializeOverwriteNode extends LLVMNode {
     }
 
     @ExplodeLoop
-    public void execute(LLVMContext context, int id) {
+    public void execute(LLVMContext context, LLVMLocalScope localScope) {
         LLVMScope globalScope = context.getGlobalScope();
-        LLVMLocalScope localScope = context.getLocalScope(id);
         for (int i = 0; i < allocExternalSymbols.length; i++) {
             AllocExternalSymbolNode allocSymbol = allocExternalSymbols[i];
             LLVMPointer pointer = allocSymbol.execute(localScope, globalScope, null, null);
