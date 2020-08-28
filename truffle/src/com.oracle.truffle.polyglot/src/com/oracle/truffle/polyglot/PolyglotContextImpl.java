@@ -1268,9 +1268,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 EngineAccessor.INSTRUMENT.notifyContextClosed(engine, creatorTruffleContext);
             }
             synchronized (this) {
+                // sends all threads to do slow-path enter/leave
+                setCachedThreadInfo(PolyglotThreadInfo.NULL);
+                /*
+                 * This should be reworked. We shouldn't need to check isActive here. When a context
+                 * is closed from within an entered thread we should just throw an error that
+                 * propagates the cancel for the current thread only. This might require some
+                 * changes in language launchers (Node.js).
+                 */
                 if (!isActive()) {
-                    setCachedThreadInfo(PolyglotThreadInfo.NULL);
-
                     if (contexts != null) {
                         for (PolyglotLanguageContext langContext : contexts) {
                             langContext.close();
