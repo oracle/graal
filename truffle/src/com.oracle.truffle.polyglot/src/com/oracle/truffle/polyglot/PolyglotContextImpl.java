@@ -557,10 +557,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             }
 
             // never cache last thread on close or when closingThread
-            if (!closed && closing == null && !invalid) {
-                setCachedThreadInfo(threadInfo);
-            }
-
+            setCachedThreadInfo(threadInfo);
         }
 
         if (needsInitialization) {
@@ -571,9 +568,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     void setCachedThreadInfo(PolyglotThreadInfo info) {
         assert Thread.holdsLock(this);
-        currentThreadInfo = info;
-        if (engine.singleThreadPerContext.isValid() && engine.singleContext.isValid()) {
-            constantCurrentThreadInfo = info;
+        if (closed || closingThread != null || invalid) {
+            // never set the cached thread when closed closing or invalid
+            currentThreadInfo = PolyglotThreadInfo.NULL;
+        } else {
+            currentThreadInfo = info;
+            if (engine.singleThreadPerContext.isValid() && engine.singleContext.isValid()) {
+                constantCurrentThreadInfo = info;
+            }
         }
     }
 
