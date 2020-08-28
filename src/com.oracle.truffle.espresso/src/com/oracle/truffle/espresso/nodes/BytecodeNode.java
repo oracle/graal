@@ -429,7 +429,12 @@ public final class BytecodeNode extends EspressoMethodNode {
         int n = 0;
         if (hasReceiver) {
             assert StaticObject.notNull((StaticObject) frameArguments[0]) : "null receiver in init arguments !";
-            setLocalObject(frame, n, (StaticObject) frameArguments[0]);
+            StaticObject receiver = (StaticObject) frameArguments[0];
+            setLocalObject(frame, n, receiver);
+            if (noForeignObjects.isValid() && receiver.isForeignObject()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                noForeignObjects.invalidate();
+            }
             n += JavaKind.Object.getSlotCount();
         }
         for (int i = 0; i < argCount; ++i) {
