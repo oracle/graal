@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.core.test;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.loop.DefaultLoopPolicies;
@@ -91,7 +92,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     @SuppressWarnings("fallthrough")
     public static int test2Snippet(int a) {
         int sum = 0;
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; GraalDirectives.injectBranchProbability(0.99, i < 1000); i++) {
             switch (a) {
                 case 0:
                     sum += System.currentTimeMillis();
