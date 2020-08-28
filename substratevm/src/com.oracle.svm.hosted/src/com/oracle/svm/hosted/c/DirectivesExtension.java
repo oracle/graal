@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.polyglot.nativeapi;
+
+package com.oracle.svm.hosted.c;
 
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.c.function.GraalIsolateHeader;
-import com.oracle.svm.hosted.c.DirectivesExtension;
+import org.graalvm.nativeimage.c.CContext;
 
-public class PolyglotNativeAPICContext implements DirectivesExtension {
+public interface DirectivesExtension extends CContext.Directives {
 
-    @Override
-    public List<String> getHeaderFiles() {
-        return Collections.singletonList("<polyglot_types.h>");
-    }
-
-    @Override
-    public List<String> getOptions() {
-        return Collections.singletonList("-I" + System.getProperty("org.graalvm.polyglot.nativeapi.libraryPath"));
-    }
-
-    @Override
-    public List<String> getHeaderSnippet() {
-        return GraalIsolateHeader.getGraalIsolatePreamble();
+    /**
+     * Returns a C header file snippet that should be injected into the query code that gets
+     * generated for this CContext.
+     *
+     */
+    default List<String> getHeaderSnippet() {
+        return Collections.emptyList();
     }
 }

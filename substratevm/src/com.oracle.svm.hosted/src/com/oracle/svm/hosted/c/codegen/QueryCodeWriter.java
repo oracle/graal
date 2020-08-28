@@ -33,7 +33,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.c.CContext;
 
+import com.oracle.svm.hosted.c.DirectivesExtension;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumConstantInfo;
@@ -106,8 +108,10 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     @Override
     protected void visitNativeCodeInfo(NativeCodeInfo nativeCodeInfo) {
+        CContext.Directives directives = nativeCodeInfo.getDirectives();
+
         /* Write general macro definitions. */
-        List<String> macroDefinitions = nativeCodeInfo.getDirectives().getMacroDefinitions();
+        List<String> macroDefinitions = directives.getMacroDefinitions();
         if (!macroDefinitions.isEmpty()) {
             macroDefinitions.forEach(writer::appendMacroDefinition);
             writer.appendln();
@@ -129,14 +133,16 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         }
 
         /* Inject CContext specific C header file snippet. */
-        List<String> headerSnippet = nativeCodeInfo.getDirectives().getHeaderSnippet();
-        if (!headerSnippet.isEmpty()) {
-            headerSnippet.forEach(writer::appendln);
-            writer.appendln();
+        if (directives instanceof DirectivesExtension) {
+            List<String> headerSnippet = ((DirectivesExtension) directives).getHeaderSnippet();
+            if (!headerSnippet.isEmpty()) {
+                headerSnippet.forEach(writer::appendln);
+                writer.appendln();
+            }
         }
 
         /* CContext specific header file inclusions. */
-        List<String> headerFiles = nativeCodeInfo.getDirectives().getHeaderFiles();
+        List<String> headerFiles = directives.getHeaderFiles();
         if (!headerFiles.isEmpty()) {
             writer.includeFiles(headerFiles);
             writer.appendln();

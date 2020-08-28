@@ -134,15 +134,5 @@ public @interface CContext {
         default List<String> getLibraryPaths() {
             return Collections.emptyList();
         }
-
-        /**
-         * Returns a C header file snippet that should be injected into the query code that gets
-         * generated for this CContext.
-         *
-         * @since 20.3
-         */
-        default List<String> getHeaderSnippet() {
-            return Collections.emptyList();
-        }
     }
 }

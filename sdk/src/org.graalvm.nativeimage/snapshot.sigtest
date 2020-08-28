@@ -369,7 +369,6 @@ meth public boolean isInConfiguration()
 meth public java.util.List<java.lang.String> getHeaderFiles()
 meth public java.util.List<java.lang.String> getLibraries()
 meth public java.util.List<java.lang.String> getLibraryPaths()
-meth public java.util.List<java.lang.String> getHeaderSnippet()
 meth public java.util.List<java.lang.String> getMacroDefinitions()
 meth public java.util.List<java.lang.String> getOptions()
 
