@@ -54,7 +54,10 @@ final class PolyglotThreadInfo {
     private final PolyglotContextImpl context;
     private final TruffleWeakReference<Thread> thread;
 
-    private int enteredCount;
+    /*
+     * Only modify if Thread.currentThread() == thread.get().
+     */
+    private volatile int enteredCount;
     final LinkedList<Object> explicitContextStack = new LinkedList<>();
     volatile boolean cancelled;
     private Object originalContextClassLoader = NULL_CLASS_LOADER;
@@ -150,7 +153,6 @@ final class PolyglotThreadInfo {
     }
 
     boolean isLastActive() {
-        assert Thread.currentThread() == getThread();
         return getThread() != null && enteredCount == 1 && !cancelled;
     }
 
