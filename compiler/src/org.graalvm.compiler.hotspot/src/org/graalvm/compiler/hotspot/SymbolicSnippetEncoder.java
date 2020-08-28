@@ -519,7 +519,7 @@ public class SymbolicSnippetEncoder {
      * Encode any outstanding graphs and return true if any work was done.
      */
     @SuppressWarnings("try")
-    public boolean encode(OptionValues options) {
+    public synchronized boolean encode(OptionValues options) {
         if (!IS_IN_NATIVE_IMAGE) {
             EncodedSnippets encodedSnippets = maybeEncodeSnippets(options);
             if (encodedSnippets != null) {
