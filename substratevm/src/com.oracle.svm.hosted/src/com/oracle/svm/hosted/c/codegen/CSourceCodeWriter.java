@@ -85,8 +85,8 @@ public class CSourceCodeWriter {
         if (NativeImageOptions.getCStandard().compatibleWith(C99)) {
             if (!Platform.includedIn(Platform.WINDOWS.class)) {
                 /*
-                 * No stdbool.h in Windows SDK 7.1. If we add native-compiler version detection this
-                 * should only be omitted if cl.exe version is < 19.*.
+                 * CStandard says we are C99 compatible yet we cannot include stdbool.h because old
+                 * Windows native compilers do not support it. This should be fixed.
                  */
                 includeFiles(Collections.singletonList("<stdbool.h>"));
             }

@@ -56,6 +56,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     private final CSourceCodeWriter writer;
 
     private final List<Object> elementForLineNumber;
+    private final boolean isWindows;
 
     private final String formatSInt64;
     private final String formatUInt64;
@@ -67,7 +68,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     public QueryCodeWriter(Path tempDirectory) {
         writer = new CSourceCodeWriter(tempDirectory);
         elementForLineNumber = new ArrayList<>();
-        boolean isWindows = Platform.includedIn(Platform.WINDOWS.class);
+        isWindows = Platform.includedIn(Platform.WINDOWS.class);
 
         String formatL64 = "%" + (isWindows ? "ll" : "l");
         formatSInt64 = formatL64 + "d";
@@ -116,6 +117,16 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.includeFiles(Arrays.asList("<stdio.h>", "<stddef.h>", "<memory.h>"));
         writer.writeCStandardHeaders();
         writer.appendln();
+
+        /* Workaround missing bool type in old cl.exe. */
+        if (isWindows) {
+            writer.appendln("#ifndef bool");
+            writer.appendln("#define bool char");
+            writer.appendln("#define false ((bool)0)");
+            writer.appendln("#define true  ((bool)1)");
+            writer.appendln("#endif");
+            writer.appendln("");
+        }
 
         /* Inject CContext specific C header file snippet. */
         List<String> headerSnippet = nativeCodeInfo.getDirectives().getHeaderSnippet();

@@ -24,11 +24,9 @@
  */
 package org.graalvm.polyglot.nativeapi;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext.Directives;
 
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
@@ -47,20 +45,6 @@ public class PolyglotNativeAPICContext implements Directives {
 
     @Override
     public List<String> getHeaderSnippet() {
-        List<String> lines = new ArrayList<>();
-
-        /* Fallback for missing bool-type header in old cl.exe. */
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
-            lines.add("#ifndef bool");
-            lines.add("#define bool char");
-            lines.add("#define false ((bool)0)");
-            lines.add("#define true  ((bool)1)");
-            lines.add("#endif");
-            lines.add("");
-        }
-
-        lines.addAll(GraalIsolateHeader.getGraalIsolatePreamble());
-
-        return lines;
+        return GraalIsolateHeader.getGraalIsolatePreamble();
     }
 }
