@@ -28,12 +28,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext.Directives;
 
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
-import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 
 public class PolyglotNativeAPICContext implements Directives {
 
@@ -51,9 +49,8 @@ public class PolyglotNativeAPICContext implements Directives {
     public List<String> getHeaderSnippet() {
         List<String> lines = new ArrayList<>();
 
-        /* Workaround for missing bool-type Header file inclusions. */
-        if (Platform.includedIn(Platform.WINDOWS.class) &&
-                        ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.versionMajor <= 16) {
+        /* Fallback for missing bool-type header in old cl.exe. */
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
             lines.add("#ifndef bool");
             lines.add("#define bool char");
             lines.add("#define false ((bool)0)");
