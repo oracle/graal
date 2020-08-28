@@ -2483,9 +2483,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public int GetVersion() {
         if (getJavaVersion().java8OrEarlier()) {
-            return JniVersion.JNI_VERSION_ESPRESSO_8;
+            return JniVersion.JNI_VERSION_ESPRESSO_8.version();
         } else {
-            return JniVersion.JNI_VERSION_ESPRESSO_11;
+            return JniVersion.JNI_VERSION_ESPRESSO_11.version();
         }
     }
 
