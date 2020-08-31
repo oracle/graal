@@ -1169,6 +1169,9 @@ suite = {
       "vpath" : True,
       "variants" : ["O0"],
       "buildRef" : True,
+      "buildEnv" : {
+        "SUITE_CFLAGS" : "-Wno-everything",
+      },
       "dependencies" : [
         "SULONG_TEST",
       ],
