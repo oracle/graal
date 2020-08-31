@@ -31,4 +31,5 @@
 
 int main() {
     int *val = malloc(sizeof(int));
+    free(val);
 }
