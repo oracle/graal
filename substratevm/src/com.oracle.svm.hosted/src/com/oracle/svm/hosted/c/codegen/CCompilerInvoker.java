@@ -220,6 +220,13 @@ public abstract class CCompilerInvoker {
         @Override
         protected CompilerInfo createCompilerInfo(Path compilerPath, Scanner scanner) {
             try {
+                if (scanner.findInLine("icc version ") != null) {
+                    scanner.useDelimiter("[. ]");
+                    int major = scanner.nextInt();
+                    int minor0 = scanner.nextInt();
+                    int minor1 = scanner.nextInt();
+                    return new CompilerInfo(compilerPath, "intel", "Intel(R) C++ Compiler", "icc", major, minor0, minor1, "x86_64");
+                }
                 String[] triplet = guessTargetTriplet(scanner);
                 while (scanner.findInLine("gcc version ") == null) {
                     scanner.nextLine();
