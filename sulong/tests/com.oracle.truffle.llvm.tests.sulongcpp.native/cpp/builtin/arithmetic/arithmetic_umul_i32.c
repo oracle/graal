@@ -32,7 +32,7 @@
 bool __builtin_mul_overflow(unsigned int, unsigned int, unsigned int *);
 #endif
 
-int main(int argc, const char **argv) {
+int main() {
     unsigned int res;
 
 #ifndef __clang__
