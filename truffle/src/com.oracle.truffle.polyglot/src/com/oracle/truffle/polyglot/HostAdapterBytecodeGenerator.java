@@ -65,8 +65,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
+import com.oracle.truffle.api.impl.asm.FieldVisitor;
 import com.oracle.truffle.api.impl.asm.Handle;
 import com.oracle.truffle.api.impl.asm.Label;
 import com.oracle.truffle.api.impl.asm.Opcodes;
@@ -179,6 +181,8 @@ final class HostAdapterBytecodeGenerator {
     private static final String CLASS_TYPE_NAME = Type.getInternalName(Class.class);
     private static final String GET_CLASS_LOADER_NAME = "getClassLoader";
     private static final String GET_CLASS_LOADER_DESCRIPTOR = Type.getMethodDescriptor(CLASS_LOADER_TYPE);
+
+    private static final String HOST_EXPORT_ANNOTATION_DESCRIPTOR = Type.getDescriptor(HostAccess.Export.class);
 
     // ASM handle to the bootstrap method
     private static final Handle BOOTSTRAP_HANDLE = new Handle(H_INVOKESTATIC, Type.getInternalName(HostAdapterServices.class), "bootstrap",
@@ -445,6 +449,9 @@ final class HostAdapterBytecodeGenerator {
         final String methodDescriptor = Type.getMethodDescriptor(originalCtorType.getReturnType(), argTypes);
         final InstructionAdapter mv = new InstructionAdapter(cw.visitMethod(ACC_PUBLIC | (ctor.isVarArgs() ? ACC_VARARGS : 0), INIT, methodDescriptor, null, null));
 
+        // @HostAccess.Export
+        mv.visitAnnotation(HOST_EXPORT_ANNOTATION_DESCRIPTOR, true);
+
         mv.visitCode();
         emitSuperConstructorCall(mv, originalCtorType.getDescriptor());
 
@@ -486,6 +493,9 @@ final class HostAdapterBytecodeGenerator {
         // scriptObj, args...).
         String signature = Type.getMethodDescriptor(originalCtorType.getReturnType(), newArgTypes);
         final InstructionAdapter mv = new InstructionAdapter(cw.visitMethod(ACC_PUBLIC, INIT, signature, null, null));
+
+        // @HostAccess.Export
+        mv.visitAnnotation(HOST_EXPORT_ANNOTATION_DESCRIPTOR, true);
 
         mv.visitCode();
         // First, invoke super constructor with original arguments.
@@ -609,6 +619,10 @@ final class HostAdapterBytecodeGenerator {
         final Type[] asmArgTypes = asmType.getArgumentTypes();
 
         final InstructionAdapter mv = new InstructionAdapter(cw.visitMethod(getAccessModifiers(method), name, methodDesc, null, exceptionNames));
+
+        // @HostAccess.Export
+        mv.visitAnnotation(HOST_EXPORT_ANNOTATION_DESCRIPTOR, true);
+
         mv.visitCode();
 
         final Type asmReturnType = Type.getType(type.returnType());
@@ -800,6 +814,10 @@ final class HostAdapterBytecodeGenerator {
         final String name = mi.getName();
 
         final InstructionAdapter mv = new InstructionAdapter(cw.visitMethod(getAccessModifiers(method), SUPER_PREFIX + name, methodDesc, null, getExceptionNames(method.getExceptionTypes())));
+
+        // @HostAccess.Export
+        mv.visitAnnotation(HOST_EXPORT_ANNOTATION_DESCRIPTOR, true);
+
         mv.visitCode();
 
         emitSuperCall(mv, method.getDeclaringClass(), name, methodDesc);
