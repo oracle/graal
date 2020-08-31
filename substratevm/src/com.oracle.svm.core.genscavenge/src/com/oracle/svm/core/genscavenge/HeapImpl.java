@@ -51,6 +51,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
@@ -631,7 +632,7 @@ public final class HeapImpl extends Heap {
     @Override
     public CardTableBarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
         ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
-        return new CardTableBarrierSet(objectArrayType);
+        return new SubstrateCardTableBarrierSet(objectArrayType);
     }
 
     void addToReferencePendingList(Reference<?> list) {
