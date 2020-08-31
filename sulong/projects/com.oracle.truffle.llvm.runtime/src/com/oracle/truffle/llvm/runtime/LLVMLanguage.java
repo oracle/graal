@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionDescriptors;
 
 import java.util.Collection;
@@ -100,6 +101,10 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @CompilationFinal private Configuration activeConfiguration = null;
 
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
+
+    private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
+    private final EconomicMap<String, CallTarget> libraryCache = EconomicMap.create();
+    private final EconomicMap<Source, ExternalLibrary> internalExternalLibraries = EconomicMap.create();
 
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
@@ -187,6 +192,26 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return cachedLLVMMemory;
     }
 
+    public LLVMScope getInternalFileScopes(String libraryName) {
+        return internalFileScopes.get(libraryName);
+    }
+
+    public void addInternalFileScope(String libraryName, LLVMScope scope) {
+        internalFileScopes.put(libraryName, scope);
+    }
+
+    public ExternalLibrary getInternalExternalLibrary(Source source) {
+        return internalExternalLibraries.get(source);
+    }
+
+    public void addInternalExternalLibrary(Source source, ExternalLibrary externalLibrary) {
+        internalExternalLibraries.put(source, externalLibrary);
+    }
+
+    public boolean containsInternalExternalLibrary(Source source) {
+        return internalExternalLibraries.containsKey(source);
+    }
+
     @Override
     protected LLVMContext createContext(Env env) {
         if (activeConfiguration == null) {
@@ -245,10 +270,38 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return nextID;
     }
 
+    /**
+     * If a library has already been parsed, the call target will be retrieved from the language
+     * cache.
+     *
+     * @param request request for parsing
+     * @return calltarget of the library
+     */
     @Override
     protected CallTarget parse(ParsingRequest request) {
         Source source = request.getSource();
+        CallTarget callTarget;
+        if (source.getPath() != null) {
+            callTarget = libraryCache.get(source.getPath());
+            if (callTarget == null) {
+                callTarget = getCapability(Loader.class).load(getContext(), source, nextID);
+                CallTarget prev = libraryCache.putIfAbsent(source.getPath(), callTarget);
+                // To ensure the call target in the cache is always returned in case of concurrency.
+                if (prev != null) {
+                    callTarget = prev;
+                }
+            }
+            return callTarget;
+        }
         return getCapability(Loader.class).load(getContext(), source, nextID);
+    }
+
+    public boolean isLibraryCached(String path) {
+        return libraryCache.get(path) != null;
+    }
+
+    public CallTarget getCachedLibrary(String path) {
+        return libraryCache.get(path);
     }
 
     @Override

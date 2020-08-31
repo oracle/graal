@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,41 +27,46 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm;
+package com.oracle.truffle.llvm.initialization;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.LLVMParserResult;
-import com.oracle.truffle.llvm.runtime.ExternalLibrary;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LibraryLocator;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+public abstract class StaticInitsNode extends LLVMStatementNode {
 
-public final class DefaultLoader extends Loader {
+    @Children final LLVMStatementNode[] statements;
+    final Object moduleName;
+    final String prefix;
 
-    private volatile List<LLVMParserResult> cachedDefaultDependencies;
-    private volatile ExternalLibrary[] cachedSulongLibraries;
+    public StaticInitsNode(LLVMStatementNode[] statements, String prefix, Object moduleName) {
+        this.statements = statements;
+        this.prefix = prefix;
+        this.moduleName = moduleName;
+    }
 
-    @Override
-    public CallTarget load(LLVMContext context, Source source, AtomicInteger id) {
-        // per context, only one thread must do any parsing
-        synchronized (context.getGlobalScope()) {
-            return ParserDriver.parse(context, id, source);
+    @ExplodeLoop
+    @Specialization
+    public void doInit(VirtualFrame frame,
+                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+        synchronized (ctx) {
+            if (ctx.loaderTraceStream() != null) {
+                traceExecution(ctx);
+            }
+            for (LLVMStatementNode stmt : statements) {
+                stmt.execute(frame);
+            }
         }
     }
 
-    List<LLVMParserResult> getCachedDefaultDependencies() {
-        return cachedDefaultDependencies;
-    }
-
-    ExternalLibrary[] getCachedSulongLibraries() {
-        return cachedSulongLibraries;
-    }
-
-    void setDefaultLibraries(ExternalLibrary[] defaultLibraries, List<LLVMParserResult> parserResults) {
-        cachedDefaultDependencies = parserResults;
-        cachedSulongLibraries = defaultLibraries;
+    @CompilerDirectives.TruffleBoundary
+    private void traceExecution(LLVMContext ctx) {
+        LibraryLocator.traceStaticInits(ctx, prefix, moduleName, String.format("[%d inst]", statements.length));
     }
 }

@@ -1576,16 +1576,18 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.experimental.constrained.fpext.f80.f64":
                     return LLVMSignedCastToLLVM80BitFloatNodeGen.create(args[1]);
 
-/*
- * We ignore the two meta-arguments of the binary arithmetic llvm.experimental.constrained builtins
- * as they are just hints by compiler to optimization passes. They inform the passes on possible
- * assumptions about the current rounding mode and floating point exceptions (FPE) behavior.
- *
- * Nonetheless, as the values of rounding mode or the FPE behavior other than "round.tonearest" and
- * "fpexcept.ignore", which are the default and currently the only supported ones, indicate that the
- * code may want to ensure a specific rounding of numbers or respond to FPE, we should issue some
- * "unsupported FP mode" warning when parsing bitcode.
- */
+                /*
+                 * We ignore the two meta-arguments of the binary arithmetic
+                 * llvm.experimental.constrained builtins as they are just hints by compiler to
+                 * optimization passes. They inform the passes on possible assumptions about the
+                 * current rounding mode and floating point exceptions (FPE) behavior.
+                 *
+                 * Nonetheless, as the values of rounding mode or the FPE behavior other than
+                 * "round.tonearest" and "fpexcept.ignore", which are the default and currently the
+                 * only supported ones, indicate that the code may want to ensure a specific
+                 * rounding of numbers or respond to FPE, we should issue some "unsupported FP mode"
+                 * warning when parsing bitcode.
+                 */
 
                 case "llvm.experimental.constrained.fadd.f32":
                     return LLVMFloatArithmeticNodeGen.create(ArithmeticOperation.ADD, args[1], args[2]);
