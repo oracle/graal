@@ -379,7 +379,29 @@ final class InterfaceTables {
 
     // helper checks
 
-    private static Method resolveMaximallySpecific(Method m1, Method m2) {
+    /**
+     * Returns the maximally specific method between the two given methods. If they are both
+     * maximally-specific, returns a proxy of the second, to which a poison pill has been set.
+     * <p>
+     * Determining maximally specific method works as follow:
+     * <li>If both methods are abstract, return any of the two.
+     * <li>If exactly one is non-abstract, return it.
+     * <li>If both are non-abstract, check if one of the declaring class subclasses the other. If
+     * that is the case, return the method that is lower in the hierarchy. Otherwise, return a
+     * freshly spawned proxy method pointing to either of them, which is set to fail on invocation.
+     */
+    public static Method resolveMaximallySpecific(Method m1, Method m2) {
+        boolean b1 = m1.isAbstract();
+        boolean b2 = m2.isAbstract();
+        if (b1 && b2) {
+            return m1;
+        }
+        if (b1) {
+            return m2;
+        }
+        if (b2) {
+            return m1;
+        }
         Klass k1 = m1.getDeclaringKlass();
         Klass k2 = m2.getDeclaringKlass();
         if (k1.isAssignableFrom(k2)) {
@@ -392,17 +414,6 @@ final class InterfaceTables {
             // it). (5.4.3.3.)
             //
             // But if you try to *use* them, specs dictate to fail. (6.5.invoke{virtual,interface})
-            boolean b1 = m1.isAbstract();
-            boolean b2 = m2.isAbstract();
-            if (b1 && b2) {
-                return m1;
-            }
-            if (b1) {
-                return m2;
-            }
-            if (b2) {
-                return m1;
-            }
             Method m = new Method(m2);
             m.setPoisonPill();
             return m;

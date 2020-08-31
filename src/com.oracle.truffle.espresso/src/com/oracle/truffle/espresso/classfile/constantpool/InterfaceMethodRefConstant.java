@@ -127,7 +127,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
 
             Symbol<Signature> signature = getSignature(pool);
 
-            Method method = ((ObjectKlass) holderInterface).lookupInterfaceMethod(name, signature);
+            Method method = ((ObjectKlass) holderInterface).resolveInterfaceMethod(name, signature);
 
             if (method == null) {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(name));
