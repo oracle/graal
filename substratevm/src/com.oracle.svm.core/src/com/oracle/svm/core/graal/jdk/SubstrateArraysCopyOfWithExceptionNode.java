@@ -50,7 +50,6 @@ public final class SubstrateArraysCopyOfWithExceptionNode extends WithExceptionN
     public static final NodeClass<SubstrateArraysCopyOfWithExceptionNode> TYPE = NodeClass.create(SubstrateArraysCopyOfWithExceptionNode.class);
 
     @OptionalInput(InputType.State) protected FrameState stateBefore;
-    @OptionalInput(InputType.State) protected FrameState stateAfter;
     @Input ValueNode original;
     @Input ValueNode originalLength;
     @Input ValueNode newLength;
