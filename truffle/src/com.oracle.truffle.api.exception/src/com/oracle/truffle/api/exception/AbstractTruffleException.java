@@ -47,8 +47,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A base class for an exception thrown during the execution of a guest language program.<br>
@@ -171,22 +171,52 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     private final Node location;
     private Throwable lazyStackTrace;
 
+    /**
+     * Creates a new AbstractTruffleException.
+     *
+     * @since 20.3
+     */
     protected AbstractTruffleException() {
         this(null, null, -1, null);
     }
 
+    /**
+     * Creates a new AbstractTruffleException with given location.
+     *
+     * @since 20.3
+     */
     protected AbstractTruffleException(Node location) {
         this(null, null, -1, location);
     }
 
+    /**
+     * Creates a new AbstractTruffleException with given message.
+     *
+     * @since 20.3
+     */
     protected AbstractTruffleException(String message) {
         this(message, null, -1, null);
     }
 
+    /**
+     * Creates a new AbstractTruffleException with given message and location.
+     *
+     * @since 20.3
+     */
     protected AbstractTruffleException(String message, Node location) {
         this(message, null, -1, location);
     }
 
+    /**
+     * Creates a new AbstractTruffleException.
+     *
+     * @param message the exception message or {@code null}
+     * @param internalCause a Truffle exception causing this exception or {@code null}
+     * @param stackTraceElementLimit a stack trace limit. Use {@code -1} for unlimited stack trace
+     *            length.
+     *
+     * @since 20.3
+     */
     protected AbstractTruffleException(String message, Throwable internalCause, int stackTraceElementLimit, Node location) {
         super(message, checkCause(internalCause));
         this.stackTraceElementLimit = stackTraceElementLimit;
@@ -194,6 +224,11 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
         this.location = location;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 20.3
+     */
     @Override
     @SuppressWarnings("sync-override")
     public final Throwable fillInStackTrace() {
@@ -202,8 +237,9 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
 
     /**
      * Returns a node indicating the location where this exception occurred in the AST. This method
-     * may return <code>null</code> to indicate that the location is not available.
+     * may return {@code null} to indicate that the location is not available.
      *
+     * @since 20.3
      */
     @Override
     public final Node getLocation() {
@@ -211,11 +247,25 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     }
 
     /**
-     * Returns a location where this exception occurred in the AST. This method may return
-     * <code>null</code> to indicate that the location is not available.
+     * Returns the number of guest language frames that should be collected for this exception.
+     * Returns a negative integer by default for unlimited guest language frames. This is intended
+     * to be used by guest languages to limit the number of guest language stack frames. Languages
+     * might want to limit the number of frames for performance reasons. Frames that point to
+     * {@link RootNode#isInternal() internal} internal root nodes are not counted when the stack
+     * trace limit is computed.
      *
-     * @return the {@link SourceSection} or {@code null} Deprecated, use the
-     *         {@link InteropLibrary#getSourceLocation(Object)}.
+     * @since 20.3
+     */
+    @Override
+    public final int getStackTraceElementLimit() {
+        return stackTraceElementLimit;
+    }
+
+    /**
+     * Returns a location where this exception occurred in the AST.
+     *
+     * @deprecated Use {@link InteropLibrary#getSourceLocation(Object)}.
+     * @since 20.3
      */
     @Deprecated
     @Override
@@ -233,24 +283,9 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     }
 
     /**
-     * Returns the number of guest language frames that should be collected for this exception.
-     * Returns a negative integer by default for unlimited guest language frames. This is intended
-     * to be used by guest languages to limit the number of guest language stack frames. Languages
-     * might want to limit the number of frames for performance reasons. Frames that point to
-     * {@link RootNode#isInternal() internal} internal root nodes are not counted when the stack
-     * trace limit is computed.
+     * Returns {@code this} as an additional guest language object.
      *
-     */
-    @Override
-    public final int getStackTraceElementLimit() {
-        return stackTraceElementLimit;
-    }
-
-    /**
-     * Returns an additional guest language object. The return object must be an interop exception
-     * type, the {@link @link com.oracle.truffle.api.interop.InteropLibrary#isException(Object)} has
-     * to return {@code true}. The default implementation returns <code>null</code> to indicate that
-     * no object is available for this exception.
+     * @since 20.3
      */
     @Deprecated
     @Override
@@ -259,11 +294,10 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     }
 
     /**
-     * Returns <code>true</code> if this exception indicates a parser or syntax error. Syntax errors
-     * typically occur while
-     * {@link TruffleLanguage#parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest) parsing}
-     * of guest language source code.
+     * Returns {@code true} if this exception indicates a parser or syntax error.
      *
+     * @deprecated Use {@link InteropLibrary#getExceptionType(Object)}.
+     * @since 20.3
      */
     @Deprecated
     @Override
@@ -272,18 +306,11 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     }
 
     /**
-     * Returns <code>true</code> if this exception indicates a syntax error that is indicating that
-     * the syntax is incomplete. This allows guest language programmers to find out if more code is
-     * expected from a given source. For example an incomplete JavaScript program could look like
-     * this:
+     * Returns {@code true} if this exception indicates a syntax error that is indicating that the
+     * syntax is incomplete.
      *
-     * <pre>
-     * function incompleteFunction(arg) {
-     * </pre>
-     *
-     * A shell might react to this exception and prompt for additional source code, if this method
-     * returns <code>true</code>.
-     *
+     * @deprecated Use {@link InteropLibrary#isExceptionIncompleteSource(Object)}.
+     * @since 20.3
      */
     @Deprecated
     @Override
@@ -296,11 +323,11 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     }
 
     /**
-     * Returns <code>true</code> if this exception indicates an internal error. Note that all
-     * exceptions thrown in a guest language implementation that are not implementing
-     * {@link AbstractTruffleException} are considered internal.
+     * Returns {@code false} as internal error is no {@link InteropLibrary#isException(Object)
+     * exception object}.
      *
-     * @since 0.27
+     * @deprecated Use {@link InteropLibrary#isException(java.lang.Object)}.
+     * @since 20.3
      */
     @Deprecated
     @Override
@@ -309,10 +336,11 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     }
 
     /**
-     * Returns <code>true</code> if this exception indicates that guest language application was
-     * cancelled during its execution. If {@code isCancelled} returns {@code true} languages should
-     * not catch this exception, they must just rethrow it.
+     * Returns {@code true} if this exception indicates that guest language application was
+     * cancelled during its execution.
      *
+     * @deprecated Use {@link InteropLibrary#getExceptionType(Object)}.
+     * @since 20.3
      */
     @Deprecated
     @Override
@@ -321,11 +349,11 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     }
 
     /**
-     * Returns <code>true</code> if the exception indicates that the application was exited within
-     * the guest language program. If {@link #isExit()} returns <code>true</code> also
-     * {@link #getExitStatus()} should be implemented.
+     * Returns {@code true} if the exception indicates that the application was exited within the
+     * guest language program.
      *
-     * @see #getExitStatus()
+     * @deprecated Use {@link InteropLibrary#getExceptionType(Object)}.
+     * @since 20.3
      */
     @Deprecated
     @Override
@@ -334,10 +362,10 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     }
 
     /**
-     * Returns the exit status if this exception indicates that the application was {@link #isExit()
-     * exited}. The exit status is intended to be passed to {@link System#exit(int)}.
+     * Returns the exit status if this exception indicates that the application was exited.
      *
-     * @see #isExit()
+     * @deprecated Use {@link InteropLibrary#getExceptionExitStatus(Object)}.
+     * @since 20.3
      */
     @Deprecated
     @Override
@@ -350,7 +378,10 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     }
 
     /**
-     * Setting a cause is not supported. Pass in the cause using the constructors instead.
+     * Setting a cause is not supported.
+     *
+     * @deprecated Pass in the cause using the constructors instead.
+     * @since 20.3
      */
     @Deprecated
     @TruffleBoundary
@@ -361,9 +392,9 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     }
 
     /**
-     * Returns the cause of an exception.
-     *
      * {@inheritDoc}
+     *
+     * @since 20.3
      */
     @Override
     @SuppressWarnings("sync-override")

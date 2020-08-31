@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,51 +38,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.interop;
-
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
+/*
+ @ApiInfo(
+ group="Truffle"
+ )
+ */
 
 /**
- * Represents a type of a Truffle exception.
+ * This package contains a Truffle exception base class.
  *
- * @see InteropLibrary#isException(Object)
- * @see InteropLibrary#getExceptionType(Object)
- *
+ * @see com.oracle.truffle.api.exception.AbstractTruffleException
  * @since 20.3
  */
-public enum ExceptionType implements TruffleObject {
-    /**
-     * Indicates that guest language application was cancelled during its execution.
-     *
-     * @since 20.3
-     */
-    CANCEL,
-
-    /**
-     * Indicates that the application was exited within the guest language program. To obtain the
-     * exit status use {@link InteropLibrary#getExceptionExitStatus(Object) getExceptionExitStatus}.
-     *
-     * @see InteropLibrary#getExceptionExitStatus(Object)
-     * @since 20.3
-     */
-    EXIT,
-
-    /**
-     * Indicates a guest language error.
-     *
-     * @since 20.3
-     */
-    RUNTIME_ERROR,
-
-    /**
-     * Indicates a parser or syntax error. Syntax errors typically occur while
-     * {@link TruffleLanguage#parse(ParsingRequest) parsing} of guest language source code. Use
-     * {@link InteropLibrary#isExceptionIncompleteSource(Object) isExceptionIncompleteSource} to
-     * find out if the parse error happened due to incomplete source.
-     *
-     * @see InteropLibrary#isExceptionIncompleteSource(Object)
-     * @since 20.3
-     */
-    PARSE_ERROR
-}
+package com.oracle.truffle.api.exception;
