@@ -39,7 +39,11 @@ void old_style_handler_new(int signo) {
 }
 
 int main(void) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-braces"
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
     struct sigaction sa = { 0 };
+#pragma clang diagnostic pop
     sa.sa_handler = old_style_handler_old;
     sigemptyset(&sa.sa_mask);
     errno = 0;
@@ -51,7 +55,11 @@ int main(void) {
     }
 
     sa.sa_handler = old_style_handler_new;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-braces"
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
     struct sigaction osa = { 0 };
+#pragma clang diagnostic pop
     errno = 0;
     if (sigaction(SIGINT, &sa, &osa) != 0) {
         if (errno != EINVAL) {
