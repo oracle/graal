@@ -19,7 +19,7 @@ custom_vm_darwin: {}
 vm_profiles: []
 collect_profiles: []
 
-non-product-vm-components: "nju,nic"
+non-product-vm-components: "nju,nic,dis"
 non-product-vm-components-windows: ${non-product-vm-components}",llp"
 non-product-native-launchers: "RMain"
 
