@@ -31,7 +31,7 @@
 
 void *global;
 
-__attribute__((noinline)) int argTest(int a, int b, int c, int d) {
+__attribute__((noinline)) int argTest(__attribute__((unused)) int a, __attribute__((unused)) int b, int c, __attribute__((unused)) int d) {
     return polyglot_as_i32(polyglot_get_arg(2)) + c;
 }
 

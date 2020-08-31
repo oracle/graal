@@ -718,6 +718,7 @@ suite = {
       "buildSharedObject" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
+        "SUITE_CFLAGS" : "-Wno-unused-function",
         "OS" : "<os>",
       },
       "os_arch" : {

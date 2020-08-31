@@ -42,6 +42,6 @@ int main() {
     void **pp = &global; // should not harm us, pp is in the frame
 
     void (*returnObject)(void *) = polyglot_import("returnObject");
-    returnObject(global);
+    returnObject(*pp);
     return 0;
 }

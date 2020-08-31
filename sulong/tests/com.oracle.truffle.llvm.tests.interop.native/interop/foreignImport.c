@@ -57,8 +57,8 @@ int main() {
         return 220 + polyglot_as_i32(foreign->b);
     }
 
-    foreign->a = 101;
-    foreign->b = 102;
+    foreign->a = (void *) 101;
+    foreign->b = (void *) 102;
 
     return 0;
 }
