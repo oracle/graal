@@ -699,6 +699,7 @@ suite = {
       "buildRef" : False,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
+        "SUITE_CFLAGS" : "-Wno-unused-variable",
       },
       "dependencies" : [
         "SULONG_TEST",
