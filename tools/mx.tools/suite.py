@@ -274,8 +274,8 @@ suite = {
             "dependencies" : ["SLF4J_API"]
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-830.tar.gz"],
-            "sha1" : "dbf7cdee54f2797776b93bfaebd4f107ad8755f8",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-20.2-2.tar.gz"],
+            "sha1" : "e33e37feef572f4abce1545636efd8c7f29103c3",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
