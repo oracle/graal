@@ -29,6 +29,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 void print(FILE *file) {
     char buf[20];
@@ -38,8 +39,13 @@ void print(FILE *file) {
 }
 
 int main() {
-    char name[L_tmpnam];
-    FILE *file = fopen(tmpnam(name), "w");
+    char name[] = "fseek-beginning-XXXXXX";
+    int fd = mkstemp(name);
+    if (fd == -1) {
+        printf("Failed to create temporary file\n");
+        abort();
+    }
+    FILE *file = fdopen(fd, "w");
     if (file == NULL) {
         printf("Failed to open file\n");
         abort();

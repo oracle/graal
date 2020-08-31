@@ -1024,6 +1024,7 @@ suite = {
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "CFLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -1046,6 +1047,7 @@ suite = {
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "CXXFLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -1095,6 +1097,7 @@ suite = {
       "buildRef" : False,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "CFLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -1118,6 +1121,7 @@ suite = {
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "CFLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -1141,6 +1145,7 @@ suite = {
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_LDFLAGS" : "-lm -lgmp",
+        "CFLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
