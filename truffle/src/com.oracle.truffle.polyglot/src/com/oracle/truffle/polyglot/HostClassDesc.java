@@ -377,9 +377,9 @@ final class HostClassDesc {
                 if (method.isConstructor()) {
                     continue;
                 }
-                for (HostMethodDesc m : method.getOverloads()) {
+                for (SingleMethod m : method.getOverloads()) {
                     assert m.isMethod();
-                    jniMethods.put(HostInteropReflect.jniName((Method) ((SingleMethod) m).getReflectionMethod()), m);
+                    jniMethods.put(HostInteropReflect.jniName((Method) m.getReflectionMethod()), m);
                 }
             }
             return jniMethods;
