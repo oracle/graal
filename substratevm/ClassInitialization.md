@@ -20,7 +20,7 @@ Interfaces without default methods, however, are not initialized. To describe th
 
 To have the out-of-the-box experience of Native Image and still get the benefits of build-time initailization, Native Image does three things:
 
-* [Build-Time Initialization of the Native Image Runtime](#build-time-initialization-of-the-native-image-runtime)
+* [Build-time Initialization of Native Image Runtime](#build-time-initialization-of-native-image-runtime)
 * [Automatic Initialization of Safe Classes](#automatic-initialization-of-safe-classes)
 * [Explicitly Specifying Class Initialization](#explicitly-specifying-class-initialization)
 
