@@ -69,7 +69,7 @@ int getX() {
     return x;
 }
 
-int start() __attribute__((constructor)) {
+__attribute__((constructor)) int start() {
     int x = 0;
     printf("x = %d\n", x);
     x = getX();
