@@ -11,12 +11,14 @@ import * as fs from 'fs';
 import * as https from 'https';
 import * as cp from 'child_process';
 import * as tar from 'tar';
+import { Extract } from 'unzipper';
 import * as utils from './utils';
 
 const GITHUB_URL: string = 'https://github.com';
 const GRAALVM_RELEASES_URL: string = GITHUB_URL + '/graalvm/graalvm-ce-builds/releases';
 const LINUX_LINK_REGEXP: RegExp = /<a href="\/graalvm\/graalvm-ce-builds\/releases\/download\/vm-\S*\/graalvm-ce-java8\S*-linux-\S*"/im;
 const MAC_LINK_REGEXP: RegExp = /<a href="\/graalvm\/graalvm-ce-builds\/releases\/download\/vm-\S*\/graalvm-ce-java8\S*-(darwin|macos)-\S*"/im;
+const WINDOWS_LINK_REGEXP: RegExp = /<a href="\/graalvm\/graalvm-ce-builds\/releases\/download\/vm-\S*\/graalvm-ce-java8\S*-windows-\S*"/im;
 
 export async function installGraalVM(storagePath: string | undefined): Promise<void> {
     let downloadedFile;
@@ -156,6 +158,8 @@ async function getLatestGraalVMRelease(): Promise<string> {
                         match = rawData.match(LINUX_LINK_REGEXP);
                     } else if (process.platform === 'darwin') {
                         match = rawData.match(MAC_LINK_REGEXP);
+                    } else if (process.platform === 'win32') {
+                        match = rawData.match(WINDOWS_LINK_REGEXP);
                     }
                     if (match) {
                         resolve(GITHUB_URL + match[0].substring(9, match[0].length - 1));
@@ -242,6 +246,11 @@ async function extractGraalVM(downloadedFile: string, targetDir: string): Promis
         location: vscode.ProgressLocation.Notification,
         title: "Installing GraalVM..."
     }, (_progress, _token) => {
+        if (path.extname(downloadedFile) === '.zip') {
+            const extract = Extract({ path: targetDir });
+            fs.createReadStream(downloadedFile).pipe(extract);
+            return extract.promise();
+        }
         return tar.extract({
             cwd: targetDir,
             file: downloadedFile

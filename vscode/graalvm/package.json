@@ -2,7 +2,7 @@
 	"name": "graalvm",
 	"displayName": "GraalVM",
 	"description": "Support for GraalVM",
-	"version": "0.0.10",
+	"version": "0.0.11",
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "oracle-labs-graalvm",
 	"author": {
@@ -481,6 +481,7 @@
 	"dependencies": {
 		"sax": "^1.2.4",
 		"tar": "^6.0.1",
+		"unzipper": "0.10.11",
 		"vscode-chrome-debug-core": "^6.8.8",
 		"vscode-languageclient": "^5.2.1"
 	},
@@ -489,6 +490,7 @@
 		"@types/node": "^12.12.30",
 		"@types/sax": "^1.2.1",
 		"@types/tar": "^4.0.3",
+		"@types/unzipper": "^0.10.3",
 		"@types/vscode": "1.44.0",
 		"ts-loader": "^6.2.1",
 		"tslint": "^6.1.0",

@@ -32,6 +32,8 @@ function setConfig(path: string) {
 		section = 'rterm.linux';
 	} else if (process.platform === 'darwin') {
 		section = 'rterm.mac';
+	} else if (process.platform === 'win32') {
+		section = 'rterm.windows';
 	}
 	const term = section ? config.inspect(section) : undefined;
 	if (term) {
