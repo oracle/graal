@@ -466,7 +466,7 @@ _scala_dacapo_resources = {
 }
 
 _scala_dacapo_iterations = {
-    'scalac'        : -1, # depends on awt
+    'scalac'        : 20, # depends on awt
     'scalariform'   : 30,
     'scalap'        : 120,
     'scaladoc'      : -1, # depends on awt
@@ -488,6 +488,7 @@ _SCALA_DACAPO_EXTRA_VM_ARGS = {
 
 _scala_daCapo_exclude_lib = {
     'scalariform' : ['scala-library-2.8.0.jar'],
+    'scalac' :      ['scala-library-2.8.0.jar'],
     'scalap'      : ['scala-library-2.8.0.jar'],
     'scaladoc'    : ['scala-library-2.8.0.jar'],
     'scalatest'   : ['scala-library-2.8.0.jar'],
