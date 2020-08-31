@@ -218,7 +218,6 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
         }
     }
 
-    @ReportPolymorphism
     @ImportStatic(RegexResult.class)
     @GenerateUncached
     abstract static class InvokeCacheNode extends Node {
@@ -257,6 +256,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
             return getEndNode.execute(receiver, groupNumber);
         }
 
+        @ReportPolymorphism.Megamorphic
         @Specialization(replaces = {"getStartEquals", "getEndEquals"})
         static Object invokeGeneric(RegexResult receiver, String symbol, int groupNumber,
                         @Cached RegexResultGetStartNode getStartNode,
