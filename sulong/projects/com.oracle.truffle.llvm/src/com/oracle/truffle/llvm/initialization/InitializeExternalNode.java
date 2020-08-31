@@ -79,13 +79,15 @@ import java.util.ArrayList;
  * @see InitializeOverwriteNode
  */
 public final class InitializeExternalNode extends LLVMNode {
-    @Child LLVMWriteSymbolNode writeSymbols;
     @Children AllocExternalSymbolNode[] allocExternalSymbols;
+    @Children final LLVMWriteSymbolNode[] writeSymbols;
+
     private final NodeFactory nodeFactory;
 
     public InitializeExternalNode(LLVMParserResult result) {
         this.nodeFactory = result.getRuntime().getNodeFactory();
         LLVMScope fileScope = result.getRuntime().getFileScope();
+        ArrayList<LLVMWriteSymbolNode> writeSymbolsList = new ArrayList<>();
         ArrayList<AllocExternalSymbolNode> allocExternaSymbolsList = new ArrayList<>();
 
         // Bind all functions that are not defined/resolved as either a bitcode function
@@ -97,14 +99,16 @@ public final class InitializeExternalNode extends LLVMNode {
                 continue;
             }
             allocExternaSymbolsList.add(AllocExternalFunctionNodeGen.create(function, nodeFactory));
+            writeSymbolsList.add(LLVMWriteSymbolNodeGen.create(function));
         }
 
         for (GlobalSymbol symbol : result.getExternalGlobals()) {
             LLVMGlobal global = fileScope.getGlobalVariable(symbol.getName());
             allocExternaSymbolsList.add(AllocExternalGlobalNodeGen.create(global));
+            writeSymbolsList.add(LLVMWriteSymbolNodeGen.create(global));
         }
 
-        this.writeSymbols = LLVMWriteSymbolNodeGen.create();
+        this.writeSymbols = writeSymbolsList.toArray(LLVMWriteSymbolNode.EMPTY);
         this.allocExternalSymbols = allocExternaSymbolsList.toArray(AllocExternalSymbolNode.EMPTY);
     }
 
@@ -118,15 +122,15 @@ public final class InitializeExternalNode extends LLVMNode {
         LLVMScope globalScope = context.getGlobalScope();
         LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
         NFIContextExtension nfiContextExtension = getNfiContextExtension(context);
-        // functions and globals
-        for (int i = 0; i < allocExternalSymbols.length; i++) {
-            AllocExternalSymbolNode function = allocExternalSymbols[i];
-            LLVMPointer pointer = function.execute(localScope, globalScope, intrinsicProvider, nfiContextExtension);
-            // skip allocating fallbacks
-            if (pointer == null) {
-                continue;
-            }
-            writeSymbols.execute(pointer, function.symbol);
+            // functions and globals
+            for (int i = 0; i < allocExternalSymbols.length; i++) {
+                AllocExternalSymbolNode function = allocExternalSymbols[i];
+                LLVMPointer pointer = function.execute(localScope, globalScope, intrinsicProvider, nfiContextExtension);
+                // skip allocating fallbacks
+                if (pointer == null) {
+                    continue;
+                }
+                writeSymbols[i].execute(pointer);
         }
     }
 
