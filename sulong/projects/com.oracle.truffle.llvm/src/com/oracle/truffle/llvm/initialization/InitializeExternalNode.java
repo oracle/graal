@@ -122,15 +122,15 @@ public final class InitializeExternalNode extends LLVMNode {
         LLVMScope globalScope = context.getGlobalScope();
         LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
         NFIContextExtension nfiContextExtension = getNfiContextExtension(context);
-            // functions and globals
-            for (int i = 0; i < allocExternalSymbols.length; i++) {
-                AllocExternalSymbolNode function = allocExternalSymbols[i];
-                LLVMPointer pointer = function.execute(localScope, globalScope, intrinsicProvider, nfiContextExtension);
-                // skip allocating fallbacks
-                if (pointer == null) {
-                    continue;
-                }
-                writeSymbols[i].execute(pointer);
+        // functions and globals
+        for (int i = 0; i < allocExternalSymbols.length; i++) {
+            AllocExternalSymbolNode function = allocExternalSymbols[i];
+            LLVMPointer pointer = function.execute(localScope, globalScope, intrinsicProvider, nfiContextExtension);
+            // skip allocating fallbacks
+            if (pointer == null) {
+                continue;
+            }
+            writeSymbols[i].execute(pointer);
         }
     }
 
