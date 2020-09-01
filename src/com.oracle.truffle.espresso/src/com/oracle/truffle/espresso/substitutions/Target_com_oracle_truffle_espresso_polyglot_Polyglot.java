@@ -116,6 +116,19 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                     }
                 }
 
+
+                if (targetKlass == meta.java_lang_String) {
+                    if (!interopLibrary.isString(value.rawForeignObject())) {
+                        throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-string foreign object to string");
+                    }
+                    try {
+                        return meta.toGuestString(interopLibrary.asString(value.rawForeignObject()));
+                    } catch (UnsupportedMessageException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
+                    }
+                }
+
                 try {
                     ToEspressoNode.checkHasAllFieldsOrThrow(value.rawForeignObject(), (ObjectKlass) targetKlass, interopLibrary, meta);
                 } catch (ClassCastException e) {
