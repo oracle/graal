@@ -243,7 +243,11 @@ public class GraalHotSpotVMConfigAccess {
             return;
         } else if ("warn".equals(value) || JDK_PRERELEASE) {
             System.err.println(errorMessage.toString());
-        } else {
+        } else if (!JVMCI && Assertions.assertionsEnabled()) {
+            // We cannot control when VM config updates are made in non JVMCI JDKs so
+            // only issue a warning and only when assertions are enabled.
+            System.err.println(errorMessage.toString());
+        } else if (JVMCI) {
             throw new JVMCIError(errorMessage.toString());
         }
     }
