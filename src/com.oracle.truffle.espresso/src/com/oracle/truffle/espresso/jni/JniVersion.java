@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 
 public enum JniVersion {
     JNI_VERSION_1_1(0x00010001),
@@ -30,28 +30,27 @@ public enum JniVersion {
     JNI_VERSION_1_4(0x00010004),
     JNI_VERSION_1_6(0x00010006),
     JNI_VERSION_1_8(0x00010008),
-    JNI_VERSION_9(0x00090000),
-    JNI_VERSION_10(0x000A0000);
+    JNI_VERSION_9(0x00090000, true),
+    JNI_VERSION_10(0x000A0000, true);
 
     private final int version;
+    private final boolean v9OrLater;
 
     JniVersion(int version) {
+        this(version, false);
+    }
+
+    JniVersion(int version, boolean v9OrLater) {
         this.version = version;
+        this.v9OrLater = v9OrLater;
     }
 
     public int version() {
         return version;
     }
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) //
-    private static final int[] supported;
-
-    static {
-        supported = new int[JniVersion.values().length];
-        int pos = 0;
-        for (JniVersion v : JniVersion.values()) {
-            supported[pos++] = v.version;
-        }
+    private boolean supports(int v, JavaVersion contextVersion) {
+        return v == version() && (!v9OrLater || contextVersion.java9OrLater());
     }
 
     /**
@@ -64,9 +63,9 @@ public enum JniVersion {
      */
     static JniVersion JNI_VERSION_ESPRESSO_11 = JNI_VERSION_10;
 
-    public static boolean isSupported(int version) {
-        for (int i : supported) {
-            if (i == version) {
+    public static boolean isSupported(int version, JavaVersion contextVersion) {
+        for (JniVersion v : JniVersion.values()) {
+            if (v.supports(version, contextVersion)) {
                 return true;
             }
         }
