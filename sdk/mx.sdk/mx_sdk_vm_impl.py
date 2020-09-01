@@ -386,6 +386,13 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
         self._post_build_warnings = []
 
+        self.jimage_jars = set()
+        if is_graalvm and _src_jdk_version >= 9:
+            for component in registered_graalvm_components(stage1):
+                self.jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
+                if isinstance(component, mx_sdk.GraalVmJvmciComponent):
+                    self.jimage_jars.update(component.jvmci_jars)
+
         def _add(_layout, dest, src, component=None, with_sources=False):
             """
             :type _layout: dict[str, list[str] | str]
@@ -415,10 +422,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
             mx.logvv("'Adding '{}: {}' to the layout'".format(dest, src))
             _layout_provenance[dest] = component
-            if with_sources and _include_sources():
-                for _src in list(src):
-                    src_dict = mx.LayoutDistribution._as_source_dict(_src, name, dest)
-                    if src_dict['source_type'] == 'dependency' and src_dict['path'] is None:
+            for _src in list(src):
+                src_dict = mx.LayoutDistribution._as_source_dict(_src, name, dest)
+                if src_dict['source_type'] == 'dependency' and src_dict['path'] is None:
+                    if with_sources and _include_sources(src_dict['dependency']) and (_src_jdk_version == 8 or src_dict['dependency'] not in self.jimage_jars):
                         src_src_dict = {
                             'source_type': 'dependency',
                             'dependency': src_dict['dependency'],
@@ -669,7 +676,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 _add(layout, _launcher_dest, 'dependency:' + launcher_project, _component)
                 if _debug_images() and GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and _get_svm_support().is_debug_supported():
                     _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + launcher_project + '/*.debug', _component)
-                    if _include_sources():
+                    if _include_sources(launcher_project):
                         _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + launcher_project + '/sources', _component)
                 # add links from jre/bin to launcher
                 if _launcher_config.default_symlinks:
@@ -1438,7 +1445,8 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         super(GraalVmJImageBuildTask, self).__init__(args, 1, subject)
 
     def build(self):
-        with_source = lambda dep: not isinstance(dep, mx.Dependency) or (_include_sources() and dep.isJARDistribution() and not dep.is_stripped())
+        def with_source(dep):
+            return not isinstance(dep, mx.Dependency) or (_include_sources(dep.qualifiedName()) and dep.isJARDistribution() and not dep.is_stripped())
         vendor_info = {'vendor-version': graalvm_vendor_version(get_final_graalvm_distribution())}
         mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, with_source=with_source, vendor_info=vendor_info)
         with open(self._config_file(), 'w') as f:
@@ -1472,7 +1480,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
 
     def _config(self):
         return [
-            'include sources: {}'.format(_include_sources()),
+            'include sources: {}'.format(_include_sources_str()),
             'strip jars: {}'.format(mx.get_opts().strip_jars),
             'vendor-version: {}'.format(graalvm_vendor_version(get_final_graalvm_distribution())),
         ]
@@ -2362,15 +2370,10 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             register_project(GraalVmJvmciParentClasspath(jvmci_parent_jars))
 
         if _src_jdk.javaCompliance >= '9':
-            jimage_jars = set()
-            for component in registered_graalvm_components(stage1=False):
-                jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
-                if isinstance(component, mx_sdk.GraalVmJvmciComponent):
-                    jimage_jars.update(component.jvmci_jars)
-
+            assert get_final_graalvm_distribution().jimage_jars
             register_project(GraalVmJImage(
                 suite=_suite,
-                jimage_jars=list(jimage_jars),
+                jimage_jars=list(get_final_graalvm_distribution().jimage_jars),
                 workingSets=None,
             ))
 
@@ -2684,7 +2687,7 @@ mx.add_argument('--force-bash-launchers', action='store', help='Force the use of
                                                                'This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.', default=None)
 mx.add_argument('--skip-libraries', action='store', help='Do not build native images for these libraries.'
                                                          'This can be a comma-separated list of disabled libraries or `true` to disable all libraries.', default=None)
-mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components.')
+mx.add_argument('--sources', action='store', help='Comma-separated list of projects and distributions of open-source components for which source file archives must be included (all by default).', default=None)
 mx.add_argument('--with-debuginfo', action='store_true', help='Generate debuginfo distributions.')
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--release-catalog', action='store', help='Change the default URL of the component catalog for releases.', default=None)
@@ -2861,8 +2864,22 @@ def _has_skipped_libraries(component):
     return False
 
 
-def _include_sources():
-    return not (mx.get_opts().no_sources or _env_var_to_bool('NO_SOURCES'))
+def _sources_arg():
+    return _parse_cmd_arg('sources', default_value=str(True))
+
+
+def _include_sources(dependency):
+    sources = _sources_arg()
+    if isinstance(sources, bool):
+        return sources
+    return dependency in sources
+
+
+def _include_sources_str():
+    sources = _sources_arg()
+    if isinstance(sources, bool):
+        return str(sources)
+    return ','.join(sources)
 
 
 def _with_debuginfo():
