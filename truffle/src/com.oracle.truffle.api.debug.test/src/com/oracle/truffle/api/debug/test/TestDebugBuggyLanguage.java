@@ -69,6 +69,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import java.util.Objects;
 
 /**
  * A buggy language for debugger tests. Use {@link ProxyLanguage#setDelegate(ProxyLanguage)} to
@@ -123,6 +124,14 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
             int v = (Integer) value;
             throwBug(v);
         }
+    }
+
+    @Override
+    protected Object findMetaObject(LanguageContext context, Object value) {
+        if (value instanceof TestTruffleException) {
+            return new TestTruffleException.MetaObject();
+        }
+        return Objects.toString(value);
     }
 
     private static void throwBug(int v) {
@@ -387,12 +396,48 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
         }
     }
 
-    private static class TestTruffleException extends AbstractTruffleException {
+    static final class TestTruffleException extends AbstractTruffleException {
 
         private static final long serialVersionUID = 7653875618655878235L;
 
         TestTruffleException() {
             super("A TruffleException");
         }
+
+        @Override
+        public String toString() {
+            return getMessage();
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        static final class MetaObject implements TruffleObject {
+
+            @ExportMessage
+            boolean isMetaObject() {
+                return true;
+            }
+
+            @ExportMessage
+            String getMetaQualifiedName() {
+                return TestTruffleException.class.getName();
+            }
+
+            @ExportMessage
+            String getMetaSimpleName() {
+                return TestTruffleException.class.getSimpleName();
+            }
+
+            @ExportMessage
+            @SuppressWarnings("unused")
+            String toDisplayString(boolean allowSideEffects) {
+                return getMetaSimpleName();
+            }
+
+            @ExportMessage
+            boolean isMetaInstance(Object instance) {
+                return instance instanceof TestTruffleException;
+            }
+        }
     }
+
 }

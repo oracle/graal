@@ -268,7 +268,7 @@ public final class DebugException extends RuntimeException {
      */
     @SuppressWarnings("deprecation")
     public boolean isInternalError() {
-        if (exception != null && (!isTruffleException(exception) || ((com.oracle.truffle.api.TruffleException) exception).isInternalError())) {
+        if (!isTruffleException(exception)) {
             if (exception instanceof DebugException) {
                 return ((DebugException) exception).isInternalError();
             }
@@ -434,8 +434,7 @@ public final class DebugException extends RuntimeException {
         }
     }
 
-    @SuppressWarnings("deprecation")
     private static boolean isTruffleException(Throwable t) {
-        return t instanceof com.oracle.truffle.api.TruffleException;
+        return t != null && InteropLibrary.getUncached().isException(t);
     }
 }

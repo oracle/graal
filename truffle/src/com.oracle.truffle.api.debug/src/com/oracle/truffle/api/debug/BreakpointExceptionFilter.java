@@ -92,7 +92,7 @@ final class BreakpointExceptionFilter {
     @TruffleBoundary
     @SuppressWarnings("deprecation")
     private Match testExceptionCaught(Node throwNode, Throwable exception) {
-        if (!(exception instanceof com.oracle.truffle.api.TruffleException)) {
+        if (!InteropLibrary.getUncached().isException(exception)) {
             return uncaught ? Match.MATCHED : Match.UNMATCHED;
         }
         CatchLocation catchLocation = getCatchNode(throwNode, exception);
