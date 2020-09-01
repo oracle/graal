@@ -3,7 +3,7 @@
 #include<stdlib.h>
 #include<iostream>
 
-
+//-----------------------------------------test via polyglot API
 
 class A {
 	public:
@@ -11,31 +11,19 @@ class A {
 		virtual int foo(int x);
 };
 
-class B {
-	public:
-		int k;
-		int foo(int x);
-		B();
-};
-
 int A::foo(int x) {return 0;} //dummy
-int B::foo(int x) {return k+x;}
-
-B::B() {k=1;}
 
 POLYGLOT_DECLARE_CLASS(A);
-POLYGLOT_DECLARE_CLASS(B);
 
-A* getAByCreatingB() {
-	void* polyglotB = polyglot_from_B(new B());
-	A* a = polyglot_as_A(polyglotB);
-	return a;
-}
-
-int evaluate(int x) {
-	A* a = getAByCreatingB();
+int evaluateDirectly(A* a, int x) {
 	return a->foo(x);
 }
+
+int evaluateWithPolyglotConversion(void* aObj, int x) {
+	return evaluateDirectly(polyglot_as_A(aObj), x);
+}
+
+
 
 //------------------------------------------test native
 class B1 {
@@ -54,13 +42,6 @@ int B1::f() {return 0;}
 int B2::f() {return 2;}
 int B1::g() {return 0;}
 int B2::g() {return 2;}
-
-POLYGLOT_DECLARE_CLASS(B1);
-
-void* getB1() {
-	B1* b2 = new B2();
-	return polyglot_from_B1(b2);
-}
 
 int getB1F() {
 	B1* b2 = new B2();

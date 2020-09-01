@@ -453,7 +453,7 @@ public abstract class LLVMInteropType implements TruffleObject {
                     Object readMember = InteropLibrary.getUncached(foreign).readMember(foreign, methodName);
                     return new RemoveSelfArgument(readMember);
                 } catch (UnknownIdentifierException e) {
-                    final String msg = String.format("External method \"%s\" of %s not found", methodName, foreign);
+                    final String msg = String.format("External method %s (identifier \"%s\") not found in type %s", methodName, e.getUnknownIdentifier(), foreign.getClass().getSimpleName());
                     throw new IllegalStateException(msg);
                     // TODO pichristoph: change to UnknownIdentifierException
                 }

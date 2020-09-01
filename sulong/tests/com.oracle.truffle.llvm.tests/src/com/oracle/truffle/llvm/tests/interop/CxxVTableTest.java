@@ -41,34 +41,38 @@ import com.oracle.truffle.tck.TruffleRunner;
 public class CxxVTableTest extends InteropTestBase {
 
     private static Value testCppLibrary;
-    private static Value evaluate;
+    private static Value evaluateDirectly;
+    private static Value evaluateWithPolyglotConversion;
     private static Value getB1F;
     private static Value getB1G;
 
     @BeforeClass
     public static void loadTestBitcode() {
         testCppLibrary = loadTestBitcodeValue("vtableTest.cpp");
-        evaluate = testCppLibrary.getMember("evaluate");
+        evaluateDirectly = testCppLibrary.getMember("evaluateDirectly");
+        evaluateWithPolyglotConversion = testCppLibrary.getMember("evaluateWithPolyglotConversion");
         getB1F = testCppLibrary.getMember("getB1F");
         getB1G = testCppLibrary.getMember("getB1G");
     }
 
     @Test
-    public void testWithoutPolyglotObject() {
+    public void testWithoutPolyglot() {
         Assert.assertEquals(0, getB1G.execute().asInt());
         Assert.assertEquals(2, getB1F.execute().asInt());
     }
 
     @Test
-    public void testWithPolyglotObject() {
-        Value b = testCppLibrary.invokeMember("getB1");
-        Assert.assertEquals(0, b.invokeMember("g").asInt());
-        Assert.assertEquals(2, b.invokeMember("f").asInt());
+    public void testWithPolyglot() {
+        CxxVtableTest_TestClass testObject = new CxxVtableTest_TestClass();
+        Assert.assertEquals(50, evaluateDirectly.execute(testObject, 10).asInt());
+        Assert.assertEquals(60, evaluateDirectly.execute(testObject, 10).asInt());
+        Assert.assertEquals(10, evaluateDirectly.execute(testObject, 0).asInt());
+        /*
+         * testObject stores last argument and uses it at the next call. Therefore, calls with the
+         * same parameters lead to different results.
+         */
+        Assert.assertEquals(50, evaluateWithPolyglotConversion.execute(testObject, 10).asInt());
+        Assert.assertEquals(60, evaluateWithPolyglotConversion.execute(testObject, 10).asInt());
+        Assert.assertEquals(10, evaluateWithPolyglotConversion.execute(testObject, 0).asInt());
     }
-
-    @Test
-    public void testCallback() {
-        Assert.assertEquals(19, evaluate.execute(18).asInt());
-    }
-
 }
