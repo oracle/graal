@@ -56,12 +56,12 @@ public enum JniVersion {
     /**
      * JNI version implemented by Espresso when running a java 8 home.
      */
-    static JniVersion JNI_VERSION_ESPRESSO_8 = JNI_VERSION_1_8;
+    static final JniVersion JNI_VERSION_ESPRESSO_8 = JNI_VERSION_1_8;
 
     /**
      * JNI version implemented by Espresso when running a java 11 home.
      */
-    static JniVersion JNI_VERSION_ESPRESSO_11 = JNI_VERSION_10;
+    static final JniVersion JNI_VERSION_ESPRESSO_11 = JNI_VERSION_10;
 
     public static boolean isSupported(int version, JavaVersion contextVersion) {
         for (JniVersion v : JniVersion.values()) {

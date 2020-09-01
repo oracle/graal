@@ -260,11 +260,11 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             if (jniEnv.getContext().EnableManagement) {
                 initializeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
-                                "initializeManagementContext", "(env, (pointer): pointer): pointer");
+                                "initializeManagementContext", "(env, (pointer): pointer, sint32): pointer");
 
                 disposeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                                 "disposeManagementContext",
-                                "(env, pointer): void");
+                                "(env, pointer, sint32): void");
             } else {
                 initializeManagementContext = null;
                 disposeManagementContext = null;
@@ -909,8 +909,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // endregion Library support
     @VmImpl
-    public static boolean JVM_IsSupportedJNIVersion(int version) {
-        return JniVersion.isSupported(version);
+    public boolean JVM_IsSupportedJNIVersion(int version) {
+        return JniVersion.isSupported(version, getJavaVersion());
     }
 
     @VmImpl
@@ -928,8 +928,9 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             if (getContext().EnableManagement) {
                 if (managementPtr != null) {
-                    getUncached().execute(disposeManagementContext, managementPtr);
+                    getUncached().execute(disposeManagementContext, managementPtr, managementVersion);
                     this.managementPtr = null;
+                    this.managementVersion = 0;
                 }
             } else {
                 assert managementPtr == null;
@@ -963,11 +964,13 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
+    @TruffleBoundary
     public static void JVM_Halt(int code) {
         throw new EspressoExitException(code);
     }
 
     @VmImpl
+    @TruffleBoundary
     public static void JVM_Exit(int code) {
         // System.exit(code);
         // Unlike Halt, runs finalizers
@@ -2017,6 +2020,9 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     public static final int JMM_VERSION = 0x20010203;
 
+    @CompilerDirectives.CompilationFinal //
+    private int managementVersion;
+
     @VmImpl
     public synchronized @Pointer TruffleObject JVM_GetManagement(int version) {
         if (version != JMM_VERSION_1_0 && getJavaVersion().java8OrEarlier()) {
@@ -2033,7 +2039,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         if (managementPtr == null) {
             try {
-                managementPtr = (TruffleObject) getUncached().execute(initializeManagementContext, lookupVmImplCallback);
+                managementPtr = (TruffleObject) getUncached().execute(initializeManagementContext, lookupVmImplCallback, version);
+                managementVersion = version;
                 assert getUncached().isPointer(managementPtr);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
@@ -2168,7 +2175,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     if (stackTrace.length() > maxDepth && maxDepth != -1) {
                         StaticObject[] unwrapped = stackTrace.unwrap();
                         unwrapped = Arrays.copyOf(unwrapped, maxDepth);
-                        stackTrace = StaticObject.wrap(unwrapped, meta);
+                        stackTrace = StaticObject.wrap(meta.java_lang_StackTraceElement.getArrayClass(), unwrapped);
                     }
                 } else {
                     stackTrace = meta.java_lang_StackTraceElement.allocateReferenceArray(0);
