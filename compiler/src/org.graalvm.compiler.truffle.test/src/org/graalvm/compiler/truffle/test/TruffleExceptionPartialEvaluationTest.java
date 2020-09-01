@@ -82,6 +82,7 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
 
     interface NodeFactory {
         AbstractTestNode createThrowNode(int stackTraceElementLimit, boolean property);
+
         AbstractTestNode createCatchNode(AbstractTestNode child);
     }
 
@@ -102,7 +103,7 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
 
         @Child private AbstractTestNode child;
 
-        public CatchTruffleExceptionTestNode(AbstractTestNode child) {
+        CatchTruffleExceptionTestNode(AbstractTestNode child) {
             this.child = child;
         }
 
@@ -124,7 +125,7 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
         private final int limit;
         private final boolean property;
 
-        public ThrowTruffleExceptionTestNode(int limit, boolean property) {
+        ThrowTruffleExceptionTestNode(int limit, boolean property) {
             this.limit = limit;
             this.property = property;
         }
@@ -138,7 +139,7 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
     private static class CallTestNode extends AbstractTestNode {
         @Child private DirectCallNode callNode;
 
-        public CallTestNode(CallTarget callTarget) {
+        CallTestNode(CallTarget callTarget) {
             this.callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
             this.callNode.forceInlining();
         }

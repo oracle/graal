@@ -52,6 +52,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -75,6 +76,11 @@ final class ExceptionAccessor extends Accessor {
         @Override
         public void setLazyStackTrace(Throwable exception, Throwable stackTrace) {
             ((AbstractTruffleException) exception).setLazyStackTrace(stackTrace);
+        }
+
+        @Override
+        public Object createDefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection) {
+            return new DefaultStackTraceElementObject(rootNode, sourceSection);
         }
 
         @Override

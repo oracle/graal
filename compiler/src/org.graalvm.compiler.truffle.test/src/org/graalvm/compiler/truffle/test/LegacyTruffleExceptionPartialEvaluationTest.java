@@ -32,7 +32,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import org.junit.Test;
 
-
 public class LegacyTruffleExceptionPartialEvaluationTest extends PartialEvaluationTest {
 
     public static Object constant42() {
@@ -48,6 +47,7 @@ public class LegacyTruffleExceptionPartialEvaluationTest extends PartialEvaluati
         assertPartialEvalEquals("constant42", createCallerChain(4, 4, nodeFactory));
     }
 
+    @SuppressWarnings("deprecation")
     private static final class TestTruffleException extends RuntimeException implements com.oracle.truffle.api.TruffleException {
 
         private static final long serialVersionUID = -6105288741119318027L;
@@ -96,7 +96,7 @@ public class LegacyTruffleExceptionPartialEvaluationTest extends PartialEvaluati
 
         @Child private AbstractTestNode child;
 
-        public CatchTruffleExceptionTestNode(AbstractTestNode child) {
+        CatchTruffleExceptionTestNode(AbstractTestNode child) {
             this.child = child;
         }
 
@@ -118,7 +118,7 @@ public class LegacyTruffleExceptionPartialEvaluationTest extends PartialEvaluati
         private final int limit;
         private final boolean property;
 
-        public ThrowTruffleExceptionTestNode(int limit, boolean property) {
+        ThrowTruffleExceptionTestNode(int limit, boolean property) {
             this.limit = limit;
             this.property = property;
         }

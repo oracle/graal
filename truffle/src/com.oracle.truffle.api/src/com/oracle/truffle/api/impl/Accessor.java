@@ -221,7 +221,6 @@ public abstract class Accessor {
 
         public abstract boolean isScopeObject(Object receiver);
 
-        public abstract Object createDefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection);
     }
 
     public abstract static class EngineSupport extends Support {
@@ -769,6 +768,8 @@ public abstract class Accessor {
         public abstract Throwable getLazyStackTrace(Throwable exception);
 
         public abstract void setLazyStackTrace(Throwable exception, Throwable stackTrace);
+
+        public abstract Object createDefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection);
 
         public abstract boolean isException(Object receiver);
 

@@ -57,6 +57,7 @@ final class NodeAccessor extends Accessor {
     private static final NodeAccessor ACCESSOR = new NodeAccessor();
 
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
+    static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();

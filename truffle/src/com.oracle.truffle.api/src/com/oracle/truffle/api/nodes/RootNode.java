@@ -413,9 +413,16 @@ public abstract class RootNode extends ExecutableNode {
         return null;
     }
 
+    /**
+     * Translates the {@link TruffleStackTraceElement} into an interop object supporting the
+     * {@code hasExecutableName} and potentially {@code hasDeclaringMetaObject} and
+     * {@code hasSourceLocation} messages.
+     *
+     * @since 20.3
+     */
     protected Object translateStackTraceElement(TruffleStackTraceElement element) {
         Node location = element.getLocation();
-        return NodeAccessor.INTEROP.createDefaultStackTraceElementObject(element.getTarget().getRootNode(), location != null ? location.getEncapsulatingSourceSection() : null);
+        return NodeAccessor.EXCEPTION.createDefaultStackTraceElementObject(element.getTarget().getRootNode(), location != null ? location.getEncapsulatingSourceSection() : null);
     }
 
     /**

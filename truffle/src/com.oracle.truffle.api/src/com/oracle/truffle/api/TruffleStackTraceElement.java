@@ -116,6 +116,13 @@ public final class TruffleStackTraceElement {
         return frame;
     }
 
+    /**
+     * Returns an interop object representing this {@linkplain TruffleStackTraceElement} supporting
+     * the {@code hasExecutableName} and potentially {@code hasDeclaringMetaObject} and
+     * {@code hasSourceLocation} messages.
+     *
+     * @since 20.3
+     */
     public Object getGuestObject() {
         return LanguageAccessor.nodesAccess().translateStackTraceElement(this);
     }
