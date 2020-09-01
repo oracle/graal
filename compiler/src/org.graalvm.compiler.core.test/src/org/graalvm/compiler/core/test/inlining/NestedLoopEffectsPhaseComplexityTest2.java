@@ -283,6 +283,27 @@ public class NestedLoopEffectsPhaseComplexityTest2 extends GraalCompilerTest {
         return res;
     }
 
+    public static int recursiveLoopMethodFieldLoadWithPrevAlloc(int a) {
+        if (IntSideEffect == 0) {
+            return 1;
+        }
+        C c = new C(0);
+        C d = new C(0);
+        for (int i = 0; i < a; i++) {
+            IntSideEffect = c.x;
+            c = new C(recursiveLoopMethodFieldLoadWithPrevAlloc(i));
+            OSideEffect = d;
+        }
+        OSideEffect = c;
+        return c.x;
+    }
+
+    @Test
+    public void testIterative() {
+        OptionValues op = new OptionValues(getInitialOptions(), GraalOptions.EscapeAnalysisLoopCutoff, 1);
+        prepareGraph("recursiveLoopMethodFieldLoadWithPrevAlloc", 30, true, op);
+    }
+
     private static final boolean LOG_PHASE_TIMINGS = false;
     private static int InliningCountLowerBound = 1;
     private static int InliningCountUpperBound = 128;
@@ -326,14 +347,22 @@ public class NestedLoopEffectsPhaseComplexityTest2 extends GraalCompilerTest {
     }
 
     private StructuredGraph prepareGraph(String snippet, int inliningCount) {
+        return prepareGraph(snippet, inliningCount, false, getInitialOptions());
+    }
+
+    private StructuredGraph prepareGraph(String snippet, int inliningCount, boolean peaDuring, OptionValues options) {
         ResolvedJavaMethod callerMethod = getResolvedJavaMethod(snippet);
-        StructuredGraph callerGraph = parseEager(callerMethod, AllowAssumptions.NO);
+        StructuredGraph callerGraph = parseEager(callerMethod, AllowAssumptions.NO, options);
         PhaseSuite<HighTierContext> graphBuilderSuite = getDefaultGraphBuilderSuite();
         HighTierContext context = new HighTierContext(getProviders(), graphBuilderSuite, OptimisticOptimizations.NONE);
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         Invoke next = callerGraph.getNodes(MethodCallTargetNode.TYPE).first().invoke();
         StructuredGraph calleeGraph = parseBytecodes(next.callTarget().targetMethod(), context, canonicalizer);
         ResolvedJavaMethod calleeMethod = next.callTarget().targetMethod();
+        if (peaDuring) {
+            new PartialEscapePhase(false, createCanonicalizerPhase(),
+                            callerGraph.getOptions()).apply(callerGraph, getDefaultHighTierContext());
+        }
         for (int i = 0; i < inliningCount; i++) {
             if (callerGraph.getNodes(MethodCallTargetNode.TYPE).isEmpty()) {
                 break;
@@ -343,6 +372,12 @@ public class NestedLoopEffectsPhaseComplexityTest2 extends GraalCompilerTest {
                             "Called explicitly from a unit test.", "Test case");
             canonicalizer.applyIncremental(callerGraph, context, canonicalizeNodes);
             callerGraph.getDebug().dump(DebugContext.DETAILED_LEVEL, callerGraph, "After inlining %s into %s iteration %d", calleeMethod, callerMethod, i);
+            assert calleeGraph.verify();
+            if (peaDuring) {
+                new PartialEscapePhase(false, createCanonicalizerPhase(),
+                                callerGraph.getOptions()).apply(callerGraph, getDefaultHighTierContext());
+            }
+            assert calleeGraph.verify();
         }
 
         return callerGraph;
