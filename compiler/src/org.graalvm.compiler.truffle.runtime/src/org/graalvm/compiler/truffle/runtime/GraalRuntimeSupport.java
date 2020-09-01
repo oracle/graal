@@ -28,10 +28,12 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -43,8 +45,11 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         super(permission);
     }
 
+    @ExplodeLoop
     @Override
     public void onLoopCount(Node source, int count) {
+        CompilerAsserts.partialEvaluationConstant(source);
+
         Node node = source;
         Node parentNode = source != null ? source.getParent() : null;
         while (node != null) {
@@ -54,7 +59,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
             parentNode = node;
             node = node.getParent();
         }
-        if (parentNode != null && parentNode instanceof RootNode) {
+        if (parentNode instanceof RootNode) {
             CallTarget target = ((RootNode) parentNode).getCallTarget();
             if (target instanceof OptimizedCallTarget) {
                 ((OptimizedCallTarget) target).onLoopCount(count);

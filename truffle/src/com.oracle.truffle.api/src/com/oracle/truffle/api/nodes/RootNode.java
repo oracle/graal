@@ -127,7 +127,7 @@ public abstract class RootNode extends ExecutableNode {
 
     private static final AtomicReferenceFieldUpdater<RootNode, ReentrantLock> LOCK_UPDATER = AtomicReferenceFieldUpdater.newUpdater(RootNode.class, ReentrantLock.class, "lock");
 
-    private volatile RootCallTarget callTarget;
+    @CompilationFinal private volatile RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
     private volatile ReentrantLock lock;
 
