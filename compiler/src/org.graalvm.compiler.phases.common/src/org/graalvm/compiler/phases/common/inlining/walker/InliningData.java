@@ -46,6 +46,7 @@ import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -74,6 +75,7 @@ import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * <p>
@@ -254,27 +256,33 @@ public class InliningData {
     }
 
     private InlineInfo getTypeCheckedInlineInfo(Invoke invoke, ResolvedJavaMethod targetMethod) {
+        StructuredGraph graph = invoke.asNode().graph();
+        InliningLog inliningLog = graph.getInliningLog();
         JavaTypeProfile typeProfile = ((MethodCallTargetNode) invoke.callTarget()).getProfile();
         if (typeProfile == null) {
             InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "no type profile exists");
-            invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null, "no type profile exists");
+            inliningLog.addDecision(invoke, false, "InliningPhase", null, null, "no type profile exists");
             return null;
         }
 
         JavaTypeProfile.ProfiledType[] ptypes = typeProfile.getTypes();
         if (ptypes == null || ptypes.length <= 0) {
             InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "no types in profile");
-            invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null, "no types in profile");
+            inliningLog.addDecision(invoke, false, "InliningPhase", null, null, "no types in profile");
             return null;
         }
         ResolvedJavaType contextType = invoke.getContextType();
         double notRecordedTypeProbability = typeProfile.getNotRecordedProbability();
         final OptimisticOptimizations optimisticOpts = context.getOptimisticOptimizations();
         OptionValues options = invoke.asNode().getOptions();
-        if (ptypes.length == 1 && notRecordedTypeProbability == 0) {
+
+        SpeculationLog speculationLog = graph.getSpeculationLog();
+        SpeculationLog.SpeculationReason speculation = notRecordedTypeProbability == 0 ? InliningUtil.createSpeculation(invoke, typeProfile) : null;
+
+        if (ptypes.length == 1 && notRecordedTypeProbability == 0 && (speculationLog == null || speculationLog.maySpeculate(speculation))) {
             if (!optimisticOpts.inlineMonomorphicCalls(options)) {
                 InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "inlining monomorphic calls is disabled");
-                invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null, "inlining monomorphic calls is disabled");
+                inliningLog.addDecision(invoke, false, "InliningPhase", null, null, "inlining monomorphic calls is disabled");
                 return null;
             }
 
@@ -284,13 +292,13 @@ public class InliningData {
             if (!checkTargetConditions(invoke, concrete)) {
                 return null;
             }
-            return new TypeGuardInlineInfo(invoke, concrete, type);
+            return new TypeGuardInlineInfo(invoke, concrete, type, speculation);
         } else {
             invoke.setPolymorphic(true);
 
             if (!optimisticOpts.inlinePolymorphicCalls(options) && notRecordedTypeProbability == 0) {
                 InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "inlining polymorphic calls is disabled (%d types)", ptypes.length);
-                invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null, "inlining polymorphic calls is disabled (%d types)", ptypes.length);
+                inliningLog.addDecision(invoke, false, "InliningPhase", null, null, "inlining polymorphic calls is disabled (%d types)", ptypes.length);
                 return null;
             }
             if (!optimisticOpts.inlineMegamorphicCalls(options) && notRecordedTypeProbability > 0) {
@@ -298,7 +306,7 @@ public class InliningData {
                 // the number of types is lower than what can be recorded in a type profile
                 InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.length,
                                 notRecordedTypeProbability * 100);
-                invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null,
+                inliningLog.addDecision(invoke, false, "InliningPhase", null, null,
                                 "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.length, notRecordedTypeProbability);
                 return null;
             }
@@ -310,7 +318,7 @@ public class InliningData {
                 ResolvedJavaMethod concrete = ptypes[i].getType().resolveConcreteMethod(targetMethod, contextType);
                 if (concrete == null) {
                     InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "could not resolve method");
-                    invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null, "could not resolve method");
+                    inliningLog.addDecision(invoke, false, "InliningPhase", null, null, "could not resolve method");
                     return null;
                 }
                 int index = concreteMethods.indexOf(concrete);
@@ -339,7 +347,7 @@ public class InliningData {
                     // No method left that is worth inlining.
                     InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "no methods remaining after filtering less frequent methods (%d methods previously)",
                                     concreteMethods.size());
-                    invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null,
+                    inliningLog.addDecision(invoke, false, "InliningPhase", null, null,
                                     "no methods remaining after filtering less frequent methods (%d methods previously)", concreteMethods.size());
                     return null;
                 }
@@ -350,7 +358,7 @@ public class InliningData {
 
             if (concreteMethods.size() > maxMethodPerInlining) {
                 InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "polymorphic call with more than %d target methods", maxMethodPerInlining);
-                invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null, "polymorphic call with more than %d target methods", maxMethodPerInlining);
+                inliningLog.addDecision(invoke, false, "InliningPhase", null, null, "polymorphic call with more than %d target methods", maxMethodPerInlining);
                 return null;
             }
 
@@ -372,7 +380,7 @@ public class InliningData {
             if (usedTypes.isEmpty()) {
                 // No type left that is worth checking for.
                 InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.length);
-                invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null, "no types remaining after filtering less frequent types (%d types previously)",
+                inliningLog.addDecision(invoke, false, "InliningPhase", null, null, "no types remaining after filtering less frequent types (%d types previously)",
                                 ptypes.length);
                 return null;
             }
@@ -380,12 +388,12 @@ public class InliningData {
             for (ResolvedJavaMethod concrete : concreteMethods) {
                 if (!checkTargetConditions(invoke, concrete)) {
                     InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "it is a polymorphic method call and at least one invoked method cannot be inlined");
-                    invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null,
+                    inliningLog.addDecision(invoke, false, "InliningPhase", null, null,
                                     "it is a polymorphic method call and at least one invoked method cannot be inlined");
                     return null;
                 }
             }
-            return new MultiTypeGuardInlineInfo(invoke, concreteMethods, usedTypes, typesToConcretes, notRecordedTypeProbability);
+            return new MultiTypeGuardInlineInfo(invoke, concreteMethods, usedTypes, typesToConcretes, notRecordedTypeProbability, speculation);
         }
     }
 

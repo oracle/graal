@@ -100,14 +100,17 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.util.ValueMergeUtil;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public class InliningUtil extends ValueMergeUtil {
 
@@ -1013,6 +1016,33 @@ public class InliningUtil extends ValueMergeUtil {
                 callTarget.replaceFirstInput(oldReceiver, newReceiver);
             }
             return newReceiver;
+        }
+    }
+
+    private static final SpeculationReasonGroup FALLBACK_DEOPT_SPECULATION = new SpeculationReasonGroup("FallbackDeopt", ResolvedJavaMethod.class, int.class, ReceiverTypeSpeculationContext.class);
+
+    public static SpeculationLog.SpeculationReason createSpeculation(Invoke invoke, JavaTypeProfile typeProfile) {
+        assert typeProfile.getNotRecordedProbability() == 0.0D;
+        FrameState frameState = invoke.stateAfter();
+        assert frameState != null;
+        return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), frameState.bci, new ReceiverTypeSpeculationContext(typeProfile));
+    }
+
+    private static class ReceiverTypeSpeculationContext implements SpeculationReasonGroup.SpeculationContextObject {
+        private final JavaTypeProfile typeProfile;
+
+        ReceiverTypeSpeculationContext(JavaTypeProfile typeProfile) {
+            this.typeProfile = typeProfile;
+        }
+
+        @Override
+        public void accept(Visitor v) {
+            for (JavaTypeProfile.ProfiledType profiledType : typeProfile.getTypes()) {
+                // We speculate on the profiled types. When the speculation fails, we expect to see
+                // a new receiver type in the recompilation. Hence, the probability of each profiled
+                // type won't matter here.
+                v.visitObject(profiledType.getType());
+            }
         }
     }
 
