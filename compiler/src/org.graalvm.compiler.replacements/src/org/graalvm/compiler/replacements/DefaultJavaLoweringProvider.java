@@ -552,7 +552,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         GuardingNode boundsCheck = getBoundsCheck(loadIndexed, array, tool);
         ValueNode index = loadIndexed.index();
         if (SpectrePHTIndexMasking.getValue(graph.getOptions())) {
-            index = proxyIndex(loadIndexed, index, array, tool);
+            index = graph.addOrUniqueWithInputs(proxyIndex(loadIndexed, index, array, tool));
         }
         AddressNode address = createArrayIndexAddress(graph, array, elementKind, index, boundsCheck);
 
