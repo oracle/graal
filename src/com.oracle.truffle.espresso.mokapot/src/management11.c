@@ -67,8 +67,11 @@
     V(ExecuteDiagnosticCommand) \
     V(SetDiagnosticFrameworkNotificationEnabled)
     
-//V(GetInputArguments)
-//V(GetInputArgumentArray)
+/**
+ * These two methods are removed from the API since JDK 9
+ */
+// V(GetInputArguments)
+// V(GetInputArgumentArray)
 
 
 JNIEXPORT void* JNICALL initializeManagementContext11(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
