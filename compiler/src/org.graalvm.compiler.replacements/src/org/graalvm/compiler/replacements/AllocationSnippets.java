@@ -285,7 +285,7 @@ public abstract class AllocationSnippets implements Snippets {
         return memory.toObjectNonNull();
     }
 
-    protected void emitPrefetchAllocate(Word address, boolean isArray) {
+    public void emitPrefetchAllocate(Word address, boolean isArray) {
         if (getPrefetchStyle() > 0) {
             // Insert a prefetch for each allocation only on the fast-path
             // Generate several prefetch instructions.
@@ -308,21 +308,21 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected abstract int getPrefetchDistance();
 
-    protected abstract boolean useTLAB();
+    public abstract boolean useTLAB();
 
     protected abstract boolean shouldAllocateInTLAB(UnsignedWord allocationSize, boolean isArray);
 
-    protected abstract Word getTLABInfo();
+    public abstract Word getTLABInfo();
 
-    protected abstract Word readTlabTop(Word tlabInfo);
+    public abstract Word readTlabTop(Word tlabInfo);
 
-    protected abstract Word readTlabEnd(Word tlabInfo);
+    public abstract Word readTlabEnd(Word tlabInfo);
 
-    protected abstract void writeTlabTop(Word tlabInfo, Word newTop);
+    public abstract void writeTlabTop(Word tlabInfo, Word newTop);
 
     protected abstract int instanceHeaderSize();
 
-    protected abstract void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray);
+    public abstract void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray);
 
     protected abstract Object callNewInstanceStub(Word hub);
 
@@ -336,7 +336,7 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected abstract Object verifyOop(Object obj);
 
-    protected abstract int arrayLengthOffset();
+    public abstract int arrayLengthOffset();
 
     protected abstract int objectAlignment();
 

@@ -42,6 +42,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -71,7 +72,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
 
     public static void registerLowering(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        GenScavengeAllocationSnippets snippetReceiver = new GenScavengeAllocationSnippets();
+        SubstrateAllocationSnippets snippetReceiver = ImageSingletons.lookup(SubstrateAllocationSnippets.class);
         GenScavengeAllocationSnippets.Templates allocationSnippets = new GenScavengeAllocationSnippets.Templates(
                         snippetReceiver, options, factories, SnippetCounter.Group.NullFactory, providers, snippetReflection);
         allocationSnippets.registerLowerings(lowerings);
@@ -104,12 +105,12 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Override
-    protected void initializeObjectHeader(Word memory, Word objectHeader, Word prototypeMarkWord, boolean isArray) {
+    public void initializeObjectHeader(Word memory, Word objectHeader, Word prototypeMarkWord, boolean isArray) {
         ObjectHeaderImpl.initializeHeaderOfNewObject(memory, objectHeader, isArray);
     }
 
     @Override
-    protected boolean useTLAB() {
+    public boolean useTLAB() {
         return true;
     }
 
@@ -119,22 +120,22 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Override
-    protected Word getTLABInfo() {
+    public Word getTLABInfo() {
         return (Word) ThreadLocalAllocation.regularTLAB.getAddress();
     }
 
     @Override
-    protected Word readTlabTop(Word tlabInfo) {
+    public Word readTlabTop(Word tlabInfo) {
         return ((Descriptor) tlabInfo).getAllocationTop(TLAB_TOP_IDENTITY);
     }
 
     @Override
-    protected Word readTlabEnd(Word tlabInfo) {
+    public Word readTlabEnd(Word tlabInfo) {
         return ((Descriptor) tlabInfo).getAllocationEnd(TLAB_END_IDENTITY);
     }
 
     @Override
-    protected void writeTlabTop(Word tlabInfo, Word newTop) {
+    public void writeTlabTop(Word tlabInfo, Word newTop) {
         ((Descriptor) tlabInfo).setAllocationTop(newTop, TLAB_TOP_IDENTITY);
     }
 
@@ -152,7 +153,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
         private final SnippetInfo formatObject;
         private final SnippetInfo formatArray;
 
-        Templates(GenScavengeAllocationSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories,
+        Templates(SubstrateAllocationSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories,
                         SnippetCounter.Group.Factory groupFactory, Providers providers, SnippetReflectionProvider snippetReflection) {
             super(receiver, options, factories, groupFactory, providers, snippetReflection);
 
