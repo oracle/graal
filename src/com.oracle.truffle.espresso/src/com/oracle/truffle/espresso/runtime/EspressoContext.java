@@ -138,7 +138,7 @@ public final class EspressoContext {
     @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
-    private boolean isClosing = false;
+    private volatile boolean isClosing = false;
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
@@ -555,43 +555,67 @@ public final class EspressoContext {
         // TODO(Gregersen) - /browse/GR-20077
     }
 
-    private static final int MAX_KILL_SPINS = 20;
+    private static final long MAX_KILL_PHASE_WAIT = 100;
 
     public void interruptActiveThreads() {
         isClosing = true;
         invalidateNoThreadStop("Killing the VM");
         Thread initiatingThread = Thread.currentThread();
-        for (StaticObject guest : threadManager.activeThreads()) {
-            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
-            if (t != initiatingThread) {
-                try {
+
+        // Phase 0: wait.
+        boolean nextPhase = !waitSpin(initiatingThread);
+
+        if (nextPhase) {
+            // Phase 1: Interrupt threads, and stop daemons.
+            for (StaticObject guest : threadManager.activeThreads()) {
+                Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+                if (t != initiatingThread) {
                     if (t.isDaemon()) {
                         Target_java_lang_Thread.killThread(guest);
                     }
                     Target_java_lang_Thread.interrupt0(guest);
-                    // Give time to gracefully exit.
-                    t.join(30);
-                    int loops = 0;
-                    while (t.isAlive() && ++loops < MAX_KILL_SPINS) {
-                        /*
-                         * Temporary fix for running JCK tests. Forcefully killing all threads at
-                         * context closing time allows to identify which failures are due to actual
-                         * timeouts or due to thread being unresponsive. Note that this still does
-                         * not wakes up thread blocked in native.
-                         * 
-                         * Currently, threads in native can not be killed in Espresso. This
-                         * translates into a polyglot-side java.lang.IllegalStateException: The
-                         * language did not complete all polyglot threads but should have.
-                         */
-                        // TODO: Gracefully exit and allow stopping threads in native.
-                        Target_java_lang_Thread.forceKillThread(guest);
-                        Target_java_lang_Thread.interrupt0(guest);
-                        t.join(10);
-                    }
-                } catch (InterruptedException e) {
-                    getLogger().warning("Thread interrupted while stopping thread in closing context.");
                 }
             }
+            nextPhase = !waitSpin(initiatingThread);
+        }
+
+        if (nextPhase) {
+            // Phase 2: Stop all threads.
+            for (StaticObject guest : threadManager.activeThreads()) {
+                Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+                if (t != initiatingThread) {
+                    Target_java_lang_Thread.killThread(guest);
+                    Target_java_lang_Thread.interrupt0(guest);
+                }
+            }
+            nextPhase = !waitSpin(initiatingThread);
+        }
+
+        if (nextPhase) {
+            // Phase 3: Force kill with host exception.
+            for (StaticObject guest : threadManager.activeThreads()) {
+                Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+                if (t != initiatingThread) {
+                    /*
+                     * Temporary fix for running JCK tests. Forcefully killing all threads at
+                     * context closing time allows to identify which failures are due to actual
+                     * timeouts or due to thread being unresponsive. Note that this still does not
+                     * wakes up thread blocked in native.
+                     *
+                     * Currently, threads in native can not be killed in Espresso. This translates
+                     * into a polyglot-side java.lang.IllegalStateException: The language did not
+                     * complete all polyglot threads but should have.
+                     */
+                    // TODO: Gracefully exit and allow stopping threads in native.
+                    Target_java_lang_Thread.forceKillThread(guest);
+                    Target_java_lang_Thread.interrupt0(guest);
+                }
+            }
+            nextPhase = !waitSpin(initiatingThread);
+        }
+
+        if (nextPhase) {
+            getLogger().severe("Could not gracefully stop executing thread in context closing.");
         }
 
         if (getEnv().getOptions().get(EspressoOptions.MultiThreaded)) {
@@ -606,6 +630,31 @@ public final class EspressoContext {
         }
 
         initiatingThread.interrupt();
+    }
+
+    /**
+     * Waits for some time for all executing threads to gracefully finish.
+     * 
+     * @return true if all threads are completed, false otherwise.
+     */
+    private boolean waitSpin(Thread initiatingThread) {
+        long tick = System.currentTimeMillis();
+        spinLoop: //
+        while (true) {
+            long time = System.currentTimeMillis() - tick;
+            if (time > MAX_KILL_PHASE_WAIT) {
+                return false;
+            }
+            for (StaticObject guest : threadManager.activeThreads()) {
+                Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+                if (t != initiatingThread) {
+                    if (t.isAlive()) {
+                        continue spinLoop;
+                    }
+                }
+            }
+            return true;
+        }
     }
 
     private void initVmProperties() {
