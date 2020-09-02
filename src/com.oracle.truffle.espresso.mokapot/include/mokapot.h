@@ -24,7 +24,8 @@
 #define _MOKAPOT_H
 
 #include "jvm.h"
-#include <jni.h>
+#include "jni.h"
+
 #include <trufflenfi.h>
 #include <stddef.h>
 #include <stdint.h>

@@ -74,7 +74,7 @@
 // V(GetInputArgumentArray)
 
 
-JNIEXPORT void* JNICALL initializeManagementContext11(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
+void* initializeManagementContext11(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
 
   struct jmmInterface_1_11 *management = (JmmInterface*) malloc(sizeof(struct jmmInterface_1_11));
 
@@ -90,7 +90,7 @@ JNIEXPORT void* JNICALL initializeManagementContext11(TruffleEnv *truffle_env, v
   return management;
 }
 
-JNIEXPORT void JNICALL disposeManagementContext11(TruffleEnv *truffle_env, void *management_ptr) {
+void disposeManagementContext11(TruffleEnv *truffle_env, void *management_ptr) {
   struct jmmInterface_1_11 *management = (struct jmmInterface_1_11*) management_ptr;
 
   #define DISPOSE__(name) \
