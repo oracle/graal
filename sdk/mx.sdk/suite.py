@@ -87,8 +87,8 @@ suite = {
       }
     },
     "JLINE3" : {
-      "sha1" : "6581733f9a6c7b9beaa5ae91945fb974b82c818b",
-      "version" : "3.13.2.0",
+      "sha1" : "f925a217db222ba24ce5b66b18a02511151929bb",
+      "version" : "3.13.2.1",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
       "license" : "BSD-new"
     },
