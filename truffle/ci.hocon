@@ -143,4 +143,8 @@ builds += [
     targets: [gate],
     name: "gate-truffle-test-benchmarks-8"
   }
+  ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${eclipse} ${jdt} {run : [
+        ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacocout", "html"],
+        [mx, coverage-upload]
+    ], targets : [weekly], name: "weekly-truffle-coverage-8-linux-amd64"},
 ]
