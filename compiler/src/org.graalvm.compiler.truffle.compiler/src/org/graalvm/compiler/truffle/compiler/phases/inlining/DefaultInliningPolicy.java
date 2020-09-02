@@ -36,7 +36,13 @@ import org.graalvm.options.OptionValues;
 final class DefaultInliningPolicy implements InliningPolicy {
 
     private static final int MAX_DEPTH = 15;
-    private static final Comparator<CallNode> CALL_NODE_COMPARATOR = (o1, o2) -> Double.compare(o2.getRootRelativeFrequency(), o1.getRootRelativeFrequency());
+    private static final Comparator<CallNode> CALL_NODE_COMPARATOR = (o1, o2) -> {
+        final int compare = Double.compare(o2.getRootRelativeFrequency(), o1.getRootRelativeFrequency());
+        if (compare == 0) {
+            return o1.compareTo(o2);
+        }
+        return compare;
+    };
     private final OptionValues options;
     private int expandedCount;
 
