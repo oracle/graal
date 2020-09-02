@@ -218,7 +218,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * @since 20.3
      */
     protected AbstractTruffleException(String message, Throwable internalCause, int stackTraceElementLimit, Node location) {
-        super(message, checkCause(internalCause));
+        super(message, internalCause);
         this.stackTraceElementLimit = stackTraceElementLimit;
         this.internalCause = internalCause;
         this.location = location;
@@ -418,11 +418,20 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
         }
     }
 
-    @SuppressWarnings("deprecation")
+    /**
+     * Should we assert that internal exception is a TruffleException in the constructor? The
+     * chromeinspector and insight are creating Truffle exceptions with non TruffleException cause.
+     */
+    @SuppressWarnings("unused")
     private static Throwable checkCause(Throwable t) {
-        if (t != null && !(t instanceof com.oracle.truffle.api.TruffleException)) {
+        if (t != null && !isTruffleException(t)) {
             throw new IllegalArgumentException("The " + t + " must be TruffleException subclass.");
         }
         return t;
+    }
+
+    @SuppressWarnings("deprecation")
+    static boolean isTruffleException(Throwable t) {
+        return t instanceof com.oracle.truffle.api.TruffleException;
     }
 }

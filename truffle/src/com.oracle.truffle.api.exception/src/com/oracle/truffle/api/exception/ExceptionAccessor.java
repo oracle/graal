@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.exception;
 
+import static com.oracle.truffle.api.exception.AbstractTruffleException.isTruffleException;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -115,13 +117,13 @@ final class ExceptionAccessor extends Accessor {
 
         @Override
         public boolean hasExceptionCause(Object receiver) {
-            return ((AbstractTruffleException) receiver).getCause() != null;
+            return isTruffleException(((AbstractTruffleException) receiver).getCause());
         }
 
         @Override
         public Object getExceptionCause(Object receiver) {
             Throwable throwable = ((AbstractTruffleException) receiver).getCause();
-            if (throwable != null) {
+            if (isTruffleException(throwable)) {
                 return throwable;
             } else {
                 throw throwUnsupportedMessageException();
@@ -203,11 +205,6 @@ final class ExceptionAccessor extends Accessor {
                 throw throwUnsupportedMessageException();
             }
             return sourceSection;
-        }
-
-        @SuppressWarnings("deprecation")
-        private static boolean isTruffleException(Throwable t) {
-            return t instanceof com.oracle.truffle.api.TruffleException;
         }
 
         private static RuntimeException throwUnsupportedMessageException() {

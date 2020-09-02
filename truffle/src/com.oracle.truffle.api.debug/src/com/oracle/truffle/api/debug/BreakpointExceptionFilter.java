@@ -90,7 +90,6 @@ final class BreakpointExceptionFilter {
     }
 
     @TruffleBoundary
-    @SuppressWarnings("deprecation")
     private Match testExceptionCaught(Node throwNode, Throwable exception) {
         if (!InteropLibrary.getUncached().isException(exception)) {
             return uncaught ? Match.MATCHED : Match.UNMATCHED;
