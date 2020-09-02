@@ -173,6 +173,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private boolean isHidden;
 
     /**
+     * Is this a Record Class (Since JDK 15).
+     */
+    private boolean isRecord;
+
+    /**
      * The {@link Modifier modifiers} of this class.
      */
     private final int modifiers;
@@ -339,7 +344,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, HubType hubType, ReferenceType referenceType, boolean isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName,
-                    int modifiers, ClassLoader classLoader, boolean isHidden, Class<?> nestHost) {
+                    int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost) {
         this.name = name;
         this.hubType = hubType.getValue();
         this.referenceType = referenceType.getValue();
@@ -351,6 +356,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.modifiers = modifiers;
         this.classLoader = classLoader;
         this.isHidden = isHidden;
+        this.isRecord = isRecord;
         this.nestHost = nestHost;
     }
 
@@ -761,6 +767,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @TargetElement(onlyWith = JDK15OrLater.class)
     public boolean isHidden() {
         return isHidden;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    public boolean isRecord() {
+        return isRecord;
     }
 
     @Substitute
