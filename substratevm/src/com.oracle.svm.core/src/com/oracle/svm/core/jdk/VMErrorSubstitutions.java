@@ -26,6 +26,10 @@ package com.oracle.svm.core.jdk;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -34,6 +38,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.log.RawBufferLog;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
@@ -90,48 +95,79 @@ final class Target_com_oracle_svm_core_util_VMError {
 /** Dummy class to have a class with the file's name. */
 public class VMErrorSubstitutions {
 
+    private static final RawBufferLog fatalContextMessageWriter = new RawBufferLog();
+
     @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
     static void shutdown(String msg, Throwable ex) {
         doShutdown(msg, ex);
     }
 
+    @NeverInline("Uses memory allocation in the stack frame.")
+    private static boolean fatalContext(CodePointer callerIP, String msg, Throwable ex) {
+        String fatalErrorMsg = msg != null ? msg : "Unknown Fatal Error";
+        String exceptionClassName = null;
+        String exceptionMessage = null;
+        if (ex != null) {
+            exceptionClassName = ex.getClass().getName();
+            exceptionMessage = JDKUtils.getRawMessage(ex);
+        }
+
+        CCharPointer fatalMessageBytes = StackValue.get(512);
+        fatalContextMessageWriter.setRawBuffer(fatalMessageBytes, 512);
+
+        fatalContextMessageWriter.string("ip:");
+        fatalContextMessageWriter.hex(callerIP);
+        fatalContextMessageWriter.character('|');
+        fatalContextMessageWriter.string(fatalErrorMsg);
+        if (exceptionClassName != null) {
+            fatalContextMessageWriter.character('|');
+            fatalContextMessageWriter.string(exceptionClassName);
+            if (exceptionMessage != null) {
+                fatalContextMessageWriter.character('|');
+                fatalContextMessageWriter.string(exceptionMessage);
+            }
+        }
+
+        return ImageSingletons.lookup(LogHandler.class).fatalContext(fatalMessageBytes, WordFactory.unsigned(fatalContextMessageWriter.getRawBufferPos()));
+    }
+
     @NeverInline("Starting a stack walk in the caller frame")
     private static void doShutdown(String msg, Throwable ex) {
         try {
-            Log log = Log.log();
-            log.autoflush(true);
+            if (fatalContext(KnownIntrinsics.readReturnAddress(), msg, ex)) {
+                Log log = Log.log();
+                log.autoflush(true);
 
-            ImageSingletons.lookup(LogHandler.class).fatalContext();
-            /*
-             * Print the error message. If the diagnostic output fails, at least we printed the most
-             * important bit of information.
-             */
-            log.string("Fatal error");
-            if (msg != null) {
-                log.string(": ").string(msg);
-            }
-            if (ex != null) {
-                log.string(": ").exception(ex);
-            } else {
+                /*
+                 * Print the error message. If the diagnostic output fails, at least we printed the
+                 * most important bit of information.
+                 */
+                log.string("Fatal error");
+                if (msg != null) {
+                    log.string(": ").string(msg);
+                }
+                if (ex != null) {
+                    log.string(": ").exception(ex);
+                } else {
+                    log.newline();
+                }
+
+                SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+
+                /*
+                 * Print the error message again, so that the most important bit of information
+                 * shows up as the last line (which is probably what users look at first).
+                 */
+                log.string("Fatal error");
+                if (msg != null) {
+                    log.string(": ").string(msg);
+                }
+                if (ex != null) {
+                    log.string(": ").string(ex.getClass().getName()).string(": ").string(JDKUtils.getRawMessage(ex));
+                }
                 log.newline();
             }
-
-            SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
-
-            /*
-             * Print the error message again, so that the most important bit of information shows up
-             * as the last line (which is probably what users look at first).
-             */
-            log.string("Fatal error");
-            if (msg != null) {
-                log.string(": ").string(msg);
-            }
-            if (ex != null) {
-                log.string(": ").string(ex.getClass().getName()).string(": ").string(JDKUtils.getRawMessage(ex));
-            }
-            log.newline();
-
         } catch (Throwable ignored) {
             /* Ignore exceptions reported during error reporting, we are going to exit anyway. */
         }

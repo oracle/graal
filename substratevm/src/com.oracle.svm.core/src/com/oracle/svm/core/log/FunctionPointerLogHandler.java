@@ -42,7 +42,7 @@ public class FunctionPointerLogHandler implements LogHandler {
 
     private LogFunctionPointer logFunctionPointer;
     private VoidFunctionPointer flushFunctionPointer;
-    private VoidFunctionPointer fatalContextFunctionPointer;
+    private FatalContextFunctionPointer fatalContextFunctionPointer;
     private VoidFunctionPointer fatalErrorFunctionPointer;
 
     public FunctionPointerLogHandler(LogHandler delegate) {
@@ -68,12 +68,13 @@ public class FunctionPointerLogHandler implements LogHandler {
     }
 
     @Override
-    public void fatalContext() {
+    public boolean fatalContext(CCharPointer bytes, UnsignedWord length) {
         if (fatalContextFunctionPointer.isNonNull()) {
-            fatalContextFunctionPointer.invoke();
+            return fatalContextFunctionPointer.invoke(bytes, length);
         } else if (delegate != null) {
-            delegate.fatalContext();
+            return delegate.fatalContext(bytes, length);
         }
+        return true;
     }
 
     public CFunctionPointer getFatalContextFunctionPointer() {
@@ -103,6 +104,11 @@ public class FunctionPointerLogHandler implements LogHandler {
         void invoke();
     }
 
+    interface FatalContextFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        boolean invoke(CCharPointer bytes, UnsignedWord length);
+    }
+
     /**
      * Parses a {@code JavaVMOption} passed to {@code JNI_CreateJavaVM}.
      *
@@ -118,7 +124,7 @@ public class FunctionPointerLogHandler implements LogHandler {
             handler(optionString).flushFunctionPointer = (VoidFunctionPointer) extraInfo;
             return true;
         } else if (optionString.equals("_fatal_context")) {
-            handler(optionString).fatalContextFunctionPointer = (VoidFunctionPointer) extraInfo;
+            handler(optionString).fatalContextFunctionPointer = (FatalContextFunctionPointer) extraInfo;
             return true;
         } else if (optionString.equals("_fatal")) {
             handler(optionString).fatalErrorFunctionPointer = (VoidFunctionPointer) extraInfo;

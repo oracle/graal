@@ -95,20 +95,26 @@ public interface LogHandler {
     void flush();
 
     /**
-     * If the VM finds itself in a fatal, non-recoverable error situation it will - before anything
-     * else - call this method. All subsequent log messages should be interpreted as information
-     * that further describes the specific instance of the fatal error. Once the VM has written all
-     * log messages related to the fatal error it will finally call {@link #fatalError()} from where
-     * it is expected to never return.
+     * This method gets called if the VM finds itself in a fatal, non-recoverable error situation.
+     * The callee receives a CCharPointer string that describes the error. Based on this string the
+     * implementor can decide if it wants to get more specific error related information via
+     * subsequent calls to {@link #log(CCharPointer, UnsignedWord)}. This is requested by returning
+     * {@code true}. Returning {@code false} on the other hand will let the VM know that it can skip
+     * providing this information and immediately proceed with calling {@link #fatalError()} from
+     * where it is expected to never return to the VM.
      * <p>
-     * Using this method allows to implement flood control for fatal errors. Summing up all log
-     * messages received between {@link #fatalContext()} and {@link #fatalError()} via
-     * {@link #log(CCharPointer, UnsignedWord)} into hash key allows implementors to identify fatal
-     * errors and decide if the given instance should be suppressed or recorded.
+     * Providing this method allows to implement flood control for fatal errors. The implementor can
+     * rely on {@link #fatalError()} getting called soon after this method is called.
+     *
+     * @param context provides a CCharPointer string that describes the error
+     * @param length provides the length of the error string
+     *
+     * @return if {@code false} is returned the VM will skip providing more specific error related
+     *         information before calling {@link #fatalError()}.
      *
      * @since 20.3
      */
-    void fatalContext();
+    boolean fatalContext(CCharPointer context, UnsignedWord length);
 
     /**
      * Exit the VM because a fatal, non-recoverable error situation has been detected. The
