@@ -127,8 +127,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         rci.rerunInitialization(clazz(access, "java.util.UUID$Holder"), "for substitutions");
 
         /*
-         * The classes bellow have a static final SecureRandom field. Note that if the classes are
-         * not found as reachable by the analysis registering them form class initialization rerun
+         * The classes below have a static final SecureRandom field. Note that if the classes are
+         * not found as reachable by the analysis registering them for class initialization rerun
          * doesn't have any effect.
          */
         rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
