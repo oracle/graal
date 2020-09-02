@@ -74,11 +74,6 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
         this.searchValues = new NodeInputList<>(this, searchValues);
     }
 
-    public AMD64ArrayIndexOfNode(@ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind,
-                    ValueNode arrayPointer, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
-        this(arrayKind, valueKind, false, arrayPointer, arrayLength, fromIndex, searchValues);
-    }
-
     @Override
     public LocationIdentity getLocationIdentity() {
         return NamedLocationIdentity.getArrayLocation(arrayKind);
