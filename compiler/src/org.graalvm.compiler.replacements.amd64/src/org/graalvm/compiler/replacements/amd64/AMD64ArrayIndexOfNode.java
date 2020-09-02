@@ -43,6 +43,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(size = SIZE_512, cycles = NodeCycles.CYCLES_UNKNOWN)
@@ -89,9 +90,14 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
         for (int i = 0; i < searchValues.size(); i++) {
             searchValueOperands[i] = gen.operand(searchValues.get(i));
         }
-        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(arrayKind, valueKind, findTwoConsecutive,
+        int arrayBaseOffset = getArrayBaseOffset(gen.getLIRGeneratorTool().getMetaAccess(), arrayPointer, arrayKind);
+        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(arrayBaseOffset, valueKind, findTwoConsecutive,
                         gen.operand(arrayPointer), gen.operand(arrayLength), gen.operand(fromIndex), searchValueOperands);
         gen.setResult(this, result);
+    }
+
+    protected int getArrayBaseOffset(MetaAccessProvider metaAccessProvider, @SuppressWarnings("unused") ValueNode array, JavaKind kind) {
+        return metaAccessProvider.getArrayBaseOffset(kind);
     }
 
     @Override
