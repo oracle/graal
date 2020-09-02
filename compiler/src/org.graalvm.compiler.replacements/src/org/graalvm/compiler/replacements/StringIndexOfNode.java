@@ -34,6 +34,17 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
 import org.graalvm.compiler.replacements.nodes.MacroStateSplitNode;
 
+/**
+ * Represents a call to the following method, where the {@code target} argument (i.e. the characters
+ * being searched for) is constant.
+ *
+ * <pre>
+ * String.indexOf(char[] source, int sourceOffset, int sourceCount, char[] target, int targetOffset, int targetCount, int fromIndex)
+ * </pre>
+ *
+ * This node is only for JDK 8 or less. For JDK 9+, see {@link StringLatin1IndexOfNode} and
+ * {@link StringUTF16IndexOfNode}.
+ */
 @NodeInfo(size = SIZE_64, cycles = CYCLES_256)
 public class StringIndexOfNode extends MacroStateSplitNode {
     public static final NodeClass<StringIndexOfNode> TYPE = NodeClass.create(StringIndexOfNode.class);
