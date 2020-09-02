@@ -197,11 +197,6 @@ dailyJDK15Debug: ${oraclejdk15Debug} {
       "tom.rodriguez@oracle.com"
     ]
     timelimit: "2:00:00"
-    packages: {
-      # SVM object files with debuginfo are apparently more likely to be subject
-      # to linker incompatibilities so we need to use the same linker use for building JDK 15
-      binutils: "==2.34"
-    }
 }
 
 gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {
