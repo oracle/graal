@@ -134,7 +134,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
         rci.rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
         rci.rerunInitialization(clazz(access, "sun.security.krb5.Confounder"), "for substitutions");
-        rci.rerunInitialization(javax.net.ssl.SSLContext.class, "for substitutions");
 
         /*
          * When SSLContextImpl$DefaultManagersHolder sets-up the TrustManager in its initializer it
