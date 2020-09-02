@@ -37,7 +37,6 @@ import org.graalvm.tools.lsp.server.types.Range;
 import org.graalvm.tools.lsp.server.types.TextDocumentContentChangeEvent;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -221,10 +220,16 @@ public final class SourceUtils {
         }
     }
 
-    public static Range getRangeFrom(TruffleException te) {
+    public static Range getRangeFrom(Exception te, InteropLibrary interopLib) {
         Range range = Range.create(0, 0, 0, 0); // TODO: LSP4J removal
-        SourceSection sourceLocation = te.getSourceLocation() != null ? te.getSourceLocation()
-                        : (te.getLocation() != null ? te.getLocation().getEncapsulatingSourceSection() : null);
+
+        SourceSection sourceLocation;
+        try {
+            sourceLocation = interopLib.hasSourceLocation(te) ? interopLib.getSourceLocation(te) : null;
+        } catch (UnsupportedMessageException um) {
+            throw CompilerDirectives.shouldNotReachHere(um);
+        }
+
         if (sourceLocation != null && sourceLocation.isAvailable()) {
             range = sourceSectionToRange(sourceLocation);
         }
