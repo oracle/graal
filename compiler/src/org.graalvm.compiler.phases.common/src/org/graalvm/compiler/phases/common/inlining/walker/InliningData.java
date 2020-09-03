@@ -276,10 +276,20 @@ public class InliningData {
         final OptimisticOptimizations optimisticOpts = context.getOptimisticOptimizations();
         OptionValues options = invoke.asNode().getOptions();
 
-        SpeculationLog speculationLog = graph.getSpeculationLog();
-        SpeculationLog.SpeculationReason speculation = notRecordedTypeProbability == 0 ? InliningUtil.createSpeculation(invoke, typeProfile) : null;
+        boolean maySpeculate = true;
+        SpeculationLog speculationLog = rootGraph.getSpeculationLog();
+        SpeculationLog.Speculation speculation = SpeculationLog.NO_SPECULATION;
 
-        if (ptypes.length == 1 && notRecordedTypeProbability == 0 && (speculationLog == null || speculationLog.maySpeculate(speculation))) {
+        if (speculationLog != null && notRecordedTypeProbability == 0) {
+            SpeculationLog.SpeculationReason speculationReason = InliningUtil.createSpeculation(invoke, typeProfile);
+            if (speculationLog.maySpeculate(speculationReason)) {
+                speculation = speculationLog.speculate(speculationReason);
+            } else {
+                maySpeculate = false;
+            }
+        }
+
+        if (ptypes.length == 1 && notRecordedTypeProbability == 0 && maySpeculate) {
             if (!optimisticOpts.inlineMonomorphicCalls(options)) {
                 InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "inlining monomorphic calls is disabled");
                 inliningLog.addDecision(invoke, false, "InliningPhase", null, null, "inlining monomorphic calls is disabled");
@@ -393,7 +403,7 @@ public class InliningData {
                     return null;
                 }
             }
-            return new MultiTypeGuardInlineInfo(invoke, concreteMethods, usedTypes, typesToConcretes, notRecordedTypeProbability, speculation);
+            return new MultiTypeGuardInlineInfo(invoke, concreteMethods, usedTypes, typesToConcretes, notRecordedTypeProbability, maySpeculate, speculation);
         }
     }
 
