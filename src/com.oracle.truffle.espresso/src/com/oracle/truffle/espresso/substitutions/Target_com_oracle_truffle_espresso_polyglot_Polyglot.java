@@ -116,7 +116,11 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                     }
                 }
 
-
+                // TODO: remove eager conversion once TruffleString is available
+                /*
+                 * Eager String conversion is necessary here since there's no way to access the
+                 * content/chars of foreign strings without a full conversion.
+                 */
                 if (targetKlass == meta.java_lang_String) {
                     if (!interopLibrary.isString(value.rawForeignObject())) {
                         throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-string foreign object to string");
