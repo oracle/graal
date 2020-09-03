@@ -80,7 +80,7 @@ public class PosixLogHandler implements LogHandler {
     @Override
     @SuppressWarnings("unused")
     public boolean fatalContext(CCharPointer context, UnsignedWord length) {
-        return false; /* unconditionally dump details */
+        return true; /* unconditionally dump details */
     }
 
     @Override

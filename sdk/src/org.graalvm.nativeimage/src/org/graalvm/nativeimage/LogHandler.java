@@ -114,7 +114,9 @@ public interface LogHandler {
      *
      * @since 20.3
      */
-    boolean fatalContext(CCharPointer context, UnsignedWord length);
+    default boolean fatalContext(CCharPointer context, UnsignedWord length) {
+        return true;
+    }
 
     /**
      * Exit the VM because a fatal, non-recoverable error situation has been detected. The
