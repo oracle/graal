@@ -63,12 +63,17 @@ public final class Polyglot {
      * In addition, if {@code value} is a {@link Polyglot#isForeignObject foreign} object:
      * <ul>
      * <li>if {@code targetClass} is a primitive class, converts the foreign value to this type and
-     * returns the result as a boxed type.
+     * returns the result as a boxed type. To avoid eager conversion, cast to the corresponding
+     * wrapper class.
+     * <li>if {@code targetClass} is a wrapper class, checks that the foreign value is a number, a
+     * boolean or a character respectively, and returns a wrapper of the foreign value. When the
+     * {@code value} field of the result is accessed, the current value of the foreign primitive is
+     * fetched.
      * <li>if {@code targetClass} is an array class and the foreign value has array elements,
      * returns the foreign value as {@code targetClass}.
-     * <li>if {@code targetClass} is a (non-abstract) class, checks that all the instance fields
-     * defined in the class or its ancestors exist in the foreign object. Returns the foreign object
-     * as {@code targetClass}.
+     * <li>if {@code targetClass} is a (non-abstract, non-wrapper) class, checks that all the
+     * instance fields defined in the class or its ancestors exist in the foreign object. Returns
+     * the foreign object as {@code targetClass}.
      * <li>if {@code targetClass} is an interface, returns the foreign object as
      * {@code targetClass}. The existence of methods, defined in {@code targetClass}, is not
      * verified and if a method does not exist, an exception will be thrown only when the method is

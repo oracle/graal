@@ -1088,7 +1088,7 @@ public final class Meta implements ContextAccess {
      * asks the given class loader to perform the load, even for internal primitive types. This is
      * the method to use when loading symbols that are not directly taken from a constant pool, for
      * example, when loading a class whose name is given by a guest string.
-     * 
+     *
      * This method is designed to fail if given the type symbol for primitives (eg: 'Z' for
      * booleans).
      *
@@ -1111,7 +1111,7 @@ public final class Meta implements ContextAccess {
      * Same as {@link #loadKlassOrFail(Symbol, StaticObject)}, except this method returns null
      * instead of throwing if class is not found. Note that this mthod can still throw due to other
      * errors (class file malformed, etc...)
-     * 
+     *
      * @see #loadKlassOrFail(Symbol, StaticObject)
      */
     @TruffleBoundary
@@ -1185,7 +1185,7 @@ public final class Meta implements ContextAccess {
     /**
      * Same as {@link #resolveSymbolOrNull(Symbol, StaticObject)}, except this throws an exception
      * of the given klass if the representation for the type can not be found.
-     * 
+     *
      * @see #resolveSymbolOrNull(Symbol, StaticObject)
      */
     public Klass resolveSymbolOrFail(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, ObjectKlass exception) {
@@ -1368,6 +1368,15 @@ public final class Meta implements ContextAccess {
     // endregion
 
     // region Guest Unboxing
+
+    public boolean isNumber(Klass klass) {
+        return klass == java_lang_Byte || klass == java_lang_Short || klass == java_lang_Integer || klass == java_lang_Long ||
+                        klass == java_lang_Float || klass == java_lang_Double;
+    }
+
+    public boolean isBoxed(Klass klass) {
+        return isNumber(klass) || klass == java_lang_Boolean || klass == java_lang_Character;
+    }
 
     public Object unboxGuest(StaticObject boxed) {
         Klass klass = boxed.getKlass();
