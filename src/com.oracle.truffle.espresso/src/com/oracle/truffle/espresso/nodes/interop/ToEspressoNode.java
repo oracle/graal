@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -102,6 +103,9 @@ public abstract class ToEspressoNode extends Node {
                         return interop.asDouble(value);
                     }
                     break;
+                case Void:
+                    CompilerDirectives.transferToInterpreter();
+                    throw EspressoError.shouldNotReachHere("Unexpected cast to void");
             }
         } catch (UnsupportedMessageException e) {
             exceptionProfile.enter();
