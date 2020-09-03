@@ -467,4 +467,13 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNoIdentity(v);
     }
 
+    @Test
+    public void testScopeDefault() {
+        Object v = new TruffleObject() {
+        };
+        InteropLibrary l = createLibrary(InteropLibrary.class, v);
+        assertFalse(l.isScope(v));
+        assertFalse(l.hasScopeParent(v));
+        assertFails(() -> l.getScopeParent(v), UnsupportedMessageException.class);
+    }
 }

@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.api.debug;
 
-import java.util.Iterator;
-
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.debug.DebugValue.HeapValue;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -159,12 +159,15 @@ public final class DebugStackTraceElement {
         }
         Frame elementFrame = traceElement.getFrame();
         MaterializedFrame frame = (elementFrame != null) ? elementFrame.materialize() : null;
-        Iterable<Scope> scopes = session.getDebugger().getEnv().findLocalScopes(node, frame);
-        Iterator<Scope> it = scopes.iterator();
-        if (!it.hasNext()) {
+        if (!NodeLibrary.getUncached().hasScope(node, frame)) {
             return null;
         }
-        return new DebugScope(it.next(), it, session, null, frame, root);
+        try {
+            Object scope = NodeLibrary.getUncached().getScope(node, frame, true);
+            return new DebugScope(scope, session, null, node, frame, root);
+        } catch (UnsupportedMessageException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
     }
 
     DebugValue wrapHeapValue(Object result) {

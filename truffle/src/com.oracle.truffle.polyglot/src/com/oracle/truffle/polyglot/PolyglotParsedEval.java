@@ -82,10 +82,7 @@ final class PolyglotParsedEval implements TruffleObject {
         @SuppressWarnings("unused")
         static Object doCached(PolyglotParsedEval eval, Object[] args,
                         @Cached("create(eval.target)") DirectCallNode callNode) throws ArityException {
-            if (args.length != 0) {
-                throw ArityException.create(0, args.length);
-            }
-            Object result = callNode.call(PolyglotImpl.EMPTY_ARGS);
+            Object result = callNode.call(args);
             if (eval.source.isInteractive()) {
                 PolyglotContextImpl.printResult(eval.languageContext, result);
             }
@@ -94,11 +91,8 @@ final class PolyglotParsedEval implements TruffleObject {
 
         @Specialization(replaces = "doCached")
         static Object doIndirect(PolyglotParsedEval eval, Object[] args,
-                        @Cached IndirectCallNode callNode) throws ArityException {
-            if (args.length != 0) {
-                throw ArityException.create(0, args.length);
-            }
-            Object result = callNode.call(eval.target, PolyglotImpl.EMPTY_ARGS);
+                        @Cached IndirectCallNode callNode) {
+            Object result = callNode.call(eval.target, args);
             if (eval.source.isInteractive()) {
                 PolyglotContextImpl.printResult(eval.languageContext, result);
             }

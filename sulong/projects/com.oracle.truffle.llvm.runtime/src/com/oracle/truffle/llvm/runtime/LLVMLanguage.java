@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
@@ -63,8 +62,6 @@ import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionDescriptors;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
@@ -228,8 +225,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) {
-        Collection<Scope> globalScopes = findTopScopes(getCurrentContext(LLVMLanguage.class));
-        final com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser d = new com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser(request, globalScopes,
+        Object globalScope = getScope(getCurrentContext(LLVMLanguage.class));
+        final com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser d = new com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser(request, globalScope,
                         getCurrentContext(LLVMLanguage.class));
         try {
             return new DebugExprExecutableNode(d.parse());
@@ -305,9 +302,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     @Override
-    protected Collection<Scope> findTopScopes(LLVMContext context) {
-        Scope scope = Scope.newBuilder("llvm-global", context.getGlobalScope()).build();
-        return Collections.singleton(scope);
+    protected Object getScope(LLVMContext context) {
+        return context.getGlobalScope();
     }
 
     @Override
@@ -329,7 +325,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     @Override
-    protected Iterable<Scope> findLocalScopes(LLVMContext context, Node node, Frame frame) {
+    @SuppressWarnings("deprecation")
+    protected Iterable<com.oracle.truffle.api.Scope> findLocalScopes(LLVMContext context, Node node, Frame frame) {
         if (context.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
             return LLVMDebuggerScopeFactory.createIRLevelScope(node, frame, context);
         } else {

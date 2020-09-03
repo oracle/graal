@@ -81,7 +81,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -120,6 +119,8 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
@@ -900,6 +901,69 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @Test
+    public void testLegacyReceiver() throws IOException {
+        ReceiverLegacyTester tester = new ReceiverLegacyTester(instrumentEnv);
+        Source source = Source.create(InstrumentationTestLanguage.ID,
+                        "ROOT(DEFINE(foo1, ROOT(STATEMENT))," +
+                                        "DEFINE(foo2, ROOT(CALL(foo1), STATEMENT))," +
+                                        "CALL(foo1)," +
+                                        "CALL_WITH(foo2, 42)," +
+                                        "CALL_WITH(foo1, 43))");
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), tester);
+        run(source);
+        tester.assertReceivers(null, null, "42", "43");
+    }
+
+    @SuppressWarnings("deprecation")
+    private static final class ReceiverLegacyTester implements ExecutionEventListener {
+
+        private TruffleInstrument.Env env;
+        private final List<String> receiverObjects = new ArrayList<>();
+
+        ReceiverLegacyTester(TruffleInstrument.Env env) {
+            this.env = env;
+        }
+
+        @Override
+        public void onEnter(EventContext context, VirtualFrame frame) {
+            addReceiverObject(context, frame.materialize());
+        }
+
+        @TruffleBoundary
+        private void addReceiverObject(EventContext context, MaterializedFrame frame) {
+            RootNode rootNode = context.getInstrumentedNode().getRootNode();
+            com.oracle.truffle.api.Scope frameScope = env.findLocalScopes(context.getInstrumentedNode(), frame).iterator().next();
+            Object receiver = frameScope.getReceiver();
+            if (receiver != null) {
+                assertEquals("THIS", frameScope.getReceiverName());
+                try {
+                    receiverObjects.add(InteropLibrary.getUncached().asString(
+                                    InteropLibrary.getUncached().toDisplayString(env.getLanguageView(rootNode.getLanguageInfo(), receiver))));
+                } catch (UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+            } else {
+                receiverObjects.add(null);
+            }
+        }
+
+        @Override
+        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+        }
+
+        @Override
+        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+        }
+
+        private void assertReceivers(String... objects) {
+            assertEquals(objects.length, receiverObjects.size());
+            for (int i = 0; i < objects.length; i++) {
+                assertEquals(objects[i], receiverObjects.get(i));
+            }
+        }
+    }
+
+    @Test
     public void testReceiver() throws IOException {
         ReceiverTester tester = new ReceiverTester(instrumentEnv);
         Source source = Source.create(InstrumentationTestLanguage.ID,
@@ -929,17 +993,21 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @TruffleBoundary
         private void addReceiverObject(EventContext context, MaterializedFrame frame) {
-            RootNode rootNode = context.getInstrumentedNode().getRootNode();
-            Scope frameScope = env.findLocalScopes(rootNode, frame).iterator().next();
-            Object receiver = frameScope.getReceiver();
-            if (receiver != null) {
-                assertEquals("THIS", frameScope.getReceiverName());
+            Node node = context.getInstrumentedNode();
+            if (NodeLibrary.getUncached().hasReceiverMember(node, frame)) {
                 try {
-                    receiverObjects.add(InteropLibrary.getFactory().getUncached().asString(
-                                    InteropLibrary.getFactory().getUncached().toDisplayString(env.getLanguageView(rootNode.getLanguageInfo(), receiver))));
-                } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new AssertionError(e);
+                    String receiverName = InteropLibrary.getUncached().asString(NodeLibrary.getUncached().getReceiverMember(node, frame));
+                    assertEquals("THIS", receiverName);
+                    Object scope = NodeLibrary.getUncached().getScope(node, frame, true);
+                    if (InteropLibrary.getUncached().isMemberReadable(scope, receiverName)) {
+                        Object receiver = InteropLibrary.getUncached().readMember(scope, receiverName);
+                        receiverObjects.add(InteropLibrary.getUncached().asString(
+                                        InteropLibrary.getUncached().toDisplayString(env.getLanguageView(node.getRootNode().getLanguageInfo(), receiver))));
+                    } else {
+                        receiverObjects.add(null);
+                    }
+                } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
                 }
             } else {
                 receiverObjects.add(null);
@@ -2081,7 +2149,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     public void testPolyglotBindings() throws Exception {
         Instrument bindingsTestInstrument = context.getEngine().getInstruments().get(BindingsTestInstrument.ID);
         Object bindingsObject = bindingsTestInstrument.lookup(Supplier.class).get();
-        InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+        InteropLibrary interop = InteropLibrary.getUncached();
 
         assertTrue(interop.hasMembers(bindingsObject));
         assertFalse(interop.isNull(bindingsObject));

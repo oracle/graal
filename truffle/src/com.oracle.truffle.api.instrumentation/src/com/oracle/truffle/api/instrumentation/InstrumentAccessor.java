@@ -51,7 +51,6 @@ import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
@@ -196,11 +195,6 @@ final class InstrumentAccessor extends Accessor {
             if (handler != null) {
                 handler.onLoad(rootNode);
             }
-        }
-
-        @Override
-        public Iterable<Scope> findTopScopes(TruffleLanguage.Env env) {
-            return TruffleInstrument.Env.findTopScopes(env);
         }
 
         @Override

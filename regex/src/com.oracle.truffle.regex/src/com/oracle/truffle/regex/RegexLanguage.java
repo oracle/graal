@@ -40,11 +40,8 @@
  */
 package com.oracle.truffle.regex;
 
-import java.util.Collections;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -113,8 +110,8 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     }
 
     @Override
-    protected Iterable<Scope> findTopScopes(RegexContext context) {
-        return Collections.emptySet();
+    protected Object getScope(RegexContext context) {
+        return null;
     }
 
     /**

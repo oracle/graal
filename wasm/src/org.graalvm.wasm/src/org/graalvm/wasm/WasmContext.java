@@ -45,7 +45,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
 import org.graalvm.wasm.exception.WasmValidationException;
@@ -104,11 +103,12 @@ public final class WasmContext {
         return linker;
     }
 
-    public Iterable<Scope> getTopScopes() {
+    @SuppressWarnings("deprecation")
+    public Iterable<com.oracle.truffle.api.Scope> getTopScopes() {
         // Go through all WasmModules parsed with this context, and create a Scope for each of them.
-        ArrayList<Scope> scopes = new ArrayList<>();
+        ArrayList<com.oracle.truffle.api.Scope> scopes = new ArrayList<>();
         for (Map.Entry<String, WasmInstance> entry : moduleInstances.entrySet()) {
-            Scope scope = Scope.newBuilder(entry.getKey(), entry.getValue()).build();
+            com.oracle.truffle.api.Scope scope = com.oracle.truffle.api.Scope.newBuilder(entry.getKey(), entry.getValue()).build();
             scopes.add(scope);
         }
         return scopes;

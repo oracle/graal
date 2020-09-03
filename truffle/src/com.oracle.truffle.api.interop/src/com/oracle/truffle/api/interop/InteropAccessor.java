@@ -96,7 +96,13 @@ final class InteropAccessor extends Accessor {
 
         @Override
         public boolean isExecutableObject(Object value) {
-            return InteropLibrary.getFactory().getUncached().isExecutable(value);
+            return InteropLibrary.getUncached().isExecutable(value);
+        }
+
+        @Override
+        public boolean isScopeObject(Object receiver) {
+            InteropLibrary interop = InteropLibrary.getUncached();
+            return interop.isScope(receiver) && interop.hasMembers(receiver);
         }
 
         @Override

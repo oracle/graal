@@ -73,7 +73,6 @@ import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -929,9 +928,14 @@ public abstract class TruffleInstrument {
          * @param frame the frame of the current activation of the parent {@link RootNode}.
          * @param value the value to provide scope information for.
          *
-         * @see TruffleLanguage#getScopedView(Object, Node, Frame, Object)
+         * @see com.oracle.truffle.api.interop.NodeLibrary#getView(Object, Frame, Object)
          * @since 20.1
+         * @deprecated in 20.3 for removal, use {@link #getLanguageView(LanguageInfo, Object)}
+         *             followed by
+         *             {@link com.oracle.truffle.api.interop.NodeLibrary#getView(Object, Frame, Object)}
+         *             instead.
          */
+        @Deprecated
         @TruffleBoundary
         public Object getScopedView(LanguageInfo language, Node location, Frame frame, Object value) {
             try {
@@ -1112,8 +1116,11 @@ public abstract class TruffleInstrument {
          * @see TruffleLanguage#findLocalScopes(java.lang.Object, com.oracle.truffle.api.nodes.Node,
          *      com.oracle.truffle.api.frame.Frame)
          * @since 0.30
+         * @deprecated in 20.3, use NodeLibrary instead.
          */
-        public Iterable<Scope> findLocalScopes(Node node, Frame frame) {
+        @Deprecated
+        @SuppressWarnings("deprecation")
+        public Iterable<com.oracle.truffle.api.Scope> findLocalScopes(Node node, Frame frame) {
             try {
                 RootNode rootNode = node.getRootNode();
                 if (rootNode == null) {
@@ -1123,8 +1130,7 @@ public abstract class TruffleInstrument {
                 if (languageInfo == null) {
                     throw new IllegalArgumentException("The root node " + rootNode + " does not have a language associated.");
                 }
-                final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(languageInfo);
-                Iterable<Scope> langScopes = InstrumentAccessor.langAccess().findLocalScopes(env, node, frame);
+                Iterable<com.oracle.truffle.api.Scope> langScopes = InstrumentAccessor.engineAccess().findLibraryLocalScopesToLegacy(node, frame);
                 assert langScopes != null : languageInfo.getId();
                 return langScopes;
             } catch (Throwable t) {
@@ -1141,15 +1147,35 @@ public abstract class TruffleInstrument {
          *         language
          * @see TruffleLanguage#findTopScopes(java.lang.Object)
          * @since 0.30
+         * @deprecated in 20.3, use {@link #getScope(LanguageInfo)} instead.
          */
-        public Iterable<Scope> findTopScopes(String languageId) {
+        @Deprecated
+        @SuppressWarnings("deprecation")
+        public Iterable<com.oracle.truffle.api.Scope> findTopScopes(String languageId) {
+            LanguageInfo languageInfo = getLanguages().get(languageId);
+            if (languageInfo == null) {
+                throw new IllegalArgumentException("Unknown language: " + languageId + ". Known languages are: " + getLanguages().keySet());
+            }
+            Object scope = getScope(languageInfo);
+            return InstrumentAccessor.engineAccess().topScopesToLegacy(scope);
+        }
+
+        /**
+         * Provides top scope object of the language, if any. Uses the current context to find the
+         * language scope associated with. The returned object is an
+         * {@link com.oracle.truffle.api.interop.InteropLibrary#isScope(Object) interop scope
+         * object}, or <code>null</code>.
+         *
+         * @param language a language
+         * @return the top scope, or <code>null</code> if the language does not support such concept
+         * @see TruffleLanguage#getScope(Object)
+         * @since 20.3
+         */
+        public Object getScope(LanguageInfo language) {
+            assert language != null;
             try {
-                LanguageInfo languageInfo = getLanguages().get(languageId);
-                if (languageInfo == null) {
-                    throw new IllegalArgumentException("Unknown language: " + languageId + ". Known languages are: " + getLanguages().keySet());
-                }
-                final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(languageInfo);
-                return findTopScopes(env);
+                final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(language);
+                return InstrumentAccessor.langAccess().getScope(env);
             } catch (Throwable t) {
                 throw engineToInstrumentException(t);
             }
@@ -1212,8 +1238,9 @@ public abstract class TruffleInstrument {
             return getLogger(forClass.getName());
         }
 
-        static Iterable<Scope> findTopScopes(TruffleLanguage.Env env) {
-            Iterable<Scope> langScopes = InstrumentAccessor.langAccess().findTopScopes(env);
+        @SuppressWarnings("deprecation")
+        static Iterable<com.oracle.truffle.api.Scope> findTopScopes(TruffleLanguage.Env env) {
+            Iterable<com.oracle.truffle.api.Scope> langScopes = InstrumentAccessor.langAccess().findTopScopes(env);
             assert langScopes != null : InstrumentAccessor.langAccess().getLanguageInfo(env).getId();
             return langScopes;
         }

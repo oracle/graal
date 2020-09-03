@@ -165,6 +165,34 @@ public class DebugScopeTest extends AbstractDebugTest {
                 DebugValue receiver = frame.getScope().getReceiver();
                 assertEquals("THIS", receiver.getName());
                 assertEquals(42, receiver.asInt());
+                assertNull("Receiver is not a declared value", frame.getScope().getDeclaredValue("THIS"));
+                checkStack(frame);
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testVariables() {
+        final Source source = testSource("ROOT(DEFINE(foo,ROOT(\n" +
+                        "  VARIABLE(x, 10),\n" +
+                        "  VARIABLE(y, 20),\n" +
+                        "  STATEMENT())\n" +
+                        "),\n" +
+                        "CALL_WITH(foo, 42))\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                DebugValue receiver = frame.getScope().getReceiver();
+                assertEquals("THIS", receiver.getName());
+                assertEquals(42, receiver.asInt());
+                assertNull("Receiver is not a declared value", frame.getScope().getDeclaredValue("THIS"));
+                checkStack(frame, "x", "10", "y", "20");
+                assertEquals("foo", frame.getScope().getName());
+                assertEquals("foo", frame.getName());
             });
             expectDone();
         }

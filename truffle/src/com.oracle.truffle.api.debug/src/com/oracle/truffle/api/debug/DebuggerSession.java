@@ -65,7 +65,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.debug.Breakpoint.BreakpointConditionFailure;
 import com.oracle.truffle.api.debug.DebuggerNode.InputValuesProvider;
@@ -282,12 +281,11 @@ public final class DebuggerSession implements Closeable {
             return null;
         }
         try {
-            Iterable<Scope> scopes = debugger.getEnv().findTopScopes(languageId);
-            Iterator<Scope> it = scopes.iterator();
-            if (!it.hasNext()) {
+            Object scope = debugger.getEnv().getScope(info);
+            if (scope == null) {
                 return null;
             }
-            return new DebugScope(it.next(), it, this, info);
+            return new DebugScope(scope, this, info);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {

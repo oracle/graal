@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
-import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -50,6 +48,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -91,9 +92,10 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleException;
@@ -1369,16 +1371,14 @@ public class LanguageSPITest {
 
     private void setupTopScopes(Object... scopesArray) {
         findScopeInvokes = 0;
+        for (int i = 0; i < scopesArray.length - 1; i++) {
+            ((TestScope) scopesArray[i]).parentScope = (TestScope) scopesArray[i + 1];
+        }
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
-            protected Iterable<Scope> findTopScopes(LanguageContext context) {
+            protected Object getScope(LanguageContext context) {
                 findScopeInvokes++;
-                List<Scope> scopes = new ArrayList<>();
-                for (int i = 0; i < scopesArray.length; i++) {
-                    Object scope = scopesArray[i];
-                    scopes.add(Scope.newBuilder(String.valueOf(i), scope).build());
-                }
-                return scopes;
+                return scopesArray[0];
             }
         });
     }
@@ -1397,7 +1397,7 @@ public class LanguageSPITest {
     @ExportLibrary(InteropLibrary.class)
     static final class TestKeysArray implements TruffleObject {
 
-        private final String[] keys;
+        @CompilationFinal(dimensions = 1) private final String[] keys;
 
         TestKeysArray(String[] keys) {
             this.keys = keys;
@@ -1432,72 +1432,137 @@ public class LanguageSPITest {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static class TestScope implements TruffleObject {
+    static final class TestScope implements TruffleObject {
 
         final Map<String, Object> values = new HashMap<>();
+        TestScope parentScope;
         boolean modifiable;
         boolean insertable;
         boolean removable;
 
         @ExportMessage
-        public boolean hasMembers() {
+        @SuppressWarnings("static-method")
+        boolean hasLanguage() {
             return true;
         }
 
         @ExportMessage
-        public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        @SuppressWarnings("static-method")
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return ProxyLanguage.class;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isScope() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
             return new TestKeysArray(values.keySet().toArray(new String[0]));
         }
 
         @ExportMessage
-        public Object readMember(String key) throws UnknownIdentifierException {
+        @TruffleBoundary
+        Object readMember(String key) throws UnknownIdentifierException {
             if (values.containsKey(key)) {
                 return values.get(key);
+            } else if (parentScope != null && parentScope.isMemberReadable(key)) {
+                return parentScope.readMember(key);
             } else {
                 throw UnknownIdentifierException.create(key);
             }
         }
 
         @ExportMessage
-        public void writeMember(String key, Object value) throws UnsupportedMessageException {
-            if (modifiable && values.containsKey(key)) {
-                values.put(key, value);
-            } else if (insertable && !values.containsKey(key)) {
-                values.put(key, value);
+        @TruffleBoundary
+        void writeMember(String key, Object value) throws UnsupportedMessageException {
+            if (isMemberModifiable(key)) {
+                if (modifiable && values.containsKey(key)) {
+                    values.put(key, value);
+                } else if (parentScope != null) {
+                    parentScope.writeMember(key, value);
+                } else {
+                    throw UnsupportedMessageException.create();
+                }
+            } else if (isMemberInsertable(key)) {
+                if (insertable && !values.containsKey(key)) {
+                    values.put(key, value);
+                } else if (parentScope != null) {
+                    parentScope.writeMember(key, value);
+                } else {
+                    throw UnsupportedMessageException.create();
+                }
             } else {
                 throw UnsupportedMessageException.create();
             }
         }
 
         @ExportMessage
-        public void removeMember(String key) throws UnsupportedMessageException {
-            if (removable && values.containsKey(key)) {
+        @TruffleBoundary
+        void removeMember(String key) throws UnsupportedMessageException {
+            boolean contains = values.containsKey(key);
+            if (removable && contains) {
                 values.remove(key);
-                return;
+            } else if (!contains && parentScope != null) {
+                parentScope.removeMember(key);
+            } else {
+                throw UnsupportedMessageException.create();
             }
-            throw UnsupportedMessageException.create();
         }
 
         @ExportMessage
-        final boolean isMemberReadable(String member) {
-            return values.containsKey(member);
+        @TruffleBoundary
+        boolean isMemberReadable(String member) {
+            return values.containsKey(member) || parentScope != null && parentScope.isMemberReadable(member);
         }
 
         @ExportMessage
-        final boolean isMemberModifiable(String member) {
-            return modifiable && values.containsKey(member);
+        @TruffleBoundary
+        boolean isMemberModifiable(String member) {
+            return modifiable && values.containsKey(member) || parentScope != null && parentScope.isMemberModifiable(member);
         }
 
         @ExportMessage
-        final boolean isMemberInsertable(String member) {
-            return insertable && !values.containsKey(member);
+        @TruffleBoundary
+        boolean isMemberInsertable(String member) {
+            return !isMemberReadable(member) && (insertable || parentScope != null && parentScope.isMemberInsertable(member));
         }
 
         @ExportMessage
-        final boolean isMemberRemovable(String member) {
-            return removable && values.containsKey(member);
+        @TruffleBoundary
+        boolean isMemberRemovable(String member) {
+            boolean contains = values.containsKey(member);
+            return removable && contains || !contains && parentScope != null && parentScope.isMemberRemovable(member);
         }
 
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return "local";
+        }
+
+        @ExportMessage
+        boolean hasScopeParent() {
+            return parentScope != null;
+        }
+
+        @ExportMessage
+        Object getScopeParent() throws UnsupportedMessageException {
+            if (parentScope != null) {
+                return parentScope;
+            } else {
+                throw UnsupportedMessageException.create();
+            }
+        }
     }
 
     @Test
@@ -1519,6 +1584,10 @@ public class LanguageSPITest {
     public void testBindingsWithSimpleScope() {
         TestScope scope = new TestScope();
         setupTopScopes(scope);
+        testBindingsWithSimpleScope(scope);
+    }
+
+    private void testBindingsWithSimpleScope(TestScope scope) {
         Context c = Context.create();
         assertEquals(0, findScopeInvokes);
         Value bindings = c.getBindings(ProxyLanguage.ID);
@@ -1569,6 +1638,10 @@ public class LanguageSPITest {
             scopes[i] = new TestScope();
         }
         setupTopScopes((Object[]) scopes);
+        testBindingsWithMultipleScopes(scopes);
+    }
+
+    private void testBindingsWithMultipleScopes(TestScope[] scopes) {
 
         Context c = Context.create();
 
@@ -1590,7 +1663,6 @@ public class LanguageSPITest {
         assertEquals("bar", scopes[1].values.get("foo"));
         assertNull(scopes[0].values.get("foo"));
         assertNull(scopes[2].values.get("foo"));
-        ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         // test it does not insert early before already existing member
         scopes[0].insertable = true;
@@ -1616,6 +1688,17 @@ public class LanguageSPITest {
         assertNotNull(scopes[2].values.get("foo"));
         assertNull(scopes[2].values.get("bar"));
         assertEquals("val", bindings.getMember("bar").asString());
+        // InteropLibrary has asserts for parent scope members being present in the scope.
+        try {
+            assertValue(bindings, ValueAssert.Trait.MEMBERS);
+            fail("The scopes are not hierarchical.");
+        } catch (PolyglotException e) {
+            // Expected as the merged scope does not contain parent scopes.
+        }
+        // Correct the scope hierarchy:
+        scopes[0].values.put("foo", "val");
+        scopes[0].values.put("bar", "val");
+        scopes[1].values.put("bar", "val");
         assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         c.close();
