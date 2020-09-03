@@ -125,10 +125,6 @@ final class HostObject implements TruffleObject {
         return obj instanceof HostObject || obj instanceof HostException;
     }
 
-    static boolean isInstance(TruffleObject obj) {
-        return obj instanceof HostObject || obj instanceof HostException;
-    }
-
     HostObject withContext(PolyglotLanguageContext context) {
         return new HostObject(this.obj, context, this.extraInfo);
     }
