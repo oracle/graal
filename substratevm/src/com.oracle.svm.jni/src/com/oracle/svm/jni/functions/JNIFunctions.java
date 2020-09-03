@@ -93,6 +93,9 @@ import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerRetu
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnNullWord;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnZero;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerVoid;
+import com.oracle.svm.jni.hosted.JNIFieldAccessorMethod;
+import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
+import com.oracle.svm.jni.hosted.JNIPrimitiveArrayOperationMethod;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIErrors;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
@@ -108,8 +111,24 @@ import jdk.vm.ci.meta.MetaUtil;
 import sun.misc.Unsafe;
 
 /**
- * Implementations of the functions defined by the Java Native Interface. Not all functions are
- * currently implemented.
+ * Implementations of the functions defined by the Java Native Interface.
+ * 
+ * Not all functions are currently implemented. Some functions are generated, and therefore not
+ * defined in this class:
+ * 
+ * <ul>
+ * <li>Field getters and setters ({@code Get<Type>Field}, {@code Set<Type>Field},
+ * {@code GetStatic<Type>Field}, and {@code SetStatic<Type>Field}) are generated in
+ * {@link JNIFieldAccessorMethod}.</li>
+ * 
+ * <li>Operations on primitive arrays {@code New<PrimitiveType>Array},
+ * {@code Get<PrimitiveType>ArrayElements}, {@code Release<PrimitiveType>ArrayElements},
+ * {@code Get<PrimitiveType>ArrayRegion} and {@code Set<PrimitiveType>ArrayRegion}) are generated in
+ * {@link JNIPrimitiveArrayOperationMethod}</li>
+ * 
+ * <li>Wrappers for the methods callable by JNI are generated in
+ * {@link JNIJavaCallWrapperMethod}.</li>
+ * </ul>
  *
  * @see <a href="http://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">Java
  *      Native Interface Specification: JNI Functions</a>

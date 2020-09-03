@@ -62,6 +62,51 @@ import jdk.vm.ci.meta.Signature;
 /**
  * Generated method for accessing a field via JNI. An accessor is specific to the {@link JavaKind
  * basic type} of the field, to static or non-static fields, and can either read or write the field.
+ * 
+ * The generated method implements one of the following JNI functions:
+ * 
+ * <ul>
+ * <li>{@code GetObjectField}</li>
+ * <li>{@code GetBooleanField}</li>
+ * <li>{@code GetByteField}</li>
+ * <li>{@code GetCharField}</li>
+ * <li>{@code GetShortField}</li>
+ * <li>{@code GetIntField}</li>
+ * <li>{@code GetLongField}</li>
+ * <li>{@code GetFloatField}</li>
+ * <li>{@code GetDoubleField}</li>
+ * <li>{@code SetObjectField}</li>
+ * <li>{@code SetBooleanField}</li>
+ * <li>{@code SetByteField}</li>
+ * <li>{@code SetCharField}</li>
+ * <li>{@code SetShortField}</li>
+ * <li>{@code SetIntField}</li>
+ * <li>{@code SetLongField}</li>
+ * <li>{@code SetFloatField}</li>
+ * <li>{@code SetDoubleField}</li>
+ * <li>{@code GetStaticObjectField}</li>
+ * <li>{@code GetStaticBooleanField}</li>
+ * <li>{@code GetStaticByteField}</li>
+ * <li>{@code GetStaticCharField}</li>
+ * <li>{@code GetStaticShortField}</li>
+ * <li>{@code GetStaticIntField}</li>
+ * <li>{@code GetStaticLongField}</li>
+ * <li>{@code GetStaticFloatField}</li>
+ * <li>{@code GetStaticDoubleField}</li>
+ * <li>{@code SetStaticObjectField}</li>
+ * <li>{@code SetStaticBooleanField}</li>
+ * <li>{@code SetStaticByteField}</li>
+ * <li>{@code SetStaticCharField}</li>
+ * <li>{@code SetStaticShortField}</li>
+ * <li>{@code SetStaticIntField}</li>
+ * <li>{@code SetStaticLongField}</li>
+ * <li>{@code SetStaticFloatField}</li>
+ * <li>{@code SetStaticDoubleField}</li>
+ * </ul>
+ * 
+ * @see <a href=
+ *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">JNI
+ *      Functions</a>
  */
 public final class JNIFieldAccessorMethod extends JNIGeneratedMethod {
 
