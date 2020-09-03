@@ -29,40 +29,25 @@
  */
 package com.oracle.truffle.llvm.runtime.except;
 
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Common base class for all LLVM exceptions.
  */
-public abstract class LLVMException extends RuntimeException implements TruffleException {
+public abstract class LLVMException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 1L;
 
-    private final Node location;
-
     protected LLVMException(Node location, String message, Throwable cause) {
-        super(message, cause);
-        this.location = location;
+        super(message, cause, -1, location);
     }
 
     protected LLVMException(Node location, String message) {
-        super(message);
-        this.location = location;
+        super(message, location);
     }
 
     protected LLVMException(Node location) {
-        this.location = location;
-    }
-
-    @Override
-    public Node getLocation() {
-        return location;
-    }
-
-    @SuppressWarnings("sync-override")
-    @Override
-    public final Throwable fillInStackTrace() {
-        return this;
+        super(location);
     }
 }
