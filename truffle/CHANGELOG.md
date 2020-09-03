@@ -27,6 +27,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated `DebugScope.getArguments()` without replacement. This API was added without use-case.
 * Added the [RootNode.isTrivial](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#isTrivial) method, for specifying root nodes that are always more efficient to inline than not to.
 * Added [ByteArraySupport](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/memory/ByteArraySupport.html): a helper class providing safe multi-byte primitive type accesses from byte arrays.
+* Added a new base class for Truffle exceptions, see [AbstractTruffleException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/exception/AbstractTruffleException.html). The original `TruffleException` has been deprecated. Added new interop messages for exception handling replacing the deprecated `TruffleException` methods.
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.

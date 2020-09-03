@@ -208,6 +208,7 @@ supr java.lang.Object
 hfds config,sourceEnvironment
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleException
+ anno 0 java.lang.Deprecated()
 meth public abstract com.oracle.truffle.api.nodes.Node getLocation()
 meth public boolean isCancelled()
 meth public boolean isExit()
@@ -623,6 +624,7 @@ CLSS public final com.oracle.truffle.api.TruffleStackTraceElement
 meth public com.oracle.truffle.api.RootCallTarget getTarget()
 meth public com.oracle.truffle.api.frame.Frame getFrame()
 meth public com.oracle.truffle.api.nodes.Node getLocation()
+meth public java.lang.Object getGuestObject()
 meth public static com.oracle.truffle.api.TruffleStackTraceElement create(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.RootCallTarget,com.oracle.truffle.api.frame.Frame)
 supr java.lang.Object
 hfds frame,location,target
@@ -1185,6 +1187,7 @@ meth protected boolean isInstrumentable()
 meth protected boolean isTrivial()
 meth protected com.oracle.truffle.api.nodes.RootNode cloneUninitialized()
 meth protected final void setCallTarget(com.oracle.truffle.api.RootCallTarget)
+meth protected java.lang.Object translateStackTraceElement(com.oracle.truffle.api.TruffleStackTraceElement)
 meth protected java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> findAsynchronousFrames(com.oracle.truffle.api.frame.Frame)
 meth public abstract java.lang.Object execute(com.oracle.truffle.api.frame.VirtualFrame)
 meth public boolean isCaptureFramesForTrace()
