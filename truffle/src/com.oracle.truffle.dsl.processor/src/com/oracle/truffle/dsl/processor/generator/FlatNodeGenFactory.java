@@ -4158,8 +4158,12 @@ public class FlatNodeGenFactory {
 
             if (isNodeInterface || isNodeInterfaceArray) {
                 builder = new CodeTreeBuilder(null);
-                String fieldName = createFieldName(specialization, cache.getParameter()) + "__";
-                String insertName = useSpecializationClass ? useInsertAccessor(specialization, isNodeInterfaceArray) : "insert";
+                String insertName;
+                if (cache.isAdopt()) {
+                    insertName = useSpecializationClass ? useInsertAccessor(specialization, isNodeInterfaceArray) : "insert";
+                } else {
+                    insertName = null;
+                }
                 final TypeMirror castType;
                 if (isNodeInterface) {
                     if (isNode) {
@@ -4186,6 +4190,7 @@ public class FlatNodeGenFactory {
                     }
                     value = noCast.build();
                 } else {
+                    String fieldName = createFieldName(specialization, cache.getParameter()) + "__";
                     builder.declaration(cache.getDefaultExpression().getResolvedType(), fieldName, value);
                     if (cache.isAdopt()) {
                         builder.startIf().string(fieldName).instanceOf(castType).end().startBlock();
