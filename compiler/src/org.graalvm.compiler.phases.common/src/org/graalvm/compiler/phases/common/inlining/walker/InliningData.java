@@ -142,14 +142,15 @@ public class InliningData {
         return (arg instanceof AbstractNewObjectNode) || (arg instanceof AllocatedObjectNode) || (arg instanceof VirtualObjectNode);
     }
 
-    private String checkTargetConditionsHelper(ResolvedJavaMethod method, int invokeBci) {
+    private String checkTargetConditionsHelper(ResolvedJavaMethod method, Invoke invoke) {
         OptionValues options = rootGraph.getOptions();
         if (method == null) {
             return "the method is not resolved";
         } else if (method.isNative() && !(Intrinsify.getValue(options) &&
-                        context.getReplacements().getSubstitution(method, invokeBci, rootGraph.trackNodeSourcePosition(), null, rootGraph.allowAssumptions(), options) != null)) {
+                        context.getReplacements().getInlineSubstitution(method, invoke.bci(), invoke.getInlineControl(), rootGraph.trackNodeSourcePosition(), null, rootGraph.allowAssumptions(),
+                                        options) != null)) {
             // We have conditional intrinsic, e.g., String.intern, which may not have inlineable
-            // graph depending on the context. The getSubstitution test ensures the inlineable
+            // graph depending on the context. The getInlineSubstitution test ensures the inlineable
             // graph is present.
             return "it is a non-intrinsic native method";
         } else if (method.isAbstract()) {
@@ -170,7 +171,7 @@ public class InliningData {
     }
 
     private boolean checkTargetConditions(Invoke invoke, ResolvedJavaMethod method) {
-        final String failureMessage = checkTargetConditionsHelper(method, invoke.bci());
+        final String failureMessage = checkTargetConditionsHelper(method, invoke);
         if (failureMessage == null) {
             return true;
         } else {

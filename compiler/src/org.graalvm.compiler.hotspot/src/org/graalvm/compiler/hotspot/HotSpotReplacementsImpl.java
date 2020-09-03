@@ -144,8 +144,11 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     @Override
-    public StructuredGraph getSubstitution(ResolvedJavaMethod targetMethod, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
-                    AllowAssumptions allowAssumptions, OptionValues options) {
+    public StructuredGraph getInlineSubstitution(ResolvedJavaMethod targetMethod, int invokeBci, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosition, AllowAssumptions allowAssumptions, OptionValues options) {
+        if (!inlineControl.allowSubstitution()) {
+            return null;
+        }
         boolean useEncodedGraphs = UseEncodedGraphs.getValue(options);
         if (IS_IN_NATIVE_IMAGE || useEncodedGraphs) {
             InvocationPlugin plugin = getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(targetMethod);
@@ -162,7 +165,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
             }
         }
 
-        return super.getSubstitution(targetMethod, invokeBci, trackNodeSourcePosition, replaceePosition, allowAssumptions, options);
+        return super.getInlineSubstitution(targetMethod, invokeBci, inlineControl, trackNodeSourcePosition, replaceePosition, allowAssumptions, options);
     }
 
     @Override
