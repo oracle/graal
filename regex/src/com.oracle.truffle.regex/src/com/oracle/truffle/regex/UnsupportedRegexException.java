@@ -40,11 +40,15 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
+@ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("serial")
-public final class UnsupportedRegexException extends RuntimeException implements TruffleException {
+public final class UnsupportedRegexException extends AbstractTruffleException {
 
     private String reason;
     private RegexSource regexSrc;
@@ -55,7 +59,7 @@ public final class UnsupportedRegexException extends RuntimeException implements
     }
 
     public UnsupportedRegexException(String reason, Throwable cause) {
-        super(cause);
+        super(null, cause, -1, null);
         this.reason = reason;
     }
 
@@ -97,22 +101,9 @@ public final class UnsupportedRegexException extends RuntimeException implements
         return sb.toString();
     }
 
-    /**
-     * For performance reasons, this exception does not record any stack trace information.
-     */
-    @SuppressWarnings("sync-override")
-    @Override
-    public Throwable fillInStackTrace() {
-        return this;
-    }
-
-    @Override
-    public boolean isSyntaxError() {
-        return true;
-    }
-
-    @Override
-    public Node getLocation() {
-        return null;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    ExceptionType getExceptionType() {
+        return ExceptionType.PARSE_ERROR;
     }
 }
