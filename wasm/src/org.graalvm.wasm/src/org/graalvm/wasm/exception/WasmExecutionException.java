@@ -42,22 +42,20 @@ package org.graalvm.wasm.exception;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Thrown when a WebAssembly program ends up in an unexpected exceptional state. This error likely
  * indicates an internal engine issue.
  */
-public class WasmExecutionException extends RuntimeException implements TruffleException {
+public class WasmExecutionException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 1787712823539392187L;
-    private Node location;
 
     public WasmExecutionException(Node location, String message) {
-        super(message);
+        super(message, location);
         CompilerAsserts.neverPartOfCompilation();
-        this.location = location;
     }
 
     public WasmExecutionException(Node location, String message, Throwable cause) {
@@ -69,10 +67,5 @@ public class WasmExecutionException extends RuntimeException implements TruffleE
     @TruffleBoundary
     public static WasmExecutionException create(Node location, String message) {
         return new WasmExecutionException(location, message);
-    }
-
-    @Override
-    public Node getLocation() {
-        return location;
     }
 }
