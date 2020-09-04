@@ -442,7 +442,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
     private void tryToDevirtualizeMultipleMethods(StructuredGraph graph, StampProvider stampProvider, ConstantReflectionProvider constantReflection) {
         MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) invoke.callTarget();
-        if (methodCallTarget.invokeKind() == InvokeKind.Interface) {
+        if (methodCallTarget.invokeKind() == InvokeKind.Interface && maySpeculate) {
             ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
             ResolvedJavaType leastCommonType = getLeastCommonType();
             ResolvedJavaType contextType = invoke.getContextType();
