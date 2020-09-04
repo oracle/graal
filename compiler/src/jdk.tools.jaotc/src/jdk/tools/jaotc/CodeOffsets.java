@@ -50,7 +50,7 @@ final class CodeOffsets {
         int verifiedEntry = 0;
         int exceptionHandler = -1;
         int deoptHandler = -1;
-        int deoptMHHandler = HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY.isAvailable() ? -1 : -2;
+        int deoptMHHandler = -1;
 
         for (CompilationResult.CodeMark mark : marks) {
             HotSpotMarkId markId = (HotSpotMarkId) mark.id;
