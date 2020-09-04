@@ -175,4 +175,9 @@ public class ReassociationPhase extends Phase {
         }
         debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Reassociation: after creating mul from add/sub");
     }
+
+    @Override
+    public float codeSizeIncrease() {
+        return 2.0f;
+    }
 }
