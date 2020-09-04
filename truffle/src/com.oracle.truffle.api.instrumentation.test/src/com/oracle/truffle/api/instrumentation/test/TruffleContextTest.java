@@ -47,9 +47,16 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -59,13 +66,17 @@ import org.graalvm.polyglot.PolyglotException;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.ThreadsActivationListener;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import java.lang.reflect.Method;
 
 public class TruffleContextTest extends AbstractPolyglotTest {
 
@@ -77,6 +88,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         assertNotEquals(tc, languageEnv.getContext());
         assertFalse(tc.isEntered());
         assertFalse(tc.isClosed());
+        assertFalse(tc.isCancelling());
         assertNotNull(tc.toString());
         assertEquals(tc.getParent(), languageEnv.getContext());
 
@@ -95,8 +107,10 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
         TruffleContext tc = languageEnv.newContextBuilder().build();
         assertFalse(tc.isClosed());
+        assertFalse(tc.isCancelling());
         tc.closeCancelled(null, "testreason");
         assertTrue(tc.isClosed());
+        assertFalse(tc.isCancelling());
     }
 
     @Test
@@ -229,6 +243,65 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         assertEquals("testError", e.getMessage());
         assertTrue(e.isCancelled());
         assertTrue(e.isResourceExhausted());
+    }
+
+    @Test
+    public void testCancelling() throws ExecutionException, InterruptedException {
+        setupEnv();
+
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
+        try {
+            context.leave(); // avoid need for multi-threading
+
+            AtomicReference<TruffleContext> entered = new AtomicReference<>();
+            CountDownLatch waitUntilStatementExecuted = new CountDownLatch(1);
+            instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), new ExecutionEventListener() {
+                @TruffleBoundary
+                @Override
+                public void onEnter(EventContext ctx, VirtualFrame frame) {
+                    entered.set(instrumentEnv.getEnteredContext());
+                    waitUntilStatementExecuted.countDown();
+                }
+
+                @Override
+                public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+
+                }
+
+                @Override
+                public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+
+                }
+            });
+            Future<?> future = executorService.submit(() -> {
+                context.enter();
+                try {
+                    context.eval(InstrumentationTestLanguage.ID, "LOOP(infinity, STATEMENT)");
+                    fail();
+                } catch (PolyglotException pe) {
+                    if (!pe.isCancelled() || !pe.isResourceExhausted()) {
+                        throw pe;
+                    }
+                    assertEquals("testError", pe.getMessage());
+                    assertTrue(entered.get().isCancelling());
+                } finally {
+                    context.leave();
+                }
+            });
+
+            waitUntilStatementExecuted.await();
+
+            TruffleContext tc = entered.get();
+            assertFalse(tc.isCancelling());
+            tc.closeResourceExhausted(null, "testError");
+
+            future.get();
+            assertFalse(tc.isCancelling());
+            assertTrue(tc.isClosed());
+        } finally {
+            executorService.shutdownNow();
+            executorService.awaitTermination(100, TimeUnit.SECONDS);
+        }
     }
 
     @Test

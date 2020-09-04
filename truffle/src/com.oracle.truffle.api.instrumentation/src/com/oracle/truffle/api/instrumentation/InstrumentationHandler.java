@@ -978,15 +978,39 @@ final class InstrumentationHandler {
         }
     }
 
+    void notifyLanguageContextCreate(TruffleContext context, LanguageInfo language) {
+        for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
+            binding.getElement().onLanguageContextCreate(context, language);
+        }
+    }
+
     void notifyLanguageContextCreated(TruffleContext context, LanguageInfo language) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
             binding.getElement().onLanguageContextCreated(context, language);
         }
     }
 
+    void notifyLanguageContextCreateFailed(TruffleContext context, LanguageInfo language) {
+        for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
+            binding.getElement().onLanguageContextCreateFailed(context, language);
+        }
+    }
+
+    void notifyLanguageContextInitialize(TruffleContext context, LanguageInfo language) {
+        for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
+            binding.getElement().onLanguageContextInitialize(context, language);
+        }
+    }
+
     void notifyLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
             binding.getElement().onLanguageContextInitialized(context, language);
+        }
+    }
+
+    void notifyLanguageContextInitializeFailed(TruffleContext context, LanguageInfo language) {
+        for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
+            binding.getElement().onLanguageContextInitializeFailed(context, language);
         }
     }
 

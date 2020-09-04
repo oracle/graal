@@ -39,6 +39,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.services.Services;
 
 final class GraalRuntimeSupport extends RuntimeSupport {
@@ -202,5 +203,35 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     @Override
     public boolean isOSRRootNode(RootNode rootNode) {
         return rootNode instanceof OptimizedOSRLoopNode.OSRRootNode;
+    }
+
+    @Override
+    public int getObjectAlignment() {
+        return GraalTruffleRuntime.getRuntime().getObjectAlignment();
+    }
+
+    @Override
+    public int getArrayBaseOffset(Class<?> componentType) {
+        return GraalTruffleRuntime.getRuntime().getArrayBaseOffset(componentType);
+    }
+
+    @Override
+    public int getArrayIndexScale(Class<?> componentType) {
+        return GraalTruffleRuntime.getRuntime().getArrayIndexScale(componentType);
+    }
+
+    @Override
+    public int getBaseInstanceSize(Class<?> type) {
+        return GraalTruffleRuntime.getRuntime().getBaseInstanceSize(type);
+    }
+
+    @Override
+    public Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+        return GraalTruffleRuntime.getRuntime().getNonPrimitiveResolvedFields(type);
+    }
+
+    @Override
+    public Object getFieldValue(Object resolvedJavaField, Object obj) {
+        return GraalTruffleRuntime.getRuntime().getFieldValue((ResolvedJavaField) resolvedJavaField, obj);
     }
 }

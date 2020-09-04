@@ -44,10 +44,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
-import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -85,6 +84,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
+import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -114,7 +115,6 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.LayoutFactory;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import java.util.function.Supplier;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -1138,4 +1138,34 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         valueClass == Double.class ||
                         valueClass == String.class;
     }
+
+    protected int getObjectAlignment() {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    protected int getArrayBaseOffset(Class<?> componentType) {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    protected int getArrayIndexScale(Class<?> componentType) {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    protected int getBaseInstanceSize(Class<?> type) {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    protected Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    protected Object getFieldValue(ResolvedJavaField resolvedJavaField, Object obj) {
+        throw new UnsupportedOperationException();
+    }
+
 }

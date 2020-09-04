@@ -179,6 +179,9 @@ final class PolyglotLocals {
         if (context == null) {
             throw new IllegalStateException("No current context is entered.");
         }
+        if (context.localsCleared) {
+            throw new IllegalStateException("Locals have already been cleared.");
+        }
         if (!context.getContext(language).isCreated()) {
             throw new IllegalStateException(String.format("Language context for language '%s' is not yet created in the context.",
                             language.getId()));
@@ -190,6 +193,9 @@ final class PolyglotLocals {
     static boolean assertInstrumentCreated(PolyglotContextImpl context, PolyglotInstrument instrument) {
         if (context == null) {
             throw new IllegalStateException("No current context is entered.");
+        }
+        if (context.localsCleared) {
+            throw new IllegalStateException("Locals have already been cleared.");
         }
         if (!instrument.isInitialized()) {
             throw new IllegalStateException(String.format("Instrument '%s' is not yet created in the  context.",
