@@ -73,7 +73,6 @@ import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
@@ -140,12 +139,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         uniqueEntryPoints.addAll(entryPoints);
 
         int pageSize = NativeImageOptions.getPageSize();
-        if (NativeImageOptions.MachODebugInfoTesting.getValue()) {
-            objectFile = new MachOObjectFile(pageSize);
-        } else {
-            objectFile = ObjectFile.getNativeObjectFile(pageSize);
-        }
-
+        objectFile = ObjectFile.getNativeObjectFile(pageSize);
         objectFile.setByteOrder(ConfigurationValues.getTarget().arch.getByteOrder());
         wordSize = FrameAccess.wordSize();
         assert objectFile.getWordSizeInBytes() == wordSize;
