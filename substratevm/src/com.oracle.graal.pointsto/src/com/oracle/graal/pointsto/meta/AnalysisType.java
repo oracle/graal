@@ -70,6 +70,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
 
@@ -1053,6 +1054,16 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     @Override
     public AnalysisMethod[] getDeclaredMethods() {
         return universe.lookup(wrapped.getDeclaredMethods());
+    }
+
+    @Override
+    public AnalysisMethod findMethod(String name, Signature signature) {
+        for (AnalysisMethod method : getDeclaredMethods()) {
+            if (method.getName().equals(name) && method.getSignature().equals(signature)) {
+                return method;
+            }
+        }
+        return null;
     }
 
     @Override
