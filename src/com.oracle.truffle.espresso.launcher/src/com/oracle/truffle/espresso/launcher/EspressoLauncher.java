@@ -339,47 +339,65 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             contextBuilder.option(entry.getKey(), entry.getValue());
         }
 
-        contextBuilder.allowCreateThread(true);
-
         int rc = 1;
-        try (Context context = contextBuilder.build()) {
 
-            // runVersionAction(versionAction, context.getEngine());
-            if (versionAction != VersionAction.None) {
-                Value version = context.eval("java", "sun.misc.Version");
-                version.invokeMember("print");
-                if (versionAction == VersionAction.PrintAndExit) {
-                    throw exit(0);
-                }
-            }
+        try {
+            Context[] c = new Context[1];
 
-            if (mainClassName == null) {
-                throw abort(usage());
-            }
+            Runnable target = new Runnable() {
+                @Override
+                public void run() {
+                    contextBuilder.allowCreateThread(true);
 
-            try {
-                Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
-                Value mainKlass = launcherHelper //
-                                .invokeMember("checkAndLoadMain", true, launchMode.ordinal(), mainClassName) //
-                                .getMember("static");
-                mainKlass.invokeMember("main", (Object) mainClassArgs.toArray(new String[0]));
-                if (pauseOnExit) {
-                    getError().print("Press any key to continue...");
-                    try {
-                        System.in.read();
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    Context context = contextBuilder.build();
+                    c[0] = context;
+
+                    // runVersionAction(versionAction, context.getEngine());
+                    if (versionAction != VersionAction.None) {
+                        Value version = context.eval("java", "sun.misc.Version");
+                        version.invokeMember("print");
+                        if (versionAction == VersionAction.PrintAndExit) {
+                            throw exit(0);
+                        }
+                    }
+
+                    if (mainClassName == null) {
+                        throw abort(usage());
+                    }
+
+                    Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
+                    Value mainKlass = launcherHelper //
+                                    .invokeMember("checkAndLoadMain", true, launchMode.ordinal(), mainClassName) //
+                                    .getMember("static");
+                    mainKlass.invokeMember("main", (Object) mainClassArgs.toArray(new String[0]));
+                    if (pauseOnExit) {
+                        getError().print("Press any key to continue...");
+                        try {
+                            System.in.read();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
-                rc = 0;
-            } catch (PolyglotException e) {
-                if (!e.isExit()) {
-                    e.printStackTrace();
-                } else {
-                    rc = e.getExitStatus();
+            };
+            Runnable close = new Runnable() {
+                @Override
+                public void run() {
+                    c[0].close();
                 }
+            };
+            CallbackThreadWithClosingPayload t = new CallbackThreadWithClosingPayload(target, close);
+            t.start();
+            t.waitForCloser();
+            rc = 0;
+        } catch (PolyglotException e) {
+            if (!e.isExit()) {
+                e.printStackTrace();
+            } else {
+                rc = e.getExitStatus();
             }
         }
+
         throw exit(rc);
     }
 

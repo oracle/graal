@@ -229,26 +229,9 @@ public final class Target_java_lang_Thread {
                         assert !dispatchUncaughtException.isStatic();
                         dispatchUncaughtException.invokeDirect(self, uncaught.getExceptionObject());
                     } catch (EspressoExitException exit) {
-                        // TODO: initiate shutdown sequence from here.
-                        throw exit;
+                        /* Suppress */
                     } finally {
-                        setThreadStop(self, KillStatus.EXITING);
-                        threadExit.call(self);
-                        self.getLock().lock();
-                        try {
-                            self.setIntField(meta.java_lang_Thread_threadStatus, State.TERMINATED.value);
-                            // Notify waiting threads you are done working
-                            self.getLock().signalAll();
-                        } finally {
-                            self.getLock().unlock();
-                        }
-
-                        // Cleanup.
-                        context.unregisterThread(self);
-                        if (context.isClosing()) {
-                            // Ignore exceptions that arise during closing.
-                            return;
-                        }
+                        terminate(self, threadExit, meta);
                     }
                 }
             });
@@ -265,6 +248,35 @@ public final class Target_java_lang_Thread {
         } else {
             EspressoLanguage.getCurrentContext().getLogger().warning(
                             "Thread.start() called on " + self.getKlass() + " but thread support is disabled. Use --java.MultiThreaded=true to enable thread support.");
+        }
+    }
+
+    public static void terminate(@Host(Thread.class) StaticObject self, Meta meta) {
+        terminate(self, null, meta);
+    }
+
+    private static void terminate(@Host(Thread.class) StaticObject self, DirectCallNode threadExit, Meta meta) {
+        setThreadStop(self, KillStatus.EXITING);
+        if (threadExit != null) {
+            threadExit.call(self);
+        } else {
+            meta.java_lang_Thread_exit.invokeDirect(self);
+        }
+        self.getLock().lock();
+        try {
+            self.setIntField(meta.java_lang_Thread_threadStatus, State.TERMINATED.value);
+            // Notify waiting threads you are done working
+            self.getLock().signalAll();
+        } finally {
+            self.getLock().unlock();
+        }
+
+        EspressoContext context = meta.getContext();
+        // Cleanup.
+        context.unregisterThread(self);
+        if (context.isClosing()) {
+            // Ignore exceptions that arise during closing.
+            return;
         }
     }
 

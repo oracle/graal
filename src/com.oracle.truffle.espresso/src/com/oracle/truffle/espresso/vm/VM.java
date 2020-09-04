@@ -499,7 +499,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     case Illegal:
                         CompilerDirectives.transferToInterpreter();
                         throw EspressoError.shouldNotReachHere("Unexpected primitive kind: " + componentType.getJavaKind());
-                    // formatter: on
+                        // formatter: on
                 }
 
             } catch (UnsupportedTypeException e) {
@@ -1097,13 +1097,15 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @TruffleBoundary
-    public static void JVM_Halt(int code) {
+    public void JVM_Halt(int code) {
+        getContext().doExit();
         throw new EspressoExitException(code);
     }
 
     @VmImpl
     @TruffleBoundary
-    public static void JVM_Exit(int code) {
+    public void JVM_Exit(int code) {
+        getContext().doExit();
         // System.exit(code);
         // Unlike Halt, runs finalizers
         throw new EspressoExitException(code);

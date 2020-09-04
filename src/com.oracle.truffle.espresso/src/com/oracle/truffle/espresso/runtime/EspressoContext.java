@@ -29,7 +29,9 @@ import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -138,7 +140,34 @@ public final class EspressoContext {
     @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
+
+    // Context closing control
     private volatile boolean isClosing = false;
+    /**
+     * Controls behavior of context closing. Until an exit method has been called, context closing
+     * waits for all non-daemon threads to finish.
+     */
+    private volatile boolean exitCalled = false;
+    /**
+     * Spawns on two occasions:
+     * <li>Main thread returns
+     * <li>An exit method is called
+     */
+    private volatile CloserThread closerThread = null;
+    /**
+     * Callback to Context.close().
+     */
+    private volatile Runnable closingPayload;
+    /**
+     * Closer thread waits on this synchronizer. Once a thread terminates, or an exit method is
+     * called, it is notified
+     */
+    private final Object threadRegistrationSynchronizer = new Object() {
+    };
+
+    public Object getSynchronizer() {
+        return threadRegistrationSynchronizer;
+    }
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
@@ -393,11 +422,13 @@ public final class EspressoContext {
 
         createMainThread();
 
+        registerClosingPayload();
+
         initializeKnownClass(Type.java_lang_ref_Finalizer);
 
         if (getJavaVersion().java8OrEarlier()) {
             // Initialize reference queue
-            this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
+            this.hostToGuestReferenceDrainThread = new Thread(new ReferenceDrain() {
                 @SuppressWarnings("rawtypes")
                 @Override
                 protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
@@ -411,7 +442,7 @@ public final class EspressoContext {
         }
         if (getJavaVersion().java9OrLater()) {
             // Initialize reference queue
-            this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
+            this.hostToGuestReferenceDrainThread = new Thread(new ReferenceDrain() {
                 @SuppressWarnings("rawtypes")
                 @Override
                 protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
@@ -515,6 +546,30 @@ public final class EspressoContext {
         mainThreadCreated = true;
     }
 
+    @SuppressWarnings("unchecked")
+    private void registerClosingPayload() {
+        Thread t = Thread.currentThread();
+        assert t instanceof Supplier<?>;
+        assert t instanceof Consumer<?>;
+        try {
+            Supplier<Runnable> asSupplier = (Supplier<Runnable>) t;
+            Consumer<Supplier<Thread>> asConsumer = (Consumer<Supplier<Thread>>) t;
+
+            closingPayload = asSupplier.get();
+            Supplier<Thread> callback = new Supplier<Thread>() {
+                @Override
+                public Thread get() {
+                    threadManager.unregisterMainThread();
+                    startCloserThread();
+                    return closerThread;
+                }
+            };
+            asConsumer.accept(callback);
+        } catch (Throwable e) {
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
     /**
      * Creates a new guest thread from the host thread, and adds it to the main thread group.
      */
@@ -615,7 +670,7 @@ public final class EspressoContext {
         }
 
         if (nextPhase) {
-            getLogger().severe("Could not gracefully stop executing thread in context closing.");
+            getLogger().severe("Could not gracefully stop executing threads in context closing.");
         }
 
         if (getEnv().getOptions().get(EspressoOptions.MultiThreaded)) {
@@ -863,5 +918,67 @@ public final class EspressoContext {
 
     public boolean canEnterOtherThread() {
         return contextReady;
+    }
+
+    public void doExit() {
+        exitCalled = true;
+        startCloserThread();
+        Object sync = getSynchronizer();
+        synchronized (sync) {
+            sync.notifyAll();
+        }
+    }
+
+    public synchronized void startCloserThread() {
+        if (closerThread == null) {
+            closerThread = new CloserThread(closingPayload);
+            closerThread.start();
+        }
+    }
+
+    private class CloserThread extends Thread {
+        private final Runnable payload;
+
+        public CloserThread(Runnable payload) {
+            this.payload = payload;
+        }
+
+        private boolean hasActiveNonDaemon() {
+            for (StaticObject guest : threadManager.activeThreads()) {
+                Thread host = Target_java_lang_Thread.getHostFromGuestThread(guest);
+                if (!host.isDaemon()) {
+                    if (host.isAlive()) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private void waitForClose() {
+            Object synchronizer = getSynchronizer();
+            synchronized (synchronizer) {
+                while (true) {
+                    if (exitCalled) {
+                        return;
+                    }
+                    if (hasActiveNonDaemon()) {
+                        try {
+                            synchronizer.wait();
+                        } catch (InterruptedException e) {
+                            /* loop back */
+                        }
+                    } else {
+                        return;
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void run() {
+            waitForClose();
+            payload.run();
+        }
     }
 }
