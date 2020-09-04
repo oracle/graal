@@ -66,8 +66,13 @@ public final class Target_java_lang_System {
     private static void doArrayCopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length,
                     Meta meta, SubstitutionProfiler profiler) {
         if (StaticObject.isNull(src) || StaticObject.isNull(dest)) {
-            profiler.profile(3);
+            profiler.profile(0);
             throw meta.throwNullPointerException();
+        }
+        if (length == 0) {
+            // TODO: handle foreign arrays.
+            profiler.profile(3);
+            return;
         }
         // Mimics hotspot implementation.
         if (src.isArray() && dest.isArray()) {
