@@ -118,8 +118,13 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
             ConstantNode c1 = (ConstantNode) a1;
             ConstantNode c2 = (ConstantNode) a2;
             if (c1.getStableDimension() >= 1 && c2.getStableDimension() >= 1) {
-                boolean ret = arrayEquals(tool.getConstantReflection(), c1.asJavaConstant(), c2.asJavaConstant(), length.asJavaConstant().asInt());
-                return ConstantNode.forBoolean(ret);
+                ConstantReflectionProvider constantReflection = tool.getConstantReflection();
+                Integer c1Length = constantReflection.readArrayLength(c1.asJavaConstant());
+                Integer c2Length = constantReflection.readArrayLength(c2.asJavaConstant());
+                if (c1Length != null && c2Length != null && c1Length.equals(c2Length)) {
+                    boolean ret = arrayEquals(constantReflection, c1.asJavaConstant(), c2.asJavaConstant(), length.asJavaConstant().asInt());
+                    return ConstantNode.forBoolean(ret);
+                }
             }
         }
         return this;
