@@ -427,7 +427,40 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             if (deleteAnnotation != null) {
                 registerAsDeleted(annotated, original, deleteAnnotation);
             } else {
-                ResolvedJavaField alias = fieldValueRecomputation(originalClass, original, annotated, annotatedField);
+                ResolvedJavaField computedAlias = fieldValueRecomputation(originalClass, original, annotated, annotatedField);
+
+                ResolvedJavaField existingAlias = fieldSubstitutions.get(original);
+                ResolvedJavaField alias = computedAlias;
+                if (existingAlias != null) {
+                    /*
+                     * Allow multiple @Alias definitions for the same field as long as only one of
+                     * them has a @RecomputeValueField annotation.
+                     */
+                    if (computedAlias.equals(original)) {
+                        /*
+                         * The currently processed field does not have a @RecomputeValueField
+                         * annotation. Use whatever alias was registered previously.
+                         */
+                        alias = existingAlias;
+                    } else if (existingAlias.equals(original)) {
+                        /*
+                         * The alias registered previously does not have a @RecomputeValueField
+                         * annotation. We need to patch the previous registration. But we do not
+                         * know which annotated field that was, so we need to iterate the whole
+                         * field substitution registry and look for the matching value.
+                         */
+                        fieldSubstitutions.replaceAll((key, value) -> value.equals(existingAlias) ? computedAlias : value);
+                    } else {
+                        /*
+                         * Both the current and the previous registration have
+                         * a @RecomputeValueField annotation. We could now check if the
+                         * recomputation is exactly the same and allow that. But we have no use case
+                         * for this right now, so we do nothing and let the register() call below
+                         * report an error.
+                         */
+                    }
+                }
+
                 register(fieldSubstitutions, annotated, original, alias);
             }
         }

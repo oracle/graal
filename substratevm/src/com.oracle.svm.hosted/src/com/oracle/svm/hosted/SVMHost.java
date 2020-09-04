@@ -128,6 +128,7 @@ public final class SVMHost implements HostVM {
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
     private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
+    private static final Method isRecordMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isRecord") : null;
     private static final Method getNestHostMethod = JavaVersionUtil.JAVA_SPEC >= 11 ? ReflectionUtil.lookupMethod(Class.class, "getNestHost") : null;
 
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport, UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
@@ -313,9 +314,11 @@ public final class SVMHost implements HostVM {
          * JDK 15 added support for Hidden Classes. Record if this javaClass is hidden.
          */
         boolean isHidden = false;
+        boolean isRecord = false;
         if (JavaVersionUtil.JAVA_SPEC >= 15) {
             try {
                 isHidden = (boolean) isHiddenMethod.invoke(javaClass);
+                isRecord = (boolean) isRecordMethod.invoke(javaClass);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw VMError.shouldNotReachHere(e);
             }
@@ -331,7 +334,7 @@ public final class SVMHost implements HostVM {
         }
 
         final DynamicHub dynamicHub = new DynamicHub(className, computeHubType(type), computeReferenceType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
-                        modifiers, hubClassLoader, isHidden, nestHost);
+                        modifiers, hubClassLoader, isHidden, isRecord, nestHost);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         }
