@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -93,30 +93,6 @@ public interface LogHandler {
      * @since 19.0
      */
     void flush();
-
-    /**
-     * This method gets called if the VM finds itself in a fatal, non-recoverable error situation.
-     * The callee receives a CCharPointer string that describes the error. Based on this string the
-     * implementor can decide if it wants to get more specific error related information via
-     * subsequent calls to {@link #log(CCharPointer, UnsignedWord)}. This is requested by returning
-     * {@code true}. Returning {@code false} on the other hand will let the VM know that it can skip
-     * providing this information and immediately proceed with calling {@link #fatalError()} from
-     * where it is expected to never return to the VM.
-     * <p>
-     * Providing this method allows to implement flood control for fatal errors. The implementor can
-     * rely on {@link #fatalError()} getting called soon after this method is called.
-     *
-     * @param context provides a CCharPointer string that describes the error
-     * @param length provides the length of the error string
-     *
-     * @return if {@code false} is returned the VM will skip providing more specific error related
-     *         information before calling {@link #fatalError()}.
-     *
-     * @since 20.3
-     */
-    default boolean fatalContext(CCharPointer context, UnsignedWord length) {
-        return true;
-    }
 
     /**
      * Exit the VM because a fatal, non-recoverable error situation has been detected. The

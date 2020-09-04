@@ -26,10 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -38,7 +35,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.log.RawBufferLog;
+import com.oracle.svm.core.log.LogHandlerExtension;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
@@ -94,8 +91,6 @@ final class Target_com_oracle_svm_core_util_VMError {
 /** Dummy class to have a class with the file's name. */
 public class VMErrorSubstitutions {
 
-    private static final RawBufferLog fatalContextMessageWriter = new RawBufferLog();
-
     @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
     static RuntimeException shouldNotReachHere(CodePointer callerIP, String msg, Throwable ex) {
         ThreadStackPrinter.printBacktrace();
@@ -111,39 +106,11 @@ public class VMErrorSubstitutions {
         doShutdown(callerIP, msg, ex);
     }
 
-    @NeverInline("Uses memory allocation in the stack frame.")
-    private static boolean fatalContext(CodePointer callerIP, String msg, Throwable ex) {
-        String fatalErrorMsg = msg != null ? msg : "Unknown Fatal Error";
-        String exceptionClassName = null;
-        String exceptionMessage = null;
-        if (ex != null) {
-            exceptionClassName = ex.getClass().getName();
-            exceptionMessage = JDKUtils.getRawMessage(ex);
-        }
-
-        CCharPointer fatalMessageBytes = StackValue.get(512);
-        fatalContextMessageWriter.setRawBuffer(fatalMessageBytes, 512);
-
-        fatalContextMessageWriter.string("ip:");
-        fatalContextMessageWriter.hex(callerIP);
-        fatalContextMessageWriter.character('|');
-        fatalContextMessageWriter.string(fatalErrorMsg);
-        if (exceptionClassName != null) {
-            fatalContextMessageWriter.character('|');
-            fatalContextMessageWriter.string(exceptionClassName);
-            if (exceptionMessage != null) {
-                fatalContextMessageWriter.character('|');
-                fatalContextMessageWriter.string(exceptionMessage);
-            }
-        }
-
-        return ImageSingletons.lookup(LogHandler.class).fatalContext(fatalMessageBytes, WordFactory.unsigned(fatalContextMessageWriter.getRawBufferPos()));
-    }
-
     @NeverInline("Starting a stack walk in the caller frame")
     private static void doShutdown(CodePointer callerIP, String msg, Throwable ex) {
+        LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
         try {
-            if (fatalContext(callerIP, msg, ex)) {
+            if (!(logHandler instanceof LogHandlerExtension) || ((LogHandlerExtension) logHandler).fatalContext(callerIP, msg, ex)) {
                 Log log = Log.log();
                 log.autoflush(true);
 
@@ -179,6 +146,6 @@ public class VMErrorSubstitutions {
         } catch (Throwable ignored) {
             /* Ignore exceptions reported during error reporting, we are going to exit anyway. */
         }
-        ImageSingletons.lookup(LogHandler.class).fatalError();
+        logHandler.fatalError();
     }
 }

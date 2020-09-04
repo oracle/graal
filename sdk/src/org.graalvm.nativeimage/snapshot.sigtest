@@ -183,7 +183,6 @@ supr java.lang.RuntimeException
 hfds serialVersionUID
 
 CLSS public abstract interface org.graalvm.nativeimage.LogHandler
-meth public boolean fatalContext(org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord)
 meth public abstract void fatalError()
 meth public abstract void flush()
 meth public abstract void log(org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord)

@@ -66,12 +66,6 @@ public class WindowsLogHandler implements LogHandler {
     }
 
     @Override
-    @SuppressWarnings("unused")
-    public boolean fatalContext(CCharPointer context, UnsignedWord length) {
-        return true; /* unconditionally dump details */
-    }
-
-    @Override
     public void fatalError() {
         if (SubstrateUtil.isPrintDiagnosticsInProgress()) {
             // Delay the shutdown a bit if another thread has something important to report.
