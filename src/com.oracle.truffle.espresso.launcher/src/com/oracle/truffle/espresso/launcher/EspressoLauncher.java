@@ -37,7 +37,6 @@ import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 public class EspressoLauncher extends AbstractLanguageLauncher {
@@ -341,62 +340,54 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
         int rc = 1;
 
-        try {
-            Context[] c = new Context[1];
+        Context[] c = new Context[1];
 
-            Runnable target = new Runnable() {
-                @Override
-                public void run() {
-                    contextBuilder.allowCreateThread(true);
+        Runnable target = new Runnable() {
+            @Override
+            public void run() {
+                contextBuilder.allowCreateThread(true);
 
-                    Context context = contextBuilder.build();
-                    c[0] = context;
+                Context context = contextBuilder.build();
+                c[0] = context;
 
-                    // runVersionAction(versionAction, context.getEngine());
-                    if (versionAction != VersionAction.None) {
-                        Value version = context.eval("java", "sun.misc.Version");
-                        version.invokeMember("print");
-                        if (versionAction == VersionAction.PrintAndExit) {
-                            throw exit(0);
-                        }
-                    }
-
-                    if (mainClassName == null) {
-                        throw abort(usage());
-                    }
-
-                    Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
-                    Value mainKlass = launcherHelper //
-                                    .invokeMember("checkAndLoadMain", true, launchMode.ordinal(), mainClassName) //
-                                    .getMember("static");
-                    mainKlass.invokeMember("main", (Object) mainClassArgs.toArray(new String[0]));
-                    if (pauseOnExit) {
-                        getError().print("Press any key to continue...");
-                        try {
-                            System.in.read();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+                // runVersionAction(versionAction, context.getEngine());
+                if (versionAction != VersionAction.None) {
+                    Value version = context.eval("java", "sun.misc.Version");
+                    version.invokeMember("print");
+                    if (versionAction == VersionAction.PrintAndExit) {
+                        throw exit(0);
                     }
                 }
-            };
-            Runnable close = new Runnable() {
-                @Override
-                public void run() {
-                    c[0].close();
+
+                if (mainClassName == null) {
+                    throw abort(usage());
                 }
-            };
-            CallbackThreadWithClosingPayload t = new CallbackThreadWithClosingPayload(target, close);
-            t.start();
-            t.waitForCloser();
-            rc = 0;
-        } catch (PolyglotException e) {
-            if (!e.isExit()) {
-                e.printStackTrace();
-            } else {
-                rc = e.getExitStatus();
+
+                Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
+                Value mainKlass = launcherHelper //
+                                .invokeMember("checkAndLoadMain", true, launchMode.ordinal(), mainClassName) //
+                                .getMember("static");
+                mainKlass.invokeMember("main", (Object) mainClassArgs.toArray(new String[0]));
+                if (pauseOnExit) {
+                    getError().print("Press any key to continue...");
+                    try {
+                        System.in.read();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
-        }
+        };
+        Runnable close = new Runnable() {
+            @Override
+            public void run() {
+                c[0].close(true);
+            }
+        };
+        CallbackThreadWithClosingPayload t = new CallbackThreadWithClosingPayload(target, close);
+        t.start();
+        t.waitForCloser();
+        rc = t.getExitStatus();
 
         throw exit(rc);
     }

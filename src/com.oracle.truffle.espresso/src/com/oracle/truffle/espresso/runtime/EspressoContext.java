@@ -153,7 +153,7 @@ public final class EspressoContext {
      * <li>Main thread returns
      * <li>An exit method is called
      */
-    private volatile CloserThread closerThread = null;
+    private volatile Thread closer = null;
     /**
      * Callback to Context.close().
      */
@@ -262,6 +262,7 @@ public final class EspressoContext {
         this.jdwpContext = new JDWPContextImpl(this);
         this.eventListener = jdwpContext.jdwpInit(env, getMainThread());
         if (getEnv().getOptions().get(EspressoOptions.MultiThreaded)) {
+            hostToGuestReferenceDrainThread.setDaemon(true);
             hostToGuestReferenceDrainThread.start();
         }
     }
@@ -428,7 +429,7 @@ public final class EspressoContext {
 
         if (getJavaVersion().java8OrEarlier()) {
             // Initialize reference queue
-            this.hostToGuestReferenceDrainThread = new Thread(new ReferenceDrain() {
+            this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
                 @SuppressWarnings("rawtypes")
                 @Override
                 protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
@@ -442,7 +443,7 @@ public final class EspressoContext {
         }
         if (getJavaVersion().java9OrLater()) {
             // Initialize reference queue
-            this.hostToGuestReferenceDrainThread = new Thread(new ReferenceDrain() {
+            this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
                 @SuppressWarnings("rawtypes")
                 @Override
                 protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
@@ -561,7 +562,7 @@ public final class EspressoContext {
                 public Thread get() {
                     threadManager.unregisterMainThread();
                     startCloserThread();
-                    return closerThread;
+                    return closer;
                 }
             };
             asConsumer.accept(callback);
@@ -930,16 +931,16 @@ public final class EspressoContext {
     }
 
     public synchronized void startCloserThread() {
-        if (closerThread == null) {
-            closerThread = new CloserThread(closingPayload);
-            closerThread.start();
+        if (closer == null) {
+            closer = getEnv().createThread(new Closer(closingPayload));
+            closer.start();
         }
     }
 
-    private class CloserThread extends Thread {
+    private class Closer implements Runnable {
         private final Runnable payload;
 
-        public CloserThread(Runnable payload) {
+        public Closer(Runnable payload) {
             this.payload = payload;
         }
 
