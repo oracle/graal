@@ -23,13 +23,29 @@
 #ifndef _MANAGEMENT_H
 #define _MANAGEMENT_H
 
-#include "jmm.h"
-
 #include <trufflenfi.h>
 #include <jni.h>
 
-JNIEXPORT JmmInterface* JNICALL initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+JNIEXPORT void* JNICALL initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *), const int version);
 
-JNIEXPORT void JNICALL disposeManagementContext(TruffleEnv *truffle_env, JmmInterface *management_ptr);
+JNIEXPORT void JNICALL disposeManagementContext(TruffleEnv *truffle_env, void *management_ptr, int version);
+
+/* 
+ * JMM interface changes dramatically between 8 and 11, changing
+ * functions offset, thus breaking compatibility. 
+ * 
+ * Since the differentiation between an espresso 8 or espresso 11 is 
+ * done at runtime, we need to provide the native part of espresso with
+ * a way to choose which of the interface to create, depending on the 
+ * requested version.
+ */
+
+void* initializeManagementContext8(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+
+void disposeManagementContext8(TruffleEnv *truffle_env, void *management_ptr);
+
+void* initializeManagementContext11(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+
+void disposeManagementContext11(TruffleEnv *truffle_env, void *management_ptr);
 
 #endif // _MANAGEMENT_H

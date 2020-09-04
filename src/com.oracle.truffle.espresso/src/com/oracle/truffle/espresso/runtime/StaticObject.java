@@ -1927,6 +1927,10 @@ public final class StaticObject implements TruffleObject {
         return createArray(meta.java_lang_Object_array, array);
     }
 
+    public static StaticObject wrap(ArrayKlass klass, StaticObject[] array) {
+        return createArray(klass, array);
+    }
+
     public static StaticObject wrap(byte[] array, Meta meta) {
         return createArray(meta._byte_array, array);
     }

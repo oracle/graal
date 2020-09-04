@@ -22,14 +22,53 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-public interface JniVersion {
-    int JNI_VERSION_1_1 = 0x00010001;
-    int JNI_VERSION_1_2 = 0x00010002;
-    int JNI_VERSION_1_4 = 0x00010004;
-    int JNI_VERSION_1_6 = 0x00010006;
-    int JNI_VERSION_1_8 = 0x00010008;
+import com.oracle.truffle.espresso.runtime.JavaVersion;
+
+public enum JniVersion {
+    JNI_VERSION_1_1(0x00010001),
+    JNI_VERSION_1_2(0x00010002),
+    JNI_VERSION_1_4(0x00010004),
+    JNI_VERSION_1_6(0x00010006),
+    JNI_VERSION_1_8(0x00010008),
+    JNI_VERSION_9(0x00090000, true),
+    JNI_VERSION_10(0x000A0000, true);
+
+    private final int version;
+    private final boolean v9OrLater;
+
+    JniVersion(int version) {
+        this(version, false);
+    }
+
+    JniVersion(int version, boolean v9OrLater) {
+        this.version = version;
+        this.v9OrLater = v9OrLater;
+    }
+
+    public int version() {
+        return version;
+    }
+
+    private boolean supports(int v, JavaVersion contextVersion) {
+        return v == version() && (!v9OrLater || contextVersion.java9OrLater());
+    }
+
     /**
-     * JNI version implemented by Espresso.
+     * JNI version implemented by Espresso when running a java 8 home.
      */
-    int JNI_VERSION_ESPRESSO = JNI_VERSION_1_8;
+    static final JniVersion JNI_VERSION_ESPRESSO_8 = JNI_VERSION_1_8;
+
+    /**
+     * JNI version implemented by Espresso when running a java 11 home.
+     */
+    static final JniVersion JNI_VERSION_ESPRESSO_11 = JNI_VERSION_10;
+
+    public static boolean isSupported(int version, JavaVersion contextVersion) {
+        for (JniVersion v : JniVersion.values()) {
+            if (v.supports(version, contextVersion)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

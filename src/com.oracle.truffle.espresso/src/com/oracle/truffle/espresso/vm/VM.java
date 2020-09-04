@@ -28,11 +28,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
-import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_1;
-import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_2;
-import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
-import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
-import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 import static com.oracle.truffle.espresso.runtime.EspressoContext.DEFAULT_STACK_SIZE;
@@ -110,6 +105,7 @@ import com.oracle.truffle.espresso.jni.Callback;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniImpl;
+import com.oracle.truffle.espresso.jni.JniVersion;
 import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.jni.Pointer;
@@ -267,11 +263,11 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             if (jniEnv.getContext().EnableManagement) {
                 initializeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
-                                "initializeManagementContext", "(env, (pointer): pointer): pointer");
+                                "initializeManagementContext", "(env, (pointer): pointer, sint32): pointer");
 
                 disposeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                                 "disposeManagementContext",
-                                "(env, pointer): void");
+                                "(env, pointer, sint32): void");
             } else {
                 initializeManagementContext = null;
                 disposeManagementContext = null;
@@ -1045,12 +1041,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // endregion Library support
     @VmImpl
-    public static boolean JVM_IsSupportedJNIVersion(int version) {
-        return version == JNI_VERSION_1_1 ||
-                        version == JNI_VERSION_1_2 ||
-                        version == JNI_VERSION_1_4 ||
-                        version == JNI_VERSION_1_6 ||
-                        version == JNI_VERSION_1_8;
+    public boolean JVM_IsSupportedJNIVersion(int version) {
+        return JniVersion.isSupported(version, getJavaVersion());
     }
 
     @VmImpl
@@ -1068,8 +1060,9 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             if (getContext().EnableManagement) {
                 if (managementPtr != null) {
-                    getUncached().execute(disposeManagementContext, managementPtr);
+                    getUncached().execute(disposeManagementContext, managementPtr, managementVersion);
                     this.managementPtr = null;
+                    this.managementVersion = 0;
                 }
             } else {
                 assert managementPtr == null;
@@ -1103,11 +1096,13 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
+    @TruffleBoundary
     public static void JVM_Halt(int code) {
         throw new EspressoExitException(code);
     }
 
     @VmImpl
+    @TruffleBoundary
     public static void JVM_Exit(int code) {
         // System.exit(code);
         // Unlike Halt, runs finalizers
@@ -2153,12 +2148,19 @@ public final class VM extends NativeEnv implements ContextAccess {
     public static final int JMM_VERSION_1_2 = 0x20010200; // JDK 7
     public static final int JMM_VERSION_1_2_1 = 0x20010201; // JDK 7 GA
     public static final int JMM_VERSION_1_2_2 = 0x20010202;
+    public static final int JMM_VERSION_2 = 0x20020000; // JDK 10
 
     public static final int JMM_VERSION = 0x20010203;
 
+    @CompilerDirectives.CompilationFinal //
+    private int managementVersion;
+
     @VmImpl
     public synchronized @Pointer TruffleObject JVM_GetManagement(int version) {
-        if (version != JMM_VERSION_1_0) {
+        if (version != JMM_VERSION_1_0 && getJavaVersion().java8OrEarlier()) {
+            return RawPointer.nullInstance();
+        }
+        if (version != JMM_VERSION_2 && getJavaVersion().java9OrLater()) {
             return RawPointer.nullInstance();
         }
         EspressoContext context = getContext();
@@ -2169,7 +2171,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         if (managementPtr == null) {
             try {
-                managementPtr = (TruffleObject) getUncached().execute(initializeManagementContext, lookupVmImplCallback);
+                managementPtr = (TruffleObject) getUncached().execute(initializeManagementContext, lookupVmImplCallback, version);
+                managementVersion = version;
                 assert getUncached().isPointer(managementPtr);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
@@ -2181,8 +2184,12 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public static int GetVersion() {
-        return JMM_VERSION;
+    public int GetVersion() {
+        if (getJavaVersion().java8OrEarlier()) {
+            return JMM_VERSION;
+        } else {
+            return JMM_VERSION_2;
+        }
     }
 
     @JniImpl
@@ -2300,7 +2307,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     if (stackTrace.length() > maxDepth && maxDepth != -1) {
                         StaticObject[] unwrapped = stackTrace.unwrap();
                         unwrapped = Arrays.copyOf(unwrapped, maxDepth);
-                        stackTrace = StaticObject.wrap(unwrapped, meta);
+                        stackTrace = StaticObject.wrap(meta.java_lang_StackTraceElement.getArrayClass(), unwrapped);
                     }
                 } else {
                     stackTrace = meta.java_lang_StackTraceElement.allocateReferenceArray(0);
@@ -2328,6 +2335,12 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public @Host(String[].class) StaticObject GetInputArgumentArray() {
         return getMeta().java_lang_String.allocateReferenceArray(0);
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(String[].class) StaticObject GetInputArguments() {
+        return GetInputArgumentArray();
     }
 
     @JniImpl
@@ -2521,6 +2534,41 @@ public final class VM extends NativeEnv implements ContextAccess {
             return StaticObject.NULL;
         }
         return result;
+    }
+
+    @VmImpl
+    @JniImpl
+    public void GetThreadAllocatedMemory(
+                    @Host(long[].class) StaticObject ids,
+                    @Host(long[].class) StaticObject sizeArray,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        if (StaticObject.isNull(ids) || StaticObject.isNull(sizeArray)) {
+            profiler.profile(0);
+            throw Meta.throwException(getMeta().java_lang_NullPointerException);
+        }
+        validateThreadIdArray(getMeta(), ids, profiler);
+        if (ids.length() != sizeArray.length()) {
+            profiler.profile(1);
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "The length of the given long array does not match the length of the given array of thread IDs");
+        }
+        StaticObject[] activeThreads = getContext().getActiveThreads();
+
+        for (int i = 0; i < ids.length(); i++) {
+            long id = getInterpreterToVM().getArrayLong(i, ids);
+            StaticObject thread = StaticObject.NULL;
+
+            for (int j = 0; j < activeThreads.length; ++j) {
+                if ((long) getMeta().java_lang_Thread_tid.get(activeThreads[j]) == id) {
+                    thread = activeThreads[j];
+                    break;
+                }
+            }
+            if (StaticObject.isNull(thread)) {
+                getInterpreterToVM().setArrayLong(-1L, i, sizeArray);
+            } else {
+                getInterpreterToVM().setArrayLong(0L, i, sizeArray);
+            }
+        }
     }
 
     // endregion Management

@@ -179,7 +179,8 @@ V(NewGlobalRef) \
 V(DeleteGlobalRef) \
 V(NewWeakGlobalRef) \
 V(DeleteWeakGlobalRef) \
-V(NewDirectByteBuffer)
+V(NewDirectByteBuffer) \
+V(GetModule)
 
 
 #define TYPE_LIST2(V)  \
