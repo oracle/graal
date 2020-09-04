@@ -916,6 +916,7 @@ public class BytecodeParser implements GraphBuilderContext {
         this.graphBuilderConfig = graphBuilderInstance.graphBuilderConfig;
         this.optimisticOpts = graphBuilderInstance.optimisticOpts;
         this.providers = graphBuilderInstance.providers;
+        assert code.getCode() != null : method;
         this.stream = new BytecodeStream(code.getCode());
         this.profilingInfo = graph.useProfilingInfo() ? code.getProfilingInfo() : null;
         this.constantPool = code.getConstantPool();
@@ -1939,10 +1940,9 @@ public class BytecodeParser implements GraphBuilderContext {
         Invoke invoke = createNonInlinedInvoke(edgeAction, invokeBci, args, targetMethod, invokeKind, resultType, returnType, profile);
         graph.getInliningLog().addDecision(invoke, false, "GraphBuilderPhase", null, null, "bytecode parser did not replace invoke");
         if (partialIntrinsicExit) {
-            // This invoke must never be later inlined as it might select the intrinsic graph.
-            // Until there is a mechanism to guarantee that any late inlining will not select
-            // the intrinsic graph, prevent this invoke from being inlined.
-            invoke.setUseForInlining(false);
+            // This invoke must never be later inlined as an intrinsic so restrict this call site to
+            // normal invoke handling.
+            invoke.setInlineControl(Invoke.InlineControl.BytecodesOnly);
         }
         return invoke;
     }
