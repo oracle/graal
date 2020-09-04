@@ -114,6 +114,7 @@ final class MetadataBuilder {
             int verifiedEntry = co.verifiedEntry();
             int exceptionHandler = co.exceptionHandler();
             int deoptHandler = co.deoptHandler();
+            int deoptMHHandler = co.deoptMHHandler();
             int frameSize = methodInfo.getCompilationResult().getTotalFrameSize();
             StackSlot deoptRescueSlot = methodInfo.getCompilationResult().getCustomStackArea();
             int origPcOffset = deoptRescueSlot != null ? deoptRescueSlot.getOffset(frameSize) : -1;
@@ -134,8 +135,12 @@ final class MetadataBuilder {
                                putInt(unverifiedEntry).
                                putInt(verifiedEntry).
                                putInt(exceptionHandler).
-                               putInt(deoptHandler).
-                               putInt(stubsOffset).
+                               putInt(deoptHandler);
+                // If the JDK does not support DEOPT_MH_HANDLER_ENTRY, then do not output the new field.
+                if (deoptMHHandler != -2) {
+                    metadataStream.putInt(deoptMHHandler);
+                }
+                metadataStream.putInt(stubsOffset).
                                putInt(frameSize).
                                putInt(origPcOffset).
                                putInt(unsafeAccess);
