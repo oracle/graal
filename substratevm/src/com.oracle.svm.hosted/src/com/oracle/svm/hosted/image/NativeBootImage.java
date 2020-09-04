@@ -711,7 +711,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
      */
     public static String localSymbolNameForMethod(ResolvedJavaMethod sm) {
         /* We don't mangle local symbols, because they never need be referenced by an assembler. */
-        return SubstrateUtil.uniqueShortName(sm);
+        return SubstrateOptions.ImageSymbolsPrefix.getValue() + SubstrateUtil.uniqueShortName(sm);
     }
 
     /**

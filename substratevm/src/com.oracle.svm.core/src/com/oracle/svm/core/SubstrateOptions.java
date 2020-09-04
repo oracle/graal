@@ -445,6 +445,9 @@ public class SubstrateOptions {
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
 
+    @Option(help = "Common prefix used by method symbols in image.")//
+    public static final HostedOptionKey<String> ImageSymbolsPrefix = new HostedOptionKey<>("");
+
     @Option(help = "Fold SecurityManager getter.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> FoldSecurityManagerGetter = new HostedOptionKey<>(true);
 
