@@ -50,21 +50,21 @@ final class Target_com_oracle_svm_core_util_VMError {
      */
 
     @NeverInline("Accessing instruction pointer of the caller frame")
-    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
     @Substitute
     private static RuntimeException shouldNotReachHere() {
         throw VMErrorSubstitutions.shouldNotReachHere(KnownIntrinsics.readReturnAddress(), null, null);
     }
 
     @NeverInline("Accessing instruction pointer of the caller frame")
-    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
     @Substitute
     private static RuntimeException shouldNotReachHere(String msg) {
         throw VMErrorSubstitutions.shouldNotReachHere(KnownIntrinsics.readReturnAddress(), msg, null);
     }
 
     @NeverInline("Accessing instruction pointer of the caller frame")
-    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
     @Substitute
     private static RuntimeException shouldNotReachHere(Throwable ex) {
         throw VMErrorSubstitutions.shouldNotReachHere(KnownIntrinsics.readReturnAddress(), null, ex);
@@ -91,6 +91,11 @@ final class Target_com_oracle_svm_core_util_VMError {
 /** Dummy class to have a class with the file's name. */
 public class VMErrorSubstitutions {
 
+    /*
+     * Must only be called from @NeverInline functions above to prevent change of safepoint status
+     * and disabling of stack overflow check to leak into caller, especially when caller is not
+     * uninterruptible
+     */
     @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
     static RuntimeException shouldNotReachHere(CodePointer callerIP, String msg, Throwable ex) {
         ThreadStackPrinter.printBacktrace();
