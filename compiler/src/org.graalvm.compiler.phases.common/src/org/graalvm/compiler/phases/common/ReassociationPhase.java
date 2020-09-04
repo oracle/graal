@@ -45,7 +45,6 @@ public class ReassociationPhase extends Phase {
     protected void run(StructuredGraph graph) {
         reassociateInvariants(graph);
         reassociateConstants(graph);
-        graph.setAfterReassociation();
     }
 
     //@formatter:off
