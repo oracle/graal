@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,25 +32,27 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
- * Native image uses the principle of "immutable security" for the root certificates: They are fixed
- * at image build time based on the the certificate configuration used for the image generator. This
- * avoids shipping a `cacerts` file or requiring to set a system property to set up root
- * certificates that are provided by the OS where the image runs.
+ * Root certificates in native image are fixed/embedded into the image, at image build time, based
+ * on the the certificate configuration used for the image generator. This avoids shipping a
+ * `cacerts` file or requiring to set a system property to set up root certificates that are
+ * provided by the OS where the image runs.
  *
- * As a consequence, system properties such as `javax.net.ssl.trustStore` do not have an effect at
- * run time. They need to be provided at image build time.
+ * However, users are allowed to override these root certificates at run time by setting the
+ * `javax.net.ssl.trustStore` system property to point to a file path containing the certificates.
  *
- * The implementation "freezes" the return values of TrustStoreManager managers by invoking them at
- * image build time (using reflection because the class is non-public) and returning the frozen
- * values using a substitution.
+ * For embedding the build time root certificates, the implementation "freezes" the return values of
+ * TrustStoreManager managers by invoking them at image build time (using reflection because the
+ * class is non-public) and returning the frozen values using a substitution, if at run time the
+ * `javax.net.ssl.trustStore` system property isn't set
  */
 @AutomaticFeature
 final class TrustStoreManagerFeature implements Feature {
@@ -74,7 +76,9 @@ final class TrustStoreManagerFeature implements Feature {
          * The class initializer of UntrustedCertificates loads the file
          * lib/security/blacklisted.certs, so this class must be initialized at image build time.
          * This is the default anyway for code JDK classes, but since this this class is relevant
-         * for security we spell it out explicitly.
+         * for security we spell it out explicitly. When the native application uses a custom
+         * truststore at run time (by setting the -Djavax.net.ssl.trustStore system property) we
+         * still honour/use the build time lib/security/blacklisted.certs.
          */
         RuntimeClassInitialization.initializeAtBuildTime(sun.security.util.UntrustedCertificates.class);
         RuntimeClassInitialization.initializeAtBuildTime(org.jcp.xml.dsig.internal.dom.XMLDSigRI.class);
@@ -85,36 +89,79 @@ final class TrustStoreManagerSupport {
     final Set<X509Certificate> trustedCerts;
     final KeyStore trustedKeyStore;
 
+    private static volatile Boolean truststoreSysPropSet;
+
     TrustStoreManagerSupport(Set<X509Certificate> trustedCerts, KeyStore trustedKeyStore) {
         this.trustedCerts = trustedCerts;
         this.trustedKeyStore = trustedKeyStore;
+    }
+
+    static boolean useEmbeddedCerts() {
+        if (truststoreSysPropSet != null) {
+            return !truststoreSysPropSet;
+        }
+        synchronized (TrustStoreManagerSupport.class) {
+            if (truststoreSysPropSet != null) {
+                return !truststoreSysPropSet;
+            }
+            final String val = System.getProperty("javax.net.ssl.trustStore");
+            truststoreSysPropSet = val != null && !val.trim().isEmpty();
+            return !truststoreSysPropSet;
+        }
     }
 }
 
 @TargetClass(className = TrustStoreManagerFeature.TRUST_STORE_MANAGER_CLASS_NAME)
 final class Target_sun_security_ssl_TrustStoreManager {
 
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = TrustStoreManagerFeature.TRUST_STORE_MANAGER_CLASS_NAME +
+                    "$TrustAnchorManager") private static Target_sun_security_ssl_TrustStoreManager_TrustAnchorManager tam = null;
+
     @Substitute
     private static Set<X509Certificate> getTrustedCerts() throws Exception {
-        return ImageSingletons.lookup(TrustStoreManagerSupport.class).trustedCerts;
+        if (TrustStoreManagerSupport.useEmbeddedCerts()) {
+            return ImageSingletons.lookup(TrustStoreManagerSupport.class).trustedCerts;
+        }
+        return tam.getTrustedCerts(Target_sun_security_ssl_TrustStoreManager_TrustStoreDescriptor.createInstance());
     }
 
     @Substitute
     private static KeyStore getTrustedKeyStore() throws Exception {
-        return ImageSingletons.lookup(TrustStoreManagerSupport.class).trustedKeyStore;
+        if (TrustStoreManagerSupport.useEmbeddedCerts()) {
+            return ImageSingletons.lookup(TrustStoreManagerSupport.class).trustedKeyStore;
+        }
+        return tam.getKeyStore(Target_sun_security_ssl_TrustStoreManager_TrustStoreDescriptor.createInstance());
+    }
+
+}
+
+@TargetClass(className = TrustStoreManagerFeature.TRUST_STORE_MANAGER_CLASS_NAME, innerClass = "TrustStoreDescriptor")
+final class Target_sun_security_ssl_TrustStoreManager_TrustStoreDescriptor {
+
+    // we do not need these paths (corresponding to the build time environment) to be carried over
+    // to the run time
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) private static String defaultStorePath = null;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) private static String defaultStore = "";
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) private static String jsseDefaultStore = null;
+
+    @Alias
+    static Target_sun_security_ssl_TrustStoreManager_TrustStoreDescriptor createInstance() {
+        return null;
     }
 }
 
-/*
- * The internal classes to describe and load root certificates must not be reachable at run time.
- */
-
-@Delete
-@TargetClass(className = TrustStoreManagerFeature.TRUST_STORE_MANAGER_CLASS_NAME, innerClass = "TrustStoreDescriptor")
-final class Target_sun_security_ssl_TrustStoreManager_TrustStoreDescriptor {
-}
-
-@Delete
 @TargetClass(className = TrustStoreManagerFeature.TRUST_STORE_MANAGER_CLASS_NAME, innerClass = "TrustAnchorManager")
 final class Target_sun_security_ssl_TrustStoreManager_TrustAnchorManager {
+
+    @SuppressWarnings({"unused", "static-method"}) //
+    @Alias
+    Set<X509Certificate> getTrustedCerts(Target_sun_security_ssl_TrustStoreManager_TrustStoreDescriptor descriptor) throws Exception {
+        return null;
+    }
+
+    @SuppressWarnings({"unused", "static-method"}) //
+    @Alias
+    KeyStore getKeyStore(Target_sun_security_ssl_TrustStoreManager_TrustStoreDescriptor descriptor) throws Exception {
+        return null;
+    }
 }
