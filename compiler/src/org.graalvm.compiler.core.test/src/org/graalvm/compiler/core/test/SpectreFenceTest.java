@@ -25,17 +25,31 @@
 
 package org.graalvm.compiler.core.test;
 
+import static org.junit.Assume.assumeTrue;
+
 import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.common.SpectrePHTMitigations;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import sun.misc.Unsafe;
 
 public class SpectreFenceTest extends GraalCompilerTest {
+
+    @Before
+    public void checkArchSupported() {
+        Architecture arch = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget().arch;
+        assumeTrue("skipping test on unsupported architecture", arch instanceof AMD64 || arch instanceof AArch64);
+    }
 
     public static long[] Memory = new long[]{1, 2};
     public static double SideEffectD;
