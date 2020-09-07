@@ -195,19 +195,32 @@ public abstract class AllocationSnippets implements Snippets {
                 memory.initializeLong(offset, value, LocationIdentity.init());
             }
         } else {
-            if (supportsBulkZeroing && value == 0 && probability(SLOW_PATH_PROBABILITY, remainingSize.aboveOrEqual(getMinimalBulkZeroingSize()))) {
-                snippetCounters.bulkInit.inc();
-                ZeroMemoryNode.zero(memory.add(offset), remainingSize.rawValue(), true, LocationIdentity.init());
+            fillMemoryAligned(value, memory, offset, endOffset, isEndOffsetConstant, remainingSize, supportsBulkZeroing, snippetCounters);
+        }
+    }
+
+    protected void fillMemoryAligned(
+                    long value,
+                    Word memory,
+                    UnsignedWord fromOffset,
+                    UnsignedWord endOffset,
+                    boolean isEndOffsetConstant,
+                    UnsignedWord remainingSize,
+                    boolean supportsBulkZeroing,
+                    AllocationSnippetCounters snippetCounters) {
+        if (supportsBulkZeroing && value == 0 && probability(SLOW_PATH_PROBABILITY, remainingSize.aboveOrEqual(getMinimalBulkZeroingSize()))) {
+            snippetCounters.bulkInit.inc();
+            ZeroMemoryNode.zero(memory.add(fromOffset), remainingSize.rawValue(), true, LocationIdentity.init());
+        } else {
+            if (isEndOffsetConstant && remainingSize.unsignedDivide(8).belowOrEqual(MAX_UNROLLED_OBJECT_ZEROING_STORES)) {
+                snippetCounters.unrolledInit.inc();
+                explodeLoop();
             } else {
-                if (isEndOffsetConstant && remainingSize.unsignedDivide(8).belowOrEqual(MAX_UNROLLED_OBJECT_ZEROING_STORES)) {
-                    snippetCounters.unrolledInit.inc();
-                    explodeLoop();
-                } else {
-                    snippetCounters.loopInit.inc();
-                }
-                for (; offset.belowThan(endOffset); offset = offset.add(8)) {
-                    memory.initializeLong(offset, value, LocationIdentity.init());
-                }
+                snippetCounters.loopInit.inc();
+            }
+            UnsignedWord offset = fromOffset;
+            for (; offset.belowThan(endOffset); offset = offset.add(8)) {
+                memory.initializeLong(offset, value, LocationIdentity.init());
             }
         }
     }
