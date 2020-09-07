@@ -112,7 +112,7 @@ public class JNIFunctionTablesFeature implements Feature {
         AnalysisType invokes = metaAccess.lookupJavaType(JNIInvocationInterface.class);
         AnalysisType exports = metaAccess.lookupJavaType(JNIInvocationInterface.Exports.class);
         AnalysisType functions = metaAccess.lookupJavaType(JNIFunctions.class);
-        Stream<AnalysisMethod> analysisMethods = Stream.of(invokes, functions, exports).flatMap(t -> Stream.of(t.getDeclaredMethods()));
+        Stream<AnalysisMethod> analysisMethods = Stream.of(invokes, functions, exports).flatMap(type -> Stream.of(type.getDeclaredMethods()));
         Stream<AnalysisMethod> unimplementedMethods = Stream.of((AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJNIEnvArgument.class),
                         (AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJavaVMArgument.class));
         Stream.concat(analysisMethods, unimplementedMethods).forEach(method -> {
@@ -207,8 +207,7 @@ public class JNIFunctionTablesFeature implements Feature {
     private void fillJNIFunctionsTable(CompilationAccessImpl access, CFunctionPointer[] table, CFunctionPointer defaultValue) {
         initializeFunctionPointerTable(access, table, defaultValue);
 
-        Class<JNIFunctions> clazz = JNIFunctions.class;
-        HostedType functions = access.getMetaAccess().lookupJavaType(clazz);
+        HostedType functions = access.getMetaAccess().lookupJavaType(JNIFunctions.class);
         HostedMethod[] methods = functions.getDeclaredMethods();
         for (HostedMethod method : methods) {
             StructFieldInfo field = findFieldFor(functionTableMetadata, method.getName());

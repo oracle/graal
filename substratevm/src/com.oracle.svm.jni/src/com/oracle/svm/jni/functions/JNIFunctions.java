@@ -134,7 +134,7 @@ import sun.misc.Unsafe;
  *      Native Interface Specification: JNI Functions</a>
  */
 @SuppressWarnings("unused")
-final class JNIFunctions {
+public final class JNIFunctions {
 
     // Checkstyle: stop
 
@@ -976,7 +976,7 @@ final class JNIFunctions {
      * Helper code for JNI functions. This is an inner class because the outer methods must match
      * JNI functions.
      */
-    static class Support {
+    public static class Support {
         static class JNIEnvEnterReturnEDetachedOnFailurePrologue {
             public static void enter(JNIEnvironment env) {
                 int error = CEntryPointActions.enter((IsolateThread) env);
@@ -1016,7 +1016,7 @@ final class JNIFunctions {
         static final CGlobalData<CCharPointer> JNIENV_ENTER_FAIL_FATALLY_MESSAGE = CGlobalDataFactory.createCString(
                         "A JNI call failed to enter the isolate via its JNI environment argument. The environment might be invalid or no longer exists.");
 
-        static class JNIEnvEnterFatalOnFailurePrologue {
+        public static class JNIEnvEnterFatalOnFailurePrologue {
             public static void enter(JNIEnvironment env) {
                 int error = CEntryPointActions.enter((IsolateThread) env);
                 if (error != 0) {
@@ -1041,7 +1041,7 @@ final class JNIFunctions {
             }
         }
 
-        static class JNIExceptionHandlerVoid {
+        public static class JNIExceptionHandlerVoid {
             static void handle(Throwable t) {
                 Support.handleException(t);
             }
