@@ -623,55 +623,26 @@ public final class EspressoContext {
 
         if (nextPhase) {
             // Phase 1: Interrupt threads, and stop daemons.
-            for (StaticObject guest : threadManager.activeThreads()) {
-                Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
-                if (t != initiatingThread) {
-                    if (t.isDaemon()) {
-                        Target_java_lang_Thread.killThread(guest);
-                    }
-                    Target_java_lang_Thread.interrupt0(guest);
-                }
-            }
+            teardownPhase1(initiatingThread);
             nextPhase = !waitSpin(initiatingThread);
         }
 
         if (nextPhase) {
             // Phase 2: Stop all threads.
-            for (StaticObject guest : threadManager.activeThreads()) {
-                Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
-                if (t != initiatingThread) {
-                    Target_java_lang_Thread.killThread(guest);
-                    Target_java_lang_Thread.interrupt0(guest);
-                }
-            }
+            teardownPhase2(initiatingThread);
             nextPhase = !waitSpin(initiatingThread);
         }
 
         if (nextPhase) {
             // Phase 3: Force kill with host exception.
-            for (StaticObject guest : threadManager.activeThreads()) {
-                Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
-                if (t != initiatingThread) {
-                    /*
-                     * Temporary fix for running JCK tests. Forcefully killing all threads at
-                     * context closing time allows to identify which failures are due to actual
-                     * timeouts or due to thread being unresponsive. Note that this still does not
-                     * wakes up thread blocked in native.
-                     *
-                     * Currently, threads in native can not be killed in Espresso. This translates
-                     * into a polyglot-side java.lang.IllegalStateException: The language did not
-                     * complete all polyglot threads but should have.
-                     */
-                    // TODO: Gracefully exit and allow stopping threads in native.
-                    Target_java_lang_Thread.forceKillThread(guest);
-                    Target_java_lang_Thread.interrupt0(guest);
-                }
-            }
+            teardownPhase3(initiatingThread);
             nextPhase = !waitSpin(initiatingThread);
         }
 
         if (nextPhase) {
             getLogger().severe("Could not gracefully stop executing threads in context closing.");
+            // Phase 4: Forcefully command the context to forget any leftover thread.
+            teardownPhase4(initiatingThread);
         }
 
         if (getEnv().getOptions().get(EspressoOptions.MultiThreaded)) {
@@ -686,6 +657,60 @@ public final class EspressoContext {
         }
 
         initiatingThread.interrupt();
+    }
+
+    private void teardownPhase1(Thread initiatingThread) {
+        for (StaticObject guest : threadManager.activeThreads()) {
+            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+            if (t.isAlive() && t != initiatingThread) {
+                if (t.isDaemon()) {
+                    Target_java_lang_Thread.killThread(guest);
+                }
+                Target_java_lang_Thread.interrupt0(guest);
+            }
+        }
+    }
+
+    private void teardownPhase2(Thread initiatingThread) {
+        for (StaticObject guest : threadManager.activeThreads()) {
+            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+            if (t.isAlive() && t != initiatingThread) {
+                Target_java_lang_Thread.killThread(guest);
+                Target_java_lang_Thread.interrupt0(guest);
+            }
+        }
+    }
+
+    private void teardownPhase3(Thread initiatingThread) {
+        for (StaticObject guest : threadManager.activeThreads()) {
+            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+            if (t.isAlive() && t != initiatingThread) {
+                /*
+                 * Temporary fix for running JCK tests. Forcefully killing all threads at context
+                 * closing time allows to identify which failures are due to actual timeouts or due
+                 * to thread being unresponsive. Note that this still does not wakes up thread
+                 * blocked in native.
+                 *
+                 * Currently, threads in native can not be killed in Espresso. This translates into
+                 * a polyglot-side java.lang.IllegalStateException: The language did not complete
+                 * all polyglot threads but should have.
+                 */
+                Target_java_lang_Thread.forceKillThread(guest);
+                Target_java_lang_Thread.interrupt0(guest);
+            }
+        }
+    }
+
+    private void teardownPhase4(Thread initiatingThread) {
+        for (StaticObject guest : threadManager.activeThreads()) {
+            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+            if (t.isAlive() && t != initiatingThread) {
+                // TODO(garcia): Tell truffle to forget about this thread
+                // Or
+                // TODO(garcia): Gracefully exit and allow stopping threads in native.
+                System.exit(0);
+            }
+        }
     }
 
     /**
@@ -932,7 +957,7 @@ public final class EspressoContext {
 
     public synchronized void startCloserThread() {
         if (closer == null) {
-            closer = getEnv().createThread(new Closer(closingPayload));
+            closer = new Thread(new Closer(closingPayload));
             closer.start();
         }
     }
@@ -979,6 +1004,7 @@ public final class EspressoContext {
         @Override
         public void run() {
             waitForClose();
+            interruptActiveThreads();
             payload.run();
         }
     }

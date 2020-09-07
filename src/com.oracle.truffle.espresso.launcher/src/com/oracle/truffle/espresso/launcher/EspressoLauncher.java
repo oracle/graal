@@ -362,12 +362,12 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 if (mainClassName == null) {
                     throw abort(usage());
                 }
-
                 Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
                 Value mainKlass = launcherHelper //
                                 .invokeMember("checkAndLoadMain", true, launchMode.ordinal(), mainClassName) //
                                 .getMember("static");
                 mainKlass.invokeMember("main", (Object) mainClassArgs.toArray(new String[0]));
+                // TODO(garcia): handle uncaught exceptions.
                 if (pauseOnExit) {
                     getError().print("Press any key to continue...");
                     try {
