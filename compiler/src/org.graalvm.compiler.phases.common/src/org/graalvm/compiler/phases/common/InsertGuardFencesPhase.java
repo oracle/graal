@@ -100,7 +100,7 @@ public class InsertGuardFencesPhase extends Phase {
      */
     private static boolean hasPotentialUnsafeAccess(ControlFlowGraph cfg, AbstractBeginNode beginNode) {
         for (FixedNode n : cfg.blockFor(beginNode).getNodes()) {
-            if (n instanceof FixedAccessNode) {
+            if (n instanceof FixedAccessNode && ((FixedAccessNode) n).getGuard() == null) {
                 return true;
             }
         }
