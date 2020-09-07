@@ -141,13 +141,11 @@ public final class EspressoContext {
     @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
 
-    // Context closing control
-    private volatile boolean isClosing = false;
     /**
      * Controls behavior of context closing. Until an exit method has been called, context closing
      * waits for all non-daemon threads to finish.
      */
-    private volatile boolean exitCalled = false;
+    private volatile boolean isClosing = false;
     /**
      * Spawns on two occasions:
      * <li>Main thread returns
@@ -614,7 +612,7 @@ public final class EspressoContext {
     private static final long MAX_KILL_PHASE_WAIT = 100;
 
     public void interruptActiveThreads() {
-        isClosing = true;
+        assert isClosing();
         invalidateNoThreadStop("Killing the VM");
         Thread initiatingThread = Thread.currentThread();
 
@@ -947,7 +945,7 @@ public final class EspressoContext {
     }
 
     public void doExit() {
-        exitCalled = true;
+        isClosing = true;
         startCloserThread();
         Object sync = getSynchronizer();
         synchronized (sync) {
@@ -985,7 +983,7 @@ public final class EspressoContext {
             Object synchronizer = getSynchronizer();
             synchronized (synchronizer) {
                 while (true) {
-                    if (exitCalled) {
+                    if (isClosing()) {
                         return;
                     }
                     if (hasActiveNonDaemon()) {
@@ -995,6 +993,7 @@ public final class EspressoContext {
                             /* loop back */
                         }
                     } else {
+                        isClosing = true;
                         return;
                     }
                 }

@@ -234,6 +234,10 @@ public final class Target_java_lang_Thread {
                         /* Suppress */
                     } finally {
                         terminate(self, threadExit, meta);
+                        if (context.isClosing()) {
+                            // Ignore exceptions that arise during closing.
+                            return;
+                        }
                     }
                 }
             });
@@ -276,10 +280,6 @@ public final class Target_java_lang_Thread {
         EspressoContext context = meta.getContext();
         // Cleanup.
         context.unregisterThread(self);
-        if (context.isClosing()) {
-            // Ignore exceptions that arise during closing.
-            return;
-        }
     }
 
     @TruffleBoundary
