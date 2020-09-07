@@ -409,30 +409,25 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
                 debug.log("Using CompilerCommand: %s", commandLine);
 
-                if (NativeImageOptions.MachODebugInfoTesting.getValue()) {
-                    System.out.printf("Testing Mach-O debuginfo generation - SKIP %s%n", commandLine);
-                    return inv;
-                } else {
-                    ProcessBuilder pb = new ProcessBuilder().command(cmd);
-                    pb.directory(tempDirectory.toFile());
-                    pb.redirectErrorStream(true);
-                    int status;
-                    ByteArrayOutputStream output;
-                    try {
-                        Process p = pb.start();
+                ProcessBuilder pb = new ProcessBuilder().command(cmd);
+                pb.directory(tempDirectory.toFile());
+                pb.redirectErrorStream(true);
+                int status;
+                ByteArrayOutputStream output;
+                try {
+                    Process p = pb.start();
 
-                        output = new ByteArrayOutputStream();
-                        FileUtils.drainInputStream(p.getInputStream(), output);
-                        status = p.waitFor();
-                    } catch (IOException | InterruptedException e) {
-                        throw handleLinkerFailure(e.toString(), commandLine, null);
-                    }
+                    output = new ByteArrayOutputStream();
+                    FileUtils.drainInputStream(p.getInputStream(), output);
+                    status = p.waitFor();
+                } catch (IOException | InterruptedException e) {
+                    throw handleLinkerFailure(e.toString(), commandLine, null);
+                }
 
-                    debug.log(DebugContext.VERBOSE_LEVEL, "%s", output);
+                debug.log(DebugContext.VERBOSE_LEVEL, "%s", output);
 
-                    if (status != 0) {
-                        throw handleLinkerFailure("Linker command exited with " + status, commandLine, output.toString());
-                    }
+                if (status != 0) {
+                    throw handleLinkerFailure("Linker command exited with " + status, commandLine, output.toString());
                 }
             }
             return inv;
