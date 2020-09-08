@@ -26,12 +26,10 @@ package org.graalvm.compiler.truffle.compiler;
 
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierInlining;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LanguageAgnosticInlining;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalNodeCount;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MultiTier;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PrintExpansionHistogram;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
@@ -293,12 +291,12 @@ public abstract class PartialEvaluator {
         public final TruffleInliningPlan inliningPlan;
         public final CompilationIdentifier compilationId;
         public final SpeculationLog log;
-        public final CancellableTruffleCompilationTask cancellable;
+        public final CancellableTruffleCompilationTask task;
         public final StructuredGraph graph;
         final HighTierContext highTierContext;
 
         public Request(OptionValues options, DebugContext debug, CompilableTruffleAST compilable, ResolvedJavaMethod method, TruffleInliningPlan inliningPlan,
-                        CompilationIdentifier compilationId, SpeculationLog log, CancellableTruffleCompilationTask cancellable) {
+                        CompilationIdentifier compilationId, SpeculationLog log, CancellableTruffleCompilationTask task) {
             Objects.requireNonNull(options);
             Objects.requireNonNull(debug);
             Objects.requireNonNull(compilable);
@@ -310,7 +308,7 @@ public abstract class PartialEvaluator {
             this.inliningPlan = inliningPlan;
             this.compilationId = compilationId;
             this.log = log;
-            this.cancellable = cancellable;
+            this.task = task;
             // @formatter:off
             StructuredGraph.Builder builder = new StructuredGraph.Builder(this.debug.getOptions(), this.debug, AllowAssumptions.YES).
                     name(this.compilable.toString()).
@@ -318,7 +316,7 @@ public abstract class PartialEvaluator {
                     speculationLog(this.log).
                     compilationId(this.compilationId).
                     trackNodeSourcePosition(configForParsing.trackNodeSourcePosition()).
-                    cancellable(this.cancellable);
+                    cancellable(this.task);
             // @formatter:on
             builder = customizeStructuredGraphBuilder(builder);
             this.graph = builder.build();
@@ -326,12 +324,8 @@ public abstract class PartialEvaluator {
             highTierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
         }
 
-        public boolean useLanguageAgnosticInlining() {
-            if (getPolyglotOptionValue(options, MultiTier) && cancellable.isFirstTier()) {
-                return getPolyglotOptionValue(options, LanguageAgnosticInlining) && getPolyglotOptionValue(options, FirstTierInlining);
-            } else {
-                return getPolyglotOptionValue(options, LanguageAgnosticInlining);
-            }
+        public boolean isFirstTier() {
+            return task.isFirstTier();
         }
     }
 
@@ -359,7 +353,7 @@ public abstract class PartialEvaluator {
                 ComputeLoopFrequenciesClosure.compute(request.graph);
                 applyInstrumentationPhases(request);
                 handler.reportPerformanceWarnings(request.compilable, request.graph);
-                if (request.cancellable != null && request.cancellable.isCancelled()) {
+                if (request.task != null && request.task.isCancelled()) {
                     return null;
                 }
                 new VerifyFrameDoesNotEscapePhase().apply(request.graph, false);
@@ -584,7 +578,7 @@ public abstract class PartialEvaluator {
     @SuppressWarnings({"unused", "try"})
     private void inliningGraphPE(Request request) {
         try (DebugCloseable a = PartialEvaluationTimer.start(request.debug)) {
-            if (request.useLanguageAgnosticInlining()) {
+            if (getPolyglotOptionValue(request.options, LanguageAgnosticInlining)) {
                 AgnosticInliningPhase agnosticInlining = new AgnosticInliningPhase(this, request);
                 agnosticInlining.apply(request.graph, providers);
             } else {

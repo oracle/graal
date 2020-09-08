@@ -278,8 +278,8 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Whether to use multiple Truffle compilation tiers by default.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> MultiTier = new OptionKey<>(false);
 
-    @Option(help = "Whether to use inlining for the first tier compilations.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> FirstTierInlining = new OptionKey<>(false);
+    @Option(help = "Explicitly pick a first tier inlining policy by name. Lowest priority chosen by default.", category = OptionCategory.EXPERT)
+    public static final OptionKey<String> FirstTierInliningPolicy = new OptionKey<>("");
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
             category = OptionCategory.EXPERT)
