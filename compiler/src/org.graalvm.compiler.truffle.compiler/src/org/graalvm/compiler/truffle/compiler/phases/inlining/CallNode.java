@@ -57,6 +57,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     private final double rootRelativeFrequency;
     private final int depth;
     private final int id;
+    private final boolean trivial;
     // Effectively final, populated only as part of expansion. Cannot be final because of Successor
     // annotation
     @Successor private NodeSuccessorList<CallNode> children;
@@ -81,6 +82,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         this.rootRelativeFrequency = rootRelativeFrequency;
         this.truffleCaller = truffleCaller;
         this.truffleAST = truffleAST;
+        this.trivial = truffleAST.isTrivial();
         this.truffleCallees = truffleAST == null ? new TruffleCallNode[0] : truffleAST.getCallNodes();
         this.children = new NodeSuccessorList<>(this, 0);
         this.depth = depth;
@@ -219,6 +221,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
             state = State.BailedOut;
             return;
         }
+        // TODO: Verify that expanded trivial nodes *do not* have any calls at all (performance warning?)
         ir = copyGraphAndAddChildren(entry);
         addIndirectChildren(entry);
         getPolicy().afterExpand(this);
@@ -329,6 +332,10 @@ public final class CallNode extends Node implements Comparable<CallNode> {
 
     public double getRootRelativeFrequency() {
         return rootRelativeFrequency;
+    }
+
+    public boolean isTrivial() {
+        return trivial;
     }
 
     public Object getPolicyData() {

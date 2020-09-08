@@ -325,7 +325,7 @@ public abstract class PartialEvaluator {
         }
 
         public boolean isFirstTier() {
-            return task.isFirstTier();
+            return task != null && task.isFirstTier();
         }
     }
 
