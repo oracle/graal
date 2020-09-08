@@ -921,6 +921,7 @@ public final class EspressoContext {
         return contextReady;
     }
 
+    @TruffleBoundary
     public void doExit(int code) {
         if (!isClosing) {
             Object sync = getShutdownSynchronizer();
@@ -937,6 +938,7 @@ public final class EspressoContext {
         }
     }
 
+    @TruffleBoundary
     public void destroyVM() {
         waitForClose();
         getMeta().java_lang_reflect_Shutdown_shutdown.invokeDirect(null);
