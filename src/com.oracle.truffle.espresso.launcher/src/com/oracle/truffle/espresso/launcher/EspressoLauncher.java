@@ -343,48 +343,58 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
         contextBuilder.allowCreateThread(true);
 
-        Context context = contextBuilder.build();
+        try (Context context = contextBuilder.build()) {
 
-        // runVersionAction(versionAction, context.getEngine());
-        if (versionAction != VersionAction.None) {
-            Value version = context.eval("java", "sun.misc.Version");
-            version.invokeMember("print");
-            if (versionAction == VersionAction.PrintAndExit) {
-                throw exit(0);
-            }
-        }
-
-        if (mainClassName == null) {
-            throw abort(usage());
-        }
-        try {
-            Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
-            Value mainKlass = launcherHelper //
-                            .invokeMember("checkAndLoadMain", true, launchMode.ordinal(), mainClassName) //
-                            .getMember("static");
-            mainKlass.invokeMember("main", (Object) mainClassArgs.toArray(new String[0]));
-            if (pauseOnExit) {
-                getError().print("Press any key to continue...");
-                try {
-                    System.in.read();
-                } catch (IOException e) {
-                    e.printStackTrace();
+            // runVersionAction(versionAction, context.getEngine());
+            if (versionAction != VersionAction.None) {
+                Value version = context.eval("java", "sun.misc.Version");
+                version.invokeMember("print");
+                if (versionAction == VersionAction.PrintAndExit) {
+                    throw exit(0);
                 }
             }
-        } catch (PolyglotException e) {
-            if (!e.isExit()) {
-                // TODO(garcia): handle uncaught exceptions.
-                e.printStackTrace();
+
+            if (mainClassName == null) {
+                throw abort(usage());
             }
-        } finally {
             try {
-                context.eval("java", "<DESTROY>").execute();
+                Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
+                Value mainKlass = launcherHelper //
+                                .invokeMember("checkAndLoadMain", true, launchMode.ordinal(), mainClassName) //
+                                .getMember("static");
+                mainKlass.invokeMember("main", (Object) mainClassArgs.toArray(new String[0]));
+                if (pauseOnExit) {
+                    getError().print("Press any key to continue...");
+                    try {
+                        System.in.read();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
             } catch (PolyglotException e) {
-                assert e.isExit();
-                rc = e.getExitStatus();
+                if (!e.isExit()) {
+                    // TODO(garcia): handle uncaught exceptions.
+                    e.printStackTrace();
+                }
+            } finally {
+                try {
+                    context.eval("java", "<DestroyJavaVM>").execute();
+                } catch (PolyglotException e) {
+                    assert e.isExit();
+                    rc = e.getExitStatus();
+                }
             }
+            /*
+             * We abruptly exit the host system for compatibility with the reference implementation,
+             * and because we have no control over un-registering thread from Truffle, which
+             * sometimes leads to getting an exception on exit when trying to close a context with a
+             * rogue thread in native.
+             * 
+             * Note that since the launcher thread and the main thread are the same, a rogue native
+             * main means we may never return.
+             */
+            System.exit(rc);
         }
-        System.exit(rc);
     }
 
     @Override

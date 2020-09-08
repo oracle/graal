@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public class DestroyVMNode extends RootNode {
-    public static final String EVAL_NAME = "<DESTROY>";
+    public static final String EVAL_NAME = "<DestroyJavaVM>";
 
     public DestroyVMNode(TruffleLanguage<?> language) {
         super(language);
