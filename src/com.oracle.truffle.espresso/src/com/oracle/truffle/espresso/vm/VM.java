@@ -1098,14 +1098,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @TruffleBoundary
     public void JVM_Halt(int code) {
-        getContext().doExit();
+        getContext().doExit(code);
         throw new EspressoExitException(code);
     }
 
     @VmImpl
     @TruffleBoundary
     public void JVM_Exit(int code) {
-        getContext().doExit();
+        getContext().doExit(code);
         // System.exit(code);
         // Unlike Halt, runs finalizers
         throw new EspressoExitException(code);

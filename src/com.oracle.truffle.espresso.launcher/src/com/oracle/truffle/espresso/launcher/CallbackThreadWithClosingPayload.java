@@ -106,6 +106,7 @@ public final class CallbackThreadWithClosingPayload extends Thread implements
     }
 
     // Waits for the closing thread to close the context.
+    @SuppressWarnings("unchecked")
     public void waitForCloser() {
         synchronized (closerWaiter) {
             while (closer == null) {
@@ -124,6 +125,8 @@ public final class CallbackThreadWithClosingPayload extends Thread implements
                 /* Spin */
             }
         }
+        assert closer instanceof Supplier;
+        rc = ((Supplier<Integer>) closer).get();
     }
 
 }
