@@ -32,6 +32,7 @@ import java.util.Arrays;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
@@ -107,6 +108,10 @@ public class NativeImageOptions {
             PointstoOptions.UnresolvedIsError.update(values, !newValue);
         }
     };
+
+    @APIOption(name = "native-compiler-logging", fixedValue = "InvokeCC:3", customHelp = "Log C compiler invocations and the invocation outputs")//
+    @Option(help = "Accumulative version of org.graalvm.compiler.debug.DebugOptions.Log", type = OptionType.Debug)//
+    public static final HostedOptionKey<String[]> SubstrateLog = new HostedOptionKey<>(null);
 
     @SuppressWarnings("all")
     private static boolean areAssertionsEnabled() {
