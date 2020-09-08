@@ -24,22 +24,14 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.options.OptionValues;
-
-@ServiceProvider(InliningPolicyProvider.class)
-public class NoInliningPolicyProvider extends InliningPolicyProvider {
-
-    private static final int PRIORITY = -2;
-    private static final String NAME = "No";
-
-    public NoInliningPolicyProvider() {
-        super(PRIORITY, NAME);
-    }
-
+final class TrivialOnlyInliningPolicy implements InliningPolicy {
     @Override
-    public InliningPolicy get(OptionValues options, CoreProviders providers) {
-        return new NoInliningPolicy();
+    public void run(CallTree tree) {
+        for (CallNode child : tree.getRoot().getChildren()) {
+            if (child.isTrivial()) {
+                child.expand();
+                child.inline();
+            }
+        }
     }
 }

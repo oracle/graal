@@ -29,17 +29,17 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.options.OptionValues;
 
 @ServiceProvider(InliningPolicyProvider.class)
-public class NoInliningPolicyProvider extends InliningPolicyProvider {
+public class TrivialOnlyPolicyProvider extends InliningPolicyProvider {
 
-    private static final int PRIORITY = -2;
-    private static final String NAME = "No";
+    private static final int PRIORITY = -1;
+    private static final String NAME = "TrivialOnly";
 
-    public NoInliningPolicyProvider() {
+    public TrivialOnlyPolicyProvider() {
         super(PRIORITY, NAME);
     }
 
     @Override
     public InliningPolicy get(OptionValues options, CoreProviders providers) {
-        return new NoInliningPolicy();
+        return new TrivialOnlyInliningPolicy();
     }
 }
