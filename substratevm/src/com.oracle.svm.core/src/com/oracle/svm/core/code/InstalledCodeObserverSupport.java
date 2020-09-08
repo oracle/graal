@@ -53,6 +53,7 @@ public final class InstalledCodeObserverSupport {
     InstalledCodeObserverSupport() {
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void addObserverFactory(InstalledCodeObserver.Factory observerFactory) {
         observerFactories.add(observerFactory);
     }
