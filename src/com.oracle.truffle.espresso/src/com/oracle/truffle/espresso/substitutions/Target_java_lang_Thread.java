@@ -155,7 +155,8 @@ public final class Target_java_lang_Thread {
                 case DISSIDENT:
                     // This thread refuses to stop. Send a host exception.
                     // throw getMeta().throwEx(ThreadDeath.class);
-                    throw new EspressoExitException(0);
+                    assert context.isClosing();
+                    throw new EspressoExitException(context.getExitStatus());
             }
         }
         if (context.shouldCheckSuspend()) {

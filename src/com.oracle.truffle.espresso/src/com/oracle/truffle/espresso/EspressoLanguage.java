@@ -36,6 +36,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -53,6 +54,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.EspressoStatementNode;
+import com.oracle.truffle.espresso.nodes.interop.DestroyVMNode;
 import com.oracle.truffle.espresso.nodes.interop.LoadKlassNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -223,7 +225,13 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         assert context.isInitialized();
         context.begin();
         String className = request.getSource().getCharacters().toString();
-        return Truffle.getRuntime().createCallTarget(new LoadKlassNode(this, className));
+        RootNode node;
+        if (DestroyVMNode.EVAL_NAME.equals(className)) {
+            node = new DestroyVMNode(this);
+        } else {
+            node = new LoadKlassNode(this, className);
+        }
+        return Truffle.getRuntime().createCallTarget(node);
     }
 
     public Utf8ConstantTable getUtf8ConstantTable() {

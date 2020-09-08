@@ -142,13 +142,7 @@ class EspressoThreadManager implements ContextAccess {
 
     public void unregisterThread(StaticObject thread) {
         activeThreads.remove(thread);
-        synchronized (context.getSynchronizer()) {
-            context.getSynchronizer().notifyAll();
-        }
-    }
-
-    public void unregisterMainThread() {
-        Target_java_lang_Thread.terminate(guestMainThread, getMeta());
+        context.notifyShutdownSynchronizer();
     }
 
     /**
