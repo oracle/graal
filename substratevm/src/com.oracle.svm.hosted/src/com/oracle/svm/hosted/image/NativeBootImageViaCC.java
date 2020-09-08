@@ -336,6 +336,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
         inv.setOutputFile(outputFile);
         inv.setOutputKind(getOutputKind());
+        inv.setTempDirectory(tempDirectory);
 
         inv.addLibPath(tempDirectory.toString());
         for (String libraryPath : nativeLibs.getLibraryPaths()) {
@@ -410,7 +411,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 debug.log("Using CompilerCommand: %s", commandLine);
 
                 ProcessBuilder pb = new ProcessBuilder().command(cmd);
-                pb.directory(tempDirectory.toFile());
+                pb.directory(inv.getTempDirectory().toFile());
                 pb.redirectErrorStream(true);
                 int status;
                 ByteArrayOutputStream output;
