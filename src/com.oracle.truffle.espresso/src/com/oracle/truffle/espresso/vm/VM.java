@@ -491,14 +491,12 @@ public final class VM extends NativeEnv implements ContextAccess {
                             doubleArray[i] = (double) toEspressoNode.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, doubleArray);
-                    // formatter: off
                     case Object:
                     case Void:
                     case ReturnAddress:
                     case Illegal:
                         CompilerDirectives.transferToInterpreter();
                         throw EspressoError.shouldNotReachHere("Unexpected primitive kind: " + componentType.getJavaKind());
-                        // formatter: on
                 }
 
             } catch (UnsupportedTypeException e) {
