@@ -35,6 +35,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -297,7 +298,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
 
         @TruffleBoundary
-        public Method findMethod(String memberName, Object[] arguments) throws ArityException {
+        public Method findMethodByArgumentsWithSelf(String memberName, Object[] arguments) throws ArityException {
             int expectedArgCount = -1;
             for (Method method : methods) {
                 if (method.getName().equals(memberName)) {
@@ -313,11 +314,24 @@ public abstract class LLVMInteropType implements TruffleObject {
                 }
             }
             if (superclass != null) {
-                return superclass.findMethod(memberName, arguments);
+                return superclass.findMethodByArgumentsWithSelf(memberName, arguments);
             } else if (expectedArgCount >= 0) {
                 throw ArityException.create(expectedArgCount, arguments.length - 1);
             }
             return null;
+        }
+
+        public Method findMethodByArguments(Object receiver, String memberName, Object[] arguments) throws ArityException, UnknownIdentifierException {
+            Object[] newArgs = new Object[arguments.length + 1];
+            newArgs[0] = receiver;
+            for (int i = 1; i < arguments.length; i++) {
+                newArgs[i] = arguments[i - 1];
+            }
+            Method method = findMethodByArgumentsWithSelf(memberName, newArgs);
+            if (method == null) {
+                throw UnknownIdentifierException.create(memberName);
+            }
+            return method;
         }
 
     }
@@ -415,6 +429,7 @@ public abstract class LLVMInteropType implements TruffleObject {
             return String.format("%s %s(%s)", returnType == null ? "void" : returnType.toString(visited), name,
                             Arrays.stream(parameterTypes).map(t -> t == null ? "<null>" : t.toString(visited)).collect(Collectors.joining(", ")));
         }
+
     }
 
     // TODO (chaeubl): Interop types contain less information than the source type so that different

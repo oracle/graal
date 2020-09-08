@@ -44,9 +44,9 @@ class Point {
 	double squaredEuclideanDistance(Point* other);
 };
 
-POLYGLOT_DECLARE_CLASS(Point)
+POLYGLOT_DECLARE_TYPE(Point)
 
-class XtendPoint: public Point {
+class XtendPoint : public Point {
     private:
 	int z;
     public:
@@ -57,7 +57,7 @@ class XtendPoint: public Point {
 	int getX();		
 };
 
-POLYGLOT_DECLARE_CLASS(XtendPoint)
+POLYGLOT_DECLARE_TYPE(XtendPoint)
 
 
 //class methods

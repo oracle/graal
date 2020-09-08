@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.interop;
 
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -41,7 +42,7 @@ import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public class LLVMForeignConstructorCallNode extends LLVMForeignCallNode {
     private final Type clazzType;
-    private final LLVMLanguage language;
+    private final LanguageReference<LLVMLanguage> languageReference;
 
     public static LLVMForeignConstructorCallNode create(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType,
                     LLVMInteropType.Structured structuredType) {
@@ -53,14 +54,14 @@ public class LLVMForeignConstructorCallNode extends LLVMForeignCallNode {
     protected LLVMForeignConstructorCallNode(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType,
                     LLVMInteropType.Structured structuredType, Type escapeType) {
         super(language, function, interopType, sourceType, structuredType, escapeType);
-        this.language = language;
+        this.languageReference = lookupLanguageReference(LLVMLanguage.class);
         this.clazzType = escapeType;
     }
 
     @Override
     protected Object doCall(VirtualFrame frame, LLVMStack stack) throws ArityException, TypeOverflowException {
         Object[] rawArguments = frame.getArguments();
-        rawArguments[0] = language.getLLVMMemory().allocateMemory(this, clazzType.getBitSize());
+        rawArguments[0] = languageReference.get().getLLVMMemory().allocateMemory(this, clazzType.getBitSize());
         if (packArguments.toLLVM.length != rawArguments.length) {
             // arguments also contain 'self' object, thus -1 for argCount
             throw ArityException.create(packArguments.toLLVM.length - 1, rawArguments.length - 1);

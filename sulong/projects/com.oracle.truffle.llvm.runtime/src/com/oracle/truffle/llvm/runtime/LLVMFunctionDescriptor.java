@@ -82,36 +82,36 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
     // used for calls from foreign languages
     // includes boundary conversions
-    private CallTarget foreignCallTarget;
+    private CallTarget foreignFunctionCallTarget;
+    private CallTarget foreignConstructorCallTarget;
 
     CallTarget getForeignCallTarget() {
-        if (foreignCallTarget == null) {
+        if (foreignFunctionCallTarget == null) {
             CompilerDirectives.transferToInterpreter();
             LLVMSourceFunctionType sourceType = functionCode.getFunction().getSourceType();
             LLVMInteropType interopType = context.getInteropType(sourceType);
             LLVMForeignCallNode foreignCall = LLVMForeignFunctionCallNode.create(context.getLanguage(), this, interopType, sourceType);
-            foreignCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
-            assert foreignCallTarget != null;
+            foreignFunctionCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
+            assert foreignFunctionCallTarget != null;
         }
-        return foreignCallTarget;
+        return foreignFunctionCallTarget;
     }
 
     CallTarget getForeignConstructorCallTarget() {
-        if (foreignCallTarget == null) {
+        if (foreignConstructorCallTarget == null) {
             CompilerDirectives.transferToInterpreter();
             LLVMSourceFunctionType sourceType = functionCode.getFunction().getSourceType();
             LLVMInteropType interopType = context.getInteropType(sourceType);
-            assert (interopType instanceof Function);
             LLVMInteropType extractedType = ((Function) interopType).getParameter(0);
             if (extractedType instanceof Value) {
                 Structured structured = ((Value) extractedType).getBaseType();
                 LLVMForeignCallNode foreignCall = LLVMForeignConstructorCallNode.create(
                                 context.getLanguage(), this, interopType, sourceType, structured);
-                foreignCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
+                foreignConstructorCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
             }
-            assert foreignCallTarget != null;
+            assert foreignConstructorCallTarget != null;
         }
-        return foreignCallTarget;
+        return foreignConstructorCallTarget;
     }
 
     private static long tagSulongFunctionPointer(int id) {
