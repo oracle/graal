@@ -435,6 +435,7 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.util.ValueMergeUtil;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BailoutException;
@@ -460,6 +461,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
 
 /**
@@ -4417,6 +4419,30 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
+    private static final SpeculationReasonGroup FALLBACK_TYPECHECK = new SpeculationReasonGroup("FallbackTypeCheck", ResolvedJavaMethod.class, int.class);
+
+    public static final CounterKey fallBackSpeculationTaken = DebugContext.counter("BytecodeParser_FallBackSpeculation_Taken");
+    public static final CounterKey fallBackSpeculationNotTaken = DebugContext.counter("BytecodeParser_FallBackSpeculation_NotTaken");
+
+    /**
+     * Returns a speculation object if it's possible to speculate on a type check at the current
+     * bytecode location.
+     */
+    private SpeculationLog.Speculation mayUseTypeProfile() {
+        SpeculationLog speculationLog = graph.getSpeculationLog();
+        SpeculationLog.Speculation speculation = null;
+        if (speculationLog != null) {
+            SpeculationLog.SpeculationReason speculationReason = FALLBACK_TYPECHECK.createSpeculationReason(getMethod(), bci());
+            if (speculationLog.maySpeculate(speculationReason)) {
+                speculation = speculationLog.speculate(speculationReason);
+                fallBackSpeculationTaken.increment(debug);
+            } else {
+                fallBackSpeculationNotTaken.increment(debug);
+            }
+        }
+        return speculation;
+    }
+
     protected void genCheckCast(ResolvedJavaType resolvedType, ValueNode objectIn) {
         ValueNode object = objectIn;
         TypeReference checkedType = TypeReference.createTrusted(graph.getAssumptions(), resolvedType);
@@ -4431,15 +4457,19 @@ public class BytecodeParser implements GraphBuilderContext {
         ValueNode castNode = null;
         if (profile != null) {
             if (profile.getNullSeen().isFalse()) {
-                object = nullCheckedValue(object);
-                ResolvedJavaType singleType = profile.asSingleType();
-                if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
-                    LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, profile));
-                    if (typeCheck.isTautology()) {
-                        castNode = object;
-                    } else {
-                        FixedGuardNode fixedGuard = append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, false));
-                        castNode = append(PiNode.create(object, StampFactory.objectNonNull(TypeReference.createExactTrusted(singleType)), fixedGuard));
+                SpeculationLog.Speculation speculation = mayUseTypeProfile();
+                if (speculation != null) {
+                    object = nullCheckedValue(object);
+                    ResolvedJavaType singleType = profile.asSingleType();
+                    if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
+                        LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, profile));
+                        if (typeCheck.isTautology()) {
+                            castNode = object;
+                        } else {
+                            FixedGuardNode fixedGuard = append(
+                                            new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, speculation, false));
+                            castNode = append(PiNode.create(object, StampFactory.objectNonNull(TypeReference.createExactTrusted(singleType)), fixedGuard));
+                        }
                     }
                 }
             }
@@ -4491,18 +4521,26 @@ public class BytecodeParser implements GraphBuilderContext {
                 return;
             }
         }
-
         LogicNode instanceOfNode = null;
         if (profile != null) {
             if (profile.getNullSeen().isFalse()) {
                 object = nullCheckedValue(object);
+                boolean createGuard = true;
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null) {
                     LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, profile));
                     if (!typeCheck.isTautology()) {
-                        append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
+                        SpeculationLog.Speculation speculation = mayUseTypeProfile();
+                        if (speculation == null) {
+                            createGuard = false;
+                        }
+                        if (createGuard) {
+                            append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, speculation, false));
+                        }
                     }
-                    instanceOfNode = LogicConstantNode.forBoolean(checkedType.getType().isAssignableFrom(singleType));
+                    if (createGuard) {
+                        instanceOfNode = LogicConstantNode.forBoolean(checkedType.getType().isAssignableFrom(singleType));
+                    }
                 }
             }
         }
