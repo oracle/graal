@@ -1160,7 +1160,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
      * {@link LLVMManagedReadLibrary}.
      */
     @ExportLibrary(LLVMManagedReadLibrary.class)
-    abstract static class ArgsArea implements TruffleObject {
+    public abstract static class ArgsArea implements TruffleObject {
         final Object[] args;
 
         ArgsArea(Object[] args) {
@@ -1284,7 +1284,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
      */
     @ExportLibrary(LLVMManagedReadLibrary.class)
     @ExportLibrary(NativeTypeLibrary.class)
-    static final class RegSaveArea extends ArgsArea {
+    public static final class RegSaveArea extends ArgsArea {
 
         private final int[] gpIdx;
         private final int[] fpIdx;
@@ -1349,7 +1349,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
      */
     @ExportLibrary(LLVMManagedReadLibrary.class)
     @ExportLibrary(NativeTypeLibrary.class)
-    static final class OverflowArgArea extends ArgsArea implements Cloneable {
+    public static final class OverflowArgArea extends ArgsArea implements Cloneable {
         private final long[] offsets;
         final int overflowAreaSize;
         private LLVMManagedPointer currentArgPtr;
