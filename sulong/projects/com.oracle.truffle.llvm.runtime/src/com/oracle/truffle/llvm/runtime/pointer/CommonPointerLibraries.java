@@ -179,7 +179,7 @@ abstract class CommonPointerLibraries {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(replaces = "doCached")
+        @Specialization
         static Object doResolve(LLVMPointerImpl receiver, String member, Object[] arguments,
                         @CachedContext(LLVMLanguage.class) LLVMContext context, @CachedLibrary(limit = "5") InteropLibrary interop,
                         @Cached(value = "asClazz(receiver)", allowUncached = true) LLVMInteropType.Clazz clazz,
