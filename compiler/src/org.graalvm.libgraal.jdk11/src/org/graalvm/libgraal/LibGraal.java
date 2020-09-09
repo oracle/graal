@@ -37,7 +37,7 @@ import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.services.Services;
 
 /**
- * JDK11 version of {@code LibGraal}.
+ * JDK11+ version of {@code LibGraal}.
  */
 public class LibGraal {
 
