@@ -87,8 +87,8 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         this.rootRelativeFrequency = rootRelativeFrequency;
         this.truffleCaller = truffleCaller;
         this.truffleAST = truffleAST;
-        this.trivial = truffleAST.isTrivial();
         this.truffleCallees = truffleAST == null ? new TruffleCallNode[0] : truffleAST.getCallNodes();
+        this.trivial = truffleAST != null && truffleAST.isTrivial();
         this.children = new NodeSuccessorList<>(this, 0);
         this.depth = depth;
         this.id = id;
@@ -237,7 +237,8 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     private void verifyTrivial(GraphManager.Entry entry) {
         if (trivial && !entry.trivial) {
             trivial = false;
-            PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.TRIVIAL_FAIL, truffleAST, Collections.emptyList(), "Root node of target marked trivial but not trivial after PE", Collections.emptyMap());
+            PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.TRIVIAL_FAIL, truffleAST, Collections.emptyList(),
+                            "Root node of target marked trivial but not trivial after PE", Collections.emptyMap());
         }
     }
 
