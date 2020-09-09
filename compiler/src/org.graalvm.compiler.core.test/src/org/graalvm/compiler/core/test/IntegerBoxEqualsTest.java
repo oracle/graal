@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.core.test;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.junit.Test;
 
@@ -55,13 +56,16 @@ public class IntegerBoxEqualsTest extends SubprocessTest {
         final Integer value = 19112;
         final Cell<Integer> cell = new Cell<>(value);
         ResolvedJavaMethod get = getResolvedJavaMethod(IntegerBoxEqualsTest.class, "cellGet");
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 2000; i++) {
             for (int j = 0; j < 20; j++) {
                 cellGet(cell, i);
             }
             cellGet(cell, value);
         }
         test(get, null, cell, 0);
+        if (lastCompiledGraph.getNodes().filter(ObjectEqualsNode.class).count() != 0) {
+            DebugContext.forCurrentThread().forceDump(lastCompiledGraph, "comparisons");
+        }
         assertTrue(lastCompiledGraph.getNodes().filter(ObjectEqualsNode.class).count() == 0, "There must be no reference comparisons in the graph.");
     }
 
