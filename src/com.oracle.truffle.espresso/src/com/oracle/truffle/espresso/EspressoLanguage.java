@@ -212,7 +212,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
 
         context.prepareDispose();
-        context.teardown();
+        context.doExit(0);
     }
 
     @Override

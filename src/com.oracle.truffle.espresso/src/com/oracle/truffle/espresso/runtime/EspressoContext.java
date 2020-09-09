@@ -603,7 +603,8 @@ public final class EspressoContext {
         }
 
         if (nextPhase) {
-            // Phase 3: Force kill with host exception.
+            // Phase 3: Force kill with host EspressoExitException. Obtains the exit code from the
+            // context.
             teardownPhase3(initiatingThread);
             nextPhase = !waitSpin(initiatingThread);
         }
@@ -628,6 +629,10 @@ public final class EspressoContext {
         throw new EspressoExitException(getExitStatus());
     }
 
+    /**
+     * Triggers soft interruption of active threads. This sends an interrupt signal to all leftover
+     * threads, gving them a chance to gracefully exit.
+     */
     private void teardownPhase1(Thread initiatingThread) {
         for (StaticObject guest : threadManager.activeThreads()) {
             Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
@@ -640,6 +645,10 @@ public final class EspressoContext {
         }
     }
 
+    /**
+     * Slightly harder interruption of leftover threads. Equivalent of guest Thread.stop(). Gives
+     * leftover threads a chance to terminate in guest code (running finaly blocks).
+     */
     private void teardownPhase2(Thread initiatingThread) {
         for (StaticObject guest : threadManager.activeThreads()) {
             Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
@@ -650,16 +659,16 @@ public final class EspressoContext {
         }
     }
 
+    /**
+     * Threads still alive at this point gets sent an uncatchable host exception. This forces the
+     * thread to never execute guest code again. In particular, this means that no finally blocks
+     * will be executed. Still, monitors entered through the monitorenter bytecode will be unlocked.
+     */
     private void teardownPhase3(Thread initiatingThread) {
         for (StaticObject guest : threadManager.activeThreads()) {
             Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
             if (t.isAlive() && t != initiatingThread) {
                 /*
-                 * Temporary fix for running JCK tests. Forcefully killing all threads at context
-                 * closing time allows to identify which failures are due to actual timeouts or due
-                 * to thread being unresponsive. Note that this still does not wakes up thread
-                 * blocked in native.
-                 *
                  * Currently, threads in native can not be killed in Espresso. This translates into
                  * a polyglot-side java.lang.IllegalStateException: The language did not complete
                  * all polyglot threads but should have.
@@ -670,6 +679,9 @@ public final class EspressoContext {
         }
     }
 
+    /**
+     * All threads still alive by that point are considered rogue, and we have no control over them.
+     */
     private void teardownPhase4(Thread initiatingThread) {
         for (StaticObject guest : threadManager.activeThreads()) {
             Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
@@ -914,6 +926,12 @@ public final class EspressoContext {
         return contextReady;
     }
 
+    /**
+     * Starts the teardown process of the VM if it was not already started.
+     * 
+     * Notify any thread waiting for teardown (through {@link #destroyVM()}) to immediately return
+     * and let us do the job.
+     */
     @TruffleBoundary
     public void doExit(int code) {
         if (!isClosing()) {
@@ -929,8 +947,18 @@ public final class EspressoContext {
             }
             teardown();
         }
+        // At this point, the exit code given should have been register. If not, this means that
+        // another closing was started before us, and we should use the previous' exit code.
+        throw new EspressoExitException(getExitStatus());
     }
 
+    /**
+     * Implements the {@code <DestroyJavaVM>} command of Espresso.
+     * <li>Waits for all other non-daemon thread to naturally terminate.
+     * <li>If all threads have terminated, and no other thread called an exit method, then:
+     * <li>This calls guest {@code java.lang.Shutdown#shutdown()}
+     * <li>Proceeds to teadown leftover daemon threads.
+     */
     @TruffleBoundary
     public void destroyVM() {
         waitForClose();
@@ -954,7 +982,7 @@ public final class EspressoContext {
                     }
                 } else {
                     isClosing = true;
-                    exitStatus = 0; // regular
+                    exitStatus = 0; // regular exit
                     return;
                 }
             }

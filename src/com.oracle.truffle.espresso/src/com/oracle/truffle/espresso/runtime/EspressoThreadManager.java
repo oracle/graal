@@ -141,6 +141,10 @@ class EspressoThreadManager implements ContextAccess {
         pushThread((int) host.getId(), guest);
     }
 
+    /**
+     * Once a thread terminates, remove it from the active set, and notify any thread waiting for VM
+     * teardown that it should check again for all non-daemon thread completion.
+     */
     @SuppressFBWarnings(value = "NN", justification = "Removing a thread from the active set is the state change we need.")
     public void unregisterThread(StaticObject thread) {
         activeThreads.remove(thread);

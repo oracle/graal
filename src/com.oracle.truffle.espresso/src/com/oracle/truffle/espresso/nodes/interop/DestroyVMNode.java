@@ -30,6 +30,13 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
+/**
+ * Node that performs the soft destruction of the Espresso VM. In practice, it is intended to be
+ * used once the main method has returned, so that the main thread can wait for all other thread to
+ * naturally terminate
+ * 
+ * @see EspressoContext#destroyVM()
+ */
 public class DestroyVMNode extends RootNode {
     public static final String EVAL_NAME = "<DestroyJavaVM>";
 
