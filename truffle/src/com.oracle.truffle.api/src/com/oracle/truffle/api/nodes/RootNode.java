@@ -376,6 +376,7 @@ public abstract class RootNode extends ExecutableNode {
 
     /**
      * TODO.
+     *
      * @since 20.3.0
      */
     protected boolean isTrivial() {
