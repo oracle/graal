@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm.util;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -35,6 +33,8 @@ import java.util.List;
 
 import org.graalvm.home.HomeFinder;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
 public class LLVMToolchain {
@@ -54,17 +54,29 @@ public class LLVMToolchain {
     public static String runCommand(Path directory, List<String> cmd) throws RunFailureException {
         int status;
         String output;
-        try (OutputStream os = new ByteArrayOutputStream()) {
+        try {
             ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.redirectErrorStream(true);
             if (directory != null) {
                 pb.directory(directory.toFile());
             }
 
+            if (SubstrateOptions.traceNativeToolUsage()) {
+                String commandLine = SubstrateUtil.getShellCommandString(pb.command(), false);
+                System.out.printf(">> %s%n", commandLine);
+            }
+
             Process p = pb.start();
-            FileUtils.drainInputStream(p.getInputStream(), os);
+            List<String> lines = FileUtils.readAllLines(p.getInputStream());
+            output = String.join(System.lineSeparator(), lines);
+
+            if (SubstrateOptions.traceNativeToolUsage()) {
+                for (String line : lines) {
+                    System.out.printf("># %s%n", line);
+                }
+            }
+
             status = p.waitFor();
-            output = os.toString().trim();
         } catch (IOException | InterruptedException e) {
             status = -1;
             output = e.getMessage();

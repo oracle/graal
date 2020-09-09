@@ -34,6 +34,9 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+
 public class FileUtils {
 
     public static void drainInputStream(InputStream source, OutputStream sink) {
@@ -66,5 +69,24 @@ public class FileUtils {
         } catch (IOException ex) {
             throw shouldNotReachHere(ex);
         }
+    }
+
+    public static int executeCommand(String... args) throws IOException, InterruptedException {
+        ProcessBuilder command = new ProcessBuilder().command(args).redirectErrorStream(true);
+
+        if (SubstrateOptions.traceNativeToolUsage()) {
+            String commandLine = SubstrateUtil.getShellCommandString(command.command(), false);
+            System.out.printf(">> %s%n", commandLine);
+        }
+
+        Process process = command.start();
+
+        if (SubstrateOptions.traceNativeToolUsage()) {
+            for (String line : readAllLines(process.getInputStream())) {
+                System.out.printf("># %s%n", line);
+            }
+        }
+
+        return process.waitFor();
     }
 }

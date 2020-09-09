@@ -25,7 +25,6 @@
 package org.graalvm.polyglot.nativeapi;
 
 import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C11;
-import static java.lang.ProcessBuilder.Redirect.INHERIT;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 import java.io.IOException;
@@ -35,11 +34,12 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.c.util.FileUtils;
 
 public class PolyglotNativeAPIFeature implements Feature {
 
@@ -73,10 +73,8 @@ public class PolyglotNativeAPIFeature implements Feature {
                 System.err.println(msg);
                 // Checkstyle: resume
             } else {
-                Process process = null;
                 try {
-                    process = new ProcessBuilder("install_name_tool", "-id", id, imagePath.toString()).redirectOutput(INHERIT).redirectError(INHERIT).start();
-                    int exitCode = process.waitFor();
+                    int exitCode = FileUtils.executeCommand("install_name_tool", "-id", id, imagePath.toString());
                     if (exitCode != 0) {
                         // Checkstyle: stop This is Hosted-only code
                         System.err.println(String.format("Failed to set `id` install name. install_name_tool exited with code %d", exitCode));
@@ -85,7 +83,6 @@ public class PolyglotNativeAPIFeature implements Feature {
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 } catch (InterruptedException e) {
-                    process.destroy();
                     Thread.currentThread().interrupt();
                 }
             }
