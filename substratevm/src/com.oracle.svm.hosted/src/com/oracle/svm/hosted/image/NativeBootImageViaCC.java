@@ -405,31 +405,35 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             for (Function<LinkerInvocation, LinkerInvocation> fn : config.getLinkerInvocationTransformers()) {
                 inv = fn.apply(inv);
             }
-            try (DebugContext.Scope s = debug.scope("InvokeCC")) {
-                List<String> cmd = inv.getCommand();
-                String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
-                debug.log("Using CompilerCommand: %s", commandLine);
+            List<String> cmd = inv.getCommand();
+            String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
 
-                ProcessBuilder pb = new ProcessBuilder().command(cmd);
-                pb.directory(inv.getTempDirectory().toFile());
-                pb.redirectErrorStream(true);
-                int status;
-                ByteArrayOutputStream output;
-                try {
-                    Process p = pb.start();
+            if (SubstrateOptions.traceNativeToolUsage()) {
+                System.out.printf(">> %s%n", commandLine);
+            }
 
-                    output = new ByteArrayOutputStream();
-                    FileUtils.drainInputStream(p.getInputStream(), output);
-                    status = p.waitFor();
-                } catch (IOException | InterruptedException e) {
-                    throw handleLinkerFailure(e.toString(), commandLine, null);
+            ProcessBuilder pb = new ProcessBuilder().command(cmd);
+            pb.directory(inv.getTempDirectory().toFile());
+            pb.redirectErrorStream(true);
+            int status;
+            ByteArrayOutputStream output;
+            try {
+                Process p = pb.start();
+                output = new ByteArrayOutputStream();
+                FileUtils.drainInputStream(p.getInputStream(), output);
+                status = p.waitFor();
+            } catch (IOException | InterruptedException e) {
+                throw handleLinkerFailure(e.toString(), commandLine, null);
+            }
+
+            if (SubstrateOptions.traceNativeToolUsage()) {
+                for (String line : SubstrateUtil.split(output.toString(), "\n")) {
+                    System.out.printf("># %s%n", line);
                 }
+            }
 
-                debug.log(DebugContext.VERBOSE_LEVEL, "%s", output);
-
-                if (status != 0) {
-                    throw handleLinkerFailure("Linker command exited with " + status, commandLine, output.toString());
-                }
+            if (status != 0) {
+                throw handleLinkerFailure("Linker command exited with " + status, commandLine, output.toString());
             }
             return inv;
         }

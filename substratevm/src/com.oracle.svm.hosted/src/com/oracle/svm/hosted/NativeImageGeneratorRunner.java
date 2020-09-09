@@ -39,12 +39,9 @@ import java.util.TimerTask;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.debug.DebugOptions;
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -62,7 +59,6 @@ import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -245,21 +241,11 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 throw UserError.abort("Unknown options: " + Arrays.toString(remainingArgs));
             }
 
-            /* Add NativeImageOptions.SubstrateLog values to DebugOptions.Log */
-            EconomicMap<OptionKey<?>, Object> hostedValues = optionParser.getHostedValues();
-            String[] substrateLogValues = (String[]) hostedValues.get(NativeImageOptions.SubstrateLog);
-            if (substrateLogValues != null) {
-                String[] graalLogValues = {(String) hostedValues.get(DebugOptions.Log, null)};
-                List<String> logValues = new ArrayList<>(OptionUtils.flatten(",", graalLogValues));
-                logValues.addAll(Arrays.asList(substrateLogValues));
-                hostedValues.put(DebugOptions.Log, String.join(",", logValues));
-            }
-
             /*
              * We do not have the VMConfiguration and the HostedOptionValues set up yet, so we need
              * to pass the OptionValues explicitly when accessing options.
              */
-            parsedHostedOptions = new OptionValues(hostedValues);
+            parsedHostedOptions = new OptionValues(optionParser.getHostedValues());
             DebugContext debug = new Builder(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
 
             String imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);

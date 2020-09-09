@@ -260,6 +260,13 @@ public class SubstrateOptions {
     @Option(help = "Comma-separated list of fully qualified class names that object instantiation is traced for.")//
     public static final HostedOptionKey<String> TraceObjectInstantiation = new HostedOptionKey<>("");
 
+    @Option(help = "Trace all native tool invocations as part of image building", type = User)//
+    static final HostedOptionKey<Boolean> TraceNativeToolUsage = new HostedOptionKey<>(false);
+
+    public static boolean traceNativeToolUsage() {
+        return TraceNativeToolUsage.getValue();
+    }
+
     @Option(help = "Prefix that is added to the names of entry point methods.")//
     public static final HostedOptionKey<String> EntryPointNamePrefix = new HostedOptionKey<>("");
 
