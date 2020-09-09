@@ -20,6 +20,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added the ability to create context and context thread locals in languages and instruments. See [ContextLocal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ContextLocal.html) and [ContextThreadLocal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ContextThreadLocal.html) for details.
 * Removed the hard "maximum node count" splitting limit controlled by `TruffleSplittingMaxNumberOfSplitNodes` as well as the option itself.
 * The `iterations` for `LoopNode.reportLoopCount(source, iterations)` must now be >= 0.
+* TODO: isTrivial
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.
