@@ -74,13 +74,18 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         }
 
         synchronized OptimizedAssumptionDependency awaitDependency() {
+            boolean interrupted = false;
             while (dependency == null && weakDependency == null) {
                 try {
                     this.wait();
                 } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+                    interrupted = true;
                 }
             }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+
             if (dependency != null) {
                 return dependency;
             }
@@ -169,10 +174,24 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         boolean logStackTrace = false;
 
         Entry e = dependencies;
+        CharSequence reason = null;
         while (e != null) {
             OptimizedAssumptionDependency dependency = e.awaitDependency();
             if (dependency != null) {
-                OptimizedCallTarget callTarget = invalidateWithReason(dependency, "assumption invalidated");
+                if (reason == null) {
+                    String useName = name != null ? name : "";
+                    String useMessage = message != null ? message : "";
+                    if (useName.isEmpty() && useMessage.isEmpty()) {
+                        reason = "assumption invalidated";
+                    } else if (useName.isEmpty()) {
+                        reason = useMessage;
+                    } else if (useMessage.isEmpty()) {
+                        reason = useName;
+                    } else {
+                        reason = new LazyReason(useName, useMessage);
+                    }
+                }
+                OptimizedCallTarget callTarget = invalidateWithReason(dependency, reason);
 
                 if (engineOptions == null) {
                     if (callTarget != null) {
@@ -265,7 +284,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         }
     }
 
-    private OptimizedCallTarget invalidateWithReason(OptimizedAssumptionDependency dependency, String reason) {
+    private OptimizedCallTarget invalidateWithReason(OptimizedAssumptionDependency dependency, CharSequence reason) {
         if (dependency.getCompilable() != null) {
             OptimizedCallTarget callTarget = (OptimizedCallTarget) dependency.getCompilable();
             callTarget.invalidate(this, reason);
@@ -304,5 +323,40 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         }
 
         logger.log(Level.INFO, strb.toString());
+    }
+
+    private static final class LazyReason implements CharSequence {
+
+        private final String assumptionName;
+        private final String message;
+        private String strValue;
+
+        LazyReason(String assumptionName, String message) {
+            this.assumptionName = assumptionName;
+            this.message = message;
+        }
+
+        @Override
+        public int length() {
+            return toString().length();
+        }
+
+        @Override
+        public char charAt(int index) {
+            return toString().charAt(index);
+        }
+
+        @Override
+        public CharSequence subSequence(int start, int end) {
+            return toString().subSequence(start, end);
+        }
+
+        @Override
+        public String toString() {
+            if (strValue == null) {
+                strValue = assumptionName + ' ' + message;
+            }
+            return strValue;
+        }
     }
 }

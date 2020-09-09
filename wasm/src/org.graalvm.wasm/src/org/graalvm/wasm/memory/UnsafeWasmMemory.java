@@ -81,9 +81,8 @@ public class UnsafeWasmMemory extends WasmMemory {
 
     @CompilerDirectives.TruffleBoundary
     private void trapOutOfBounds(Node node, long address, long offset) {
-        String message = String.format("%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
+        throw WasmTrap.format(node, "%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
                         offset, address, address, byteSize());
-        throw new WasmTrap(node, message);
     }
 
     @Override
@@ -117,7 +116,7 @@ public class UnsafeWasmMemory extends WasmMemory {
     @Override
     public boolean grow(long extraPageSize) {
         if (extraPageSize < 0) {
-            throw new WasmTrap(null, "Extra size cannot be negative.");
+            throw WasmTrap.create(null, "Extra size cannot be negative.");
         }
         long targetSize = byteSize() + extraPageSize * PAGE_SIZE;
         if (maxPageSize >= 0 && targetSize > maxPageSize * PAGE_SIZE) {

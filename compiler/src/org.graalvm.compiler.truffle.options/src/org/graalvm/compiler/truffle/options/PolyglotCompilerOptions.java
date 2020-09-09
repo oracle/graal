@@ -402,9 +402,6 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Disable call target splitting if the number of nodes created by splitting exceeds this factor times node count", category = OptionCategory.INTERNAL)
     public static final OptionKey<Double> SplittingGrowthLimit = new OptionKey<>(1.5);
 
-    @Option(help = "Disable call target splitting if number of nodes created by splitting exceeds this limit", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> SplittingMaxNumberOfSplitNodes = new OptionKey<>(500_000);
-
     @Option(help = "Propagate info about a polymorphic specialize through maximum this many call targets", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> SplittingMaxPropagationDepth = new OptionKey<>(5);
 

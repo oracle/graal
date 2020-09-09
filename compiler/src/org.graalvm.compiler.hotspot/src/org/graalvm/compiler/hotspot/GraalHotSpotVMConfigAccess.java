@@ -231,11 +231,11 @@ public class GraalHotSpotVMConfigAccess {
     }
 
     static void reportError(String rawErrorMessage) {
-        String value = getProperty("JVMCI_CONFIG_CHECK");
+        String value = System.getenv("JVMCI_CONFIG_CHECK");
         Formatter errorMessage = new Formatter().format(rawErrorMessage);
         String javaHome = getProperty("java.home");
         String vmName = getProperty("java.vm.name");
-        errorMessage.format("%nSet the JVMCI_CONFIG_CHECK system property to \"ignore\" to suppress ");
+        errorMessage.format("%nSet the JVMCI_CONFIG_CHECK environment variable to \"ignore\" to suppress ");
         errorMessage.format("this error or to \"warn\" to emit a warning and continue execution.%n");
         errorMessage.format("Currently used Java home directory is %s.%n", javaHome);
         errorMessage.format("Currently used VM configuration is: %s%n", vmName);
@@ -243,7 +243,11 @@ public class GraalHotSpotVMConfigAccess {
             return;
         } else if ("warn".equals(value) || JDK_PRERELEASE) {
             System.err.println(errorMessage.toString());
-        } else {
+        } else if (!JVMCI && Assertions.assertionsEnabled()) {
+            // We cannot control when VM config updates are made in non JVMCI JDKs so
+            // only issue a warning and only when assertions are enabled.
+            System.err.println(errorMessage.toString());
+        } else if (JVMCI) {
             throw new JVMCIError(errorMessage.toString());
         }
     }

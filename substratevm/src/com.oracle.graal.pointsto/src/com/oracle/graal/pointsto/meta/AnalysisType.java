@@ -164,6 +164,21 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
             this.constantObjectsCache = new ConcurrentHashMap<>();
         }
 
+        try {
+            /*
+             * Try to link the type. Without linking, later method resolution would fail. While most
+             * types that can be linked successfully are already linked at this time, in some cases
+             * we see not-yet-linked types.
+             */
+            link();
+        } catch (Throwable ex) {
+            /*
+             * Ignore any linking errors. Linking can fail for example when the class path is
+             * incomplete. Such classes will be marked for initialization at run time, and the
+             * proper linking error will be thrown at run time.
+             */
+        }
+
         /* Ensure the super types as well as the component type (for arrays) is created too. */
         superClass = universe.lookup(wrapped.getSuperclass());
         interfaces = convertTypes(wrapped.getInterfaces());

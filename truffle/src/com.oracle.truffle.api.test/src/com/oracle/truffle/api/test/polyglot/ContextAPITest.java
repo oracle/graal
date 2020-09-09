@@ -479,7 +479,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
             fail();
         } catch (IllegalArgumentException ex) {
             // O.K.
-            assertEquals("Option optiontestinstr1.StringOption1 is an engine option. Engine level options can only be configured for contexts without a shared engine set. " +
+            assertEquals("Option optiontestinstr1.StringOption1 is an engine level instrument option. Engine level instrument options can only be configured for contexts without an explicit engine set. " +
                             "To resolve this, configure the option when creating the Engine or create a context without a shared engine.", ex.getMessage());
         }
         engine.close();

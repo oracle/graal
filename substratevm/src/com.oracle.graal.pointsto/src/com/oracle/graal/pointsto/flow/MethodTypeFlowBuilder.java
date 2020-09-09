@@ -74,7 +74,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
@@ -301,8 +301,8 @@ public class MethodTypeFlowBuilder {
                     }
                 }
 
-            } else if (n instanceof ForeignCallNode) {
-                ForeignCallNode node = (ForeignCallNode) n;
+            } else if (n instanceof ForeignCall) {
+                ForeignCall node = (ForeignCall) n;
                 registerForeignCall(bb, node.getDescriptor());
             } else if (n instanceof UnaryMathIntrinsicNode) {
                 UnaryMathIntrinsicNode node = (UnaryMathIntrinsicNode) n;
@@ -1337,7 +1337,7 @@ public class MethodTypeFlowBuilder {
 
                         /*
                          * Initially the actual return is null. It will be set by the actual return
-                         * builder bellow only when the returned value is actually used, i.e., the
+                         * builder below only when the returned value is actually used, i.e., the
                          * actual return builder is materialized.
                          */
                         ActualReturnTypeFlow actualReturn = null;

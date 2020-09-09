@@ -1062,6 +1062,10 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         if (reportPolymorphismExclude != null) {
             clonedType.getAnnotationMirrors().add(reportPolymorphismExclude);
         }
+        AnnotationMirror reportPolymorphismMegamorphic = findAnnotationMirror(nodeType, types.ReportPolymorphism_Megamorphic);
+        if (reportPolymorphismMegamorphic != null) {
+            clonedType.getAnnotationMirrors().add(reportPolymorphismMegamorphic);
+        }
     }
 
     private static boolean isNodeElement(Element member) {

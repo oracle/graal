@@ -40,6 +40,8 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 public class WasmFunction {
     private final SymbolTable symbolTable;
     private final int index;
@@ -89,6 +91,7 @@ public class WasmFunction {
         return name();
     }
 
+    @TruffleBoundary
     public String name() {
         if (importDescriptor != null) {
             return importDescriptor.memberName;

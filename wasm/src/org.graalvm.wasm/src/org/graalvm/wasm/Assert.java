@@ -40,8 +40,9 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.wasm.exception.BinaryParserException;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class Assert {
 
@@ -111,6 +112,7 @@ public class Assert {
         }
     }
 
+    @TruffleBoundary
     public static RuntimeException fail(String message) throws BinaryParserException {
         throw new BinaryParserException(message);
     }

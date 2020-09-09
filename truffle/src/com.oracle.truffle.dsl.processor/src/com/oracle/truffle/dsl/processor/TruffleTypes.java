@@ -156,6 +156,7 @@ public class TruffleTypes {
     public static final String NodeField_Name = "com.oracle.truffle.api.dsl.NodeField";
     public static final String NodeFields_Name = "com.oracle.truffle.api.dsl.NodeFields";
     public static final String ReportPolymorphism_Exclude_Name = "com.oracle.truffle.api.dsl.ReportPolymorphism.Exclude";
+    public static final String ReportPolymorphism_Megamorphic_Name = "com.oracle.truffle.api.dsl.ReportPolymorphism.Megamorphic";
     public static final String ReportPolymorphism_Name = "com.oracle.truffle.api.dsl.ReportPolymorphism";
     public static final String Specialization_Name = "com.oracle.truffle.api.dsl.Specialization";
     public static final String SpecializationStatistics_Name = "com.oracle.truffle.api.dsl.SpecializationStatistics";
@@ -191,6 +192,7 @@ public class TruffleTypes {
     public final DeclaredType NodeFields = c.getDeclaredType(NodeFields_Name);
     public final DeclaredType ReportPolymorphism = c.getDeclaredType(ReportPolymorphism_Name);
     public final DeclaredType ReportPolymorphism_Exclude = c.getDeclaredType(ReportPolymorphism_Exclude_Name);
+    public final DeclaredType ReportPolymorphism_Megamorphic = c.getDeclaredType(ReportPolymorphism_Megamorphic_Name);
     public final DeclaredType Specialization = c.getDeclaredType(Specialization_Name);
     public final DeclaredType SpecializationStatistics = c.getDeclaredType(SpecializationStatistics_Name);
     public final DeclaredType SpecializationStatistics_NodeStatistics = c.getDeclaredType(SpecializationStatistics_NodeStatistics_Name);

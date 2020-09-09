@@ -474,7 +474,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray) {
+    public final void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray) {
         KlassPointer klassPtr = KlassPointer.fromWord(hub);
         Word markWord = prototypeMarkWord;
         if (!isArray && HotSpotReplacementsUtil.useBiasedLocking(INJECTED_VMCONFIG)) {
@@ -490,7 +490,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final int arrayLengthOffset() {
+    public final int arrayLengthOffset() {
         return HotSpotReplacementsUtil.arrayLengthOffset(INJECTED_VMCONFIG);
     }
 
@@ -500,7 +500,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final boolean useTLAB() {
+    public final boolean useTLAB() {
         return HotSpotReplacementsUtil.useTLAB(INJECTED_VMCONFIG);
     }
 
@@ -516,7 +516,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final Word getTLABInfo() {
+    public final Word getTLABInfo() {
         return getThread();
     }
 
@@ -525,17 +525,17 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final Word readTlabEnd(Word thread) {
+    public final Word readTlabEnd(Word thread) {
         return HotSpotReplacementsUtil.readTlabEnd(thread);
     }
 
     @Override
-    protected final Word readTlabTop(Word thread) {
+    public final Word readTlabTop(Word thread) {
         return HotSpotReplacementsUtil.readTlabTop(thread);
     }
 
     @Override
-    protected final void writeTlabTop(Word thread, Word newTop) {
+    public final void writeTlabTop(Word thread, Word newTop) {
         HotSpotReplacementsUtil.writeTlabTop(thread, newTop);
     }
 

@@ -1,3 +1,3 @@
 DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs
-EXCLUDE_COMPONENTS=nju,nic,ni,nil,llp
+EXCLUDE_COMPONENTS=nju,nic,ni,nil,llp,dis
 FORCE_BASH_LAUNCHERS=polyglot

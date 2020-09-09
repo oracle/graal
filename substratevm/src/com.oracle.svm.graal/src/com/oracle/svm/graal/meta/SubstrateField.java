@@ -146,7 +146,7 @@ public class SubstrateField implements SharedField {
 
     @Override
     public int getOffset() {
-        throw unimplemented();
+        return getLocation();
     }
 
     @Override

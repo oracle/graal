@@ -104,7 +104,7 @@ Point<17.000000,42.000000>
 ## Polyglot C API
 
 There are also lower level API functions for directly accessing polyglot values
-from C. See the [Polyglot Programming](graalvm.org/docs/reference-manual/polyglot-programming/) reference
+from C. See the [Polyglot Programming](https://www.graalvm.org/reference-manual/polyglot-programming/) reference
 and the documentation comments in `polyglot.h` for more details.
 
 For example, this program allocates and accesses a Java array from C:
@@ -167,5 +167,5 @@ java Polyglot
 24
 ```
 
-See the [Embedding Languages](graalvm.org/docs/reference-manual/embed-languages/) reference for
+See the [Embedding Languages](https://www.graalvm.org/reference-manual/embed-languages/) reference for
 more information.

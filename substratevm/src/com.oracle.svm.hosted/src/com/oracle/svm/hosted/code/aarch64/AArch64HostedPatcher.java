@@ -199,7 +199,7 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
          * method. We add the method start to get the section-relative offset.
          */
         int siteOffset = compStart + annotation.instructionPosition;
-        if (ref instanceof DataSectionReference || ref instanceof CGlobalDataReference) {
+        if (ref instanceof DataSectionReference || ref instanceof CGlobalDataReference || ref instanceof ConstantReference) {
             /*
              * calculating the last mov index. This is necessary ensure the proper overflow checks
              * occur.
@@ -231,15 +231,6 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
                 }
                 siteOffset = siteOffset + 4;
             }
-        } else if (ref instanceof ConstantReference) {
-            for (MovAction include : annotation.includeSet) {
-                if (include != MovAction.USED) {
-                    throw VMError.shouldNotReachHere("This mov action isn't handled by relocation currently.");
-                }
-            }
-            assert annotation.includeSet.length == 2 || annotation.includeSet.length == 4;
-            // FIXME this will be changed soon
-            relocs.addRelocationWithoutAddend(siteOffset, annotation.includeSet.length == 4 ? RelocationKind.DIRECT_8 : RelocationKind.DIRECT_4, ref);
         } else {
             throw VMError.shouldNotReachHere("Unknown type of reference in code");
         }

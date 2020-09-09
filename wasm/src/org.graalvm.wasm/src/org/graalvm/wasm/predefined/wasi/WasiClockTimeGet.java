@@ -40,18 +40,19 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import java.nio.charset.StandardCharsets;
-import java.time.temporal.ChronoUnit;
-import java.time.Instant;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class WasiClockTimeGet extends WasmBuiltinRootNode {
     // https://github.com/WebAssembly/WASI/blob/master/phases/snapshot/docs.md#-clockid-enumu32
@@ -62,7 +63,7 @@ public class WasiClockTimeGet extends WasmBuiltinRootNode {
         ThreadCpuTime
     }
 
-    static ClockId[] clockIdValues = ClockId.values();
+    static final ClockId[] clockIdValues = ClockId.values();
 
     public WasiClockTimeGet(WasmLanguage language, WasmInstance module) {
         super(language, module);
@@ -79,16 +80,26 @@ public class WasiClockTimeGet extends WasmBuiltinRootNode {
         final ClockId clockId = clockIdValues[id];
         switch (clockId) {
             case Realtime:
-                long result = ChronoUnit.NANOS.between(Instant.EPOCH, Instant.now());
+                long result = realtimeNow();
                 memory.store_i64(this, resultAddress, result);
                 break;
             case Monotonic:
             case ProcessCpuTime:
             case ThreadCpuTime:
-                throw new WasmExecutionException(this, "Unimplemented ClockID: " + clockId.name());
+                throw unimplementedClock(clockId);
         }
 
         return 0;
+    }
+
+    @TruffleBoundary
+    private static long realtimeNow() {
+        return ChronoUnit.NANOS.between(Instant.EPOCH, Instant.now());
+    }
+
+    @TruffleBoundary
+    private WasmExecutionException unimplementedClock(final ClockId clockId) {
+        throw new WasmExecutionException(this, "Unimplemented ClockID: " + clockId.name());
     }
 
     @TruffleBoundary

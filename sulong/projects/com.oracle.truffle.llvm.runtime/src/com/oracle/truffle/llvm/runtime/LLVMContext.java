@@ -87,6 +87,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
+import org.graalvm.collections.EconomicMap;
 
 public final class LLVMContext {
 
@@ -107,7 +108,7 @@ public final class LLVMContext {
     private final ConcurrentHashMap<LLVMPointer, List<LLVMSymbol>> symbolsReverseMap = new ConcurrentHashMap<>();
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
     private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
-    private final ArrayList<LLVMPointer> globalsReadOnlyStore = new ArrayList<>();
+    private final EconomicMap<Integer, LLVMPointer> globalsReadOnlyStore = EconomicMap.create();
     private final Object globalsStoreLock = new Object();
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
@@ -138,6 +139,7 @@ public final class LLVMContext {
 
     // private for storing the globals of each bcode file;
     @CompilationFinal(dimensions = 2) private AssumedValue<LLVMPointer>[][] symbolStorage;
+    private boolean[] libraryLoaded;
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -211,6 +213,7 @@ public final class LLVMContext {
         pThreadContext = new LLVMPThreadContext(this);
 
         symbolStorage = new AssumedValue[10][];
+        libraryLoaded = new boolean[10];
     }
 
     boolean patchContext(Env newEnv) {
@@ -294,6 +297,23 @@ public final class LLVMContext {
             addLibraryPath(internalLibraryPath.toString());
         }
         try {
+            /*
+             * The default internal libraries are parsed in reverse dependency order, but not
+             * initialised. (For C: libsulong / For C++: libsulong, libsulong++) The truffle cache
+             * and the llvm language cache will return the call target of future parsing of these
+             * libraries.
+             */
+            String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
+            for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
+                ExternalLibrary library = addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>");
+                TruffleFile file = library.hasFile() ? library.getFile() : env.getInternalTruffleFile(library.getPath().toUri());
+                env.parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
+            }
+
+            /*- TODO (PLi): after the default libraries have been loaded. The start function symbol,
+             *   the sulong initialise context, and the sulong dispose context symbol could be setup
+             *   here instead of being at findAndSetSulongSpecificFunctions in LoadModulesNode.
+             */
             CallTarget libpolyglotMock = env.parseInternal(Source.newBuilder("llvm",
                             env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()).toUri())).internal(true).build());
             libpolyglotMock.call();
@@ -495,8 +515,7 @@ public final class LLVMContext {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     // Executed in dispose(), therefore can read unsynchronized
-                    for (int i = 0; i < globalsReadOnlyStore.size(); i++) {
-                        LLVMPointer store = getElement(globalsReadOnlyStore, i);
+                    for (LLVMPointer store : globalsReadOnlyStore.getValues()) {
                         if (store != null) {
                             freeRo.execute(store);
                         }
@@ -604,21 +623,20 @@ public final class LLVMContext {
      * native one until it is parsed and we know for sure.
      *
      * @see ExternalLibrary#makeBitcodeLibrary
-     * @return null if already added
+     * @return the cached library if already added
      */
     public ExternalLibrary addExternalLibrary(String lib, Object reason, LibraryLocator locator) {
         CompilerAsserts.neverPartOfCompilation();
         ExternalLibrary newLib = createExternalLibrary(lib, reason, locator);
         if (isDefaultLibrary(newLib)) {
             // Disallow loading default libraries explicitly.
-            return null;
+            throw new LLVMLinkerException("Adding an internal library (possibly from the command line) as an external library.");
         }
         ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
-        if (existingLib == newLib) {
-            return newLib;
+        if (existingLib != newLib) {
+            LibraryLocator.traceAlreadyLoaded(this, existingLib);
         }
-        LibraryLocator.traceAlreadyLoaded(this, existingLib);
-        return null;
+        return existingLib;
     }
 
     /**
@@ -748,6 +766,20 @@ public final class LLVMContext {
         }
     }
 
+    public boolean isLibraryAlreadyLoaded(int id) {
+        return id < libraryLoaded.length && libraryLoaded[id];
+    }
+
+    public void markLibraryLoaded(int id) {
+        if (id >= libraryLoaded.length) {
+            int newLength = (id + 1) + ((id + 1) / 2);
+            boolean[] temp = new boolean[newLength];
+            System.arraycopy(libraryLoaded, 0, temp, 0, libraryLoaded.length);
+            libraryLoaded = temp;
+        }
+        libraryLoaded[id] = true;
+    }
+
     public LLVMLanguage getLanguage() {
         return language;
     }
@@ -762,6 +794,16 @@ public final class LLVMContext {
 
     public void addLocalScope(LLVMLocalScope scope) {
         localScopes.add(scope);
+    }
+
+    @TruffleBoundary
+    public LLVMLocalScope getLocalScope(int id) {
+        for (LLVMLocalScope scope : localScopes) {
+            if (scope.containID(id)) {
+                return scope;
+            }
+        }
+        return null;
     }
 
     public AssumedValue<LLVMPointer>[] findSymbolTable(int id) {
@@ -949,10 +991,17 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void registerReadOnlyGlobals(LLVMPointer nonPointerStore, NodeFactory nodeFactory) {
+    public void registerReadOnlyGlobals(int id, LLVMPointer nonPointerStore, NodeFactory nodeFactory) {
         synchronized (globalsStoreLock) {
             initFreeGlobalBlocks(nodeFactory);
-            globalsReadOnlyStore.add(nonPointerStore);
+            globalsReadOnlyStore.put(id, nonPointerStore);
+        }
+    }
+
+    @TruffleBoundary
+    public LLVMPointer getReadOnlyGlobals(int id) {
+        synchronized (globalsStoreLock) {
+            return globalsReadOnlyStore.get(id);
         }
     }
 

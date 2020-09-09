@@ -583,7 +583,12 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
 
     # ensure -Xbatch still works
     with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
-        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
+        if t:
+            if 'LibGraal' in prefix and jdk.javaCompliance >= '9':
+                # GR-25801
+                pass
+            else:
+                _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
 
     # ensure benchmark counters still work
     if mx.get_arch() != 'aarch64': # GR-8364 Exclude benchmark counters on AArch64
@@ -603,7 +608,12 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
 
     # ensure -Xcomp still works
     with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test) as t:
-        if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
+        if t:
+            if 'LibGraal' in prefix and jdk.javaCompliance >= '9':
+                # GR-25801
+                pass
+            else:
+                run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
     # ensure -XX:+PreserveFramePointer  still works
     with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test) as t:
@@ -1015,6 +1025,12 @@ class GraalJDKFactory(mx.JDKFactory):
 def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
     """run a Java program by executing the java executable in a JVMCI JDK"""
     return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
+
+def run_vm_with_jvmci_compiler(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
+    """run a Java program by executing the java executable in a JVMCI JDK,
+    with the JVMCI compiler selected by default"""
+    jvmci_args = ['-XX:+UseJVMCICompiler'] + args
+    return run_vm(jvmci_args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout, debugLevel=debugLevel, vmbuild=vmbuild)
 
 class GraalArchiveParticipant:
     providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/providers/(.+)')
@@ -1445,9 +1461,19 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJvmciComponent(
     graal_compiler='graal',
 ))
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmComponent(
+    suite=_suite,
+    name='Disassembler',
+    short_name='dis',
+    dir_name='graal',
+    license_files=[],
+    third_party_license_files=[],
+    support_libraries_distributions=['compiler:HSDIS'],
+))
+
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
-    'vm': [run_vm, '[-options] class [args...]'],
+    'vm': [run_vm_with_jvmci_compiler, '[-options] class [args...]'],
     'jaotc': [mx_jaotc.run_jaotc, '[-options] class [args...]'],
     'jaotc-test': [mx_jaotc.jaotc_test, ''],
     'collate-metrics': [collate_metrics, 'filename'],

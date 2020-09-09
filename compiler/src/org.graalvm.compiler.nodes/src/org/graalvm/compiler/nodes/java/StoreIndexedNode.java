@@ -104,7 +104,7 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
             VirtualArrayNode virtual = (VirtualArrayNode) alias;
             if (idx >= 0 && idx < virtual.entryCount()) {
                 ResolvedJavaType componentType = virtual.type().getComponentType();
-                if (componentType.isPrimitive() || StampTool.isPointerAlwaysNull(value) || componentType.isJavaLangObject() ||
+                if (elementKind.isPrimitive() || StampTool.isPointerAlwaysNull(value) || componentType.isJavaLangObject() ||
                                 (StampTool.typeReferenceOrNull(value) != null && componentType.isAssignableFrom(StampTool.typeOrNull(value)))) {
                     tool.setVirtualEntry(virtual, idx, value());
                     tool.delete();

@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -133,23 +134,30 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
             return allowsNull ? trueValue : falseValue;
         }
         Object objectNonNull = PiNode.piCastNonNull(object, SnippetAnchorNode.anchor());
-
-        /*
-         * We could use instanceOfMatches here instead of assignableFromMatches, but currently we do
-         * not preserve these at run time to keep the native image heap small.
-         */
-        int[] matches = type.getAssignableFromMatches();
         DynamicHub objectHub = loadHub(objectNonNull);
 
+        return isAssignableFrom(type, objectHub, trueValue, falseValue);
+    }
+
+    @Snippet
+    protected static Any classIsAssignableFromSnippet(@Snippet.NonNullParameter DynamicHub type, @Snippet.NonNullParameter DynamicHub checkedHub, Any trueValue, Any falseValue) {
+        return isAssignableFrom(type, checkedHub, trueValue, falseValue);
+    }
+
+    private static Any isAssignableFrom(DynamicHub type, DynamicHub checkedHub, Any trueValue, Any falseValue) {
+        int checkedTypeID = checkedHub.getTypeID();
+        int[] matches = type.getAssignableFromMatches();
+
         int le = DynamicHub.fromClass(matches.getClass()).getLayoutEncoding();
-        for (int i = 0; i < matches.length; i += 2) {
+        int matchesLength = matches.length;
+        for (int i = 0; i < matchesLength; i += 2) {
             /*
              * We cannot use regular array accesses like match[i] because we need to provide a
              * custom LocationIdentity for the read.
              */
             int matchTypeID = ObjectAccess.readInt(matches, LayoutEncoding.getArrayElementOffset(le, i), NamedLocationIdentity.FINAL_LOCATION);
             int matchLength = ObjectAccess.readInt(matches, LayoutEncoding.getArrayElementOffset(le, i + 1), NamedLocationIdentity.FINAL_LOCATION);
-            if (UnsignedMath.belowThan(objectHub.getTypeID() - matchTypeID, matchLength)) {
+            if (UnsignedMath.belowThan(checkedTypeID - matchTypeID, matchLength)) {
                 return trueValue;
             }
         }
@@ -172,6 +180,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
 
         lowerings.put(InstanceOfNode.class, new InstanceOfLowering(options, factories, providers, snippetReflection, ConfigurationValues.getTarget()));
         lowerings.put(InstanceOfDynamicNode.class, new InstanceOfDynamicLowering(options, factories, providers, snippetReflection, ConfigurationValues.getTarget()));
+        lowerings.put(ClassIsAssignableFromNode.class, new ClassIsAssignableFromLowering(options, factories, providers, snippetReflection, ConfigurationValues.getTarget()));
     }
 
     protected class InstanceOfLowering extends InstanceOfSnippetsTemplates implements NodeLoweringProvider<FloatingNode> {
@@ -297,6 +306,36 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
             args.add("trueValue", replacer.trueValue);
             args.add("falseValue", replacer.falseValue);
             args.addConst("allowsNull", node.allowsNull());
+            return args;
+        }
+    }
+
+    protected class ClassIsAssignableFromLowering extends InstanceOfSnippetsTemplates implements NodeLoweringProvider<FloatingNode> {
+
+        private final SnippetInfo classIsAssignableFrom = snippet(TypeSnippets.class, "classIsAssignableFromSnippet");
+
+        public ClassIsAssignableFromLowering(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
+                        TargetDescription target) {
+            super(options, factories, providers, snippetReflection, target);
+        }
+
+        @Override
+        public void lower(FloatingNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+                return;
+            }
+            super.lower(node, tool);
+        }
+
+        @Override
+        protected Arguments makeArguments(InstanceOfUsageReplacer replacer, LoweringTool tool) {
+            ClassIsAssignableFromNode node = (ClassIsAssignableFromNode) replacer.instanceOf;
+
+            Arguments args = new Arguments(classIsAssignableFrom, node.graph().getGuardsStage(), tool.getLoweringStage());
+            args.add("type", node.getThisClass());
+            args.add("checkedHub", node.getOtherClass());
+            args.add("trueValue", replacer.trueValue);
+            args.add("falseValue", replacer.falseValue);
             return args;
         }
     }

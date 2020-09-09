@@ -26,7 +26,10 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
+import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -122,7 +125,10 @@ public abstract class VMThreads {
      */
     private static AtomicWord<OSThreadHandle> detachedOsThreadToCleanup = new AtomicWord<>();
 
-    /** The next element in the linked list of {@link IsolateThread}s. */
+    /**
+     * The next element in the linked list of {@link IsolateThread}s. A thread points to itself with
+     * this field after being removed from the linked list.
+     */
     public static final FastThreadLocalWord<IsolateThread> nextTL = FastThreadLocalFactory.createWord();
     private static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord();
     protected static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord();
@@ -375,6 +381,8 @@ public abstract class VMThreads {
                 } else {
                     nextTL.set(previous, next);
                 }
+                // Set to the sentinel value denoting the thread is detached
+                nextTL.set(thread, thread);
                 break;
             } else {
                 previous = current;
@@ -467,6 +475,17 @@ public abstract class VMThreads {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract OSThreadId getCurrentOSThreadId();
+
+    @Uninterruptible(reason = "Called from uninterruptible verification code.", mayBeInlined = true)
+    public boolean verifyThreadIsAttached(IsolateThread thread) {
+        return nextThread(thread) != thread;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible verification code.", mayBeInlined = true)
+    public boolean verifyIsCurrentThread(IsolateThread thread) {
+        OSThreadId osThreadId = getCurrentOSThreadId();
+        return OSThreadIdTL.get(thread).equal(osThreadId);
+    }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public IsolateThread findIsolateThreadForCurrentOSThread(boolean inCrashHandler) {
@@ -635,6 +654,11 @@ public abstract class VMThreads {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isStatusVM() {
+            return statusTL.getVolatile() == STATUS_IN_VM;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isStatusJava() {
             return (statusTL.getVolatile() == STATUS_IN_JAVA);
         }
@@ -642,6 +666,42 @@ public abstract class VMThreads {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isStatusIgnoreSafepoints(IsolateThread vmThread) {
             return safepointsDisabledTL.getVolatile(vmThread) == 1;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void assertStatusJava() {
+            String msg = "Thread status must be 'Java'.";
+            if (GraalDirectives.inIntrinsic()) {
+                if (ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED) {
+                    AssertionNode.dynamicAssert(isStatusJava(), msg);
+                }
+            } else {
+                assert isStatusJava() : msg;
+            }
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void assertStatusNativeOrSafepoint() {
+            String msg = "Thread status must be 'native' or 'safepoint'.";
+            if (GraalDirectives.inIntrinsic()) {
+                if (ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED) {
+                    AssertionNode.dynamicAssert(isStatusNativeOrSafepoint(), msg);
+                }
+            } else {
+                assert isStatusNativeOrSafepoint() : msg;
+            }
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void assertStatusVM() {
+            String msg = "Thread status must be 'VM'.";
+            if (GraalDirectives.inIntrinsic()) {
+                if (ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED) {
+                    AssertionNode.dynamicAssert(isStatusVM(), msg);
+                }
+            } else {
+                assert isStatusVM() : msg;
+            }
         }
 
         /**

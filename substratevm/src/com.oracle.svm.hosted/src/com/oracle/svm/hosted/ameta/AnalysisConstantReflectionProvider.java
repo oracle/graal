@@ -138,7 +138,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
         /* On HotSpot the base of a static field is the Class object. */
         Object base = field.getDeclaringClass().getJavaClass();
-        long offset = field.getOffset();
+        long offset = field.wrapped.getOffset();
 
         /*
          * We cannot rely on the reflectionField because it can be null if there is some incomplete

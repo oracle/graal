@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.exception;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -49,6 +50,7 @@ public class BinaryParserException extends RuntimeException implements TruffleEx
 
     public BinaryParserException(String message) {
         super(message);
+        CompilerAsserts.neverPartOfCompilation();
     }
 
     @Override

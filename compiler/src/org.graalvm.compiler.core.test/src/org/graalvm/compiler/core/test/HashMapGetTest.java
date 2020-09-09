@@ -31,6 +31,8 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.junit.Assume;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -64,6 +66,7 @@ public class HashMapGetTest extends SubprocessTest {
 
     @Test
     public void hashMapTestInSubprocess() throws IOException, InterruptedException {
+        Assume.assumeTrue("GR-25610", JavaVersionUtil.JAVA_SPEC < 15);
         launchSubprocess(this::hashMapTest);
     }
 

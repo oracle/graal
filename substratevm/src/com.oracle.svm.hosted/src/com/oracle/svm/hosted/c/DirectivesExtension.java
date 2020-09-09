@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +23,21 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.image.sources;
+package com.oracle.svm.hosted.c;
 
-public enum SourceCacheType {
-    JDK,
-    GRAALVM,
-    APPLICATION;
+import java.util.Collections;
+import java.util.List;
+
+import org.graalvm.nativeimage.c.CContext;
+
+public interface DirectivesExtension extends CContext.Directives {
+
+    /**
+     * Returns a C header file snippet that should be injected into the query code that gets
+     * generated for this CContext.
+     *
+     */
+    default List<String> getHeaderSnippet() {
+        return Collections.emptyList();
+    }
 }

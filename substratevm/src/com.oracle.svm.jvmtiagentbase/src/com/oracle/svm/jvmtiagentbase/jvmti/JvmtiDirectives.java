@@ -50,3 +50,11 @@ class JvmtiDirectives implements CContext.Directives {
         return Collections.singletonList("-I" + jdkIncludeDir.resolve(OS.getCurrent() == OS.WINDOWS ? "win32" : OS.getCurrent().asPackageName()));
     }
 }
+
+class JvmtiDirectives11 extends JvmtiDirectives {
+
+    @Override
+    public boolean isInConfiguration() {
+        return JavaVersionUtil.JAVA_SPEC >= 11;
+    }
+}

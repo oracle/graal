@@ -65,12 +65,24 @@ abstract class HostToGuestRootNode extends RootNode {
     private final BranchProfile error = BranchProfile.create();
 
     HostToGuestRootNode() {
-        super(null);
+        this(null);
+    }
+
+    HostToGuestRootNode(PolyglotLanguageContext languageContext) {
+        super(languageContext != null ? languageContext.getLanguageInstance().spi : null);
         this.engine = (PolyglotEngineImpl) EngineAccessor.NODES.getPolyglotEngine(this);
         assert this.engine != null : "all host to guest root nodes need to be initialized when entered";
     }
 
     protected abstract Class<?> getReceiverType();
+
+    protected boolean needsEnter() {
+        return true;
+    }
+
+    protected boolean needsExceptionWrapping() {
+        return true;
+    }
 
     @Override
     public final Object execute(VirtualFrame frame) {
@@ -79,7 +91,7 @@ abstract class HostToGuestRootNode extends RootNode {
         try {
             assert languageContext != null;
             PolyglotContextImpl context = languageContext.context;
-            boolean needsEnter = languageContext != null && engine.needsEnter(context);
+            boolean needsEnter = needsEnter() && languageContext != null && engine.needsEnter(context);
             Object prev;
             if (needsEnter) {
                 if (!seenEnter) {
@@ -107,8 +119,12 @@ abstract class HostToGuestRootNode extends RootNode {
                 }
             }
         } catch (Throwable e) {
-            error.enter();
-            throw PolyglotImpl.guestToHostException((languageContext), e);
+            if (needsExceptionWrapping()) {
+                error.enter();
+                throw PolyglotImpl.guestToHostException((languageContext), e);
+            }
+            // no wrapping, just throw
+            throw e;
         }
     }
 

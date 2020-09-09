@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 
-final class ContextThreadLocal extends ThreadLocal<Object> {
+final class PolyglotContextThreadLocal extends ThreadLocal<Object> {
 
     private final Assumption singleThread = Truffle.getRuntime().createAssumption("single thread");
     private volatile PolyglotContextImpl activeSingleContext;
@@ -81,11 +81,15 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
      */
     public Object getEntered() {
         if (singleThread.isValid()) {
-            assert Thread.currentThread() == activeSingleThread;
+            assert Thread.currentThread() == activeSingleThread : failIllegalState();
             return activeSingleContextNonVolatile;
         } else {
             return getTL();
         }
+    }
+
+    private static String failIllegalState() {
+        throw new IllegalStateException("No context entered.");
     }
 
     @Override

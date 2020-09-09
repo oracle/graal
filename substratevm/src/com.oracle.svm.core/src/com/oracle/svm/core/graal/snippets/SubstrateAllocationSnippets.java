@@ -201,7 +201,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         return result;
     }
 
-    private static DynamicHub checkHub(DynamicHub hub) {
+    public static DynamicHub checkHub(DynamicHub hub) {
         if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, hub != null)) {
             DynamicHub nonNullHub = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
             if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, nonNullHub.isInstantiated())) {
@@ -283,7 +283,6 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         return SubstrateOptions.AllocatePrefetchStyle.getValue();
     }
 
-    @Fold
     @Override
     protected int getPrefetchLines(boolean isArray) {
         if (isArray) {
@@ -330,7 +329,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final int arrayLengthOffset() {
+    public final int arrayLengthOffset() {
         return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
     }
 
@@ -343,7 +342,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         return (int) LayoutEncoding.getArrayBaseOffset(layoutEncoding).rawValue();
     }
 
-    private static Word encodeAsTLABObjectHeader(DynamicHub hub) {
+    public static Word encodeAsTLABObjectHeader(DynamicHub hub) {
         return Heap.getHeap().getObjectHeader().encodeAsTLABObjectHeader(hub);
     }
 

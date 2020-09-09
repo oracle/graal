@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -899,13 +899,12 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
          */
         public static final class LoadCompressedObjectConstantOp extends PointerCompressionOp implements LoadConstantOp {
             public static final LIRInstructionClass<LoadCompressedObjectConstantOp> TYPE = LIRInstructionClass.create(LoadCompressedObjectConstantOp.class);
+            private final SubstrateObjectConstant constant;
 
             static JavaConstant asCompressed(SubstrateObjectConstant constant) {
                 // We only want compressed references in code
                 return constant.isCompressed() ? constant : constant.compress();
             }
-
-            private final SubstrateObjectConstant constant;
 
             LoadCompressedObjectConstantOp(AllocatableValue result, SubstrateObjectConstant constant, AllocatableValue baseRegister, CompressEncoding encoding, LIRKindTool lirKindTool) {
                 super(TYPE, result, new ConstantValue(lirKindTool.getNarrowOopKind(), asCompressed(constant)), baseRegister, encoding, true, lirKindTool);
@@ -927,10 +926,18 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 Constant inputConstant = asConstantValue(getInput()).getConstant();
                 if (masm.target.inlineObjects) {
                     crb.recordInlineDataInCode(inputConstant);
-                    masm.movq(resultReg, 0xDEADDEADDEADDEADL, true);
+                    if (referenceSize == 4) {
+                        masm.movl(resultReg, 0xDEADDEAD, true);
+                    } else {
+                        masm.movq(resultReg, 0xDEADDEADDEADDEADL, true);
+                    }
                 } else {
                     AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(inputConstant, referenceSize);
-                    masm.movq(resultReg, address);
+                    if (referenceSize == 4) {
+                        masm.movl(resultReg, address);
+                    } else {
+                        masm.movq(resultReg, address);
+                    }
                 }
                 if (!constant.isCompressed()) { // the result is expected to be uncompressed
                     Register baseReg = getBaseRegister(crb);

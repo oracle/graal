@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.heap;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -39,9 +39,9 @@ import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
  * Furthermore, it also actively invalidates and frees code that has references to otherwise no
  * longer reachable Java heap objects.
  */
-final class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
+public final class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
     @Platforms(Platform.HOSTED_ONLY.class)
-    RuntimeCodeCacheCleaner() {
+    public RuntimeCodeCacheCleaner() {
     }
 
     @Override
@@ -52,6 +52,7 @@ final class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
         } else if (state == CodeInfo.STATE_READY_FOR_INVALIDATION) {
             // All objects that are accessed during invalidation must still be reachable.
             CodeInfoTable.invalidateNonStackCodeAtSafepoint(codeInfo);
+            assert CodeInfoAccess.getState(codeInfo) == CodeInfo.STATE_PARTIALLY_FREED;
             freeMemory(codeInfo);
         }
         return true;
@@ -60,6 +61,6 @@ final class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
     private static void freeMemory(CodeInfo codeInfo) {
         boolean removed = RuntimeCodeInfoMemory.singleton().removeDuringGC(codeInfo);
         assert removed : "must have been present";
-        RuntimeCodeInfoAccess.releaseMethodInfoMemory(codeInfo);
+        RuntimeCodeInfoAccess.releaseMethodInfoMemory(codeInfo, false);
     }
 }
