@@ -58,6 +58,7 @@ import com.oracle.truffle.espresso.nodes.interop.DestroyVMNode;
 import com.oracle.truffle.espresso.nodes.interop.LoadKlassNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
@@ -212,7 +213,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
 
         context.prepareDispose();
-        context.doExit(0);
+        try {
+            context.doExit(0);
+        } catch (EspressoExitException e) {
+            // Expected. Suppress. We do not want to throw during context closing.
+        }
     }
 
     @Override
