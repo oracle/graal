@@ -78,7 +78,8 @@ public abstract class InvokeEspressoNode extends Node {
                     @Cached BranchProfile badArityProfile)
                     throws ArityException, UnsupportedTypeException {
 
-        EspressoError.guarantee((method.isStatic() && receiver == null) || method.getName().equals(Name._init_), "Espresso interop only supports static methods and init");
+        EspressoError.guarantee((method.isStatic() && receiver == null) || (!method.isStatic() && method.isPublic() && !method.isSignaturePolymorphicDeclared() && receiver != null),
+                        "Espresso interop only supports static methods and public non-signature polymorphic instance method");
 
         int expectedArity = cachedMethod.getParameterCount();
         if (arguments.length != expectedArity) {

@@ -34,6 +34,7 @@ import static com.oracle.truffle.espresso.runtime.InteropUtils.isNegativeZero;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -43,6 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -66,6 +68,8 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 import sun.misc.Unsafe;
@@ -303,10 +307,11 @@ public final class StaticObject implements TruffleObject {
         }
 
         Meta meta = klass.getMeta();
-/*
- * We might lose precision when we convert an int or a long to a float, however, we still perform
- * the conversion. This is consistent with Truffle interop, see GR-22718 for more details.
- */
+        /*
+         * We might lose precision when we convert an int or a long to a float, however, we still
+         * perform the conversion. This is consistent with Truffle interop, see GR-22718 for more
+         * details.
+         */
         if (klass == meta.java_lang_Integer) {
             int content = getIntField(meta.java_lang_Integer_value);
             float floatContent = content;
@@ -971,7 +976,7 @@ public final class StaticObject implements TruffleObject {
                         && (CLASS_TO_STATIC.equals(member) || STATIC_TO_CLASS.equals(member));
     }
 
-    private static final KeysArray CLASS_MEMBERS = new KeysArray(new String[]{CLASS_TO_STATIC, STATIC_TO_CLASS});
+    private static final String[] CLASS_KEYS = {CLASS_TO_STATIC, STATIC_TO_CLASS};
 
     @ExportMessage
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
@@ -979,9 +984,77 @@ public final class StaticObject implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
-        return (notNull(this) && getKlass() == getKlass().getMeta().java_lang_Class)
-                        ? CLASS_MEMBERS // .static and .class
-                        : KeysArray.EMPTY;
+        if (isNull(this)) {
+            return KeysArray.EMPTY;
+        }
+        ArrayList<String> members = new ArrayList<>();
+        if (getKlass() == getKlass().getMeta().java_lang_Class) {
+            // SVM does not like ArrayList.addAll(). Do manual copy.
+            for (String s : CLASS_KEYS) {
+                members.add(s);
+            }
+        }
+        ObjectKlass k;
+        if (getKlass().isArray()) {
+            k = getKlass().getMeta().java_lang_Object;
+        } else {
+            assert !getKlass().isPrimitive();
+            k = (ObjectKlass) getKlass();
+        }
+
+        for (Method m : k.getVTable()) {
+            if (LookupVirtualMethodNode.isCanditate(m)) {
+                members.add(m.getNameAsString());
+            }
+        }
+        // SVM does not like ArrayList.toArray(). Do manual copy.
+        String[] array = new String[members.size()];
+        int pos = 0;
+        for (String str : members) {
+            array[pos++] = str;
+        }
+        return new KeysArray(array);
+    }
+
+    @ExportMessage
+    boolean isMemberInvocable(String member) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (isNull(this)) {
+            return false;
+        }
+        ObjectKlass k;
+        if (getKlass().isArray()) {
+            k = getKlass().getMeta().java_lang_Object;
+        } else {
+            assert !getKlass().isPrimitive();
+            k = (ObjectKlass) getKlass();
+        }
+
+        for (Method m : k.getVTable()) {
+            if (LookupVirtualMethodNode.isCanditate(m)) {
+                if (m.getNameAsString().equals(member)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @ExportMessage
+    Object invokeMember(String member,
+                    Object[] arguments,
+                    @Cached.Exclusive @Cached LookupVirtualMethodNode lookupMethod,
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke)
+                    throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
+        Method method = lookupMethod.execute(getKlass(), member, arguments.length);
+        if (method != null) {
+            assert !method.isStatic() && method.isPublic() && member.equals(method.getName().toString()) && method.getParameterCount() == arguments.length;
+            return invoke.execute(method, this, arguments);
+        }
+        throw UnknownIdentifierException.create(member);
     }
 
     // endregion Interop

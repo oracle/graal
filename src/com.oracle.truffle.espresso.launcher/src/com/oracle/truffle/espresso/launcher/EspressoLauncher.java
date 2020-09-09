@@ -373,8 +373,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 }
             } catch (PolyglotException e) {
                 if (!e.isExit()) {
-                    // TODO(garcia): handle uncaught exceptions.
-                    e.printStackTrace();
+                    handleMainUncaught(context, e);
                 }
             } finally {
                 try {
@@ -395,6 +394,13 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
              */
             System.exit(rc);
         }
+    }
+
+    private static void handleMainUncaught(Context context, PolyglotException e) {
+        Value threadClass = context.eval("java", "java.lang.Thread");
+        Value currentThread = threadClass.invokeMember("currentThread");
+        Value handler = currentThread.invokeMember("getUncaughtExceptionHandler");
+        handler.invokeMember("uncaughtException", currentThread, e.getGuestObject());
     }
 
     @Override
