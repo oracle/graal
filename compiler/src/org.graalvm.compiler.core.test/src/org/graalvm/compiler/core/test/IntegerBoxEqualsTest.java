@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.core.test;
 
-import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.junit.Test;
 
@@ -32,10 +32,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class IntegerBoxEqualsTest extends SubprocessTest {
 
-    class Cell<V> {
-        private final V value;
+    class Cell {
+        private final Integer value;
 
-        Cell(V value) {
+        Cell(Integer value) {
             this.value = value;
         }
 
@@ -48,25 +48,24 @@ public class IntegerBoxEqualsTest extends SubprocessTest {
         }
     }
 
-    public static boolean cellGet(Cell<Integer> cell, Integer value) {
+    public static boolean cellGet(Cell cell, Integer value) {
         return cell.check(value).length() == 0;
     }
 
     public void cellTest() {
-        final Integer value = 19112;
-        final Cell<Integer> cell = new Cell<>(value);
+        final Integer value = 1911;
+        final Cell cell = new Cell(value);
         ResolvedJavaMethod get = getResolvedJavaMethod(IntegerBoxEqualsTest.class, "cellGet");
         for (int i = 0; i < 2000; i++) {
-            for (int j = 0; j < 20; j++) {
-                cellGet(cell, i);
+            for (int k = 0; k < 20; k++) {
+                cellGet(cell, k);
             }
             cellGet(cell, value);
         }
-        test(get, null, cell, 0);
-        if (lastCompiledGraph.getNodes().filter(ObjectEqualsNode.class).count() != 0) {
-            DebugContext.forCurrentThread().forceDump(lastCompiledGraph, "comparisons");
-        }
-        assertTrue(lastCompiledGraph.getNodes().filter(ObjectEqualsNode.class).count() == 0, "There must be no reference comparisons in the graph.");
+        test(get, null, cell, value);
+        final int equalsCount = lastCompiledGraph.getNodes().filter(ObjectEqualsNode.class).count();
+        final int ifCount = lastCompiledGraph.getNodes().filter(IfNode.class).count();
+        assertTrue(equalsCount == 0 || ifCount > 1, "There must be no reference comparisons in the graph, or everything reachable in equals.");
     }
 
     @Test
