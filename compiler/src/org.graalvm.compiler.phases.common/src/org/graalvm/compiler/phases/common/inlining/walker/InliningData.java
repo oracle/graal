@@ -277,7 +277,7 @@ public class InliningData {
         OptionValues options = invoke.asNode().getOptions();
 
         boolean maySpeculate = true;
-        SpeculationLog speculationLog = rootGraph.getSpeculationLog();
+        SpeculationLog speculationLog = graph.getSpeculationLog();
         SpeculationLog.Speculation speculation = SpeculationLog.NO_SPECULATION;
 
         if (speculationLog != null && notRecordedTypeProbability == 0) {
