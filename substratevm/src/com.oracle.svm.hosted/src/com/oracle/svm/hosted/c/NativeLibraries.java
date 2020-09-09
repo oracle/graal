@@ -288,8 +288,6 @@ public final class NativeLibraries {
 
             if (Files.exists(platformDependentPath)) {
                 return platformDependentPath;
-            } else {
-                System.err.println("WARNING: Using an older version of the labsjdk-11.");
             }
         }
         return baseSearchPath;
@@ -333,7 +331,7 @@ public final class NativeLibraries {
                 }
                 String jdkDownloadURL = (JavaVersionUtil.JAVA_SPEC > 8 ? JVMCIVersionCheck.JVMCI11_RELEASES_URL : JVMCIVersionCheck.JVMCI8_RELEASES_URL);
                 UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
-                                "Building images for %s%s requires static JDK libraries.%Use the JDK from %s%n%s",
+                                "Building images for %s%s requires static JDK libraries.%nUse the JDK from %s%n%s",
                                 ImageSingletons.lookup(Platform.class).getClass().getName(),
                                 libCMessage,
                                 jdkDownloadURL,
