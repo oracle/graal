@@ -29,17 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.lang.reflect.Array;
-import java.nio.file.Path;
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import java.lang.reflect.Array;
+import java.nio.file.Path;
+import java.util.List;
 
 public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> implements LLVMCapability {
 
@@ -96,10 +97,10 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
      * Inject implicit or modify explicit dependencies for a {@code library}.
      *
      * @param context the {@link LLVMContext}
-     * @param library the library for which dependencies might be injected
      * @param dependencies (unmodifiable) list of dependencies specified by the library
      */
-    public List<String> preprocessDependencies(LLVMContext context, ExternalLibrary library, List<String> dependencies) {
+    @SuppressWarnings("unused")
+    public List<String> preprocessDependencies(LLVMContext context, TruffleFile file, List<String> dependencies) {
         return dependencies;
     }
 

@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -50,6 +47,9 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * {@link LLVMFunctionCode} represents the callable function of a {@link LLVMFunction}.
@@ -264,7 +264,7 @@ public class LLVMFunctionCode {
                 if (nfiContextExtension != null) {
                     NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getLLVMFunction().getName());
                     if (nativeFunction != null) {
-                        descriptor.define(nativeFunction.getLibrary(), new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
+                        descriptor.define(new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
                         return;
                     }
                 }
@@ -345,17 +345,16 @@ public class LLVMFunctionCode {
 
     public void define(LLVMIntrinsicProvider intrinsicProvider, NodeFactory nodeFactory) {
         Intrinsic intrinsification = new Intrinsic(intrinsicProvider, llvmFunction.getName(), nodeFactory);
-        define(intrinsicProvider.getLibrary(), new IntrinsicFunction(intrinsification, getFunction().getSourceType()), true);
+        define(new IntrinsicFunction(intrinsification, getFunction().getSourceType()), true);
     }
 
-    public void define(ExternalLibrary lib, Function newFunction) {
-        define(lib, newFunction, false);
+    public void define(Function newFunction) {
+        define(newFunction, false);
     }
 
-    private void define(ExternalLibrary lib, Function newFunction, boolean allowReplace) {
-        assert lib != null && newFunction != null;
+    private void define(Function newFunction, boolean allowReplace) {
+        assert newFunction != null;
         if (!isDefined() || allowReplace) {
-            llvmFunction.setLibrary(lib);
             setFunction(newFunction);
         } else {
             CompilerDirectives.transferToInterpreter();

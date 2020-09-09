@@ -138,7 +138,7 @@ public final class NFIContextExtension implements ContextExtension {
     private synchronized void addLibraries(LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
         if (!internalLibrariesAdded) {
-            ExternalLibrary externalLibrary = context.addInternalLibrary("libsulong-native." + getNativeLibrarySuffix(), "<default nfi library>");
+            ExternalLibrary externalLibrary = context.addInternalLibrary("libsulong-native." + getNativeLibrarySuffix(), "<default nfi library>", true);
             addNativeLibrary(externalLibrary);
             internalLibrariesAdded = true;
         }
@@ -388,6 +388,7 @@ public final class NFIContextExtension implements ContextExtension {
         public Object getObject() {
             return object;
         }
+
     }
 
     public static final class NativePointerIntoLibrary {

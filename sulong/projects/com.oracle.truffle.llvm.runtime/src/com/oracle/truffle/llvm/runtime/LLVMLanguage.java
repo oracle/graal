@@ -93,9 +93,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
-
-    // The bitcode file ID starts at 1, 0 is reserved for misc functions, such as toolchain paths.
-    private final AtomicInteger nextID = new AtomicInteger(1);
+    private final AtomicInteger nextID = new AtomicInteger(0);
 
     @CompilationFinal private Configuration activeConfiguration = null;
 
@@ -103,7 +101,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
     private final EconomicMap<String, CallTarget> libraryCache = EconomicMap.create();
-    private final EconomicMap<Source, ExternalLibrary> internalExternalLibraries = EconomicMap.create();
+    private final EconomicMap<String, Source> librarySources = EconomicMap.create();
 
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
@@ -199,16 +197,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         internalFileScopes.put(libraryName, scope);
     }
 
-    public ExternalLibrary getInternalExternalLibrary(Source source) {
-        return internalExternalLibraries.get(source);
+    public Source getLibrarySource(String path) {
+        return librarySources.get(path);
     }
 
-    public void addInternalExternalLibrary(Source source, ExternalLibrary externalLibrary) {
-        internalExternalLibraries.put(source, externalLibrary);
+    public void addLibrarySource(String path, Source source) {
+        librarySources.put(path, source);
     }
 
-    public boolean containsInternalExternalLibrary(Source source) {
-        return internalExternalLibraries.containsKey(source);
+    public boolean containsLibrarySource(String path) {
+        return librarySources.containsKey(path);
     }
 
     @Override
