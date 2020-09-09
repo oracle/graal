@@ -385,7 +385,7 @@ public class CommonNodeFactory {
         if (isGlobal) {
             assert valueNode instanceof LLVMAccessSymbolNode;
             LLVMAccessSymbolNode node = (LLVMAccessSymbolNode) valueNode;
-            LLVMSymbol symbol = node.getDescriptor();
+            LLVMSymbol symbol = node.getSymbol();
             if (symbol.isGlobalVariable()) {
                 value = new LLVMDebugGlobalVariable(symbol.asGlobalVariable(), context);
             } else {
