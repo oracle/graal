@@ -141,5 +141,8 @@ public interface CompilableTruffleAST {
         return sw.toString();
     }
 
+    /**
+     * @return TODO
+     */
     boolean isTrivial();
 }

@@ -221,7 +221,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
             state = State.BailedOut;
             return;
         }
-        // TODO: Verify that expanded trivial nodes *do not* have any calls at all (performance warning?)
+        // TODO: Verify: expanded trivial nodes *do not* have any calls (performance warning?)
         ir = copyGraphAndAddChildren(entry);
         addIndirectChildren(entry);
         getPolicy().afterExpand(this);
