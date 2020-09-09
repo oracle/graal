@@ -253,11 +253,11 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> TraceVMOperations = new HostedOptionKey<>(false);
 
     @APIOption(name = "trace-class-initialization")//
-    @Option(help = "Comma-separated list of fully qualified class names that class initialization is traced for.")//
+    @Option(help = "Comma-separated list of fully-qualified class names that class initialization is traced for.")//
     public static final HostedOptionKey<String> TraceClassInitialization = new HostedOptionKey<>("");
 
     @APIOption(name = "trace-object-instantiation")//
-    @Option(help = "Comma-separated list of fully qualified class names that object instantiation is traced for.")//
+    @Option(help = "Comma-separated list of fully-qualified class names that object instantiation is traced for.")//
     public static final HostedOptionKey<String> TraceObjectInstantiation = new HostedOptionKey<>("");
 
     @Option(help = "Prefix that is added to the names of entry point methods.")//
