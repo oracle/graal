@@ -78,7 +78,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageBuildTask;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
-import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -397,19 +396,19 @@ public final class NativeImageBuildServer {
     }
 
     private static Integer executeCompilation(ArrayList<String> arguments) {
-        final String[] classpath = NativeImageGeneratorRunner.extractImagePathEntries(arguments, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
-        ImageClassLoader imageClassLoader;
+        String[] classpath = NativeImageGeneratorRunner.extractImagePathEntries(arguments, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            imageClassLoader = NativeImageGeneratorRunner.installNativeImageClassLoader(classpath, new String[0]);
-            final ImageBuildTask task = loadCompilationTask(arguments, NativeImageSystemClassLoader.singleton().getNativeImageClassLoader());
+            ImageClassLoader imageClassLoader = NativeImageGeneratorRunner.installNativeImageClassLoader(classpath, new String[0]);
+            ImageBuildTask task = loadCompilationTask(arguments, imageClassLoader.getClassLoader());
             try {
                 tasks.add(task);
-                return task.build(arguments.toArray(new String[arguments.size()]), imageClassLoader);
+                return task.build(arguments.toArray(new String[0]), imageClassLoader);
             } finally {
                 tasks.remove(task);
             }
         } finally {
+            NativeImageGeneratorRunner.uninstallNativeImageClassLoader();
             Thread.currentThread().setContextClassLoader(applicationClassLoader);
         }
     }
