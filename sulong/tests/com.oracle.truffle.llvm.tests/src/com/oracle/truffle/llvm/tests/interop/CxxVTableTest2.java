@@ -38,41 +38,43 @@ import org.junit.runner.RunWith;
 import com.oracle.truffle.tck.TruffleRunner;
 
 @RunWith(TruffleRunner.class)
-public class CxxVTableTest1 extends InteropTestBase {
+public class CxxVTableTest2 extends InteropTestBase {
 
     private static Value testCppLibrary;
-    private static Value evaluateDirectly;
-    private static Value evaluateWithPolyglotConversion;
-    private static Value getB1F;
-    private static Value getB1G;
+    private static Value preparePolyglotA;
+    private static Value preparePolyglotBasA;
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testCppLibrary = loadTestBitcodeValue("vtableTest1.cpp");
-        evaluateDirectly = testCppLibrary.getMember("evaluateDirectly");
-        evaluateWithPolyglotConversion = testCppLibrary.getMember("evaluateWithPolyglotConversion");
-        getB1F = testCppLibrary.getMember("getB1F");
-        getB1G = testCppLibrary.getMember("getB1G");
+        testCppLibrary = loadTestBitcodeValue("vtableTest2.cpp");
+        preparePolyglotA = testCppLibrary.getMember("preparePolyglotA");
+        preparePolyglotBasA = testCppLibrary.getMember("preparePolyglotBasA");
     }
 
     @Test
-    public void testWithoutPolyglot() {
-        Assert.assertEquals(0, getB1G.execute().asInt());
-        Assert.assertEquals(2, getB1F.execute().asInt());
+    public void testVirtualMethodsHiddenSubclass() {
+        // checks if (A* a=new B())->foo is calling B::foo
+        Value a = preparePolyglotBasA.execute();
+        int foo1Result = a.invokeMember("foo1").asInt();
+        int foo2Result = a.invokeMember("foo2").asInt();
+        Assert.assertEquals(11, foo1Result);
+        Assert.assertEquals(12, foo2Result);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testNonExistingVirtualMethod() {
+        Value a = preparePolyglotBasA.execute();
+        a.invokeMember("foo3").asInt();
     }
 
     @Test
-    public void testWithPolyglot() {
-        CxxVTableTest1_TestClass testObject = new CxxVTableTest1_TestClass();
-        Assert.assertEquals(50, evaluateDirectly.execute(testObject, 10).asInt());
-        Assert.assertEquals(60, evaluateDirectly.execute(testObject, 10).asInt());
-        Assert.assertEquals(10, evaluateDirectly.execute(testObject, 0).asInt());
-        /*
-         * testObject stores last argument and uses it at the next call. Therefore, calls with the
-         * same parameters lead to different results.
-         */
-        Assert.assertEquals(50, evaluateWithPolyglotConversion.execute(testObject, 10).asInt());
-        Assert.assertEquals(60, evaluateWithPolyglotConversion.execute(testObject, 10).asInt());
-        Assert.assertEquals(10, evaluateWithPolyglotConversion.execute(testObject, 0).asInt());
+    public void testVirtualMethodsParentOnly() {
+        // checks if (A* a=new A())->foo is calling A::foo
+        Value a = preparePolyglotA.execute();
+        int foo1Result = a.invokeMember("foo1").asInt();
+        int foo2Result = a.invokeMember("foo2").asInt();
+        Assert.assertEquals(1, foo1Result);
+        Assert.assertEquals(2, foo2Result);
     }
+
 }

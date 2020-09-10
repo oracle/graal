@@ -27,20 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+ 
+#include<polyglot.h>
 
-package com.oracle.truffle.llvm.tests.interop;
+class A {
+	public:
+		A();
+		virtual int foo1();
+		virtual int foo2();
+};
+	
+POLYGLOT_DECLARE_TYPE(A);
 
-public class CxxVtableTest_TestClass {
+class B : public A {
+	public:
+		B();
+		int foo1() override;
+		virtual int foo2();
+		virtual int foo3();	
+};
 
-    private int last;
+A::A() {}
+B::B():A() {}
 
-    public CxxVtableTest_TestClass() {
-        this.last = 0;
-    }
+int A::foo1() {return 1;}
+int A::foo2() {return 2;}
+int B::foo1() {return 11;}
+int B::foo2() {return 12;}
+int B::foo3() {return 13;}
 
-    public int foo(int x) {
-        int ret = x * 5 + this.last;
-        this.last = x;
-        return ret;
-    }
+void* preparePolyglotA() {
+	A* a = new A();
+	return polyglot_from_A(a);
+}
+
+void* preparePolyglotBasA() {
+	A* a = new B();
+	return polyglot_from_A(a);
 }
