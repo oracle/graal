@@ -25,8 +25,8 @@
 
 package com.oracle.svm.hosted.image;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -52,6 +52,7 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
@@ -405,32 +406,39 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             for (Function<LinkerInvocation, LinkerInvocation> fn : config.getLinkerInvocationTransformers()) {
                 inv = fn.apply(inv);
             }
-            try (DebugContext.Scope s = debug.scope("InvokeCC")) {
-                List<String> cmd = inv.getCommand();
-                String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
-                debug.log("Using CompilerCommand: %s", commandLine);
+            List<String> cmd = inv.getCommand();
+            String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
 
-                ProcessBuilder pb = new ProcessBuilder().command(cmd);
-                pb.directory(inv.getTempDirectory().toFile());
-                pb.redirectErrorStream(true);
-                int status;
-                ByteArrayOutputStream output;
-                try {
-                    Process p = pb.start();
+            Process linkerProcess = null;
+            try {
+                ProcessBuilder linkerCommand = FileUtils.prepareCommand(cmd, inv.getTempDirectory());
+                linkerCommand.redirectErrorStream(true);
 
-                    output = new ByteArrayOutputStream();
-                    FileUtils.drainInputStream(p.getInputStream(), output);
-                    status = p.waitFor();
-                } catch (IOException | InterruptedException e) {
-                    throw handleLinkerFailure(e.toString(), commandLine, null);
+                FileUtils.traceCommand(linkerCommand);
+
+                linkerProcess = linkerCommand.start();
+
+                List<String> lines;
+                try (InputStream inputStream = linkerProcess.getInputStream()) {
+                    lines = FileUtils.readAllLines(inputStream);
+                    FileUtils.traceCommandOutput(lines);
                 }
 
-                debug.log(DebugContext.VERBOSE_LEVEL, "%s", output);
-
+                int status = linkerProcess.waitFor();
                 if (status != 0) {
-                    throw handleLinkerFailure("Linker command exited with " + status, commandLine, output.toString());
+                    String output = String.join(System.lineSeparator(), lines);
+                    throw handleLinkerFailure("Linker command exited with " + status, commandLine, output);
+                }
+            } catch (IOException e) {
+                throw handleLinkerFailure(e.toString(), commandLine, null);
+            } catch (InterruptedException e) {
+                throw new InterruptImageBuilding("Interrupted during native-image linking step for " + imageName);
+            } finally {
+                if (linkerProcess != null) {
+                    linkerProcess.destroy();
                 }
             }
+
             return inv;
         }
     }
