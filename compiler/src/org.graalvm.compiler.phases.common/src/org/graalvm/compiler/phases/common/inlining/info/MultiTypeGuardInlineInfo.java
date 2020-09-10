@@ -83,11 +83,11 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     private final ArrayList<ProfiledType> ptypes;
     private final double notRecordedTypeProbability;
     private final Inlineable[] inlineableElements;
-    private final boolean maySpeculate;
+    private final boolean speculationFailed;
     private final Speculation speculation;
 
     public MultiTypeGuardInlineInfo(Invoke invoke, ArrayList<ResolvedJavaMethod> concretes, ArrayList<ProfiledType> ptypes,
-                    ArrayList<Integer> typesToConcretes, double notRecordedTypeProbability, boolean maySpeculate, Speculation speculation) {
+                    ArrayList<Integer> typesToConcretes, double notRecordedTypeProbability, boolean speculationFailed, Speculation speculation) {
         super(invoke);
         assert concretes.size() > 0 : "must have at least one method";
         assert ptypes.size() == typesToConcretes.size() : "array lengths must match";
@@ -100,7 +100,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         this.methodProbabilities = computeMethodProbabilities();
         this.maximumMethodProbability = maximumMethodProbability();
         assert maximumMethodProbability > 0;
-        this.maySpeculate = maySpeculate;
+        this.speculationFailed = speculationFailed;
         this.speculation = speculation;
         assert assertUniqueTypes(ptypes);
     }
@@ -188,7 +188,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     private boolean shouldFallbackToInvoke() {
-        return notRecordedTypeProbability > 0 || !maySpeculate;
+        return notRecordedTypeProbability > 0 || speculationFailed;
     }
 
     private EconomicSet<Node> inlineMultipleMethods(StructuredGraph graph, CoreProviders providers, String reason) {
@@ -442,7 +442,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
     private void tryToDevirtualizeMultipleMethods(StructuredGraph graph, StampProvider stampProvider, ConstantReflectionProvider constantReflection) {
         MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) invoke.callTarget();
-        if (methodCallTarget.invokeKind() == InvokeKind.Interface && maySpeculate) {
+        if (methodCallTarget.invokeKind() == InvokeKind.Interface && !speculationFailed) {
             ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
             ResolvedJavaType leastCommonType = getLeastCommonType();
             ResolvedJavaType contextType = invoke.getContextType();

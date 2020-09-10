@@ -276,7 +276,7 @@ public class InliningData {
         final OptimisticOptimizations optimisticOpts = context.getOptimisticOptimizations();
         OptionValues options = invoke.asNode().getOptions();
 
-        boolean maySpeculate = true;
+        boolean speculationFailed = false;
         SpeculationLog speculationLog = graph.getSpeculationLog();
         SpeculationLog.Speculation speculation = SpeculationLog.NO_SPECULATION;
 
@@ -285,11 +285,11 @@ public class InliningData {
             if (speculationLog.maySpeculate(speculationReason)) {
                 speculation = speculationLog.speculate(speculationReason);
             } else {
-                maySpeculate = false;
+                speculationFailed = true;
             }
         }
 
-        if (ptypes.length == 1 && notRecordedTypeProbability == 0 && maySpeculate) {
+        if (ptypes.length == 1 && notRecordedTypeProbability == 0 && !speculationFailed) {
             if (!optimisticOpts.inlineMonomorphicCalls(options)) {
                 InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "inlining monomorphic calls is disabled");
                 inliningLog.addDecision(invoke, false, "InliningPhase", null, null, "inlining monomorphic calls is disabled");
@@ -403,7 +403,7 @@ public class InliningData {
                     return null;
                 }
             }
-            return new MultiTypeGuardInlineInfo(invoke, concreteMethods, usedTypes, typesToConcretes, notRecordedTypeProbability, maySpeculate, speculation);
+            return new MultiTypeGuardInlineInfo(invoke, concreteMethods, usedTypes, typesToConcretes, notRecordedTypeProbability, speculationFailed, speculation);
         }
     }
 
