@@ -197,13 +197,24 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         this.values.initialize(0, returnValueOrExceptionObject);
     }
 
-    public FrameState(FrameState outerFrameState, Bytecode code, int bci, ValueNode[] locals, ValueNode[] stack, int stackSize, ValueNode[] locks, List<MonitorIdNode> monitorIds,
+    public FrameState(FrameState outerFrameState, Bytecode code, int bci, ValueNode[] locals, ValueNode[] stack, int stackSize, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues, ValueNode[] locks,
+                    List<MonitorIdNode> monitorIds,
                     boolean rethrowException, boolean duringCall) {
-        this(outerFrameState, code, bci, locals.length, stackSize, locks.length, rethrowException, duringCall, monitorIds, Collections.<EscapeObjectState> emptyList());
-        createValues(locals, stack, locks);
+        this(outerFrameState, code, bci, locals.length, stackSize + computeSize(pushedSlotKinds), locks.length, rethrowException, duringCall, monitorIds, Collections.<EscapeObjectState> emptyList());
+        createValues(locals, stack, stackSize, pushedSlotKinds, pushedValues, locks);
     }
 
-    private void createValues(ValueNode[] locals, ValueNode[] stack, ValueNode[] locks) {
+    private static int computeSize(JavaKind[] slotKinds) {
+        int result = 0;
+        if (slotKinds != null) {
+            for (JavaKind slotKind : slotKinds) {
+                result += slotKind.getSlotCount();
+            }
+        }
+        return result;
+    }
+
+    private void createValues(ValueNode[] locals, ValueNode[] stack, int initialStackSize, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues, ValueNode[] locks) {
         int index = 0;
         for (int i = 0; i < locals.length; ++i) {
             ValueNode value = locals[i];
@@ -212,12 +223,21 @@ public final class FrameState extends VirtualState implements IterableNodeType {
             }
             this.values.initialize(index++, value);
         }
-        for (int i = 0; i < stackSize; ++i) {
+        for (int i = 0; i < initialStackSize; ++i) {
             ValueNode value = stack[i];
             if (value == TWO_SLOT_MARKER) {
                 value = null;
             }
             this.values.initialize(index++, value);
+        }
+        if (pushedValues != null) {
+            assert pushedSlotKinds.length == pushedValues.length;
+            for (int i = 0; i < pushedValues.length; i++) {
+                this.values.initialize(index++, pushedValues[i]);
+                if (pushedSlotKinds[i].needsTwoSlots()) {
+                    this.values.initialize(index++, null);
+                }
+            }
         }
         for (int i = 0; i < locks.length; ++i) {
             ValueNode value = locks[i];
