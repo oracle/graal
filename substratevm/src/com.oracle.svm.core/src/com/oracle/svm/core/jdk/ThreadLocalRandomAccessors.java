@@ -31,31 +31,32 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(java.util.SplittableRandom.class)
-final class Target_java_util_SplittableRandom {
+@TargetClass(java.util.concurrent.ThreadLocalRandom.class)
+final class Target_java_util_concurrent_ThreadLocalRandom {
 
     /**
      * The seed generator for default constructors is initialized at run time, on first access, to
      * prevent baking in an initial seed from the build system.
      */
-    @Alias @InjectAccessors(SplittableRandomAccessors.class)//
-    private static AtomicLong defaultGen;
+    @Alias @InjectAccessors(ThreadLocalRandomAccessors.class)//
+    private static AtomicLong seeder;
 
     @Alias
     static native long mix64(long z);
+
 }
 
-public class SplittableRandomAccessors extends RandomAccessors {
+public class ThreadLocalRandomAccessors extends RandomAccessors {
 
-    private static final SplittableRandomAccessors SINGLETON = new SplittableRandomAccessors();
+    private static final ThreadLocalRandomAccessors SINGLETON = new ThreadLocalRandomAccessors();
 
-    /** The get-accessor for SplittableRandom.defaultGen. */
-    public static AtomicLong getDefaultGen() {
+    /** The get-accessor for ThreadLocalRandom.seeder. */
+    public static AtomicLong getSeeder() {
         return SINGLETON.getOrInitializeSeeder();
     }
 
     @Override
     long mix64(long l) {
-        return Target_java_util_SplittableRandom.mix64(l);
+        return Target_java_util_concurrent_ThreadLocalRandom.mix64(l);
     }
 }
