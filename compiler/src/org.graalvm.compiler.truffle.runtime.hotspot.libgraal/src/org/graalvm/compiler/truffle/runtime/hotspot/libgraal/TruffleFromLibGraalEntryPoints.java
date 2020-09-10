@@ -74,6 +74,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSameOrSplit;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSpecializationMethod;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTargetStable;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTrivial;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTruffleBoundary;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsValueType;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.Log;
@@ -462,6 +463,11 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(IsSameOrSplit)
     static boolean isSameOrSplit(Object compilableTruffleAST1, Object compilableTruffleAST2) {
         return ((CompilableTruffleAST) compilableTruffleAST1).isSameOrSplit((CompilableTruffleAST) compilableTruffleAST2);
+    }
+
+    @TruffleFromLibGraal(IsTrivial)
+    static boolean isTrivial(Object compilableTruffleAST1) {
+        return ((CompilableTruffleAST) compilableTruffleAST1).isTrivial();
     }
 
     @TruffleFromLibGraal(GetNonTrivialNodeCount)

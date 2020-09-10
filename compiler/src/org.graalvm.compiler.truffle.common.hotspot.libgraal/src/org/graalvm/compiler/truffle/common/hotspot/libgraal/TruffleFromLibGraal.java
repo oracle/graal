@@ -104,6 +104,7 @@ public @interface TruffleFromLibGraal {
         IsLastTier(boolean.class, Object.class),
         IsSameOrSplit(boolean.class, Object.class, Object.class),
         IsTargetStable(boolean.class, Object.class),
+        IsTrivial(boolean.class, Object.class),
         IsTruffleBoundary(boolean.class, Object.class, long.class),
         IsSpecializationMethod(boolean.class, Object.class, long.class),
         IsValueType(boolean.class, Object.class, long.class),
