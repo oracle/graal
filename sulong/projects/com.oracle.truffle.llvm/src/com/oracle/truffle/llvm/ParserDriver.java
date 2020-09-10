@@ -227,7 +227,7 @@ final class ParserDriver {
     static final String SULONG_RENAME_MARKER = "___sulong_import_";
     static final int SULONG_RENAME_MARKER_LEN = SULONG_RENAME_MARKER.length();
 
-    protected static void resolveRenamedSymbols(LLVMParserResult parserResult, LLVMLanguage language, LLVMContext context) {
+    protected void resolveRenamedSymbols(LLVMParserResult parserResult, LLVMLanguage language, LLVMContext context) {
         ListIterator<FunctionSymbol> it = parserResult.getExternalFunctions().listIterator();
         while (it.hasNext()) {
             FunctionSymbol external = it.next();
@@ -253,9 +253,8 @@ final class ParserDriver {
                             // If the library that contains the function has not been parsed,
                             // then the library will be lazily parse now.
                             String libName = lib + "." + language.getCapability(PlatformCapability.class).getLibrarySuffix();
-                            ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>", false);
-                            TruffleFile file = library.hasFile() ? library.getFile() : context.getEnv().getInternalTruffleFile(library.getPath().toUri());
-                            context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
+                            TruffleFile file = createTruffleFile(libName, InternalLibraryLocator.INSTANCE, "<default bitcode library>");
+                            context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(context.isInternalLibraryFile(file)).build());
                             scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                         } catch (Exception e) {
                             throw new IllegalStateException(e);
@@ -278,9 +277,8 @@ final class ParserDriver {
                         // If the library that contains the function has not been parsed,
                         // then the library will be lazily parse now.
                         String libName = lib + "." + language.getCapability(PlatformCapability.class).getLibrarySuffix();
-                        ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>", false);
-                        TruffleFile file = library.hasFile() ? library.getFile() : context.getEnv().getInternalTruffleFile(library.getPath().toUri());
-                        context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
+                        TruffleFile file = createTruffleFile(libName, InternalLibraryLocator.INSTANCE, "<default bitcode library>");
+                        context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(context.isInternalLibraryFile(file)).build());
                         scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                     } catch (Exception e) {
                         throw new IllegalStateException(e);
@@ -363,8 +361,7 @@ final class ParserDriver {
     /**
      * Parses a single bitcode module and returns its {@link LLVMParserResult}. Explicit and
      * implicit dependencies of {@code lib} are added to the . The returned {@link LLVMParserResult}
-     * is also added to the. This method ensures that the {@code library} parameter is added to the
-     * {@link LLVMContext#ensureExternalLibraryAdded context}.
+     * is also added to the.
      *
      * @param source the {@link Source} of the library to be parsed
      * @param bytes the bytes of the library to be parsed
