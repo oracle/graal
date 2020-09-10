@@ -54,6 +54,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
@@ -70,6 +71,7 @@ import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
 
@@ -305,6 +307,19 @@ abstract class CommonPointerLibraries {
         return context.getGlobalScope().getFunction(method.getLinkageName());
     }
 
+    static Object invokeVirtualMethod(Method method, Object[] arguments, LLVMPointerImpl receiver) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+        // TODO pichristoph restructure in nodes (getElementPtrNode, ...)
+        LLVMMemory memory = LLVMLanguage.getLanguage().getLLVMMemory();
+
+        final long vtableAddress = memory.getI64(null, receiver.asNative());
+        final long methodOffset = method.getVirtualIndex() * 8;
+        final long methodAddress = memory.getI64(null, vtableAddress + methodOffset);
+
+        LLVMPointerImpl methodPointer = new LLVMPointerImpl(null, methodAddress, null);
+
+        return InteropLibrary.getUncached(methodPointer).execute(methodPointer, arguments);
+    }
+
     static LLVMInteropType.Clazz asClazz(LLVMPointerImpl receiver) throws UnsupportedMessageException {
         LLVMInteropType type = receiver.getExportType();
         if (!(type instanceof LLVMInteropType.Clazz)) {
@@ -313,13 +328,13 @@ abstract class CommonPointerLibraries {
         return (Clazz) type;
     }
 
-    static Object[] addSelfObject(Object receiver, Object[] rawArgs) {
-        Object[] newArguments = new Object[rawArgs.length + 1];
-        newArguments[0] = receiver;
-        for (int i = 0; i < rawArgs.length; i++) {
-            newArguments[i + 1] = rawArgs[i];
+    static Object[] addSelfObject(Object receiver, Object[] arguments) {
+        Object[] newArgs = new Object[arguments.length + 1];
+        newArgs[0] = receiver;
+        for (int i = 1; i < newArgs.length; i++) {
+            newArgs[i] = arguments[i - 1];
         }
-        return newArguments;
+        return newArgs;
     }
 
     /**
@@ -345,7 +360,7 @@ abstract class CommonPointerLibraries {
         for (int i = 0; i < arguments.length; i++) {
             newArguments[i + 1] = arguments[i];
         }
-        LLVMFunctionDescriptor fn = LLVMLanguage.getContext().createFunctionDescriptor(llvmFunction);
+        LLVMFunctionDescriptor fn = LLVMLanguage.getContext().createFunctionDescriptor(llvmFunction, new LLVMFunctionCode(llvmFunction));
 
         return InteropLibrary.getUncached().execute(fn, arguments);
     }

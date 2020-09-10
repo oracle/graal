@@ -38,7 +38,7 @@ import org.junit.runner.RunWith;
 import com.oracle.truffle.tck.TruffleRunner;
 
 @RunWith(TruffleRunner.class)
-public class CxxVTableTest extends InteropTestBase {
+public class CxxVTableTest1 extends InteropTestBase {
 
     private static Value testCppLibrary;
     private static Value evaluateDirectly;
@@ -48,7 +48,7 @@ public class CxxVTableTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testCppLibrary = loadTestBitcodeValue("vtableTest.cpp");
+        testCppLibrary = loadTestBitcodeValue("vtableTest1.cpp");
         evaluateDirectly = testCppLibrary.getMember("evaluateDirectly");
         evaluateWithPolyglotConversion = testCppLibrary.getMember("evaluateWithPolyglotConversion");
         getB1F = testCppLibrary.getMember("getB1F");

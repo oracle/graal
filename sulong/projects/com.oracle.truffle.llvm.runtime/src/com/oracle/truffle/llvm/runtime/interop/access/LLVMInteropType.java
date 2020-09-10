@@ -278,16 +278,19 @@ public abstract class LLVMInteropType implements TruffleObject {
         @CompilationFinal(dimensions = 1) final Method[] methods;
         private Clazz superclass;
         private VTable vtable;
+        private Boolean virtualMethods;
 
         Clazz(String name, StructMember[] members, Method[] methods, long size) {
             super(name, members, size);
             this.methods = methods;
             this.superclass = null;
             this.vtable = null;
+            this.virtualMethods = null;
         }
 
         public void setSuperClass(Clazz superclass) {
             if (this.superclass == null) {
+                this.virtualMethods = null;
                 this.superclass = superclass;
             }
         }
@@ -370,15 +373,19 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
 
         public boolean hasVirtualMethods() {
-            for (Method m : methods) {
-                if (m.getVirtualIndex() >= 0) {
-                    return true;
+            if (virtualMethods == null) {
+                for (Method m : methods) {
+                    if (m.getVirtualIndex() >= 0) {
+                        virtualMethods = true;
+                        return true;
+                    }
                 }
+                if (superclass != null) {
+                    return superclass.hasVirtualMethods();
+                }
+                virtualMethods = false;
             }
-            if (superclass != null) {
-                return superclass.hasVirtualMethods();
-            }
-            return false;
+            return virtualMethods;
         }
 
         public VTable getVTable() {
@@ -387,7 +394,8 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
 
         public void buildVTable() {
-            if (vtable == null) {
+            virtualMethods = null;
+            if (vtable == null && hasVirtualMethods()) {
                 if (superclass != null) {
                     superclass.buildVTable();
                 }
