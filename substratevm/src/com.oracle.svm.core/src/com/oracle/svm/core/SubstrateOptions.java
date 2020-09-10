@@ -261,11 +261,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<String> TraceObjectInstantiation = new HostedOptionKey<>("");
 
     @Option(help = "Trace all native tool invocations as part of image building", type = User)//
-    static final HostedOptionKey<Boolean> TraceNativeToolUsage = new HostedOptionKey<>(false);
-
-    public static boolean traceNativeToolUsage() {
-        return TraceNativeToolUsage.getValue();
-    }
+    public static final HostedOptionKey<Boolean> TraceNativeToolUsage = new HostedOptionKey<>(false);
 
     @Option(help = "Prefix that is added to the names of entry point methods.")//
     public static final HostedOptionKey<String> EntryPointNamePrefix = new HostedOptionKey<>("");

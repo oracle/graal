@@ -31,12 +31,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.util.FileUtils;
@@ -73,8 +75,11 @@ public class PolyglotNativeAPIFeature implements Feature {
                 System.err.println(msg);
                 // Checkstyle: resume
             } else {
+                List<String> command = Arrays.asList("install_name_tool", "-id", id, imagePath.toString());
+                Process installToolProcess = null;
                 try {
-                    int exitCode = FileUtils.executeCommand("install_name_tool", "-id", id, imagePath.toString());
+                    installToolProcess = FileUtils.executeCommand(command);
+                    int exitCode = installToolProcess.exitValue();
                     if (exitCode != 0) {
                         // Checkstyle: stop This is Hosted-only code
                         System.err.println(String.format("Failed to set `id` install name. install_name_tool exited with code %d", exitCode));
@@ -83,7 +88,11 @@ public class PolyglotNativeAPIFeature implements Feature {
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+                    throw new InterruptImageBuilding("Interrupted in call to: " + String.join(" ", command));
+                } finally {
+                    if (installToolProcess != null) {
+                        installToolProcess.destroy();
+                    }
                 }
             }
         }

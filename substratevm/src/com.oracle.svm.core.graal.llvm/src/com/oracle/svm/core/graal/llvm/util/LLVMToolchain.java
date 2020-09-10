@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.llvm.util;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -33,8 +34,8 @@ import java.util.List;
 
 import org.graalvm.home.HomeFinder;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
 public class LLVMToolchain {
@@ -54,44 +55,41 @@ public class LLVMToolchain {
     public static String runCommand(Path directory, List<String> cmd) throws RunFailureException {
         int status;
         String output;
+
+        Process llvmProcess = null;
         try {
-            ProcessBuilder pb = new ProcessBuilder(cmd);
-            pb.redirectErrorStream(true);
-            if (directory != null) {
-                pb.directory(directory.toFile());
+            ProcessBuilder llvmCommand = FileUtils.prepareCommand(cmd, directory);
+            llvmCommand.redirectErrorStream(true);
+
+            FileUtils.traceCommand(llvmCommand);
+
+            llvmProcess = llvmCommand.start();
+
+            try (InputStream inputStream = llvmProcess.getInputStream()) {
+                List<String> lines = FileUtils.readAllLines(inputStream);
+
+                FileUtils.traceCommandOutput(lines);
+
+                output = String.join(System.lineSeparator(), lines);
             }
 
-            if (SubstrateOptions.traceNativeToolUsage()) {
-                String commandLine = SubstrateUtil.getShellCommandString(pb.command(), false);
-                printf(">> %s%n", commandLine);
-            }
-
-            Process p = pb.start();
-            List<String> lines = FileUtils.readAllLines(p.getInputStream());
-            output = String.join(System.lineSeparator(), lines);
-
-            if (SubstrateOptions.traceNativeToolUsage()) {
-                for (String line : lines) {
-                    printf("># %s%n", line);
-                }
-            }
-
-            status = p.waitFor();
-        } catch (IOException | InterruptedException e) {
+            status = llvmProcess.waitFor();
+        } catch (IOException e) {
             status = -1;
             output = e.getMessage();
+        } catch (InterruptedException e) {
+            String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
+            throw new InterruptImageBuilding("Interrupted during llvm command execution: " + commandLine);
+        } finally {
+            if (llvmProcess != null) {
+                llvmProcess.destroy();
+            }
         }
 
         if (status != 0) {
             throw new RunFailureException(status, output);
         }
         return output;
-    }
-
-    private static void printf(String format, Object... args) {
-        // Checkstyle: stop
-        System.out.printf(format, args);
-        // Checkstyle: resume
     }
 
     private static Path getLLVMBinDir() {
