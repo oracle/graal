@@ -978,6 +978,15 @@ public final class StaticObject implements TruffleObject {
 
     private static final String[] CLASS_KEYS = {CLASS_TO_STATIC, STATIC_TO_CLASS};
 
+    private ObjectKlass getInteropKlass() {
+        if (getKlass().isArray()) {
+            return getKlass().getMeta().java_lang_Object;
+        } else {
+            assert !getKlass().isPrimitive() : "Static Object should not represent a primitive.";
+            return (ObjectKlass) getKlass();
+        }
+    }
+
     @ExportMessage
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         if (isForeignObject()) {
@@ -994,16 +1003,12 @@ public final class StaticObject implements TruffleObject {
                 members.add(s);
             }
         }
-        ObjectKlass k;
-        if (getKlass().isArray()) {
-            k = getKlass().getMeta().java_lang_Object;
-        } else {
-            assert !getKlass().isPrimitive();
-            k = (ObjectKlass) getKlass();
-        }
+        ObjectKlass k = getInteropKlass();
 
         for (Method m : k.getVTable()) {
             if (LookupVirtualMethodNode.isCanditate(m)) {
+                // Note: If there are overloading, the same key may appear twice.
+                // TODO: Cache the keys array in the Klass.
                 members.add(m.getNameAsString());
             }
         }
@@ -1025,13 +1030,7 @@ public final class StaticObject implements TruffleObject {
         if (isNull(this)) {
             return false;
         }
-        ObjectKlass k;
-        if (getKlass().isArray()) {
-            k = getKlass().getMeta().java_lang_Object;
-        } else {
-            assert !getKlass().isPrimitive();
-            k = (ObjectKlass) getKlass();
-        }
+        ObjectKlass k = getInteropKlass();
 
         for (Method m : k.getVTable()) {
             if (LookupVirtualMethodNode.isCanditate(m)) {

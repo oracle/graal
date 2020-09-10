@@ -962,7 +962,11 @@ public final class EspressoContext {
     @TruffleBoundary
     public void destroyVM() {
         waitForClose();
-        getMeta().java_lang_reflect_Shutdown_shutdown.invokeDirect(null);
+        try {
+            getMeta().java_lang_reflect_Shutdown_shutdown.invokeDirect(null);
+        } catch (EspressoException | EspressoExitException e) {
+            /* Suppress guest exception so as not to bypass teardown */
+        }
         teardown();
     }
 
