@@ -35,6 +35,7 @@ import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Spliterator;
 import java.util.Spliterators.AbstractSpliterator;
@@ -135,9 +136,9 @@ public final class ConfigurationParserUtils {
             if (errorMessage == null || errorMessage.isEmpty()) {
                 errorMessage = e.toString();
             }
-            throw UserError.abort("Error parsing " + featureName + " configuration in " + location + ":\n" + errorMessage +
-                            "\nVerify that the configuration matches the schema described in the " +
-                            SubstrateOptionsParser.commandArgument(PrintFlags, "+") + " output for option " + option.getName() + ".");
+            throw UserError.abort(Collections.singleton(
+                            "Error parsing " + featureName + " configuration in " + location + ":\n" + errorMessage + "\nVerify that the configuration matches the schema described in the " +
+                                            SubstrateOptionsParser.commandArgument(PrintFlags, "+") + " output for option " + option.getName() + "."));
         }
     }
 }
