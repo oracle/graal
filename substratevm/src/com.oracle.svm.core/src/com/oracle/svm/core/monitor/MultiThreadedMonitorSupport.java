@@ -140,9 +140,10 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * The map access in MultiThreadedMonitorSupport.getOrCreateMonitorFromMap() calls
              * System.identityHashCode() which on the slow path calls
              * IdentityHashCodeSupport.generateIdentityHashCode(). The hashcode generation calls
-             * SplittableRandomAccessors.initialize() which synchronizes on the a Lock object.
+             * SplittableRandomAccessors.initialize() which synchronizes on an instance of
+             * SplittableRandomAccessors.
              */
-            monitorTypes.add(Class.forName("com.oracle.svm.core.jdk.SplittableRandomAccessors$Lock"));
+            monitorTypes.add(Class.forName("com.oracle.svm.core.jdk.SplittableRandomAccessors"));
 
             FORCE_MONITOR_SLOT_TYPES = Collections.unmodifiableSet(monitorTypes);
         } catch (ClassNotFoundException e) {
