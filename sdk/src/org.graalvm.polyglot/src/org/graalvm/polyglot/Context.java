@@ -43,6 +43,7 @@ package org.graalvm.polyglot;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
@@ -762,6 +763,21 @@ public final class Context implements AutoCloseable {
      */
     public void close() {
         close(false);
+    }
+
+    /**
+     * Use this method to interrupt this context. The interruption is non-destructive meaning the
+     * context is still usable after this method finished.
+     *
+     * @param timeout specifies the duration the interrupt method will wait for the active threads
+     *            of the context to be finished. Setting the duration to {@link Duration#ZERO 0}
+     *            means wait indefinitely.
+     * @throws IllegalStateException in case the context is entered in the current thread.
+     *
+     * @since 20.3
+     */
+    public void interrupt(Duration timeout) {
+        impl.interrupt(this, timeout);
     }
 
     /**

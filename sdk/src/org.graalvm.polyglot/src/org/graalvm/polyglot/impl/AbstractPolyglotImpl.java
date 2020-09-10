@@ -410,6 +410,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void close(Context sourceContext, boolean interuptExecution);
 
+        public abstract void interrupt(Context sourceContext, Duration timeout);
+
         public abstract Value asValue(Object hostValue);
 
         public abstract void explicitEnter(Context sourceContext);
@@ -467,6 +469,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isInternalError();
 
         public abstract boolean isCancelled();
+
+        public abstract boolean isInterrupted();
 
         public abstract boolean isExit();
 
