@@ -732,6 +732,13 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
         addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
+
+        if (OS.getCurrent() == OS.LINUX || JavaVersionUtil.JAVA_SPEC >= 11) {
+            addImageBuilderJavaArgs("-Dawt.toolkit=sun.awt.X11.XToolkit");
+            addImageBuilderJavaArgs("-Djava.awt.graphicsenv=sun.awt.X11GraphicsEnvironment");
+            addImageBuilderJavaArgs("-Djava.awt.printerjob=sun.print.PSPrinterJob");
+        }
+
         /*
          * The presence of CDS and custom system class loaders disables the use of archived
          * non-system class and and triggers a warning.

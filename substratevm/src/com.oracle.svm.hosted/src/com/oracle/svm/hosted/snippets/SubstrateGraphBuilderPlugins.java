@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.snippets;
 
+import java.awt.GraphicsEnvironment;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
@@ -159,6 +160,16 @@ class Options {
 }
 
 public class SubstrateGraphBuilderPlugins {
+    private static final String reflectionClass;
+
+    static {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            reflectionClass = "sun.reflect.Reflection";
+        } else {
+            reflectionClass = "jdk.internal.reflect.Reflection";
+        }
+    }
+
     public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions, MetaAccessProvider metaAccess,
                     SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, Replacements replacements, boolean analysis) {
 
@@ -180,6 +191,7 @@ public class SubstrateGraphBuilderPlugins {
         registerJFREventTokenPlugins(plugins, replacements);
         registerVMConfigurationPlugins(snippetReflection, plugins);
         registerPlatformPlugins(snippetReflection, plugins);
+        registerAWTPlugins(plugins);
         registerSizeOfPlugins(snippetReflection, plugins);
         registerReferenceAccessPlugins(plugins);
     }
@@ -195,16 +207,6 @@ public class SubstrateGraphBuilderPlugins {
                     return true;
                 }
             });
-        }
-    }
-
-    private static final String reflectionClass;
-
-    static {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            reflectionClass = "sun.reflect.Reflection";
-        } else {
-            reflectionClass = "jdk.internal.reflect.Reflection";
         }
     }
 
@@ -1024,6 +1026,23 @@ public class SubstrateGraphBuilderPlugins {
                 Class<? extends Platform> platform = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
                 boolean result = Platform.includedIn(platform);
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(result));
+                return true;
+            }
+        });
+    }
+
+    /*
+     * To prevent AWT linkage error that happens with 'awt_headless' in headless mode, we eliminate
+     * native methods that depend on 'awt_xawt' library in the call-tree.
+     */
+    private static void registerAWTPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, GraphicsEnvironment.class);
+        boolean isHeadless = GraphicsEnvironment.isHeadless();
+        r.register0("isHeadless", new InvocationPlugin() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isHeadless));
                 return true;
             }
         });
