@@ -849,8 +849,9 @@ else:
 
 
 class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # pylint: disable=R0901
-    def __init__(self, base_name, theLicense=None, stage1=False, **kw_args):
+    def __init__(self, base_name, theLicense=None, stage1=False, components=None, **kw_args):
         self.base_name = base_name
+        components = components or registered_graalvm_components(stage1)
 
         name, base_dir, self.vm_config_name = _get_graalvm_configuration(base_name, stage1)
 
@@ -858,7 +859,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
             suite=_suite,
             name=name,
             deps=[],
-            components=registered_graalvm_components(stage1),
+            components=components,
             is_graalvm=True,
             exclLibs=[],
             platformDependent=True,
