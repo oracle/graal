@@ -146,7 +146,6 @@ final class ParserDriver {
             // The NFI can handle it later if it's a native file.
             addLibraryToNFI(source.getName(), source.getPath());
             // An empty call target is returned for native libraries.
-            // LoadNativeLibraryNode loadNatives = LoadNativeLibraryNode.create();
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         }
         // ensures the library of the source is not native
@@ -158,7 +157,7 @@ final class ParserDriver {
                 context.addLibsulongDataLayout(result.getDataLayout());
             }
             // renaming is attempted only for internal libraries.
-            resolveRenamedSymbols(result, language, context);
+            resolveRenamedSymbols(result);
         }
         addExternalSymbolsToScopes(result);
         return createLibraryCallTarget(source.getName(), result, dependenciesSource, source);
@@ -227,7 +226,7 @@ final class ParserDriver {
     static final String SULONG_RENAME_MARKER = "___sulong_import_";
     static final int SULONG_RENAME_MARKER_LEN = SULONG_RENAME_MARKER.length();
 
-    protected void resolveRenamedSymbols(LLVMParserResult parserResult, LLVMLanguage language, LLVMContext context) {
+    protected void resolveRenamedSymbols(LLVMParserResult parserResult) {
         ListIterator<FunctionSymbol> it = parserResult.getExternalFunctions().listIterator();
         while (it.hasNext()) {
             FunctionSymbol external = it.next();
