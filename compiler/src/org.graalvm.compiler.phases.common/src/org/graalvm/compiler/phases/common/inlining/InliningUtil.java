@@ -502,6 +502,7 @@ public class InliningUtil extends ValueMergeUtil {
     @SuppressWarnings("try")
     public static EconomicSet<Node> inlineForCanonicalization(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, ResolvedJavaMethod inlineeMethod,
                     Consumer<UnmodifiableEconomicMap<Node, Node>> duplicatesConsumer, String reason, String phase) {
+        assert inlineGraph.isSubstitution() || invoke.asNode().graph().getSpeculationLog() == inlineGraph.getSpeculationLog();
         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
         /*
          * This code relies on the fact that Graph.addDuplicates doesn't trigger the

@@ -191,8 +191,8 @@ public class InlineableGraph implements Inlineable {
     @SuppressWarnings("try")
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller, boolean trackNodeSourcePosition) {
         DebugContext debug = caller.getDebug();
-        StructuredGraph newGraph = new StructuredGraph.Builder(caller.getOptions(), debug, caller.allowAssumptions()).method(method).trackNodeSourcePosition(
-                        trackNodeSourcePosition).useProfilingInfo(caller.useProfilingInfo()).build();
+        StructuredGraph newGraph = new StructuredGraph.Builder(caller.getOptions(), debug, caller.allowAssumptions()).method(method).trackNodeSourcePosition(trackNodeSourcePosition).useProfilingInfo(
+                        caller.useProfilingInfo()).speculationLog(caller.getSpeculationLog()).build();
         try (DebugContext.Scope s = debug.scope("InlineGraph", newGraph)) {
             if (!caller.isUnsafeAccessTrackingEnabled()) {
                 newGraph.disableUnsafeAccessTracking();
