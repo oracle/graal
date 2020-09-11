@@ -167,7 +167,7 @@ public class CompileQueue {
     protected final HostedUniverse universe;
     private final Boolean deoptimizeAll;
     protected CompletionExecutor executor;
-    private final ConcurrentMap<HostedMethod, CompileTask> compilations;
+    protected final ConcurrentMap<HostedMethod, CompileTask> compilations;
     protected final RuntimeConfiguration runtimeConfig;
     private Suites regularSuites = null;
     private Suites deoptTargetSuites = null;
