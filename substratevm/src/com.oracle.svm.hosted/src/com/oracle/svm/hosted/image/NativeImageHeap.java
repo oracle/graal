@@ -398,11 +398,13 @@ public final class NativeImageHeap implements ImageHeap {
 
                 /*
                  * The hybrid array, bit set, and typeID array are written within the hybrid object.
-                 * So they may not be written as separate objects. We use the blacklist to check
-                 * that.
+                 * If the hybrid object declares that they can never be duplicated, i.e. written as
+                 * a separate object, we ensure that they never are duplicated. We use the blacklist
+                 * to check that.
                  */
+                boolean shouldBlacklist = HybridLayout.hybridFieldsNeverDuplicated(clazz);
                 hybridTypeIDSlotsField = hybridLayout.getTypeIDSlotsField();
-                if (hybridTypeIDSlotsField != null) {
+                if (hybridTypeIDSlotsField != null && shouldBlacklist) {
                     Object typeIDSlots = readObjectField(hybridTypeIDSlotsField, con);
                     if (typeIDSlots != null) {
                         blacklist.add(typeIDSlots);
@@ -411,7 +413,7 @@ public final class NativeImageHeap implements ImageHeap {
 
                 hybridArrayField = hybridLayout.getArrayField();
                 hybridArray = readObjectField(hybridArrayField, con);
-                if (hybridArray != null) {
+                if (hybridArray != null && shouldBlacklist) {
                     blacklist.add(hybridArray);
                     written = true;
                 }

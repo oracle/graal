@@ -68,6 +68,17 @@ import com.oracle.svm.core.hub.DynamicHub;
 public @interface Hybrid {
 
     /**
+     * If {@code true}, we expect that the data in the hybrid fields can never be duplicated between
+     * the hybrid layout and a separate object for the array or bitset. For most objects, a
+     * duplication could occur if inlining and constant folding result in the internal reference to
+     * a hybrid field being constant folded to a constant value, which must be written into the
+     * image heap separately from the hybrid object.
+     * 
+     * If {@code false}, we allow duplication of the hybrid fields.
+     */
+    boolean hybridFieldsNeverDuplicated();
+
+    /**
      * Specifies a single member array as the hybrid array.
      */
     @Retention(RetentionPolicy.RUNTIME)

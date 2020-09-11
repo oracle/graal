@@ -44,6 +44,11 @@ public class HybridLayoutSupport {
         return field.getAnnotation(Hybrid.Array.class) != null || field.getAnnotation(Hybrid.TypeIDSlots.class) != null;
     }
 
+    public boolean hybridFieldsNeverDuplicated(ResolvedJavaType clazz) {
+        assert isHybrid(clazz) : "Can only be called on hybrid types";
+        return clazz.getAnnotation(Hybrid.class).hybridFieldsNeverDuplicated();
+    }
+
     /**
      * Finds the hybrid array and bitset fields of a class annotated with {@link Hybrid}.
      *
