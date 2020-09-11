@@ -764,6 +764,24 @@ meth public org.graalvm.polyglot.io.ProcessHandler$Redirect createRedirectToStre
 supr java.lang.Object
 hfds clearEnvironment,cmd,cwd,env,errorRedirect,fileSystem,inheritIO,inputRedirect,outputRedirect,polyglotLanguageContext,redirectErrorStream
 
+CLSS public abstract com.oracle.truffle.api.memory.ByteArraySupport
+meth public abstract byte getByte(byte[],int)
+meth public abstract double getDouble(byte[],int)
+meth public abstract float getFloat(byte[],int)
+meth public abstract int getInt(byte[],int)
+meth public abstract long getLong(byte[],int)
+meth public abstract short getShort(byte[],int)
+meth public abstract void putByte(byte[],int,byte)
+meth public abstract void putDouble(byte[],int,double)
+meth public abstract void putFloat(byte[],int,float)
+meth public abstract void putInt(byte[],int,int)
+meth public abstract void putLong(byte[],int,long)
+meth public abstract void putShort(byte[],int,short)
+meth public final boolean inBounds(byte[],int,int)
+meth public static com.oracle.truffle.api.memory.ByteArraySupport bigEndian()
+meth public static com.oracle.truffle.api.memory.ByteArraySupport littleEndian()
+supr java.lang.Object
+
 CLSS public abstract com.oracle.truffle.api.nodes.BlockNode<%0 extends com.oracle.truffle.api.nodes.Node>
 cons protected init({com.oracle.truffle.api.nodes.BlockNode%0}[])
 fld public final static int NO_ARGUMENT = 0

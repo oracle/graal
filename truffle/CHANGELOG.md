@@ -8,7 +8,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added new specialization compilation mode that ignores "fast path" specializations and generates calls only to "slow path" specializations. This mode is intended for testing purposes to increase tests coverage. See [Specialization testing documentation](https://github.com/oracle/graal/blob/master/truffle/docs/SpecializationTesting.md) for more details.
 * Added [TruffleFile.readSymbolicLink](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#readSymbolicLink--) method to read the symbolic link target.
 * Added [ReportPolymorphism.Megamorphic](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Megamorphic.html) annotation for expressing the "report only megamorphic specializations" use case when reporting polymorphism.
-
 * Added new flags to inspect expansion during partial evaluation: `--engine.TraceMethodExpansion=truffleTier`, `--engine.TraceNodeExpansion=truffleTier`, `--engine.MethodExpansionStatistics=truffleTier` and `--engine.NodeExpansionStatistics=truffleTier`. Language implementations are encouraged to run with these flags enabled and investigate their output for unexpected results. See [Optimizing.md](https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md) for details.
 * Enabled by default the elastic allocation of Truffle compiler threads depending on the number of available processors, in both JVM and native modes. The old behavior, 1 or 2 compiler threads, can be explicitly enabled with `--engine.CompilerThreads=0`.
 * Added `ThreadsActivationListener` to listen to thread enter and leave events in instruments.
@@ -27,6 +26,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added utility method to find an instrumentable parent node [InstrumentableNode.findInstrumentableParent](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/InstrumentableNode.html#findInstrumentableParent-com.oracle.truffle.api.nodes.Node-).
 * Deprecated `DebugScope.getArguments()` without replacement. This API was added without use-case.
 * Added the [RootNode.isTrivial](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#isTrivial) method, for specifying root nodes that are always more efficient to inline than not to.
+* Added [ByteArraySupport](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/memory/ByteArraySupport.html): a helper class providing safe multi-byte primitive type accesses from byte arrays.
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.
