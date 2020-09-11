@@ -816,6 +816,29 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
+        @Specialization(guards = {"isStringArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
+        static void doString(StaticObject receiver, long index, Object value,
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            StaticObject stringValue;
+            try {
+                stringValue = receiver.getKlass().getMeta().toGuestString(interopLibrary.asString(value));
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            try {
+                receiver.<StaticObject[]> unwrap()[(int) index] = stringValue;
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
         @SuppressWarnings("unused")
         @Fallback
         static void doOther(StaticObject receiver, long index, Object value) throws UnsupportedMessageException {
@@ -853,6 +876,10 @@ public final class StaticObject implements TruffleObject {
 
     protected static boolean isDoubleArray(StaticObject object) {
         return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._double_array);
+    }
+
+    protected static boolean isStringArray(StaticObject object) {
+        return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta().java_lang_String.array());
     }
 
     protected static boolean isPrimitiveArray(StaticObject object) {
