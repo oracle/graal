@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 
 import org.graalvm.polyglot.Engine;
@@ -37,21 +38,67 @@ import com.oracle.truffle.api.test.GCUtils;
 
 public abstract class EnginesGCedTest {
 
-    private Set<WeakReference<Engine>> engineRefs;
+    private GCCheck gcCheck;
 
     @Before
     public void setUp() {
-        engineRefs = new HashSet<>();
+        gcCheck = new GCCheck();
     }
 
     @After
     public void tearDown() {
-        for (WeakReference<Engine> engineRef : engineRefs) {
-            GCUtils.assertGc("Engine not collected", engineRef);
-        }
+        gcCheck.checkCollected();
     }
 
     protected final void addEngineReference(Engine engine) {
-        engineRefs.add(new WeakReference<>(engine));
+        gcCheck.addEngineReference(engine);
+    }
+
+    static final class GCCheck {
+
+        private final Set<WeakReference<Engine>> engineRefs = new HashSet<>();
+        private final Set<Long> threadIDs = new HashSet<>();
+
+        GCCheck() {
+            Thread[] threads = findAllThreads();
+            for (Thread t : threads) {
+                if (t != null) {
+                    threadIDs.add(t.getId());
+                }
+            }
+        }
+
+        void checkCollected() {
+            for (WeakReference<Engine> engineRef : engineRefs) {
+                GCUtils.assertGc("Engine not collected", engineRef);
+            }
+            Thread[] threads = findAllThreads();
+            for (Thread t : threads) {
+                if (t != null) {
+                    if (!threadIDs.contains(t.getId())) {
+                        if (t.getClass().getPackage().getName().startsWith("org.graalvm.compiler")) {
+                            // A compiler thread
+                            continue;
+                        }
+                        Assert.fail("An extra thread " + t + " is found after test finished.");
+                    }
+                }
+            }
+            threadIDs.clear();
+        }
+
+        void addEngineReference(Engine engine) {
+            engineRefs.add(new WeakReference<>(engine));
+        }
+
+        private static Thread[] findAllThreads() {
+            ThreadGroup threadGroup = Thread.currentThread().getThreadGroup();
+            // Use just the current thread group, there might be new threads in the system group.
+            int activeThreadCount = threadGroup.activeCount();
+            Thread[] threads = new Thread[activeThreadCount + 10];
+            threadGroup.enumerate(threads);
+            return threads;
+        }
+
     }
 }

@@ -411,28 +411,36 @@ public final class InspectorInstrument extends TruffleInstrument {
                     throw new IOException(ex);
                 }
                 InspectServerSession iss = InspectServerSession.create(executionContext, debugBreak, connectionWatcher);
-                WSInterceptorServer interceptor = new WSInterceptorServer(socketAddress.getPort(), token, iss, connectionWatcher);
-                MessageEndpoint serverEndpoint;
+                boolean disposeIss = true;
                 try {
-                    serverEndpoint = env.startServer(wsuri, iss);
-                } catch (MessageTransport.VetoException vex) {
-                    throw new IOException(vex.getLocalizedMessage());
-                }
-                if (serverEndpoint == null) {
-                    interceptor.close(token);
-                    wss = InspectorServer.get(socketAddress, token, pathContainingToken, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
-                    String wsStr = buildAddress(socketAddress.getAddress().getHostAddress(), wss.getPort(), pathContainingToken, secure);
-                    String address = DEV_TOOLS_PREFIX + wsStr;
-                    urlContainingToken = wsStr.replace("=", "://");
-                    info.println("Debugger listening on port " + wss.getPort() + ".");
-                    info.println("To start debugging, open the following URL in Chrome:");
-                    info.println("    " + address);
-                    info.flush();
-                } else {
-                    restartServerEndpointOnClose(hostAndPort, env, wsuri, executionContext, connectionWatcher, iss, interceptor);
-                    interceptor.opened(serverEndpoint);
-                    wss = interceptor;
-                    urlContainingToken = wsuri.toString();
+                    WSInterceptorServer interceptor = new WSInterceptorServer(socketAddress.getPort(), token, iss, connectionWatcher);
+                    MessageEndpoint serverEndpoint;
+                    try {
+                        serverEndpoint = env.startServer(wsuri, iss);
+                    } catch (MessageTransport.VetoException vex) {
+                        throw new IOException(vex.getLocalizedMessage());
+                    }
+                    if (serverEndpoint == null) {
+                        interceptor.close(token);
+                        wss = InspectorServer.get(socketAddress, token, pathContainingToken, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
+                        String wsStr = buildAddress(socketAddress.getAddress().getHostAddress(), wss.getPort(), pathContainingToken, secure);
+                        String address = DEV_TOOLS_PREFIX + wsStr;
+                        urlContainingToken = wsStr.replace("=", "://");
+                        info.println("Debugger listening on port " + wss.getPort() + ".");
+                        info.println("To start debugging, open the following URL in Chrome:");
+                        info.println("    " + address);
+                        info.flush();
+                    } else {
+                        restartServerEndpointOnClose(hostAndPort, env, wsuri, executionContext, connectionWatcher, iss, interceptor);
+                        interceptor.opened(serverEndpoint);
+                        wss = interceptor;
+                        urlContainingToken = wsuri.toString();
+                    }
+                    disposeIss = false;
+                } finally {
+                    if (disposeIss) {
+                        iss.dispose();
+                    }
                 }
             }
             if (debugBreak || waitAttached) {
@@ -522,6 +530,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                 try {
                     serverEndpoint = env.startServer(wsuri, newSession);
                 } catch (MessageTransport.VetoException vex) {
+                    newSession.dispose();
                     return;
                 } catch (IOException ioex) {
                     throw new InspectorIOException(hostAndPort.getHostPort(), ioex);
