@@ -339,9 +339,10 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             contextBuilder.option(entry.getKey(), entry.getValue());
         }
 
+        int rc = 1;
+
         contextBuilder.allowCreateThread(true);
 
-        int rc = 1;
         try (Context context = contextBuilder.build()) {
 
             // runVersionAction(versionAction, context.getEngine());
@@ -356,7 +357,6 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             if (mainClassName == null) {
                 throw abort(usage());
             }
-
             try {
                 Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
                 Value mainKlass = launcherHelper //
@@ -371,16 +371,36 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                         e.printStackTrace();
                     }
                 }
-                rc = 0;
             } catch (PolyglotException e) {
                 if (!e.isExit()) {
-                    e.printStackTrace();
-                } else {
+                    handleMainUncaught(context, e);
+                }
+            } finally {
+                try {
+                    context.eval("java", "<DestroyJavaVM>").execute();
+                } catch (PolyglotException e) {
+                    assert e.isExit();
                     rc = e.getExitStatus();
                 }
             }
+            /*
+             * We abruptly exit the host system for compatibility with the reference implementation,
+             * and because we have no control over un-registering thread from Truffle, which
+             * sometimes leads to getting an exception on exit when trying to close a context with a
+             * rogue thread in native.
+             * 
+             * Note that since the launcher thread and the main thread are the same, a rogue native
+             * main means we may never return.
+             */
+            System.exit(rc);
         }
-        throw exit(rc);
+    }
+
+    private static void handleMainUncaught(Context context, PolyglotException e) {
+        Value threadClass = context.eval("java", "java.lang.Thread");
+        Value currentThread = threadClass.invokeMember("currentThread");
+        Value handler = currentThread.invokeMember("getUncaughtExceptionHandler");
+        handler.invokeMember("uncaughtException", currentThread, e.getGuestObject());
     }
 
     @Override

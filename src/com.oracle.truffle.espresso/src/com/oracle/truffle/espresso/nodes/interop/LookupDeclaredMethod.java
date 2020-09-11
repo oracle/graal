@@ -61,7 +61,8 @@ public abstract class LookupDeclaredMethod extends Node {
     Method doGeneric(Klass klass, String methodName, boolean publicOnly, boolean isStatic, int arity) {
         Method result = null;
         for (Method m : klass.getDeclaredMethods()) {
-            if (m.isPublic() == publicOnly && m.isStatic() == isStatic && m.getName().toString().equals(methodName)) {
+            if (m.isPublic() == publicOnly && m.isStatic() == isStatic && !m.isSignaturePolymorphicDeclared() &&
+                            m.getName().toString().equals(methodName)) {
                 if (m.getParameterCount() == arity) {
                     /* Multiple methods with the same name and arity, cannot disambiguate */
                     if (result != null) {

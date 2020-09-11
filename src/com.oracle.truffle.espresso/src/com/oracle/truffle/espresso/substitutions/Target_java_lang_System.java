@@ -66,9 +66,15 @@ public final class Target_java_lang_System {
     private static void doArrayCopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length,
                     Meta meta, SubstitutionProfiler profiler) {
         if (StaticObject.isNull(src) || StaticObject.isNull(dest)) {
-            profiler.profile(3);
+            profiler.profile(0);
             throw meta.throwNullPointerException();
         }
+        negativeLengthChecks(meta, srcPos, destPos, length, profiler);
+        if (length == 0) {
+            profiler.profile(3);
+            return;
+        }
+        // TODO: handle foreign arrays.
         // Mimics hotspot implementation.
         if (src.isArray() && dest.isArray()) {
             profiler.profile(14);
@@ -101,12 +107,16 @@ public final class Target_java_lang_System {
                         System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
                     } else {
                         profiler.profile(10);
-                        // slow path (manual copy) (/ex: copying an Object[] to a String[]) requires
-                        // individual type checks. Should rarely happen ( < 1% of cases).
-                        // @formatter:off
-                        // Use cases:
-                        // - System startup.
-                        // - MethodHandle and CallSite linking.
+                        /*
+                         * Slow path (manual copy) (/ex: copying an Object[] to a String[]) requires
+                         * individual type checks. Should rarely happen ( < 1% of cases).
+                         * 
+                         * Use cases:
+                         * 
+                         * - System startup.
+                         * 
+                         * - MethodHandle and CallSite linking.
+                         */
                         boundsCheck(meta, src, srcPos, dest, destPos, length, profiler);
                         StaticObject[] s = src.unwrap();
                         StaticObject[] d = dest.unwrap();
@@ -131,8 +141,16 @@ public final class Target_java_lang_System {
         }
     }
 
+    private static void negativeLengthChecks(Meta meta, int srcPos, int destPos, int length, SubstitutionProfiler profiler) {
+        if (srcPos < 0 || destPos < 0 || length < 0) {
+            // Other checks are caught during execution without side effects.
+            profiler.profile(15);
+            throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+        }
+    }
+
     private static void boundsCheck(Meta meta, @Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length, SubstitutionProfiler profiler) {
-        if (srcPos < 0 || destPos < 0 || length < 0 || srcPos > src.length() - length || destPos > dest.length() - length) {
+        if (srcPos > src.length() - length || destPos > dest.length() - length) {
             // Other checks are caught during execution without side effects.
             profiler.profile(15);
             throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);

@@ -33,7 +33,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -78,7 +77,7 @@ public abstract class InvokeEspressoNode extends Node {
                     @Cached BranchProfile badArityProfile)
                     throws ArityException, UnsupportedTypeException {
 
-        EspressoError.guarantee((method.isStatic() && receiver == null) || method.getName().equals(Name._init_), "Espresso interop only supports static methods and init");
+        checkValidInvoke(method, receiver);
 
         int expectedArity = cachedMethod.getParameterCount();
         if (arguments.length != expectedArity) {
@@ -109,7 +108,7 @@ public abstract class InvokeEspressoNode extends Node {
                     @Cached IndirectCallNode indirectCallNode)
                     throws ArityException, UnsupportedTypeException {
 
-        EspressoError.guarantee((method.isStatic() && receiver == null) || method.getName().equals(Name._init_), "Espresso interop only supports static methods and init");
+        checkValidInvoke(method, receiver);
 
         int expectedArity = method.getParameterCount();
         if (arguments.length != expectedArity) {
@@ -131,5 +130,12 @@ public abstract class InvokeEspressoNode extends Node {
         }
 
         return indirectCallNode.call(method.getCallTarget(), /* static => no receiver */ convertedArguments);
+    }
+
+    private static void checkValidInvoke(Method method, Object receiver) {
+        EspressoError.guarantee(!method.isSignaturePolymorphicDeclared(), "Espresso interop does not support signature polymorphic methods.");
+        EspressoError.guarantee(((method.isStatic() && receiver == null) ||
+                        (!method.isStatic() && method.isPublic() && receiver != null)),
+                        "Espresso interop only supports static methods and public instance method");
     }
 }

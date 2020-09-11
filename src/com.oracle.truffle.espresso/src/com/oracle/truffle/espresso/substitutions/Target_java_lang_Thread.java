@@ -152,10 +152,11 @@ public final class Target_java_lang_Thread {
                     // check if death cause throwable is set, if not throw ThreadDeath
                     StaticObject deathThrowable = (StaticObject) getDeathThrowable(thread);
                     throw deathThrowable != null ? Meta.throwException(deathThrowable) : Meta.throwException(meta.java_lang_ThreadDeath);
-                case DISSIDENT:
+                case SHUTDOWN:
                     // This thread refuses to stop. Send a host exception.
                     // throw getMeta().throwEx(ThreadDeath.class);
-                    throw new EspressoExitException(0);
+                    assert context.isClosing();
+                    throw new EspressoExitException(context.getExitStatus());
             }
         }
         if (context.shouldCheckSuspend()) {
@@ -221,30 +222,19 @@ public final class Target_java_lang_Thread {
                 @Override
                 public void run() {
                     try {
-                        // Execute the payload
-                        self.getKlass().vtableLookup(meta.java_lang_Thread_run.getVTableIndex()).invokeDirect(self);
-                        checkDeprecatedState(meta, self);
-                    } catch (EspressoException uncaught) {
-                        Method dispatchUncaughtException = self.getKlass().lookupMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
-                        assert !dispatchUncaughtException.isStatic();
-                        dispatchUncaughtException.invokeDirect(self, uncaught.getExceptionObject());
-                    } catch (EspressoExitException exit) {
-                        // TODO: initiate shutdown sequence from here.
-                        throw exit;
-                    } finally {
-                        setThreadStop(self, KillStatus.EXITING);
-                        threadExit.call(self);
-                        self.getLock().lock();
                         try {
-                            self.setIntField(meta.java_lang_Thread_threadStatus, State.TERMINATED.value);
-                            // Notify waiting threads you are done working
-                            self.getLock().signalAll();
-                        } finally {
-                            self.getLock().unlock();
+                            // Execute the payload
+                            self.getKlass().vtableLookup(meta.java_lang_Thread_run.getVTableIndex()).invokeDirect(self);
+                            checkDeprecatedState(meta, self);
+                        } catch (EspressoException uncaught) {
+                            Method dispatchUncaughtException = self.getKlass().lookupMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
+                            assert !dispatchUncaughtException.isStatic();
+                            dispatchUncaughtException.invokeDirect(self, uncaught.getExceptionObject());
                         }
-
-                        // Cleanup.
-                        context.unregisterThread(self);
+                    } catch (EspressoExitException exit) {
+                        /* Suppress */
+                    } finally {
+                        terminate(self, threadExit, meta);
                         if (context.isClosing()) {
                             // Ignore exceptions that arise during closing.
                             return;
@@ -266,6 +256,31 @@ public final class Target_java_lang_Thread {
             EspressoLanguage.getCurrentContext().getLogger().warning(
                             "Thread.start() called on " + self.getKlass() + " but thread support is disabled. Use --java.MultiThreaded=true to enable thread support.");
         }
+    }
+
+    public static void terminate(@Host(Thread.class) StaticObject self, Meta meta) {
+        meta.getContext().unregisterThread(self);
+    }
+
+    private static void terminate(@Host(Thread.class) StaticObject self, DirectCallNode threadExit, Meta meta) {
+        setThreadStop(self, KillStatus.EXITING);
+        if (threadExit != null) {
+            threadExit.call(self);
+        } else {
+            meta.java_lang_Thread_exit.invokeDirect(self);
+        }
+        self.getLock().lock();
+        try {
+            self.setIntField(meta.java_lang_Thread_threadStatus, State.TERMINATED.value);
+            // Notify waiting threads you are done working
+            self.getLock().signalAll();
+        } finally {
+            self.getLock().unlock();
+        }
+
+        EspressoContext context = meta.getContext();
+        // Cleanup.
+        context.unregisterThread(self);
     }
 
     @TruffleBoundary
@@ -448,7 +463,7 @@ public final class Target_java_lang_Thread {
      * Forces the thread to stop execution at the next safepoint by throwing a host exit exception.
      */
     public static void forceKillThread(StaticObject thread) {
-        setThreadStop(thread, KillStatus.DISSIDENT);
+        setThreadStop(thread, KillStatus.SHUTDOWN);
     }
 
     public static void setDeathThrowable(StaticObject self, Object deathThrowable) {
@@ -485,7 +500,7 @@ public final class Target_java_lang_Thread {
          * Thread is uncooperative: needs to be killed with a host exception. Very dangerous state
          * to be in.
          */
-        DISSIDENT
+        SHUTDOWN
     }
 
     public static class SuspendLock {

@@ -119,7 +119,6 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -492,14 +491,12 @@ public final class VM extends NativeEnv implements ContextAccess {
                             doubleArray[i] = (double) toEspressoNode.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, doubleArray);
-                    // formatter: off
                     case Object:
                     case Void:
                     case ReturnAddress:
                     case Illegal:
                         CompilerDirectives.transferToInterpreter();
                         throw EspressoError.shouldNotReachHere("Unexpected primitive kind: " + componentType.getJavaKind());
-                    // formatter: on
                 }
 
             } catch (UnsupportedTypeException e) {
@@ -1096,17 +1093,15 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
-    @TruffleBoundary
-    public static void JVM_Halt(int code) {
-        throw new EspressoExitException(code);
+    public void JVM_Halt(int code) {
+        getContext().doExit(code);
     }
 
     @VmImpl
-    @TruffleBoundary
-    public static void JVM_Exit(int code) {
+    public void JVM_Exit(int code) {
+        getContext().doExit(code);
         // System.exit(code);
         // Unlike Halt, runs finalizers
-        throw new EspressoExitException(code);
     }
 
     @VmImpl

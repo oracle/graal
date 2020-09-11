@@ -572,7 +572,8 @@ public final class ObjectKlass extends Klass {
         throw EspressoError.shouldNotReachHere();
     }
 
-    Method[] getVTable() {
+    // Exposed to LookupVirtualMethodNode
+    public Method[] getVTable() {
         assert !isInterface();
         return vtable;
     }

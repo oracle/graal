@@ -622,10 +622,16 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return false;
         }
         Symbol<Type>[] signature = getParsedSignature();
-        if (!(Signatures.parameterCount(signature, false) == 1 &&
-                        Signatures.parameterType(signature, 0) == Type.java_lang_Object_array &&
-                        (getJavaVersion().java9OrLater() || Signatures.returnType(signature) == Type.java_lang_Object))) {
+        if (Signatures.parameterCount(signature, false) != 1) {
             return false;
+        }
+        if (Signatures.parameterType(signature, 0) != Type.java_lang_Object_array) {
+            return false;
+        }
+        if (getJavaVersion().java8OrEarlier()) {
+            if (Signatures.returnType(signature) != Type.java_lang_Object) {
+                return false;
+            }
         }
         int required = ACC_NATIVE | ACC_VARARGS;
         int flags = getModifiers();

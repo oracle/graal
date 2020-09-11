@@ -36,6 +36,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -53,9 +54,11 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.EspressoStatementNode;
+import com.oracle.truffle.espresso.nodes.interop.DestroyVMNode;
 import com.oracle.truffle.espresso.nodes.interop.LoadKlassNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
@@ -210,10 +213,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
 
         context.prepareDispose();
-
-        // Shutdown.shutdown creates a Cleaner thread. At this point, Polyglot doesn't allow new
-        // threads. We must perform shutdown before then, after main has finished.
-        context.interruptActiveThreads();
+        try {
+            context.doExit(0);
+        } catch (EspressoExitException e) {
+            // Expected. Suppress. We do not want to throw during context closing.
+        }
     }
 
     @Override
@@ -227,7 +231,13 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         assert context.isInitialized();
         context.begin();
         String className = request.getSource().getCharacters().toString();
-        return Truffle.getRuntime().createCallTarget(new LoadKlassNode(this, className));
+        RootNode node;
+        if (DestroyVMNode.EVAL_NAME.equals(className)) {
+            node = new DestroyVMNode(this);
+        } else {
+            node = new LoadKlassNode(this, className);
+        }
+        return Truffle.getRuntime().createCallTarget(node);
     }
 
     public Utf8ConstantTable getUtf8ConstantTable() {
