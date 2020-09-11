@@ -66,7 +66,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
     MHLinkToNode(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
         super(method);
         this.argCount = Signatures.parameterCount(method.getParsedSignature(), false);
-        this.hiddenVmtarget = method.getMeta().HIDDEN_VMTARGET.getFieldIndex();
+        this.hiddenVmtarget = method.getMeta().HIDDEN_VMTARGET.getIndex();
         this.hasReceiver = id != MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
         this.linker = findLinker(id);
         assert method.isStatic();
@@ -118,7 +118,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
     }
 
     // Tranform sub-words to int
-    private static Object rebasic(Object obj, JavaKind rKind) {
+    public static Object rebasic(Object obj, JavaKind rKind) {
         switch (rKind) {
             case Boolean:
                 return ((boolean) obj) ? 1 : 0;

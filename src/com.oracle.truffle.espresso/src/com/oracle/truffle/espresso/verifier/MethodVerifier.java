@@ -223,6 +223,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SASTORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SIPUSH;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.SLIM_QUICK;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
@@ -260,6 +261,7 @@ import com.oracle.truffle.espresso.classfile.VerificationTypeInfo;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
@@ -284,7 +286,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 /**
  * Should be a complete bytecode verifier. Given the version of the classfile from which the method
  * is taken, the type-checking or type-infering verifier is used.
- * 
+ *
  * Note that stack map tables are used only for classfile version >= 50, and even if stack maps are
  * given for lesser versions, they are ignored. No fallback for classfile v.50
  */
@@ -316,7 +318,7 @@ public final class MethodVerifier implements ContextAccess {
     private boolean calledConstructor = false;
 
     // Instruction stack to visit
-    private WorkingQueue queue = new WorkingQueue();
+    private final WorkingQueue queue = new WorkingQueue();
 
     Symbol<Type>[] getSig() {
         return sig;
@@ -347,6 +349,26 @@ public final class MethodVerifier implements ContextAccess {
         return thisKlass.getContext();
     }
 
+    private boolean earlierThan49() {
+        return majorVersion < ClassfileParser.JAVA_1_5_VERSION;
+    }
+
+    private boolean earlierThan51() {
+        return majorVersion < ClassfileParser.JAVA_7_VERSION;
+    }
+
+    private boolean earlierThan55() {
+        return majorVersion < ClassfileParser.JAVA_11_VERSION;
+    }
+
+    private boolean version51OrEarlier() {
+        return majorVersion <= ClassfileParser.JAVA_7_VERSION;
+    }
+
+    private boolean version51OrLater() {
+        return majorVersion >= ClassfileParser.JAVA_7_VERSION;
+    }
+
     // TODO(garcia) intern Operands.
 
     // Define all operands that can appear on the stack / locals.
@@ -359,6 +381,37 @@ public final class MethodVerifier implements ContextAccess {
     static final PrimitiveOperand Long = new PrimitiveOperand(JavaKind.Long);
     static final PrimitiveOperand Void = new PrimitiveOperand(JavaKind.Void);
     static final PrimitiveOperand Invalid = new PrimitiveOperand(JavaKind.Illegal);
+
+    /*
+     * Special handling:
+     *
+     * is same as Byte for java 8 or earlier, becomes its own operand for Java >= 9
+     */
+    final PrimitiveOperand booleanOperand;
+
+    /* Special operand used for BA{LOAD, STORE}. Should never be pushed to stack */
+    static final PrimitiveOperand ByteOrBoolean = new PrimitiveOperand(JavaKind.Byte) {
+        @Override
+        boolean compliesWith(Operand other) {
+            return other.isTopOperand() || other.getKind() == JavaKind.Boolean || other.getKind() == JavaKind.Byte;
+        }
+
+        @Override
+        Operand mergeWith(Operand other) {
+            if (other == this) {
+                throw EspressoError.shouldNotReachHere("Invalid invariant: ByteOrBoolean operand in stack.");
+            }
+            if (other.isPrimitive()) {
+                if (other == Byte) {
+                    return Byte;
+                }
+                if (other.getKind() == JavaKind.Boolean) {
+                    return other;
+                }
+            }
+            return null;
+        }
+    };
 
     // We want to be able to share this instance between context, so its resolution must be
     // context-agnostic.
@@ -374,7 +427,7 @@ public final class MethodVerifier implements ContextAccess {
     static final Operand Null = new Operand(JavaKind.Object) {
         @Override
         boolean compliesWith(Operand other) {
-            return other == Invalid || other.isReference();
+            return other.isTopOperand() || other.isReference();
         }
 
         @Override
@@ -398,16 +451,6 @@ public final class MethodVerifier implements ContextAccess {
         @Override
         public String toString() {
             return "null";
-        }
-
-        @Override
-        boolean isPrimitive() {
-            return false;
-        }
-
-        @Override
-        Operand getComponent() {
-            return this;
         }
     };
 
@@ -503,6 +546,8 @@ public final class MethodVerifier implements ContextAccess {
         jliMethodHandle = new ReferenceOperand(Type.java_lang_invoke_MethodHandle, thisKlass);
         jlThrowable = new ReferenceOperand(Type.java_lang_Throwable, thisKlass);
 
+        booleanOperand = getJavaVersion().java9OrLater() ? new PrimitiveOperand(JavaKind.Boolean) : Byte;
+
         thisOperand = new ReferenceOperand(thisKlass, thisKlass);
         returnOperand = kindToOperand(Signatures.returnType(sig));
     }
@@ -515,7 +560,7 @@ public final class MethodVerifier implements ContextAccess {
      * Utility for ease of use in Espresso.
      *
      * @param m the method to verify
-     * 
+     *
      * @throws VerifyError if verification fails
      * @throws NoClassDefFoundError if Class loading of an operand fails at any point
      * @throws ClassFormatError if classfile is malformed
@@ -539,7 +584,7 @@ public final class MethodVerifier implements ContextAccess {
         int opcode;
         while (bci < code.endBCI()) {
             opcode = code.currentBC(bci);
-            if (opcode > QUICK) {
+            if (opcode > SLIM_QUICK) {
                 throw new VerifyError("invalid bytecode: " + opcode);
             }
             bciStates[bci] = setStatus(bciStates[bci], UNSEEN);
@@ -696,7 +741,7 @@ public final class MethodVerifier implements ContextAccess {
             int actualLocalOffset = 0;
             for (int i = 0; i < smf.getChopped(); i++) {
                 Operand op = newLocals[previous.lastLocal - actualLocalOffset];
-                if (op == Invalid && (previous.lastLocal - actualLocalOffset - 1 > 0)) {
+                if (op.isTopOperand() && (previous.lastLocal - actualLocalOffset - 1 > 0)) {
                     if (isType2(newLocals[previous.lastLocal - actualLocalOffset - 1])) {
                         actualLocalOffset++;
                     }
@@ -706,7 +751,7 @@ public final class MethodVerifier implements ContextAccess {
             }
             StackFrame res = new StackFrame(Operand.EMPTY_ARRAY, 0, 0, newLocals);
             res.lastLocal = previous.lastLocal - actualLocalOffset;
-            if (res.lastLocal > 0 && newLocals[res.lastLocal] == Invalid && res.lastLocal - 1 > 0 && isType2(newLocals[res.lastLocal - 1])) {
+            if (res.lastLocal > 0 && newLocals[res.lastLocal].isTopOperand() && res.lastLocal - 1 > 0 && isType2(newLocals[res.lastLocal - 1])) {
                 res.lastLocal = res.lastLocal - 1;
             }
             return res;
@@ -770,7 +815,7 @@ public final class MethodVerifier implements ContextAccess {
                 res.lastLocal = -1;
                 return res;
             }
-            if (locals[pos - 1] == Invalid && pos - 2 > 0 && isType2(locals[pos - 2])) {
+            if (locals[pos - 1].isTopOperand() && pos - 2 > 0 && isType2(locals[pos - 2])) {
                 res.lastLocal = pos - 2;
                 return res;
             }
@@ -1228,15 +1273,21 @@ public final class MethodVerifier implements ContextAccess {
             case CLASS:         return jlClass;
             case STRING:        return jlString;
             case METHODHANDLE:
-                if (majorVersion < ClassfileParser.JAVA_7_VERSION) {
+                if (earlierThan51()) {
                     throw new ClassFormatError("LDC for MethodHandleConstant in classfile version < 51");
                 }
                 return jliMethodHandle;
             case METHODTYPE:
-                if (majorVersion < ClassfileParser.JAVA_7_VERSION) {
+                if (earlierThan51()) {
                     throw new ClassFormatError("LDC for MethodType in classfile version < 51");
                 }
                 return jliMethodType;
+            case DYNAMIC:
+                if (earlierThan55()) {
+                    throw new ClassFormatError("LDC for Dynamic in classfile version < 55");
+                }
+                DynamicConstant constant = (DynamicConstant) pc;
+                return kindToOperand(constant.getTypeSymbol(pool));
             default:
                 throw new VerifyError("invalid CP load: " + pc.tag());
         }
@@ -1247,7 +1298,7 @@ public final class MethodVerifier implements ContextAccess {
     /**
      * Core of the verifier. Performs verification for a single bci, according (mostly) to the JVM
      * specs
-     * 
+     *
      * @param bci The bci of the opcode being verified
      * @param stack The current state of the stack at the point of verification
      * @param locals The current state of the local variables at the point of verification
@@ -1261,12 +1312,12 @@ public final class MethodVerifier implements ContextAccess {
         bciStates[bci] = setStatus(bciStates[bci], DONE);
         int curOpcode;
         curOpcode = code.opcode(bci);
-        if (!(curOpcode <= QUICK)) {
+        if (!(curOpcode <= SLIM_QUICK)) {
             throw new VerifyError("invalid bytecode: " + code.readUByte(bci));
         }
         // @formatter:off
         // Checkstyle: stop
-        
+
         // EXTREMELY dirty trick to handle WIDE. This is not supposed to be a loop ! (returns on
         // first iteration)
         // Executes a second time ONLY for wide instruction, with curOpcode being the opcode of the
@@ -1297,8 +1348,8 @@ public final class MethodVerifier implements ContextAccess {
 
                 case BIPUSH: stack.pushInt(); break;
                 case SIPUSH: stack.pushInt(); break;
-                
-                case LDC: 
+
+                case LDC:
                 case LDC_W: {
                     PoolConstant pc = poolAt(code.readCPI(bci));
                     pc.validate(pool);
@@ -1306,7 +1357,7 @@ public final class MethodVerifier implements ContextAccess {
                     if (isType2(op)) {
                         throw new VerifyError("Loading Long or Double with LDC or LDC_W, please use LDC2_W.");
                     }
-                    if ((majorVersion < 49) && !(op == Int || op == Float || op.getType() == jlString.getType())) {
+                    if (earlierThan49() && !(op == Int || op == Float || op.getType() == jlString.getType())) {
                         throw new VerifyError("Loading non Int, Float or String with LDC in classfile version < 49.0");
                     }
                     stack.push(op);
@@ -1328,38 +1379,38 @@ public final class MethodVerifier implements ContextAccess {
                 case FLOAD: locals.load(code.readLocalIndex(bci), Float);   stack.pushFloat();  break;
                 case DLOAD: locals.load(code.readLocalIndex(bci), Double);  stack.pushDouble(); break;
                 case ALOAD: stack.push(locals.loadRef(code.readLocalIndex(bci))); break;
-                
+
                 case ILOAD_0:
                 case ILOAD_1:
                 case ILOAD_2:
                 case ILOAD_3: locals.load(curOpcode - ILOAD_0, Int); stack.pushInt(); break;
-                
+
                 case LLOAD_0:
                 case LLOAD_1:
                 case LLOAD_2:
                 case LLOAD_3: locals.load(curOpcode - LLOAD_0, Long); stack.pushLong(); break;
-                
+
                 case FLOAD_0:
                 case FLOAD_1:
                 case FLOAD_2:
                 case FLOAD_3: locals.load(curOpcode - FLOAD_0, Float); stack.pushFloat(); break;
-                
+
                 case DLOAD_0:
                 case DLOAD_1:
                 case DLOAD_2:
                 case DLOAD_3: locals.load(curOpcode - DLOAD_0, Double); stack.pushDouble(); break;
-                
+
                 case ALOAD_0:
                 case ALOAD_1:
                 case ALOAD_2:
                 case ALOAD_3: stack.push(locals.loadRef(curOpcode - ALOAD_0)); break;
-                
+
 
                 case IALOAD: xaload(stack, Int);    break;
                 case LALOAD: xaload(stack, Long);   break;
                 case FALOAD: xaload(stack, Float);  break;
                 case DALOAD: xaload(stack, Double); break;
-                
+
                 case AALOAD: {
                     stack.popInt();
                     Operand op = stack.popArray();
@@ -1369,8 +1420,8 @@ public final class MethodVerifier implements ContextAccess {
                     stack.push(op.getComponent());
                     break;
                 }
-                
-                case BALOAD: xaload(stack, Byte);  break;
+
+                case BALOAD: xaload(stack, ByteOrBoolean);  break;
                 case CALOAD: xaload(stack, Char);  break;
                 case SALOAD: xaload(stack, Short); break;
 
@@ -1378,29 +1429,29 @@ public final class MethodVerifier implements ContextAccess {
                 case LSTORE: stack.popLong();    locals.store(code.readLocalIndex(bci), Long);   break;
                 case FSTORE: stack.popFloat();   locals.store(code.readLocalIndex(bci), Float);  break;
                 case DSTORE: stack.popDouble();  locals.store(code.readLocalIndex(bci), Double); break;
-                
+
                 case ASTORE: locals.store(code.readLocalIndex(bci), stack.popObjOrRA()); break;
 
                 case ISTORE_0:
                 case ISTORE_1:
                 case ISTORE_2:
                 case ISTORE_3: stack.popInt(); locals.store(curOpcode - ISTORE_0, Int); break;
-                
+
                 case LSTORE_0:
                 case LSTORE_1:
                 case LSTORE_2:
                 case LSTORE_3: stack.popLong(); locals.store(curOpcode - LSTORE_0, Long); break;
-                
+
                 case FSTORE_0:
                 case FSTORE_1:
                 case FSTORE_2:
                 case FSTORE_3: stack.popFloat(); locals.store(curOpcode - FSTORE_0, Float); break;
-                
+
                 case DSTORE_0:
                 case DSTORE_1:
                 case DSTORE_2:
                 case DSTORE_3: stack.popDouble(); locals.store(curOpcode - DSTORE_0, Double); break;
-                
+
                 case ASTORE_0:
                 case ASTORE_1:
                 case ASTORE_2:
@@ -1410,7 +1461,7 @@ public final class MethodVerifier implements ContextAccess {
                 case LASTORE: xastore(stack, Long);     break;
                 case FASTORE: xastore(stack, Float);    break;
                 case DASTORE: xastore(stack, Double);   break;
-                
+
                 case AASTORE: {
                     Operand toStore = stack.popRef();
                     stack.popInt();
@@ -1421,8 +1472,8 @@ public final class MethodVerifier implements ContextAccess {
                     // Other checks are done at runtime
                     break;
                 }
-                
-                case BASTORE: xastore(stack, Byte); break;
+
+                case BASTORE: xastore(stack, ByteOrBoolean); break;
                 case CASTORE: xastore(stack, Char); break;
                 case SASTORE: xastore(stack, Short); break;
 
@@ -1506,10 +1557,10 @@ public final class MethodVerifier implements ContextAccess {
                 case I2S: stack.popInt(); stack.pushInt(); break;
 
                 case LCMP: stack.popLong(); stack.popLong(); stack.pushInt(); break;
-                
+
                 case FCMPL:
                 case FCMPG: stack.popFloat(); stack.popFloat(); stack.pushInt(); break;
-                
+
                 case DCMPL:
                 case DCMPG: stack.popDouble(); stack.popDouble(); stack.pushInt(); break;
 
@@ -1519,26 +1570,26 @@ public final class MethodVerifier implements ContextAccess {
                 case IFGE: // fall through
                 case IFGT: // fall through
                 case IFLE: stack.popInt(); branch(code.readBranchDest(bci), stack, locals); break;
-                
+
                 case IF_ICMPEQ: // fall through
                 case IF_ICMPNE: // fall through
                 case IF_ICMPLT: // fall through
                 case IF_ICMPGE: // fall through
                 case IF_ICMPGT: // fall through
                 case IF_ICMPLE: stack.popInt(); stack.popInt(); branch(code.readBranchDest(bci), stack, locals); break;
-                
+
                 case IF_ACMPEQ: // fall through
                 case IF_ACMPNE: stack.popRef(); stack.popRef(); branch(code.readBranchDest(bci), stack, locals); break;
 
                 case GOTO:
                 case GOTO_W: branch(code.readBranchDest(bci), stack, locals); return bci;
-                
+
                 case IFNULL: // fall through
                 case IFNONNULL: stack.popRef(); branch(code.readBranchDest(bci), stack, locals); break;
-                
+
                 case JSR: // fall through
                 case JSR_W: verifyJSR(bci, stack, locals); return bci;
-                    
+
                 case RET: verifyRET(bci, stack, locals); return bci;
 
                 case TABLESWITCH:  return verifyTableSwitch(bci, stack, locals);
@@ -1604,8 +1655,9 @@ public final class MethodVerifier implements ContextAccess {
                 case BREAKPOINT: break;
 
                 case INVOKEDYNAMIC: verifyInvokeDynamic(bci, stack); break;
-                
+
                 case QUICK: break;
+                case SLIM_QUICK: break;
                 default:
             }
             return code.nextBCI(bci);
@@ -1831,7 +1883,7 @@ public final class MethodVerifier implements ContextAccess {
         BytecodeLookupSwitch switchHelper = code.getBytecodeLookupSwitch();
         // Padding checks
         for (int j = bci + 1; j < switchHelper.getAlignedBci(bci); j++) {
-            if (code.readUByte(j) != 0) {
+            if (version51OrEarlier() && code.readUByte(j) != 0) {
                 throw new VerifyError("non-zero padding for LOOKUPSWITCH");
             }
         }
@@ -1861,7 +1913,7 @@ public final class MethodVerifier implements ContextAccess {
         BytecodeTableSwitch switchHelper = code.getBytecodeTableSwitch();
         // Padding checks
         for (int j = bci + 1; j < switchHelper.getAlignedBci(bci); j++) {
-            if (code.readUByte(j) != 0) {
+            if (version51OrEarlier() && code.readUByte(j) != 0) {
                 throw new VerifyError("non-zero padding for TABLESWITCH");
             }
         }
@@ -1878,7 +1930,7 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private void verifyJSR(int bci, OperandStack stack, Locals locals) {
-        if (majorVersion >= 51) {
+        if (version51OrLater()) {
             throw new VerifyError("JSR/RET bytecode in version >= 51");
         }
         if (stackFrames[bci] == null) {
@@ -1893,7 +1945,7 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private void verifyRET(int bci, OperandStack stack, Locals locals) {
-        if (majorVersion >= 51) {
+        if (version51OrLater()) {
             throw new VerifyError("JSR/RET bytecode in version >= 51");
         }
         int pos = 0;
@@ -2008,7 +2060,7 @@ public final class MethodVerifier implements ContextAccess {
         MethodRefConstant mrc = getMethodRefConstant(bci);
 
         // Checks versioning
-        if (majorVersion <= 51 && mrc.tag() == INTERFACE_METHOD_REF) {
+        if (version51OrEarlier() && mrc.tag() == INTERFACE_METHOD_REF) {
             throw new VerifyError("invokeStatic refers to an interface method with classfile version " + majorVersion);
         }
         Symbol<Name> calledMethodName = mrc.getName(pool);
@@ -2034,7 +2086,7 @@ public final class MethodVerifier implements ContextAccess {
         MethodRefConstant mrc = getMethodRefConstant(bci);
 
         // Checks versioning
-        if (majorVersion <= ClassfileParser.JAVA_7_VERSION && mrc.tag() == INTERFACE_METHOD_REF) {
+        if (version51OrEarlier() && mrc.tag() == INTERFACE_METHOD_REF) {
             throw new VerifyError("invokeSpecial refers to an interface method with classfile version " + majorVersion);
         }
         Symbol<Name> calledMethodName = mrc.getName(pool);
@@ -2153,7 +2205,7 @@ public final class MethodVerifier implements ContextAccess {
      * raised bit in b1, raise the corresponding one in b2).
      * <p>
      * If the returns jumps over multiple JSRs, pop the stack accordingly. For example:
-     * 
+     *
      * <pre>
      * 0: jsr 4
      * 3: return
@@ -2252,7 +2304,7 @@ public final class MethodVerifier implements ContextAccess {
     private void checkProtectedField(Operand stackOp, Symbol<Type> fieldHolderType, int fieldCPI) {
         /**
          * 4.10.1.8.
-         * 
+         *
          * If the name of a class is not the name of any superclass, it cannot be a superclass, and
          * so it can safely be ignored.
          */
@@ -2286,7 +2338,7 @@ public final class MethodVerifier implements ContextAccess {
                 if (!field.isProtected()) {
                     return;
                 }
-                if (!thisKlass.getRuntimePackage().equals(Types.getRuntimePackage(fieldHolderType))) {
+                if (!thisKlass.getRuntimePackage().contentEquals(Types.getRuntimePackage(fieldHolderType))) {
                     if (!stackOp.compliesWith(thisOperand)) {
                         /**
                          * Otherwise, use of a member of an object of type Target requires that
@@ -2337,7 +2389,7 @@ public final class MethodVerifier implements ContextAccess {
                 if (!method.isProtected()) {
                     return;
                 }
-                if (!thisKlass.getRuntimePackage().equals(Types.getRuntimePackage(methodHolderType))) {
+                if (!thisKlass.getRuntimePackage().contentEquals(Types.getRuntimePackage(methodHolderType))) {
                     if (stackOp.isArrayType() && Type.java_lang_Object.equals(methodHolderType) && Name.clone.equals(method.getName())) {
                         // Special case: Arrays pretend to implement Object.clone().
                         return;
@@ -2389,10 +2441,10 @@ public final class MethodVerifier implements ContextAccess {
         return op;
     }
 
-    private static Operand fromJVMType(byte jvmType) {
+    private Operand fromJVMType(byte jvmType) {
         // @formatter:off
         switch (jvmType) {
-            case 4  : return new ArrayOperand(Byte);
+            case 4  : return new ArrayOperand(booleanOperand);
             case 5  : return new ArrayOperand(Char);
             case 6  : return new ArrayOperand(Float);
             case 7  : return new ArrayOperand(Double);
@@ -2425,7 +2477,7 @@ public final class MethodVerifier implements ContextAccess {
     private Operand kindToOperand(Symbol<Type> type) {
         // @formatter:off
         switch (Types.getJavaKind(type)) {
-            case Boolean: return Byte;
+            case Boolean: return booleanOperand;
             case Byte   : return Byte;
             case Short  : return Short;
             case Char   : return Char;
@@ -2452,17 +2504,17 @@ public final class MethodVerifier implements ContextAccess {
     private static void xaload(OperandStack stack, PrimitiveOperand kind) {
         stack.popInt();
         Operand op = stack.popArray();
-        if (op != Null && op.getComponent() != kind) {
+        if (op != Null && !kind.compliesWith(op.getComponent())) {
             throw new VerifyError("Loading " + kind + " from " + op + " array.");
         }
-        stack.push(kind);
+        stack.push(op.getComponent());
     }
 
     private static void xastore(OperandStack stack, PrimitiveOperand kind) {
         stack.pop(kind);
         stack.popInt();
         Operand array = stack.popArray();
-        if (array != Null && array.getComponent() != kind) {
+        if (array != Null && !kind.compliesWith(array.getComponent())) {
             throw new VerifyError("got array of type: " + array + ", while storing a " + kind);
         }
     }
@@ -2474,7 +2526,7 @@ public final class MethodVerifier implements ContextAccess {
     /**
      * Computes the merging of the current stack/local status with the stack frame store in the
      * table.
-     * 
+     *
      * @return if merge succeeds, returns the given stackFrame, else returns a new StackFrame that
      *         represents the merging.
      */

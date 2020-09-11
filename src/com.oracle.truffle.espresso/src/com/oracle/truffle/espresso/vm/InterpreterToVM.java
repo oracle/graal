@@ -23,6 +23,9 @@
 
 package com.oracle.truffle.espresso.vm;
 
+import static com.oracle.truffle.espresso.vm.VM.StackElement.NATIVE_BCI;
+import static com.oracle.truffle.espresso.vm.VM.StackElement.UNKNOWN_BCI;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.IntFunction;
@@ -38,7 +41,6 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -218,7 +220,11 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public void setArrayByte(byte value, int index, @Host(byte[].class /* or boolean[] */) StaticObject arr) {
-        arr.setArrayByte(value, index, getMeta());
+        if (getJavaVersion().java9OrLater() && arr.getKlass() == getMeta()._boolean_array) {
+            arr.setArrayByte((byte) (value & 1), index, getMeta());
+        } else {
+            arr.setArrayByte(value, index, getMeta());
+        }
     }
 
     public void setArrayChar(char value, int index, @Host(char[].class) StaticObject array) {
@@ -414,7 +420,7 @@ public final class InterpreterToVM implements ContextAccess {
         assert dimensions != null && dimensions.length > 0;
         if (dimensions.length == 1) {
             if (component.isPrimitive()) {
-                return allocatePrimitiveArray((byte) component.getJavaKind().getBasicType(), dimensions[0]);
+                return allocatePrimitiveArray((byte) component.getJavaKind().getBasicType(), dimensions[0], component.getMeta());
             } else {
                 return component.allocateReferenceArray(dimensions[0], new IntFunction<StaticObject>() {
                     @Override
@@ -434,9 +440,8 @@ public final class InterpreterToVM implements ContextAccess {
         });
     }
 
-    public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length) {
+    public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length, Meta meta) {
         // the constants for the cpi are loosely defined and no real cpi indices.
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (length < 0) {
             throw Meta.throwException(meta.java_lang_NegativeArraySizeException);
         }
@@ -527,7 +532,7 @@ public final class InterpreterToVM implements ContextAccess {
     @SuppressWarnings("unused")
     public static StaticObject fillInStackTrace(@Host(Throwable.class) StaticObject throwable, Meta meta) {
         // Inlined calls to help StackOverflows.
-        VM.StackTrace frames = (VM.StackTrace) throwable.getUnsafeField(meta.HIDDEN_FRAMES.getFieldIndex());
+        VM.StackTrace frames = (VM.StackTrace) throwable.getUnsafeField(meta.HIDDEN_FRAMES.getIndex());
         if (frames != null) {
             return throwable;
         }
@@ -557,14 +562,14 @@ public final class InterpreterToVM implements ContextAccess {
                 if (rootNode instanceof EspressoRootNode) {
                     m = ((EspressoRootNode) rootNode).getMethod();
                     if (c.checkFillIn(m) || c.checkThrowableInit(m)) {
-                        bci = -1;
+                        bci = UNKNOWN_BCI;
                         continue;
                     }
                     if (m.isNative()) {
-                        bci = -2;
+                        bci = NATIVE_BCI;
                     }
                     frames.add(new VM.StackElement(m, bci));
-                    bci = -1;
+                    bci = UNKNOWN_BCI;
                 }
             }
         }
@@ -600,12 +605,7 @@ public final class InterpreterToVM implements ContextAccess {
                             if ((method.getModifiers() & Constants.ACC_LAMBDA_FORM_HIDDEN) == 0) {
                                 if (!c.checkFillIn(method)) {
                                     if (!c.checkThrowableInit(method)) {
-                                        int bci = -1; // unknown
-                                        if (espressoNode.isBytecodeNode()) {
-                                            bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
-                                        } else if (method.isNative()) {
-                                            bci = -2; // native
-                                        }
+                                        int bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
                                         frames.add(new VM.StackElement(method, bci));
                                         c.inc();
                                     }
@@ -619,6 +619,9 @@ public final class InterpreterToVM implements ContextAccess {
         });
         throwable.setHiddenField(meta.HIDDEN_FRAMES, frames);
         throwable.setField(meta.java_lang_Throwable_backtrace, throwable);
+        if (meta.getJavaVersion().java9OrLater()) {
+            throwable.setIntField(meta.java_lang_Throwable_depth, frames.size);
+        }
         return throwable;
     }
 

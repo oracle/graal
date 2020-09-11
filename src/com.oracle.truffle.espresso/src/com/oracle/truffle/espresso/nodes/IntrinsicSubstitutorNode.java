@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.nodes;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -44,7 +46,7 @@ public class IntrinsicSubstitutorNode extends EspressoMethodNode {
         super(method.getMethodVersion());
         this.substitution = factory.create(EspressoLanguage.getCurrentContext().getMeta());
         if (substitution.shouldSplit()) {
-            this.nbSplits = DebugCounter.create("Splits for: " + factory.getMethodName());
+            this.nbSplits = DebugCounter.create("Splits for: " + Arrays.toString(factory.getMethodNames()));
         } else {
             this.nbSplits = null;
         }

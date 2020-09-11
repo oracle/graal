@@ -32,8 +32,8 @@ public final class LeafAssumptionGetterNode extends InlinedGetterNode {
     protected final int opCode;
     protected final int curBCI;
 
-    protected LeafAssumptionGetterNode(Method inlinedMethod, int top, int opCode, int curBCI) {
-        super(inlinedMethod, top, curBCI);
+    protected LeafAssumptionGetterNode(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
+        super(inlinedMethod, top, curBCI, statementIndex);
         this.opCode = opCode;
         this.curBCI = curBCI;
     }
@@ -46,9 +46,9 @@ public final class LeafAssumptionGetterNode extends InlinedGetterNode {
                             ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                             : nullCheck(root.peekAndReleaseObject(frame, top - 1));
             int resultAt = inlinedMethod.isStatic() ? top : (top - 1);
-            return (resultAt - top) + getFieldNode.getField(frame, root, receiver, resultAt);
+            return (resultAt - top) + getFieldNode.getField(frame, root, receiver, resultAt, statementIndex);
         } else {
-            return root.reQuickenInvoke(frame, top, curBCI, opCode, inlinedMethod);
+            return root.reQuickenInvoke(frame, top, curBCI, opCode, statementIndex, inlinedMethod);
         }
     }
 

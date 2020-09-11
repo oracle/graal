@@ -22,9 +22,16 @@
  */
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class BootstrapMethodsAttribute extends Attribute {
 
@@ -36,7 +43,7 @@ public final class BootstrapMethodsAttribute extends Attribute {
 
     public static final class Entry {
         final char bootstrapMethodRef;
-        final char[] bootstrapArguments;
+        @CompilerDirectives.CompilationFinal(dimensions = 1) final char[] bootstrapArguments;
 
         public int numBootstrapArguments() {
             return bootstrapArguments.length;
@@ -53,6 +60,53 @@ public final class BootstrapMethodsAttribute extends Attribute {
 
         public char getBootstrapMethodRef() {
             return bootstrapMethodRef;
+        }
+
+        public StaticObject getMethodHandle(Klass accessingKlass, RuntimeConstantPool pool) {
+            return pool.resolvedMethodHandleAt(accessingKlass, getBootstrapMethodRef());
+        }
+
+        public StaticObject[] getStaticArguments(Klass accessingKlass, RuntimeConstantPool pool) {
+            Meta meta = accessingKlass.getMeta();
+            StaticObject[] args = new StaticObject[numBootstrapArguments()];
+            // @formatter:off
+            for (int i = 0; i < numBootstrapArguments(); i++) {
+                PoolConstant pc = pool.at(argAt(i));
+                switch (pc.tag()) {
+                    case METHODHANDLE:
+                        args[i] = pool.resolvedMethodHandleAt(accessingKlass, argAt(i));
+                        break;
+                    case METHODTYPE:
+                        args[i] = pool.resolvedMethodTypeAt(accessingKlass, argAt(i));
+                        break;
+                    case DYNAMIC:
+                        args[i] = pool.resolvedDynamicConstantAt(accessingKlass, argAt(i)).guestBoxedValue(meta);
+                        break;
+                    case CLASS:
+                        args[i] = pool.resolvedKlassAt(accessingKlass, argAt(i)).mirror();
+                        break;
+                    case STRING:
+                        args[i] = pool.resolvedStringAt(argAt(i));
+                        break;
+                    case INTEGER:
+                        args[i] = meta.boxInteger(pool.intAt(argAt(i)));
+                        break;
+                    case LONG:
+                        args[i] = meta.boxLong(pool.longAt(argAt(i)));
+                        break;
+                    case DOUBLE:
+                        args[i] = meta.boxDouble(pool.doubleAt(argAt(i)));
+                        break;
+                    case FLOAT:
+                        args[i] = meta.boxFloat(pool.floatAt(argAt(i)));
+                        break;
+                    default:
+                        CompilerDirectives.transferToInterpreter();
+                        throw EspressoError.shouldNotReachHere();
+                }
+            }
+            return args;
+            // @formatter:on
         }
     }
 

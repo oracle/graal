@@ -23,18 +23,12 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToInterface;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToSpecial;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
 import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
 
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -42,21 +36,27 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
+import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
@@ -67,6 +67,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
+import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
@@ -143,9 +144,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @ExportMessage
     final Object invokeMember(String member,
                     Object[] arguments,
-                    @Cached LookupDeclaredMethod lookupMethod,
+                    @Exclusive @Cached LookupDeclaredMethod lookupMethod,
                     @Exclusive @Cached InvokeEspressoNode invoke)
-                    throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+                    throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method method = lookupMethod.execute(this, member, true, true, arguments.length);
         if (method != null) {
             assert method.isStatic() && method.isPublic() && member.equals(method.getName().toString()) && method.getParameterCount() == arguments.length;
@@ -181,6 +182,134 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             members.add(SUPER);
         }
         return new KeysArray(members.toArray(new String[members.size()]));
+    }
+
+    protected static boolean isObjectKlass(Klass receiver) {
+        return receiver instanceof ObjectKlass;
+    }
+
+    @ExportMessage
+    abstract static class IsInstantiable {
+        @SuppressWarnings("unused")
+        @Specialization(guards = "receiver.isPrimitive()")
+        static boolean doPrimitive(Klass receiver) {
+            return false;
+        }
+
+        @Specialization(guards = "isObjectKlass(receiver)")
+        static boolean doObject(Klass receiver) {
+            if (receiver.isAbstract()) {
+                return false;
+            }
+            /* Check that the class has a public constructor */
+            for (Method m : receiver.getDeclaredMethods()) {
+                if (m.isPublic() && !m.isStatic() && m.getName().equals(Name._init_)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Specialization(guards = "receiver.isArray()")
+        static boolean doArray(Klass receiver) {
+            return (receiver.getElementalType().isPrimitive() && receiver.getElementalType().getJavaKind() != JavaKind.Void) || receiver.getElementalType().isConcrete();
+        }
+    }
+
+    @ExportMessage
+    abstract static class Instantiate {
+        @SuppressWarnings("unused")
+        @Specialization(guards = "receiver.isPrimitive()")
+        static Object doPrimitive(Klass receiver, Object[] arguments) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        private static int convertLength(Object argument, ToEspressoNode toEspressoNode, Meta meta) throws UnsupportedTypeException {
+            int length = 0;
+            try {
+                length = (int) toEspressoNode.execute(argument, meta._int);
+            } catch (UnsupportedTypeException e) {
+                throw UnsupportedTypeException.create(new Object[]{argument}, "Expected a single int");
+            }
+            if (length < 0) {
+                throw UnsupportedTypeException.create(new Object[]{argument}, "Expected a non-negative length");
+            }
+            return length;
+        }
+
+        private static int getLength(Object[] arguments, ToEspressoNode toEspressoNode, Meta meta) throws UnsupportedTypeException, ArityException {
+            if (arguments.length != 1) {
+                throw ArityException.create(1, arguments.length);
+            }
+            return convertLength(arguments[0], toEspressoNode, meta);
+        }
+
+        protected static boolean isPrimitiveArray(Klass receiver) {
+            return receiver instanceof ArrayKlass && ((ArrayKlass) receiver).getComponentType().isPrimitive();
+        }
+
+        /* 1-dimensional reference (non-primitive) array */
+        protected static boolean isReferenceArray(Klass receiver) {
+            return receiver instanceof ArrayKlass && ((ArrayKlass) receiver).getComponentType() instanceof ObjectKlass;
+        }
+
+        protected static boolean isMultidimensionalArray(Klass receiver) {
+            return receiver instanceof ArrayKlass && ((ArrayKlass) receiver).getComponentType().isArray();
+        }
+
+        @Specialization(guards = "isPrimitiveArray(receiver)")
+        static StaticObject doPrimitiveArray(Klass receiver, Object[] arguments,
+                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) throws ArityException, UnsupportedTypeException {
+            ArrayKlass arrayKlass = (ArrayKlass) receiver;
+            assert arrayKlass.getComponentType().getJavaKind() != JavaKind.Void;
+            int length = getLength(arguments, toEspressoNode, context.getMeta());
+            return InterpreterToVM.allocatePrimitiveArray((byte) arrayKlass.getComponentType().getJavaKind().getBasicType(), length, context.getMeta());
+        }
+
+        @Specialization(guards = "isReferenceArray(receiver)")
+        static StaticObject doReferenceArray(Klass receiver, Object[] arguments,
+                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) throws UnsupportedTypeException, ArityException {
+            ArrayKlass arrayKlass = (ArrayKlass) receiver;
+            int length = getLength(arguments, toEspressoNode, context.getMeta());
+            return InterpreterToVM.newReferenceArray(arrayKlass.getComponentType(), length);
+        }
+
+        @Specialization(guards = "isMultidimensionalArray(receiver)")
+        static StaticObject doMultidimensionalArray(Klass receiver, Object[] arguments,
+                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) throws ArityException, UnsupportedTypeException {
+            ArrayKlass arrayKlass = (ArrayKlass) receiver;
+            assert arrayKlass.getElementalType().getJavaKind() != JavaKind.Void;
+            if (arrayKlass.getDimension() != arguments.length) {
+                throw ArityException.create(arrayKlass.getDimension(), arguments.length);
+            }
+            int[] dimensions = new int[arguments.length];
+            for (int i = 0; i < dimensions.length; ++i) {
+                dimensions[i] = convertLength(arguments[i], toEspressoNode, context.getMeta());
+            }
+
+            return context.getInterpreterToVM().newMultiArray(arrayKlass.getComponentType(), dimensions);
+        }
+
+        static final String INIT_NAME = Name._init_.toString();
+
+        @Specialization(guards = "isObjectKlass(receiver)")
+        static Object doObject(Klass receiver, Object[] arguments,
+                        @Exclusive @Cached LookupDeclaredMethod lookupMethod,
+                        @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+            ObjectKlass objectKlass = (ObjectKlass) receiver;
+            Method init = lookupMethod.execute(objectKlass, INIT_NAME, true, false, arguments.length);
+            if (init != null) {
+                assert !init.isStatic() && init.isPublic() && init.getName().toString().equals(INIT_NAME) && init.getParameterCount() == arguments.length;
+                StaticObject newObject = StaticObject.createNew(objectKlass);
+                invoke.execute(init, newObject, arguments);
+                return newObject;
+            }
+            // TODO(goltsova): throw ArityException whenever possible
+            throw UnsupportedMessageException.create();
+        }
     }
 
     // endregion Interop
@@ -225,19 +354,93 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     /**
      * A class or interface C is accessible to a class or interface D if and only if either of the
      * following is true:
+     * <h3>Java 8
      * <ul>
      * <li>C is public.
      * <li>C and D are members of the same run-time package (&sect;5.3).
+     * </ul>
+     * <h3>Java 11
+     * <ul>
+     * <li>C is public, and a member of the same run-time module as D (&sect;5.3.6).
+     * <li>C is public, and a member of a different run-time module than D, and C's run-time module
+     * is read by D's run-time module, and C's run-time module exports C's run-time package to D's
+     * run-time module.
+     * <li>C is not public, and C and D are members of the same run-time package.
      * </ul>
      */
     public static boolean checkAccess(Klass klass, Klass accessingKlass) {
         if (accessingKlass == null) {
             return true;
         }
-        if (klass.isPublic() || klass.sameRuntimePackage(klass.getDefiningClassLoader(), accessingKlass)) {
+        if (klass == accessingKlass) {
             return true;
         }
-        return (klass.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
+        if (klass.isPrimitive()) {
+            return true;
+        }
+        EspressoContext context = accessingKlass.getContext();
+        if (context.getJavaVersion().modulesEnabled()) {
+            if (klass.sameRuntimePackage(accessingKlass)) {
+                return true;
+            }
+            if (klass.isPublic()) {
+                if (doModuleAccessChecks(klass, accessingKlass, context)) {
+                    return true;
+                }
+            }
+        } else {
+            if (klass.isPublic() || klass.sameRuntimePackage(accessingKlass)) {
+                return true;
+            }
+        }
+        return (context.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
+
+    }
+
+    public static boolean doModuleAccessChecks(Klass klass, Klass accessingKlass, EspressoContext context) {
+        ModuleEntry moduleFrom = accessingKlass.module();
+        ModuleEntry moduleTo = klass.module();
+        if (moduleFrom == moduleTo) {
+            return true;
+        }
+        /*
+         * Acceptable access to a type in an unnamed module. Note that since unnamed modules can
+         * read all unnamed modules, this also handles the case where module_from is also unnamed
+         * but in a different class loader.
+         */
+        if (!moduleTo.isNamed() && (moduleFrom.canReadAllUnnamed() || moduleFrom.canRead(moduleTo, context))) {
+            return true;
+        }
+        // Establish readability, check if moduleFrom is allowed to read moduleTo.
+        if (!moduleFrom.canRead(moduleTo, context)) {
+            return false;
+        }
+        // Access is allowed if moduleTo is open, i.e. all its packages are unqualifiedly
+        // exported
+        if (moduleTo.isOpen()) {
+            return true;
+        }
+
+        PackageEntry packageTo = klass.packageEntry();
+        // TODO: obtain packageTo table read lock.
+        /*
+         * Once readability is established, if module_to exports T unqualifiedly, (to all modules),
+         * then whether module_from is in the unnamed module or not does not matter, access is
+         * allowed.
+         */
+        if (packageTo.isUnqualifiedExported()) {
+            return true;
+        }
+        /*-
+         * Access is allowed if both 1 & 2 hold:
+         *   1. Readability, module_from can read module_to (established above).
+         *   2. Either module_to exports T to module_from qualifiedly.
+         *      or
+         *      module_to exports T to all unnamed modules and module_from is unnamed.
+         *      or
+         *      module_to exports T unqualifiedly to all modules (checked above).
+         */
+        return packageTo.isQualifiedExportTo(moduleFrom);
     }
 
     public final ObjectKlass[] getSuperInterfaces() {
@@ -252,6 +455,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         this.superInterfaces = superInterfaces;
         this.id = context.getNewKlassId();
         this.modifiers = modifiers;
+        this.runtimePackage = initRuntimePackage();
     }
 
     public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
@@ -836,55 +1040,32 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
-        if (methodName == Name.invoke || methodName == Name.invokeExact) {
-            return findMethodHandleIntrinsic(methodName, signature, InvokeGeneric);
-        } else if (methodName == Name.invokeBasic) {
-            return findMethodHandleIntrinsic(methodName, signature, InvokeBasic);
-        } else if (methodName == Name.linkToInterface) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToInterface);
-        } else if (methodName == Name.linkToSpecial) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToSpecial);
-        } else if (methodName == Name.linkToStatic) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToStatic);
-        } else if (methodName == Name.linkToVirtual) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToVirtual);
+        Method m = lookupPolysignatureDeclaredMethod(methodName);
+        if (m != null) {
+            return findMethodHandleIntrinsic(m, signature);
         }
+        return null;
+    }
+
+    public Method lookupPolysignatureDeclaredMethod(Symbol<Name> methodName) {
         for (Method m : getDeclaredMethods()) {
-            if (m.isNative() && m.isVarargs() && m.getName() == methodName) {
-                // check signature?
-                throw EspressoError.unimplemented("New method handle invoke method? ", methodName);
+            if (m.getName() == methodName && m.isSignaturePolymorphicDeclared()) {
+                return m;
             }
         }
         return null;
     }
 
     @TruffleBoundary
-    private Method findMethodHandleIntrinsic(Symbol<Name> methodName,
-                    Symbol<Signature> signature,
-                    MethodHandleIntrinsics.PolySigIntrinsics methodHandleId) {
-        if (methodHandleId == InvokeGeneric) {
-            return (methodName == Name.invoke ? getMeta().java_lang_invoke_MethodHandle_invoke : getMeta().java_lang_invoke_MethodHandle_invokeExact).findIntrinsic(signature, methodHandleId);
-        } else if (methodHandleId == InvokeBasic) {
-            return getMeta().java_lang_invoke_MethodHandle_invokeBasic.findIntrinsic(signature, methodHandleId);
-        } else {
-            Symbol<Signature> basicSignature = toBasic(getSignatures().parsed(signature), true, getSignatures());
-            switch (methodHandleId) {
-                case LinkToInterface:
-                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToInterface, basicSignature, methodHandleId);
-                case LinkToSpecial:
-                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToSpecial, basicSignature, methodHandleId);
-                case LinkToStatic:
-                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToStatic, basicSignature, methodHandleId);
-                case LinkToVirtual:
-                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToVirtual, basicSignature, methodHandleId);
-                default:
-                    throw EspressoError.shouldNotReachHere();
-            }
+    private Method findMethodHandleIntrinsic(Method m,
+                    Symbol<Signature> signature) {
+        assert m.isSignaturePolymorphicDeclared();
+        MethodHandleIntrinsics.PolySigIntrinsics iid = MethodHandleIntrinsics.getId(m);
+        Symbol<Signature> sig = signature;
+        if (iid.isStaticPolymorphicSignature()) {
+            sig = getSignatures().toBasic(signature, true);
         }
-    }
-
-    private static Method findLinkToIntrinsic(Method m, Symbol<Signature> signature, MethodHandleIntrinsics.PolySigIntrinsics id) {
-        return m.findIntrinsic(signature, id);
+        return m.findIntrinsic(sig);
     }
 
     /**
@@ -904,27 +1085,38 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return InterpreterToVM.newObject(this, false);
     }
 
-    // TODO(garcia) Symbolify package ?
-    @CompilationFinal private String runtimePackage;
+    @CompilationFinal private Symbol<Name> runtimePackage;
 
-    public final String getRuntimePackage() {
-        String pkg = runtimePackage;
-        if (runtimePackage == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            assert !isArray();
-            pkg = Types.getRuntimePackage(getType());
-            assert !pkg.endsWith(";");
-            runtimePackage = pkg;
-        }
-        return pkg;
+    private Symbol<Name> initRuntimePackage() {
+        ByteSequence hostPkgName = Types.getRuntimePackage(getType());
+        return getNames().getOrCreate(hostPkgName);
+    }
+
+    public Symbol<Name> getRuntimePackage() {
+        return runtimePackage;
+    }
+
+    public abstract ModuleEntry module();
+
+    public abstract PackageEntry packageEntry();
+
+    public final boolean inUnnamedPackage() {
+        return packageEntry() == null;
     }
 
     public Symbol<Name> getName() {
         return name;
     }
 
-    public boolean sameRuntimePackage(StaticObject classLoader, Klass other) {
-        return getDefiningClassLoader() == classLoader && this.getRuntimePackage().equals(other.getRuntimePackage());
+    public boolean sameRuntimePackage(Klass other) {
+        if (this.getDefiningClassLoader() != other.getDefiningClassLoader()) {
+            return false;
+        }
+        if (getJavaVersion().modulesEnabled()) {
+            return this.packageEntry() == other.packageEntry();
+        } else {
+            return this.getRuntimePackage().equals(other.getRuntimePackage());
+        }
     }
 
     // region jdwp-specific
@@ -995,6 +1187,32 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @Override
     public Object getKlassObject() {
         return mirror();
+    }
+
+    /**
+     * Returns an identifier for the nest this klass is in. In practice, the nest is identified by
+     * its nest host.
+     *
+     * @return The nest host of this klass.
+     */
+    public Klass nest() {
+        return this;
+    }
+
+    /**
+     * Checks that the given klass k is a nest member of {@code this} as a nest host. This does NOT
+     * check whether this and k are in the same nest.
+     */
+    @SuppressWarnings("unused")
+    public boolean nestMembersCheck(Klass k) {
+        return false;
+    }
+
+    /**
+     * Returns an array containing the nest members of {@code this} as a nest host.
+     */
+    public Klass[] getNestMembers() {
+        return EMPTY_ARRAY;
     }
 
     @Override

@@ -23,10 +23,38 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-@EspressoSubstitutions
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.VM;
+
+@EspressoSubstitutions(nameProvider = Target_sun_misc_VM.SharedVM.class)
 public final class Target_sun_misc_VM {
     @Substitution
     public static void initialize() {
         /* nop */
+    }
+
+    /**
+     * This JVM method is registered through a call to VM.initialize. Since we are already
+     * substituting the initialize method, We are using this substitution to manually link to the
+     * JVM method.
+     * 
+     * TODO: Investigate if the initialize substitution is really necessary.
+     */
+    @Substitution
+    public static long getNanoTimeAdjustment(long offset) {
+        return VM.JVM_GetNanoTimeAdjustment(StaticObject.NULL, offset);
+    }
+
+    public static class SharedVM extends SubstitutionNamesProvider {
+        private static String[] NAMES = new String[]{
+                        "Target_sun_misc_VM",
+                        "Target_jdk_internal_misc_VM"
+        };
+        public static SubstitutionNamesProvider INSTANCE = new SharedVM();
+
+        @Override
+        public String[] substitutionClassNames() {
+            return NAMES;
+        }
     }
 }

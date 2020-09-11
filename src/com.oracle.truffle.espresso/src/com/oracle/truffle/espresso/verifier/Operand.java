@@ -30,16 +30,21 @@ import java.util.ArrayList;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
 abstract class Operand {
     public static final Operand[] EMPTY_ARRAY = new Operand[0];
 
-    protected JavaKind kind;
+    protected final JavaKind kind;
 
     Operand(JavaKind kind) {
         this.kind = kind;
+    }
+
+    boolean isTopOperand() {
+        return this == Invalid;
     }
 
     JavaKind getKind() {
@@ -63,11 +68,15 @@ abstract class Operand {
     }
 
     Operand getComponent() {
-        return null;
+        throw EspressoError.shouldNotReachHere("Calling getComponent of a non-array Operand");
     }
 
     Operand getElemental() {
-        return null;
+        throw EspressoError.shouldNotReachHere("Calling getElemental of a non-array Operand");
+    }
+
+    int getDimensions() {
+        throw EspressoError.shouldNotReachHere("Calling getDimensions of a non-array Operand");
     }
 
     Symbol<Type> getType() {
@@ -76,10 +85,6 @@ abstract class Operand {
 
     Klass getKlass() {
         return null;
-    }
-
-    int getDimensions() {
-        return -1;
     }
 
     boolean isUninit() {
@@ -116,7 +121,7 @@ class PrimitiveOperand extends Operand {
 
     @Override
     boolean compliesWith(Operand other) {
-        return (other == Invalid) || other == this;
+        return (other.isTopOperand()) || other == this;
     }
 
     @Override
@@ -131,8 +136,8 @@ class PrimitiveOperand extends Operand {
 }
 
 final class ReturnAddressOperand extends PrimitiveOperand {
-    ArrayList<Integer> targetBCIs = new ArrayList<>();
-    int subroutineBCI;
+    final ArrayList<Integer> targetBCIs = new ArrayList<>();
+    final int subroutineBCI;
 
     ReturnAddressOperand(int target, int subroutineBCI) {
         super(JavaKind.ReturnAddress);
@@ -153,7 +158,7 @@ final class ReturnAddressOperand extends PrimitiveOperand {
 
     @Override
     boolean compliesWith(Operand other) {
-        if (other == Invalid) {
+        if (other.isTopOperand()) {
             return true;
         }
         if (other.isReturnAddress()) {
@@ -191,8 +196,8 @@ final class ReturnAddressOperand extends PrimitiveOperand {
 }
 
 class ReferenceOperand extends Operand {
-    protected Symbol<Type> type;
-    Klass thisKlass;
+    protected final Symbol<Type> type;
+    final Klass thisKlass;
 
     // Load if needed.
     protected Klass klass = null;
@@ -227,7 +232,7 @@ class ReferenceOperand extends Operand {
                 if (getType() == thisKlass.getType()) {
                     klass = thisKlass;
                 } else {
-                    klass = thisKlass.getMeta().loadKlass(type, thisKlass.getDefiningClassLoader());
+                    klass = thisKlass.getMeta().resolveSymbolOrNull(type, thisKlass.getDefiningClassLoader());
                 }
             } catch (EspressoException e) {
                 // TODO(garcia) fine grain this catch
@@ -278,7 +283,7 @@ class ReferenceOperand extends Operand {
             }
             return otherKlass.isAssignableFrom(getKlass());
         }
-        return other == Invalid;
+        return other.isTopOperand();
 
     }
 
@@ -315,8 +320,8 @@ class ReferenceOperand extends Operand {
 }
 
 final class ArrayOperand extends Operand {
-    private int dimensions;
-    private Operand elemental;
+    private final int dimensions;
+    private final Operand elemental;
     private Operand component = null;
 
     ArrayOperand(Operand elemental, int dimensions) {
@@ -345,7 +350,7 @@ final class ArrayOperand extends Operand {
             }
             return false;
         }
-        return (other == Invalid) || (other.isReference() && (other.getType() == Type.java_lang_Object ||
+        return (other.isTopOperand()) || (other.isReference() && (other.getType() == Type.java_lang_Object ||
                         other.getType() == Type.java_lang_Cloneable ||
                         other.getType() == Type.java_io_Serializable));
     }
@@ -455,7 +460,7 @@ final class UninitReferenceOperand extends ReferenceOperand {
         if (other.isUninit()) {
             return compliesWith(other);
         }
-        return other == Invalid;
+        return other.isTopOperand();
     }
 
     @Override

@@ -39,6 +39,12 @@ public abstract class CheckCastNode extends QuickNode {
 
     protected abstract boolean executeCheckCast(Klass instanceKlass);
 
+    CheckCastNode(Klass typeToCheck, int top, int callerBCI) {
+        super(top, callerBCI);
+        assert !typeToCheck.isPrimitive();
+        this.typeToCheck = typeToCheck;
+    }
+
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "instanceKlass == cachedKlass")
     boolean checkCastCached(Klass instanceKlass,
@@ -53,15 +59,14 @@ public abstract class CheckCastNode extends QuickNode {
         return checkCast(typeToCheck, instanceKlass);
     }
 
-    CheckCastNode(Klass typeToCheck, int top, int callerBCI) {
-        super(top, callerBCI);
-        assert !typeToCheck.isPrimitive();
-        this.typeToCheck = typeToCheck;
-    }
-
     @TruffleBoundary
     static boolean checkCast(Klass typeToCheck, Klass instanceKlass) {
         return typeToCheck.isAssignableFrom(instanceKlass);
+    }
+
+    @Override
+    public boolean producedForeignObject(VirtualFrame frame) {
+        return false;
     }
 
     @Override

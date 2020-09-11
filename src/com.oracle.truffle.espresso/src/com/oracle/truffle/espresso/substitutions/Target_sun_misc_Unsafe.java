@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.reflect.Array;
+import java.nio.ByteOrder;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
 import java.util.concurrent.locks.LockSupport;
@@ -34,7 +35,6 @@ import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.LinkedKlass;
@@ -51,7 +51,7 @@ import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 import sun.misc.Unsafe;
 
-@EspressoSubstitutions
+@EspressoSubstitutions(nameProvider = Target_sun_misc_Unsafe.SharedUnsafe.class)
 public final class Target_sun_misc_Unsafe {
 
     static final int SAFETY_FIELD_OFFSET = 123456789;
@@ -67,7 +67,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @TruffleBoundary
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     @SuppressWarnings("unused")
     public static @Host(Class.class) StaticObject defineAnonymousClass(
                     @Host(Unsafe.class) StaticObject self,
@@ -78,6 +78,9 @@ public final class Target_sun_misc_Unsafe {
         EspressoContext context = meta.getContext();
 
         if (StaticObject.isNull(hostClass) || StaticObject.isNull(data)) {
+            throw Meta.throwException(meta.java_lang_NullPointerException);
+        }
+        if (hostClass.getMirrorKlass().isArray() || hostClass.getMirrorKlass().isPrimitive()) {
             throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
@@ -101,11 +104,10 @@ public final class Target_sun_misc_Unsafe {
 
     private static ObjectKlass defineAnonymousKlass(ParserKlass parserKlass, EspressoContext context, StaticObject classLoader, Klass hostKlass) {
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
-        ClassRegistries classRegistry = context.getRegistries();
 
         // TODO(garcia): Superclass must be a class, and non-final.
         ObjectKlass superKlass = superKlassType != null
-                        ? (ObjectKlass) classRegistry.loadKlass(superKlassType, classLoader)
+                        ? (ObjectKlass) context.getMeta().loadKlassOrFail(superKlassType, classLoader)
                         : null;
 
         assert superKlass == null || !superKlass.isInterface();
@@ -122,7 +124,7 @@ public final class Target_sun_misc_Unsafe {
 
         // TODO(garcia): Superinterfaces must be interfaces.
         for (int i = 0; i < superInterfacesTypes.length; ++i) {
-            ObjectKlass interf = (ObjectKlass) classRegistry.loadKlass(superInterfacesTypes[i], classLoader);
+            ObjectKlass interf = (ObjectKlass) context.getMeta().loadKlassOrFail(superInterfacesTypes[i], classLoader);
             superInterfaces[i] = interf;
             linkedInterfaces[i] = interf.getLinkedKlass();
         }
@@ -145,7 +147,7 @@ public final class Target_sun_misc_Unsafe {
      * @see #getInt
      * @see #putInt
      */
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static int arrayBaseOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {
         Klass klass = clazz.getMirrorKlass();
         assert klass.isArray();
@@ -167,7 +169,7 @@ public final class Target_sun_misc_Unsafe {
      * @see #getInt
      * @see #putInt
      */
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static int arrayIndexScale(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {
         Klass klass = clazz.getMirrorKlass();
         assert klass.isArray();
@@ -188,7 +190,7 @@ public final class Target_sun_misc_Unsafe {
      * will be either 4 or 8. Note that the sizes of other primitive types (as stored in native
      * memory blocks) is determined fully by their information content.
      */
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static int addressSize(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self) {
         return ADDRESS_SIZE;
     }
@@ -211,7 +213,7 @@ public final class Target_sun_misc_Unsafe {
      * 
      * @see #getInt
      */
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static long objectFieldOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field,
                     @InjectMeta Meta meta) {
         Field target = Field.getReflectiveFieldRoot(field, meta);
@@ -231,7 +233,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @TruffleBoundary
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static @Host(Class.class) StaticObject defineClass(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(String.class) StaticObject name,
                     @Host(byte[].class) StaticObject guestBuf, int offset, int len, @Host(ClassLoader.class) StaticObject loader,
                     @Host(ProtectionDomain.class) StaticObject pd,
@@ -259,7 +261,7 @@ public final class Target_sun_misc_Unsafe {
     // region compareAndSwap*
 
     // CAS ops should be atomic.
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
     public static boolean compareAndSwapObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
                     @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after) {
         if (isNullOrArray(holder)) {
@@ -271,7 +273,7 @@ public final class Target_sun_misc_Unsafe {
         return holder.compareAndSwapField(f, before, after);
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
     public static boolean compareAndSwapInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int before,
                     int after) {
         if (isNullOrArray(holder)) {
@@ -282,7 +284,7 @@ public final class Target_sun_misc_Unsafe {
         return holder.compareAndSwapIntField(f, before, after);
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
     public static boolean compareAndSwapLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
                     long after) {
         if (isNullOrArray(holder)) {
@@ -294,6 +296,115 @@ public final class Target_sun_misc_Unsafe {
     }
 
     // endregion compareAndSwap*
+
+    // region compareAndExchange*
+
+    /*
+     * Java 8 does not have these instrctions in Unsafe. Implement them by ourselves.
+     */
+
+    private static StaticObject doStaticObjectCompareExchange(StaticObject holder, Field f, StaticObject before, StaticObject after) {
+        StaticObject result;
+        do {
+            result = holder.getFieldVolatile(f);
+            if (result != before) {
+                return result;
+            }
+        } while (!holder.compareAndSwapField(f, before, after));
+        return before;
+    }
+
+    private static StaticObject doCompareExchange(Object holder, long offset, StaticObject before, StaticObject after) {
+        Object result;
+        do {
+            result = UNSAFE.getObjectVolatile(holder, offset);
+            if (result != before) {
+                return (StaticObject) result;
+            }
+        } while (!UNSAFE.compareAndSwapObject(holder, offset, before, after));
+        return before;
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    public static @Host(Object.class) StaticObject compareAndExchangeObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
+                    @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after) {
+        if (isNullOrArray(holder)) {
+            return doCompareExchange(unwrapNullOrArray(holder), offset, before, after);
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        return doStaticObjectCompareExchange(holder, f, before, after);
+    }
+
+    private static int doStaticObjectCompareExchangeInt(StaticObject holder, Field f, int before, int after) {
+        int result;
+        do {
+            result = holder.getIntFieldVolatile(f);
+            if (result != before) {
+                return result;
+            }
+        } while (!holder.compareAndSwapIntField(f, before, after));
+        return before;
+    }
+
+    private static int doCompareExchangeInt(Object holder, long offset, int before, int after) {
+        int result;
+        do {
+            result = UNSAFE.getIntVolatile(holder, offset);
+            if (result != before) {
+                return result;
+            }
+        } while (!UNSAFE.compareAndSwapInt(holder, offset, before, after));
+        return before;
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    public static int compareAndExchangeInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int before,
+                    int after) {
+        if (isNullOrArray(holder)) {
+            return doCompareExchangeInt(unwrapNullOrArray(holder), offset, before, after);
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        return doStaticObjectCompareExchangeInt(holder, f, before, after);
+    }
+
+    private static long doStaticObjectCompareExchangeLong(StaticObject holder, Field f, long before, long after) {
+        long result;
+        do {
+            result = holder.getLongFieldVolatile(f);
+            if (result != before) {
+                return result;
+            }
+        } while (!holder.compareAndSwapLongField(f, before, after));
+        return before;
+    }
+
+    private static long doCompareExchangeLong(Object holder, long offset, long before, long after) {
+        long result;
+        do {
+            result = UNSAFE.getLongVolatile(holder, offset);
+            if (result != before) {
+                return result;
+            }
+        } while (!UNSAFE.compareAndSwapLong(holder, offset, before, after));
+        return before;
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    public static long compareAndExchangeLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
+                    long after) {
+        if (isNullOrArray(holder)) {
+            return doCompareExchangeLong(unwrapNullOrArray(holder), offset, before, after);
+        }
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        return doStaticObjectCompareExchangeLong(holder, f, before, after);
+    }
+
+    // endregion compareAndExchange*
 
     @Substitution
     public static void registerNatives() {
@@ -314,7 +425,7 @@ public final class Target_sun_misc_Unsafe {
      * @see #getByte
      * @see #putByte
      */
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static long allocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long length) {
         return UNSAFE.allocateMemory(length);
     }
@@ -326,7 +437,7 @@ public final class Target_sun_misc_Unsafe {
      *
      * @see #allocateMemory
      */
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static void freeMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address) {
         UNSAFE.freeMemory(address);
     }
@@ -710,7 +821,7 @@ public final class Target_sun_misc_Unsafe {
         holder.setByteFieldVolatile(f, value);
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static boolean shouldBeInitialized(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz,
                     @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(clazz)) {
@@ -725,7 +836,7 @@ public final class Target_sun_misc_Unsafe {
      * Ensure the given class has been initialized. This is often needed in conjunction with
      * obtaining the static field base of a class.
      */
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static void ensureClassInitialized(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {
         clazz.getMirrorKlass().safeInitialize();
     }
@@ -976,7 +1087,7 @@ public final class Target_sun_misc_Unsafe {
      *
      * @since 1.7
      */
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static void setMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject o, long offset, long bytes, byte value) {
         UNSAFE.setMemory(StaticObject.isNull(o) ? null : o, offset, bytes, value);
     }
@@ -1008,7 +1119,7 @@ public final class Target_sun_misc_Unsafe {
      * 
      * @see #getInt
      */
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static long staticFieldOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field,
                     @InjectMeta Meta meta) {
         return Field.getReflectiveFieldRoot(field, meta).getSlot() + SAFETY_FIELD_OFFSET;
@@ -1022,14 +1133,14 @@ public final class Target_sun_misc_Unsafe {
      * which is a "cookie", not guaranteed to be a real Object, and it should not be used in any way
      * except as argument to the get and put routines in this class.
      */
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static Object staticFieldBase(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field,
                     @InjectMeta Meta meta) {
         Field target = Field.getReflectiveFieldRoot(field, meta);
         return target.getDeclaringKlass().getStatics();
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
     public static void monitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object,
                     @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(object)) {
@@ -1039,7 +1150,7 @@ public final class Target_sun_misc_Unsafe {
         InterpreterToVM.monitorUnsafeEnter(object.getLock());
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
     public static void monitorExit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object,
                     @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(object)) {
@@ -1196,12 +1307,12 @@ public final class Target_sun_misc_Unsafe {
      *
      * @see #allocateMemory
      */
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static long reallocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, long bytes) {
         return UNSAFE.reallocateMemory(address, bytes);
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
     public static @Host(Object.class) StaticObject getAndSetObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
                     @Host(Object.class) StaticObject value) {
         if (isNullOrArray(holder)) {
@@ -1235,9 +1346,113 @@ public final class Target_sun_misc_Unsafe {
      *
      * @return the number of samples actually retrieved; or -1 if the load average is unobtainable.
      */
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     @SuppressWarnings("unused")
     public static int getLoadAverage(@Host(Unsafe.class) StaticObject self, @Host(double[].class) StaticObject loadavg, int nelems) {
         return -1; // unobtainable
     }
+
+    // Java 11 new methods:
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    @SuppressWarnings("unused")
+    public static boolean isBigEndian0(@Host(Unsafe.class) StaticObject self) {
+        return ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    @SuppressWarnings("unused")
+    public static boolean unalignedAccess0(@Host(Unsafe.class) StaticObject self) {
+        // Be conservative, unobtainable (in java.nio.Bits, package-private class)
+        return false;
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    @SuppressWarnings("unused")
+    public static long objectFieldOffset1(@Host(Unsafe.class) StaticObject self, @Host(value = Class.class) StaticObject cl, @Host(value = String.class) StaticObject guestName,
+                    @InjectMeta Meta meta) {
+        Klass k = cl.getMirrorKlass();
+        String hostName = Meta.toHostString(guestName);
+        if (k instanceof ObjectKlass) {
+            ObjectKlass kl = (ObjectKlass) k;
+            for (Field f : kl.getFieldTable()) {
+                if (f.getNameAsString().equals(hostName)) {
+                    return SAFETY_FIELD_OFFSET + f.getSlot();
+                }
+            }
+            for (Field f : kl.getStaticFieldTable()) {
+                if (f.getNameAsString().equals(hostName)) {
+                    return SAFETY_FIELD_OFFSET + f.getSlot();
+                }
+            }
+        }
+        throw Meta.throwException(meta.java_lang_InternalError);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static boolean compareAndSetObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
+                    @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after) {
+        return compareAndSwapObject(self, holder, offset, before, after);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static boolean compareAndSetInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int before,
+                    int after) {
+        return compareAndSwapInt(self, holder, offset, before, after);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static boolean compareAndSetLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
+                    long after) {
+        return compareAndSwapLong(self, holder, offset, before, after);
+    }
+
+    public static class SharedUnsafe extends SubstitutionNamesProvider {
+        private static String[] NAMES = new String[]{
+                        TARGET_SUN_MISC_UNSAFE,
+                        TARGET_JDK_INTERNAL_MISC_UNSAFE
+        };
+        public static SubstitutionNamesProvider INSTANCE = new SharedUnsafe();
+
+        @Override
+        public String[] substitutionClassNames() {
+            return NAMES;
+        }
+    }
+
+    public static class SharedUnsafeAppend0 extends SharedUnsafe {
+        public static SubstitutionNamesProvider INSTANCE = new SharedUnsafeAppend0();
+
+        @Override
+        public String[] getMethodNames(String name) {
+            return append0(this, name);
+        }
+    }
+
+    public static class Unsafe8 extends SubstitutionNamesProvider {
+        private static String[] NAMES = new String[]{
+                        TARGET_SUN_MISC_UNSAFE
+        };
+        public static SubstitutionNamesProvider INSTANCE = new Unsafe8();
+
+        @Override
+        public String[] substitutionClassNames() {
+            return NAMES;
+        }
+    }
+
+    public static class Unsafe11 extends SubstitutionNamesProvider {
+        private static String[] NAMES = new String[]{
+                        TARGET_JDK_INTERNAL_MISC_UNSAFE
+        };
+        public static SubstitutionNamesProvider INSTANCE = new Unsafe11();
+
+        @Override
+        public String[] substitutionClassNames() {
+            return NAMES;
+        }
+    }
+
+    private static final String TARGET_SUN_MISC_UNSAFE = "Target_sun_misc_Unsafe";
+    private static final String TARGET_JDK_INTERNAL_MISC_UNSAFE = "Target_jdk_internal_misc_Unsafe";
 }

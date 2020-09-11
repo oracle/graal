@@ -74,7 +74,7 @@ public final class BootClassRegistry extends ClassRegistry {
         // use of computeIfAbsent to insert the class since the map is modified.
         ObjectKlass result = defineKlass(type, classpathFile.contents);
         getRegistries().recordConstraint(type, result, getClassLoader());
-        packageMap.put(result.getRuntimePackage(), classpathFile.classpathEntry.path());
+        packageMap.put(result.getRuntimePackage().toString(), classpathFile.classpathEntry.path());
         return result;
     }
 

@@ -28,6 +28,7 @@ import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -233,7 +234,8 @@ final class GlobalHandles {
         Object obj = objects[index];
         // TODO(peterssen): StaticObject check is cheaper here.
         if (obj instanceof WeakReference) {
-            Object referent = ((WeakReference<?>) obj).get();
+            // Can only be WeakReference, not a subclass.
+            Object referent = CompilerDirectives.castExact(obj, WeakReference.class).get();
             if (referent == null) { // referent is gone
                 return StaticObject.NULL;
             }

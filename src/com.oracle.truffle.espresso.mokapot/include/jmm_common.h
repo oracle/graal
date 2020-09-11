@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,8 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef _JAVA_JMM_H_
-#define _JAVA_JMM_H_
+ 
+#ifndef _JAVA_JMM_COMMON_H_
+#define _JAVA_JMM_COMMON_H_
 
 /*
  * This is a private interface used by JDK for JVM monitoring
@@ -33,7 +34,7 @@
  *
  * 2. There is a change in the contract between VM and Java classes.
  */
-
+ 
 #include "jni.h"
 
 #ifdef __cplusplus
@@ -47,7 +48,9 @@ enum {
   JMM_VERSION_1_2 = 0x20010200, // JDK 7
   JMM_VERSION_1_2_1 = 0x20010201, // JDK 7 GA
   JMM_VERSION_1_2_2 = 0x20010202,
-  JMM_VERSION     = 0x20010203
+  JMM_VERSION_1_2_3 = 0x20010203,
+  JMM_VERSION_2  = 0x20020000,  // JDK 10
+  JMM_VERSION     = 0x20020000
 };
 
 typedef struct {
@@ -56,7 +59,6 @@ typedef struct {
   unsigned int isThreadContentionMonitoringSupported : 1;
   unsigned int isCurrentThreadCpuTimeSupported : 1;
   unsigned int isOtherThreadCpuTimeSupported : 1;
-  unsigned int isBootClassPathSupported : 1;
   unsigned int isObjectMonitorUsageSupported : 1;
   unsigned int isSynchronizerUsageSupported : 1;
   unsigned int isThreadAllocatedMemorySupported : 1;
@@ -140,7 +142,8 @@ typedef enum {
   JMM_VMGLOBAL_TYPE_UNKNOWN  = 0,
   JMM_VMGLOBAL_TYPE_JBOOLEAN = 1,
   JMM_VMGLOBAL_TYPE_JSTRING  = 2,
-  JMM_VMGLOBAL_TYPE_JLONG    = 3
+  JMM_VMGLOBAL_TYPE_JLONG    = 3,
+  JMM_VMGLOBAL_TYPE_JDOUBLE  = 4
 } jmmVMGlobalType;
 
 typedef enum {
@@ -150,6 +153,7 @@ typedef enum {
   JMM_VMGLOBAL_ORIGIN_ENVIRON_VAR  = 4,   /* Set via environment variables */
   JMM_VMGLOBAL_ORIGIN_CONFIG_FILE  = 5,   /* Set via config file (such as .hotspotrc) */
   JMM_VMGLOBAL_ORIGIN_ERGONOMIC    = 6,   /* Set via ergonomic */
+  JMM_VMGLOBAL_ORIGIN_ATTACH_ON_DEMAND = 7,   /* Set via attach */
   JMM_VMGLOBAL_ORIGIN_OTHER        = 99   /* Set via some other mechanism */
 } jmmVMGlobalOrigin;
 
@@ -213,134 +217,8 @@ typedef struct {
                                    /* meaningless for options) */
 } dcmdArgInfo;
 
-typedef struct jmmInterface_1_ {
-  void*        reserved1;
-  void*        reserved2;
-
-  jint         (JNICALL *GetVersion)             (JNIEnv *env);
-
-  jint         (JNICALL *GetOptionalSupport)     (JNIEnv *env,
-                                                  jmmOptionalSupport* support_ptr);
-
-  /* This is used by JDK 6 and earlier.
-   * For JDK 7 and after, use GetInputArgumentArray.
-   */
-  jobject      (JNICALL *GetInputArguments)      (JNIEnv *env);
-
-  jint         (JNICALL *GetThreadInfo)          (JNIEnv *env,
-                                                  jlongArray ids,
-                                                  jint maxDepth,
-                                                  jobjectArray infoArray);
-  jobjectArray (JNICALL *GetInputArgumentArray)  (JNIEnv *env);
-
-  jobjectArray (JNICALL *GetMemoryPools)         (JNIEnv* env, jobject mgr);
-
-  jobjectArray (JNICALL *GetMemoryManagers)      (JNIEnv* env, jobject pool);
-
-  jobject      (JNICALL *GetMemoryPoolUsage)     (JNIEnv* env, jobject pool);
-  jobject      (JNICALL *GetPeakMemoryPoolUsage) (JNIEnv* env, jobject pool);
-
-  void         (JNICALL *GetThreadAllocatedMemory)
-                                                 (JNIEnv *env,
-                                                  jlongArray ids,
-                                                  jlongArray sizeArray);
-
-  jobject      (JNICALL *GetMemoryUsage)         (JNIEnv* env, jboolean heap);
-
-  jlong        (JNICALL *GetLongAttribute)       (JNIEnv *env, jobject obj, jmmLongAttribute att);
-  jboolean     (JNICALL *GetBoolAttribute)       (JNIEnv *env, jmmBoolAttribute att);
-  jboolean     (JNICALL *SetBoolAttribute)       (JNIEnv *env, jmmBoolAttribute att, jboolean flag);
-
-  jint         (JNICALL *GetLongAttributes)      (JNIEnv *env,
-                                                  jobject obj,
-                                                  jmmLongAttribute* atts,
-                                                  jint count,
-                                                  jlong* result);
-
-  jobjectArray (JNICALL *FindCircularBlockedThreads) (JNIEnv *env);
-
-  // Not used in JDK 6 or JDK 7
-  jlong        (JNICALL *GetThreadCpuTime)       (JNIEnv *env, jlong thread_id);
-
-  jobjectArray (JNICALL *GetVMGlobalNames)       (JNIEnv *env);
-  jint         (JNICALL *GetVMGlobals)           (JNIEnv *env,
-                                                  jobjectArray names,
-                                                  jmmVMGlobal *globals,
-                                                  jint count);
-
-  jint         (JNICALL *GetInternalThreadTimes) (JNIEnv *env,
-                                                  jobjectArray names,
-                                                  jlongArray times);
-
-  jboolean     (JNICALL *ResetStatistic)         (JNIEnv *env,
-                                                  jvalue obj,
-                                                  jmmStatisticType type);
-
-  void         (JNICALL *SetPoolSensor)          (JNIEnv *env,
-                                                  jobject pool,
-                                                  jmmThresholdType type,
-                                                  jobject sensor);
-
-  jlong        (JNICALL *SetPoolThreshold)       (JNIEnv *env,
-                                                  jobject pool,
-                                                  jmmThresholdType type,
-                                                  jlong threshold);
-  jobject      (JNICALL *GetPoolCollectionUsage) (JNIEnv* env, jobject pool);
-
-  jint         (JNICALL *GetGCExtAttributeInfo)  (JNIEnv *env,
-                                                  jobject mgr,
-                                                  jmmExtAttributeInfo *ext_info,
-                                                  jint count);
-  void         (JNICALL *GetLastGCStat)          (JNIEnv *env,
-                                                  jobject mgr,
-                                                  jmmGCStat *gc_stat);
-
-  jlong        (JNICALL *GetThreadCpuTimeWithKind)
-                                                 (JNIEnv *env,
-                                                  jlong thread_id,
-                                                  jboolean user_sys_cpu_time);
-  void         (JNICALL *GetThreadCpuTimesWithKind)
-                                                 (JNIEnv *env,
-                                                  jlongArray ids,
-                                                  jlongArray timeArray,
-                                                  jboolean user_sys_cpu_time);
-
-  jint         (JNICALL *DumpHeap0)              (JNIEnv *env,
-                                                  jstring outputfile,
-                                                  jboolean live);
-  jobjectArray (JNICALL *FindDeadlocks)          (JNIEnv *env,
-                                                  jboolean object_monitors_only);
-  void         (JNICALL *SetVMGlobal)            (JNIEnv *env,
-                                                  jstring flag_name,
-                                                  jvalue  new_value);
-  void*        reserved6;
-  jobjectArray (JNICALL *DumpThreads)            (JNIEnv *env,
-                                                  jlongArray ids,
-                                                  jboolean lockedMonitors,
-                                                  jboolean lockedSynchronizers);
-  void         (JNICALL *SetGCNotificationEnabled) (JNIEnv *env,
-                                                    jobject mgr,
-                                                    jboolean enabled);
-  jobjectArray (JNICALL *GetDiagnosticCommands)  (JNIEnv *env);
-  void         (JNICALL *GetDiagnosticCommandInfo)
-                                                 (JNIEnv *env,
-                                                  jobjectArray cmds,
-                                                  dcmdInfo *infoArray);
-  void         (JNICALL *GetDiagnosticCommandArgumentsInfo)
-                                                 (JNIEnv *env,
-                                                  jstring commandName,
-                                                  dcmdArgInfo *infoArray);
-  jstring      (JNICALL *ExecuteDiagnosticCommand)
-                                                 (JNIEnv *env,
-                                                  jstring command);
-  void         (JNICALL *SetDiagnosticFrameworkNotificationEnabled)
-                                                 (JNIEnv *env,
-                                                  jboolean enabled);
-} JmmInterface;
-
 #ifdef __cplusplus
 } /* extern "C" */
 #endif /* __cplusplus */
 
-#endif /* !_JAVA_JMM_H_ */
- 
+#endif /* !_JAVA_JMM_COMMON_H_ */

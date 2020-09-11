@@ -24,7 +24,6 @@
 #include "os.h"
 
 #include <trufflenfi.h>
-#include <jni.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -103,6 +102,10 @@ JNIEXPORT void JNICALL disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv
   free(moka_env);
 }
 
+JNIEXPORT const char* JNICALL getPackageAt(const char* const* packages, int at) {
+	return packages[at];
+}
+
 JNIEXPORT jint JNICALL JVM_GetInterfaceVersion(void) {
   IMPLEMENTED(JVM_GetInterfaceVersion);
   return (*getEnv())->JVM_GetInterfaceVersion();
@@ -179,8 +182,8 @@ JNIEXPORT void JNICALL JVM_GC(void) {
 }
 
 JNIEXPORT jlong JNICALL JVM_MaxObjectInspectionAge(void) {
-  UNIMPLEMENTED(JVM_MaxObjectInspectionAge);
-  return 0;
+  IMPLEMENTED(JVM_MaxObjectInspectionAge);
+  return (*getEnv())->JVM_MaxObjectInspectionAge();
 }
 
 JNIEXPORT void JNICALL JVM_TraceInstructions(jboolean on) {
@@ -1176,8 +1179,8 @@ JNIEXPORT jobject JNICALL JVM_InitAgentProperties(JNIEnv *env, jobject agent_pro
 }
 
 JNIEXPORT jstring JNICALL JVM_GetTemporaryDirectory(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_GetTemporaryDirectory);
-  return NULL;
+  IMPLEMENTED(JVM_GetTemporaryDirectory);
+  return (*getEnv())->JVM_GetTemporaryDirectory(env);
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetEnclosingMethodInfo(JNIEnv *env, jclass ofClass) {
@@ -1256,6 +1259,152 @@ JNIEXPORT jbyteArray JNICALL JVM_GetMethodDefaultAnnotationValue(JNIEnv *env, jo
 JNIEXPORT jbyteArray JNICALL JVM_GetMethodParameterAnnotations(JNIEnv *env, jobject method) {
   UNIMPLEMENTED(JVM_GetMethodParameterAnnotations);
   return NULL;
+}
+
+// region JDK 11 new VM methods
+
+JNIEXPORT void JNICALL JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module) {
+  IMPLEMENTED(JVM_AddModuleExports);
+  (*getEnv())->JVM_AddModuleExports(env, from_module, package, to_module);
+  return;
+}
+
+JNIEXPORT void JNICALL JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* package) {
+  IMPLEMENTED(JVM_AddModuleExportsToAllUnnamed);
+  (*getEnv())->JVM_AddModuleExportsToAllUnnamed(env, from_module, package);
+  return;
+}
+
+JNIEXPORT void JNICALL JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package) {
+  IMPLEMENTED(JVM_AddModuleExportsToAll);
+  (*getEnv())->JVM_AddModuleExportsToAll(env, from_module, package);
+  return;
+}
+
+JNIEXPORT void JNICALL JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobject source_module) {
+  IMPLEMENTED(JVM_AddReadsModule);
+  (*getEnv())->JVM_AddReadsModule(env, from_module, source_module);
+  return;
+}
+
+JNIEXPORT jboolean JNICALL JVM_AreNestMates(JNIEnv *env, jclass current, jclass member) {
+  IMPLEMENTED(JVM_AreNestMates);
+  return (*getEnv())->JVM_AreNestMates(env, current, member);
+}
+
+JNIEXPORT void JNICALL JVM_BeforeHalt() {
+  IMPLEMENTED(JVM_BeforeHalt);
+  return (*getEnv())->JVM_BeforeHalt();
+}
+
+JNIEXPORT jobject JNICALL JVM_CallStackWalk(JNIEnv *env, jobject stackStream, jlong mode,
+                  jint skip_frames, jint frame_count, jint start_index,
+                  jobjectArray frames) {
+  IMPLEMENTED(JVM_CallStackWalk);
+  return (*getEnv())->JVM_CallStackWalk(env, stackStream, mode, skip_frames, frame_count, start_index, frames);
+}
+
+JNIEXPORT jint JNICALL JVM_ConstantPoolGetClassRefIndexAt(JNIEnv *env, jobject obj, jobject unused, jint index) {
+  UNIMPLEMENTED(JVM_ConstantPoolGetClassRefIndexAt);
+  return 0;
+}
+
+JNIEXPORT jint JNICALL JVM_ConstantPoolGetNameAndTypeRefIndexAt(JNIEnv *env, jobject obj, jobject unused, jint index) {
+  UNIMPLEMENTED(JVM_ConstantPoolGetNameAndTypeRefIndexAt);
+  return 0;
+}
+
+JNIEXPORT jobjectArray JNICALL JVM_ConstantPoolGetNameAndTypeRefInfoAt(JNIEnv *env, jobject obj, jobject unused, jint index) {
+  UNIMPLEMENTED(JVM_ConstantPoolGetNameAndTypeRefInfoAt);
+  return NULL;
+}
+
+JNIEXPORT jbyte JNICALL JVM_ConstantPoolGetTagAt(JNIEnv *env, jobject unused, jobject jcpool, jint index) {
+  UNIMPLEMENTED(JVM_ConstantPoolGetTagAt);
+  return 0;
+}
+
+JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,
+                 jstring location, const char* const* packages, jsize num_packages) {
+  IMPLEMENTED(JVM_DefineModule);
+  (*getEnv())->JVM_DefineModule(env, module, is_open, version, location, packages, num_packages);
+  return;
+}
+
+JNIEXPORT jobject JNICALL JVM_GetAndClearReferencePendingList(JNIEnv *env) {
+  IMPLEMENTED(JVM_GetAndClearReferencePendingList);
+  return (*getEnv())->JVM_GetAndClearReferencePendingList(env);
+}
+
+JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(JNIEnv *env, jclass ignored, jlong offset_secs) {
+  IMPLEMENTED(JVM_GetNanoTimeAdjustment);
+  return (*getEnv())->JVM_GetNanoTimeAdjustment(env, ignored, offset_secs);
+}
+
+JNIEXPORT jclass JNICALL JVM_GetNestHost(JNIEnv *env, jclass current) {
+  IMPLEMENTED(JVM_GetNestHost);
+  return (*getEnv())->JVM_GetNestHost(env, current);
+}
+
+JNIEXPORT jobjectArray JNICALL JVM_GetNestMembers(JNIEnv *env, jclass current) {
+  IMPLEMENTED(JVM_GetNestMembers);
+  return (*getEnv())->JVM_GetNestMembers(env, current);
+}
+
+JNIEXPORT jstring JNICALL JVM_GetSimpleBinaryName(JNIEnv *env, jclass ofClass) {
+  UNIMPLEMENTED(JVM_GetSimpleBinaryName);
+  return NULL;
+}
+
+JNIEXPORT jobjectArray JNICALL JVM_GetVmArguments(JNIEnv *env) {
+  UNIMPLEMENTED(JVM_GetVmArguments);
+  return NULL;
+}
+
+JNIEXPORT jboolean JNICALL JVM_HasReferencePendingList(JNIEnv *env) {
+  UNIMPLEMENTED(JVM_HasReferencePendingList);
+  return 0;
+}
+
+JNIEXPORT jstring JNICALL JVM_InitClassName(JNIEnv *env, jclass cls) {
+  UNIMPLEMENTED(JVM_InitClassName);
+  return NULL;
+}
+
+JNIEXPORT void JNICALL JVM_InitializeFromArchive(JNIEnv* env, jclass cls) {
+  IMPLEMENTED(JVM_InitializeFromArchive);
+  (*getEnv())->JVM_InitializeFromArchive(env, cls);
+  return;
+}
+
+JNIEXPORT void JNICALL JVM_InitStackTraceElement(JNIEnv* env, jobject element, jobject stackFrameInfo){
+  IMPLEMENTED(JVM_InitStackTraceElement);
+  (*getEnv())->JVM_InitStackTraceElement(env, element, stackFrameInfo);
+  return;
+}
+
+JNIEXPORT void JNICALL JVM_InitStackTraceElementArray(JNIEnv *env, jobjectArray elements, jobject throwable) {
+  IMPLEMENTED(JVM_InitStackTraceElementArray);
+  (*getEnv())->JVM_InitStackTraceElementArray(env, elements, throwable);
+  return;
+}
+
+JNIEXPORT jint JNICALL JVM_MoreStackWalk(JNIEnv *env, jobject stackStream, jlong mode, jlong anchor,
+                  jint frame_count, jint start_index,
+                  jobjectArray frames) {
+  IMPLEMENTED(JVM_MoreStackWalk);
+  return (*getEnv())->JVM_MoreStackWalk(env, stackStream, mode, anchor, frame_count, start_index, frames);;
+}
+
+JNIEXPORT void JNICALL JVM_SetBootLoaderUnnamedModule(JNIEnv *env, jobject module) {
+  IMPLEMENTED(JVM_SetBootLoaderUnnamedModule);
+  (*getEnv())->JVM_SetBootLoaderUnnamedModule(env, module);
+  return;
+}
+
+JNIEXPORT void JNICALL JVM_WaitForReferencePendingList(JNIEnv *env) {
+  IMPLEMENTED(JVM_WaitForReferencePendingList);
+  (*getEnv())->JVM_WaitForReferencePendingList(env);
 }
 
 // region Invocation API

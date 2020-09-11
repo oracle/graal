@@ -50,45 +50,26 @@ public final class LinkedKlass {
     @CompilationFinal(dimensions = 1) //
     private final LinkedMethod[] methods;
 
-    @CompilationFinal(dimensions = 1) //
-    private final LinkedField[] fields; // Field slots already computed.
     private final boolean hasFinalizer;
 
-    protected LinkedMethod[] getLinkedMethods() {
-        return methods;
-    }
-
-    protected LinkedField[] getLinkedFields() {
-        return fields;
-    }
-
-    protected final int instanceFieldCount;
-    protected final int staticFieldCount;
+    private final LinkedKlassFieldLayout fieldLayout;
 
     public LinkedKlass(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
+        this.parserKlass = parserKlass;
+        this.superKlass = superKlass;
+        this.interfaces = interfaces;
 
         // Streams are forbidden in Espresso.
         // assert Arrays.stream(interfaces).allMatch(i -> Modifier.isInterface(i.getFlags()));
         assert superKlass == null || !Modifier.isInterface(superKlass.getFlags());
 
-        int instanceFieldSlot = superKlass != null ? superKlass.instanceFieldCount : 0;
-        int staticFieldSlot = 0;
+        // Super interfaces are not checked for finalizers; a default .finalize method will be
+        // resolved to Object.finalize, making the finalizer not observable.
+        this.hasFinalizer = ((parserKlass.getFlags() & ACC_FINALIZER) != 0) || (superKlass != null && (superKlass.getFlags() & ACC_FINALIZER) != 0);
+        assert !this.hasFinalizer || !Type.java_lang_Object.equals(parserKlass.getType()) : "java.lang.Object cannot be marked as finalizable";
 
         final int methodCount = parserKlass.getMethods().length;
-        final int fieldCount = parserKlass.getFields().length;
-
-        LinkedField[] linkedFields = new LinkedField[fieldCount];
         LinkedMethod[] linkedMethods = new LinkedMethod[methodCount];
-
-        for (int i = 0; i < fieldCount; ++i) {
-            ParserField parserField = parserKlass.getFields()[i];
-
-            int slot = Modifier.isStatic(parserField.getFlags())
-                            ? staticFieldSlot++
-                            : instanceFieldSlot++;
-
-            linkedFields[i] = new LinkedField(parserField, this, slot);
-        }
 
         for (int i = 0; i < methodCount; ++i) {
             ParserMethod parserMethod = parserKlass.getMethods()[i];
@@ -97,18 +78,25 @@ public final class LinkedKlass {
             linkedMethods[i] = new LinkedMethod(parserMethod);
         }
 
-        // Super interfaces are not checked for finalizers; a default .finalize method will be
-        // resolved to Object.finalize, making the finalizer not observable.
-        this.hasFinalizer = ((parserKlass.getFlags() & ACC_FINALIZER) != 0) || (superKlass != null && (superKlass.getFlags() & ACC_FINALIZER) != 0);
-        assert !this.hasFinalizer || !Type.java_lang_Object.equals(parserKlass.getType()) : "java.lang.Object cannot be marked as finalizable";
-
-        this.parserKlass = parserKlass;
-        this.superKlass = superKlass;
-        this.interfaces = interfaces;
-        this.staticFieldCount = staticFieldSlot;
-        this.instanceFieldCount = instanceFieldSlot;
-        this.fields = linkedFields;
         this.methods = linkedMethods;
+
+        fieldLayout = LinkedKlassFieldLayout.create(parserKlass, superKlass);
+    }
+
+    public int getObjectFieldsCount() {
+        return fieldLayout.objectFields;
+    }
+
+    public int getPrimitiveFieldTotalByteCount() {
+        return fieldLayout.primitiveFieldTotalByteCount;
+    }
+
+    public int getStaticObjectFieldsCount() {
+        return fieldLayout.staticObjectFields;
+    }
+
+    public int getPrimitiveStaticFieldTotalByteCount() {
+        return fieldLayout.primitiveStaticFieldTotalByteCount;
     }
 
     int getFlags() {
@@ -123,7 +111,7 @@ public final class LinkedKlass {
         return parserKlass.getConstantPool();
     }
 
-    public Attribute getAttribute(Symbol<Name> name) {
+    Attribute getAttribute(Symbol<Name> name) {
         return parserKlass.getAttribute(name);
     }
 
@@ -131,27 +119,47 @@ public final class LinkedKlass {
         return parserKlass.getType();
     }
 
-    public Symbol<Name> getName() {
+    Symbol<Name> getName() {
         return parserKlass.getName();
     }
 
-    public ParserKlass getParserKlass() {
+    ParserKlass getParserKlass() {
         return parserKlass;
     }
 
-    public LinkedKlass getSuperKlass() {
+    LinkedKlass getSuperKlass() {
         return superKlass;
     }
 
-    public LinkedKlass[] getInterfaces() {
+    LinkedKlass[] getInterfaces() {
         return interfaces;
     }
 
-    public int getMajorVersion() {
+    int getMajorVersion() {
         return getConstantPool().getMajorVersion();
     }
 
-    public int getMinorVersion() {
+    int getMinorVersion() {
         return getConstantPool().getMinorVersion();
+    }
+
+    LinkedMethod[] getLinkedMethods() {
+        return methods;
+    }
+
+    LinkedField[] getInstanceFields() {
+        return fieldLayout.instanceFields;
+    }
+
+    LinkedField[] getStaticFields() {
+        return fieldLayout.staticFields;
+    }
+
+    int getFieldTableLength() {
+        return fieldLayout.fieldTableLength;
+    }
+
+    int[][] getLeftoverHoles() {
+        return fieldLayout.leftoverHoles;
     }
 }

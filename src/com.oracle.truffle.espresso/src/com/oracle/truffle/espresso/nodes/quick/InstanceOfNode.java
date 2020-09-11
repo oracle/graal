@@ -74,4 +74,9 @@ public abstract class InstanceOfNode extends QuickNode {
         root.putKind(frame, top - 1, result, JavaKind.Boolean);
         return 0; // stack effect -> pop receiver, push boolean
     }
+
+    @Override
+    public boolean producedForeignObject(VirtualFrame frame) {
+        return false;
+    }
 }

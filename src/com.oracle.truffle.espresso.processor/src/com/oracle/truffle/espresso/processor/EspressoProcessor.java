@@ -182,7 +182,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      *
      * @see EspressoProcessor#SUBSTITUTOR
      */
-    abstract String generateFactoryConstructorBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
+    abstract String generateFactoryConstructorAndBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
 
     /**
      * Generates the string that corresponds to the code of the invoke method for the current
@@ -268,13 +268,13 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     private static final String AT_LINK = "@link ";
     private static final String FACTORY_IS_NULL = "InteropLibrary.getFactory().getUncached().isNull";
     private static final String PRIVATE_STATIC_FINAL = "private static final";
-    private static final String PUBLIC_FINAL = "public final";
     private static final String PRIVATE_FINAL = "private final";
     private static final String PUBLIC_STATIC_FINAL = "public static final";
     private static final String PUBLIC_STATIC_FINAL_CLASS = "public static final class ";
     private static final String PUBLIC_FINAL_CLASS = "public final class ";
-    private static final String OVERRIDE = "@Override";
     private static final String SUPPRESS_UNUSED = "@SuppressWarnings(\"unused\")";
+    static final String PUBLIC_FINAL = "public final";
+    static final String OVERRIDE = "@Override";
 
     static final String STATIC_OBJECT_NULL = "StaticObject.NULL";
 
@@ -367,6 +367,11 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     }
 
     // Utility Methods
+
+    AnnotationValue getAttribute(AnnotationMirror annotation, Element attribute) {
+        Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues = processingEnv.getElementUtils().getElementValuesWithDefaults(annotation);
+        return elementValues.get(attribute);
+    }
 
     static AnnotationMirror getAnnotation(TypeMirror e, TypeElement type) {
         for (AnnotationMirror annotationMirror : e.getAnnotationMirrors()) {
@@ -493,10 +498,10 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     static boolean appendInvocationMetaInformation(StringBuilder str, boolean first, SubstitutionHelper helper) {
         boolean f = getGuestCallsForInvoke(str, helper.guestCalls, first);
         if (helper.hasMetaInjection) {
-            f = injectMeta(str, first);
+            f = injectMeta(str, f);
         }
         if (helper.hasProfileInjection) {
-            f = injectProfile(str, first);
+            f = injectProfile(str, f);
         }
         return f;
     }
@@ -640,7 +645,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         str.append(" = new ").append(FACTORY).append("();").append("\n\n");
         str.append(TAB_1).append(PUBLIC_STATIC_FINAL_CLASS).append(FACTORY).append(" extends ").append(SUBSTITUTOR).append(".").append(FACTORY).append(" {\n");
         str.append(TAB_2).append("private ").append(FACTORY).append("() {\n");
-        str.append(generateFactoryConstructorBody(className, targetMethodName, parameterTypeName, helper)).append("\n");
+        str.append(generateFactoryConstructorAndBody(className, targetMethodName, parameterTypeName, helper)).append("\n");
         str.append(TAB_2).append(OVERRIDE).append("\n");
         str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append(SUBSTITUTOR).append(" ").append(CREATE).append("(");
         str.append(META_CLASS).append(META_VAR).append(") {\n");
@@ -766,7 +771,8 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     /**
      * Creates the substitutor.
      *
-     * @param className The name of the class where the substituted method is found.
+     *
+     * @param className The name of the host class where the substituted method is found.
      * @param targetMethodName The name of the substituted method.
      * @param parameterTypeName The list of *Host* parameter types of the substituted method.
      * @param helper A helper structure.

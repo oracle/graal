@@ -156,7 +156,7 @@ public final class JDWPContextImpl implements JDWPContext {
                 case "F":
                     return new KlassRef[]{context.getMeta()._float};
                 default:
-                    throw new RuntimeException("invalid primitive component type " + slashName);
+                    throw new IllegalStateException("invalid primitive component type " + slashName);
             }
         } else if (slashName.startsWith("[")) {
             // array type
@@ -257,7 +257,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public String getStringValue(Object object) {
         if (object instanceof StaticObject) {
             StaticObject staticObject = (StaticObject) object;
-            return staticObject.asString();
+            return (String) staticObject.toDisplayString(false);
         }
         return object.toString();
     }

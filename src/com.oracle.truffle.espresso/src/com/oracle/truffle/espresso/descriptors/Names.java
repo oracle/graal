@@ -47,6 +47,14 @@ public final class Names {
     }
 
     public Symbol<Name> getOrCreate(String name) {
-        return symbols.symbolify(ByteSequence.create(name));
+        return getOrCreate(ByteSequence.create(name));
+    }
+
+    public Symbol<Name> getOrCreate(ByteSequence name) {
+        return symbols.symbolify(name);
+    }
+
+    public static boolean isUnnamedPackage(Symbol<Name> pkg) {
+        return pkg.length() == 0;
     }
 }

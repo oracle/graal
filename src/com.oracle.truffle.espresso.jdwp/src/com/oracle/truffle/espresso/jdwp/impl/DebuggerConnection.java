@@ -46,7 +46,7 @@ public final class DebuggerConnection implements Commands {
         this.context = controller.getContext();
     }
 
-    public void doProcessCommands(boolean suspend, Collection<Thread> activeThreads) {
+    public void doProcessCommands(boolean suspend, Collection<Thread> activeThreads, Callable<Void> job) {
         // fire up two threads, one for the low-level connection to receive packets
         // and one for processing the debugger commands from a queue
         commandProcessor = new Thread(new CommandProcessorThread(), "jdwp-command-processor");
@@ -67,7 +67,7 @@ public final class DebuggerConnection implements Commands {
                 return;
             }
             // only a JDWP resume/resumeAll command can resume this thread
-            controller.suspend(null, context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.emptyList(), null, false);
+            controller.suspend(null, context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.singletonList(job), null, false);
         }
     }
 

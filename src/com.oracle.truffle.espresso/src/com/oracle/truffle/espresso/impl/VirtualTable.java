@@ -27,7 +27,6 @@ import java.util.Arrays;
 
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Helper for creating virtual tables in ObjectKlass.
@@ -39,7 +38,7 @@ public final class VirtualTable {
     }
 
     // Mirandas are already in the Klass, there is not much left to do.
-    public static Method[] create(ObjectKlass superKlass, Method[] declaredMethods, ObjectKlass thisKlass, Method[] mirandaMethods, StaticObject classLoader) {
+    public static Method[] create(ObjectKlass superKlass, Method[] declaredMethods, ObjectKlass thisKlass, Method[] mirandaMethods) {
         ArrayList<Method> tmp;
         ArrayList<Method> overrides = new ArrayList<>();
         if (superKlass != null) {
@@ -48,10 +47,10 @@ public final class VirtualTable {
             tmp = new ArrayList<>();
         }
         for (Method m : declaredMethods) {
-            if (!m.isStatic() && !Name._clinit_.equals(m.getName()) && !Name._init_.equals(m.getName())) {
+            if (!m.isPrivate() && !m.isStatic() && !Name._clinit_.equals(m.getName()) && !Name._init_.equals(m.getName())) {
                 // Do not bloat the vtable with methods that cannot be called through
                 // virtual invocation.
-                checkOverride(superKlass, m, tmp, thisKlass, overrides, classLoader);
+                checkOverride(superKlass, m, tmp, thisKlass, overrides);
             }
         }
         for (Method m : mirandaMethods) {
@@ -62,12 +61,12 @@ public final class VirtualTable {
         return tmp.toArray(Method.EMPTY_ARRAY);
     }
 
-    private static void checkOverride(ObjectKlass superKlass, Method m, ArrayList<Method> tmp, Klass thisKlass, ArrayList<Method> overrides, StaticObject classLoader) {
+    private static void checkOverride(ObjectKlass superKlass, Method m, ArrayList<Method> tmp, Klass thisKlass, ArrayList<Method> overrides) {
         if (!overrides.isEmpty()) {
             overrides.clear();
         }
         if (superKlass != null) {
-            superKlass.lookupVirtualMethodOverrides(m.getName(), m.getRawSignature(), thisKlass, overrides, classLoader);
+            superKlass.lookupVirtualMethodOverrides(m.getName(), m.getRawSignature(), thisKlass, overrides);
         }
         Method toSet = m;
         if (!overrides.isEmpty()) {

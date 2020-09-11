@@ -48,13 +48,18 @@ import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.NestHostAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.NestMembersAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttribute;
+import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
+import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
+import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -78,25 +83,29 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal //
     private StaticObject statics;
 
+    // instance and hidden fields declared in this class and in its super classes
     @CompilationFinal(dimensions = 1) //
-    private Field[] declaredFields;
+    private final Field[] fieldTable;
 
-    @CompilationFinal(dimensions = 2) private final int[][] leftoverHoles;
-    @CompilationFinal(dimensions = 1) private final Field[] fieldTable;
+    // points to the first element in the FieldTable that refers to a field declared in this class,
+    // or is equal to fieldTable.length if this class does not declare fields
+    private final int localFieldTableIndex;
 
-    private final int primitiveFieldTotalByteCount;
-    private final int primitiveStaticFieldTotalByteCount;
-
-    private final int objectFields;
-    private final int staticObjectFields;
-
-    @CompilationFinal(dimensions = 1) private final Field[] staticFieldTable;
+    // static fields declared in this class (no hidden fields)
+    @CompilationFinal(dimensions = 1) //
+    private final Field[] staticFieldTable;
 
     private final InnerClassesAttribute innerClasses;
 
     private final Attribute runtimeVisibleAnnotations;
 
     private final Klass hostKlass;
+
+    @CompilationFinal //
+    private Klass nest;
+
+    @CompilationFinal //
+    private PackageEntry packageEntry;
 
     private String genericSignature;
 
@@ -122,10 +131,6 @@ public final class ObjectKlass extends Klass {
         return getLinkedKlass().getAttribute(name);
     }
 
-    public Attribute getAttribute(LinkedKlass linkedKlass, Symbol<Name> name) {
-        return linkedKlass.getAttribute(name);
-    }
-
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader) {
         this(context, linkedKlass, superKlass, superInterfaces, classLoader, null);
     }
@@ -137,35 +142,45 @@ public final class ObjectKlass extends Klass {
         // TODO(peterssen): Make writable copy.
         RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), linkedKlass.getConstantPool(), classLoader);
 
-        LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
-        Method[] methods = new Method[linkedMethods.length];
-        for (int i = 0; i < methods.length; ++i) {
-            LinkedMethod linkedMethod = linkedMethods[i];
-            methods[i] = new Method(this, linkedMethod, pool);
+        Field[] skFieldTable = superKlass != null ? superKlass.getFieldTable() : new Field[0];
+        LinkedField[] lkInstanceFields = linkedKlass.getInstanceFields();
+        LinkedField[] lkStaticFields = linkedKlass.getStaticFields();
+
+        fieldTable = new Field[skFieldTable.length + lkInstanceFields.length];
+        staticFieldTable = new Field[lkStaticFields.length];
+
+        assert fieldTable.length == linkedKlass.getFieldTableLength();
+        System.arraycopy(skFieldTable, 0, fieldTable, 0, skFieldTable.length);
+        localFieldTableIndex = skFieldTable.length;
+        for (int i = 0; i < lkInstanceFields.length; i++) {
+            Field instanceField = new Field(this, lkInstanceFields[i], lkInstanceFields[i].isHidden());
+            fieldTable[localFieldTableIndex + i] = instanceField;
+        }
+        for (int i = 0; i < lkStaticFields.length; i++) {
+            Field staticField = new Field(this, lkStaticFields[i], false);
+            staticFieldTable[i] = staticField;
         }
 
-        this.enclosingMethod = (EnclosingMethodAttribute) getAttribute(linkedKlass, EnclosingMethodAttribute.NAME);
-        this.innerClasses = (InnerClassesAttribute) getAttribute(linkedKlass, InnerClassesAttribute.NAME);
+        LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
+        Method[] methods = new Method[linkedMethods.length];
+        for (int i = 0; i < methods.length; i++) {
+            methods[i] = new Method(this, linkedMethods[i], pool);
+        }
+
+        this.enclosingMethod = (EnclosingMethodAttribute) linkedKlass.getAttribute(EnclosingMethodAttribute.NAME);
+        this.innerClasses = (InnerClassesAttribute) linkedKlass.getAttribute(InnerClassesAttribute.NAME);
 
         // Move attribute name to better location.
-        this.runtimeVisibleAnnotations = getAttribute(linkedKlass, Name.RuntimeVisibleAnnotations);
+        this.runtimeVisibleAnnotations = linkedKlass.getAttribute(Name.RuntimeVisibleAnnotations);
+        // Package initialization must be done before vtable creation, as there are same package
+        // checks.
+        initPackage();
 
-        FieldTable.CreationResult fieldCR = FieldTable.create(superKlass, this, linkedKlass);
-
-        this.fieldTable = fieldCR.fieldTable;
-        this.staticFieldTable = fieldCR.staticFieldTable;
-        this.declaredFields = fieldCR.declaredFields;
-
-        this.primitiveFieldTotalByteCount = fieldCR.primitiveFieldTotalByteCount;
-        this.primitiveStaticFieldTotalByteCount = fieldCR.primitiveStaticFieldTotalByteCount;
-        this.objectFields = fieldCR.objectFields;
-        this.staticObjectFields = fieldCR.staticObjectFields;
-
-        this.leftoverHoles = fieldCR.leftoverHoles;
         Method[][] itable = null;
         Method[] vtable;
         ObjectKlass[] iKlassTable;
         Method[] mirandaMethods = null;
+
         if (this.isInterface()) {
             InterfaceTables.InterfaceCreationResult icr = InterfaceTables.constructInterfaceItable(this, methods);
             vtable = icr.methodtable;
@@ -174,7 +189,7 @@ public final class ObjectKlass extends Klass {
             InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, superKlass, superInterfaces, methods);
             iKlassTable = methodCR.klassTable;
             mirandaMethods = methodCR.mirandas;
-            vtable = VirtualTable.create(superKlass, methods, this, mirandaMethods, classLoader);
+            vtable = VirtualTable.create(superKlass, methods, this, mirandaMethods);
             itable = InterfaceTables.fixTables(vtable, mirandaMethods, methods, methodCR.tables, iKlassTable);
         }
         if (superKlass != null) {
@@ -250,20 +265,17 @@ public final class ObjectKlass extends Klass {
 
     @ExplodeLoop
     private void actualInit() {
+        checkErroneousInitialization();
         synchronized (this) {
             if (!(isInitializedOrPrepared())) { // Check under lock
-                if (initState == ERRONEOUS) {
-                    throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
-                }
                 try {
-                    // Spec fragment: Then, initialize each final static field of C with the
-                    // constant value in its ConstantValue attribute (&sect;4.7.2), in the order the
-                    // fields appear in the ClassFile structure.
-                    //
-                    // ...
-                    //
-                    // Next, execute the class or interface initialization method of C.
+                    /*
+                     * Spec fragment: Then, initialize each final static field of C with the
+                     * constant value in its ConstantValue attribute (&sect;4.7.2), in the order the
+                     * fields appear in the ClassFile structure.
+                     */
                     prepare();
+
                     initState = PREPARED;
                     if (getContext().isMainThreadCreated()) {
                         if (getContext().getJDWPListener() != null) {
@@ -271,20 +283,30 @@ public final class ObjectKlass extends Klass {
                             getContext().getJDWPListener().classPrepared(this, prepareThread);
                         }
                     }
-                    if (getSuperKlass() != null) {
-                        getSuperKlass().initialize();
+                    if (!isInterface()) {
+                        /*
+                         * Next, if C is a class rather than an interface, then let SC be its
+                         * superclass and let SI1, ..., SIn be all superinterfaces of C [...] For
+                         * each S in the list [ SC, SI1, ..., SIn ], if S has not yet been
+                         * initialized, then recursively perform this entire procedure for S. If
+                         * necessary, verify and prepare S first.
+                         */
+                        if (getSuperKlass() != null) {
+                            getSuperKlass().initialize();
+                        }
+                        for (ObjectKlass interf : getSuperInterfaces()) {
+                            // Initialize all super interfaces, direct and indirect, with default
+                            // methods.
+                            interf.recursiveInitialize();
+                        }
                     }
-                    for (ObjectKlass interf : getSuperInterfaces()) {
-                        // Initialize all super interfaces, direct and indirect, with default
-                        // methods.
-                        interf.recursiveInitialize();
-                    }
+                    // Next, execute the class or interface initialization method of C.
                     Method clinit = getClassInitializer();
                     if (clinit != null) {
                         clinit.getCallTarget().call();
                     }
                 } catch (EspressoException e) {
-                    setErroneous();
+                    setErroneousInitialization();
                     StaticObject cause = e.getExceptionObject();
                     Meta meta = getMeta();
                     if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
@@ -294,12 +316,10 @@ public final class ObjectKlass extends Klass {
                     }
                 } catch (Throwable e) {
                     getContext().getLogger().log(Level.WARNING, "Host exception during class initialization: {0}", this);
-                    setErroneous();
+                    setErroneousInitialization();
                     throw e;
                 }
-                if (initState == ERRONEOUS) {
-                    throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
-                }
+                checkErroneousInitialization();
                 initState = INITIALIZED;
                 assert isInitialized();
             }
@@ -308,61 +328,59 @@ public final class ObjectKlass extends Klass {
 
     private void prepare() {
         checkLoadingConstraints();
-        for (Field f : declaredFields) {
-            if (f.isStatic()) {
-                ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
-                if (a == null) {
-                    continue;
+        for (Field f : staticFieldTable) {
+            ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
+            if (a == null) {
+                continue;
+            }
+            switch (f.getKind()) {
+                case Boolean: {
+                    boolean c = getConstantPool().intAt(a.getConstantValueIndex()) != 0;
+                    f.set(getStatics(), c);
+                    break;
                 }
-                switch (f.getKind()) {
-                    case Boolean: {
-                        boolean c = getConstantPool().intAt(a.getConstantValueIndex()) != 0;
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Byte: {
-                        byte c = (byte) getConstantPool().intAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Short: {
-                        short c = (short) getConstantPool().intAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Char: {
-                        char c = (char) getConstantPool().intAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Int: {
-                        int c = getConstantPool().intAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Float: {
-                        float c = getConstantPool().floatAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Long: {
-                        long c = getConstantPool().longAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Double: {
-                        double c = getConstantPool().doubleAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Object: {
-                        StaticObject c = getConstantPool().resolvedStringAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    default:
-                        throw EspressoError.shouldNotReachHere("invalid constant field kind");
+                case Byte: {
+                    byte c = (byte) getConstantPool().intAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
                 }
+                case Short: {
+                    short c = (short) getConstantPool().intAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                case Char: {
+                    char c = (char) getConstantPool().intAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                case Int: {
+                    int c = getConstantPool().intAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                case Float: {
+                    float c = getConstantPool().floatAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                case Long: {
+                    long c = getConstantPool().longAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                case Double: {
+                    double c = getConstantPool().doubleAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                case Object: {
+                    StaticObject c = getConstantPool().resolvedStringAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                default:
+                    throw EspressoError.shouldNotReachHere("invalid constant field kind");
             }
         }
     }
@@ -379,14 +397,13 @@ public final class ObjectKlass extends Klass {
 
     private void recursiveInitialize() {
         if (!isInitialized()) { // Skip synchronization and locks if already init.
+            for (ObjectKlass interf : getSuperInterfaces()) {
+                interf.recursiveInitialize();
+            }
             if (hasDeclaredDefaultMethods()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 verify();
-                actualInit();
-            } else {
-                for (ObjectKlass interf : getSuperInterfaces()) {
-                    interf.recursiveInitialize();
-                }
+                actualInit(); // Does not recursively initialize interfaces
             }
         }
     }
@@ -452,7 +469,16 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Field[] getDeclaredFields() {
-        return declaredFields;
+        // Speculate that there are no hidden fields
+        Field[] declaredFields = Arrays.copyOf(staticFieldTable, staticFieldTable.length + fieldTable.length - localFieldTableIndex);
+        int insertionIndex = staticFieldTable.length;
+        for (int i = localFieldTableIndex; i < fieldTable.length; i++) {
+            Field f = fieldTable[i];
+            if (!f.isHidden()) {
+                declaredFields[insertionIndex++] = f;
+            }
+        }
+        return insertionIndex == declaredFields.length ? declaredFields : Arrays.copyOf(declaredFields, insertionIndex);
     }
 
     public EnclosingMethodAttribute getEnclosingMethod() {
@@ -471,41 +497,72 @@ public final class ObjectKlass extends Klass {
         return runtimeVisibleAnnotations;
     }
 
-    public int getStaticFieldSlots() {
-        return getLinkedKlass().staticFieldCount;
-    }
-
-    public int getInstanceFieldSlots() {
-        return getLinkedKlass().instanceFieldCount;
-    }
-
-    public int getObjectFieldsCount() {
-        return objectFields;
-    }
-
-    public int getPrimitiveFieldTotalByteCount() {
-        return primitiveFieldTotalByteCount;
-    }
-
-    public int getStaticObjectFieldsCount() {
-        return staticObjectFields;
-    }
-
-    public int getPrimitiveStaticFieldTotalByteCount() {
-        return primitiveStaticFieldTotalByteCount;
-    }
-
     Klass getHostClassImpl() {
         return hostKlass;
     }
 
+    @Override
+    public Klass nest() {
+        if (nest == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            NestHostAttribute nestHost = (NestHostAttribute) getAttribute(NestHostAttribute.NAME);
+            if (nestHost == null) {
+                nest = this;
+            } else {
+                RuntimeConstantPool thisPool = getConstantPool();
+                Klass host = thisPool.resolvedKlassAt(this, nestHost.hostClassIndex);
+
+                if (!host.nestMembersCheck(this)) {
+                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                }
+                nest = host;
+            }
+        }
+        return nest;
+    }
+
+    @Override
+    public boolean nestMembersCheck(Klass k) {
+        NestMembersAttribute nestMembers = (NestMembersAttribute) getAttribute(NestMembersAttribute.NAME);
+        if (nestMembers == null) {
+            return false;
+        }
+        if (!this.sameRuntimePackage(k)) {
+            return false;
+        }
+        RuntimeConstantPool pool = getConstantPool();
+        for (int index : nestMembers.getClasses()) {
+            if (k.getName().equals(pool.classAt(index).getName(pool))) {
+                if (k == pool.resolvedKlassAt(this, index)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public Klass[] getNestMembers() {
+        NestMembersAttribute nestMembers = (NestMembersAttribute) getAttribute(NestMembersAttribute.NAME);
+        if (nestMembers == null || nestMembers.getClasses().length == 0) {
+            return EMPTY_ARRAY;
+        }
+        RuntimeConstantPool pool = getConstantPool();
+        Klass[] result = new Klass[nestMembers.getClasses().length];
+        for (int i = 0; i < result.length; i++) {
+            int index = nestMembers.getClasses()[i];
+            result[i] = pool.resolvedKlassAt(this, index);
+        }
+        return result;
+    }
+
     Field lookupFieldTableImpl(int slot) {
-        assert (slot >= 0 && slot < getInstanceFieldSlots());
+        assert slot >= 0 && slot < fieldTable.length && !fieldTable[slot].isHidden();
         return fieldTable[slot];
     }
 
     Field lookupStaticFieldTableImpl(int slot) {
-        assert (slot >= 0 && slot < getStaticFieldSlots());
+        assert slot >= 0 && slot < getStaticFieldTable().length;
         return staticFieldTable[slot];
     }
 
@@ -558,7 +615,7 @@ public final class ObjectKlass extends Klass {
             if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic()) {
                     return i;
-                } else if (sameRuntimePackage(classLoader, subClass)) {
+                } else if (sameRuntimePackage(subClass)) {
                     return i;
                 }
             }
@@ -566,14 +623,14 @@ public final class ObjectKlass extends Klass {
         return -1;
     }
 
-    List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result, StaticObject classLoader) {
+    List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result) {
         for (Method m : getVTable()) {
             if (!m.isStatic() && !m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 if (this == subKlass) {
                     result.add(m);
                 } else if (m.isProtected() || m.isPublic()) {
                     result.add(m);
-                } else if (m.getDeclaringKlass().sameRuntimePackage(classLoader, subKlass)) {
+                } else if (m.getDeclaringKlass().sameRuntimePackage(subKlass)) {
                     result.add(m);
                 }
             }
@@ -581,7 +638,7 @@ public final class ObjectKlass extends Klass {
         return result;
     }
 
-    public Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
+    public Method resolveInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
         assert isInterface();
         /*
          * 2. Otherwise, if C declares a method with the name and descriptor specified by the
@@ -615,34 +672,40 @@ public final class ObjectKlass extends Klass {
                  * Methods in superInterf.getInterfaceMethodsTable() are all non-static non-private
                  * methods declared in superInterf.
                  */
+
                 if (name == superM.getName() && signature == superM.getRawSignature()) {
-                    if (!superM.isAbstract() && (resolved == null || !superInterf.isAssignableFrom(resolved.getDeclaringKlass()))) {
+                    if (resolved == null) {
+                        resolved = superM;
+                    } else {
                         /*
                          * 4. Otherwise, if the maximally-specific superinterface methods
                          * (&sect;5.4.3.3) of C for the name and descriptor specified by the method
                          * reference include exactly one method that does not have its ACC_ABSTRACT
                          * flag set, then this method is chosen and method lookup succeeds.
-                         * 
-                         * Note: If there is more than one such method, we still select it, for it
-                         * still complies with point 5.
+                         *
+                         * 5. Otherwise, if any superinterface of C declares a method with the name
+                         * and descriptor specified by the method reference that has neither its
+                         * ACC_PRIVATE flag nor its ACC_STATIC flag set, one of these is arbitrarily
+                         * chosen and method lookup succeeds.
                          */
-                        return superM;
-                    }
-                    /*
-                     * 5. Otherwise, if any superinterface of C declares a method with the name and
-                     * descriptor specified by the method reference that has neither its ACC_PRIVATE
-                     * flag nor its ACC_STATIC flag set, one of these is arbitrarily chosen and
-                     * method lookup succeeds.
-                     */
-                    if (resolved == null) {
-                        /*
-                         * Since interfaces are sorted superinterfaces first, and we traverse in
-                         * reverse order, we have the guarantee that the first such method we
-                         * encounter will be a maximally-specific method. Thus, the only way
-                         * returning this method is incorrect is if there is another
-                         * maximally-specific non-abstract method
-                         */
-                        resolved = superM;
+                        resolved = InterfaceTables.resolveMaximallySpecific(resolved, superM);
+                        if (resolved.getITableIndex() == -1) {
+                            /*
+                             * Multiple maximally specific: this method has a poison pill.
+                             *
+                             * NOTE: Since java 9, we can invokespecial interface methods (ie: a
+                             * call directly to the resolved method, rather than after an interface
+                             * lookup). We are looking up a method taken from the implemented
+                             * interface (and not from a currently non-existing itable of the
+                             * implementing interface). This difference, and the possibility of
+                             * invokespecial, means that we cannot return the looked up method
+                             * directly in case of multiple maximally specific method. thus, we
+                             * spawn a new proxy method, attached to no method table, just to fail
+                             * if invokespecial.
+                             */
+                            assert (resolved.identity() == superM.identity());
+                            resolved.setITableIndex(superM.getITableIndex());
+                        }
                     }
                 }
             }
@@ -658,7 +721,9 @@ public final class ObjectKlass extends Klass {
             // Implicit interface methods.
             method = lookupMirandas(methodName, signature);
         }
-        if (method == null && getType() == Type.java_lang_invoke_MethodHandle) {
+        if (method == null &&
+                        (getType() == Type.java_lang_invoke_MethodHandle ||
+                                        getType() == Type.java_lang_invoke_VarHandle)) {
             method = lookupPolysigMethod(methodName, signature);
         }
         if (method == null && getSuperKlass() != null) {
@@ -690,6 +755,7 @@ public final class ObjectKlass extends Klass {
     @Override
     public void verify() {
         if (!isVerified()) {
+            checkErroneousVerification();
             synchronized (this) {
                 if (!isVerifyingOrVerified()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -697,19 +763,13 @@ public final class ObjectKlass extends Klass {
                     try {
                         verifyImpl();
                     } catch (EspressoException e) {
-                        setVerificationStatus(ERRONEOUS);
-                        verificationError = e;
-                        throw e;
-                    } catch (Throwable e) {
-                        setVerificationStatus(ERRONEOUS);
+                        setErroneousVerification(e);
                         throw e;
                     }
                     setVerificationStatus(VERIFIED);
                 }
             }
-            if (verificationStatus == ERRONEOUS) {
-                throw verificationError;
-            }
+            checkErroneousVerification();
         }
     }
 
@@ -802,12 +862,25 @@ public final class ObjectKlass extends Klass {
         return verificationStatus == VERIFIED;
     }
 
-    private void setErroneous() {
+    private void checkErroneousVerification() {
+        if (verificationStatus == ERRONEOUS) {
+            throw verificationError;
+        }
+    }
+
+    private void setErroneousVerification(EspressoException e) {
+        verificationStatus = ERRONEOUS;
+        verificationError = e;
+    }
+
+    private void setErroneousInitialization() {
         initState = ERRONEOUS;
     }
 
-    public int[][] getLeftoverHoles() {
-        return leftoverHoles;
+    private void checkErroneousInitialization() {
+        if (initState == ERRONEOUS) {
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
+        }
     }
 
     private void checkLoadingConstraints() {
@@ -837,6 +910,7 @@ public final class ObjectKlass extends Klass {
                         if (m.getDeclaringKlass() == this) {
                             m.checkLoadingConstraints(this.getDefiningClassLoader(), interfKlass.getDefiningClassLoader());
                         } else {
+                            m.checkLoadingConstraints(interfKlass.getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
                             m.checkLoadingConstraints(this.getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
                         }
                     }
@@ -852,11 +926,45 @@ public final class ObjectKlass extends Klass {
             for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
                 if (entry.innerClassIndex != 0) {
                     result.add(getConstantPool().classAt(entry.innerClassIndex).getName(getConstantPool()));
-
                 }
             }
         }
         return result;
+    }
+
+    private void initPackage() {
+        if (!Names.isUnnamedPackage(getRuntimePackage())) {
+            ClassRegistry registry = getRegistries().getClassRegistry(getDefiningClassLoader());
+            packageEntry = registry.packages().lookup(getRuntimePackage());
+            // If the package name is not found in the loader's package
+            // entry table, it is an indication that the package has not
+            // been defined. Consider it defined within the unnamed module.
+            if (packageEntry == null) {
+                if (!getRegistries().javaBaseDefined()) {
+                    // Before java.base is defined during bootstrapping, define all packages in
+                    // the java.base module.
+                    packageEntry = registry.packages().lookupOrCreate(getRuntimePackage(), getRegistries().getJavaBaseModule());
+                } else {
+                    packageEntry = registry.packages().lookupOrCreate(getRuntimePackage(), registry.getUnnamedModule());
+                }
+            }
+        }
+    }
+
+    @Override
+    public ModuleEntry module() {
+        if (!inUnnamedPackage()) {
+            return packageEntry.module();
+        }
+        if (getHostClass() != null) {
+            return getRegistries().getClassRegistry(getHostClass().getDefiningClassLoader()).getUnnamedModule();
+        }
+        return getRegistries().getClassRegistry(getDefiningClassLoader()).getUnnamedModule();
+    }
+
+    @Override
+    public PackageEntry packageEntry() {
+        return packageEntry;
     }
 
     @TruffleBoundary
@@ -996,7 +1104,7 @@ public final class ObjectKlass extends Klass {
                 InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, getSuperKlass(), superInterfaces, newDeclaredMethods);
                 iKlassTable = methodCR.klassTable;
                 mirandaMethods = methodCR.mirandas;
-                vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, definingClassLoader);
+                vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods);
                 itable = InterfaceTables.fixTables(vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
             }
             // in case of an added/removed virtual method, we must also update the tables
@@ -1061,7 +1169,7 @@ public final class ObjectKlass extends Klass {
             InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, getSuperKlass(), getSuperInterfaces(), newDeclaredMethods);
             iKlassTable = methodCR.klassTable;
             mirandaMethods = methodCR.mirandas;
-            vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, getDefiningClassLoader());
+            vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods);
             itable = InterfaceTables.fixTables(vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
         }
 

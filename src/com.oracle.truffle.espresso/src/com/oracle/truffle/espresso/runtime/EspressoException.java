@@ -55,6 +55,10 @@ public final class EspressoException extends RuntimeException implements Truffle
         return getMessage(exception);
     }
 
+    public StaticObject getGuestMessage() {
+        return (StaticObject) exception.getKlass().lookupMethod(Name.getMessage, Signature.String).invokeDirect(exception);
+    }
+
     public static String getMessage(StaticObject e) {
         return Meta.toHostString((StaticObject) e.getKlass().lookupMethod(Name.getMessage, Signature.String).invokeDirect(e));
     }
@@ -83,9 +87,15 @@ public final class EspressoException extends RuntimeException implements Truffle
 
     @SuppressWarnings("unused")
     private boolean match(String exceptionClass, String message) {
+        if (exceptionClass == null) {
+            return getMessage() != null && getMessage().contains(message);
+        }
         if (getExceptionObject().getKlass().getType().toString().contains(exceptionClass)) {
             if (message == null) {
                 return true;
+            }
+            if (getMessage() == null) {
+                return false;
             }
             return getMessage().contains(message);
         }

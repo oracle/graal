@@ -24,6 +24,13 @@ package com.oracle.truffle.espresso.runtime;
 
 import static com.oracle.truffle.api.CompilerDirectives.castExact;
 import static com.oracle.truffle.espresso.impl.Klass.STATIC_TO_CLASS;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.inSafeIntegerRange;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostByte;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostFloat;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostInt;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostLong;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostShort;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.isNegativeZero;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.lang.reflect.Array;
@@ -32,18 +39,28 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -69,6 +86,8 @@ public final class StaticObject implements TruffleObject {
 
     public static final StaticObject NULL = new StaticObject();
 
+    private static final byte[] FOREIGN_OBJECT_MARKER = new byte[0];
+
     private volatile EspressoLock lock;
 
     private final Klass klass; // != PrimitiveKlass
@@ -89,7 +108,9 @@ public final class StaticObject implements TruffleObject {
     @ExportMessage
     public static boolean isNull(StaticObject object) {
         assert object != null;
-        return object == StaticObject.NULL;
+        assert (object.getKlass() != null) || object == NULL ||
+                        (object.isForeignObject() && InteropLibrary.getUncached().isNull(object.rawForeignObject())) : "klass can only be null for Espresso null (NULL) and interop nulls";
+        return object.getKlass() == null;
     }
 
     @ExportMessage
@@ -98,8 +119,767 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    public String asString() {
+    String asString() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         return Meta.toHostString(this);
+    }
+
+    @ExportMessage
+    boolean isBoolean() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (isNull(this)) {
+            return false;
+        }
+        return klass == klass.getMeta().java_lang_Boolean;
+    }
+
+    @ExportMessage
+    boolean asBoolean() throws UnsupportedMessageException {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (!isBoolean()) {
+            throw UnsupportedMessageException.create();
+        }
+        return (boolean) klass.getMeta().java_lang_Boolean_value.get(this);
+    }
+
+    @ExportMessage
+    boolean isNumber() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (isNull(this)) {
+            return false;
+        }
+        Meta meta = klass.getMeta();
+        return klass == meta.java_lang_Byte || klass == meta.java_lang_Short || klass == meta.java_lang_Integer || klass == meta.java_lang_Long || klass == meta.java_lang_Float ||
+                        klass == meta.java_lang_Double;
+    }
+
+    @ExportMessage
+    boolean fitsInByte() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (isNull(this)) {
+            return false;
+        }
+        if (isAtMostByte(klass)) {
+            return true;
+        }
+
+        Meta meta = klass.getMeta();
+        if (klass == meta.java_lang_Short) {
+            short content = getShortField(meta.java_lang_Short_value);
+            return (byte) content == content;
+        }
+        if (klass == meta.java_lang_Integer) {
+            int content = getIntField(meta.java_lang_Integer_value);
+            return (byte) content == content;
+        }
+        if (klass == meta.java_lang_Long) {
+            long content = getLongField(meta.java_lang_Long_value);
+            return (byte) content == content;
+        }
+        if (klass == meta.java_lang_Float) {
+            float content = getFloatField(meta.java_lang_Float_value);
+            return (byte) content == content && !isNegativeZero(content);
+        }
+        if (klass == meta.java_lang_Double) {
+            double content = getDoubleField(meta.java_lang_Double_value);
+            return (byte) content == content && !isNegativeZero(content);
+        }
+        return false;
+    }
+
+    @ExportMessage
+    boolean fitsInShort() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (isNull(this)) {
+            return false;
+        }
+        if (isAtMostShort(klass)) {
+            return true;
+        }
+
+        Meta meta = klass.getMeta();
+        if (klass == meta.java_lang_Integer) {
+            int content = getIntField(meta.java_lang_Integer_value);
+            return (short) content == content;
+        }
+        if (klass == meta.java_lang_Long) {
+            long content = getLongField(meta.java_lang_Long_value);
+            return (short) content == content;
+        }
+        if (klass == meta.java_lang_Float) {
+            float content = getFloatField(meta.java_lang_Float_value);
+            return (short) content == content && !isNegativeZero(content);
+        }
+        if (klass == meta.java_lang_Double) {
+            double content = getDoubleField(meta.java_lang_Double_value);
+            return (short) content == content && !isNegativeZero(content);
+        }
+        return false;
+    }
+
+    @ExportMessage
+    boolean fitsInInt() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (isNull(this)) {
+            return false;
+        }
+        if (isAtMostInt(klass)) {
+            return true;
+        }
+
+        Meta meta = klass.getMeta();
+        if (klass == meta.java_lang_Long) {
+            long content = getLongField(meta.java_lang_Long_value);
+            return (int) content == content;
+        }
+        if (klass == meta.java_lang_Float) {
+            float content = getFloatField(meta.java_lang_Float_value);
+            return inSafeIntegerRange(content) && !isNegativeZero(content) && (int) content == content;
+        }
+        if (klass == meta.java_lang_Double) {
+            double content = getDoubleField(meta.java_lang_Double_value);
+            return (int) content == content && !isNegativeZero(content);
+        }
+        return false;
+    }
+
+    @ExportMessage
+    boolean fitsInLong() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (isNull(this)) {
+            return false;
+        }
+        if (isAtMostLong(klass)) {
+            return true;
+        }
+
+        Meta meta = klass.getMeta();
+        if (klass == meta.java_lang_Float) {
+            float content = getFloatField(meta.java_lang_Float_value);
+            return inSafeIntegerRange(content) && !isNegativeZero(content) && (long) content == content;
+        }
+        if (klass == meta.java_lang_Double) {
+            double content = getDoubleField(meta.java_lang_Double_value);
+            return inSafeIntegerRange(content) && !isNegativeZero(content) && (long) content == content;
+        }
+        return false;
+    }
+
+    @ExportMessage
+    boolean fitsInFloat() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (isNull(this)) {
+            return false;
+        }
+        if (isAtMostFloat(klass)) {
+            return true;
+        }
+
+        Meta meta = klass.getMeta();
+/*
+ * We might lose precision when we convert an int or a long to a float, however, we still perform
+ * the conversion. This is consistent with Truffle interop, see GR-22718 for more details.
+ */
+        if (klass == meta.java_lang_Integer) {
+            int content = getIntField(meta.java_lang_Integer_value);
+            float floatContent = content;
+            return (int) floatContent == content;
+        }
+        if (klass == meta.java_lang_Long) {
+            long content = getLongField(meta.java_lang_Long_value);
+            float floatContent = content;
+            return (long) floatContent == content;
+        }
+        if (klass == meta.java_lang_Double) {
+            double content = getDoubleField(meta.java_lang_Double_value);
+            return !Double.isFinite(content) || (float) content == content;
+        }
+        return false;
+    }
+
+    @ExportMessage
+    boolean fitsInDouble() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (isNull(this)) {
+            return false;
+        }
+
+        Meta meta = klass.getMeta();
+        if (isAtMostInt(klass) || klass == meta.java_lang_Double) {
+            return true;
+        }
+        if (klass == meta.java_lang_Long) {
+            long content = getLongField(meta.java_lang_Long_value);
+            double doubleContent = content;
+            return (long) doubleContent == content;
+        }
+        if (klass == meta.java_lang_Float) {
+            float content = getFloatField(meta.java_lang_Float_value);
+            return !Float.isFinite(content) || (double) content == content;
+        }
+        return false;
+    }
+
+    private Number readNumberValue() throws UnsupportedMessageException {
+        assert isEspressoObject();
+        Meta meta = klass.getMeta();
+        if (klass == meta.java_lang_Byte) {
+            return (Byte) meta.java_lang_Byte_value.get(this);
+        }
+        if (klass == meta.java_lang_Short) {
+            return (Short) meta.java_lang_Short_value.get(this);
+        }
+        if (klass == meta.java_lang_Integer) {
+            return (Integer) meta.java_lang_Integer_value.get(this);
+        }
+        if (klass == meta.java_lang_Long) {
+            return (Long) meta.java_lang_Long_value.get(this);
+        }
+        if (klass == meta.java_lang_Float) {
+            return (Float) meta.java_lang_Float_value.get(this);
+        }
+        if (klass == meta.java_lang_Double) {
+            return (Double) meta.java_lang_Double_value.get(this);
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    byte asByte() throws UnsupportedMessageException {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (!fitsInByte()) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.create();
+        }
+        return readNumberValue().byteValue();
+    }
+
+    @ExportMessage
+    short asShort() throws UnsupportedMessageException {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (!fitsInShort()) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.create();
+        }
+        return readNumberValue().shortValue();
+    }
+
+    @ExportMessage
+    int asInt() throws UnsupportedMessageException {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (!fitsInInt()) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.create();
+        }
+        return readNumberValue().intValue();
+    }
+
+    @ExportMessage
+    long asLong() throws UnsupportedMessageException {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (!fitsInLong()) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.create();
+        }
+        return readNumberValue().longValue();
+    }
+
+    @ExportMessage
+    float asFloat() throws UnsupportedMessageException {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (!fitsInFloat()) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.create();
+        }
+        return readNumberValue().floatValue();
+    }
+
+    @ExportMessage
+    double asDouble() throws UnsupportedMessageException {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (!fitsInDouble()) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.create();
+        }
+        return readNumberValue().doubleValue();
+    }
+
+    @ExportMessage
+    long getArraySize(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+        if (isForeignObject()) {
+            error.enter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (!isArray()) {
+            error.enter();
+            throw UnsupportedMessageException.create();
+        }
+        return length();
+    }
+
+    @ExportMessage
+    boolean hasArrayElements(@Shared("error") @Cached BranchProfile error) {
+        if (isForeignObject()) {
+            error.enter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        return isArray();
+    }
+
+    @ExportMessage
+    abstract static class ReadArrayElement {
+        @Specialization(guards = {"isBooleanArray(receiver)", "receiver.isEspressoObject()"})
+        static boolean doBoolean(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            try {
+                return receiver.<boolean[]> unwrap()[(int) index];
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isCharArray(receiver)", "receiver.isEspressoObject()"})
+        static char doChar(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            try {
+                return receiver.<char[]> unwrap()[(int) index];
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isByteArray(receiver)", "receiver.isEspressoObject()"})
+        static byte doByte(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            try {
+                return receiver.<byte[]> unwrap()[(int) index];
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isShortArray(receiver)", "receiver.isEspressoObject()"})
+        static short doShort(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            try {
+                return receiver.<short[]> unwrap()[(int) index];
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isIntArray(receiver)", "receiver.isEspressoObject()"})
+        static int doInt(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            try {
+                return receiver.<int[]> unwrap()[(int) index];
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isLongArray(receiver)", "receiver.isEspressoObject()"})
+        static long doLong(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            try {
+                return receiver.<long[]> unwrap()[(int) index];
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isFloatArray(receiver)", "receiver.isEspressoObject()"})
+        static float doFloat(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            try {
+                return receiver.<float[]> unwrap()[(int) index];
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isDoubleArray(receiver)", "receiver.isEspressoObject()"})
+        static double doDouble(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            try {
+                return receiver.<double[]> unwrap()[(int) index];
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"receiver.isArray()", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)"})
+        static Object doObject(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            try {
+                return receiver.<Object[]> unwrap()[(int) index];
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Fallback
+        static Object doOther(StaticObject receiver, long index) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    abstract static class WriteArrayElement {
+        @Specialization(guards = {"isBooleanArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
+        static void doBoolean(StaticObject receiver, long index, Object value,
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            boolean boolValue;
+            try {
+                boolValue = interopLibrary.asBoolean(value);
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            try {
+                receiver.<boolean[]> unwrap()[(int) index] = boolValue;
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isCharArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
+        static void doChar(StaticObject receiver, long index, Object value,
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            char charValue;
+            try {
+                String s = interopLibrary.asString(value);
+                if (s.length() != 1) {
+                    error.enter();
+                    String message = "Expected a string of length 1 as an element of char array, got " + s;
+                    throw UnsupportedTypeException.create(new Object[]{value}, message);
+                }
+                charValue = s.charAt(0);
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            try {
+                receiver.<char[]> unwrap()[(int) index] = charValue;
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isByteArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
+        static void doByte(StaticObject receiver, long index, Object value,
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            byte byteValue;
+            try {
+                byteValue = interopLibrary.asByte(value);
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            try {
+                receiver.<byte[]> unwrap()[(int) index] = byteValue;
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isShortArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
+        static void doShort(StaticObject receiver, long index, Object value,
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            short shortValue;
+            try {
+                shortValue = interopLibrary.asShort(value);
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            try {
+                receiver.<short[]> unwrap()[(int) index] = shortValue;
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isIntArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
+        static void doInt(StaticObject receiver, long index, Object value,
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            int intValue;
+            try {
+                intValue = interopLibrary.asInt(value);
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            try {
+                receiver.<int[]> unwrap()[(int) index] = intValue;
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isLongArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
+        static void doLong(StaticObject receiver, long index, Object value,
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            long longValue;
+            try {
+                longValue = interopLibrary.asLong(value);
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            try {
+                receiver.<long[]> unwrap()[(int) index] = longValue;
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isFloatArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
+        static void doFloat(StaticObject receiver, long index, Object value,
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            float floatValue;
+            try {
+                floatValue = interopLibrary.asFloat(value);
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            try {
+                receiver.<float[]> unwrap()[(int) index] = floatValue;
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isDoubleArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
+        static void doDouble(StaticObject receiver, long index, Object value,
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            double doubleValue;
+            try {
+                doubleValue = interopLibrary.asDouble(value);
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            try {
+                receiver.<double[]> unwrap()[(int) index] = doubleValue;
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Fallback
+        static void doOther(StaticObject receiver, long index, Object value) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    protected static boolean isBooleanArray(StaticObject object) {
+        return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._boolean_array);
+    }
+
+    protected static boolean isCharArray(StaticObject object) {
+        return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._char_array);
+    }
+
+    protected static boolean isByteArray(StaticObject object) {
+        return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._byte_array);
+    }
+
+    protected static boolean isShortArray(StaticObject object) {
+        return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._short_array);
+    }
+
+    protected static boolean isIntArray(StaticObject object) {
+        return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._int_array);
+    }
+
+    protected static boolean isLongArray(StaticObject object) {
+        return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._long_array);
+    }
+
+    protected static boolean isFloatArray(StaticObject object) {
+        return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._float_array);
+    }
+
+    protected static boolean isDoubleArray(StaticObject object) {
+        return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._double_array);
+    }
+
+    protected static boolean isPrimitiveArray(StaticObject object) {
+        return isBooleanArray(object) || isCharArray(object) || isByteArray(object) || isShortArray(object) || isIntArray(object) || isLongArray(object) || isFloatArray(object) ||
+                        isDoubleArray(object);
+    }
+
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (isArray()) {
+            return index >= 0 && index < length();
+        }
+        return false;
+    }
+
+    @ExportMessage
+    boolean isArrayElementModifiable(long index) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        return isPrimitiveArray(this) && index >= 0 && index < length();
+    }
+
+    @SuppressWarnings({"unused", "static-method"})
+    @ExportMessage
+    boolean isArrayElementInsertable(long index) {
+        return false;
     }
 
     @SuppressWarnings("static-method")
@@ -117,6 +897,14 @@ public final class StaticObject implements TruffleObject {
     @TruffleBoundary
     @ExportMessage
     Object toDisplayString(boolean allowSideEffects) {
+        if (isForeignObject()) {
+            InteropLibrary interopLibrary = InteropLibrary.getUncached();
+            try {
+                return "Foreign object: " + interopLibrary.asString(interopLibrary.toDisplayString(rawForeignObject(), allowSideEffects));
+            } catch (UnsupportedMessageException e) {
+                throw EspressoError.shouldNotReachHere("Interop library failed to convert display string to string");
+            }
+        }
         if (StaticObject.isNull(this)) {
             return "NULL";
         }
@@ -143,6 +931,10 @@ public final class StaticObject implements TruffleObject {
 
     @ExportMessage
     Object readMember(String member) throws UnknownIdentifierException {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         if (notNull(this)) {
             // Class<T>.static == Klass<T>
             if (CLASS_TO_STATIC.equals(member)) {
@@ -162,11 +954,19 @@ public final class StaticObject implements TruffleObject {
 
     @ExportMessage
     boolean hasMembers() {
-        return !isNull(this);
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        return notNull(this);
     }
 
     @ExportMessage
     boolean isMemberReadable(String member) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         return notNull(this) && getKlass() == getKlass().getMeta().java_lang_Class //
                         && (CLASS_TO_STATIC.equals(member) || STATIC_TO_CLASS.equals(member));
     }
@@ -175,9 +975,13 @@ public final class StaticObject implements TruffleObject {
 
     @ExportMessage
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         return (notNull(this) && getKlass() == getKlass().getMeta().java_lang_Class)
-                        ? KeysArray.EMPTY
-                        : CLASS_MEMBERS; // .static and .class
+                        ? CLASS_MEMBERS // .static and .class
+                        : KeysArray.EMPTY;
     }
 
     // endregion Interop
@@ -192,6 +996,7 @@ public final class StaticObject implements TruffleObject {
 
     // Constructor for object copy.
     private StaticObject(ObjectKlass klass, Object[] fields, byte[] primitiveFields) {
+        assert klass != null;
         this.klass = klass;
         this.fields = fields;
         this.primitiveFields = primitiveFields;
@@ -199,10 +1004,12 @@ public final class StaticObject implements TruffleObject {
 
     // Constructor for regular objects.
     private StaticObject(ObjectKlass klass) {
+        assert klass != null;
         assert klass != klass.getMeta().java_lang_Class;
         this.klass = klass;
-        this.fields = klass.getObjectFieldsCount() > 0 ? new Object[klass.getObjectFieldsCount()] : null;
-        this.primitiveFields = klass.getPrimitiveFieldTotalByteCount() > 0 ? new byte[klass.getPrimitiveFieldTotalByteCount()] : null;
+        LinkedKlass lk = klass.getLinkedKlass();
+        this.fields = lk.getObjectFieldsCount() > 0 ? new Object[lk.getObjectFieldsCount()] : null;
+        this.primitiveFields = lk.getPrimitiveFieldTotalByteCount() > 0 ? new byte[lk.getPrimitiveFieldTotalByteCount()] : null;
         initInstanceFields(klass);
     }
 
@@ -210,18 +1017,38 @@ public final class StaticObject implements TruffleObject {
     private StaticObject(Klass klass) {
         ObjectKlass guestClass = klass.getMeta().java_lang_Class;
         this.klass = guestClass;
-        int primitiveFieldCount = guestClass.getPrimitiveFieldTotalByteCount();
-        this.fields = guestClass.getObjectFieldsCount() > 0 ? new Object[guestClass.getObjectFieldsCount()] : null;
+        LinkedKlass lgk = guestClass.getLinkedKlass();
+        int primitiveFieldCount = lgk.getPrimitiveFieldTotalByteCount();
+        this.fields = lgk.getObjectFieldsCount() > 0 ? new Object[lgk.getObjectFieldsCount()] : null;
         this.primitiveFields = primitiveFieldCount > 0 ? new byte[primitiveFieldCount] : null;
         initInstanceFields(guestClass);
+        if (klass.getContext().getJavaVersion().modulesEnabled()) {
+            setField(klass.getMeta().java_lang_Class_classLoader, klass.getDefiningClassLoader());
+            setModule(klass);
+        }
         setHiddenField(klass.getMeta().HIDDEN_MIRROR_KLASS, klass);
+    }
+
+    private void setModule(Klass klass) {
+        StaticObject module = klass.module().module();
+        if (StaticObject.isNull(module)) {
+            if (klass.getRegistries().javaBaseDefined()) {
+                setField(klass.getMeta().java_lang_Class_module, klass.getRegistries().getJavaBaseModule().module());
+            } else {
+                klass.getRegistries().addToFixupList(klass);
+            }
+        } else {
+            setField(klass.getMeta().java_lang_Class_module, module);
+        }
     }
 
     // Constructor for static fields storage.
     private StaticObject(ObjectKlass klass, @SuppressWarnings("unused") Void unused) {
+        assert klass != null;
         this.klass = klass;
-        this.fields = klass.getStaticObjectFieldsCount() > 0 ? new Object[klass.getStaticObjectFieldsCount()] : null;
-        this.primitiveFields = klass.getPrimitiveStaticFieldTotalByteCount() > 0 ? new byte[klass.getPrimitiveStaticFieldTotalByteCount()] : null;
+        LinkedKlass lk = klass.getLinkedKlass();
+        this.fields = lk.getStaticObjectFieldsCount() > 0 ? new Object[lk.getStaticObjectFieldsCount()] : null;
+        this.primitiveFields = lk.getPrimitiveStaticFieldTotalByteCount() > 0 ? new byte[lk.getPrimitiveStaticFieldTotalByteCount()] : null;
         initStaticFields(klass);
     }
 
@@ -246,6 +1073,14 @@ public final class StaticObject implements TruffleObject {
         this.primitiveFields = null;
     }
 
+    private StaticObject(Klass klass, Object foreignObject, @SuppressWarnings("unused") Void unused) {
+        this.klass = klass;
+        assert foreignObject != null;
+        assert !(foreignObject instanceof StaticObject) : "Espresso objects cannot be wrapped";
+        this.primitiveFields = FOREIGN_OBJECT_MARKER;
+        this.fields = foreignObject;
+    }
+
     public static StaticObject createNew(ObjectKlass klass) {
         assert !klass.isAbstract() && !klass.isInterface();
         return new StaticObject(klass);
@@ -267,6 +1102,20 @@ public final class StaticObject implements TruffleObject {
         return new StaticObject(klass, array);
     }
 
+    public static StaticObject createForeign(Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
+        assert foreignObject != null;
+        if (interopLibrary.isNull(foreignObject)) {
+            return createForeignNull(foreignObject);
+        }
+        return new StaticObject(klass, foreignObject, null);
+    }
+
+    public static StaticObject createForeignNull(Object foreignObject) {
+        assert foreignObject != null;
+        assert InteropLibrary.getUncached().isNull(foreignObject);
+        return new StaticObject(null, foreignObject, null);
+    }
+
     public Klass getKlass() {
         return klass;
     }
@@ -284,6 +1133,10 @@ public final class StaticObject implements TruffleObject {
      * {@link Object#notifyAll notifyAll}) when used with the built-in monitor lock.
      */
     public EspressoLock getLock() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         if (isNull(this)) {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("StaticObject.NULL.getLock()");
@@ -304,6 +1157,19 @@ public final class StaticObject implements TruffleObject {
         return !isNull(object);
     }
 
+    public boolean isForeignObject() {
+        return this.primitiveFields == FOREIGN_OBJECT_MARKER;
+    }
+
+    public boolean isEspressoObject() {
+        return !isForeignObject();
+    }
+
+    public Object rawForeignObject() {
+        assert isForeignObject();
+        return this.fields;
+    }
+
     public boolean isStaticStorage() {
         return this == getKlass().getStatics();
     }
@@ -311,7 +1177,11 @@ public final class StaticObject implements TruffleObject {
     // Shallow copy.
     public StaticObject copy() {
         if (isNull(this)) {
-            return NULL;
+            return this;
+        }
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
         if (getKlass().isArray()) {
             return createArray((ArrayKlass) getKlass(), cloneWrappedArray());
@@ -322,12 +1192,16 @@ public final class StaticObject implements TruffleObject {
 
     @ExplodeLoop
     private void initInstanceFields(ObjectKlass thisKlass) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         CompilerAsserts.partialEvaluationConstant(thisKlass);
         for (Field f : thisKlass.getFieldTable()) {
             assert !f.isStatic();
             if (!f.isHidden()) {
                 if (f.getKind() == JavaKind.Object) {
-                    setUnsafeField(f.getFieldIndex(), StaticObject.NULL);
+                    setUnsafeField(f.getIndex(), StaticObject.NULL);
                 }
             }
         }
@@ -335,11 +1209,15 @@ public final class StaticObject implements TruffleObject {
 
     @ExplodeLoop
     private void initStaticFields(ObjectKlass thisKlass) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         CompilerAsserts.partialEvaluationConstant(thisKlass);
         for (Field f : thisKlass.getStaticFieldTable()) {
             assert f.isStatic();
             if (f.getKind() == JavaKind.Object) {
-                setUnsafeField(f.getFieldIndex(), StaticObject.NULL);
+                setUnsafeField(f.getIndex(), StaticObject.NULL);
             }
         }
     }
@@ -352,19 +1230,27 @@ public final class StaticObject implements TruffleObject {
 
     @TruffleBoundary(allowInlining = true)
     public StaticObject getFieldVolatile(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return (StaticObject) UNSAFE.getObjectVolatile(CompilerDirectives.castExact(fields, Object[].class), getObjectFieldIndex(field.getFieldIndex()));
+        return (StaticObject) UNSAFE.getObjectVolatile(CompilerDirectives.castExact(fields, Object[].class), getObjectFieldIndex(field.getIndex()));
     }
 
     // Not to be used to access hidden fields !
     public StaticObject getField(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert !field.getKind().isSubWord();
         Object result;
         if (field.isVolatile()) {
             result = getFieldVolatile(field);
         } else {
-            result = castExact(fields, Object[].class)[field.getFieldIndex()];
+            result = castExact(fields, Object[].class)[field.getIndex()];
         }
         assert result != null;
         return (StaticObject) result;
@@ -372,41 +1258,74 @@ public final class StaticObject implements TruffleObject {
 
     // Use with caution. Can be used with hidden fields.
     public Object getUnsafeField(int fieldIndex) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         return UNSAFE.getObject(castExact(fields, Object[].class), getObjectFieldIndex(fieldIndex));
     }
 
     private void setUnsafeField(int index, Object value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         UNSAFE.putObject(fields, getObjectFieldIndex(index), value);
     }
 
     private Object getUnsafeFieldVolatile(int fieldIndex) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         return UNSAFE.getObjectVolatile(castExact(fields, Object[].class), getObjectFieldIndex(fieldIndex));
     }
 
     private void setUnsafeFieldVolatile(int index, Object value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         UNSAFE.putObjectVolatile(fields, getObjectFieldIndex(index), value);
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setFieldVolatile(Field field, Object value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        UNSAFE.putObjectVolatile(castExact(fields, Object[].class), getObjectFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putObjectVolatile(castExact(fields, Object[].class), getObjectFieldIndex(field.getIndex()), value);
     }
 
     public void setField(Field field, Object value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert !field.getKind().isSubWord();
+        assert !(value instanceof StaticObject) ||
+                        (StaticObject.isNull((StaticObject) value)) ||
+                        field.isHidden() ||
+                        getKlass().getMeta().resolveSymbolOrFail(field.getType(), getKlass().getDefiningClassLoader()) //
+                                        .isAssignableFrom(((StaticObject) value).getKlass());
         if (field.isVolatile()) {
             setFieldVolatile(field, value);
         } else {
             Object[] fieldArray = castExact(fields, Object[].class);
-            fieldArray[field.getFieldIndex()] = value;
+            fieldArray[field.getIndex()] = value;
         }
     }
 
     public boolean compareAndSwapField(Field field, Object before, Object after) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.compareAndSwapObject(fields, getObjectFieldIndex(field.getFieldIndex()), before, after);
+        return UNSAFE.compareAndSwapObject(fields, getObjectFieldIndex(field.getIndex()), before, after);
     }
 
     // End non-primitive field handling
@@ -420,223 +1339,335 @@ public final class StaticObject implements TruffleObject {
     }
 
     public boolean getBooleanField(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Boolean;
         if (field.isVolatile()) {
             return getByteFieldVolatile(field) != 0;
         } else {
-            return UNSAFE.getByte(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex())) != 0;
+            return UNSAFE.getByte(primitiveFields, getPrimitiveFieldIndex(field.getIndex())) != 0;
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public byte getByteFieldVolatile(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getByteVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getByteVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     public byte getByteField(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Byte;
         if (field.isVolatile()) {
             return getByteFieldVolatile(field);
         } else {
-            return UNSAFE.getByte(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getByte(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
     public char getCharField(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Char;
         if (field.isVolatile()) {
             return getCharFieldVolatile(field);
         } else {
-            return UNSAFE.getChar(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getChar(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public char getCharFieldVolatile(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getCharVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getCharVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     public short getShortField(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Short;
         if (field.isVolatile()) {
             return getShortFieldVolatile(field);
         } else {
-            return UNSAFE.getShort(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getShort(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public short getShortFieldVolatile(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getShortVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getShortVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     public int getIntField(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Int;
         if (field.isVolatile()) {
             return getIntFieldVolatile(field);
         } else {
-            return UNSAFE.getInt(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getInt(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public int getIntFieldVolatile(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getIntVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getIntVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     public float getFloatField(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Float;
         if (field.isVolatile()) {
             return getFloatFieldVolatile(field);
         } else {
-            return UNSAFE.getFloat(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getFloat(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public float getFloatFieldVolatile(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getFloatVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getFloatVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     public double getDoubleField(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Double;
         if (field.isVolatile()) {
             return getDoubleFieldVolatile(field);
         } else {
-            return UNSAFE.getDouble(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getDouble(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public double getDoubleFieldVolatile(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getDoubleVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getDoubleVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     // Field setters
 
     public void setBooleanField(Field field, boolean value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Boolean;
         if (field.isVolatile()) {
             setBooleanFieldVolatile(field, value);
         } else {
-            UNSAFE.putByte(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), (byte) (value ? 1 : 0));
+            UNSAFE.putByte(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), (byte) (value ? 1 : 0));
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setBooleanFieldVolatile(Field field, boolean value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         setByteFieldVolatile(field, (byte) (value ? 1 : 0));
     }
 
     public void setByteField(Field field, byte value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Byte;
         if (field.isVolatile()) {
             setByteFieldVolatile(field, value);
         } else {
-            UNSAFE.putByte(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putByte(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setByteFieldVolatile(Field field, byte value) {
-        UNSAFE.putByteVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        UNSAFE.putByteVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public void setCharField(Field field, char value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Char;
         if (field.isVolatile()) {
             setCharFieldVolatile(field, value);
         } else {
-            UNSAFE.putChar(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putChar(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setCharFieldVolatile(Field field, char value) {
-        UNSAFE.putCharVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        UNSAFE.putCharVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public void setShortField(Field field, short value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Short;
         if (field.isVolatile()) {
             setShortFieldVolatile(field, value);
         } else {
-            UNSAFE.putShort(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putShort(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setShortFieldVolatile(Field field, short value) {
-        UNSAFE.putShortVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        UNSAFE.putShortVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public void setIntField(Field field, int value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Int || field.getKind() == JavaKind.Float;
         if (field.isVolatile()) {
             setIntFieldVolatile(field, value);
         } else {
-            UNSAFE.putInt(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putInt(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setIntFieldVolatile(Field field, int value) {
-        UNSAFE.putIntVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        UNSAFE.putIntVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public void setFloatField(Field field, float value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Float;
         if (field.isVolatile()) {
             setFloatFieldVolatile(field, value);
         } else {
-            UNSAFE.putFloat(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putFloat(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setDoubleFieldVolatile(Field field, double value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        UNSAFE.putDoubleVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putDoubleVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public void setDoubleField(Field field, double value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Double;
         if (field.isVolatile()) {
             setDoubleFieldVolatile(field, value);
         } else {
-            UNSAFE.putDouble(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putDouble(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setFloatFieldVolatile(Field field, float value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        UNSAFE.putFloatVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putFloatVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public boolean compareAndSwapIntField(Field field, int before, int after) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.compareAndSwapInt(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), before, after);
+        return UNSAFE.compareAndSwapInt(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), before, after);
     }
 
     // End subword field handling
@@ -644,39 +1675,59 @@ public final class StaticObject implements TruffleObject {
 
     @TruffleBoundary(allowInlining = true)
     public long getLongFieldVolatile(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getLongVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getLongVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     public long getLongField(Field field) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind().needsTwoSlots();
         if (field.isVolatile()) {
             return getLongFieldVolatile(field);
         } else {
-            return UNSAFE.getLong(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getLong(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setLongFieldVolatile(Field field, long value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        UNSAFE.putLongVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putLongVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public void setLongField(Field field, long value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind().needsTwoSlots();
         if (field.isVolatile()) {
             setLongFieldVolatile(field, value);
         } else {
-            UNSAFE.putLong(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putLong(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     public boolean compareAndSwapLongField(Field field, long before, long after) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.compareAndSwapLong(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), before, after);
+        return UNSAFE.compareAndSwapLong(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), before, after);
     }
 
     // End big words field handling.
@@ -684,6 +1735,10 @@ public final class StaticObject implements TruffleObject {
     // Given a guest Class, get the corresponding Klass.
     public Klass getMirrorKlass() {
         assert getKlass().getType() == Type.java_lang_Class;
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         Klass result = (Klass) getHiddenField(getKlass().getMeta().HIDDEN_MIRROR_KLASS);
         if (result == null) {
             CompilerDirectives.transferToInterpreter();
@@ -697,6 +1752,9 @@ public final class StaticObject implements TruffleObject {
     public String toString() {
         if (this == NULL) {
             return "null";
+        }
+        if (isForeignObject()) {
+            return "foreign object: " + getKlass().getTypeAsString();
         }
         if (getKlass() == getKlass().getMeta().java_lang_String) {
             return Meta.toHostString(this);
@@ -715,6 +1773,9 @@ public final class StaticObject implements TruffleObject {
         if (this == NULL) {
             return "null";
         }
+        if (isForeignObject()) {
+            return String.format("foreign object: %s\n%s", getKlass().getTypeAsString(), InteropLibrary.getUncached().toDisplayString(rawForeignObject()));
+        }
         if (getKlass() == getKlass().getMeta().java_lang_String) {
             return Meta.toHostString(this);
         }
@@ -727,29 +1788,49 @@ public final class StaticObject implements TruffleObject {
         StringBuilder str = new StringBuilder(getKlass().getType().toString());
         for (Field f : ((ObjectKlass) getKlass()).getFieldTable()) {
             // Also prints hidden fields
-            str.append("\n    ").append(f.getName()).append(": ").append(f.get(this).toString());
+            if (!f.isHidden()) {
+                str.append("\n    ").append(f.getName()).append(": ").append(f.get(this).toString());
+            } else {
+                str.append("\n    ").append(f.getName()).append(": ").append((this.getHiddenField(f)).toString());
+            }
         }
         return str.toString();
     }
 
     public void setHiddenField(Field hiddenField, Object value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert hiddenField.isHidden();
-        setUnsafeField(hiddenField.getFieldIndex(), value);
+        setUnsafeField(hiddenField.getIndex(), value);
     }
 
     public Object getHiddenField(Field hiddenField) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert hiddenField.isHidden();
-        return getUnsafeField(hiddenField.getFieldIndex());
+        return getUnsafeField(hiddenField.getIndex());
     }
 
     public void setHiddenFieldVolatile(Field hiddenField, Object value) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert hiddenField.isHidden();
-        setUnsafeFieldVolatile(hiddenField.getFieldIndex(), value);
+        setUnsafeFieldVolatile(hiddenField.getIndex(), value);
     }
 
     public Object getHiddenFieldVolatile(Field hiddenField) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert hiddenField.isHidden();
-        return getUnsafeFieldVolatile(hiddenField.getFieldIndex());
+        return getUnsafeFieldVolatile(hiddenField.getIndex());
     }
 
     /**
@@ -758,11 +1839,19 @@ public final class StaticObject implements TruffleObject {
 
     @SuppressWarnings("unchecked")
     public <T> T unwrap() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert isArray();
         return (T) fields;
     }
 
     public <T> T get(int index) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert isArray();
         return this.<T[]> unwrap()[index];
     }
@@ -771,6 +1860,10 @@ public final class StaticObject implements TruffleObject {
      * Workaround to avoid casting to Object[] in InterpreterToVM (non-leaf type check).
      */
     public void putObject(StaticObject value, int index, Meta meta) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert isArray();
         if (index >= 0 && index < length()) {
             UNSAFE.putObject(fields, getObjectFieldIndex(index), arrayStoreExCheck(value, ((ArrayKlass) klass).getComponentType(), meta));
@@ -789,11 +1882,19 @@ public final class StaticObject implements TruffleObject {
     }
 
     public int length() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert isArray();
         return Array.getLength(fields);
     }
 
     private Object cloneWrappedArray() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert isArray();
         if (fields instanceof boolean[]) {
             return this.<boolean[]> unwrap().clone();
@@ -824,6 +1925,10 @@ public final class StaticObject implements TruffleObject {
 
     public static StaticObject wrap(StaticObject[] array, Meta meta) {
         return createArray(meta.java_lang_Object_array, array);
+    }
+
+    public static StaticObject wrap(ArrayKlass klass, StaticObject[] array) {
+        return createArray(klass, array);
     }
 
     public static StaticObject wrap(byte[] array, Meta meta) {
@@ -889,7 +1994,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     public boolean isArray() {
-        return getKlass().isArray();
+        return !isNull(this) && getKlass().isArray();
     }
 
     public static long getArrayByteOffset(int index) {
@@ -903,6 +2008,10 @@ public final class StaticObject implements TruffleObject {
     }
 
     public void setArrayByte(byte value, int index, Meta meta) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert isArray() && (fields instanceof byte[] || fields instanceof boolean[]);
         if (index >= 0 && index < length()) {
             UNSAFE.putByte(fields, getArrayByteOffset(index), value);
@@ -912,6 +2021,10 @@ public final class StaticObject implements TruffleObject {
     }
 
     public byte getArrayByte(int index, Meta meta) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
         assert isArray() && (fields instanceof byte[] || fields instanceof boolean[]);
         if (index >= 0 && index < length()) {
             return UNSAFE.getByte(fields, getArrayByteOffset(index));
@@ -921,6 +2034,10 @@ public final class StaticObject implements TruffleObject {
     }
 
     public StaticObject getAndSetObject(Field field, StaticObject value) {
-        return (StaticObject) UNSAFE.getAndSetObject(fields, getObjectFieldIndex(field.getFieldIndex()), value);
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        return (StaticObject) UNSAFE.getAndSetObject(fields, getObjectFieldIndex(field.getIndex()), value);
     }
 }

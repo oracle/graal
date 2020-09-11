@@ -24,6 +24,8 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
@@ -31,6 +33,7 @@ import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -62,7 +65,6 @@ public abstract class ClassRegistry implements ContextAccess {
                 return new TypeStack();
             }
         };
-
         Node head = null;
 
         static final class Node {
@@ -108,10 +110,27 @@ public abstract class ClassRegistry implements ContextAccess {
     }
 
     private final EspressoContext context;
+
     private final int loaderID;
+
+    private ModuleEntry unnamed;
+    private final PackageTable packages;
+    private final ModuleTable modules;
+
+    public ModuleEntry getUnnamedModule() {
+        return unnamed;
+    }
 
     public final int getLoaderID() {
         return loaderID;
+    }
+
+    public ModuleTable modules() {
+        return modules;
+    }
+
+    public PackageTable packages() {
+        return packages;
     }
 
     /**
@@ -130,6 +149,14 @@ public abstract class ClassRegistry implements ContextAccess {
     protected ClassRegistry(EspressoContext context) {
         this.context = context;
         this.loaderID = context.getNewLoaderId();
+        ReadWriteLock rwLock = new ReentrantReadWriteLock();
+        this.packages = new PackageTable(rwLock);
+        this.modules = new ModuleTable(rwLock);
+
+    }
+
+    public void initUnnamedModule(StaticObject unnamedModule) {
+        this.unnamed = ModuleEntry.createUnnamedModuleEntry(unnamedModule, this);
     }
 
     /**
@@ -138,7 +165,7 @@ public abstract class ClassRegistry implements ContextAccess {
      * @param type the symbolic reference to the Klass we want to load
      * @return The Klass corresponding to given type
      */
-    protected Klass loadKlass(Symbol<Type> type) {
+    Klass loadKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
             Klass elemental = loadKlass(getTypes().getElementalType(type));
             if (elemental == null) {
@@ -208,10 +235,15 @@ public abstract class ClassRegistry implements ContextAccess {
     private ParserKlass getParserKlass(byte[] bytes, String strType) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
         ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
-        if (StaticObject.notNull(getClassLoader()) && parserKlass.getName().toString().startsWith("java/")) {
+        if (!loaderIsBootOrPlatform(getClassLoader(), getMeta()) && parserKlass.getName().toString().startsWith("java/")) {
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
         }
         return parserKlass;
+    }
+
+    public static boolean loaderIsBootOrPlatform(StaticObject loader, Meta meta) {
+        return StaticObject.isNull(loader) ||
+                        (meta.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
     }
 
     private ObjectKlass createAndPutKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType) {

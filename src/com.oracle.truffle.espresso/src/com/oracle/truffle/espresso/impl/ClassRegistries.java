@@ -27,9 +27,11 @@ import static com.oracle.truffle.espresso.impl.LoadingConstraints.INVALID_LOADER
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -41,9 +43,14 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class ClassRegistries {
 
+    @CompilerDirectives.CompilationFinal //
+    private ModuleTable.ModuleEntry javaBaseModule;
+
     private final ClassRegistry bootClassRegistry;
     private final LoadingConstraints constraints;
     private final EspressoContext context;
+
+    private List<Klass> fixupModuleList = new ArrayList<>();
 
     private final Set<StaticObject> weakClassLoaderSet = Collections.newSetFromMap(new WeakHashMap<>());
 
@@ -57,7 +64,11 @@ public final class ClassRegistries {
         this.constraints = new LoadingConstraints(context);
     }
 
-    private ClassRegistry getClassRegistry(@Host(ClassLoader.class) StaticObject classLoader) {
+    public void initJavaBaseModule() {
+        this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Symbol.Name.java_base, bootClassRegistry);
+    }
+
+    public ClassRegistry getClassRegistry(@Host(ClassLoader.class) StaticObject classLoader) {
         if (StaticObject.isNull(classLoader)) {
             return bootClassRegistry;
         }
@@ -74,23 +85,38 @@ public final class ClassRegistries {
             synchronized (weakClassLoaderSet) {
                 classRegistry = (ClassRegistry) classLoader.getHiddenFieldVolatile(context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY);
                 if (classRegistry == null) {
-                    classRegistry = new GuestClassRegistry(context, classLoader);
-                    classLoader.setHiddenFieldVolatile(context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY, classRegistry);
-                    // Register the class loader in the weak set.
-                    assert Thread.holdsLock(weakClassLoaderSet);
-                    weakClassLoaderSet.add(classLoader);
-                    totalClassLoadersSet++;
-                    int size = weakClassLoaderSet.size();
-                    if (totalClassLoadersSet > size) {
-                        constraints.purge();
-                        totalClassLoadersSet = size;
-                    }
+                    classRegistry = registerRegistry(classLoader);
                 }
             }
         }
 
         assert classRegistry != null;
         return classRegistry;
+    }
+
+    @TruffleBoundary
+    private ClassRegistry registerRegistry(@Host(ClassLoader.class) StaticObject classLoader) {
+        assert Thread.holdsLock(weakClassLoaderSet);
+        ClassRegistry classRegistry;
+        classRegistry = new GuestClassRegistry(context, classLoader);
+        classLoader.setHiddenFieldVolatile(context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY, classRegistry);
+        // Register the class loader in the weak set.
+        weakClassLoaderSet.add(classLoader);
+        totalClassLoadersSet++;
+        int size = weakClassLoaderSet.size();
+        if (totalClassLoadersSet > size) {
+            constraints.purge();
+            totalClassLoadersSet = size;
+        }
+        return classRegistry;
+    }
+
+    public ModuleTable.ModuleEntry getJavaBaseModule() {
+        return javaBaseModule;
+    }
+
+    public boolean javaBaseDefined() {
+        return javaBaseModule != null && !StaticObject.isNull(javaBaseModule.module());
     }
 
     @TruffleBoundary
@@ -153,11 +179,11 @@ public final class ClassRegistries {
         return list.toArray(Klass.EMPTY_ARRAY);
     }
 
-    @TruffleBoundary
-    public Klass loadKlassWithBootClassLoader(Symbol<Type> type) {
-        return loadKlass(type, StaticObject.NULL);
-    }
-
+    /**
+     * Do not call directly. Use
+     * {@link com.oracle.truffle.espresso.meta.Meta#loadKlassOrFail(Symbol, StaticObject)} or
+     * {@link com.oracle.truffle.espresso.meta.Meta#loadKlassOrNull(Symbol, StaticObject)}.
+     */
     @TruffleBoundary
     public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
@@ -217,6 +243,20 @@ public final class ClassRegistries {
             }
         }
         return false;
+    }
+
+    public void addToFixupList(Klass k) {
+        fixupModuleList.add(k);
+    }
+
+    public void processFixupList(StaticObject javaBase) {
+        for (PrimitiveKlass k : context.getMeta().PRIMITIVE_KLASSES) {
+            k.mirror().setField(context.getMeta().java_lang_Class_module, javaBase);
+        }
+        for (Klass k : fixupModuleList) {
+            k.mirror().setField(context.getMeta().java_lang_Class_module, javaBase);
+        }
+        fixupModuleList = null;
     }
 
     /**

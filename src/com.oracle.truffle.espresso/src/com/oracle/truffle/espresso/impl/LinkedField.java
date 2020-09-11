@@ -22,35 +22,39 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
-public final class LinkedField {
-    ParserField getParserField() {
-        return parserField;
-    }
-
+final class LinkedField {
     private final ParserField parserField;
-    private final LinkedKlass holderLinkedKlass;
+    private final int index;
+    private final int slot;
 
-    private final JavaKind kind;
-
-    protected ConstantPool getConstantPool() {
-        return holderLinkedKlass.getConstantPool();
+    LinkedField(ParserField parserField, int slot, int index) {
+        this.parserField = parserField;
+        this.slot = slot;
+        this.index = index;
     }
 
-    private final int slot; // already computed here
+    public static LinkedField createHidden(Symbol<Name> name, int slot, int index) {
+        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot, index);
+    }
 
-    public LinkedField(ParserField parserField, LinkedKlass holderLinkedKlass, int slot) {
-        this.parserField = parserField;
-        this.holderLinkedKlass = holderLinkedKlass;
-        this.slot = slot;
-        this.kind = Types.getJavaKind(getType());
+    /**
+     * The slot is the position in the `fieldTable` of the ObjectKlass.
+     */
+    public int getSlot() {
+        return slot;
+    }
+
+    /**
+     * The index is the actual position in the field array of an actual instance.
+     */
+    public int getIndex() {
+        return index;
     }
 
     public Symbol<Type> getType() {
@@ -61,16 +65,12 @@ public final class LinkedField {
         return parserField.getName();
     }
 
-    public int getSlot() {
-        return slot;
-    }
-
     public int getFlags() {
         return parserField.getFlags();
     }
 
     public JavaKind getKind() {
-        return kind;
+        return parserField.getKind();
     }
 
     public Attribute getAttribute(Symbol<Name> name) {
@@ -80,5 +80,9 @@ public final class LinkedField {
             }
         }
         return null;
+    }
+
+    public boolean isHidden() {
+        return parserField.isHidden();
     }
 }
