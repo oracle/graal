@@ -182,20 +182,30 @@ public abstract class AllocationSnippets implements Snippets {
         UnsignedWord remainingSize = endOffset.subtract(offset);
         if (manualUnroll && remainingSize.unsignedDivide(8).belowOrEqual(MAX_UNROLLED_OBJECT_ZEROING_STORES)) {
             ReplacementsUtil.staticAssert(!isEndOffsetConstant, "size shouldn't be constant at instantiation time");
-            // This case handles arrays of constant length. Instead of having a snippet variant for
-            // each length, generate a chain of stores of maximum length. Once it's inlined the
-            // break statement will trim excess stores.
-            snippetCounters.unrolledInit.inc();
-
-            explodeLoop();
-            for (int i = 0; i < MAX_UNROLLED_OBJECT_ZEROING_STORES; i++, offset = offset.add(8)) {
-                if (offset.equal(endOffset)) {
-                    break;
-                }
-                memory.initializeLong(offset, value, LocationIdentity.init());
-            }
+            fillMemoryAlignedUnrollable(value, memory, offset, endOffset, snippetCounters);
         } else {
             fillMemoryAligned(value, memory, offset, endOffset, isEndOffsetConstant, remainingSize, supportsBulkZeroing, snippetCounters);
+        }
+    }
+
+    protected void fillMemoryAlignedUnrollable(
+                    long value,
+                    Word memory,
+                    UnsignedWord fromOffset,
+                    UnsignedWord endOffset,
+                    AllocationSnippetCounters snippetCounters) {
+        // This case handles arrays of constant length. Instead of having a snippet variant for
+        // each length, generate a chain of stores of maximum length. Once it's inlined the
+        // break statement will trim excess stores.
+        snippetCounters.unrolledInit.inc();
+
+        explodeLoop();
+        UnsignedWord offset = fromOffset;
+        for (int i = 0; i < MAX_UNROLLED_OBJECT_ZEROING_STORES; i++, offset = offset.add(8)) {
+            if (offset.equal(endOffset)) {
+                break;
+            }
+            memory.initializeLong(offset, value, LocationIdentity.init());
         }
     }
 

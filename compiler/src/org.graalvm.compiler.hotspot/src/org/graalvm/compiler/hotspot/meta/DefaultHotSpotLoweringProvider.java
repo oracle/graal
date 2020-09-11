@@ -223,13 +223,17 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
     @Override
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config) {
+        initialize(options, factories, providers, config,
+                        new HotSpotAllocationSnippets.Templates(new HotSpotAllocationSnippets(config, providers.getRegisters()), options, factories, runtime, providers, target, config));
+    }
+
+    public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
+                    HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
         super.initialize(options, factories, runtime, providers, providers.getSnippetReflection());
 
         assert target == providers.getCodeCache().getTarget();
         instanceofSnippets = new InstanceOfSnippets.Templates(options, factories, runtime, providers, target);
-        if (allocationSnippets == null) {
-            allocationSnippets = new HotSpotAllocationSnippets.Templates(new HotSpotAllocationSnippets(config, providers.getRegisters()), options, factories, runtime, providers, target, config);
-        }
+        allocationSnippets = allocationSnippetTemplates;
         monitorSnippets = new MonitorSnippets.Templates(options, factories, runtime, providers, target, config.useFastLocking);
         g1WriteBarrierSnippets = new HotSpotG1WriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config);
         serialWriteBarrierSnippets = new HotSpotSerialWriteBarrierSnippets.Templates(options, factories, runtime, providers, target);
@@ -253,10 +257,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
     public HotSpotAllocationSnippets.Templates getAllocationSnippets() {
         return allocationSnippets;
-    }
-
-    public void setAllocationSnippets(HotSpotAllocationSnippets.Templates allocationSnippets) {
-        this.allocationSnippets = allocationSnippets;
     }
 
     public ArrayCopySnippets.Templates getArraycopySnippets() {
