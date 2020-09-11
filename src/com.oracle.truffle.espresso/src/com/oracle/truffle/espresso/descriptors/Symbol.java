@@ -343,6 +343,7 @@ public final class Symbol<T> extends ByteSequence {
 
         // j.l.ref.Reference
         public static final Symbol<Name> discovered = StaticSymbols.putName("discovered");
+        public static final Symbol<Name> enqueue = StaticSymbols.putName("enqueue");
         public static final Symbol<Name> lock = StaticSymbols.putName("lock");
         public static final Symbol<Name> next = StaticSymbols.putName("next");
         public static final Symbol<Name> NULL = StaticSymbols.putName("NULL");
@@ -776,6 +777,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_ThreadGroup_String = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_String);
         public static final Symbol<Signature> _void_ThreadGroup_Runnable = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_Runnable);
         public static final Symbol<Signature> _void_Thread = StaticSymbols.putSignature(Type._void, Type.java_lang_Thread);
+
+        public static final Symbol<Signature> _boolean_Reference = StaticSymbols.putSignature(Type._boolean, Type.java_lang_ref_Reference);
 
         public static final Symbol<Signature> _void_CodeSource_PermissionCollection = StaticSymbols.putSignature(Type._void, Type.java_security_CodeSource, Type.java_security_PermissionCollection);
 

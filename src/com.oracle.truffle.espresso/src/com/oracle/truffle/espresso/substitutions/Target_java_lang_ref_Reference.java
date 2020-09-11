@@ -25,9 +25,9 @@ package com.oracle.truffle.espresso.substitutions;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
 
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -81,7 +81,7 @@ public class Target_java_lang_ref_Reference {
             // Inject class via sun.misc.Unsafe#defineClass.
             // The use of reflection here is deliberate, so the code compiles with both Java 8/11.
             try {
-                Method defineClass = Unsafe.class.getDeclaredMethod("defineClass",
+                java.lang.reflect.Method defineClass = Unsafe.class.getDeclaredMethod("defineClass",
                                 String.class, byte[].class, int.class, int.class, ClassLoader.class, ProtectionDomain.class);
                 defineClass.setAccessible(true);
                 return (Class<?>) defineClass.invoke(UnsafeAccess.get(), className, classBytes, 0, classBytes.length, null, null);
@@ -91,7 +91,7 @@ public class Target_java_lang_ref_Reference {
         } else if (JavaVersionUtil.JAVA_SPEC == 11 /* removal of sun.misc.Unsafe#defineClass */) {
             // Inject class via j.l.ClassLoader#defineClass1.
             try {
-                Method defineClass1 = ClassLoader.class.getDeclaredMethod("defineClass1",
+                java.lang.reflect.Method defineClass1 = ClassLoader.class.getDeclaredMethod("defineClass1",
                                 ClassLoader.class, String.class, byte[].class, int.class, int.class, ProtectionDomain.class, String.class);
                 defineClass1.setAccessible(true);
                 return (Class<?>) defineClass1.invoke(null, null, className, classBytes, 0, classBytes.length, null, null);
@@ -173,5 +173,37 @@ public class Target_java_lang_ref_Reference {
         } else {
             meta.java_lang_ref_Reference_referent.set(self, StaticObject.NULL);
         }
+    }
+
+    @SuppressWarnings("rawtypes")
+    @Substitution(hasReceiver = true)
+    public static boolean enqueue(@Host(java.lang.ref.Reference.class) StaticObject self,
+                    @InjectMeta Meta meta) {
+        if (meta.getJavaVersion().java9OrLater()) {
+            /*
+             * In java 9 or later, the referent field is cleared. We must replicate this behavior on
+             * our own implementation.
+             */
+            if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference) //
+                            || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
+                            || InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference) //
+                            || InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference)) {
+                EspressoReference ref = (EspressoReference) self.getHiddenField(meta.HIDDEN_HOST_REFERENCE);
+                if (ref != null) {
+                    ref.clear();
+                }
+            }
+        }
+
+        // TODO(garcia): Give substitutions the power of calling the original method they
+        // substitute.
+
+        // Replicates the behavior of guest Reference.enqueue()
+        if (meta.getJavaVersion().java9OrLater()) {
+            meta.java_lang_ref_Reference_referent.set(self, StaticObject.NULL);
+        }
+        StaticObject queue = (StaticObject) meta.java_lang_ref_Reference_queue.get(self);
+        Method m = queue.getKlass().vtableLookup(meta.java_lang_ref_ReferenceQueue_enqueue.getVTableIndex());
+        return (boolean) m.invokeDirect(queue, self);
     }
 }
