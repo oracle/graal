@@ -1584,7 +1584,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public static @Host(Object.class) StaticObject JVM_LatestUserDefinedLoader(@InjectMeta Meta meta) {
+    public @Host(Object.class) StaticObject JVM_LatestUserDefinedLoader(@InjectMeta Meta meta) {
         StaticObject result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
             public StaticObject visitFrame(FrameInstance frameInstance) {
                 Method m = getMethodFromFrame(frameInstance);
@@ -1597,8 +1597,14 @@ public final class VM extends NativeEnv implements ContextAccess {
 
                     StaticObject loader = holder.getDefiningClassLoader();
                     // if (loader != NULL && !SystemDictionary::is_ext_class_loader(loader))
-                    if (StaticObject.notNull(loader) && !Type.sun_misc_Launcher$ExtClassLoader.equals(loader.getKlass().getType())) {
-                        return loader;
+                    if (getJavaVersion().java8OrEarlier()) {
+                        if (StaticObject.notNull(loader) && !Type.sun_misc_Launcher$ExtClassLoader.equals(loader.getKlass().getType())) {
+                            return loader;
+                        }
+                    } else {
+                        if (StaticObject.notNull(loader) && !Type.jdk_internal_loader_ClassLoaders$PlatformClassLoader.equals(loader.getKlass().getType())) {
+                            return loader;
+                        }
                     }
                 }
                 return null;
