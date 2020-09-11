@@ -133,7 +133,9 @@ public abstract class InvokeEspressoNode extends Node {
     }
 
     private static void checkValidInvoke(Method method, Object receiver) {
-        EspressoError.guarantee((method.isStatic() && receiver == null) || (!method.isStatic() && method.isPublic() && !method.isSignaturePolymorphicDeclared() && receiver != null),
-                        "Espresso interop only supports static methods and public non-signature polymorphic instance method");
+        EspressoError.guarantee(!method.isSignaturePolymorphicDeclared(), "Espresso interop does not support signature polymorphic methods.");
+        EspressoError.guarantee(((method.isStatic() && receiver == null) ||
+                        (!method.isStatic() && method.isPublic() && receiver != null)),
+                        "Espresso interop only supports static methods and public instance method");
     }
 }
