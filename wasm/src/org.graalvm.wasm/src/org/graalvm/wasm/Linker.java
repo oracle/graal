@@ -328,7 +328,7 @@ public class Linker {
             assert (offsetAddress != -1) ^ (offsetGlobalIndex != -1) : "Both an offset address and a offset global are specified for the data segment.";
             WasmMemory memory = instance.memory();
             Assert.assertNotNull(memory, String.format("No memory declared or imported in the module '%s'", instance.name()));
-            long baseAddress;
+            int baseAddress;
             if (offsetGlobalIndex != -1) {
                 final int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
                 Assert.assertTrue(offsetGlobalAddress != -1, "The global variable '" + offsetGlobalIndex + "' for the offset of the data segment " +
@@ -337,7 +337,6 @@ public class Linker {
             } else {
                 baseAddress = offsetAddress;
             }
-            memory.validateAddress(null, baseAddress, byteLength);
             for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                 byte b = data[writeOffset];
                 memory.store_i32_8(null, baseAddress + writeOffset, b);

@@ -48,13 +48,13 @@ import com.oracle.truffle.api.nodes.Node;
 /**
  * Thrown when a WebAssembly program encounters a trap, as defined by the specification.
  */
-public class WasmTrap extends RuntimeException implements TruffleException {
+public final class WasmTrap extends RuntimeException implements TruffleException {
 
     private static final long serialVersionUID = 8195809219857028793L;
 
     private final Node location;
 
-    public WasmTrap(Node location, String message) {
+    private WasmTrap(Node location, String message) {
         super(message);
         CompilerAsserts.neverPartOfCompilation();
         this.location = location;
@@ -82,7 +82,7 @@ public class WasmTrap extends RuntimeException implements TruffleException {
 
     @SuppressWarnings("sync-override")
     @Override
-    public final Throwable fillInStackTrace() {
+    public Throwable fillInStackTrace() {
         return this;
     }
 

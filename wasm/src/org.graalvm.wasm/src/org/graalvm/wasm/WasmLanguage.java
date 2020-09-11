@@ -43,6 +43,8 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import org.graalvm.wasm.memory.UnsafeWasmMemory;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.nodes.WasmEmptyRootNode;
 import org.graalvm.options.OptionDescriptors;
 
@@ -80,5 +82,16 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     static WasmContext getCurrentContext() {
         return getCurrentContext(WasmLanguage.class);
+    }
+
+    @Override
+    protected void finalizeContext(WasmContext context) {
+        super.finalizeContext(context);
+        for (int i = 0; i < context.memories().count(); ++i) {
+            final WasmMemory memory = context.memories().memory(i);
+            if (memory instanceof UnsafeWasmMemory) {
+                ((UnsafeWasmMemory) memory).free();
+            }
+        }
     }
 }

@@ -142,7 +142,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportMemory() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Memory memory = new Memory(new MemoryDescriptor(1L, 4L));
+            final Memory memory = new Memory(new MemoryDescriptor(1, 4));
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultMemory", memory
@@ -152,9 +152,9 @@ public class WasmJsApiSuite {
             final Instance instance = instantiatedSource.instance();
             try {
                 final Executable initZero = (Executable) instance.exports().readMember("initZero");
-                Assert.assertEquals("Must be zero initially.", 0, memory.wasmMemory().load_i32(null, 0L));
+                Assert.assertEquals("Must be zero initially.", 0, memory.wasmMemory().load_i32(null, 0));
                 initZero.executeFunction(new Object[0]);
-                Assert.assertEquals("Must be 174 after initialization.", 174, memory.wasmMemory().load_i32(null, 0L));
+                Assert.assertEquals("Must be 174 after initialization.", 174, memory.wasmMemory().load_i32(null, 0));
             } catch (UnknownIdentifierException e) {
                 throw new RuntimeException(e);
             }
@@ -170,7 +170,7 @@ public class WasmJsApiSuite {
             try {
                 final Memory memory = (Memory) instance.exports().readMember("memory");
                 final Executable readZero = (Executable) instance.exports().readMember("readZero");
-                memory.wasmMemory().store_i32(null, 0L, 174);
+                memory.wasmMemory().store_i32(null, 0, 174);
                 final Object result = readZero.executeFunction(new Object[0]);
                 Assert.assertEquals("Must be 174.", 174, result);
             } catch (UnknownIdentifierException e) {

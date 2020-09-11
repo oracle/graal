@@ -1203,7 +1203,6 @@ public class BinaryParser extends BinaryStreamParser {
                 // Reading of the data segment is called after linking, so initialize the memory
                 // directly.
                 final WasmMemory memory = linkedInstance.memory();
-                memory.validateAddress(null, offsetAddress, byteLength);
                 for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                     byte b = read1();
                     memory.store_i32_8(null, offsetAddress + writeOffset, b);
