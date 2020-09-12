@@ -55,6 +55,16 @@ public class ThreadLocalRandomAccessors extends RandomAccessors {
         return SINGLETON.getOrInitializeSeeder();
     }
 
+    /**
+     * This set-accessor is just here to satisfy the contract of @InjectAccessors for
+     * ThreadLocalRandom.seeder. The seeder is actually set/initialized whenever the getSeeder
+     * accessor is called
+     */
+    @SuppressWarnings("unused")
+    public static void setSeeder(final AtomicLong seeder) {
+        // no-op
+    }
+
     @Override
     long mix64(long l) {
         return Target_java_util_concurrent_ThreadLocalRandom.mix64(l);
