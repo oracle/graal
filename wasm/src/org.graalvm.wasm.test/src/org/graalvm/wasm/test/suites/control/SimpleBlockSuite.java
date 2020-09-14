@@ -42,10 +42,10 @@ package org.graalvm.wasm.test.suites.control;
 
 import java.io.IOException;
 
-import org.graalvm.wasm.test.WasmSuiteBase;
+import org.graalvm.wasm.test.WasmFileSuite;
 import org.junit.Test;
 
-public class SimpleBlockSuite extends WasmSuiteBase {
+public class SimpleBlockSuite extends WasmFileSuite {
     @Override
     protected String testResource() {
         return "simple-block";

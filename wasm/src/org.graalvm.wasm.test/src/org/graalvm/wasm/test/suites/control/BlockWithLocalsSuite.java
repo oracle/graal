@@ -45,7 +45,7 @@ import java.io.IOException;
 import org.graalvm.wasm.test.WasmFileSuite;
 import org.junit.Test;
 
-public class BlockWithLocalsFileSuite extends WasmFileSuite {
+public class BlockWithLocalsSuite extends WasmFileSuite {
     @Override
     protected String testResource() {
         return "block-with-locals";

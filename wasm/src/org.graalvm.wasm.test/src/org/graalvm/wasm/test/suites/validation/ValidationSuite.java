@@ -53,9 +53,9 @@ import org.graalvm.wasm.utils.cases.WasmCaseData;
 import org.graalvm.wasm.utils.cases.WasmStringCase;
 import org.junit.Test;
 
-import org.graalvm.wasm.test.WasmSuiteBase;
+import org.graalvm.wasm.test.WasmFileSuite;
 
-public class ValidationSuite extends WasmSuiteBase {
+public class ValidationSuite extends WasmFileSuite {
     private WasmCase[] testCases = {
                     // # 3.2 Types
 

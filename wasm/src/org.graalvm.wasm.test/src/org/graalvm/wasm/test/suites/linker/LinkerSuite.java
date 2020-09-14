@@ -42,10 +42,10 @@ package org.graalvm.wasm.test.suites.linker;
 
 import java.io.IOException;
 
-import org.graalvm.wasm.test.WasmSuiteBase;
+import org.graalvm.wasm.test.WasmFileSuite;
 import org.junit.Test;
 
-public class LinkerSuite extends WasmSuiteBase {
+public class LinkerSuite extends WasmFileSuite {
     @Override
     protected String testResource() {
         return "linker";

@@ -49,7 +49,7 @@ import java.util.function.Predicate;
 import org.graalvm.wasm.test.options.WasmTestOptions;
 import org.junit.Test;
 
-public abstract class WasmTestBase {
+public abstract class AbstractWasmSuite {
     protected static final Predicate<? super Path> isWastFile = f -> f.getFileName().toString().endsWith(".wast");
     protected static final Predicate<? super Path> isWatFile = f -> f.getFileName().toString().endsWith(".wat");
     protected static final Predicate<? super Path> isResultFile = f -> f.getFileName().toString().endsWith(".result");
