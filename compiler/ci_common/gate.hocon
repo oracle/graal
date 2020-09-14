@@ -190,7 +190,7 @@ gateMathStubsListener: ${linux-amd64} {
   ]
 }
 
-dailyJDK15Debug: ${oraclejdk15Debug} {
+dailyJDK15Debug: ${labsjdk-ee-15Debug} {
     targets: [daily]
     notify_emails: [
       "doug.simon@oracle.com"
