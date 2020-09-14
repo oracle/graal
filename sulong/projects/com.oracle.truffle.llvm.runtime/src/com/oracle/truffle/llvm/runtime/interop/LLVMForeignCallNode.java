@@ -253,4 +253,9 @@ public class LLVMForeignCallNode extends RootNode {
     private static <E extends Exception> RuntimeException silenceException(@SuppressWarnings("unused") Class<E> type, Exception ex) throws E {
         throw (E) ex;
     }
+
+    @Override
+    public boolean isCloningAllowed() {
+        return true;
+    }
 }
