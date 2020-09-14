@@ -172,7 +172,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             if (f.isPublic() && f.isStatic() && !f.isFinalFlagSet() && member.equals(f.getNameAsString())) {
                 Object espressoValue = toEspressoNode.execute(value, f.resolveTypeKlass());
                 f.set(tryInitializeAndGetStatics(), espressoValue);
-                return ;
+                return;
             }
         }
         throw UnknownIdentifierException.create(member);
@@ -370,7 +370,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // Threshold for using binary search instead of linear search for interface lookup.
     private static final int LINEAR_SEARCH_THRESHOLD = 4;
-
 
     static final Comparator<Klass> KLASS_ID_COMPARATOR = new Comparator<Klass>() {
         @Override
