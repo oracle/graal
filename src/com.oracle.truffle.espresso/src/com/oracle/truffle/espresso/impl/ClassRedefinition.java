@@ -148,6 +148,7 @@ public final class ClassRedefinition {
         try {
             switch (packet.classChange) {
                 case METHOD_BODY_CHANGE:
+                case CONSTANT_POOL_CHANGE:
                     return doRedefineClass(packet, ids, refreshSubClasses);
                 case ADD_METHOD:
                     if (isAddMethodSupported()) {

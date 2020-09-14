@@ -185,7 +185,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(holderKlass.getNameAsString() + "." + getName(pool) + signature));
             }
 
-            if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, method)) {
+            if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, method, pool.getClassLoader())) {
                 context.getLogger().log(Level.WARNING,
                                 EspressoOptions.INCEPTION_NAME + " Method access check of: " + method.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
                                                 " throws IllegalAccessError");

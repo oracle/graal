@@ -427,7 +427,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (isPublic() || isProtected()) {
             return true;
         }
-        return getDeclaringKlass().sameRuntimePackage(other.getDeclaringKlass());
+        return getDeclaringKlass().sameRuntimePackage(getDeclaringKlass().getDefiningClassLoader(), other.getDeclaringKlass());
     }
 
     public ObjectKlass[] getCheckedExceptions() {

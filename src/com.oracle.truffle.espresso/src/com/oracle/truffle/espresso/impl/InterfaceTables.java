@@ -344,7 +344,7 @@ final class InterfaceTables {
             assert index == m.getVTableIndex();
             return new Entry(Location.SUPERVTABLE, index);
         }
-        index = getDeclaredMethodIndex(thisKlass.getDeclaredMethods(), im, mname, sig);
+        index = getDeclaredMethodIndex(declaredMethods, im, mname, sig);
         if (index != -1) {
             return new Entry(Location.DECLARED, index);
         }

@@ -30,6 +30,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Member;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Interface denoting a field or method entry in a constant pool.
@@ -116,7 +117,7 @@ public interface MemberRefConstant extends PoolConstant {
      * <li>R is private and is declared in D.
      * </ul>
      */
-    static boolean checkAccess(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member) {
+    static boolean checkAccess(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member, StaticObject classLoader) {
         if (member.isPublic()) {
             return true;
         }
@@ -138,7 +139,7 @@ public interface MemberRefConstant extends PoolConstant {
             }
         }
         if (member.isProtected() || member.isPackagePrivate()) {
-            if (accessingKlass.sameRuntimePackage(memberKlass)) {
+            if (accessingKlass.sameRuntimePackage(classLoader, memberKlass)) {
                 return true;
             }
         }
@@ -151,7 +152,7 @@ public interface MemberRefConstant extends PoolConstant {
         }
 
         if (accessingKlass.getHostClass() != null) {
-            return checkAccess(accessingKlass.getHostClass(), resolvedKlass, member);
+            return checkAccess(accessingKlass.getHostClass(), resolvedKlass, member, classLoader);
         }
         return false;
     }

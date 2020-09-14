@@ -342,8 +342,8 @@ final class JDWP {
                 reply.writeBoolean(true); // canGetCurrentContendedMonitor
                 reply.writeBoolean(true); // canGetMonitorInfo
                 reply.writeBoolean(true); // canRedefineClasses
-                reply.writeBoolean(false); // canAddMethod
-                reply.writeBoolean(false); // canUnrestrictedlyRedefineClasses
+                reply.writeBoolean(true); // canAddMethod
+                reply.writeBoolean(true); // canUnrestrictedlyRedefineClasses
                 reply.writeBoolean(true); // canPopFrames
                 reply.writeBoolean(true); // canUseInstanceFilters
                 reply.writeBoolean(true); // canGetSourceDebugExtension
@@ -374,10 +374,8 @@ final class JDWP {
             public static final int ID = 18;
 
             static CommandResult createReply(Packet packet, JDWPContext context) {
-
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-
                 int classes = input.readInt();
                 RedefineInfo[] redefineInfos = new RedefineInfo[classes];
                 for (int i = 0; i < classes; i++) {

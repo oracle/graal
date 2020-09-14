@@ -1210,7 +1210,7 @@ public final class Meta implements ContextAccess {
      */
     public Klass resolveSymbolAndAccessCheck(Symbol<Type> type, Klass accessingKlass) {
         Klass klass = resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), java_lang_NoClassDefFoundError);
-        if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
+        if (!Klass.checkAccess(accessingKlass.getDefiningClassLoader(), klass.getElementalType(), accessingKlass)) {
             throw Meta.throwException(java_lang_IllegalAccessError);
         }
         return klass;

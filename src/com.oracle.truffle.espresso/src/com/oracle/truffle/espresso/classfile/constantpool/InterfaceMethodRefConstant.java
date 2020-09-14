@@ -133,7 +133,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(name));
             }
 
-            if (!MemberRefConstant.checkAccess(accessingKlass, holderInterface, method)) {
+            if (!MemberRefConstant.checkAccess(accessingKlass, holderInterface, method, pool.getClassLoader())) {
                 context.getLogger().log(Level.WARNING, EspressoOptions.INCEPTION_NAME + " Interface method access check of: " + method.getName() + " in " + holderInterface.getType() + " from " +
                                 accessingKlass.getType() + " throws IllegalAccessError");
                 throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(name));
