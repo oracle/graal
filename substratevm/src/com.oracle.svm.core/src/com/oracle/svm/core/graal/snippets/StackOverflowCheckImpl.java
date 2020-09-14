@@ -86,6 +86,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
@@ -95,7 +96,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 final class StackOverflowCheckImpl implements StackOverflowCheck {
 
-    static final FastThreadLocalWord<UnsignedWord> stackBoundaryTL = FastThreadLocalFactory.createWord();
+    static final FastThreadLocalWord<UnsignedWord> stackBoundaryTL = FastThreadLocalFactory.createWord().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
     /**
      * Stores a counter how often the yellow zone has been made available, so that the yellow zone

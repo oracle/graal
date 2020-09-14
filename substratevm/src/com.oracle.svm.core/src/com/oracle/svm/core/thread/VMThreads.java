@@ -533,7 +533,7 @@ public abstract class VMThreads {
     public static class StatusSupport {
 
         /** The status of a {@link IsolateThread}. */
-        public static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt();
+        public static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
         /**
          * Boolean flag whether safepoints are disabled. This is a separate thread local in addition
