@@ -193,20 +193,17 @@ public final class LoadModulesNode extends LLVMRootNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 // Parse the dependencies of this library.
                 for (int i = 0; i < dependenciesSource.size(); i++) {
-                    // native dependencies are null
-                    if (dependenciesSource.get(i) != null) {
-                        if (dependenciesSource.get(i) instanceof Source) {
-                            CallTarget callTarget = context.getEnv().parseInternal((Source) dependenciesSource.get(i));
-                            dependencies[i] = DirectCallNode.create(callTarget);
-                            // The call targets are needed for initialising the scope.
-                            callTargets[i] = callTarget;
-                        } else if (dependenciesSource.get(i) instanceof CallTarget) {
-                            dependencies[i] = DirectCallNode.create((CallTarget) dependenciesSource.get(i));
-                            // The call targets are needed for initialising the scope.
-                            callTargets[i] = (CallTarget) dependenciesSource.get(i);
-                        } else {
-                            throw new IllegalStateException("Unknown dependency.");
-                        }
+                    if (dependenciesSource.get(i) instanceof Source) {
+                        CallTarget callTarget = context.getEnv().parseInternal((Source) dependenciesSource.get(i));
+                        dependencies[i] = DirectCallNode.create(callTarget);
+                        // The call targets are needed for initialising the scope.
+                        callTargets[i] = callTarget;
+                    } else if (dependenciesSource.get(i) instanceof CallTarget) {
+                        dependencies[i] = DirectCallNode.create((CallTarget) dependenciesSource.get(i));
+                        // The call targets are needed for initialising the scope.
+                        callTargets[i] = (CallTarget) dependenciesSource.get(i);
+                    } else {
+                        throw new IllegalStateException("Unknown dependency.");
                     }
                 }
                 // Set up the start and main functions, as well as the context initialise and dipose

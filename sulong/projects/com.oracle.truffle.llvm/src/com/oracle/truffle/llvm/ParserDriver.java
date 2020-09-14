@@ -195,7 +195,7 @@ final class ParserDriver {
         for (String sulongLibraryName : sulongLibraryNames) {
             // Don't add the library itself as one of it's own dependency.
             if (!currentLib.equals(sulongLibraryName)) {
-                TruffleFile file = createTruffleFile(sulongLibraryName, InternalLibraryLocator.INSTANCE, "<default bitcode library>");
+                TruffleFile file = createTruffleFile(sulongLibraryName, null, InternalLibraryLocator.INSTANCE, "<default bitcode library>");
                 // Look into the library cache in the language for the call target.
                 CallTarget calls = language.getCachedLibrary(file.getPath());
                 if (calls == null) {
@@ -209,7 +209,7 @@ final class ParserDriver {
         // parse all libraries that were passed on the command-line
         List<String> externals = SulongEngineOption.getPolyglotOptionExternalLibraries(context.getEnv());
         for (String externalLibraryName : externals) {
-            TruffleFile file = createTruffleFile(externalLibraryName, DefaultLibraryLocator.INSTANCE, "<command-line bitcode library>");
+            TruffleFile file = createTruffleFile(externalLibraryName, null, DefaultLibraryLocator.INSTANCE, "<command-line bitcode library>");
             // Look into the library cache in the language for the call target.
             CallTarget calls = language.getCachedLibrary(file.getPath());
             if (calls == null) {
@@ -252,7 +252,7 @@ final class ParserDriver {
                             // If the library that contains the function has not been parsed,
                             // then the library will be lazily parse now.
                             String libName = lib + "." + language.getCapability(PlatformCapability.class).getLibrarySuffix();
-                            TruffleFile file = createTruffleFile(libName, InternalLibraryLocator.INSTANCE, "<default bitcode library>");
+                            TruffleFile file = createTruffleFile(libName, null, InternalLibraryLocator.INSTANCE, "<default bitcode library>");
                             context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(context.isInternalLibraryFile(file)).build());
                             scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                         } catch (Exception e) {
@@ -276,7 +276,7 @@ final class ParserDriver {
                         // If the library that contains the function has not been parsed,
                         // then the library will be lazily parse now.
                         String libName = lib + "." + language.getCapability(PlatformCapability.class).getLibrarySuffix();
-                        TruffleFile file = createTruffleFile(libName, InternalLibraryLocator.INSTANCE, "<default bitcode library>");
+                        TruffleFile file = createTruffleFile(libName, null, InternalLibraryLocator.INSTANCE, "<default bitcode library>");
                         context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(context.isInternalLibraryFile(file)).build());
                         scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                     } catch (Exception e) {
@@ -370,7 +370,7 @@ final class ParserDriver {
         BinaryParserResult binaryParserResult = BinaryParser.parse(bytes, source, context);
         if (binaryParserResult != null) {
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
-            TruffleFile file = createTruffleFile(source.getName(), binaryParserResult.getLocator(), "<source library>");
+            TruffleFile file = createTruffleFile(source.getName(), source.getPath(), binaryParserResult.getLocator(), "<source library>");
             processDependencies(source.getName(), file, binaryParserResult, sourceDependencies);
             return parseBinary(binaryParserResult, file);
         } else {
@@ -379,12 +379,16 @@ final class ParserDriver {
         }
     }
 
-    private TruffleFile createTruffleFile(String libName, LibraryLocator locator, String reason) {
+    private TruffleFile createTruffleFile(String libName, String libPath, LibraryLocator locator, String reason) {
         TruffleFile file = locator.locate(context, libName, reason);
         if (file == null) {
-            Path path = Paths.get(libName);
-            LibraryLocator.traceDelegateNative(context, path);
-            file = context.getEnv().getInternalTruffleFile(path.toUri());
+            if (libPath != null) {
+                file = context.getEnv().getInternalTruffleFile(libPath);
+            } else {
+                Path path = Paths.get(libName);
+                LibraryLocator.traceDelegateNative(context, path);
+                file = context.getEnv().getInternalTruffleFile(path.toUri());
+            }
         }
         return file;
     }
@@ -399,13 +403,13 @@ final class ParserDriver {
         for (String lib : context.preprocessDependencies(binaryParserResult.getLibraries(), libFile)) {
             // don't add the library itself as one of it's own dependency.
             if (!libraryName.equals(lib)) {
-                TruffleFile file = createTruffleFile(lib, binaryParserResult.getLocator(), "<dependency library>");
+                TruffleFile file = createTruffleFile(lib, null, binaryParserResult.getLocator(), "<dependency library>");
                 // only create a source if the library has not already been parsed.
                 CallTarget calls = language.getCachedLibrary(file.getPath());
                 if (calls == null) {
                     Path path = Paths.get(lib);
                     Source source = createDependencySource(lib, path.toString(), file, true, context.isInternalLibraryPath(path));
-                    if (!dependenciesSource.contains(source)) {
+                    if (!dependenciesSource.contains(source) && source != null) {
                         dependenciesSource.add(source);
                     }
                 } else {
