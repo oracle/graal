@@ -168,11 +168,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     volatile PolyglotThreadInfo currentThreadInfo = PolyglotThreadInfo.NULL;
     @CompilationFinal volatile PolyglotThreadInfo constantCurrentThreadInfo = PolyglotThreadInfo.NULL;
 
-    /**
-     * Two interrupt operations cannot be simultaneously in progress in the whole context hierarchy.
-     * Thus, the interrupting lock is only assigned in outer contexts.
-     */
-    Lock interruptingLock;
     volatile boolean interrupting;
 
     /*
@@ -1031,8 +1026,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         synchronized (this) {
             if (interrupt) {
                 PolyglotThreadInfo info = getCurrentThreadInfo();
-                if (info != PolyglotThreadInfo.NULL) {
-                    throw PolyglotEngineException.illegalState("Cannot interrupt context from a thread where its child context is entered.");
+                if (info != PolyglotThreadInfo.NULL && info.isActive()) {
+                    throw PolyglotEngineException.illegalState("Cannot interrupt context from a thread where its child context is active.");
                 }
             }
             interrupting = interrupt;
@@ -1043,34 +1038,22 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    PolyglotContextImpl getOuterContext() {
-        PolyglotContextImpl ctx = this;
-        while (ctx.parent != null) {
-            ctx = ctx.parent;
-        }
-        return ctx;
-    }
-
-    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     Lock getInterruptingLock() {
-        PolyglotContextImpl outerContext = getOuterContext();
-        Lock localInterruptingLock = outerContext.interruptingLock;
-        if (localInterruptingLock == null) {
-            synchronized (outerContext) {
-                localInterruptingLock = outerContext.interruptingLock;
-                if (localInterruptingLock == null) {
-                    localInterruptingLock = new ReentrantLock();
-                    outerContext.interruptingLock = localInterruptingLock;
-                }
-            }
-        }
-        return localInterruptingLock;
+        return closingLock;
     }
 
     @Override
     public void interrupt(Context sourceContext, Duration timeout) {
         try {
             checkCreatorAccess(sourceContext, "interrupted");
+            if (parent != null) {
+                throw PolyglotEngineException.illegalState("Cannot interrupt inner context separately.");
+            }
+            /*
+             * Two interrupt operations cannot be simultaneously in progress in the whole context
+             * hierarchy. Inner contexts cannot use interrupt separately and outer context use
+             * exclusive lock.
+             */
             Lock interruptLock = getInterruptingLock();
             interruptLock.lock();
             try {
@@ -1078,8 +1061,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 try {
                     synchronized (this) {
                         PolyglotThreadInfo info = getCurrentThreadInfo();
-                        if (info != PolyglotThreadInfo.NULL) {
-                            throw PolyglotEngineException.illegalState("Cannot interrupt context from a thread where the context is entered.");
+                        if (info != PolyglotThreadInfo.NULL && info.isActive()) {
+                            throw PolyglotEngineException.illegalState("Cannot interrupt context from a thread where the context is active.");
                         }
                         interrupting = true;
                         childContextsToInterrupt = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
@@ -1146,8 +1129,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     void waitForThreads(long timeoutNanos) {
+        long startNanos = System.nanoTime();
         synchronized (this) {
-            while (hasActiveOtherThread(true) && (timeoutNanos == 0 || System.nanoTime() < timeoutNanos)) {
+            while (hasActiveOtherThread(true) && (timeoutNanos == 0 || System.nanoTime() - startNanos < timeoutNanos)) {
                 try {
                     wait(100);
                 } catch (InterruptedException e) {

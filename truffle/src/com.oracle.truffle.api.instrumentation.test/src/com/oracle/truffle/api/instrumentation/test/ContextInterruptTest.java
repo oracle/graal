@@ -125,19 +125,6 @@ public class ContextInterruptTest {
         testInterruptDuringInfiniteLoop("BLOCK(DEFINE(foo,CONSTANT(42),LOOP(infinity, STATEMENT)),SPAWN(foo),JOIN(),LOOP(infinity, STATEMENT))", 10, true, true);
     }
 
-    static class PassCounter implements Runnable {
-        int passCount;
-
-        @Override
-        public void run() {
-            synchronized (this) {
-                passCount++;
-                notifyAll();
-            }
-        }
-    }
-
-    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     private static void testInterruptDuringInfiniteLoop(String code, int nThreads, boolean multiContext, boolean multiEngine) throws InterruptedException, IOException, ExecutionException {
         Thread mainThread = Thread.currentThread();
         ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
@@ -146,11 +133,11 @@ public class ContextInterruptTest {
         List<Context> contexts = new ArrayList<>();
         Engine engine = multiEngine ? null : Engine.create();
         Context.Builder builder = Context.newBuilder().allowCreateThread(true);
-        final PassCounter passCounter = new PassCounter();
+        CountDownLatch passLatch = new CountDownLatch(nThreads);
         if (engine != null) {
             builder.engine(engine);
             TruffleInstrument.Env instrumentEnv = engine.getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
-            attachListener(passCounter, instrumentEnv);
+            attachListener(passLatch::countDown, instrumentEnv);
         }
         for (int i = 0; i < nThreads; i++) {
             if (multiContext || i == 0) {
@@ -158,7 +145,7 @@ public class ContextInterruptTest {
                 contexts.add(ctx);
                 if (engine == null) {
                     TruffleInstrument.Env instrumentEnv = ctx.getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
-                    attachListener(passCounter, instrumentEnv);
+                    attachListener(passLatch::countDown, instrumentEnv);
                 }
             } else {
                 contexts.add(contexts.get(i - 1));
@@ -203,11 +190,7 @@ public class ContextInterruptTest {
                 }));
             }
             threadsStarted.await();
-            synchronized (passCounter) {
-                while (passCounter.passCount != nThreads) {
-                    passCounter.wait(1000);
-                }
-            }
+            passLatch.await();
             for (int i = 0; i < nThreads; i++) {
                 if (multiContext || i == 0) {
                     Context context = contexts.get(i);
@@ -281,7 +264,7 @@ public class ContextInterruptTest {
             context[0].eval(source);
             Assert.fail();
         } catch (PolyglotException pe) {
-            Assert.assertEquals("java.lang.IllegalStateException: Cannot interrupt context from a thread where the context is entered.", pe.getMessage());
+            Assert.assertEquals("java.lang.IllegalStateException: Cannot interrupt context from a thread where the context is active.", pe.getMessage());
         } finally {
             context[0].close();
         }
@@ -310,7 +293,7 @@ public class ContextInterruptTest {
             Assert.fail();
         } catch (Exception e) {
             Assert.assertTrue(e instanceof IllegalStateException);
-            Assert.assertEquals("Cannot interrupt context from a thread where its child context is entered.", e.getMessage());
+            Assert.assertEquals("Cannot interrupt context from a thread where its child context is active.", e.getMessage());
         } finally {
             context[0].close();
         }

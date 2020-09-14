@@ -1374,7 +1374,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                             context.waitForClose();
                         }
                     } else {
-                        long cancelTimeoutNanos = timeout != Duration.ZERO ? System.nanoTime() + timeout.toNanos() : 0;
+                        long cancelTimeoutNanos = timeout != Duration.ZERO ? timeout.toNanos() : 0;
                         for (PolyglotContextImpl context : localContexts) {
                             context.waitForThreads(cancelTimeoutNanos);
                         }
@@ -1468,7 +1468,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     }
 
     @SuppressWarnings("serial")
-    static final class InterruptExecution extends ThreadDeath implements TruffleException {
+    static final class InterruptExecution extends Error implements TruffleException {
 
         private final Node node;
         private final String interruptMessage;
