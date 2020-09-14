@@ -202,6 +202,28 @@ public abstract class ToEspressoNode extends Node {
     }
 
     public static void checkHasAllFieldsOrThrow(Object value, ObjectKlass klass, InteropLibrary interopLibrary, Meta meta) {
+        /*
+         * For boxed types a .value member is not required if there's a direct conversion via
+         * interop as* methods.
+         */
+        if (meta.isBoxed(klass)) {
+            try {
+                if ((klass == meta.java_lang_Integer && interopLibrary.fitsInInt(value)) ||
+                                (klass == meta.java_lang_Long && interopLibrary.fitsInLong(value)) ||
+                                (klass == meta.java_lang_Float && interopLibrary.fitsInFloat(value)) ||
+                                (klass == meta.java_lang_Double && interopLibrary.fitsInDouble(value)) ||
+                                (klass == meta.java_lang_Boolean && interopLibrary.isBoolean(value)) ||
+                                (klass == meta.java_lang_Short && interopLibrary.fitsInShort(value)) ||
+                                (klass == meta.java_lang_Byte && interopLibrary.fitsInByte(value)) ||
+                                (klass == meta.java_lang_Character && interopLibrary.isString(value) && interopLibrary.asString(value).length() == 1)) {
+                    return;
+                }
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+
         for (Field f : klass.getDeclaredFields()) {
             if (!f.isStatic() && !interopLibrary.isMemberExisting(value, f.getNameAsString())) {
                 throw new ClassCastException("Missing field: " + f.getNameAsString());
