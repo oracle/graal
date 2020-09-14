@@ -51,6 +51,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.word.ObjectAccess;
 
+import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.Any;
@@ -144,6 +145,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
         return isAssignableFrom(type, checkedHub, trueValue, falseValue);
     }
 
+    @DuplicatedInNativeCode
     private static Any isAssignableFrom(DynamicHub type, DynamicHub checkedHub, Any trueValue, Any falseValue) {
         int checkedTypeID = checkedHub.getTypeID();
         int[] matches = type.getAssignableFromMatches();
