@@ -41,21 +41,60 @@
 package org.graalvm.wasm.test;
 
 import java.io.IOException;
+import java.util.function.Consumer;
 
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.api.Module;
+import org.graalvm.wasm.api.ModuleExportDescriptor;
 import org.graalvm.wasm.api.WebAssembly;
+import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
 public class WasmJsApiSuite {
     @Test
-    public void test() throws IOException {
-        WasmContext context;
-        // WebAssembly wasm = new WebAssembly(context);
+    public void testCompile() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Module module = wasm.compile(binary);
+            try {
+                Assert.assertEquals("Should export main.", "main", ((ModuleExportDescriptor) module.exports().readArrayElement(0L)).name());
+            } catch (InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    private void runTest(Consumer<WasmContext> testCase) throws IOException {
+        final Context.Builder contextBuilder = Context.newBuilder("wasm");
+        contextBuilder.option("wasm.Builtins", "testutil:testutil");
+        final Context context = contextBuilder.build();
+        Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binary), "main");
+        Source source = sourceBuilder.build();
+        context.eval(source);
+        Value main = context.getBindings("wasm").getMember("main");
+        main.execute();
+        Value run = context.getBindings("wasm").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+        run.execute(new GuestCode(testCase));
+    }
+
+    private static class GuestCode implements Consumer<WasmContext>, TruffleObject {
+        private final Consumer<WasmContext> testCase;
+
+        private GuestCode(Consumer<WasmContext> testCase) {
+            this.testCase = testCase;
+        }
+
+        @Override
+        public void accept(WasmContext context) {
+            testCase.accept(context);
+        }
     }
 
     private static final byte[] binary = new byte[]{
