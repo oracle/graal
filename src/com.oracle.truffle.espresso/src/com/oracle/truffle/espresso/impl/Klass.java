@@ -28,8 +28,6 @@ import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.GenerateLibrary;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -44,6 +42,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -161,12 +160,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean isMemberInsertable(String member) {
+    boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
         return false;
     }
 
     @ExportMessage
-    final void writeMember(String member, Object value, @Cached ToEspressoNode toEspressoNode) throws UnknownIdentifierException, UnsupportedTypeException {
+    final void writeMember(String member, Object value, @Exclusive @Cached ToEspressoNode toEspressoNode) throws UnknownIdentifierException, UnsupportedTypeException {
         // Write to public static non-final fields.
         for (Field f : getDeclaredFields()) {
             if (f.isPublic() && f.isStatic() && !f.isFinalFlagSet() && member.equals(f.getNameAsString())) {
