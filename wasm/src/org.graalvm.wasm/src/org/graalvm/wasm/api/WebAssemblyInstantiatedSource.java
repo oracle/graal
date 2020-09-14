@@ -40,11 +40,15 @@
  */
 package org.graalvm.wasm.api;
 
+import org.graalvm.wasm.WasmContext;
+
 public class WebAssemblyInstantiatedSource extends Dictionary {
+    private WasmContext context;
     private final Module module;
     private final Instance instance;
 
-    public WebAssemblyInstantiatedSource(Module module, Instance instance) {
+    public WebAssemblyInstantiatedSource(WasmContext context, Module module, Instance instance) {
+        this.context = context;
         this.module = module;
         this.instance = instance;
         addMembers(new Object[]{

@@ -40,29 +40,23 @@
  */
 package org.graalvm.wasm.api;
 
-import org.graalvm.wasm.BinaryParser;
-import org.graalvm.wasm.ImportDescriptor;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunction;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmOptions;
-
-import java.util.ArrayList;
-
 import static org.graalvm.wasm.api.ImportExportKind.function;
 import static org.graalvm.wasm.api.ImportExportKind.global;
 import static org.graalvm.wasm.api.ImportExportKind.memory;
 import static org.graalvm.wasm.api.ImportExportKind.table;
 
+import java.util.ArrayList;
+
+import org.graalvm.wasm.ImportDescriptor;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.WasmModule;
+
 public class Module extends Dictionary {
     private final WasmModule module;
 
-    public Module(String name, byte[] source) {
-        WasmContext context = WasmContext.getCurrent();
-        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        this.module = new WasmModule(name, source, storeConstantsPolicy);
-        final BinaryParser parser = new BinaryParser(context.language(), this.module);
-        parser.readModule();
+    public Module(WasmContext context, byte[] source) {
+        this.module = context.readModule(source);
         addMembers(new Object[]{
                         "exports", new Executable(args -> exports()),
                         "imports", new Executable(args -> imports()),

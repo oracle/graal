@@ -40,11 +40,19 @@
  */
 package org.graalvm.wasm.api;
 
+import org.graalvm.wasm.WasmContext;
+
 public class WebAssembly extends Dictionary {
+    private final WasmContext context;
+
+    public WebAssembly(WasmContext context) {
+        this.context = context;
+    }
+
     public WebAssemblyInstantiatedSource instantiate(byte[] source, Dictionary importObject) {
         final Module module = compile(source);
         final Instance instance = new Instance(module, importObject);
-        return new WebAssemblyInstantiatedSource(module, instance);
+        return new WebAssemblyInstantiatedSource(context, module, instance);
     }
 
     public WebAssemblyInstantiatedSource instantiateStreaming(byte[] source, Dictionary importObject) {
@@ -53,8 +61,7 @@ public class WebAssembly extends Dictionary {
 
     @SuppressWarnings("unused")
     public Module compile(byte[] source) {
-        // TODO: Implement.
-        return null;
+        return new Module(context, source);
     }
 
     public Module compileStreaming(byte[] source) {

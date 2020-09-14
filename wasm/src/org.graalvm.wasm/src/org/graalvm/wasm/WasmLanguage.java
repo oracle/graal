@@ -44,15 +44,12 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.nodes.WasmEmptyRootNode;
 import org.graalvm.options.OptionDescriptors;
 
 @TruffleLanguage.Registration(id = "wasm", name = "WebAssembly", defaultMimeType = "application/wasm", byteMimeTypes = "application/wasm", contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, fileTypeDetectors = WasmFileDetector.class, //
                 interactive = false)
 public final class WasmLanguage extends TruffleLanguage<WasmContext> {
-    private static final int MIN_DEFAULT_STACK_SIZE = 1_000_000;
-    private static final int MAX_DEFAULT_ASYNC_STACK_SIZE = 10_000_000;
     private boolean isFirst = true;
 
     @Override
@@ -66,49 +63,9 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         final String moduleName = isFirst ? "main" : request.getSource().getName();
         isFirst = false;
         final byte[] data = request.getSource().getBytes().toByteArray();
-        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        final WasmModule module = new WasmModule(moduleName, data, storeConstantsPolicy);
-        final WasmInstance instance = new WasmInstance(module, storeConstantsPolicy);
-        readModule(context, instance);
-        context.registerModule(instance);
+        WasmModule module = context.readModule(moduleName, data);
+        context.readInstance(module);
         return Truffle.getRuntime().createCallTarget(new WasmEmptyRootNode(this));
-    }
-
-    private void readModule(WasmContext context, WasmInstance instance) {
-        int binarySize = instance.module().data().length;
-        final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
-        if (binarySize < asyncParsingBinarySize) {
-            readModuleSynchronously(context, instance);
-        } else {
-            final Runnable parsing = new Runnable() {
-                @Override
-                public void run() {
-                    readModuleSynchronously(context, instance);
-                }
-            };
-            final String name = "wasm-parsing-thread(" + instance.name() + ")";
-            final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions()) * 1000;
-            final int defaultSize = Math.max(MIN_DEFAULT_STACK_SIZE, Math.min(2 * binarySize, MAX_DEFAULT_ASYNC_STACK_SIZE));
-            final int stackSize = requestedSize != 0 ? requestedSize : defaultSize;
-            final Thread parsingThread = new Thread(null, parsing, name, stackSize);
-            final ParsingExceptionHandler handler = new ParsingExceptionHandler();
-            parsingThread.setUncaughtExceptionHandler(handler);
-            parsingThread.start();
-            try {
-                parsingThread.join();
-                if (handler.parsingException() != null) {
-                    throw new WasmValidationException("Asynchronous parsing failed.", handler.parsingException());
-                }
-            } catch (InterruptedException e) {
-                throw new WasmValidationException("Asynchronous parsing interrupted.", e);
-            }
-        }
-    }
-
-    private void readModuleSynchronously(WasmContext context, WasmInstance instance) {
-        final BinaryParser reader = new BinaryParser(this, instance.module());
-        reader.readModule();
-        reader.readInstance(context, instance);
     }
 
     @Override
@@ -123,18 +80,5 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     static WasmContext getCurrentContext() {
         return getCurrentContext(WasmLanguage.class);
-    }
-
-    private class ParsingExceptionHandler implements Thread.UncaughtExceptionHandler {
-        private Throwable parsingException = null;
-
-        @Override
-        public void uncaughtException(Thread t, Throwable e) {
-            this.parsingException = e;
-        }
-
-        public Throwable parsingException() {
-            return parsingException;
-        }
     }
 }

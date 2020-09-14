@@ -45,6 +45,7 @@ import static org.graalvm.wasm.WasmUtil.unsignedInt32ToLong;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.CallIndirect;
 import org.graalvm.wasm.constants.ExportIdentifier;
@@ -54,6 +55,7 @@ import org.graalvm.wasm.constants.Instructions;
 import org.graalvm.wasm.constants.LimitsPrefix;
 import org.graalvm.wasm.constants.Section;
 import org.graalvm.wasm.exception.WasmLinkerException;
+import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.nodes.WasmBlockNode;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
@@ -71,6 +73,21 @@ import com.oracle.truffle.api.nodes.Node;
  * Simple recursive-descend parser for the binary WebAssembly format.
  */
 public class BinaryParser extends BinaryStreamParser {
+    private class ParsingExceptionHandler implements Thread.UncaughtExceptionHandler {
+        private Throwable parsingException = null;
+
+        @Override
+        public void uncaughtException(Thread t, Throwable e) {
+            this.parsingException = e;
+        }
+
+        public Throwable parsingException() {
+            return parsingException;
+        }
+    }
+
+    private static final int MIN_DEFAULT_STACK_SIZE = 1_000_000;
+    private static final int MAX_DEFAULT_ASYNC_STACK_SIZE = 10_000_000;
 
     private static final int MAGIC = 0x6d736100;
     private static final int VERSION = 0x00000001;
@@ -82,30 +99,53 @@ public class BinaryParser extends BinaryStreamParser {
     private final WasmModule module;
     private final int[] limitsResult;
 
-    /**
-     * Modules may import, as well as define their own functions. Function IDs are shared among
-     * imported and defined functions. This variable keeps track of the function indices, so that
-     * imported and parsed code entries can be correctly associated to their respective functions
-     * and types.
-     */
-    // TODO: We should remove this to reduce complexity - codeEntry state should be sufficient
-    // to track the current largest function index.
-    private int moduleFunctionIndex;
-
+    @CompilerDirectives.TruffleBoundary
     public BinaryParser(WasmLanguage language, WasmModule module) {
         super(module.data());
         this.language = language;
         this.module = module;
         this.limitsResult = new int[2];
-        this.moduleFunctionIndex = 0;
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void readModule() {
         validateMagicNumberAndVersion();
         readSymbolSections();
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void readInstance(WasmContext context, WasmInstance instance) {
+        int binarySize = instance.module().data().length;
+        final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
+        if (binarySize < asyncParsingBinarySize) {
+            readInstanceSynchronously(context, instance);
+        } else {
+            final Runnable parsing = new Runnable() {
+                @Override
+                public void run() {
+                    readInstanceSynchronously(context, instance);
+                }
+            };
+            final String name = "wasm-parsing-thread(" + instance.name() + ")";
+            final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions()) * 1000;
+            final int defaultSize = Math.max(MIN_DEFAULT_STACK_SIZE, Math.min(2 * binarySize, MAX_DEFAULT_ASYNC_STACK_SIZE));
+            final int stackSize = requestedSize != 0 ? requestedSize : defaultSize;
+            final Thread parsingThread = new Thread(null, parsing, name, stackSize);
+            final ParsingExceptionHandler handler = new ParsingExceptionHandler();
+            parsingThread.setUncaughtExceptionHandler(handler);
+            parsingThread.start();
+            try {
+                parsingThread.join();
+                if (handler.parsingException() != null) {
+                    throw new WasmValidationException("Asynchronous parsing failed.", handler.parsingException());
+                }
+            } catch (InterruptedException e) {
+                throw new WasmValidationException("Asynchronous parsing interrupted.", e);
+            }
+        }
+    }
+
+    private void readInstanceSynchronously(WasmContext context, WasmInstance instance) {
         if (tryJumpToSection(Section.CODE)) {
             readCodeSection(context, instance);
         }
@@ -197,7 +237,6 @@ public class BinaryParser extends BinaryStreamParser {
                 case ImportIdentifier.FUNCTION: {
                     int typeIndex = readTypeIndex();
                     module.symbolTable().importFunction(moduleName, memberName, typeIndex);
-                    moduleFunctionIndex++;
                     break;
                 }
                 case ImportIdentifier.TABLE: {
@@ -269,20 +308,20 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void readCodeSection(WasmContext context, WasmInstance instance) {
-        int numCodeEntries = readVectorLength();
+        final int functionIndexOffset = instance.module().importedFunctions().size();
+        final int numCodeEntries = readVectorLength();
         WasmRootNode[] rootNodes = new WasmRootNode[numCodeEntries];
         for (int entry = 0; entry != numCodeEntries; ++entry) {
-            rootNodes[entry] = createCodeEntry(instance, moduleFunctionIndex + entry);
+            rootNodes[entry] = createCodeEntry(instance, functionIndexOffset + entry);
         }
         for (int entryIndex = 0; entryIndex != numCodeEntries; ++entryIndex) {
             int codeEntrySize = readUnsignedInt32();
             int startOffset = offset;
-            readCodeEntry(instance, moduleFunctionIndex + entryIndex, rootNodes[entryIndex]);
+            readCodeEntry(instance, functionIndexOffset + entryIndex, rootNodes[entryIndex]);
             Assert.assertIntEqual(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entryIndex));
             final int currentEntryIndex = entryIndex;
             context.linker().resolveCodeEntry(module, currentEntryIndex);
         }
-        moduleFunctionIndex += numCodeEntries;
     }
 
     private WasmRootNode createCodeEntry(WasmInstance instance, int funcIndex) {
