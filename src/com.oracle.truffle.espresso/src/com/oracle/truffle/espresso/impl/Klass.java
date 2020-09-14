@@ -90,7 +90,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     private static final String SUPER = "super";
 
     @ExportMessage
-    final boolean isMemberReadable(String member) {
+    boolean isMemberReadable(String member, @Shared("lookupField") @Cached LookupFieldNode lookupField) {
+        Field field = lookupField.execute(this, member, true);
+        if (field != null) {
+            return true;
+        }
+
         if (STATIC_TO_CLASS.equals(member)) {
             return true;
         }
@@ -105,13 +110,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         }
         if (getSuperKlass() != null && SUPER.equals(member)) {
             return true;
-        }
-
-        // Look for public static fields.
-        for (Field f : getDeclaredFields()) {
-            if (f.isPublic() && f.isStatic() && member.equals(f.getNameAsString())) {
-                return true;
-            }
         }
 
         return false;
@@ -186,13 +184,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @ExportMessage
-    boolean isMemberModifiable(String member) {
-        for (Field f : getDeclaredFields()) {
-            if (f.isPublic() && f.isStatic() && !f.isFinalFlagSet() && member.equals(f.getNameAsString())) {
-                return true;
-            }
-        }
-        return false;
+    boolean isMemberModifiable(String member, @Shared("lookupField") @Cached LookupFieldNode lookupField) {
+        Field field = lookupField.execute(this, member, true);
+        return field != null && !field.isFinalFlagSet();
     }
 
     @SuppressWarnings("static-method")
