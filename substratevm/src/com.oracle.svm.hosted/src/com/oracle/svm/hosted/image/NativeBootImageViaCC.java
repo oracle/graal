@@ -25,8 +25,8 @@
 
 package com.oracle.svm.hosted.image;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -52,6 +52,7 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
@@ -336,6 +337,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
         inv.setOutputFile(outputFile);
         inv.setOutputKind(getOutputKind());
+        inv.setTempDirectory(tempDirectory);
 
         inv.addLibPath(tempDirectory.toString());
         for (String libraryPath : nativeLibs.getLibraryPaths()) {
@@ -404,37 +406,39 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             for (Function<LinkerInvocation, LinkerInvocation> fn : config.getLinkerInvocationTransformers()) {
                 inv = fn.apply(inv);
             }
-            try (DebugContext.Scope s = debug.scope("InvokeCC")) {
-                List<String> cmd = inv.getCommand();
-                String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
-                debug.log("Using CompilerCommand: %s", commandLine);
+            List<String> cmd = inv.getCommand();
+            String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
 
-                if (NativeImageOptions.MachODebugInfoTesting.getValue()) {
-                    System.out.printf("Testing Mach-O debuginfo generation - SKIP %s%n", commandLine);
-                    return inv;
-                } else {
-                    ProcessBuilder pb = new ProcessBuilder().command(cmd);
-                    pb.directory(tempDirectory.toFile());
-                    pb.redirectErrorStream(true);
-                    int status;
-                    ByteArrayOutputStream output;
-                    try {
-                        Process p = pb.start();
+            Process linkerProcess = null;
+            try {
+                ProcessBuilder linkerCommand = FileUtils.prepareCommand(cmd, inv.getTempDirectory());
+                linkerCommand.redirectErrorStream(true);
 
-                        output = new ByteArrayOutputStream();
-                        FileUtils.drainInputStream(p.getInputStream(), output);
-                        status = p.waitFor();
-                    } catch (IOException | InterruptedException e) {
-                        throw handleLinkerFailure(e.toString(), commandLine, null);
-                    }
+                FileUtils.traceCommand(linkerCommand);
 
-                    debug.log(DebugContext.VERBOSE_LEVEL, "%s", output);
+                linkerProcess = linkerCommand.start();
 
-                    if (status != 0) {
-                        throw handleLinkerFailure("Linker command exited with " + status, commandLine, output.toString());
-                    }
+                List<String> lines;
+                try (InputStream inputStream = linkerProcess.getInputStream()) {
+                    lines = FileUtils.readAllLines(inputStream);
+                    FileUtils.traceCommandOutput(lines);
+                }
+
+                int status = linkerProcess.waitFor();
+                if (status != 0) {
+                    String output = String.join(System.lineSeparator(), lines);
+                    throw handleLinkerFailure("Linker command exited with " + status, commandLine, output);
+                }
+            } catch (IOException e) {
+                throw handleLinkerFailure(e.toString(), commandLine, null);
+            } catch (InterruptedException e) {
+                throw new InterruptImageBuilding("Interrupted during native-image linking step for " + imageName);
+            } finally {
+                if (linkerProcess != null) {
+                    linkerProcess.destroy();
                 }
             }
+
             return inv;
         }
     }

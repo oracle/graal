@@ -47,11 +47,17 @@ final class VariablesObject implements TruffleObject {
     private final TruffleInstrument.Env env;
     private final Node where;
     private final Frame frame;
+    private final Object returnValue;
 
-    VariablesObject(TruffleInstrument.Env env, Node where, Frame frame) {
+    VariablesObject(TruffleInstrument.Env env, Node where, Frame frame, Object returnValue) {
         this.env = env;
         this.where = where;
         this.frame = frame.materialize();
+        this.returnValue = returnValue;
+    }
+
+    Object getReturnValue() {
+        return NullObject.nullCheck(returnValue);
     }
 
     @ExportMessage

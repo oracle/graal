@@ -163,6 +163,33 @@ public interface InsightAPI {
              * @since 0.4
              */
             int endColumn();
+
+            /** The current return value to be returned unless
+             * {@link #returnNow} is called. The only meaningful
+             * values can be expected inside of {@link #on on("return", ...)}
+             * handlers.
+             *
+             * @param frame object with variables provided
+             *    as a second parameter to {@link OnEventHandler#event event}
+             *    method
+             * @return the current return value or {@code null},
+             *    if not applicable
+             * @since 0.7
+             */
+            Object returnValue(Map<String, Object> frame);
+
+            /** Immediatelly exits the current handler and returns to the
+             * caller. Calling this method aborts execution of the current
+             * handler. It bypasses language sematics and immediatelly
+             * returns the provided value to the caller. If there are multiple
+             * calls to {@code returnNow} (from different handlers) the
+             * first call defines the return value.
+             *
+             * @param value the value to return to the caller
+             * @since 0.7
+             * @see #returnValue(java.util.Map)
+             */
+            void returnNow(Object value);
         }
         void event(Context ctx, Map<String, Object> frame);
     }

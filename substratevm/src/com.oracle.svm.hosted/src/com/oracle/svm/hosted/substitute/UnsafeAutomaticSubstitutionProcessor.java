@@ -318,7 +318,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (hostVM.getClassInitializationSupport().shouldInitializeAtRuntime(hostType)) {
             /*
              * The class initializer of this type is executed at run time. The methods in Unsafe are
-             * substituted to return the correct value at image run time, or fail if the field was
+             * substituted to return the correct value at image runtime, or fail if the field was
              * not registered for unsafe access.
              *
              * Calls to Unsafe.objectFieldOffset() with a constant field parameter are automatically

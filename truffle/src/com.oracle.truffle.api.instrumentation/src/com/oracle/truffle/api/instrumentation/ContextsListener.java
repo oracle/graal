@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.api.instrumentation;
+
+import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -108,4 +110,14 @@ public interface ContextsListener {
      * @since 0.30
      */
     void onContextClosed(TruffleContext context);
+
+    /**
+     * Invoked when the resource consumption limits were reset for a particular context. For example
+     * this is method each time the {@link Context#resetLimits()} method is called.
+     *
+     * @since 20.3
+     */
+    default void onContextResetLimits(@SuppressWarnings("unused") TruffleContext context) {
+    }
+
 }

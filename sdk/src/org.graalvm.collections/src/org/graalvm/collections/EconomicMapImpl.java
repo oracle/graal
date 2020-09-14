@@ -580,7 +580,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         setHashArray(hashIndex, entryIndex + 1);
         Object value = getRawValue(entryIndex);
         if (oldIndex != -1) {
-            assert entryIndex != oldIndex : "this cannot happend and would create an endless collision link cycle";
+            assert entryIndex != oldIndex : "this cannot happen and would create an endless collision link cycle";
             if (value instanceof CollisionLink) {
                 CollisionLink collisionLink = (CollisionLink) value;
                 setRawValue(entryIndex, new CollisionLink(collisionLink.value, oldIndex));

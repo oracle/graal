@@ -204,7 +204,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                         }
                     };
                     ValueConsumer stateConsumer = (operand, mode, flags) -> {
-                        if (LinearScan.isVariableOrRegister(operand)) {
+                        if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
                             int operandNum = getOperandNumber(operand);
                             if (!liveKillScratch.get(operandNum)) {
                                 liveGenScratch.set(operandNum);

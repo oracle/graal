@@ -115,9 +115,8 @@ import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.FarReturnNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
-import com.oracle.svm.core.graal.nodes.ReadHeapBaseFixedNode;
+import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 import com.oracle.svm.core.graal.nodes.ReadReturnAddressNode;
-import com.oracle.svm.core.graal.nodes.ReadStackPointerNode;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.nodes.SubstrateReflectionGetCallerClassNode;
@@ -708,7 +707,7 @@ public class SubstrateGraphBuilderPlugins {
         r.register0("heapBase", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Object, new ReadHeapBaseFixedNode());
+                b.addPush(JavaKind.Object, ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
                 return true;
             }
         });
@@ -738,7 +737,7 @@ public class SubstrateGraphBuilderPlugins {
         r.register0("readStackPointer", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Object, new ReadStackPointerNode());
+                b.addPush(JavaKind.Object, ReadReservedRegister.createReadStackPointerNode(b.getGraph()));
                 return true;
             }
         });
@@ -904,22 +903,6 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerClassPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
         registerClassDesiredAssertionStatusPlugin(plugins, snippetReflection);
-
-        /*
-         * We have our own Java-level implementation of isAssignableFrom() in DynamicHub, so we do
-         * not need to intrinsifiy that to a Graal node. Therefore, we overwrite and deactivate the
-         * invocation plugin registered in StandardGraphBuilderPlugins.
-         *
-         * TODO we should remove the implementation from DynamicHub to a lowering of
-         * ClassIsAssignableFromNode. Then we can remove this code.
-         */
-        Registration r = new Registration(plugins, Class.class).setAllowOverwrite(true);
-        r.register2("isAssignableFrom", Receiver.class, Class.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode otherType) {
-                return false;
-            }
-        });
     }
 
     public static void registerClassDesiredAssertionStatusPlugin(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {

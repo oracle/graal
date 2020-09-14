@@ -278,7 +278,7 @@ public abstract class LoopTransformations {
     // be updated to produce vector alignment if applicable.
 
     public static LoopBeginNode insertPrePostLoops(LoopEx loop) {
-        assert loop.loopBegin().loopExits().isEmpty() ||
+        assert loop.loopBegin().loopExits().isEmpty() || !loop.loopBegin().graph().hasValueProxies() ||
                         loop.counted().getCountedExit() instanceof LoopExitNode : "Can only unroll loops, if they have exits, if the counted exit is a regular loop exit " + loop;
         StructuredGraph graph = loop.loopBegin().graph();
         graph.getDebug().log("LoopTransformations.insertPrePostLoops %s", loop);
@@ -291,7 +291,7 @@ public abstract class LoopTransformations {
          * is interesting for the pre-main-post transformation since it is the regular, non-early,
          * exit.
          */
-        final LoopExitNode preLoopExitNode = (LoopExitNode) preCounted.getCountedExit();
+        final AbstractBeginNode preLoopExitNode = preCounted.getCountedExit();
 
         assert preLoop.nodes().contains(preLoopBegin);
         assert preLoop.nodes().contains(preLoopExitNode);
@@ -302,7 +302,7 @@ public abstract class LoopTransformations {
          */
         LoopFragmentWhole mainLoop = preLoop.duplicate();
         LoopBeginNode mainLoopBegin = mainLoop.getDuplicatedNode(preLoopBegin);
-        LoopExitNode mainLoopExitNode = mainLoop.getDuplicatedNode(preLoopExitNode);
+        AbstractBeginNode mainLoopExitNode = mainLoop.getDuplicatedNode(preLoopExitNode);
         EndNode mainEndNode = getBlockEndAfterLoopExit(mainLoopExitNode);
         AbstractMergeNode mainMergeNode = mainEndNode.merge();
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After  duplication of main loop %s", mainLoop);
@@ -338,7 +338,8 @@ public abstract class LoopTransformations {
             createExitState(mainLoopBegin);
         }
 
-        rewirePreToMainPhis(preLoopBegin, mainLoop, preLoopExitNode);
+        assert !graph.hasValueProxies() || preLoopExitNode instanceof LoopExitNode : "Unrolling with proxies requires actual loop exit nodes as counted exits";
+        rewirePreToMainPhis(preLoopBegin, mainLoop, graph.hasValueProxies() ? (LoopExitNode) preLoopExitNode : null);
 
         AbstractEndNode postEntryNode = postLoopBegin.forwardEnd();
         // Exits have been merged, find the continuation below the merge
@@ -350,7 +351,8 @@ public abstract class LoopTransformations {
         preLoopExitNode.setNext(mainLoopBegin.forwardEnd());
 
         // Add and update any phi edges as per merge usage as needed and update usages
-        processPreLoopPhis(loop, mainLoopExitNode, mainLoop, postLoop);
+        assert !graph.hasValueProxies() || mainLoopExitNode instanceof LoopExitNode : "Unrolling with proxies requires actual loop exit nodes as counted exits";
+        processPreLoopPhis(loop, graph.hasValueProxies() ? (LoopExitNode) mainLoopExitNode : null, mainLoop, postLoop);
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing pre loop phis");
 
         continuationNode.predecessor().clearSuccessors();
@@ -602,11 +604,8 @@ public abstract class LoopTransformations {
 
     public static boolean isUnrollableLoop(LoopEx loop) {
         if (!loop.isCounted() || !loop.counted().getCounter().isConstantStride() || !loop.loop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
-                        loop.loopBegin().loopExits().count() != 1) {
-            return false;
-        }
-        if (!(loop.counted().getCountedExit() instanceof LoopExitNode)) {
-            // deopt exited counted loop
+                        loop.loopBegin().loopExits().count() > 1) {
+            // loops without exits can be unrolled
             return false;
         }
         assert loop.counted().getDirection() != null;

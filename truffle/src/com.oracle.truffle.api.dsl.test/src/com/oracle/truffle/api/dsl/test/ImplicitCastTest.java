@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -458,6 +458,21 @@ public class ImplicitCastTest {
          * verifies that this particular case does not happen.
          */
         Assert.assertEquals(2L, node.executeLong(Truffle.getRuntime().createVirtualFrame(new Object[]{2L}, new FrameDescriptor())));
+    }
+
+    @TypeSystemReference(ImplicitCast4Types.class)
+    public abstract static class ImplicitCastExecuteTestNode extends Node {
+
+        public abstract Object execute(int duration);
+
+        public abstract Object execute(long duration);
+
+        public abstract Object execute(Object duration);
+
+        @Specialization
+        public long sleep(long duration) {
+            return duration;
+        }
     }
 
     @TypeSystemReference(ImplicitCast4Types.class)

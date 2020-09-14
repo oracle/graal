@@ -17,13 +17,13 @@ active specialization, excluding a specialization, etc..
 
 To facilitate reporting of polymorphic specializations, a new API was introduced
 into the `Node` class:
-[Node#reportPolymorphicSpecialize](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#reportPolymorphicSpecialize).
+[Node#reportPolymorphicSpecialize](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#reportPolymorphicSpecialize).
 This method can be used to manually report polymorphic specializations, but only
 in cases when this cannot be automated by using the DSL.
 
 ## Automated Reporting of Polymorphic Specializations
 
-Since the Truffle DSL automates much of the transitions between specializations, the `@ReportPolymorphism` [annotation for automated reporting of polymorphic specializations](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.html) was added.
+Since the Truffle DSL automates much of the transitions between specializations, the `@ReportPolymorphism` [annotation for automated reporting of polymorphic specializations](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.html) was added.
 This annotation instructs the DSL to include checks for polymorphism after
 specializations and to call `Node#reportPolymorphicSpecialize` if needed.
 
@@ -65,16 +65,34 @@ InstrumentableNode {
 
 ### Controlling Automated Reporting of Polymorphic Specializations
 
+## Excluding particular nodes and specializations
+
 Applying the `ReportPolymorphism` annotation to all nodes of a language is the
 simplest way to facilitate the monomorphization, but it could cause reporting
 of polymorphic specializations in cases where that does not necessarily make
 sense. In order to give the language developer more control over which nodes
 and which specializations are taken into consideration for reporting
 polymorphism the `@ReportPolymorphism.Exclude`
-[annotation](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Exclude.html)
+[annotation](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Exclude.html)
 was introduced which is applicable to classes (disabling automated reporting for the entire
 class) or to individual specializations (excluding those specializations from
 consideration when checking for polymorphism).
+
+## Reporting only on Megamorphic Cases
+
+As of version 20.3.0 a new annotation was added:
+[ReportPolymorphism.Megamorphic](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Megamorphic.html).
+This annotation can only be applied to specializations, as marks that
+specialization as megamorphic as it is intented to be used on expensive
+"generic" specializations that should be fixed by monomorphization.  The effect
+of adding this annotation is that, once the annotated specialisation becomes
+active, the node will report polymorphism to the runtime independant of the
+state of other specializations.
+
+This annotation can be used separately from `@ReportPolymorphism`, i.e. a node
+does *not* need to be annotated with `@ReportPolymorphism` for the megamorphic
+annotation to work.  If both annotations are used, then both polymorphic and
+megamorphic activations will be reported as polymorphism.
 
 ### Tools Support
 

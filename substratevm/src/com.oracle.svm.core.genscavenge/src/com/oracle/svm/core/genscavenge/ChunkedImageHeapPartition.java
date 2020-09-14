@@ -32,9 +32,6 @@ import java.util.NavigableMap;
 import java.util.Queue;
 import java.util.TreeMap;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.image.AbstractImageHeapLayouter.AbstractImageHeapPartition;
 import com.oracle.svm.core.image.ImageHeapObject;
@@ -42,7 +39,6 @@ import com.oracle.svm.core.image.ImageHeapObject;
 /**
  * An unstructured image heap partition that just contains a linear sequence of image heap objects.
  */
-@Platforms(Platform.HOSTED_ONLY.class)
 public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
     private final boolean hugeObjects;
 

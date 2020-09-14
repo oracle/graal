@@ -5,8 +5,8 @@ This guide explains how to use the `--engine.SpecializationHistogram` option.
 The specialization histogram requires Truffle DSL nodes to be generated in a special way.
 So if you use the plain specialization histogram option it will just print the following:
 
-```
-$ js --engine.SpecializationHistogram test.js
+```shell
+js --engine.SpecializationHistogram test.js
 
 [engine] Specialization histogram:
 No specialization statistics data was collected. Either no node with @Specialization annotations was executed or the interpreter was not compiled with -Atruffle.dsl.GenerateSpecializationStatistics=true e.g as parameter to the javac tool.
@@ -15,15 +15,15 @@ No specialization statistics data was collected. Either no node with @Specializa
 Lets follow the advice of the error and recompile our interpreter.
 For `mx` users this is as simple as:
 
-```
-$ mx build -c -A-Atruffle.dsl.GenerateSpecializationStatistics=true
+```shell
+mx build -c -A-Atruffle.dsl.GenerateSpecializationStatistics=true
 ```
 
 After the rebuild the specialization statistics are ready to be use.
 Make sure that your IDE does not recompile in the sources automatically in the meantime.
 In this tutorial we use a simple `test.js` script:
 
-```
+```js
 function test() {
   var array = [42, "", {}, []]
 
@@ -37,7 +37,7 @@ test();
 
 Now the specialization statistics need to be enabled, in this example using the Graal.js launcher:
 
-```
+```shell
 js --experimental-options --engine.SpecializationStatistics test.js
 ```
 

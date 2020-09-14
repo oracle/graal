@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.loop.test;
 
+import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
+import static org.graalvm.compiler.api.directives.GraalDirectives.injectIterationCount;
+
 import java.util.ListIterator;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -76,7 +79,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
 
     public static long sumWithEqualityLimit(int[] text) {
         long sum = 0;
-        for (int i = 0; branchProbability(0.99, i != text.length); ++i) {
+        for (int i = 0; injectBranchProbability(0.99, i != text.length); ++i) {
             sum += volatileInt;
         }
         return sum;
@@ -110,7 +113,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         int b = 0;
         int c = 0;
 
-        for (int i = 0; branchProbability(0.99, i < iterations); i++) {
+        for (int i = 0; injectBranchProbability(0.99, i < iterations); i++) {
             int t1 = volatileInt;
             int t2 = a + b;
             c = b;
@@ -126,7 +129,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         int b = 0;
         int c = 0;
 
-        for (int i = 0; branchProbability(0.99, i < iterations); i += 2) {
+        for (int i = 0; injectBranchProbability(0.99, i < iterations); i += 2) {
             int t1 = volatileInt;
             int t2 = a + b;
             c = b;
@@ -160,7 +163,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         int b = 0;
         int c = 0;
 
-        for (int i = start; branchProbability(0.99, Integer.compareUnsigned(i, end) < 0); i++) {
+        for (int i = start; injectBranchProbability(0.99, Integer.compareUnsigned(i, end) < 0); i++) {
             int t1 = volatileInt;
             int t2 = a + b;
             c = b;
@@ -191,7 +194,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         int b = 0;
         int c = 0;
 
-        for (int i = start; branchProbability(0.99, i < end); i++) {
+        for (int i = start; injectBranchProbability(0.99, i < end); i++) {
             int t1 = volatileInt;
             int t2 = a + b;
             c = b;
@@ -211,7 +214,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         int y = 5;
         z = 7;
         for (int i = 0; i < d; i++) {
-            for (int j = 0; branchProbability(0.99, j < i); j++) {
+            for (int j = 0; injectBranchProbability(0.99, j < i); j++) {
                 z += x;
             }
             y = x ^ z;
@@ -236,7 +239,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
 
     public static long testSignExtensionSnippet(long arg) {
         long r = 1;
-        for (int i = 0; branchProbability(0.99, i < arg); i++) {
+        for (int i = 0; injectBranchProbability(0.99, i < arg); i++) {
             r *= i;
         }
         return r;
@@ -252,7 +255,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         GraalDirectives.blackhole(v); // Prevents PEA
         Integer r = 1;
 
-        for (int i = 0; iterationCount(100, i < n); i++) {
+        for (int i = 0; injectIterationCount(100, i < n); i++) {
             GraalDirectives.blackhole(r); // Create a phi of two loop invariants
             r = v;
         }
@@ -319,6 +322,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
             if (partialUnroll) {
                 LoopsData dataCounted = new LoopsData(graph);
                 dataCounted.detectedCountedLoops();
+                assertTrue(!dataCounted.countedLoops().isEmpty(), "must have counted loops");
                 for (LoopEx loop : dataCounted.countedLoops()) {
                     LoopFragmentInside newSegment = loop.inside().duplicate();
                     newSegment.insertWithinAfter(loop, null);

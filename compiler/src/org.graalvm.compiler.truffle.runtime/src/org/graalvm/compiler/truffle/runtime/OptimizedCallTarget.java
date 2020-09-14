@@ -477,7 +477,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object profiledPERoot(Object[] originalArguments) {
         Object[] args = originalArguments;
-        if (CompilerDirectives.inFirstTier()) {
+        if (GraalCompilerDirectives.inFirstTier()) {
             firstTierCall();
         }
         if (CompilerDirectives.inCompiledCode()) {
@@ -846,7 +846,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     final void onLoopCount(int count) {
-        callAndLoopCount += count;
+        assert count >= 0;
+        int oldLoopCallCount = this.callAndLoopCount;
+        int newLoopCallCount = oldLoopCallCount + count;
+        this.callAndLoopCount = newLoopCallCount >= oldLoopCallCount ? newLoopCallCount : Integer.MAX_VALUE;
     }
 
     @Override

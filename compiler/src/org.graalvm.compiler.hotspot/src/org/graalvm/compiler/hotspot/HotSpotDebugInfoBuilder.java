@@ -41,7 +41,7 @@ import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 
@@ -97,8 +97,8 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
         if (node instanceof FullInfopointNode) {
             return true;
         }
-        if (node instanceof ForeignCallNode) {
-            ForeignCallNode call = (ForeignCallNode) node;
+        if (node instanceof ForeignCall) {
+            ForeignCall call = (ForeignCall) node;
             ForeignCallDescriptor descriptor = call.getDescriptor();
             if (DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls.containsValue(descriptor.getSignature())) {
                 return true;

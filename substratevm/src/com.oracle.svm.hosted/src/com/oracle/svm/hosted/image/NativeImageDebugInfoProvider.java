@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.SourceMapping;
 import org.graalvm.compiler.debug.DebugContext;
@@ -106,10 +107,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
              */
             this.javaType = declaringClass.getWrapped().getWrapped();
             this.compilation = compilation;
+            this.cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", declaringClass)) {
                 fullFilePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
-                this.cachePath = sourceManager.getCachePathForSource(javaType);
             } catch (Throwable e) {
                 throw debugContext.handle(e);
             }
@@ -250,7 +251,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.method = position.getMethod();
             this.lo = sourceMapping.getStartOffset();
             this.hi = sourceMapping.getEndOffset();
-            computeFullFilePathAndCachePath();
+            this.cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
+            computeFullFilePath();
         }
 
         @Override
@@ -307,7 +309,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @SuppressWarnings("try")
-        private void computeFullFilePathAndCachePath() {
+        private void computeFullFilePath() {
             ResolvedJavaType declaringClass = method.getDeclaringClass();
             Class<?> clazz = null;
             if (declaringClass instanceof OriginalClassProvider) {
@@ -327,7 +329,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", declaringClass)) {
                 fullFilePath = sourceManager.findAndCacheSource(declaringClass, clazz, debugContext);
-                cachePath = sourceManager.getCachePathForSource(declaringClass);
             } catch (Throwable e) {
                 throw debugContext.handle(e);
             }

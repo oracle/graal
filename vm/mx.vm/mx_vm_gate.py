@@ -127,9 +127,16 @@ def gate_body(args, tasks):
             with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
                     mx_compiler.ctw([
-                            '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM', '-esa', '-XX:+EnableJVMCI',
-                            '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
-                            '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
+                            '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM',
+                            '-esa',
+                            '-XX:+EnableJVMCI',
+                            '-DCompileTheWorld.MultiThreaded=true',
+                            '-Dgraal.InlineDuringParsing=false',
+                            '-Dgraal.TrackNodeSourcePosition=true',
+                            '-DCompileTheWorld.Verbose=false',
+                            '-DCompileTheWorld.HugeMethodLimit=4000',
+                            '-DCompileTheWorld.MaxCompiles=150000',
+                            '-XX:ReservedCodeCacheSize=300m',
                         ], extra_vm_arguments)
 
             mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_arguments, prefix='LibGraal Compiler:')
@@ -161,9 +168,8 @@ def gate_body(args, tasks):
                         "-Dpolyglot.engine.CompileImmediately=true",
                         "-Dpolyglot.engine.BackgroundCompilation=false",
                         "-Dpolyglot.engine.TraceCompilation=true",
+                        "-Dpolyglot.log.file={0}".format(compiler_log_file),
                         "-Dgraalvm.locatorDisabled=true",
-                        "-Dgraal.PrintCompilation=true",
-                        "-Dgraal.LogFile={0}".format(compiler_log_file),
                         "truffle"])
                     if exists(compiler_log_file):
                         remove(compiler_log_file)

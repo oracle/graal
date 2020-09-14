@@ -388,9 +388,9 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         v.isMetaInstance = (o) -> o == instance;
         v.getMetaQualifiedName = () -> new Object();
         v.getMetaSimpleName = () -> new Object();
-        assertFails(() -> l.isMetaObject(v), ClassCastException.class);
-        assertFails(() -> l.getMetaSimpleName(v), ClassCastException.class);
-        assertFails(() -> l.getMetaQualifiedName(v), ClassCastException.class);
+        assertFails(() -> l.isMetaObject(v), AssertionError.class);
+        assertFails(() -> l.getMetaSimpleName(v), AssertionError.class);
+        assertFails(() -> l.getMetaQualifiedName(v), AssertionError.class);
         assertFails(() -> l.isMetaInstance(v, new Object()), ClassCastException.class);
 
         v.isMetaObject = true;

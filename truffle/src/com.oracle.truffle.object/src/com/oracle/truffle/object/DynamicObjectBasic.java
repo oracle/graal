@@ -50,13 +50,13 @@ import com.oracle.truffle.object.CoreLocations.SimpleObjectFieldLocation;
 @SuppressWarnings("deprecation")
 public class DynamicObjectBasic extends DynamicObjectImpl {
 
-    private long primitive1;
-    private long primitive2;
-    private long primitive3;
-    private Object object1;
-    private Object object2;
-    private Object object3;
-    private Object object4;
+    long primitive1;
+    long primitive2;
+    long primitive3;
+    Object object1;
+    Object object2;
+    Object object3;
+    Object object4;
 
     protected DynamicObjectBasic(Shape shape) {
         super(shape);

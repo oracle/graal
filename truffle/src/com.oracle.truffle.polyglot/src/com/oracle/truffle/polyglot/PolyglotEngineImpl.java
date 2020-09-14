@@ -66,6 +66,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
@@ -112,6 +113,9 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
+import com.oracle.truffle.polyglot.PolyglotLocals.AbstractContextLocal;
+import com.oracle.truffle.polyglot.PolyglotLocals.AbstractContextThreadLocal;
+import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
 final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -124,16 +128,18 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     static final String OPTION_GROUP_ENGINE = "engine";
     static final String OPTION_GROUP_LOG = "log";
     static final String OPTION_GROUP_IMAGE_BUILD_TIME = "image-build-time";
+    static final String LOG_FILE_OPTION = OPTION_GROUP_LOG + ".file";
     private static final String PROP_ALLOW_EXPERIMENTAL_OPTIONS = OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + OPTION_GROUP_ENGINE + ".AllowExperimentalOptions";
 
     // also update list in LanguageRegistrationProcessor
     private static final Set<String> RESERVED_IDS = new HashSet<>(
-                    Arrays.asList(HOST_LANGUAGE_ID, "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm",
+                    Arrays.asList(HOST_LANGUAGE_ID, "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm", "file",
                                     OPTION_GROUP_ENGINE, OPTION_GROUP_LOG, OPTION_GROUP_IMAGE_BUILD_TIME));
 
     private static final Map<PolyglotEngineImpl, Void> ENGINES = Collections.synchronizedMap(new WeakHashMap<>());
     private static volatile boolean shutdownHookInitialized = false;
     private static final boolean DEBUG_MISSING_CLOSE = Boolean.getBoolean("polyglotimpl.DebugMissingClose");
+    static final LocalLocation[] EMPTY_LOCATIONS = new LocalLocation[0];
 
     Engine creatorApi; // effectively final
     Engine currentApi;
@@ -190,8 +196,11 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @CompilationFinal private HostToGuestCodeCache hostToGuestCodeCache;
 
     final SpecializationStatistics specializationStatistics;
-    final Supplier<TruffleLogger> engineLoggerSupplier;
+    final Function<String, TruffleLogger> engineLoggerSupplier;
     private volatile TruffleLogger engineLogger;
+
+    @CompilationFinal volatile StableLocalLocations contextLocalLocations = new StableLocalLocations(EMPTY_LOCATIONS);
+    @CompilationFinal volatile StableLocalLocations contextThreadLocalLocations = new StableLocalLocations(EMPTY_LOCATIONS);
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine,
@@ -211,7 +220,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.in = in;
         this.contextClassLoader = contextClassLoader;
         this.boundEngine = boundEngine;
-        this.logHandler = logHandler;
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
@@ -258,11 +266,13 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         idToPublicInstrument = Collections.unmodifiableMap(publicInstruments);
 
         Map<String, String> originalEngineOptions = new HashMap<>();
-        logLevels = new HashMap<>();
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
+        LogConfig logConfig = new LogConfig();
 
-        parseOptions(options, useSystemProperties, originalEngineOptions, languagesOptions, instrumentsOptions, logLevels);
+        parseOptions(options, useSystemProperties, originalEngineOptions, languagesOptions, instrumentsOptions, logConfig);
+        this.logLevels = logConfig.logLevels;
+        this.logHandler = logHandler != null ? logHandler : createLogHandler(logConfig, this.err);
 
         boolean useAllowExperimentalOptions = allowExperimentalOptions || Boolean.parseBoolean(EngineAccessor.RUNTIME.getSavedProperty(PROP_ALLOW_EXPERIMENTAL_OPTIONS));
         this.engineOptionValues.putAll(originalEngineOptions, useAllowExperimentalOptions);
@@ -370,7 +380,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             OptionValuesImpl prototypeOptions = prototype.idToInstrument.get(instrumentId).getOptionValuesIfExists();
             if (prototypeOptions != null) {
                 PolyglotInstrument instrument = idToInstrument.get(instrumentId);
-                prototypeOptions.copyInto(instrument.getOptionValues());
+                prototypeOptions.copyInto(instrument.getEngineOptionValues());
                 instrumentsToCreate.add(instrument);
             }
         }
@@ -384,7 +394,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             synchronized (this) {
                 result = this.engineLogger;
                 if (result == null) {
-                    this.engineLogger = result = this.engineLoggerSupplier.get();
+                    this.engineLogger = result = this.engineLoggerSupplier.apply(OPTION_GROUP_ENGINE);
                 }
             }
         }
@@ -428,7 +438,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.in = newIn;
         this.contextClassLoader = newContextClassLoader;
         this.boundEngine = newBoundEngine;
-        this.logHandler = newLogHandler;
         INSTRUMENT.patchInstrumentationHandler(instrumentationHandler, newOut, newErr, newIn);
 
         Map<String, String> originalEngineOptions = new HashMap<>();
@@ -436,7 +445,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
 
         assert this.logLevels.isEmpty();
-        parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, languagesOptions, instrumentsOptions, logLevels);
+        LogConfig logConfig = new LogConfig();
+        parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, languagesOptions, instrumentsOptions, logConfig);
+        logLevels = logConfig.logLevels;
+        this.logHandler = newLogHandler != null ? newLogHandler : createLogHandler(logConfig, err);
         boolean useAllowExperimentalOptions = newAllowExperimentalOptions || Boolean.parseBoolean(EngineAccessor.RUNTIME.getSavedProperty(PROP_ALLOW_EXPERIMENTAL_OPTIONS));
         this.engineOptionValues.putAll(originalEngineOptions, useAllowExperimentalOptions);
 
@@ -451,20 +463,32 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         // Set instruments options but do not call onCreate. OnCreate is called only in case of
         // successful context patch.
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
-            instrument.getOptionValues().putAll(instrumentsOptions.get(instrument), useAllowExperimentalOptions);
+            instrument.getEngineOptionValues().putAll(instrumentsOptions.get(instrument), useAllowExperimentalOptions);
         }
         registerShutDownHook();
         return true;
     }
 
+    private static Handler createLogHandler(LogConfig logConfig, DispatchOutputStream errDispatchOutputStream) {
+        if (logConfig.logFile != null) {
+            if (ALLOW_IO) {
+                return PolyglotLoggers.getFileHandler(logConfig.logFile);
+            } else {
+                throw PolyglotEngineException.illegalState("The `log.file` option is not allowed when the allowIO() privilege is removed at image build time.");
+            }
+        } else {
+            return PolyglotLoggers.createDefaultHandler(INSTRUMENT.getOut(errDispatchOutputStream));
+        }
+    }
+
     private static void createInstruments(Map<PolyglotInstrument, Map<String, String>> instrumentsOptions, boolean allowExperimentalOptions) {
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
-            instrument.getOptionValues().putAll(instrumentsOptions.get(instrument), allowExperimentalOptions);
+            instrument.getEngineOptionValues().putAll(instrumentsOptions.get(instrument), allowExperimentalOptions);
         }
         ensureInstrumentsCreated(instrumentsOptions.keySet());
     }
 
-    private static void ensureInstrumentsCreated(Collection<? extends PolyglotInstrument> instruments) {
+    static void ensureInstrumentsCreated(Collection<? extends PolyglotInstrument> instruments) {
         for (PolyglotInstrument instrument : instruments) {
             // we got options for this instrument -> create it.
             instrument.ensureCreated();
@@ -499,7 +523,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     private void parseOptions(Map<String, String> options, boolean useSystemProperties,
                     Map<String, String> originalEngineOptions,
                     Map<PolyglotLanguage, Map<String, String>> languagesOptions, Map<PolyglotInstrument, Map<String, String>> instrumentsOptions,
-                    Map<String, Level> logOptions) {
+                    LogConfig logOptions) {
         final Map<String, String> optionsWithSystemProperties;
         if (useSystemProperties) {
             optionsWithSystemProperties = readOptionsFromSystemProperties();
@@ -543,7 +567,11 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
 
             if (group.equals(OPTION_GROUP_LOG)) {
-                logOptions.put(parseLoggerName(key), Level.parse(value));
+                if (LOG_FILE_OPTION.equals(key)) {
+                    logOptions.logFile = value;
+                } else {
+                    logOptions.logLevels.put(parseLoggerName(key), Level.parse(value));
+                }
                 continue;
             }
             throw OptionValuesImpl.failNotFound(getAllOptions(), key);
@@ -585,14 +613,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
         }
         return options;
-    }
-
-    /**
-     * Find if there is an "engine option" (covers engine and instruments options) present among the
-     * given options.
-     */
-    boolean isEngineGroup(String group) {
-        return idToPublicInstrument.containsKey(group) || group.equals(OPTION_GROUP_ENGINE);
     }
 
     static String parseOptionGroup(String key) {
@@ -829,6 +849,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
             l.initialize(context.config.limits, context);
         }
+
         if (context.config.hostClassLoader != null) {
             context.engine.customHostClassLoader.invalidate();
         }
@@ -865,15 +886,15 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             allContexts = collectAliveContexts();
         }
         for (PolyglotContextImpl context : allContexts) {
-            listener.onContextCreated(context.truffleContext);
+            listener.onContextCreated(context.creatorTruffleContext);
             for (PolyglotLanguageContext lc : context.contexts) {
                 LanguageInfo language = lc.language.info;
                 if (lc.eventsEnabled && lc.env != null) {
-                    listener.onLanguageContextCreated(context.truffleContext, language);
+                    listener.onLanguageContextCreated(context.creatorTruffleContext, language);
                     if (lc.isInitialized()) {
-                        listener.onLanguageContextInitialized(context.truffleContext, language);
+                        listener.onLanguageContextInitialized(context.creatorTruffleContext, language);
                         if (lc.finalized) {
-                            listener.onLanguageContextFinalized(context.truffleContext, language);
+                            listener.onLanguageContextFinalized(context.creatorTruffleContext, language);
                         }
                     }
                 }
@@ -895,7 +916,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 threads = context.getSeenThreads().keySet().toArray(new Thread[0]);
             }
             for (Thread thread : threads) {
-                listener.onThreadInitialized(context.truffleContext, thread);
+                listener.onThreadInitialized(context.creatorTruffleContext, thread);
             }
         }
     }
@@ -1152,7 +1173,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                         allDescriptors.add(language.getOptionsInternal());
                     }
                     for (PolyglotInstrument instrument : idToInstrument.values()) {
-                        allDescriptors.add(instrument.getOptionsInternal());
+                        allDescriptors.add(instrument.getAllOptionsInternal());
                     }
                     allOptions = OptionDescriptors.createUnion(allDescriptors.toArray(new OptionDescriptors[0]));
                 }
@@ -1320,7 +1341,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     private void cancelExecution(EventContext eventContext) {
                         PolyglotContextImpl context = PolyglotContextImpl.requireContext();
                         if (context.invalid || context.cancelling) {
-                            throw new CancelExecution(eventContext, context.invalidMessage);
+                            throw context.createCancelException(eventContext.getInstrumentedNode());
                         }
                     }
                 });
@@ -1343,16 +1364,22 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @SuppressWarnings("serial")
     static final class CancelExecution extends ThreadDeath implements TruffleException {
 
-        private final Node node;
+        private final Node location;
         private final String cancelMessage;
+        private final boolean resourceLimit;
 
-        CancelExecution(EventContext context, String cancelMessage) {
-            this.node = context != null ? context.getInstrumentedNode() : null;
+        CancelExecution(Node location, String cancelMessage, boolean resourceLimit) {
+            this.location = location;
             this.cancelMessage = cancelMessage;
+            this.resourceLimit = resourceLimit;
         }
 
         public Node getLocation() {
-            return node;
+            return location;
+        }
+
+        public boolean isResourceLimit() {
+            return resourceLimit;
         }
 
         @Override
@@ -1476,9 +1503,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             Handler useHandler = PolyglotLoggers.asHandler(logHandlerOrStream);
             useHandler = useHandler != null ? useHandler : logHandler;
             useHandler = useHandler != null ? useHandler
-                            : PolyglotLoggers.createStreamHandler(
-                                            configErr == null ? INSTRUMENT.getOut(this.err) : configErr,
-                                            false, true);
+                            : PolyglotLoggers.createDefaultHandler(
+                                            configErr == null ? INSTRUMENT.getOut(this.err) : configErr);
 
             final InputStream useIn = configIn == null ? this.in : configIn;
 
@@ -1510,6 +1536,12 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 }
             } else if (context.engine == this) {
                 replayEvents = true;
+            }
+
+            if (!replayEvents) { // is new context
+                synchronized (context) {
+                    context.initializeContextLocals();
+                }
             }
 
             if (replayEvents && EngineAccessor.INSTRUMENT.hasContextBindings(this)) {
@@ -1655,7 +1687,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
             // fast-path -> same thread
             prev = PolyglotContextImpl.getSingleContextState().getContextThreadLocal().setReturnParent(context);
-            info.enter(this);
+            info.enter(this, context);
         } else {
             // slow path -> changed thread
             if (singleThreadPerContext.isValid()) {
@@ -1676,7 +1708,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                         PolyglotContextImpl.currentNotEntered() == polyglotContext : "Cannot leave context that is currently not entered. Forgot to enter or leave a context?";
         PolyglotThreadInfo info = getCachedThreadInfo(polyglotContext);
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
-            info.leave(this);
+            info.leave(this, polyglotContext);
         } else {
             if (singleThreadPerContext.isValid() && singleContext.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1688,9 +1720,97 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     PolyglotThreadInfo getCachedThreadInfo(PolyglotContextImpl context) {
         if (singleThreadPerContext.isValid() && singleContext.isValid()) {
-            return context.getCachedThreadInfo(true);
+            return context.constantCurrentThreadInfo;
         } else {
-            return context.getCachedThreadInfo(false);
+            return context.currentThreadInfo;
         }
     }
+
+    private static final class LogConfig {
+
+        final Map<String, Level> logLevels;
+        String logFile;
+
+        LogConfig() {
+            this.logLevels = new HashMap<>();
+        }
+    }
+
+    LocalLocation[] addContextLocals(List<? extends AbstractContextLocal<?>> newLocals) {
+        List<PolyglotContextImpl> aliveContexts;
+        LocalLocation[] newLocations;
+        StableLocalLocations newStableLocations;
+        synchronized (this) {
+            StableLocalLocations stableLocations = this.contextLocalLocations;
+            int index = stableLocations.locations.length;
+            LocalLocation[] locationsCopy = Arrays.copyOf(stableLocations.locations, stableLocations.locations.length + newLocals.size());
+            for (AbstractContextLocal<?> newLocal : newLocals) {
+                locationsCopy[index] = newLocal.createLocation(index);
+                newLocal.initializeLocation(locationsCopy[index]);
+                index++;
+            }
+            /*
+             * We pick up the alive contexts before we set the new context locals. So all new
+             * contexts from now on will already use the initialized locals.
+             */
+            aliveContexts = collectAliveContexts();
+            this.contextLocalLocations = newStableLocations = new StableLocalLocations(locationsCopy);
+            stableLocations.assumption.invalidate("Context local added");
+            newLocations = Arrays.copyOfRange(locationsCopy, stableLocations.locations.length, index);
+            stableLocations = this.contextLocalLocations;
+        }
+        for (PolyglotContextImpl context : aliveContexts) {
+            synchronized (context) {
+                if (context.closed || context.invalid) {
+                    continue;
+                }
+                context.resizeContextLocals(newStableLocations);
+            }
+        }
+        return newLocations;
+    }
+
+    LocalLocation[] addContextThreadLocals(List<? extends AbstractContextThreadLocal<?>> newLocals) {
+        List<PolyglotContextImpl> aliveContexts;
+        LocalLocation[] newLocations;
+        StableLocalLocations newStableLocations;
+        synchronized (this) {
+            StableLocalLocations stableLocations = this.contextThreadLocalLocations;
+            int index = stableLocations.locations.length;
+            LocalLocation[] locationsCopy = Arrays.copyOf(stableLocations.locations, stableLocations.locations.length + newLocals.size());
+            for (AbstractContextThreadLocal<?> newLocal : newLocals) {
+                locationsCopy[index] = newLocal.createLocation(index);
+                newLocal.initializeLocation(locationsCopy[index]);
+                index++;
+            }
+            /*
+             * We pick up the alive contexts before we set the new context locals. So all new
+             * contexts from now on will already use the initialized locals.
+             */
+            aliveContexts = collectAliveContexts();
+            this.contextThreadLocalLocations = newStableLocations = new StableLocalLocations(locationsCopy);
+            stableLocations.assumption.invalidate("Context thread local added");
+            newLocations = Arrays.copyOfRange(locationsCopy, stableLocations.locations.length, index);
+        }
+        for (PolyglotContextImpl context : aliveContexts) {
+            synchronized (context) {
+                if (context.closed || context.invalid) {
+                    continue;
+                }
+                context.resizeContextThreadLocals(newStableLocations);
+            }
+        }
+        return newLocations;
+    }
+
+    static final class StableLocalLocations {
+
+        @CompilationFinal(dimensions = 1) final LocalLocation[] locations;
+        final Assumption assumption = Truffle.getRuntime().createAssumption();
+
+        StableLocalLocations(LocalLocation[] locations) {
+            this.locations = locations;
+        }
+    }
+
 }

@@ -50,6 +50,7 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
 
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
@@ -117,7 +118,7 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
     }
 
     private Value debugInfoProcedure(LIRInstruction op, Value operand) {
-        if (isVirtualStackSlot(operand)) {
+        if (isVirtualStackSlot(operand) || ValueUtil.isRegister(operand)) {
             return operand;
         }
         int tempOpId = op.id();

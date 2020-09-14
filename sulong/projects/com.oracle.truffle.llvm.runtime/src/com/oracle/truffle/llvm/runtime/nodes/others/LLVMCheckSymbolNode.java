@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.utilities.AssumedValue;
-import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
@@ -44,23 +43,22 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMCheckSymbolNode extends LLVMNode {
 
-    public abstract boolean execute(LLVMSymbol descriptor);
+    protected final LLVMSymbol symbol;
 
-    @Specialization(guards = "alias.isAlias()")
-    boolean doCheckAlias(LLVMAlias alias,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        LLVMSymbol target = alias.getTarget();
-        do {
-            target = ((LLVMAlias) target).getTarget();
-        } while (target.isAlias());
-        return doCheck(target, context);
+    public static final LLVMCheckSymbolNode[] EMPTY = {};
+
+    public LLVMCheckSymbolNode(LLVMSymbol symbol) {
+        if (symbol.isAlias()) {
+            throw new IllegalStateException("Cannot check for aliases in the symbol table, as aliases are forbidden in the symbol table");
+        }
+        this.symbol = symbol;
     }
 
-    @Specialization
-    boolean doCheck(LLVMSymbol symbol,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        CompilerAsserts.partialEvaluationConstant(symbol);
+    public abstract boolean execute();
 
+    @Specialization
+    boolean doCheck(@CachedContext(LLVMLanguage.class) LLVMContext context) {
+        CompilerAsserts.partialEvaluationConstant(symbol);
         if (symbol.hasValidIndexAndID()) {
             int bitcodeID = symbol.getBitcodeID(false);
             if (context.symbolTableExists(bitcodeID)) {

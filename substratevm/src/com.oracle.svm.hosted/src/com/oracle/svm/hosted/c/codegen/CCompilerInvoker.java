@@ -39,8 +39,6 @@ import java.util.Optional;
 import java.util.Scanner;
 import java.util.function.Consumer;
 
-import com.oracle.svm.core.c.libc.LibCBase;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -48,6 +46,7 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -193,6 +192,17 @@ public abstract class CCompilerInvoker {
             }
         }
 
+        @Override
+        protected List<String> compileStrictOptions() {
+            /*
+             * On Windows `/Wall` corresponds to `-Wall -Wextra`. Therefore we use /W4 instead.
+             * Options `/wd4244` and `/wd4245` are needed because our query code makes use of
+             * implicit unsigned/signed conversions to detect signedness of types. `/wd4800`,
+             * `/wd4804` are needed to silence warnings when querying bool types. `/wd4214` is
+             * needed to make older versions of cl.exe accept bitfields larger than int-size.
+             */
+            return Arrays.asList("/WX", "/W4", "/wd4244", "/wd4245", "/wd4800", "/wd4804", "/wd4214");
+        }
     }
 
     private static class LinuxCCompilerInvoker extends CCompilerInvoker {
@@ -209,6 +219,13 @@ public abstract class CCompilerInvoker {
         @Override
         protected CompilerInfo createCompilerInfo(Path compilerPath, Scanner scanner) {
             try {
+                if (scanner.findInLine("icc version ") != null) {
+                    scanner.useDelimiter("[. ]");
+                    int major = scanner.nextInt();
+                    int minor0 = scanner.nextInt();
+                    int minor1 = scanner.nextInt();
+                    return new CompilerInfo(compilerPath, "intel", "Intel(R) C++ Compiler", "icc", major, minor0, minor1, "x86_64");
+                }
                 String[] triplet = guessTargetTriplet(scanner);
                 while (scanner.findInLine("gcc version ") == null) {
                     scanner.nextLine();
@@ -328,26 +345,31 @@ public abstract class CCompilerInvoker {
             return new CompilerInfo(compilerPath, null, getClass().getSimpleName(), null, 0, 0, 0, null);
         }
         List<String> compilerCommand = createCompilerCommand(compilerPath, getVersionInfoOptions(), null);
-        ProcessBuilder pb = new ProcessBuilder()
-                        .command(compilerCommand)
-                        .directory(tempDirectory.toFile())
-                        .redirectErrorStream(true);
-        pb.environment().put("LC_ALL", "C");
         CompilerInfo result = null;
-        Process process = null;
+        Process compilerProcess = null;
         try {
-            process = pb.start();
-            try (Scanner scanner = new Scanner(process.getInputStream())) {
-                result = createCompilerInfo(compilerPath, scanner);
+            ProcessBuilder processBuilder = FileUtils.prepareCommand(compilerCommand, tempDirectory);
+            processBuilder.redirectErrorStream(true);
+            processBuilder.environment().put("LC_ALL", "C");
+
+            FileUtils.traceCommand(processBuilder);
+
+            compilerProcess = processBuilder.start();
+            try (InputStream inputStream = compilerProcess.getInputStream()) {
+                List<String> lines = FileUtils.readAllLines(inputStream);
+
+                FileUtils.traceCommandOutput(lines);
+
+                result = createCompilerInfo(compilerPath, new Scanner(String.join(System.lineSeparator(), lines)));
             }
-            process.waitFor();
+            compilerProcess.waitFor();
         } catch (InterruptedException ex) {
-            throw new InterruptImageBuilding();
+            throw new InterruptImageBuilding("Interrupted during checking native-compiler " + compilerPath);
         } catch (IOException e) {
-            UserError.abort(e, "Collecting native-compiler info with '" + SubstrateUtil.getShellCommandString(pb.command(), false) + "' failed");
+            UserError.abort(e, "Collecting native-compiler info with '" + SubstrateUtil.getShellCommandString(compilerCommand, false) + "' failed");
         } finally {
-            if (process != null) {
-                process.destroy();
+            if (compilerProcess != null) {
+                compilerProcess.destroy();
             }
         }
         return result;
@@ -393,26 +415,26 @@ public abstract class CCompilerInvoker {
     }
 
     @SuppressWarnings("try")
-    public void compileAndParseError(List<String> options, Path source, Path target, CompilerErrorHandler handler, DebugContext debug) {
-        ProcessBuilder pb = new ProcessBuilder()
-                        .command(createCompilerCommand(options, target.normalize(), source.normalize()))
-                        .directory(tempDirectory.toFile());
+    public void compileAndParseError(boolean strict, List<String> compileOptions, Path source, Path target, CompilerErrorHandler handler) {
+        List<String> options = strict ? createStrictOptions(compileOptions) : compileOptions;
         Process compilingProcess = null;
         try {
-            try (DebugContext.Scope s = debug.scope("InvokeCC")) {
-                debug.log("Using CompilerCommand: %s", SubstrateUtil.getShellCommandString(pb.command(), false));
-            }
-            compilingProcess = pb.start();
+            ProcessBuilder compileCommand = FileUtils.prepareCommand(createCompilerCommand(options, target.normalize(), source.normalize()), tempDirectory);
+
+            FileUtils.traceCommand(compileCommand);
+
+            compilingProcess = compileCommand.start();
 
             List<String> lines;
             try (InputStream compilerErrors = getCompilerErrorStream(compilingProcess)) {
                 lines = FileUtils.readAllLines(compilerErrors);
+                FileUtils.traceCommandOutput(lines);
             }
             boolean errorReported = false;
             for (String line : lines) {
                 if (detectError(line)) {
                     if (handler != null) {
-                        handler.handle(pb, source, line);
+                        handler.handle(compileCommand, source, line);
                     }
                     errorReported = true;
                 }
@@ -421,18 +443,28 @@ public abstract class CCompilerInvoker {
             int status = compilingProcess.waitFor();
             if (status != 0 && !errorReported) {
                 if (handler != null) {
-                    handler.handle(pb, source, lines.toString());
+                    handler.handle(compileCommand, source, lines.toString());
                 }
             }
         } catch (InterruptedException ex) {
-            throw new InterruptImageBuilding();
+            throw new InterruptImageBuilding("Interrupted during C-ABI query code compilation of " + source);
         } catch (IOException ex) {
-            throw UserError.abort(ex, "Unable to compile C-ABI query code. Make sure native software development toolchain is installed on your system.");
+            throw UserError.abort(ex, "Unable to compile C-ABI query code " + source + ". Make sure native software development toolchain is installed on your system.");
         } finally {
             if (compilingProcess != null) {
                 compilingProcess.destroy();
             }
         }
+    }
+
+    private List<String> createStrictOptions(List<String> compileOptions) {
+        ArrayList<String> strictCompileOptions = new ArrayList<>(compileStrictOptions());
+        strictCompileOptions.addAll(compileOptions);
+        return strictCompileOptions;
+    }
+
+    protected List<String> compileStrictOptions() {
+        return Arrays.asList("-Wall", "-Werror");
     }
 
     protected boolean detectError(String line) {

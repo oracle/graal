@@ -465,13 +465,13 @@ public final class Encodings {
             }
 
             @Override
-            public StringBufferUTF16 createStringBuffer(int capacity) {
-                return new StringBufferUTF16(capacity);
+            public StringBufferLATIN1 createStringBuffer(int capacity) {
+                return new StringBufferLATIN1(capacity);
             }
 
             @Override
             public LoopOptimizationNode extractLoopOptNode(CodePointSet cps) {
-                return new LoopOptIndexOfAnyCharNode(cps.inverseToCharArray(this));
+                return new LoopOptIndexOfAnyByteNode(cps.inverseToByteArray(this));
             }
 
             @Override

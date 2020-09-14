@@ -51,7 +51,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.api.test.ModuleSupport;
@@ -1492,29 +1491,6 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected Replacements getReplacements() {
         return getProviders().getReplacements();
-    }
-
-    /**
-     * Inject a probability for a branch condition into the profiling information of this test case.
-     *
-     * @param p the probability that cond is true
-     * @param cond the condition of the branch
-     * @return cond
-     */
-    protected static boolean branchProbability(double p, boolean cond) {
-        return GraalDirectives.injectBranchProbability(p, cond);
-    }
-
-    /**
-     * Inject an iteration count for a loop condition into the profiling information of this test
-     * case.
-     *
-     * @param i the iteration count of the loop
-     * @param cond the condition of the loop
-     * @return cond
-     */
-    protected static boolean iterationCount(double i, boolean cond) {
-        return GraalDirectives.injectIterationCount(i, cond);
     }
 
     /**

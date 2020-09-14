@@ -90,6 +90,13 @@ const typeLiteralNames = new Map<TypeLiteralNode, string>();
 const intersected = new Map<string, (InterfaceDeclaration | TypeLiteralNode)[]>();
 const unionTypes = new Set<string>();
 
+const javaKeywords = ['abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch', 'char',
+    'class', 'const', 'continue', 'default', 'do', 'double', 'else', 'enum', 'extends', 'final',
+    'finally', 'float', 'for', 'goto', 'if', 'implements', 'import', 'instanceof', 'int', 'interface',
+    'long', 'native', 'new', 'package', 'private', 'protected', 'public', 'return', 'short', 'static',
+    'strictfp', 'super', 'switch', 'synchronized', 'this', 'throw', 'throws', 'transient', 'try',
+    'void', 'volatile', 'while', 'true', 'false', 'null'];
+
 const numberTypes = new Map<string, string>();
 numberTypes.set('Color', 'double'); //TODO: make configurable
 
@@ -280,6 +287,7 @@ function getClassText(declNode: DeclarationStatement, moduleNode: ModuleDeclarat
     if (isAbstract) {
         text += 'public abstract class ' + clsName + ' extends JSONBase {\n';
     } else {
+        const allTypeNodes: (InterfaceDeclaration | TypeLiteralNode)[] = [];
         let extendedType: InterfaceDeclaration;
         text += 'public class ' + clsName;
         if (declNodes[0].kind === SyntaxKind.InterfaceDeclaration && (declNodes[0] as InterfaceDeclaration).heritageClauses) {
@@ -330,13 +338,14 @@ function getClassText(declNode: DeclarationStatement, moduleNode: ModuleDeclarat
     }
 
     // members
-    let optionalProperties = unionTypes.has(clsName) ? new Set<PropertySignature>() : undefined;
-    text += getClassMembersText(clsName, getMembers(declNodes, optionalProperties), isAbstract, typeParams, optionalProperties);
+    const props = new Map<string, PropertySignature>();
+    const nested = new Set<TypeLiteralNode>();
+    const overridenProperties = new Map<string, PropertySignature>();
+    findProperties(declNodes, props, overridenProperties, nested);
+    const optionalProperties = unionTypes.has(clsName) ? new Set<PropertySignature>() : undefined;
+    text += getClassMembersText(clsName, getMembers(declNodes, optionalProperties), isAbstract, typeParams, overridenProperties, optionalProperties);
     if (!isAbstract) {
         seedrandom(clsName, { global: true });
-        const props = new Map<string, PropertySignature>();
-        const nested = new Set<TypeLiteralNode>();
-        findProperties(declNodes, props, nested);
         // equals
         text += getEqualsText(clsName, props);
         // hashCode
@@ -381,12 +390,12 @@ function getClassText(declNode: DeclarationStatement, moduleNode: ModuleDeclarat
     return importsText + text;
 }
 
-function getClassMembersText(typeName: string, members: TypeElement[], isAbstract: boolean, typeParams: Map<string, TypeNode | string>, optionalProperties?:Set<PropertySignature>): string {
+function getClassMembersText(typeName: string, members: TypeElement[], isAbstract: boolean, typeParams: Map<string, TypeNode | string>, overridenProperties:Map<string, PropertySignature>, optionalProperties?:Set<PropertySignature>): string {
     let text: string = '';
     members.forEach((element: TypeElement) => {
         switch(element.kind) {
             case SyntaxKind.PropertySignature:
-                text += getPropertyText(typeName, element as PropertySignature, isAbstract, typeParams, optionalProperties);
+                text += getPropertyText(typeName, element as PropertySignature, isAbstract, typeParams, overridenProperties, optionalProperties);
                 break;
             case SyntaxKind.MethodSignature:
                 text += getMethodSignatureText(<MethodSignature>element);
@@ -551,6 +560,10 @@ function getNestedTypesText(types: Set<TypeLiteralNode>, typeParams: Map<string,
                     text += (line.length > 0 ? indent.repeat(indentLevel) + line : line) + '\n';
                 });
             }
+            text += '\n' + indent;
+            getDefaultCreatorText(name, props).trim().split('\n').forEach((line: string) => {
+                text += (line.length > 0 ? indent.repeat(indentLevel) + line : line) + '\n';
+            });
             if (nested.size > 0) {
                 text += getNestedTypesText(nested, typeParams, indentLevel + 1);
             }
@@ -560,7 +573,11 @@ function getNestedTypesText(types: Set<TypeLiteralNode>, typeParams: Map<string,
     return text;
 }
 
-function getPropertyText(clsName: string, node: PropertySignature, isAbstract: boolean, typeParams: Map<string, TypeNode | string>, optionalProperties?:Set<PropertySignature>): string {
+function getPropertyText(clsName: string, node: PropertySignature, isAbstract: boolean, typeParams: Map<string, TypeNode | string>, overridenProperties?:Map<string, PropertySignature>, optionalProperties?:Set<PropertySignature>): string {
+    let overriden: boolean = false;
+    if (overridenProperties && overridenProperties.has(node.name.getText())) {
+        overriden = true;
+    }
     let text: string = '\n';
     let comment = getComment(node, 1);
     if (comment) {
@@ -603,6 +620,13 @@ function getPropertyText(clsName: string, node: PropertySignature, isAbstract: b
     }
     if (type === 'Boolean') {
         text += indent + '@SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")\n';
+    }
+    if (overriden) {
+        let overridenType: Node = findType(overridenProperties.get(node.name.getText()).type);
+        if ((optional ? getBoxedType(overridenType) : getJavaType(overridenType)) === type) {
+            return '';
+        }
+        text += indent + '@Override\n';
     }
     const key: string = '"' + node.name.getText() + '"';
     if (isAbstract) {
@@ -1027,8 +1051,9 @@ function getDefaultCreatorText(type: string, props: Map<string, PropertySignatur
                     if (params) {
                         params += ', ';
                     }
-                    params += getBoxedType(propType) + ' ' + propName;
-                    body += creatorPropInit(prop, propName, propName, propType, type + '.create');
+                    let paramName = varNameFor(propName);
+                    params += getBoxedType(propType) + ' ' + paramName;
+                    body += creatorPropInit(prop, propName, paramName, propType, type + '.create');
                 }
             }
         }
@@ -1633,11 +1658,14 @@ function getHash(node: Node): string {
 }
 
 function varNameFor(type: string): string {
-    return type.charAt(0).toLowerCase() + type.slice(1);
+    if (javaKeywords.includes(type)) {
+        return type + 'Value';
+    }
+    return removeUnderscores(type.charAt(0).toLowerCase() + type.slice(1));
 }
 
 function valueNameFor(type: string): string {
-    return varNameFor(type) + 'Value';
+    return removeUnderscores(type.charAt(0).toLowerCase() + type.slice(1) + 'Value');
 }
 
 function unionInfoGetter(unionInfo:{typeRef: TypeReferenceNode; enumRef: TypeReferenceNode; arrType: ArrayTypeNode}, varName: string, resultPrefix: string, resultSuffix:string, hasNull: boolean, baseIndent: number): string {
@@ -1706,6 +1734,7 @@ function unionInfoSetter(unionInfo:{typeRef: TypeReferenceNode; enumRef: TypeRef
 }
 
 function getterNameFor(name: string, type: string): string {
+    name = removeUnderscores(name);
     if (type === 'boolean') {
         return name.startsWith('is') ? name : 'is' + name.charAt(0).toUpperCase() + name.slice(1);
     }
@@ -1713,10 +1742,24 @@ function getterNameFor(name: string, type: string): string {
 }
 
 function setterNameFor(name: string, type: string): string {
+    name = removeUnderscores(name);
     if (type === 'boolean' && name.startsWith('is') && name.length > 2) {
         return 'set' + name.charAt(2).toUpperCase() + name.slice(3);
     }
     return 'set' + name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+function removeUnderscores(s: string): string {
+    for(let idx = s.indexOf('_'); idx >= 0; idx = s.indexOf('_')) {
+        if (idx === 0) {
+            s = s.slice(1);
+        } else if (idx < s.length - 1) {
+            s = s.slice(0, idx) + s.charAt(idx + 1).toUpperCase() + s.slice(idx + 2);
+        } else {
+            s = s.slice(0, idx);
+        }
+    }
+    return s;
 }
 
 function suffixFor(name: string): string {
@@ -2023,12 +2066,14 @@ function getMembers(decls: (InterfaceDeclaration | TypeLiteralNode)[], optionalP
     return members;
 }
 
-function findProperties(decls: (InterfaceDeclaration | TypeLiteralNode)[], props: Map<string, PropertySignature>, nested: Set<TypeLiteralNode>): void {
+function findProperties(decls: (InterfaceDeclaration | TypeLiteralNode)[], props: Map<string, PropertySignature>, overridenProperties: Map<string, PropertySignature>, nested: Set<TypeLiteralNode>): void {
     getMembers(decls).forEach((member: TypeElement) => {
         if (member.kind === SyntaxKind.PropertySignature) {
             let memberName: string = member.name.getText();
             if (!props.has(memberName)) {
                 props.set(memberName, member as PropertySignature);
+            } else {
+                overridenProperties.set(memberName, member as PropertySignature);
             }
             if (nested) {
                 let memberType = (member as PropertySignature).type;
@@ -2054,7 +2099,7 @@ function findProperties(decls: (InterfaceDeclaration | TypeLiteralNode)[], props
                             }
                         });
                         if (!hasMethods) {
-                            findProperties([extDecl], props, null);
+                            findProperties([extDecl], props, overridenProperties, null);
                         }
                     }
                 });

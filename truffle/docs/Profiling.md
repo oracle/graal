@@ -5,7 +5,7 @@ Truffle. When running in JVM mode, we can use standard JVM tooling, such as
 VisualVM, Java Flight Recorder and Oracle Developer Studio. When run as a Native Image we can use
 `callgrind` from the Valgrind tool suite and other system tools, such as `strace`.
 As a GraalVM language we can also use other GraalVM tools. For a broad enough
-definition of profiling, we can also use the [Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/20/guide/tools/ideal-graph-visualizer/) and
+definition of profiling, we can also use the [Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/20/docs/tools/igv/) and
 C1 Visualizer to inspect the compiler output.
 
 This guide is less about how to use each tool and more about suggestions for extracting
@@ -19,7 +19,7 @@ which is part of the `/tools` suite and part of GraalVM. Simply pass `--cpusampl
 to your language launcher:
 
 ```shell
-$ my-language --cpusampler --cpusampler.Delay=MILLISECONDS -e 'p :hello'
+my-language --cpusampler --cpusampler.Delay=MILLISECONDS -e 'p :hello'
 ```
 
 You probably want to use a sampling delay with `--cpusampler.Delay=MILLISECONDS`
@@ -41,7 +41,7 @@ Creating the flame graph is a multi-stage process. First, we need to profile the
 with the JSON formatter:
 
 ```shell
-$ my-language --cpusampler --cpusampler.SampleInternal --cpusampler.Mode=roots --cpusampler.Output=json -e 'p :hello' > simple-app.json
+my-language --cpusampler --cpusampler.SampleInternal --cpusampler.Mode=roots --cpusampler.Output=json -e 'p :hello' > simple-app.json
 ```
 
 Use the `--cpusampler.SampleInternal=true` option if you want to profile internal sources, such as standard library functions.
@@ -64,7 +64,7 @@ into the parent directory. Now you can run the script to transform the output an
 pipe it into the script that will generate the SVG data:
 
 ```shell
-$ ../FlameGraph/stackcollapse-graalvm.rb simple-app.json | ../FlameGraph/flamegraph.pl > simple-app.svg
+../FlameGraph/stackcollapse-graalvm.rb simple-app.json | ../FlameGraph/flamegraph.pl > simple-app.svg
 ```
 
 At this point, you should open the SVG file in a Chromium-based web browser. Your system
@@ -77,7 +77,7 @@ files as of this writing (Dec. 2018).
 ### Profiling with Oracle Developer Studio
 
 [Oracle Developer Studio](https://www.oracle.com/technetwork/server-storage/developerstudio/overview/index.html) includes a
-[performance analyzer](https://www.oracle.com/technetwork/server-storage/solarisstudio/features/performance-analyzer-2292312.html) that can be used with GraalVM.
+[Performance Analyzer](https://www.oracle.com/technetwork/server-storage/solarisstudio/features/performance-analyzer-2292312.html) that can be used with GraalVM.
 Developer Studio can be [downloaded from OTN](https://www.oracle.com/technetwork/server-storage/developerstudio/downloads/index.html)
 and the current version at time of writing (12.6) provides a perpetual no-cost license for production use and the development of commercial applications.
 
@@ -85,13 +85,13 @@ Using Developer Studio Performance Analyser is straightforward, include the path
 and then prefix your normal command-line with `collect`, for example:
 
 ```shell
-$ collect js mybenchmark.js
+collect js mybenchmark.js
 ```
 
 On completion an "experiment" (.er) directory will have been created containing the profiling data for the command execution, `test.1.er` by default. To view the profiling results, use the `analyzer` tool:
 
 ```shell
-$ analyzer test.1.er
+analyzer test.1.er
 ```
 
 The `analyzer` GUI allows you to view the captured profiling information in several different ways, for example

@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -47,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
 /**
  * Converts value to the target type. For fast path code, targetType will typically be constant in
@@ -99,10 +99,21 @@ public abstract class ToLLVM extends LLVMNode {
             return pointer;
         }
 
-        @Fallback
-        LLVMPointer doOther(Object value, LLVMInteropType.Structured type) {
-            LLVMTypedForeignObject typed = LLVMTypedForeignObject.create(value, type);
-            return LLVMManagedPointer.create(typed);
+        static boolean isPointer(Object value) {
+            return LLVMPointer.isInstance(value);
+        }
+
+        @Specialization(limit = "3", guards = {"!isPointer(value)", "type != null", "!nativeTypes.hasNativeType(value)"})
+        LLVMPointer doTyped(Object value, LLVMInteropType.Structured type,
+                        @SuppressWarnings("unused") @CachedLibrary("value") NativeTypeLibrary nativeTypes) {
+            return LLVMManagedPointer.create(LLVMTypedForeignObject.create(value, type));
+        }
+
+        @Specialization(limit = "3", guards = {"!isPointer(value)", "type == null || nativeTypes.hasNativeType(value)"})
+        LLVMPointer doUntyped(Object value, LLVMInteropType.Structured type,
+                        @CachedLibrary("value") NativeTypeLibrary nativeTypes) {
+            assert type == null || nativeTypes.hasNativeType(value);
+            return LLVMManagedPointer.create(value);
         }
     }
 

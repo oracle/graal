@@ -44,6 +44,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
@@ -321,8 +322,10 @@ public class RuntimeCodeInstaller {
             adjuster.setConstantTargetAt(code.add(objectConstants.offsets[i]), objectConstants.lengths[i], constant);
         }
         CodeInfoAccess.setState(runtimeMethodInfo, CodeInfo.STATE_CODE_CONSTANTS_LIVE);
-        // after patching all the object data, notify the GC
-        Heap.getHeap().registerCodeConstants(runtimeMethodInfo);
+        if (!SubstrateUtil.HOSTED) {
+            // after patching all the object data, notify the GC
+            Heap.getHeap().getRuntimeCodeInfoGCSupport().registerCodeConstants(runtimeMethodInfo);
+        }
     }
 
     private void createCodeChunkInfos(CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {

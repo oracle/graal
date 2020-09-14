@@ -52,6 +52,7 @@ import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 import com.oracle.truffle.tools.chromeinspector.server.JSONMessageListener;
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.io.IOException;
 
 /**
  * Implementation of Inspector.Session module described at
@@ -180,7 +181,7 @@ class Session extends AbstractInspectorObject {
         }
         InspectorExecutionContext execContext = contextSupplier.get();
         iss = InspectServerSession.create(execContext, false, new ConnectionWatcher());
-        iss.setJSONMessageListener(getListeners());
+        iss.open(getListeners());
         execContext.setSynchronous(true);
         // Enable the Runtime by default
         iss.sendCommand(new Command("{\"id\":0,\"method\":\"Runtime.enable\"}"));
@@ -189,7 +190,11 @@ class Session extends AbstractInspectorObject {
 
     private Object disconnect() {
         if (iss != null) {
-            iss.sendClose();
+            try {
+                iss.sendClose();
+            } catch (IOException e) {
+                // Closed already
+            }
             iss = null;
         }
         return NullObject.INSTANCE;

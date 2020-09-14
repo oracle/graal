@@ -39,16 +39,22 @@ import java.util.function.Supplier;
  */
 public final class LibGraalIsolate {
 
-    final long address;
+    private final long id;
+    private final long address;
 
     private static final Map<Long, LibGraalIsolate> isolates = new HashMap<>();
 
-    static synchronized LibGraalIsolate forAddress(long isolateAddress) {
-        return isolates.computeIfAbsent(isolateAddress, a -> new LibGraalIsolate(a));
+    static synchronized LibGraalIsolate forIsolateId(long isolateId, long address) {
+        return isolates.computeIfAbsent(isolateId, id -> new LibGraalIsolate(id, address));
     }
 
-    private LibGraalIsolate(long address) {
+    private LibGraalIsolate(long isolateId, long address) {
+        this.id = isolateId;
         this.address = address;
+    }
+
+    public long getId() {
+        return id;
     }
 
     /**
@@ -101,7 +107,7 @@ public final class LibGraalIsolate {
         while ((cleaner = (Cleaner) cleanersQueue.poll()) != null) {
             cleaners.remove(cleaner);
             if (!cleaner.clean()) {
-                new Exception(String.format("Error releasing handle %d in isolate 0x%x", cleaner.handle, address)).printStackTrace(System.out);
+                new Exception(String.format("Error releasing handle %d in isolate %d (0x%x)", cleaner.handle, id, address)).printStackTrace(System.out);
             }
         }
     }
@@ -128,16 +134,20 @@ public final class LibGraalIsolate {
     /**
      * Notifies that the {@code JavaVM} associated with {@code isolate} has been destroyed. All
      * subsequent accesses to objects in the isolate will throw an {@link IllegalArgumentException}.
+     * Called by {@code HotSpotGraalRuntime#shutdownLibGraal} using JNI.
      */
-    static synchronized void remove(LibGraalIsolate isolate) {
-        isolate.destroyed = true;
-        LibGraalIsolate removed = isolates.remove(isolate.address);
-        assert removed == isolate : "isolate already removed or overwritten: " + isolate;
+    static synchronized void unregister(long isolateId) {
+        LibGraalIsolate isolate = isolates.remove(isolateId);
+        // The isolates.remove(isolateId) may return null when no LibGraalScope was created for the
+        // given isolateId.
+        if (isolate != null) {
+            isolate.destroyed = true;
+        }
     }
 
     @Override
     public String toString() {
-        return String.format("%s[0x%x]", getClass().getSimpleName(), address);
+        return String.format("%s[%d (0x%x)]", getClass().getSimpleName(), id, address);
     }
 
     private boolean destroyed;

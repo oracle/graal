@@ -66,6 +66,13 @@ public final class GraalDirectives {
     }
 
     /**
+     * Determines if the method is called within the scope of a Graal intrinsic.
+     */
+    public static boolean inIntrinsic() {
+        return false;
+    }
+
+    /**
      * A call to this method will never be duplicated by control flow optimizations in the compiler.
      */
     public static void controlFlowAnchor() {

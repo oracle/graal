@@ -60,7 +60,7 @@ public final class DisallowedImageHeapObjects {
             final Thread asThread = (Thread) obj;
             if (asThread.getState() != Thread.State.NEW && asThread.getState() != Thread.State.TERMINATED) {
                 throw reporter.raise("Detected a started Thread in the image heap. " +
-                                "Threads running in the image generator are no longer running at image run time.",
+                                "Threads running in the image generator are no longer running at image runtime.",
                                 asThread, "Try avoiding to initialize the class that caused initialization of the Thread.");
             }
         }
@@ -70,7 +70,7 @@ public final class DisallowedImageHeapObjects {
             /* Except for a few well-known FileDescriptors. */
             if (!((asFileDescriptor == FileDescriptor.in) || (asFileDescriptor == FileDescriptor.out) || (asFileDescriptor == FileDescriptor.err) || (!asFileDescriptor.valid()))) {
                 throw reporter.raise("Detected a FileDescriptor in the image heap. " +
-                                "File descriptors opened during image generation are no longer open at image run time, and the files might not even be present anymore at image run time.",
+                                "File descriptors opened during image generation are no longer open at image runtime, and the files might not even be present anymore at image runtime.",
                                 asFileDescriptor, "Try avoiding to initialize the class that caused initialization of the FileDescriptor.");
             }
         }
@@ -83,26 +83,26 @@ public final class DisallowedImageHeapObjects {
              */
             if (buffer.capacity() != 0 || getFileDescriptor(buffer) != null) {
                 throw reporter.raise("Detected a direct/mapped ByteBuffer in the image heap. " +
-                                "A direct ByteBuffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image run time." +
+                                "A direct ByteBuffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image runtime." +
                                 "A mapped ByteBuffer references a file descriptor, which is no longer open and mapped at run time. ",
                                 buffer, "Try avoiding to initialize the class that caused initialization of the MappedByteBuffer.");
             }
         } else if (obj instanceof Buffer && ((Buffer) obj).isDirect()) {
             throw reporter.raise("Detected a direct Buffer in the image heap. " +
-                            "A direct Buffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image run time.",
+                            "A direct Buffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image runtime.",
                             obj, "Try avoiding to initialize the class that caused initialization of the direct Buffer.");
         }
 
         /* ZipFiles can not be in the image heap. */
         if (obj instanceof java.util.zip.ZipFile) {
             throw reporter.raise("Detected a ZipFile object in the image heap. " +
-                            "A ZipFile object contains pointers to unmanaged C memory and file descriptors, and these resources are no longer available at image run time.",
+                            "A ZipFile object contains pointers to unmanaged C memory and file descriptors, and these resources are no longer available at image runtime.",
                             obj, "Try avoiding to initialize the class that caused initialization of the direct Buffer.");
         }
 
         if (CANCELLABLE_CLASS.isInstance(obj)) {
             throw reporter.raise("Detected an instance of a class that extends " + CANCELLABLE_CLASS.getTypeName() + ": " + obj.getClass().getTypeName() + ". " +
-                            "It contains a pointer to unmanaged C memory, which is no longer available at image run time.", obj,
+                            "It contains a pointer to unmanaged C memory, which is no longer available at image runtime.", obj,
                             "Try avoiding to initialize the class that caused initialization of the object.");
         }
     }

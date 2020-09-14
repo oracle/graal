@@ -147,7 +147,11 @@ public final class InspectorTester {
     }
 
     public void sendMessage(String message) {
-        exec.inspect.sendText(message);
+        try {
+            exec.inspect.sendText(message);
+        } catch (IOException e) {
+            fail(e.getLocalizedMessage());
+        }
     }
 
     public String getMessages(boolean waitForSome) throws InterruptedException {
@@ -293,7 +297,7 @@ public final class InspectorTester {
                 connectionWatcher = sessionInfo.getConnectionWatcher();
                 contextId = sessionInfo.getId();
                 inspectorContext = sessionInfo.getInspectorContext();
-                inspect.setMessageListener(this);
+                inspect.open(this);
                 Context context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
                 initialized.release();
                 Source source = null;
@@ -326,7 +330,11 @@ public final class InspectorTester {
             } catch (Throwable t) {
                 error = t;
             } finally {
-                inspect.sendClose();
+                try {
+                    inspect.sendClose();
+                } catch (IOException e) {
+                    fail(e.getLocalizedMessage());
+                }
                 inspect = null;
                 inspectorContext = null;
                 evalValue = null;

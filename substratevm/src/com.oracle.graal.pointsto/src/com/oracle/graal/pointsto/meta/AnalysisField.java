@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
@@ -363,7 +364,12 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     @Override
     public int getOffset() {
-        return wrapped.getOffset();
+        /*
+         * The static analysis itself does not use field offsets. We could return the offset from
+         * the hosting HotSpot VM, but it is safer to disallow the operation entirely. The offset
+         * from the hosting VM can be accessed by explicitly calling `wrapped.getOffset()`.
+         */
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override

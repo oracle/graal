@@ -60,6 +60,7 @@ import org.graalvm.compiler.core.GraalServiceThread;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.EncodedSnippets;
@@ -67,6 +68,7 @@ import org.graalvm.compiler.hotspot.HotSpotCodeCacheListener;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
@@ -83,14 +85,19 @@ import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerBase;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
+import org.graalvm.libgraal.jni.JNI;
+import org.graalvm.libgraal.jni.JNIExceptionWrapper;
+import org.graalvm.libgraal.jni.JNIUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
@@ -470,7 +477,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             hotSpotSubstrateReplacements.clearSnippetParameterNames();
         }
         // Mark all the Node classes as allocated so they are available during graph decoding.
-        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets(impl.getBigBang().getOptions());
+        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets();
         for (NodeClass<?> nodeClass : encodedSnippets.getSnippetNodeClasses()) {
             impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsInHeap();
         }
@@ -495,8 +502,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
 
     @Override
     public void afterCompilation(AfterCompilationAccess access) {
-        FeatureImpl.AfterCompilationAccessImpl accessImpl = (FeatureImpl.AfterCompilationAccessImpl) access;
-        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets(accessImpl.getUniverse().getBigBang().getOptions());
+        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets();
         encodedSnippets.visitImmutable(access::registerAsImmutable);
     }
 
@@ -593,8 +599,23 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
     }
 
     @Substitute
-    private static void shutdownLibGraal() {
-        VMRuntime.shutdown();
+    private static void shutdownLibGraal(HotSpotGraalRuntime runtime) {
+        long offset = runtime.getVMConfig().jniEnvironmentOffset;
+        long javaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
+        JNI.JNIEnv env = (JNI.JNIEnv) WordFactory.unsigned(javaThreadAddr).add(WordFactory.unsigned(offset));
+        try {
+            JNI.JClass libGraalIsolateClass = JNIUtil.findClass(env, JNIUtil.getJVMCIClassLoader(env),
+                            JNIUtil.getBinaryName("org.graalvm.libgraal.LibGraalIsolate"), true);
+            JNI.JMethodID unregisterMethod = JNIUtil.findMethod(env, libGraalIsolateClass, true, "unregister", "(J)V");
+            JNI.JValue args = StackValue.get(JNI.JValue.class);
+            args.setLong(IsolateUtil.getIsolateID());
+            env.getFunctions().getCallStaticVoidMethodA().call(env, libGraalIsolateClass, unregisterMethod, args);
+            JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+        } catch (Throwable t) {
+            t.printStackTrace(TTY.out);
+        } finally {
+            VMRuntime.shutdown();
+        }
     }
 }
 

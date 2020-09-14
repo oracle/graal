@@ -29,7 +29,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.UseEncodedGraphs;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -58,6 +57,8 @@ import org.graalvm.compiler.phases.util.Providers;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * A graph decoder that provides all necessary encoded graphs on-the-fly (by parsing the methods and
  * encoding the graphs).
@@ -80,7 +81,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
                     BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         super(architecture, graph, providers, loopExplosionPlugin,
                         invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, peRootForInlining, sourceLanguagePositionProvider,
-                        EconomicMap.create(Equivalence.DEFAULT), EconomicMap.create(Equivalence.DEFAULT));
+                        new ConcurrentHashMap<>(), new ConcurrentHashMap<>());
 
         this.providers = providers;
         this.graphBuilderConfig = graphBuilderConfig;

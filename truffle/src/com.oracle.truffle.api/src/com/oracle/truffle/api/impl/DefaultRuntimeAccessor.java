@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.impl;
 
-import java.io.OutputStream;
-
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -106,11 +104,6 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public OutputStream getConfiguredLogStream() {
-            return null;
-        }
-
-        @Override
         public String getSavedProperty(String key) {
             return System.getProperty(key);
         }
@@ -139,6 +132,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
             return (T) value;
+        }
+
+        @Override
+        public boolean inFirstTier() {
+            return false;
         }
 
         @Override

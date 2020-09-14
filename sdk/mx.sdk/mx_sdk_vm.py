@@ -623,12 +623,34 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
                         continue
                     src_member = src_zip.read(i)
                     if i.filename == 'lib/security/default.policy':
-                        if 'grant codeBase "jrt:/com.oracle.graal.graal_enterprise"'.encode('utf-8') in src_member:
-                            policy_result = 'unmodified'
-                        else:
+                        policy_result = 'unmodified'
+                        if 'grant codeBase "jrt:/com.oracle.graal.graal_enterprise"'.encode('utf-8') not in src_member:
                             policy_result = 'modified'
                             src_member += """
 grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
+    permission java.security.AllPermission;
+};
+""".encode('utf-8')
+                        if 'grant codeBase "jrt:/org.graalvm.truffle"'.encode('utf-8') not in src_member:
+                            policy_result = 'modified'
+                            src_member += """
+grant codeBase "jrt:/org.graalvm.truffle" {
+    permission java.security.AllPermission;
+};
+
+grant codeBase "jrt:/org.graalvm.sdk" {
+    permission java.security.AllPermission;
+};
+
+grant codeBase "jrt:/org.graalvm.locator" {
+  permission java.io.FilePermission "<<ALL FILES>>", "read";
+  permission java.util.PropertyPermission "*", "read,write";
+  permission java.lang.RuntimePermission "createClassLoader";
+  permission java.lang.RuntimePermission "getClassLoader";
+  permission java.lang.RuntimePermission "getenv.*";
+};
+
+grant codeBase "file:${java.home}/languages/-" {
     permission java.security.AllPermission;
 };
 """.encode('utf-8')

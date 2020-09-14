@@ -988,6 +988,30 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.va.native" : {
+      "subDir" : "tests",
+      "native": True,
+      "vpath": True,
+      "buildEnv" : {
+        "OS" : "<os>",
+        "CLANG": "<toolchainGetToolPath:native,CC>",
+        "SRC_DIR": "<path:com.oracle.truffle.llvm.tests.va.native>",
+      },
+      "buildDependencies" : [
+        "AMD64_SUPPORT",
+      ],
+      "dependencies" : [
+        "SULONG_TEST",
+        "SULONG_TOOLCHAIN_LAUNCHERS",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+      ],
+      "results": [
+        "valist",
+        "va_arg"
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "gcc_c" : {
       "subDir" : "tests/gcc",
       "class" : "ExternalTestSuite",
@@ -1342,6 +1366,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.sulongcpp.native/*",
           "dependency:com.oracle.truffle.llvm.tests.libc.native/*",
           "dependency:com.oracle.truffle.llvm.tests.linker.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.va.native/*",
         ],
       },
       "license" : "BSD-new",

@@ -96,6 +96,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      */
     private final NodeBitMap hasVirtualInputs;
 
+    private BitSet allocationsOutsideLoops;
+
     /**
      * This is handed out to implementers of {@link Virtualizable}.
      */
@@ -270,7 +272,21 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             default:
                 throw GraalError.shouldNotReachHere("Unknown effects closure mode " + currentMode);
         }
-        return virtualize(node, tool);
+        boolean virtualizationResult = virtualize(node, tool);
+        if (loopDepth == 0 && node instanceof VirtualizableAllocation) {
+            if (currentMode == EffectsClosureMode.REGULAR_VIRTUALIZATION) {
+                assert node.isAlive();
+                ValueNode alias = getAlias(node);
+                if (alias instanceof VirtualObjectNode) {
+                    int id = ((VirtualObjectNode) alias).getObjectId();
+                    if (allocationsOutsideLoops == null) {
+                        allocationsOutsideLoops = new BitSet();
+                    }
+                    allocationsOutsideLoops.set(id);
+                }
+            }
+        }
+        return virtualizationResult;
     }
 
     protected boolean virtualize(ValueNode node, VirtualizerTool vt) {
@@ -459,6 +475,15 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                      */
                     throw new RetryableBailoutException(
                                     "Materializing an ensureVirtualized marked allocation inside a very deep loop nest, this may lead to exponential " + "runtime of the partial escape analysis.");
+                }
+                if (allocationsOutsideLoops != null && allocationsOutsideLoops.get(object)) {
+                    /*
+                     * If we have an allocation outside all loops (outside the outermost loop) and
+                     * materialize it at a depth > cutoff we have lost and give up since this would
+                     * cause an exponential loop processing along all loops
+                     */
+                    throw new PartialEscapePhase.DisablePartialEvaluationException(
+                                    "Materializing object " + state.getObjectState(object) + " not possible this would cause exponential runtime of the algorthim");
                 }
                 /*
                  * If we ever enter a state where we do not allow new virtualizations to occur, we

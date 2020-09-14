@@ -332,7 +332,7 @@ class MBeanProxy<T extends DynamicMBean> {
             return defineClassInHotSpot(env, classLoader, cd).rawValue();
         };
         ToLongFunction<ClassData> loadClass = (cd) -> {
-            return findClassInHotSpot(env, classLoader, cd.binaryName, true).rawValue();
+            return JNIUtil.findClass(env, classLoader, cd.binaryName, true).rawValue();
         };
         Consumer<ToLongFunction<ClassData>> action = (f) -> {
             f.applyAsLong(HS_CALLS_CLASS);
@@ -383,35 +383,6 @@ class MBeanProxy<T extends DynamicMBean> {
                     } catch (InterruptedException e) {
                     }
                 }
-            }
-        }
-    }
-
-    /**
-     * Finds a class in HotSpot heap using JNI.
-     *
-     * @param env the {@code JNIEnv}
-     * @param classLoader the class loader to define class in.
-     * @param className the class name
-     * @param required if {@code true} the {@link InternalError} is thrown when the class is not
-     *            found, if {@code false} the {@code NULL pointer} is returned when the class is not
-     *            found.
-     */
-    private static JNI.JClass findClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, String className, boolean required) {
-        Class<? extends Throwable> allowedException = null;
-        try {
-            if (classLoader.isNonNull()) {
-                allowedException = required ? null : ClassNotFoundException.class;
-                return JNIUtil.findClass(env, classLoader, className);
-            } else {
-                allowedException = required ? null : NoClassDefFoundError.class;
-                return JNIUtil.findClass(env, className);
-            }
-        } finally {
-            if (allowedException != null) {
-                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env, allowedException);
-            } else {
-                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
             }
         }
     }

@@ -183,7 +183,7 @@ public final class CodeInfoDecoder {
         return -1;
     }
 
-    static long lookupReferenceMapIndex(CodeInfo info, long ip) {
+    static long lookupStackReferenceMapIndex(CodeInfo info, long ip) {
         long entryIP = lookupEntryIP(ip);
         long entryOffset = loadEntryOffset(info, ip);
         do {

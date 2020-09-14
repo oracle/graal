@@ -70,6 +70,7 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceHandler;
+import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -429,6 +430,18 @@ public final class GCImpl implements GC {
                     cheneyScanFromRoots();
                 }
             }
+
+            if (DeoptimizationSupport.enabled()) {
+                try (Timer drt = timers.cleanCodeCache.open()) {
+                    /*
+                     * Cleaning the code cache may invalidate code, which is a rather complex
+                     * operation. To avoid side-effects between the code cache cleaning and the GC
+                     * core, it is crucial that all the GC core work finished before.
+                     */
+                    cleanRuntimeCodeCache();
+                }
+            }
+
             trace.string("  Discovered references: ");
             try (Timer drt = timers.referenceObjects.open()) {
                 Reference<?> newlyPendingList = ReferenceObjectProcessing.processRememberedReferences();
@@ -506,9 +519,6 @@ public final class GCImpl implements GC {
 
                 /* Visit all objects that became reachable because of the compiled code. */
                 scanGreyObjects(false);
-
-                /* Clean the code cache, now that all live objects were visited. */
-                cleanRuntimeCodeCache();
             }
 
             greyToBlackObjectVisitor.reset();
@@ -577,9 +587,6 @@ public final class GCImpl implements GC {
 
                 /* Visit all objects that became reachable because of the compiled code. */
                 scanGreyObjects(true);
-
-                /* Clean the code cache, now that all live objects were visited. */
-                cleanRuntimeCodeCache();
             }
 
             greyToBlackObjectVisitor.reset();
@@ -679,7 +686,7 @@ public final class GCImpl implements GC {
                 CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
                 assert Deoptimizer.checkDeoptimized(sp) == null : "We are at a safepoint, so no deoptimization can have happened even though looking up the code info is not uninterruptible";
 
-                NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getReferenceMapEncoding(codeInfo);
+                NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
                 long referenceMapIndex = queryResult.getReferenceMapIndex();
                 if (referenceMapIndex == CodeInfoQueryResult.NO_REFERENCE_MAP) {
                     throw CodeInfoTable.reportNoReferenceMap(sp, ip, codeInfo);

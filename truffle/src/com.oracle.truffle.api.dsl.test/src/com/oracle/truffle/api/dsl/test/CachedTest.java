@@ -81,6 +81,7 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenNoAdoption2Fact
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenNoAdoption3Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenNoAdoption4Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenNoAdoption5Factory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenNoAdoption6Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.NullChildAdoptionNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.NullLiteralNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestBoundCacheOverflowContainsFactory;
@@ -751,6 +752,14 @@ public class CachedTest {
     }
 
     @NodeChild
+    static class ConstantValueNode extends Node {
+
+        public int execute() {
+            return 1;
+        }
+    }
+
+    @NodeChild
     abstract static class ChildrenNoAdoption1 extends ValueNode {
 
         abstract NodeInterface execute(Object value);
@@ -818,6 +827,19 @@ public class CachedTest {
 
     }
 
+    // Case where a no-adopt cached node is executed in the guards.
+    @NodeChild
+    abstract static class ChildrenNoAdoption6 extends ValueNode {
+
+        abstract Node execute(Object value);
+
+        @Specialization(guards = "cachedValue.execute() == 1")
+        static Node do1(ConstantValueNode value, @Cached(value = "value", adopt = false) ConstantValueNode cachedValue) {
+            return cachedValue;
+        }
+
+    }
+
     @Test
     public void testChildrenNoAdoption1() {
         ChildrenNoAdoption1 root = createNode(ChildrenNoAdoption1Factory.getInstance(), false);
@@ -855,6 +877,14 @@ public class CachedTest {
     public void testChildrenNoAdoption5() {
         ChildrenNoAdoption5 root = createNode(ChildrenNoAdoption5Factory.getInstance(), false);
         Node child = new ValueNode();
+        root.execute(child);
+        Assert.assertFalse(hasParent(root, child));
+    }
+
+    @Test
+    public void testChildrenNoAdoption6() {
+        ChildrenNoAdoption6 root = createNode(ChildrenNoAdoption6Factory.getInstance(), false);
+        ConstantValueNode child = new ConstantValueNode();
         root.execute(child);
         Assert.assertFalse(hasParent(root, child));
     }

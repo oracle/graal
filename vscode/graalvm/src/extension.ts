@@ -103,6 +103,8 @@ function config() {
 			section = 'env.linux';
 		} else if (process.platform === 'darwin') {
 			section = 'env.mac';
+		} else if (process.platform === 'win32') {
+			section = 'env.windows';
 		}
 		let env: any = termConfig.get(section);
 		env.GRAALVM_HOME = graalVMHome;

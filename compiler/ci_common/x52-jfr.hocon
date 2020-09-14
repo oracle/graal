@@ -82,20 +82,6 @@ bench-renaissance-legacy-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifi
   timelimit: "3:45:00"
 }
 
-bench-spark-sql-perf-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications} {
-  environment : {
-    BENCH_SUITE : "spark-sql-perf"
-  }
-  run: [
-    ${bench-jvmci.mx-spark-sql-perf} ${bench-arguments} ${JFR.jvm-opts}
-  ]
-  setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown}
-  downloads: {
-    SPARK_SQL_PERF: { name: spark-sql-perf, version: "0.1" }
-  }
-  timelimit: "0:30:00"
-}
 
 x52.default-jfr : ${linux-amd64} {
   capabilities: ${linux-amd64.capabilities} [x52, no_frequency_scaling]
@@ -119,5 +105,4 @@ builds += [
   ${x52.default-jfr} ${bench-specjbb2015-jfr}                    ${oraclejdk8} { name: "bench-compiler-specjbb2015-linux-x52-jfr" }
   ${x52.default-jfr} ${bench-renaissance-jfr}                    ${oraclejdk8} { name: "bench-compiler-renaissance-linux-x52-jfr", timelimit: "3:45:00" }
   ${x52.default-jfr} ${bench-renaissance-legacy-jfr}             ${oraclejdk8} { name: "bench-compiler-renaissance-legacy-linux-x52-jfr" }
-  ${x52.default-jfr} ${bench-spark-sql-perf-jfr}                 ${oraclejdk8} { name: "bench-compiler-spark-sql-perf-linux-x52-jfr" }
 ]

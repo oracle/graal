@@ -42,9 +42,11 @@ package com.oracle.truffle.regex.tregex.string;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 public final class StringUTF32 implements AbstractString {
 
-    private final int[] str;
+    @CompilationFinal(dimensions = 1) private final int[] str;
 
     public StringUTF32(int[] str) {
         this.str = str;

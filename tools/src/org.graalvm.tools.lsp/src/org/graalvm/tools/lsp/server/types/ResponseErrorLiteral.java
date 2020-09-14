@@ -34,7 +34,7 @@ public class ResponseErrorLiteral extends JSONBase {
     }
 
     /**
-     * A number indicating the error type that occured.
+     * A number indicating the error type that occurred.
      */
     public int getCode() {
         return jsonData.getInt("code");

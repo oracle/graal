@@ -28,6 +28,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.EscapeAnalysisIterat
 import static org.graalvm.compiler.core.common.GraalOptions.EscapeAnalyzeOnly;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
@@ -53,6 +54,15 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
 
     private final boolean readElimination;
     private final BasePhase<CoreProviders> cleanupPhase;
+
+    static class DisablePartialEvaluationException extends RuntimeException {
+
+        private static final long serialVersionUID = 1;
+
+        DisablePartialEvaluationException(String msg) {
+            super(msg);
+        }
+    }
 
     public PartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer, OptionValues options) {
         this(iterative, Options.OptEarlyReadElimination.getValue(options), canonicalizer, null, options);
@@ -85,10 +95,14 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue(graph.getOptions()))) {
-            if (readElimination || graph.hasVirtualizableAllocation()) {
-                runAnalysis(graph, context);
+        try {
+            if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue(graph.getOptions()))) {
+                if (readElimination || graph.hasVirtualizableAllocation()) {
+                    runAnalysis(graph, context);
+                }
             }
+        } catch (DisablePartialEvaluationException e) {
+            graph.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Disabling PEA invocation because of %s", e.getMessage());
         }
     }
 
