@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
@@ -154,6 +155,16 @@ public abstract class LayoutImpl extends Layout {
     @Override
     public String toString() {
         return "Layout[" + clazz.getName() + "]";
+    }
+
+    /**
+     * Resets the state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    static void resetNativeImageState() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        ((CoreLayoutFactory) getFactory()).resetNativeImageState();
     }
 
     @SuppressWarnings("static-method")

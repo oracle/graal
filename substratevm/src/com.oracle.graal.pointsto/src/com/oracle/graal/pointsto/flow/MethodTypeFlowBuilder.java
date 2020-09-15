@@ -1337,7 +1337,7 @@ public class MethodTypeFlowBuilder {
 
                         /*
                          * Initially the actual return is null. It will be set by the actual return
-                         * builder bellow only when the returned value is actually used, i.e., the
+                         * builder below only when the returned value is actually used, i.e., the
                          * actual return builder is materialized.
                          */
                         ActualReturnTypeFlow actualReturn = null;

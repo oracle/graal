@@ -48,6 +48,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     protected final List<String> rpaths = new ArrayList<>();
     protected final List<String> libpaths = new ArrayList<>();
     protected final List<String> libs = new ArrayList<>();
+    protected Path tempDirectory;
     protected Path outputFile;
     protected AbstractBootImage.NativeImageKind outputKind;
 
@@ -118,6 +119,15 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         outputFile = out;
     }
 
+    public void setTempDirectory(Path tempDirectory) {
+        this.tempDirectory = tempDirectory;
+    }
+
+    @Override
+    public Path getTempDirectory() {
+        return tempDirectory;
+    }
+
     @Override
     public List<String> getLinkedLibraries() {
         return Collections.unmodifiableList(libs);
@@ -134,7 +144,11 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     }
 
     protected List<String> getCompilerCommand(List<String> options) {
-        return ImageSingletons.lookup(CCompilerInvoker.class).createCompilerCommand(options, outputFile, inputFilenames.toArray(new Path[0]));
+        /* Relativize input files where applicable to avoid unintentional leaking of host paths. */
+        Path[] inputPaths = inputFilenames.stream()
+                        .map(path -> path.startsWith(tempDirectory) ? tempDirectory.relativize(path) : path)
+                        .toArray(Path[]::new);
+        return ImageSingletons.lookup(CCompilerInvoker.class).createCompilerCommand(options, outputFile, inputPaths);
     }
 
     protected abstract void setOutputKind(List<String> cmd);

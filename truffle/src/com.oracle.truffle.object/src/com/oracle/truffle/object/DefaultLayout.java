@@ -323,4 +323,12 @@ class DefaultLayout extends LayoutImpl {
             return "LayoutInfo [objectFields=" + Arrays.toString(objectFields) + ", primitiveFields=" + Arrays.toString(primitiveFields) + "]";
         }
     }
+
+    /**
+     * Resets the state for native image generation.
+     */
+    static void resetNativeImageState() {
+        LAYOUT_MAP.clear();
+        LayoutInfo.LAYOUT_INFO_MAP.clear();
+    }
 }

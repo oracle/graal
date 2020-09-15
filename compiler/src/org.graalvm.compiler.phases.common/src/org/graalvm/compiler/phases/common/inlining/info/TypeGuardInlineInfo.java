@@ -47,8 +47,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
+import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 /**
  * Represents an inlining opportunity for which profiling information suggests a monomorphic
@@ -60,9 +59,9 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
     private final ResolvedJavaMethod concrete;
     private final ResolvedJavaType type;
     private Inlineable inlineableElement;
-    private final SpeculationReason speculation;
+    private final Speculation speculation;
 
-    public TypeGuardInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, ResolvedJavaType type, SpeculationReason speculation) {
+    public TypeGuardInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, ResolvedJavaType type, Speculation speculation) {
         super(invoke);
         this.concrete = concrete;
         this.type = type;
@@ -125,9 +124,7 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
             ConstantNode typeHub = ConstantNode.forConstant(receiverHub.stamp(NodeView.DEFAULT), providers.getConstantReflection().asObjectHub(type), providers.getMetaAccess(), graph);
 
             LogicNode typeCheck = CompareNode.createCompareNode(graph, CanonicalCondition.EQ, receiverHub, typeHub, providers.getConstantReflection(), NodeView.DEFAULT);
-            SpeculationLog speculationLog = graph.getSpeculationLog();
-            FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile,
-                            speculationLog != null && speculation != null ? speculationLog.speculate(speculation) : SpeculationLog.NO_SPECULATION, false));
+            FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, speculation, false));
             assert invoke.predecessor() != null;
 
             ValueNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, guard, type, nonNullReceiver, true);

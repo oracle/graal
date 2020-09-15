@@ -398,29 +398,7 @@ suite = {
       "multiReleaseJarVersion" : "11",
       "checkPackagePrefix" : "false",
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "11..12",
-      "workingSets" : "API,Graal",
-    },
-
-    "org.graalvm.libgraal.jdk13" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-          "org.graalvm.libgraal",
-          "sdk:GRAAL_SDK",
-          "JVMCI_HOTSPOT",
-      ],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.services",
-          "jdk.vm.ci.hotspot"
-        ],
-      },
-      "overlayTarget" : "org.graalvm.libgraal",
-      "multiReleaseJarVersion" : "13",
-      "checkPackagePrefix" : "false",
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "13+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,Graal",
     },
 

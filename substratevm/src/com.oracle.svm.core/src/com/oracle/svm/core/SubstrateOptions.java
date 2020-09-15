@@ -253,12 +253,15 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> TraceVMOperations = new HostedOptionKey<>(false);
 
     @APIOption(name = "trace-class-initialization")//
-    @Option(help = "Comma-separated list of fully qualified class names that class initialization is traced for.")//
+    @Option(help = "Comma-separated list of fully-qualified class names that class initialization is traced for.")//
     public static final HostedOptionKey<String> TraceClassInitialization = new HostedOptionKey<>("");
 
     @APIOption(name = "trace-object-instantiation")//
-    @Option(help = "Comma-separated list of fully qualified class names that object instantiation is traced for.")//
+    @Option(help = "Comma-separated list of fully-qualified class names that object instantiation is traced for.")//
     public static final HostedOptionKey<String> TraceObjectInstantiation = new HostedOptionKey<>("");
+
+    @Option(help = "Trace all native tool invocations as part of image building", type = User)//
+    public static final HostedOptionKey<Boolean> TraceNativeToolUsage = new HostedOptionKey<>(false);
 
     @Option(help = "Prefix that is added to the names of entry point methods.")//
     public static final HostedOptionKey<String> EntryPointNamePrefix = new HostedOptionKey<>("");
@@ -444,6 +447,9 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(false);
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
+
+    @Option(help = "Common prefix used by method symbols in image.")//
+    public static final HostedOptionKey<String> ImageSymbolsPrefix = new HostedOptionKey<>("");
 
     @Option(help = "Fold SecurityManager getter.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> FoldSecurityManagerGetter = new HostedOptionKey<>(true);

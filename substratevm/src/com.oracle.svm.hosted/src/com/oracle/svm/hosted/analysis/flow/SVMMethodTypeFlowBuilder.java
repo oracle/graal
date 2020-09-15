@@ -115,7 +115,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
     @Override
     protected void checkUnsafeOffset(ValueNode base, ValueNode offsetNode) {
         if (!NativeImageOptions.ThrowUnsafeOffsetErrors.getValue()) {
-            /* Skip the checks bellow. */
+            /* Skip the checks below. */
             return;
         }
 

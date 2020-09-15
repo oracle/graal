@@ -161,7 +161,7 @@ public class CAnnotationProcessor {
         if (Platform.includedIn(Platform.LINUX.class)) {
             options.addAll(LibCBase.singleton().getAdditionalQueryCodeCompilerOptions());
         }
-        compilerInvoker.compileAndParseError(SubstrateOptions.StrictQueryCodeCompilation.getValue(), options, queryFile, binary, this::reportCompilerError, nativeLibs.debug);
+        compilerInvoker.compileAndParseError(SubstrateOptions.StrictQueryCodeCompilation.getValue(), options, queryFile, binary, this::reportCompilerError);
         return binary;
     }
 

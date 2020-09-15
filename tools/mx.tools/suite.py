@@ -167,13 +167,42 @@ suite = {
             "javaCompliance" : "8+",
             "workingSets" : "Tools",
         },
+        "com.oracle.truffle.tools.dap" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "truffle:TRUFFLE_API",
+                "TruffleJSON",
+            ],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+              "com.oracle.truffle.tools.dap.instrument to org.graalvm.truffle"
+            ],
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance" : "8+",
+            "workingSets" : "Tools",
+        },
+        "com.oracle.truffle.tools.dap.test" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "com.oracle.truffle.tools.dap",
+                "truffle:TRUFFLE_TEST",
+                "mx:JUNIT"
+            ],
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance" : "8+",
+            "workingSets" : "Tools",
+        },
         "com.oracle.truffle.tools.warmup" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
                 "TruffleJSON",
-                ],
+            ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
               # "com.oracle.truffle.tools.warmup.impl to org.graalvm.truffle",
@@ -473,6 +502,47 @@ suite = {
             "description" : "Truffle Code coverage support distribution for the GraalVM",
             "layout" : {
                 "native-image.properties" : "file:mx.tools/tools-coverage.properties",
+            },
+        },
+        "DAP": {
+            "subDir": "src",
+            # This distribution defines a module.
+            "moduleInfo" : {
+                "name" : "com.oracle.truffle.tools.dap",
+                "requiresConcealed" : {
+                    "org.graalvm.truffle" : [
+                        "com.oracle.truffle.api.instrumentation"
+                    ],
+                },
+            },
+            "dependencies": [
+                "com.oracle.truffle.tools.dap",
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : {
+              "artifactId" : "dap",
+            },
+            "description" : "Truffle Debug Protocol Server implementation.",
+        },
+        "DAP_TEST": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.tools.dap.test",
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_TEST",
+                "DAP",
+            ],
+            "description" : "Tests for the Truffle Debug Protocol Server.",
+            "maven" : False,
+         },
+        "DAP_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Truffle Debug Protocol Server distribution for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-dap.properties",
             },
         },
         "TRUFFLE_WARMUP_ESTIMATOR": {

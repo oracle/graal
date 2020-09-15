@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.concurrent.ThreadLocalRandom;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.annotate.AutomaticFeature;
+
+@AutomaticFeature
 public class RandomNumbersFeature implements Feature {
 
     @Override
@@ -39,6 +40,5 @@ public class RandomNumbersFeature implements Feature {
          * values properly. Otherwise the numbers generated will be fixed for each generated image.
          */
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.Math$RandomNumberGeneratorHolder"), "for random number generator");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(ThreadLocalRandom.class, "for random number generator");
     }
 }

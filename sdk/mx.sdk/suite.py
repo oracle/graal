@@ -84,7 +84,12 @@ suite = {
         "groupId" : "jline",
         "artifactId" : "jline",
         "version" : "2.14.6",
-      },
+      }
+    },
+    "JLINE3" : {
+      "sha1" : "f925a217db222ba24ce5b66b18a02511151929bb",
+      "version" : "3.13.2.1",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
       "license" : "BSD-new"
     },
     "LLVM_ORG" : {
@@ -192,6 +197,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.polyglot",
         "JLINE",
+        "JLINE3",
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Tools",

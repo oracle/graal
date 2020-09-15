@@ -1026,6 +1026,12 @@ def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None
     """run a Java program by executing the java executable in a JVMCI JDK"""
     return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
 
+def run_vm_with_jvmci_compiler(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
+    """run a Java program by executing the java executable in a JVMCI JDK,
+    with the JVMCI compiler selected by default"""
+    jvmci_args = ['-XX:+UseJVMCICompiler'] + args
+    return run_vm(jvmci_args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout, debugLevel=debugLevel, vmbuild=vmbuild)
+
 class GraalArchiveParticipant:
     providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/providers/(.+)')
 
@@ -1467,7 +1473,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmComponent(
 
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
-    'vm': [run_vm, '[-options] class [args...]'],
+    'vm': [run_vm_with_jvmci_compiler, '[-options] class [args...]'],
     'jaotc': [mx_jaotc.run_jaotc, '[-options] class [args...]'],
     'jaotc-test': [mx_jaotc.jaotc_test, ''],
     'collate-metrics': [collate_metrics, 'filename'],

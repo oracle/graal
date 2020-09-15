@@ -94,6 +94,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     private final Map<Object, Delete> deleteAnnotations;
     private final Map<ResolvedJavaType, ResolvedJavaType> typeSubstitutions;
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
+    private final Map<ResolvedJavaMethod, ResolvedJavaMethod> polymorphicMethodSubstitutions;
     private final Map<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
     private ClassInitializationSupport classInitializationSupport;
 
@@ -105,6 +106,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         deleteAnnotations = new HashMap<>();
         typeSubstitutions = new HashMap<>();
         methodSubstitutions = new HashMap<>();
+        polymorphicMethodSubstitutions = new HashMap<>();
         fieldSubstitutions = new HashMap<>();
     }
 
@@ -185,6 +187,23 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         ResolvedJavaMethod substitution = methodSubstitutions.get(method);
         if (substitution != null) {
             return substitution;
+        }
+        for (ResolvedJavaMethod baseMethod : polymorphicMethodSubstitutions.keySet()) {
+            if (method.getDeclaringClass().equals(baseMethod.getDeclaringClass()) && method.getName().equals(baseMethod.getName())) {
+                SubstitutionMethod substitutionBaseMethod = (SubstitutionMethod) polymorphicMethodSubstitutions.get(baseMethod);
+                if (method.isVarArgs()) {
+                    /*
+                     * The only version of the polymorphic method that has varargs is the base one.
+                     */
+                    return substitutionBaseMethod;
+                }
+
+                PolymorphicSignatureWrapperMethod wrapperMethod = new PolymorphicSignatureWrapperMethod(substitutionBaseMethod, method);
+                SubstitutionMethod substitutionMethod = new SubstitutionMethod(method, wrapperMethod);
+                register(methodSubstitutions, wrapperMethod, method, substitutionMethod);
+
+                return substitutionMethod;
+            }
         }
         return method;
     }
@@ -335,6 +354,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             registerAsDeleted(annotated, original, deleteAnnotation);
         } else if (substituteAnnotation != null) {
             SubstitutionMethod substitution = new SubstitutionMethod(original, annotated);
+            if (substituteAnnotation.polymorphicSignature()) {
+                register(polymorphicMethodSubstitutions, annotated, original, substitution);
+            }
             register(methodSubstitutions, annotated, original, substitution);
         } else if (annotateOriginalAnnotation != null) {
             AnnotatedMethod substitution = new AnnotatedMethod(original, annotated);
@@ -405,7 +427,40 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             if (deleteAnnotation != null) {
                 registerAsDeleted(annotated, original, deleteAnnotation);
             } else {
-                ResolvedJavaField alias = fieldValueRecomputation(originalClass, original, annotated, annotatedField);
+                ResolvedJavaField computedAlias = fieldValueRecomputation(originalClass, original, annotated, annotatedField);
+
+                ResolvedJavaField existingAlias = fieldSubstitutions.get(original);
+                ResolvedJavaField alias = computedAlias;
+                if (existingAlias != null) {
+                    /*
+                     * Allow multiple @Alias definitions for the same field as long as only one of
+                     * them has a @RecomputeValueField annotation.
+                     */
+                    if (computedAlias.equals(original)) {
+                        /*
+                         * The currently processed field does not have a @RecomputeValueField
+                         * annotation. Use whatever alias was registered previously.
+                         */
+                        alias = existingAlias;
+                    } else if (existingAlias.equals(original)) {
+                        /*
+                         * The alias registered previously does not have a @RecomputeValueField
+                         * annotation. We need to patch the previous registration. But we do not
+                         * know which annotated field that was, so we need to iterate the whole
+                         * field substitution registry and look for the matching value.
+                         */
+                        fieldSubstitutions.replaceAll((key, value) -> value.equals(existingAlias) ? computedAlias : value);
+                    } else {
+                        /*
+                         * Both the current and the previous registration have
+                         * a @RecomputeValueField annotation. We could now check if the
+                         * recomputation is exactly the same and allow that. But we have no use case
+                         * for this right now, so we do nothing and let the register() call below
+                         * report an error.
+                         */
+                    }
+                }
+
                 register(fieldSubstitutions, annotated, original, alias);
             }
         }
@@ -550,6 +605,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             /* Optional target that is not present, so nothing to do. */
         } else if (substituteAnnotation != null) {
             SubstitutionMethod substitution = new SubstitutionMethod(original, annotated, true);
+            if (substituteAnnotation.polymorphicSignature()) {
+                register(polymorphicMethodSubstitutions, annotated, original, substitution);
+            }
             register(methodSubstitutions, annotated, original, substitution);
         } else if (keepOriginalAnnotation != null) {
             register(methodSubstitutions, annotated, original, original);
