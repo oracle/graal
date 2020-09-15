@@ -101,7 +101,7 @@ public class MidTier extends BaseTier<MidTierContext> {
         }
 
         if (ReassociateExpressions.getValue(options)) {
-            appendPhase(new ReassociationPhase());
+            appendPhase(new ReassociationPhase(canonicalizer));
         }
 
         if (OptDeoptimizationGrouping.getValue(options)) {

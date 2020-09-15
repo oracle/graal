@@ -376,10 +376,12 @@ public class ReassociationTest extends GraalCompilerTest {
     private void testReassociateConstant(String testMethod, String refMethod) {
         test(testMethod);
         StructuredGraph refGraph = parseEager(refMethod, AllowAssumptions.NO);
-        new ReassociationPhase().apply(refGraph);
+        createCanonicalizerPhase().apply(refGraph, getProviders());
+        new ReassociationPhase(createCanonicalizerPhase()).apply(refGraph, getDefaultMidTierContext());
         createCanonicalizerPhase().apply(refGraph, getProviders());
         StructuredGraph testGraph = parseEager(testMethod, AllowAssumptions.NO);
-        new ReassociationPhase().apply(testGraph);
+        createCanonicalizerPhase().apply(testGraph, getProviders());
+        new ReassociationPhase(createCanonicalizerPhase()).apply(testGraph, getDefaultMidTierContext());
         createCanonicalizerPhase().apply(testGraph, getProviders());
         assertEquals(refGraph, testGraph);
         // Test whether the final graph is the expected one.
@@ -501,7 +503,7 @@ public class ReassociationTest extends GraalCompilerTest {
         StructuredGraph graph = parseEager(method, AllowAssumptions.NO);
         FilteredNodeIterable<Node> binarys = graph.getNodes().filter(node -> node instanceof BinaryArithmeticNode);
         List<Node> oldBinarys = binarys.snapshot();
-        new ReassociationPhase().apply(graph);
+        new ReassociationPhase(createCanonicalizerPhase()).apply(graph, getDefaultMidTierContext());
         boolean changed = false;
         for (Node node : oldBinarys) {
             if (node.isDeleted()) {

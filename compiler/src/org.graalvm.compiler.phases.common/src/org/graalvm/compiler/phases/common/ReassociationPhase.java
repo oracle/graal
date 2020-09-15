@@ -42,8 +42,9 @@ import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -52,12 +53,24 @@ import jdk.vm.ci.meta.PrimitiveConstant;
  * Rearrange {@link BinaryArithmeticNode#isAssociative() associative binary operations} for loop
  * invariants and constants.
  */
-public class ReassociationPhase extends Phase {
+public class ReassociationPhase extends BasePhase<CoreProviders> {
+
+    private final CanonicalizerPhase canonicalizer;
+
+    public ReassociationPhase(CanonicalizerPhase canonicalizer) {
+        this.canonicalizer = canonicalizer;
+    }
 
     @Override
-    protected void run(StructuredGraph graph) {
-        reassociateInvariants(graph);
-        reassociateConstants(graph);
+    @SuppressWarnings("try")
+    protected void run(StructuredGraph graph, CoreProviders context) {
+        EconomicSetNodeEventListener changedNodes = new EconomicSetNodeEventListener(EnumSet.of(NodeEvent.NODE_ADDED));
+        try (NodeEventScope news = graph.trackNodeEvents(changedNodes)) {
+            prepareGraphForReassociation(graph);
+            reassociateConstants(graph);
+            reassociateInvariants(graph);
+        }
+        canonicalizer.applyIncremental(graph, context, changedNodes.getNodes());
     }
 
     //@formatter:off
@@ -74,7 +87,6 @@ public class ReassociationPhase extends Phase {
     @SuppressWarnings("try")
     private static void reassociateInvariants(StructuredGraph graph) {
         DebugContext debug = graph.getDebug();
-        prepareGraphForReassociation(graph);
         LoopsData loopsData = new LoopsData(graph);
         int iterations = 0;
         try (DebugContext.Scope s = debug.scope("ReassociateInvariants")) {
@@ -136,14 +148,15 @@ public class ReassociationPhase extends Phase {
 
     }
 
+    /**
+     * Prepare the given graph for reassociation: This means rewriting shift nodes back to
+     * multiplication nodes if possible. Left shift is not an associative operation, thus we rewrite
+     * all shifts derived from multiplications back to their multiplications and try to re-associate
+     * them.
+     */
     @SuppressWarnings("try")
     private static void prepareGraphForReassociation(StructuredGraph graph) {
         final DebugContext debug = graph.getDebug();
-
-        /*
-         * Left shift is not an associative operation, thus we rewrite all shifts derived from
-         * multiplications back to their multiplications and try to re-associate them.
-         */
         EconomicSetNodeEventListener nev = new EconomicSetNodeEventListener(EnumSet.of(NodeEvent.NODE_ADDED));
         try (NodeEventScope news = graph.trackNodeEvents(nev)) {
             for (LeftShiftNode l : graph.getNodes().filter(LeftShiftNode.class)) {
