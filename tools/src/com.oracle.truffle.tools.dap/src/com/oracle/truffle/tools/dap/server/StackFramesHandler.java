@@ -86,6 +86,7 @@ public final class StackFramesHandler {
                                 context.debuggerToClientLine(sourceSection.getEndLine()), context.debuggerToClientColumn(sourceSection.getEndColumn())).setSource(
                                                 context.getLoadedSourcesHandler().from(source)));
             }
+            top = false;
         }
         return sfs;
     }
@@ -157,7 +158,7 @@ public final class StackFramesHandler {
         FrameWrapper frameWrapper = info.getById(FrameWrapper.class, frameId);
         DebugStackFrame frame = frameWrapper != null ? frameWrapper.getFrame() : null;
         if (frame != null) {
-            DebugValue value = frame.eval(expression);
+            DebugValue value = VariablesHandler.getDebugValue(frame, expression);
             if (value != null) {
                 return VariablesHandler.createVariable(info, value, "");
             }
