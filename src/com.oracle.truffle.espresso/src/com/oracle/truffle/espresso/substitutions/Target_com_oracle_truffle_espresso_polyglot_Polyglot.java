@@ -82,25 +82,6 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
 
                 InteropLibrary interopLibrary = InteropLibrary.getUncached();
 
-                if (meta.isBoxed(targetKlass)) {
-                    Object foreignObject = value.rawForeignObject();
-                    try {
-                        if ((targetKlass == meta.java_lang_Integer && interopLibrary.fitsInInt(foreignObject)) ||
-                                        (targetKlass == meta.java_lang_Long && interopLibrary.fitsInLong(foreignObject)) ||
-                                        (targetKlass == meta.java_lang_Float && interopLibrary.fitsInFloat(foreignObject)) ||
-                                        (targetKlass == meta.java_lang_Double && interopLibrary.fitsInDouble(foreignObject)) ||
-                                        (targetKlass == meta.java_lang_Boolean && interopLibrary.isBoolean(foreignObject)) ||
-                                        (targetKlass == meta.java_lang_Short && interopLibrary.fitsInShort(foreignObject)) ||
-                                        (targetKlass == meta.java_lang_Byte && interopLibrary.fitsInByte(foreignObject)) ||
-                                        (targetKlass == meta.java_lang_Character && interopLibrary.isString(foreignObject) && interopLibrary.asString(foreignObject).length() == 1)) {
-                            return StaticObject.createForeign(targetKlass, foreignObject, interopLibrary);
-                        }
-                    } catch (UnsupportedMessageException e) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw EspressoError.shouldNotReachHere(e);
-                    }
-                }
-
                 // TODO: remove eager conversion once TruffleString is available
                 /*
                  * Eager String conversion is necessary here since there's no way to access the
