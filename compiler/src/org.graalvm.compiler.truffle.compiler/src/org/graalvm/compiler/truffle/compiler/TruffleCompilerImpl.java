@@ -39,6 +39,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.First
 import java.io.PrintStream;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
+import java.nio.ReadOnlyBufferException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -174,6 +175,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         ClassCastException.class,
                         BufferUnderflowException.class,
                         BufferOverflowException.class,
+                        ReadOnlyBufferException.class,
         });
         ResolvedJavaType[] tail = {
                         runtime.resolveType(metaAccess, "com.oracle.truffle.api.nodes.UnexpectedResultException"),
