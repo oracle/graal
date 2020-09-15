@@ -38,31 +38,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.exception;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+/**
+ * Thrown for various error condition when using the Wasm-JS API.
+ */
+public class WasmJsApiException extends RuntimeException implements TruffleException {
 
-public class EmscriptenResizeHeap extends AbortNode {
-    public EmscriptenResizeHeap(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+    public enum Kind {
+        TypeError,
+        LinkError
+    }
+
+    private static final long serialVersionUID = 8195809219857028793L;
+
+    private final Kind kind;
+
+    @TruffleBoundary
+    public WasmJsApiException(Kind kind, String message) {
+        super(message);
+        CompilerAsserts.neverPartOfCompilation();
+        this.kind = kind;
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("EmscriptenResizeHeap EXECUTE");
-
-        // Heap resizing is not supported by default by emscripten
-        // (need to specify `-s ALLOW_MEMORY_GROWTH=1` on compilation).
-        return super.execute(frame);
-    }
-
-    @Override
-    public String builtinNodeName() {
-        return "_emscripten_resize_heap";
+    public Node getLocation() {
+        return null;
     }
 }

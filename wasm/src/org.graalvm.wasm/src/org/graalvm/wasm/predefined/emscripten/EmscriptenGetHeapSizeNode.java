@@ -40,26 +40,31 @@
  */
 package org.graalvm.wasm.predefined.emscripten;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-public class AbortOnCannotGrowMemory extends AbortNode {
-    public AbortOnCannotGrowMemory(WasmLanguage language, WasmInstance module) {
+import static org.graalvm.wasm.WasmTracing.trace;
+
+public class EmscriptenGetHeapSizeNode extends WasmBuiltinRootNode {
+    public EmscriptenGetHeapSizeNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("AbortOnCannotGrowMemory EXECUTE");
-        return super.execute(frame);
+        trace("EmscriptenGetHeapSizeNode EXECUTE");
+
+        WasmMemory memory = instance.memory();
+        final long byteSize = memory.byteSize();
+        return (int) byteSize;
     }
 
     @Override
     public String builtinNodeName() {
-        return "abortOnCannotGrowMemory";
+        return "_emscripten_get_heap_size";
     }
 }

@@ -40,23 +40,72 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
+import org.graalvm.wasm.exception.WasmExecutionException;
+import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.exception.WasmJsApiException.Kind;
+
+import java.util.HashMap;
 
 @ExportLibrary(InteropLibrary.class)
 public class Instance extends Dictionary {
     private final Module module;
     private final Dictionary importObject;
 
+    @CompilerDirectives.TruffleBoundary
     public Instance(Module module, Dictionary importObject) {
         this.module = module;
         this.importObject = importObject;
+        readImports(importObject);
         addMembers(new Object[]{
                         "module", this.module,
                         "importObject", this.importObject,
                         // TODO: Return a sequence of exported functions.
                         "exports", new Executable(args -> null),
         });
+    }
+
+    private void readImports(Dictionary importObject) {
+        final Sequence<ModuleImportDescriptor> imports = module.imports();
+        if (imports.getArraySize() != 0 && importObject != null) {
+            throw new WasmJsApiException(Kind.TypeError, "Module requires imports, but import object is undefined.");
+        }
+
+        HashMap<String, Executable> functions = new HashMap<>();
+        try {
+            int i = 0;
+            while (i < module.imports().getArraySize()) {
+                final ModuleImportDescriptor d = (ModuleImportDescriptor) module.imports().readArrayElement(i);
+                final Dictionary importedModule = (Dictionary) getMember(importObject, d.module());
+                final Object member = getMember(importedModule, d.name());
+                switch(d.kind()) {
+                    case function:
+                        if (!(member instanceof Executable)) {
+                            throw new WasmJsApiException(Kind.LinkError, "Member " + member + " is not callable.");
+                        }
+                        Executable f = (Executable) member;
+                        functions.put(d.name(), f);
+                        break;
+                    default:
+                        throw new WasmExecutionException(null, "Unimplemented case.");
+                }
+
+                i += 1;
+            }
+        } catch (InvalidArrayIndexException | UnknownIdentifierException | ClassCastException e) {
+            throw new WasmExecutionException(null, "Unexpected state.", e);
+        }
+    }
+
+    private Object getMember(Dictionary object, String name) throws UnknownIdentifierException {
+        if (!object.isMemberReadable(name)) {
+            throw new WasmJsApiException(Kind.TypeError, "Object does not contain member " + name + ".");
+        }
+        return object.readMember(name);
     }
 
 }

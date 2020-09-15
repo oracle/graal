@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,78 +38,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.wasi;
+package org.graalvm.wasm.predefined.emscripten;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
-import java.util.function.Consumer;
-
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.WasmTrap;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import static org.graalvm.wasm.WasmTracing.trace;
 
-public class WasiFdWrite extends WasmBuiltinRootNode {
-
-    public WasiFdWrite(WasmLanguage language, WasmInstance module) {
+public class EmscriptenResizeHeapNode extends AbortNode {
+    public EmscriptenResizeHeapNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        Object[] args = frame.getArguments();
-        assert args.length == 4;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
+        trace("EmscriptenResizeHeapNode EXECUTE");
 
-        int stream = (int) args[0];
-        int iov = (int) args[1];
-        int iovcnt = (int) args[2];
-        int pnum = (int) args[3];
-
-        return fdWrite(stream, iov, iovcnt, pnum);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private Object fdWrite(int stream, int iov, int iovcnt, int pnum) {
-        Consumer<Character> charPrinter;
-        switch (stream) {
-            case 1:
-                charPrinter = System.out::print;
-                break;
-            case 2:
-                charPrinter = System.err::print;
-                break;
-            default:
-                throw WasmTrap.create(this, "WasiFdWrite: invalid file stream");
-        }
-
-        trace("WasiFdWrite EXECUTE");
-
-        WasmMemory memory = instance.memory();
-        int num = 0;
-        for (int i = 0; i < iovcnt; i++) {
-            int ptr = memory.load_i32(this, iov + (i * 8 + 0));
-            int len = memory.load_i32(this, iov + (i * 8 + 4));
-            for (int j = 0; j < len; j++) {
-                final char c = (char) memory.load_i32_8u(this, ptr + j);
-                charPrinter.accept(c);
-            }
-            num += len;
-            memory.store_i32(this, pnum, num);
-        }
-
-        return 0;
+        // Heap resizing is not supported by default by emscripten
+        // (need to specify `-s ALLOW_MEMORY_GROWTH=1` on compilation).
+        return super.execute(frame);
     }
 
     @Override
     public String builtinNodeName() {
-        return "___wasi_fd_write";
+        return "_emscripten_resize_heap";
     }
 }

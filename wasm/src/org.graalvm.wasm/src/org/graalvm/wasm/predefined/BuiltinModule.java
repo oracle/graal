@@ -67,7 +67,7 @@ public abstract class BuiltinModule {
         pm.put("wasi_snapshot_preview1", new WasiModule());
     }
 
-    public static WasmInstance createBuiltinModule(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
+    public static WasmInstance createBuiltinInstance(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
         final BuiltinModule builtinModule = predefinedModules.get(predefinedModuleName);
         if (builtinModule == null) {
             throw new WasmValidationException("Unknown predefined module: " + predefinedModuleName);

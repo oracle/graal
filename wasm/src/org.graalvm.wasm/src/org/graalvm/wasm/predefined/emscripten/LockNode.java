@@ -44,37 +44,24 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
-public class SetErrNo extends WasmBuiltinRootNode {
-    public SetErrNo(WasmLanguage language, WasmInstance module) {
+public class LockNode extends WasmBuiltinRootNode {
+    public LockNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        Object[] args = frame.getArguments();
-        assert args.length == 1;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
-
-        int value = (int) args[0];
-
-        trace("SetErrNo EXECUTE");
-
-        // TODO: Get address (3120) via call to `___errno_location` WebAssembly function.
-        WasmMemory memory = instance.memory();
-        memory.store_i32(this, 3120, value);
-
-        return value;
+        trace("LockNode EXECUTE");
+        return WasmVoidResult.getInstance();
     }
 
     @Override
     public String builtinNodeName() {
-        return "___setErrNo";
+        return "___lock";
     }
 }

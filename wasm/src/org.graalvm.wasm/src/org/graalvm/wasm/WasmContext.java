@@ -143,7 +143,7 @@ public final class WasmContext {
             }
             final String name = parts[0];
             final String key = parts.length == 2 ? parts[1] : parts[0];
-            final WasmInstance module = BuiltinModule.createBuiltinModule(language, this, name, key);
+            final WasmInstance module = BuiltinModule.createBuiltinInstance(language, this, name, key);
             moduleInstances.put(name, module);
         }
     }

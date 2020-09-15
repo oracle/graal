@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,28 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.collections.Pair;
+import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmOptions;
+import org.graalvm.wasm.predefined.BuiltinModule;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+import java.util.HashMap;
+import java.util.Map;
 
-public class Segfault extends AbortNode {
-    public Segfault(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+public class ImportModule extends BuiltinModule {
+    private final HashMap<String, Pair<WasmFunction, Executable>> functions;
+
+    public ImportModule(HashMap<String, Pair<WasmFunction, Executable>> functions) {
+        this.functions = functions;
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("Segfault");
-        return super.execute(frame);
-    }
-
-    @Override
-    public String builtinNodeName() {
-        return "Segfault";
+    protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
+        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
+        WasmInstance instance = new WasmInstance(new WasmModule(name, null, storeConstantsPolicy), storeConstantsPolicy);
+        for (Map.Entry<String, Pair<WasmFunction, Executable>> entry : functions.entrySet()) {
+            final String functionName = entry.getKey();
+            final Pair<WasmFunction, Executable> info = entry.getValue();
+            final WasmFunction function = info.getLeft();
+            final SymbolTable.FunctionType type = function.type();
+            defineFunction(instance, functionName, type.paramTypes(), type.returnTypes(), new ExecutableNode(context.language(), instance, info.getRight()));
+        }
+        return instance;
     }
 }

@@ -59,4 +59,16 @@ public class ModuleImportDescriptor extends Dictionary {
                         "kind", this.kind.name(),
         });
     }
+
+    public String module() {
+        return module;
+    }
+
+    public String name() {
+        return name;
+    }
+
+    public ImportExportKind kind() {
+        return kind;
+    }
 }

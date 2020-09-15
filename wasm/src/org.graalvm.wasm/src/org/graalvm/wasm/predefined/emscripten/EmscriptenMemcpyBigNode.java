@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,33 +38,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.wasi;
+package org.graalvm.wasm.predefined.emscripten;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmOptions;
-import org.graalvm.wasm.predefined.BuiltinModule;
-import org.graalvm.wasm.predefined.emscripten.UnimplementedNode;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static org.graalvm.wasm.ValueTypes.I32_TYPE;
-import static org.graalvm.wasm.ValueTypes.I64_TYPE;
+import static org.graalvm.wasm.WasmTracing.trace;
 
-public class WasiModule extends BuiltinModule {
+public class EmscriptenMemcpyBigNode extends WasmBuiltinRootNode {
+    public EmscriptenMemcpyBigNode(WasmLanguage language, WasmInstance module) {
+        super(language, module);
+    }
+
     @Override
-    protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        WasmInstance instance = new WasmInstance(new WasmModule(name, null, storeConstantsPolicy), storeConstantsPolicy);
-        importMemory(instance, "main", "memory", 0, 0);
-        defineFunction(instance, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsSizesGetNode(language, instance));
-        defineFunction(instance, "args_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsGetNode(language, instance));
-        defineFunction(instance, "clock_time_get", types(I32_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new WasiClockTimeGetNode(language, instance));
-        defineFunction(instance, "proc_exit", types(I32_TYPE), types(), new WasiProcExitNode(language, instance));
-        defineFunction(instance, "fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWriteNode(language, instance));
-        defineFunction(instance, "fd_read", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_read", language, instance));
-        defineFunction(instance, "fd_close", types(I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_close", language, instance));
-        defineFunction(instance, "fd_seek", types(I32_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_seek", language, instance));
-        return instance;
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+        Object[] args = frame.getArguments();
+        assert args.length == 3;
+        for (Object arg : args) {
+            trace("argument: %s", arg);
+        }
+
+        int dest = (int) args[0];
+        int src = (int) args[1];
+        int num = (int) args[2];
+
+        trace("EmscriptenMemcpyBigNode EXECUTE");
+
+        WasmMemory memory = instance.memory();
+        memory.copy(this, src, dest, num);
+
+        return 0;
+    }
+
+    @Override
+    public String builtinNodeName() {
+        return "_emscripten_memcpy_big";
     }
 }

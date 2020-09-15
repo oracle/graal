@@ -49,14 +49,14 @@ import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
-public class Unlock extends WasmBuiltinRootNode {
-    public Unlock(WasmLanguage language, WasmInstance module) {
+public class UnlockNode extends WasmBuiltinRootNode {
+    public UnlockNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("Unlock EXECUTE");
+        trace("UnlockNode EXECUTE");
         return WasmVoidResult.getInstance();
     }
 

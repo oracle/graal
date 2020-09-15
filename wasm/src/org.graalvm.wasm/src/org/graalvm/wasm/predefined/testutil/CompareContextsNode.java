@@ -50,7 +50,7 @@ import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
-import org.graalvm.wasm.predefined.testutil.SaveContextNode.ContextState;
+import org.graalvm.wasm.predefined.testutil.SaveContextNodeNode.ContextState;
 
 /**
  * Records the context state (memory and global variables) into a custom object.

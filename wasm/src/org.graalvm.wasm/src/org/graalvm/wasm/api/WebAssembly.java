@@ -51,8 +51,12 @@ public class WebAssembly extends Dictionary {
 
     public WebAssemblyInstantiatedSource instantiate(byte[] source, Dictionary importObject) {
         final Module module = compile(source);
-        final Instance instance = new Instance(module, importObject);
+        final Instance instance = instantiate(module, importObject);
         return new WebAssemblyInstantiatedSource(context, module, instance);
+    }
+
+    public Instance instantiate(Module module, Dictionary importObject) {
+        return new Instance(module, importObject);
     }
 
     public WebAssemblyInstantiatedSource instantiateStreaming(byte[] source, Dictionary importObject) {

@@ -44,24 +44,22 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
-public class Lock extends WasmBuiltinRootNode {
-    public Lock(WasmLanguage language, WasmInstance module) {
+public class AlignfaultNode extends AbortNode {
+    public AlignfaultNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("Lock EXECUTE");
-        return WasmVoidResult.getInstance();
+        trace("AlignfaultNode");
+        return super.execute(frame);
     }
 
     @Override
     public String builtinNodeName() {
-        return "___lock";
+        return "AlignfaultNode";
     }
 }

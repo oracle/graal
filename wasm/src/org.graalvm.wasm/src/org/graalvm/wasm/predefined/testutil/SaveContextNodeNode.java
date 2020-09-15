@@ -41,80 +41,60 @@
 package org.graalvm.wasm.predefined.testutil;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import org.graalvm.wasm.Assert;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmVoidResult;
-
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
+import org.graalvm.wasm.Assert;
+import org.graalvm.wasm.GlobalRegistry;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.file.Path;
-
 /**
- * Save the array of bytes to a file with the specified name. Such a file is later available to the
- * test suite.
+ * Records the context state (memory and global variables) into a custom object.
  */
-public class SaveBinaryFile extends WasmBuiltinRootNode {
-    private final Path temporaryDirectory;
-
-    SaveBinaryFile(WasmLanguage language, Path temporaryDirectory) {
-        super(language, null);
-        this.temporaryDirectory = temporaryDirectory;
-    }
-
-    @Override
-    public String builtinNodeName() {
-        return TestutilModule.Names.SAVE_BINARY_FILE;
+public class SaveContextNodeNode extends WasmBuiltinRootNode {
+    public SaveContextNodeNode(WasmLanguage language, WasmInstance module) {
+        super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final int filenamePtr = (int) frame.getArguments()[0];
-        final int dataPtr = (int) frame.getArguments()[1];
-        final int size = (int) frame.getArguments()[2];
-        saveFile(filenamePtr, dataPtr, size);
-        return WasmVoidResult.getInstance();
+        return saveModuleState();
+    }
+
+    @Override
+    public String builtinNodeName() {
+        return TestutilModule.Names.RESET_CONTEXT;
     }
 
     @CompilerDirectives.TruffleBoundary
-    private void saveFile(int filenamePtr, int dataPtr, int size) {
+    private ContextState saveModuleState() {
         final WasmContext context = contextReference().get();
-        Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, dumping works with only 1 memory.");
-        final WasmMemory memory = context.memories().memory(0);
+        Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, only 0 or 1 memories can be saved.");
+        final WasmMemory currentMemory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
+        final GlobalRegistry globals = context.globals().duplicate();
+        final ContextState state = new ContextState(currentMemory, globals);
 
-        // Read the file name.
-        String filename = readFileName(memory, filenamePtr);
-        final Path temporaryFile = temporaryDirectory.resolve(filename);
-        if (!TestutilModule.Options.KEEP_TEMP_FILES.equals("true")) {
-            temporaryFile.toFile().deleteOnExit();
-        }
-
-        // Read the byte array.
-        byte[] bytes = new byte[size];
-        for (int i = 0; i < size; i++) {
-            bytes[i] = (byte) memory.load_i32_8u(this, dataPtr + i);
-        }
-
-        // Store the byte array to a temporary file.
-        try (FileOutputStream stream = new FileOutputStream(temporaryFile.toFile())) {
-            stream.write(bytes);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return state;
     }
 
-    private String readFileName(WasmMemory memory, int filenamePtr) {
-        final StringBuilder sb = new StringBuilder();
-        int currentPtr = filenamePtr;
-        byte current;
-        while ((current = (byte) memory.load_i32_8u(this, currentPtr)) != 0) {
-            sb.append((char) current);
-            currentPtr++;
+    static final class ContextState implements TruffleObject {
+        private final WasmMemory memory;
+        private final GlobalRegistry globals;
+
+        private ContextState(WasmMemory memory, GlobalRegistry globals) {
+            this.memory = memory;
+            this.globals = globals;
         }
-        return sb.toString();
+
+        public WasmMemory memory() {
+            return memory;
+        }
+
+        public GlobalRegistry globals() {
+            return globals;
+        }
     }
 }

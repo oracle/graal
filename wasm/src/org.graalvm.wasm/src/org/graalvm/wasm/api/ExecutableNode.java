@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,50 +38,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.exception.WasmExit;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-public class GetTimeOfDay extends WasmBuiltinRootNode {
-    public GetTimeOfDay(WasmLanguage language, WasmInstance module) {
+public class ExecutableNode extends WasmBuiltinRootNode {
+    private final Executable executable;
+
+    public ExecutableNode(WasmLanguage language, WasmInstance module, Executable executable) {
         super(language, module);
+        this.executable = executable;
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        Object[] args = frame.getArguments();
-        assert args.length == 2;
-        for (Object arg : args) {
-            trace("GetTimeOfDay argument: %s", arg);
-        }
-
-        int ptr = (int) args[0];
-
-        trace("GetTimeOfDay EXECUTE");
-
-        long now = getCurrentTime();
-        WasmMemory memory = instance.memory();
-        memory.store_i32(this, ptr, (int) (now / 1000));
-        memory.store_i32(this, ptr + 4, (int) (now % 1000 * 1000));
-
-        return 0;
+        return executable.execute(frame.getArguments());
     }
 
     @Override
     public String builtinNodeName() {
-        return "_gettimeofday";
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static long getCurrentTime() {
-        return System.currentTimeMillis();
+        return "execute";
     }
 }

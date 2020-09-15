@@ -44,27 +44,22 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
-public class EmscriptenGetHeapSize extends WasmBuiltinRootNode {
-    public EmscriptenGetHeapSize(WasmLanguage language, WasmInstance module) {
+public class SegfaultNode extends AbortNode {
+    public SegfaultNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("EmscriptenGetHeapSize EXECUTE");
-
-        WasmMemory memory = instance.memory();
-        final long byteSize = memory.byteSize();
-        return (int) byteSize;
+        trace("SegfaultNode");
+        return super.execute(frame);
     }
 
     @Override
     public String builtinNodeName() {
-        return "_emscripten_get_heap_size";
+        return "SegfaultNode";
     }
 }
