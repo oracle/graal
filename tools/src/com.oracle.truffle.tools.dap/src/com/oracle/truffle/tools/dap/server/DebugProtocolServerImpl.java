@@ -345,8 +345,8 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
             } else {
                 List<StackFrame> stackTrace = context.getStackFramesHandler().getStackTrace(info);
                 int startIdx = args.getStartFrame() != null ? args.getStartFrame() : 0;
-                int endIdx = startIdx + (args.getLevels() != null ? args.getLevels() : stackTrace.size() - 1);
-                if (startIdx > 0 || endIdx < stackTrace.size() - 1) {
+                int endIdx = startIdx + (args.getLevels() != null ? args.getLevels() : stackTrace.size());
+                if (startIdx > 0 || endIdx < stackTrace.size()) {
                     stackTrace = stackTrace.subList(startIdx, endIdx);
                 }
                 future.complete(StackTraceResponse.ResponseBody.create(stackTrace).setTotalFrames(stackTrace.size()));
@@ -438,7 +438,8 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     @Override
     public CompletableFuture<EvaluateResponse.ResponseBody> evaluate(EvaluateArguments args) {
         CompletableFuture<EvaluateResponse.ResponseBody> future = new CompletableFuture<>();
-        context.getThreadsHandler().executeInSuspendedThread(args.getFrameId(), (info) -> {
+        Integer frameId = args.getFrameId();
+        context.getThreadsHandler().executeInSuspendedThread(frameId != null ? frameId : 0, (info) -> {
             if (info == null) {
                 future.completeExceptionally(Errors.stackFrameNotValid());
             } else {
