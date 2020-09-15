@@ -358,7 +358,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                  path=None,
                  stage1=False,
                  **kw_args): # pylint: disable=super-init-not-called
-        self.components = components
+        self.components = components or registered_graalvm_components(stage1)
         layout = {}
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
         assert src_jdk_base
@@ -388,7 +388,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
         self.jimage_jars = set()
         if is_graalvm and _src_jdk_version >= 9:
-            for component in registered_graalvm_components(stage1):
+            for component in self.components:
                 self.jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
                 if isinstance(component, mx_sdk.GraalVmJvmciComponent):
                     self.jimage_jars.update(component.jvmci_jars)
@@ -691,7 +691,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
                         _jre_bin_names.append(basename(_link_path))
                 _add_native_image_macro(_launcher_config, _component)
-                if 'poly' in _components_set(stage1) and isinstance(_launcher_config, mx_sdk.LanguageLauncherConfig):
+                if 'poly' in _components_set(self.components, stage1) and isinstance(_launcher_config, mx_sdk.LanguageLauncherConfig):
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(launcher_project), _component)
             for _library_config in sorted(_get_library_configs(_component), key=lambda c: c.destination):
                 graalvm_dists.update(_library_config.jar_distributions)
@@ -851,9 +851,7 @@ else:
 class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # pylint: disable=R0901
     def __init__(self, base_name, theLicense=None, stage1=False, components=None, **kw_args):
         self.base_name = base_name
-        components = components or registered_graalvm_components(stage1)
-
-        name, base_dir, self.vm_config_name = _get_graalvm_configuration(base_name, stage1)
+        name, base_dir, self.vm_config_name = _get_graalvm_configuration(base_name, components=components, stage1=stage1)
 
         super(GraalVmLayoutDistribution, self).__init__(
             suite=_suite,
@@ -875,8 +873,8 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
         return GraalVmLayoutDistributionTask(args, self, 'latest_graalvm', 'latest_graalvm_home')
 
 
-def _components_set(stage1):
-    components = registered_graalvm_components(stage1)
+def _components_set(components=None, stage1=False):
+    components = components or registered_graalvm_components(stage1)
     components_set = set([c.short_name for c in components])
     if stage1:
         components_set.add('stage1')
@@ -896,10 +894,10 @@ def _components_set(stage1):
 _graal_vm_configs_cache = {}
 
 
-def _get_graalvm_configuration(base_name, stage1=False):
+def _get_graalvm_configuration(base_name, components=None, stage1=False):
     key = base_name, stage1
     if key not in _graal_vm_configs_cache:
-        components_set = _components_set(stage1)
+        components_set = _components_set(components, stage1)
 
         # Use custom distribution name and base dir for registered vm configurations
         vm_dist_name = None
@@ -1660,7 +1658,7 @@ class GraalVmLanguageLauncher(GraalVmLauncher):  # pylint: disable=too-many-ance
             yield e
             if single:
                 return
-        if 'poly' in _components_set(self.stage1):
+        if 'poly' in _components_set(stage1=self.stage1):
             out = self.polyglot_config_output_file()
             yield out, basename(out)
 
@@ -1700,7 +1698,7 @@ class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask))
         return self._polyglot_config_contents
 
     def with_polyglot_config(self):
-        return isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig) and 'poly' in _components_set(self.subject.stage1)
+        return isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig) and 'poly' in _components_set(stage1=self.subject.stage1)
 
     def native_image_needs_build(self, out_file):
         # TODO check if definition has changed
@@ -2206,7 +2204,7 @@ def _platform_classpath(cp_entries):
 
 
 def get_stage1_graalvm_distribution_name():
-    name, _, _ = _get_graalvm_configuration('GraalVM', True)
+    name, _, _ = _get_graalvm_configuration('GraalVM', stage1=True)
     return name
 
 
@@ -2499,7 +2497,7 @@ def print_graalvm_components(args):
     parser = ArgumentParser(prog='mx graalvm-components', description='Print the list of GraalVM components')
     parser.add_argument('--stage1', action='store_true', help='print the list of components for the stage1 distribution')
     args = parser.parse_args(args)
-    components = _components_set(args.stage1)
+    components = _components_set(stage1=args.stage1)
     print(sorted(components))
 
 
