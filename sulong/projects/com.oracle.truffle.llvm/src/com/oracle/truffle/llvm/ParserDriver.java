@@ -101,6 +101,9 @@ final class ParserDriver {
     private final LLVMContext context;
     private final LLVMLanguage language;
     private final AtomicInteger nextFreeBitcodeID;
+    // Dependencies can either be Source or the call target if the library
+    // has already been parsed.
+    private final ArrayList<Object> dependencies = new ArrayList<>();
 
     private ParserDriver(LLVMContext context, AtomicInteger moduleID) {
         this.context = context;
@@ -135,12 +138,9 @@ final class ParserDriver {
      */
     private CallTarget parseWithDependencies(Source source, ByteSequence bytes) {
 
-        // Dependencies can either be Source or the call target if the library
-        // has already been parsed.
-        ArrayList<Object> dependenciesSource = new ArrayList<>();
-        insertDefaultDependencies(dependenciesSource, source.getName());
+        insertDefaultDependencies(source.getName());
         // Process the bitcode file and its dependencies in the dynamic linking order
-        LLVMParserResult result = parseLibraryWithSource(source, bytes, dependenciesSource);
+        LLVMParserResult result = parseLibraryWithSource(source, bytes);
         if (result == null) {
             // If result is null, then the file parsed does not contain bitcode.
             // The NFI can handle it later if it's a native file.
@@ -160,7 +160,7 @@ final class ParserDriver {
             resolveRenamedSymbols(result);
         }
         addExternalSymbolsToScopes(result);
-        return createLibraryCallTarget(source.getName(), result, dependenciesSource, source);
+        return createLibraryCallTarget(source.getName(), result, source);
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -184,11 +184,8 @@ final class ParserDriver {
 
     /**
      * The default libraries are created as the initial dependencies for every library parsed.
-     *
-     * @param sourceDependencies List of dependencies for a library. They can either be source or
-     *            the call target if the library has already been parsed.
      */
-    private void insertDefaultDependencies(ArrayList<Object> sourceDependencies, String currentLib) {
+    private void insertDefaultDependencies(String currentLib) {
         // There could be conflicts between the default libraries of Sulong and the ones that are
         // passed on the command-line. To resolve that, we add ours first but parse them later on.
         String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
@@ -199,9 +196,14 @@ final class ParserDriver {
                 // Look into the library cache in the language for the call target.
                 CallTarget calls = language.getCachedLibrary(file.getPath());
                 if (calls == null) {
-                    sourceDependencies.add(createDependencySource(sulongLibraryName, Paths.get(sulongLibraryName).toString(), file, false, context.isInternalLibraryFile(file)));
+                    Source source = createDependencySource(sulongLibraryName, Paths.get(sulongLibraryName).toString(), file, false, context.isInternalLibraryFile(file));
+                    // A source is null if it's a native library, which will be added to the NFI
+                    // context extension instead.
+                    if (source != null) {
+                        dependencies.add(source);
+                    }
                 } else {
-                    sourceDependencies.add(calls);
+                    dependencies.add(calls);
                 }
             }
         }
@@ -213,9 +215,12 @@ final class ParserDriver {
             // Look into the library cache in the language for the call target.
             CallTarget calls = language.getCachedLibrary(file.getPath());
             if (calls == null) {
-                sourceDependencies.add(createDependencySource(externalLibraryName, Paths.get(externalLibraryName).toString(), file, true, context.isInternalLibraryFile(file)));
+                Source source = createDependencySource(externalLibraryName, Paths.get(externalLibraryName).toString(), file, true, context.isInternalLibraryFile(file));
+                if (source != null) {
+                    dependencies.add(source);
+                }
             } else {
-                sourceDependencies.add(calls);
+                dependencies.add(calls);
             }
         }
     }
@@ -366,12 +371,12 @@ final class ParserDriver {
      * @param bytes the bytes of the library to be parsed
      * @return the parser result corresponding to {@code lib}
      */
-    private LLVMParserResult parseLibraryWithSource(Source source, ByteSequence bytes, ArrayList<Object> sourceDependencies) {
+    private LLVMParserResult parseLibraryWithSource(Source source, ByteSequence bytes) {
         BinaryParserResult binaryParserResult = BinaryParser.parse(bytes, source, context);
         if (binaryParserResult != null) {
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
             TruffleFile file = createTruffleFile(source.getName(), source.getPath(), binaryParserResult.getLocator(), "<source library>");
-            processDependencies(source.getName(), file, binaryParserResult, sourceDependencies);
+            processDependencies(source.getName(), file, binaryParserResult);
             return parseBinary(binaryParserResult, file);
         } else {
             LibraryLocator.traceDelegateNative(context, source);
@@ -399,7 +404,7 @@ final class ParserDriver {
      * {@link Source} or a {@link CallTarget}, if the library has already been parsed. Finally they
      * are added into the list of dependencies for this library.
      */
-    private void processDependencies(String libraryName, TruffleFile libFile, BinaryParserResult binaryParserResult, ArrayList<Object> dependenciesSource) {
+    private void processDependencies(String libraryName, TruffleFile libFile, BinaryParserResult binaryParserResult) {
         for (String lib : context.preprocessDependencies(binaryParserResult.getLibraries(), libFile)) {
             // don't add the library itself as one of it's own dependency.
             if (!libraryName.equals(lib)) {
@@ -409,12 +414,14 @@ final class ParserDriver {
                 if (calls == null) {
                     Path path = Paths.get(lib);
                     Source source = createDependencySource(lib, path.toString(), file, true, context.isInternalLibraryPath(path));
-                    if (!dependenciesSource.contains(source) && source != null) {
-                        dependenciesSource.add(source);
+                    // A source is null if it's a native library, which will be added to the NFI
+                    // context extension instead.
+                    if (!dependencies.contains(source) && source != null) {
+                        dependencies.add(source);
                     }
                 } else {
-                    if (!dependenciesSource.contains(calls)) {
-                        dependenciesSource.add(calls);
+                    if (!dependencies.contains(calls)) {
+                        dependencies.add(calls);
                     }
                 }
             }
@@ -434,6 +441,7 @@ final class ParserDriver {
         }
 
         Source source;
+        assert file != null;
         if (language.containsLibrarySource(file.getPath())) {
             source = language.getLibrarySource(file.getPath());
         } else {
@@ -471,17 +479,16 @@ final class ParserDriver {
      *
      * @param name the name of the library
      * @param parserResult the {@link LLVMParserResult} for the library
-     * @param sources the list of {@link Source} of the library's dependencies
      * @param source the {@link Source} of the library
      * @return the call target for initialising the library.
      */
-    private CallTarget createLibraryCallTarget(String name, LLVMParserResult parserResult, List<Object> sources, Source source) {
+    private CallTarget createLibraryCallTarget(String name, LLVMParserResult parserResult, Source source) {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         } else {
             // check if the functions should be resolved eagerly or lazyly.
             boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING);
-            LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context, sources, source, language);
+            LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context, dependencies, source, language);
             return Truffle.getRuntime().createCallTarget(loadModules);
         }
     }

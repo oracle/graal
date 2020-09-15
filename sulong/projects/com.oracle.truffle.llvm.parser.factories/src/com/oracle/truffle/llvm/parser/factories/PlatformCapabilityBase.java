@@ -67,7 +67,7 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
         List<String> newDeps = null;
         boolean libSulongXXAdded = false;
         // inject libsulong++ dependency
-        if (ctx.isInternalLibraryFile(file) && file != null) {
+        if (file != null && ctx.isInternalLibraryFile(file)) {
             Path path = Paths.get(file.getPath());
             String remainder = ctx.getInternalLibraryPath().relativize(path).toString();
             if (remainder.startsWith(LIBCXXABI_PREFIX) || remainder.startsWith(LIBCXX_PREFIX)) {

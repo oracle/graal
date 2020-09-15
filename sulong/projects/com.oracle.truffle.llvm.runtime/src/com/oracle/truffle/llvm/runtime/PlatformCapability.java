@@ -94,12 +94,12 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
     }
 
     /**
-     * Inject implicit or modify explicit dependencies for a {@code library}.
+     * Inject implicit or modify explicit dependencies for a {@code file}.
      *
      * @param context the {@link LLVMContext}
-     * @param dependencies (unmodifiable) list of dependencies specified by the library
+     * @param file the {@link TruffleFile}
+     * @param dependencies (unmodifiable) list of dependencies specified by the file
      */
-    @SuppressWarnings("unused")
     public List<String> preprocessDependencies(LLVMContext context, TruffleFile file, List<String> dependencies) {
         return dependencies;
     }
