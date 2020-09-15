@@ -201,4 +201,8 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         }
         nodeValueMap.setResult(this, gen.emitAdd(op1, op2, false));
     }
+
+    protected boolean isExact() {
+        return false;
+    }
 }

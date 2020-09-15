@@ -251,8 +251,8 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         if (!parent.isAssociative()) {
             return false;
         }
-        if (parent instanceof AddNode || parent instanceof SubNode) {
-            return child instanceof AddNode || child instanceof SubNode;
+        if (isNonExactAddOrSub(parent)) {
+            return isNonExactAddOrSub(child);
         }
         return child.getClass() == parent.getClass();
     }
@@ -297,7 +297,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         ValueNode matchValue = match.getValue(matchBinary);
         ValueNode otherValue2 = match.getOtherValue(matchBinary);
 
-        if (node instanceof AddNode || node instanceof SubNode) {
+        if (isNonExactAddOrSub(node)) {
             //@formatter:off
             /**
              * Re-association for the following patterns:
@@ -315,9 +315,9 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
              * (C + x) - y  ->  (x - y) + C
              */
             //@formatter:on
-            boolean addSub = node instanceof AddNode && matchBinary instanceof SubNode;
-            boolean subAdd = node instanceof SubNode && matchBinary instanceof AddNode;
-            boolean subSub = node instanceof SubNode && matchBinary instanceof SubNode;
+            boolean addSub = isNonExactAdd(node) && isNonExactSub(matchBinary);
+            boolean subAdd = isNonExactSub(node) && isNonExactAdd(matchBinary);
+            boolean subSub = isNonExactSub(node) && isNonExactSub(matchBinary);
             boolean sub = false;
             boolean invertSub = false;
             if (addSub) {
@@ -399,13 +399,16 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         if (match1 == null) {
             return node;
         }
+        if (isExactAddOrSub(node)) {
+            return node;
+        }
         ValueNode otherValue = match1.getOtherValue(node);
         boolean addSub = false;
         boolean subAdd = false;
         if (otherValue.getClass() != node.getClass()) {
-            if (node instanceof AddNode && otherValue instanceof SubNode) {
+            if (isNonExactAdd(node) && isNonExactSub(otherValue)) {
                 addSub = true;
-            } else if (node instanceof SubNode && otherValue instanceof AddNode) {
+            } else if (isNonExactSub(node) && isNonExactAdd(otherValue)) {
                 subAdd = true;
             } else {
                 return node;
@@ -414,6 +417,9 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         BinaryNode other = (BinaryNode) otherValue;
         ReassociateMatch match2 = findReassociate(other, criterion);
         if (match2 == null) {
+            return node;
+        }
+        if (isExactAddOrSub(other)) {
             return node;
         }
         boolean invertA = false;
@@ -426,7 +432,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         } else if (subAdd) {
             invertA = invertM2 = match1 == ReassociateMatch.x;
             invertM1 = !invertM2;
-        } else if (node instanceof SubNode && other instanceof SubNode) {
+        } else if (isNonExactSub(node) && isNonExactSub(other)) {
             invertA = match1 == ReassociateMatch.x ^ match2 == ReassociateMatch.x;
             aSub = match1 == ReassociateMatch.y && match2 == ReassociateMatch.y;
             invertM1 = match1 == ReassociateMatch.y && match2 == ReassociateMatch.x;
@@ -436,7 +442,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         ValueNode m1 = match1.getValue(node);
         ValueNode m2 = match2.getValue(other);
         ValueNode a = match2.getOtherValue(other);
-        if (node instanceof AddNode || node instanceof SubNode) {
+        if (isNonExactAddOrSub(node)) {
             ValueNode associated;
             if (invertM1) {
                 associated = BinaryArithmeticNode.sub(m2, m1, view);
@@ -463,6 +469,34 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         } else {
             throw GraalError.shouldNotReachHere();
         }
+    }
+
+    private static boolean isNonExactAdd(Node n) {
+        if (n instanceof AddNode) {
+            return !((AddNode) n).isExact();
+        }
+        return false;
+    }
+
+    private static boolean isNonExactSub(Node n) {
+        if (n instanceof SubNode) {
+            return !((SubNode) n).isExact();
+        }
+        return false;
+    }
+
+    private static boolean isNonExactAddOrSub(Node n) {
+        return isNonExactAdd(n) || isNonExactSub(n);
+    }
+
+    private static boolean isExactAddOrSub(Node n) {
+        if (n instanceof AddNode) {
+            return ((AddNode) n).isExact();
+        }
+        if (n instanceof SubNode) {
+            return ((SubNode) n).isExact();
+        }
+        return false;
     }
 
     /**
