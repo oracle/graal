@@ -246,9 +246,10 @@ public final class LLVMStack {
             throw new LLVMStackOverflowError(String.format(String.format("Stack allocation of %s bytes exceeds limit of %s",
                             Long.toUnsignedString(size), Long.toUnsignedString(MAX_ALLOCATION_SIZE))));
         }
-        assert size >= 0;
+        long alignedSize = (size + Long.BYTES - 1) & -Long.BYTES; // align allocation size
+        assert alignedSize >= 0;
         assert alignment != 0 && powerOfTwo(alignment);
-        long alignedAllocation = (address - size) & -alignment;
+        long alignedAllocation = (address - alignedSize) & -alignment; // align allocated address
         assert alignedAllocation <= address;
         return alignedAllocation;
     }
