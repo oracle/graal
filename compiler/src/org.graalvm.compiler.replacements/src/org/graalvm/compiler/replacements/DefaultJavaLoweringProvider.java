@@ -485,9 +485,11 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         GuardingNode boundsCheck = getBoundsCheck(loadIndexed, array, tool);
         ValueNode index = loadIndexed.index();
+
         if (UseIndexMasking.getValue(graph.getOptions())) {
-            index = proxyIndex(loadIndexed, index, array, tool);
+            index = graph.addOrUniqueWithInputs(proxyIndex(loadIndexed, index, array, tool));
         }
+
         AddressNode address = createArrayIndexAddress(graph, array, elementKind, index, boundsCheck);
 
         ReadNode memoryRead = graph.add(new ReadNode(address, NamedLocationIdentity.getArrayLocation(elementKind), loadStamp, BarrierType.NONE));
