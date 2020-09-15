@@ -35,6 +35,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
@@ -65,7 +66,7 @@ import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
 public final class JNIObjectHandles {
     @Fold
     static boolean haveAssertions() {
-        return SubstrateOptions.getRuntimeAssertionsForClass(JNIObjectHandles.class.getName());
+        return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(JNIObjectHandles.class);
     }
 
     public static <T extends SignedWord> T nullHandle() {

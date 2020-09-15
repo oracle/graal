@@ -3,10 +3,10 @@
 Besides options to the native image builder listed in the [Options](Options.md)
 guide,  Native Image also distinguishes hosted and runtime options.
 
-* Hosted options: configure the boot image generation, i.e., influence what is put into the image and how the image is built.
+* Hosted options: configure the image generation, i.e., influence what is put into the image and how the image is built.
 They are set using the prefix `-H:` on the command line.
 
-* Runtime options: get their initial value during boot image generation, using the prefix `-R:` on the command line of the boot image generator. At runtime, the default prefix is `-XX:` (but this is application specific and not mandated by Substrate VM).
+* Runtime options: get their initial value during image generation, using the prefix `-R:` on the command line of the image generator. At runtime, the default prefix is `-XX:` (but this is application specific and not mandated by Substrate VM).
 
 For developer documentation on how to define and use options, read the documentation of the `com.oracle.svm.core.option` package.
 
@@ -15,7 +15,7 @@ For developer documentation on how to define and use options, read the documenta
 ### Graph Dumping
 Native Image re-used the GraalVM options for graph dumping, logging, counters
 and everything else of the GraalVM debug environment. These GraalVM options can
-be used both as hosted options (if you want to dump graphs of the boot image
+be used both as hosted options (if you want to dump graphs of the image
 generator) and runtime options (if you want to dump graphs during dynamic
 compilation at runtime).
 
@@ -23,21 +23,27 @@ The GraalVM compiler options that work as expected include `Dump`, `DumpOnError`
 `MethodFilter` and the options to specify file names and ports for the dump
 handlers.
 
-Example that dumps Graal graphs of the boot image generator: `-H:Dump= -H:MethodFilter=ClassName.MethodName`.
+Example that dumps Graal graphs of the image generator: `-H:Dump= -H:MethodFilter=ClassName.MethodName`.
 
 Example that dumps Graal graphs at run time: specify the dump flags at runtime with `-XX:Dump= -XX:MethodFilter=ClassName.MethodName`.
 
 ### Debug Options
 These options enable additional checks in the generated executable to help with debugging.
 
-* `-H:[+|-]HostedAssertions`
-  Enable or disable Java assert statements in the boot image generator.
-This flag is translated to either `-ea -esa` or `-da -dsa` for the HotSpot VM.
-* `-H:[+|-]RuntimeAssertions`
-  Enable or disable Java assert statements at run time.
+* `-J-ea` `-J-esa`
+
+  Enables Java assert (and system assertion) statements in the image generator.
+* `-da[:[packagename]...|:classname]` `-ea[:[packagename]...|:classname]` `-dsa` `-esa`
+
+  Enable or disable Java assert statements in the generated image. With the
+  packagename argument ending in `...`, the option disables/enables assertions
+  in the specified package and any subpackages. If the argument is simply
+  `...`, then the option disables/enables assertions in the unnamed package.
 * `-H:TempDirectory=FileSystemPath`
-  Directory for temporary files generated during boot image generation.
-If this option is specified, the temporary files are not deleted so that you can inspect them after boot image generation.
+
+  Directory for temporary files generated during image generation. If this
+  option is specified, the temporary files are not deleted so that you can
+  inspect them after image generation.
 
 
 ### Garbage Collection Options

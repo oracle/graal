@@ -66,7 +66,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -94,7 +94,7 @@ import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
-//Checkstyle: stop
+// Checkstyle: stop
 import sun.misc.Unsafe;
 // Checkstyle: resume
 
@@ -472,7 +472,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Fold
     static boolean runtimeAssertionsEnabled() {
-        return SubstrateOptions.getRuntimeAssertionsForClass(CEntryPointSnippets.class.getName());
+        return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(CEntryPointSnippets.class);
     }
 
     /**
