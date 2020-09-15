@@ -581,7 +581,7 @@ public class CompileQueue {
                                             invoke.callTarget().targetMethod().format("%H.%n(%p)") + " in " + (graph.method() == null ? graph.toString() : graph.method().format("%H.%n(%p)")));
                         }
 
-                        if (invoke.useForInlining()) {
+                        if (invoke.getInlineControl() == Invoke.InlineControl.Normal) {
                             inlined |= tryInlineTrivial(graph, invoke, !inlined);
                         }
                     }
