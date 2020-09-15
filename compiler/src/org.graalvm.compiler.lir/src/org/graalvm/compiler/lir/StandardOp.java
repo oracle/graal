@@ -50,6 +50,7 @@ import jdk.vm.ci.code.RegisterSaveLayout;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -296,6 +297,12 @@ public class StandardOp {
 
         static boolean isLoadConstantOp(LIRInstruction op) {
             return op.isLoadConstantOp();
+        }
+
+        default boolean canRematerialize() {
+            // By default only JavaConstants are assumed to be handled by the generic move
+            // operation.
+            return getConstant() instanceof JavaConstant;
         }
     }
 
