@@ -44,8 +44,6 @@ extern "C" {
 #include <stdbool.h>
 #include <stdlib.h>
 
-void truffle_load_library(const char *string);
-
 // Managed operations
 void *truffle_virtual_malloc(size_t size);
 void *truffle_managed_malloc(long size);
