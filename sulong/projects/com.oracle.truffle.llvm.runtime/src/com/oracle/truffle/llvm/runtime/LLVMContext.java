@@ -133,8 +133,7 @@ public final class LLVMContext {
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
 
-    // private for storing the globals of each bitcode file;
-    //
+    // The symbol table for storing the symbols of each bitcode library
     @CompilationFinal(dimensions = 2) private AssumedValue<LLVMPointer>[][] symbolStorage;
     private boolean[] libraryLoaded;
 
@@ -658,33 +657,6 @@ public final class LLVMContext {
             return ExternalLibrary.createFromPath(path, isNative, isInternalLibraryPath(path));
         }
         return ExternalLibrary.createFromFile(tf, isNative, isInternalLibraryFile(tf));
-    }
-
-    /**
-     * @return true if the library has been added
-     */
-    public boolean ensureExternalLibraryAdded(ExternalLibrary newLib) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (isDefaultLibrary(newLib)) {
-            // Disallow loading default libraries explicitly.
-            return false;
-        }
-        ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
-        if (existingLib == newLib) {
-            return true;
-        }
-        LibraryLocator.traceAlreadyLoaded(this, existingLib);
-        return false;
-    }
-
-    public boolean isInternalLibrary(ExternalLibrary lib) {
-        if (lib.getFile() != null) {
-            return isInternalLibraryFile(lib.getFile());
-        }
-        if (lib.getPath() != null) {
-            return isInternalLibraryPath(lib.getPath());
-        }
-        return isDefaultLibrary(lib);
     }
 
     private boolean isDefaultLibrary(ExternalLibrary lib) {

@@ -45,5 +45,4 @@ public interface LLVMIntrinsicProvider extends LLVMCapability {
     LLVMExpressionNode generateIntrinsicNode(String name, LLVMExpressionNode[] arguments, Type.TypeArrayBuilder argTypes, NodeFactory nodeFactory);
 
     ExternalLibrary getLibrary();
-
 }

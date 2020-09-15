@@ -388,7 +388,6 @@ public final class NFIContextExtension implements ContextExtension {
         public Object getObject() {
             return object;
         }
-
     }
 
     public static final class NativePointerIntoLibrary {

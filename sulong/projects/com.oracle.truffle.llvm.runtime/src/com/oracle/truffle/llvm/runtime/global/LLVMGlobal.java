@@ -99,19 +99,6 @@ public final class LLVMGlobal extends LLVMSymbol {
         return type.getPointeeType();
     }
 
-    /*
-     * public void define(TruffleFile file) { define(type, file); }
-     */
-
-    // TODO (chaeubl): overwriting the type is a workaround to avoid type mismatches that occur for
-    // C++ code
-    /*
-     * public void define(PointerType newType, TruffleFile file) { assert newType != null && file !=
-     * null; if (!isDefined()) { this.type = newType; setFile(file); } else {
-     * CompilerDirectives.transferToInterpreter(); throw new AssertionError(
-     * "Found multiple definitions of global " + getName() + "."); } }
-     */
-
     public boolean isReadOnly() {
         return readOnly;
     }
