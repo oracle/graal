@@ -1558,7 +1558,7 @@ def maven_plugin_install(args):
             '--all-distribution-types',
             '--validate=full',
             '--all-suites',
-            '--skip=GRAALVM_*_JAVA*',  # do not deploy GraalVM distributions
+            '--tags=default',
         ]
         if parsed.licenses:
             deploy_args += ["--licenses", parsed.licenses]
