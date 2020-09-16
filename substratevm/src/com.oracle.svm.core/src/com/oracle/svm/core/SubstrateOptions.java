@@ -431,6 +431,14 @@ public class SubstrateOptions {
         return CodeAlignment.getValue();
     }
 
+    @Option(help = "Dynamically link native image to system libffi instead of statically linking to the static libffi shipped with GraalVM.")//
+    public static final HostedOptionKey<Boolean> SystemLibFFI = new HostedOptionKey<>(false);
+
+    @Fold
+    public static boolean useSystemLibFFI() {
+        return SystemLibFFI.getValue();
+    }
+
     @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> UseReferenceHandlerThread = new HostedOptionKey<>(false);
 

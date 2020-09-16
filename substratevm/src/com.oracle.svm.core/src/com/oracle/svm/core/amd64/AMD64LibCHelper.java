@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
-@CLibrary(value = "libchelper", requireStatic = true)
+@CLibrary(value = "libchelper", requireStatic = CLibrary.RequireStaticTrue.class)
 public class AMD64LibCHelper {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void determineCPUFeatures(CPUFeatures features);

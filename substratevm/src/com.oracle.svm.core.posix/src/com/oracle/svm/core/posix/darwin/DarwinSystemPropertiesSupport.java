@@ -40,7 +40,7 @@ import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.Foundation;
 
-@CLibrary(value = "darwin", requireStatic = true)
+@CLibrary(value = "darwin", requireStatic = CLibrary.RequireStaticTrue.class)
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override

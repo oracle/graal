@@ -493,7 +493,7 @@ final class Target_java_lang_StrictMath {
     }
 }
 
-@CLibrary(value = "java", requireStatic = true, dependsOn = "fdlibm")
+@CLibrary(value = "java", requireStatic = CLibrary.RequireStaticTrue.class, dependsOn = "fdlibm")
 final class StrictMathInvoker {
 
     @CFunction(value = "Java_java_lang_StrictMath_sin", transition = CFunction.Transition.NO_TRANSITION)

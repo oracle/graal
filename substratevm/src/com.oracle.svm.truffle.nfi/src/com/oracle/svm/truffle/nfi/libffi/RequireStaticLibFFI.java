@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.truffle.nfi.libffi;
 
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import java.util.function.BooleanSupplier;
 
-@CLibrary(value = "libchelper", requireStatic = CLibrary.RequireStaticTrue.class, dependsOn = "java")
-public class LibCHelper {
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native CCharPointerPointer getEnviron();
+import static com.oracle.svm.core.SubstrateOptions.useSystemLibFFI;
 
-    @CFunction(transition = Transition.TO_NATIVE)
-    // Checkstyle: stop
-    public static native CCharPointer SVM_FindJavaTZmd(CCharPointer tzMappings, int length);
-    // Checkstyle: start
+public final class RequireStaticLibFFI implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return !useSystemLibFFI();
+    }
 }

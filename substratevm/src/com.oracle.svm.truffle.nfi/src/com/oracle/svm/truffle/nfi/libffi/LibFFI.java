@@ -40,7 +40,7 @@ import org.graalvm.word.WordBase;
 //Checkstyle: stop
 
 @CContext(LibFFIHeaderDirectives.class)
-@CLibrary(value = "ffi", requireStatic = true)
+@CLibrary(value = "ffi", requireStatic = RequireStaticLibFFI.class)
 public class LibFFI {
 
     @CPointerTo(ffi_type.class)

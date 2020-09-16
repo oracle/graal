@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.c;
 import java.io.IOException;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -47,6 +48,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck;
@@ -610,10 +612,14 @@ public final class NativeLibraries {
             return false;
         }
         for (CLibrary lib : annotated) {
-            if (lib.requireStatic()) {
-                addStaticNonJniLibrary(lib.value(), lib.dependsOn());
-            } else {
-                addDynamicNonJniLibrary(lib.value());
+            try {
+                if ((boolean) lib.requireStatic().getDeclaredMethod("getAsBoolean").invoke(lib.requireStatic().getConstructor().newInstance())) {
+                    addStaticNonJniLibrary(lib.value(), lib.dependsOn());
+                } else {
+                    addDynamicNonJniLibrary(lib.value());
+                }
+            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException | InstantiationException e) {
+                VMError.shouldNotReachHere(e);
             }
         }
         annotated.clear();

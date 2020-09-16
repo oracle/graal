@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
-@CLibrary(value = "libchelper", requireStatic = true)
+@CLibrary(value = "libchelper", requireStatic = CLibrary.RequireStaticTrue.class)
 public class AArch64LibCHelper {
 
     @Platforms(Platform.AARCH64.class)

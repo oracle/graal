@@ -49,7 +49,7 @@ public class JVMFuncFallbackTest {
 }
 
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
-@CLibrary(value = "jvm", requireStatic = true)
+@CLibrary(value = "jvm", requireStatic = CLibrary.RequireStaticTrue.class)
 class Jvm {
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native int JVM_Clone(Pointer jni);

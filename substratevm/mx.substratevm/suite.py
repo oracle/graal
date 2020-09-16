@@ -1064,34 +1064,6 @@ suite = {
         },
 
         #
-        # Native Projects
-        #
-        "SVM_HOSTED_NATIVE": {
-            "native": True,
-            "platformDependent" : True,
-            "platforms" : [
-                "linux-amd64",
-                "darwin-amd64",
-                "windows-amd64",
-            ],
-            "layout": {
-                "<os>-<arch>/": [
-                    "dependency:com.oracle.svm.native.libchelper/*",
-                    "dependency:com.oracle.svm.native.darwin/*",
-                    "dependency:com.oracle.svm.native.jvm.posix/*",
-                    "dependency:com.oracle.svm.native.jvm.windows/*",
-                    "extracted-dependency:truffle:LIBFFI_DIST",
-                ],
-                "<os>-<arch>/include/": [
-                    "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include/*",
-                    "file:src/com.oracle.svm.libffi/include/svm_libffi.h",
-                ]
-            },
-            "description" : "SubstrateVM image builder native components",
-            "maven": True
-        },
-
-        #
         # Internal Distributions
         #
         "SVM_DRIVER": {

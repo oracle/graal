@@ -570,42 +570,6 @@ suite = {
       ],
     },
 
-    "com.oracle.truffle.nfi.native" : {
-      "subDir" : "src",
-      "native" : "shared_lib",
-      "deliverable" : "trufflenfi",
-      "buildDependencies" : [
-        "libffi",
-        "com.oracle.truffle.nfi",
-      ],
-      "os_arch" : {
-        "windows" : {
-          "<others>" : {
-            "cflags" : []
-          }
-        },
-        "solaris" : {
-          "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-m64", "-pthread"],
-            "ldflags" : ["-m64", "-pthread"],
-            "ldlibs" : ["-ldl"],
-          },
-        },
-        "linux" : {
-          "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
-            "ldlibs" : ["-ldl"],
-          },
-        },
-        "<others>" : {
-          "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror"],
-            "ldlibs" : ["-ldl"],
-          },
-        },
-      },
-    },
-
     "com.oracle.truffle.nfi.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],

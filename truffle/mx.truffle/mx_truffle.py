@@ -755,6 +755,61 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
     def clean(self, forBuild=False):
         mx.rmtree(self.subject.out_dir, ignore_errors=True)
 
+mx.add_argument('--system-libffi', action='store_true', help='Use system-provided libffi instead of building it from source.')
+
+def _build_libffi():
+    return not (mx.get_opts().system_libffi or mx.env_var_to_bool('SYSTEM_LIBFFI'))
+
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    if (not register_project):
+        return
+    buildDependencies = ["com.oracle.truffle.nfi"]
+    ldlibs = ["-ldl"]
+    if (_build_libffi()):
+        buildDependencies.append("libffi")
+    else:
+        ldlibs.append("-lffi")
+    attrs = {
+        "os_arch" : {
+            "windows" : {
+                "<others>" : {
+                    "cflags" : []
+                }
+            },
+            "solaris" : {
+                "<others>" : {
+                    "cflags" : ["-g", "-Wall", "-Werror", "-m64", "-pthread"],
+                    "ldflags" : ["-m64", "-pthread"],
+                    "ldlibs" : ldlibs,
+                },
+            },
+            "linux" : {
+                "<others>" : {
+                    "cflags" : ["-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+                    "ldlibs" : ldlibs,
+                },
+            },
+            "<others>" : {
+                "<others>" : {
+                    "cflags" : ["-g", "-Wall", "-Werror"],
+                    "ldlibs" : ldlibs,
+                },
+            },
+        }
+    }
+    name = "com.oracle.truffle.nfi.native"
+    context = 'project ' + name
+    os_arch_attrs = mx.Suite._pop_os_arch(attrs, context)
+    subDir = "src"
+    cwd = os.path.join(_suite.dir, subDir, name)
+    project = mx_native.DefaultNativeProject(_suite, name,
+                                             subDir, [], [], [], cwd, "shared_lib",
+                                             deliverable="trufflenfi",
+                                             buildDependencies=buildDependencies,
+                                             cflags=os_arch_attrs.pop('cflags', []),
+                                             ldflags=os_arch_attrs.pop('ldflags', []),
+                                             ldlibs=os_arch_attrs.pop('ldlibs', []))
+    register_project(project)
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,

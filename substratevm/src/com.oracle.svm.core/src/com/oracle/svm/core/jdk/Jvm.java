@@ -42,7 +42,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
  *
  */
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
-@CLibrary(value = "jvm", requireStatic = true)
+@CLibrary(value = "jvm", requireStatic = CLibrary.RequireStaticTrue.class)
 public class Jvm {
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)

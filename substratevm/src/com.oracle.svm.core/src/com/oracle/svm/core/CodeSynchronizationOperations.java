@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
 
-@CLibrary(value = "libchelper", requireStatic = true)
+@CLibrary(value = "libchelper", requireStatic = CLibrary.RequireStaticTrue.class)
 public class CodeSynchronizationOperations {
 
     @CFunction(value = "codeSynchronization_clearCache", transition = Transition.NO_TRANSITION)

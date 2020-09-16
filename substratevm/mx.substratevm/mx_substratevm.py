@@ -1479,6 +1479,26 @@ def _ensure_vm_built(config):
                 f.write(rev_value)
         build_native_image_image(config)
 
+def _build_libffi():
+    return not (mx.get_opts().system_libffi or mx.env_var_to_bool('SYSTEM_LIBFFI'))
+
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    dependencies = ['dependency:com.oracle.svm.native.libchelper/*',
+                         'dependency:com.oracle.svm.native.darwin/*',
+                         'dependency:com.oracle.svm.native.jvm.posix/*',
+                         'dependency:com.oracle.svm.native.jvm.windows/*']
+    if (_build_libffi()):
+        dependencies.append('extracted-dependency:truffle:LIBFFI_DIST')
+    layout = {
+        '<os>-<arch>/include/': ['extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include/*',
+                                 'file:src/com.oracle.svm.libffi/include/svm_libffi.h'],
+        '<os>-<arch>/': dependencies}
+    platforms = ["linux-amd64", "darwin-amd64", "windows-amd64"]
+    dist = mx.LayoutTARDistribution(suite, "SVM_HOSTED_NATIVE", [], layout, '', True, None,
+                                    plarforms = platforms, native = True, maven = True,
+                                    description = "SubstrateVM image builder native components")
+    register_distribution(dist)
+
 @mx.command(suite.name, 'native-image')
 def native_image_on_jvm(args, **kwargs):
     config = graalvm_jvm_config()
