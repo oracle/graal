@@ -30,7 +30,7 @@ Native Image tries to resolve these elements through a static analysis that dete
 Where the analysis fails the program elements reflectively accessed at run time must be specified during native image generation in a [configuration file](Configuration.md) or by using [`RuntimeReflection`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/RuntimeReflection.html) from a [`Feature`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html).
 For more details, read the [Reflection support](Reflection.md) guide.
 
-During native image generation, reflection can be used without restrictions during native image generation, for example in class initializers.
+During native image generation, reflection can be used without restrictions, for example, in class initializers.
 
 ### Dynamic Proxy
 This category includes generating dynamic proxy classes and allocating instances of dynamic proxy classes using the `java.lang.reflect.Proxy` API.
