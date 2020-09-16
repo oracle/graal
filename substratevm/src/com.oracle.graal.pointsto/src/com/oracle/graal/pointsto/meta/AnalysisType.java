@@ -681,6 +681,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return isInTypeCheck;
     }
 
+    public boolean isReachable() {
+        return isInTypeCheck();
+    }
+
     /**
      * The kind of the field in memory (in contrast to {@link #getJavaKind()}, which is the kind of
      * the field on the Java type system level). For example {@link WordBase word types} have a

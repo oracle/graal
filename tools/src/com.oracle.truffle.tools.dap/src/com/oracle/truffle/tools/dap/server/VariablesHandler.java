@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.dap.server;
 
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
+import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.tools.dap.types.SetVariableArguments;
 import com.oracle.truffle.tools.dap.types.Variable;
@@ -53,7 +54,7 @@ public final class VariablesHandler {
                 vars.add(createVariable(info, scopeWrapper.getReturnValue(), "Return value"));
             }
             if (scopeWrapper.getThisValue() != null) {
-                vars.add(createVariable(info, scopeWrapper.getThisValue(), "Receiver"));
+                vars.add(createVariable(info, scopeWrapper.getThisValue(), scopeWrapper.getThisValue().getName()));
             }
         } else {
             dScope = info.getById(DebugScope.class, id);
@@ -89,15 +90,22 @@ public final class VariablesHandler {
 
     public static Variable setVariable(ThreadsHandler.SuspendedThreadInfo info, SetVariableArguments args) {
         DebugValue value = null;
-        DebugValue newValue = null;
         int id = args.getVariablesReference();
         String name = args.getName();
         StackFramesHandler.ScopeWrapper scopeWrapper = info.getById(StackFramesHandler.ScopeWrapper.class, id);
+        DebugStackFrame frame;
+        boolean updateReturnValue = false;
         if (scopeWrapper != null) {
-            newValue = scopeWrapper.getFrame().eval(args.getValue());
+            frame = scopeWrapper.getFrame();
             value = scopeWrapper.getScope().getDeclaredValue(name);
+            if (value == null) {
+                if ("Return value".equals(name)) {
+                    value = scopeWrapper.getReturnValue();
+                    updateReturnValue = true;
+                }
+            }
         } else {
-            newValue = info.getSuspendedEvent().getTopStackFrame().eval(args.getValue());
+            frame = info.getSuspendedEvent().getTopStackFrame();
             DebugScope dScope = info.getById(DebugScope.class, id);
             if (dScope != null) {
                 value = dScope.getDeclaredValue(name);
@@ -114,9 +122,23 @@ public final class VariablesHandler {
                 }
             }
         }
-        if (value != null && value.isWritable() && newValue != null && newValue.isReadable()) {
-            value.set(newValue);
-            return createVariable(info, newValue, "");
+        if (value != null && value.isWritable()) {
+            DebugValue newValue = getDebugValue(frame, args.getValue());
+            if (newValue != null && newValue.isReadable()) {
+                value.set(newValue);
+                if (updateReturnValue) {
+                    info.getSuspendedEvent().setReturnValue(value);
+                }
+                return createVariable(info, value, "");
+            }
+            Object newValueObject = getValue(args.getValue());
+            if (newValueObject != null) {
+                value.set(newValueObject);
+                if (updateReturnValue) {
+                    info.getSuspendedEvent().setReturnValue(value);
+                }
+                return createVariable(info, value, "");
+            }
         }
         return null;
     }
@@ -138,5 +160,40 @@ public final class VariablesHandler {
             var.setNamedVariables(properties.size());
         }
         return var;
+    }
+
+    static DebugValue getDebugValue(DebugStackFrame frame, String value) {
+        try {
+            return frame.eval(value);
+        } catch (DebugException de) {
+        }
+        DebugValue receiver = frame.getScope().getReceiver();
+        if (receiver != null && value.equals(receiver.getName())) {
+            return receiver;
+        }
+        DebugScope scope = frame.getScope();
+        while (scope != null) {
+            DebugValue debugValue = scope.getDeclaredValue(value);
+            if (debugValue != null) {
+                return debugValue;
+            }
+            scope = scope.getParent();
+        }
+        return null;
+    }
+
+    private static Object getValue(String value) {
+        String trimmedValue = value.trim();
+        if (trimmedValue.length() > 1 && trimmedValue.charAt(0) == '"' && trimmedValue.charAt(trimmedValue.length() - 1) == '"') {
+            return trimmedValue.substring(1, trimmedValue.length() - 1);
+        }
+        if (trimmedValue.equalsIgnoreCase("true") || trimmedValue.equalsIgnoreCase("false")) {
+            return Boolean.valueOf(trimmedValue);
+        }
+        try {
+            return Long.valueOf(trimmedValue);
+        } catch (NumberFormatException nfe) {
+        }
+        return null;
     }
 }

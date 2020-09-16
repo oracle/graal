@@ -613,13 +613,12 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         private final SnippetInfo verifyHeap;
         private final SnippetInfo threadBeingInitializedCheck;
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory groupFactory, HotSpotProviders providers, TargetDescription target,
+        public Templates(HotSpotAllocationSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory groupFactory, HotSpotProviders providers,
+                        TargetDescription target,
                         GraalHotSpotVMConfig config) {
             super(options, factories, providers, providers.getSnippetReflection(), target);
             this.config = config;
             snippetCounters = new AllocationSnippetCounters(groupFactory);
-
-            HotSpotAllocationSnippets receiver = new HotSpotAllocationSnippets(config, providers.getRegisters());
 
             allocateInstance = snippet(HotSpotAllocationSnippets.class, "allocateInstance", null, receiver, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION,
                             PROTOTYPE_MARK_WORD_LOCATION);

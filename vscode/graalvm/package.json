@@ -326,6 +326,14 @@
 								"type": "number",
 								"description": "Retry for this number of milliseconds to connect to GraalVM. Default is 10000 ms.",
 								"default": 10000
+							},
+							"protocol": {
+								"enum": [
+									"chromeDevTools",
+									"debugAdapter"
+								],
+								"description": "Protocol used to connect the debug target: Debug Adapter Protocol, or Chrome DevTools Protocol.",
+								"default": "chromeDevTools"
 							}
 						}
 					},
@@ -345,6 +353,14 @@
 								"type": "number",
 								"description": "Retry for this number of milliseconds to connect to GraalVM. Default is 10000 ms.",
 								"default": 10000
+							},
+							"protocol": {
+								"enum": [
+									"chromeDevTools",
+									"debugAdapter"
+								],
+								"description": "Protocol used to connect the debug target: Debug Adapter Protocol, or Chrome DevTools Protocol.",
+								"default": "chromeDevTools"
 							},
 							"localRoot": {
 								"type": [

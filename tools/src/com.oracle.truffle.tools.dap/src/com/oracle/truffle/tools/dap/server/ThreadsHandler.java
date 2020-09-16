@@ -158,7 +158,7 @@ public final class ThreadsHandler implements ThreadsListener {
                             int idx = 0;
                             while (matcher.find()) {
                                 String expression = matcher.group(1);
-                                DebugValue value = event.getTopStackFrame().eval(expression);
+                                DebugValue value = VariablesHandler.getDebugValue(event.getTopStackFrame(), expression);
                                 sb.append(logMessage.substring(idx, matcher.start())).append(value.toDisplayString());
                                 idx = matcher.end();
                             }
