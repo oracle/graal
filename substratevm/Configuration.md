@@ -14,7 +14,7 @@ will automatically pick up all configuration options provided anywhere below the
 resource location `META-INF/native-image/` and use it to construct
 `native-image` command line arguments.
 
-To avoid a situation when constituent parts of a non-trivial project are built
+To avoid a situation when constituent parts of a project are built
 with overlapping configurations, it is recommended to use "subdirectories" within
 `META-INF/native-image`. That way a jar file built from multiple maven projects
 cannot suffer from overlapping `native-image` configurations. For example:
@@ -22,7 +22,7 @@ cannot suffer from overlapping `native-image` configurations. For example:
 * _bar.jar_ has its configurations in `META-INF/native-image/bar_groupID/bar_artifactID`
 
 A jar file that contains `foo` and `bar` will then contain both configurations
-without conflicting with one another. Therefore the recommended layout for
+without conflicting with one another. Therefore, the recommended layout for
 storing native-image configuration data in jar files is the following:
 ```
 META-INF/
@@ -32,11 +32,18 @@ META-INF/
             └── native-image.properties
 ```
 
-Note that the use of `${.}` in a native-image.properties file expands to the
+Note that the use of `${.}` in a _native-image.properties_ file expands to the
 resource location that contains that exact configuration file. This can be
-useful if the native-image.properties file wants to refer to resources within
-its "subfolder", for example,
-`-H:SubstitutionResources=${.}/substitutions.json`.
+useful if the _native-image.properties_ file wants to refer to resources within
+its "subfolder", for example, `-H:SubstitutionResources=${.}/substitutions.json`.
+Always make sure to use the optional variants that take resources, i.e., use
+`-H:ResourceConfigurationResources` instead of `-H:ResourceConfigurationFiles`.
+Other options that are known to work in this context are:
+* `-H:DynamicProxyConfigurationResources`
+* `-H:JNIConfigurationResources`
+* `-H:ReflectionConfigurationResources`
+* `-H:ResourceConfigurationResources`
+* `-H:SubstitutionResources`
 
 By having such a composable _native-image.properties_ file, building an image
 does not require any additional arguments specified on command line. It is
