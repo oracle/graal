@@ -75,6 +75,8 @@ public final class Meta implements ContextAccess {
         java_lang_String = knownKlass(Type.java_lang_String);
         java_lang_Class_array = java_lang_Class.array();
         java_lang_Class_getName = java_lang_Class.lookupDeclaredMethod(Name.getName, Signature.String);
+        java_lang_Class_getSimpleName = java_lang_Class.lookupDeclaredMethod(Name.getSimpleName, Signature.String);
+        java_lang_Class_getTypeName = java_lang_Class.lookupDeclaredMethod(Name.getTypeName, Signature.String);
         java_lang_Class_forName_String = java_lang_Class.lookupDeclaredMethod(Name.forName, Signature.Class_String);
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.lookupDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
         HIDDEN_PROTECTION_DOMAIN = java_lang_Class.lookupHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
@@ -483,6 +485,55 @@ public final class Meta implements ContextAccess {
                         Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array);
         java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkDynamicConstant,
                         Signature.Object_Object_int_Object_Object_Object_Object);
+
+        // Interop
+        java_time_Duration = knownKlass(Type.java_time_Duration);
+        java_time_Duration_seconds = java_time_Duration.lookupDeclaredField(Name.seconds, Type._long);
+        java_time_Duration_nanos = java_time_Duration.lookupDeclaredField(Name.nanos, Type._int);
+
+        java_time_Instant = knownKlass(Type.java_time_Instant);
+        java_time_Instant_seconds = java_time_Instant.lookupDeclaredField(Name.seconds, Type._long);
+        java_time_Instant_nanos = java_time_Instant.lookupDeclaredField(Name.nanos, Type._int);
+        java_time_Instant_atZone = java_time_Instant.lookupDeclaredMethod(Name.atZone, Signature.ZonedDateTime_ZoneId);
+        assert java_time_Instant_atZone.isFinalFlagSet() || java_time_Instant.isFinalFlagSet();
+
+        java_time_LocalTime = knownKlass(Type.java_time_LocalTime);
+        java_time_LocalTime_hour = java_time_LocalTime.lookupDeclaredField(Name.hour, Type._byte);
+        java_time_LocalTime_minute = java_time_LocalTime.lookupDeclaredField(Name.minute, Type._byte);
+        java_time_LocalTime_second = java_time_LocalTime.lookupDeclaredField(Name.second, Type._byte);
+        java_time_LocalTime_nano = java_time_LocalTime.lookupDeclaredField(Name.nano, Type._int);
+
+        java_time_LocalDateTime = knownKlass(Type.java_time_LocalDateTime);
+        java_time_LocalDateTime_toLocalDate = java_time_LocalDateTime.lookupDeclaredMethod(Name.toLocalDate, Signature.LocalDate);
+        java_time_LocalDateTime_toLocalTime = java_time_LocalDateTime.lookupDeclaredMethod(Name.toLocalTime, Signature.LocalTime);
+        assert java_time_LocalDateTime_toLocalTime.isFinalFlagSet() || java_time_LocalDateTime.isFinalFlagSet();
+
+        java_time_LocalDate = knownKlass(Type.java_time_LocalDate);
+        java_time_LocalDate_year = java_time_LocalDate.lookupDeclaredField(Name.year, Type._int);
+        assert java_time_LocalDate_year.getKind() == JavaKind.Int;
+        java_time_LocalDate_month = java_time_LocalDate.lookupDeclaredField(Name.month, Type._short);
+        assert java_time_LocalDate_month.getKind() == JavaKind.Short;
+        java_time_LocalDate_day = java_time_LocalDate.lookupDeclaredField(Name.day, Type._short);
+        assert java_time_LocalDate_day.getKind() == JavaKind.Short;
+
+        java_time_ZonedDateTime = knownKlass(Type.java_time_ZonedDateTime);
+        java_time_ZonedDateTime_toLocalTime = java_time_ZonedDateTime.lookupDeclaredMethod(Name.toLocalTime, Signature.LocalTime);
+        assert java_time_ZonedDateTime_toLocalTime.isFinalFlagSet() || java_time_ZonedDateTime.isFinalFlagSet();
+
+        java_time_ZonedDateTime_toLocalDate = java_time_ZonedDateTime.lookupDeclaredMethod(Name.toLocalDate, Signature.LocalDate);
+        assert java_time_ZonedDateTime_toLocalDate.isFinalFlagSet() || java_time_ZonedDateTime.isFinalFlagSet();
+
+        java_time_ZonedDateTime_getZone = java_time_ZonedDateTime.lookupDeclaredMethod(Name.getZone, Signature.ZoneId);
+        assert java_time_ZonedDateTime_getZone.isFinalFlagSet() || java_time_ZonedDateTime.isFinalFlagSet();
+        java_time_ZonedDateTime_toInstant = java_time_ZonedDateTime.lookupMethod(Name.toInstant, Signature.Instant); // default
+        assert java_time_ZonedDateTime_toInstant.isFinalFlagSet() || java_time_ZonedDateTime.isFinalFlagSet();
+
+        java_util_Date = knownKlass(Type.java_util_Date);
+        java_util_Date_toInstant = java_util_Date.lookupDeclaredMethod(Name.toInstant, Signature.Instant);
+        java_time_ZoneId = knownKlass(Type.java_time_ZoneId);
+        java_time_ZoneId_getId = java_time_ZoneId.lookupDeclaredMethod(Name.getId, Signature.String);
+        java_time_ZoneId_of = java_time_ZoneId.lookupDeclaredMethod(Name.of, Signature.ZoneId_String);
+        assert java_time_ZoneId_of.isStatic();
     }
 
     public void postSystemInit() {
@@ -548,6 +599,8 @@ public final class Meta implements ContextAccess {
     public final Field sun_reflect_ConstantPool_constantPoolOop;
     public final ArrayKlass java_lang_Class_array;
     public final Method java_lang_Class_getName;
+    public final Method java_lang_Class_getSimpleName;
+    public final Method java_lang_Class_getTypeName;
     public final Method java_lang_Class_forName_String;
     public final Method java_lang_Class_forName_String_boolean_ClassLoader;
 
@@ -883,6 +936,42 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_StackFrameInfo;
     public final Field java_lang_StackFrameInfo_memberName;
     public final Field java_lang_StackFrameInfo_bci;
+
+    // Interop conversions.
+    public final ObjectKlass java_time_Duration;
+    public final Field java_time_Duration_seconds;
+    public final Field java_time_Duration_nanos;
+
+    public final ObjectKlass java_time_Instant;
+    public final Field java_time_Instant_seconds;
+    public final Field java_time_Instant_nanos;
+    public final Method java_time_Instant_atZone;
+
+    public final ObjectKlass java_time_LocalTime;
+    public final Field java_time_LocalTime_hour;
+    public final Field java_time_LocalTime_minute;
+    public final Field java_time_LocalTime_second;
+    public final Field java_time_LocalTime_nano;
+
+    public final ObjectKlass java_time_LocalDate;
+    public final Field java_time_LocalDate_year;
+    public final Field java_time_LocalDate_month;
+    public final Field java_time_LocalDate_day;
+
+    public final ObjectKlass java_time_LocalDateTime;
+    public final Method java_time_LocalDateTime_toLocalTime;
+    public final Method java_time_LocalDateTime_toLocalDate;
+    public final ObjectKlass java_time_ZonedDateTime;
+    public final Method java_time_ZonedDateTime_toLocalTime;
+    public final Method java_time_ZonedDateTime_toLocalDate;
+    public final Method java_time_ZonedDateTime_getZone;
+    public final Method java_time_ZonedDateTime_toInstant;
+
+    public final ObjectKlass java_util_Date;
+    public final Method java_util_Date_toInstant;
+    public final ObjectKlass java_time_ZoneId;
+    public final Method java_time_ZoneId_getId;
+    public final Method java_time_ZoneId_of;
 
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;
