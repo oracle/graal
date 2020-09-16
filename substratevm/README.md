@@ -2,7 +2,7 @@
 
 GraalVM Native Image allows to ahead-of-time compile Java code to a standalone executable, called
 a **native image**. This executable includes the application classes, classes
-from its dependencies, runtime library classes from JDK and statically linked
+from its dependencies, runtime library classes from JDK, and statically linked
 native code from JDK. It does not run on the Java VM, but includes necessary
 components like memory management and thread scheduling from a different virtual
 machine, called "Substrate VM". Substrate VM is the name for the runtime
@@ -14,7 +14,7 @@ The **Native Image builder** or `native-image` is a utility that processes all
 the classes of your application and their dependencies, including those from the
 JDK. It analyses these classes to determine which classes, methods and fields
 are reachable during application execution. It then ahead-of-time compiles all
-reachable code and data into a native executable for a specific operating system
+reachable code into a native executable for a specific operating system
 and architecture. This entire process is called **image build time** to
 clearly distinguish it from the compilation of Java source code to bytecode.
 
@@ -67,6 +67,11 @@ On macOS use `xcode`:
 xcode-select --install
 ```
 
+If necessary, you can still build a native image that will not depend on C Libraries on the
+machine(s) to be run on. With the `--static` option all bits of a C library get
+embedded into the image. In this case, the image size gets bigger and certain C
+library features may not work.
+
 #### Prerequisites for Using Native Image on Windows
 To make use of Native Image on Windows, follow the further recommendations. The
 required Microsoft Visual C++ (MSVC) version depends on the JDK version that
@@ -79,6 +84,61 @@ SDK 7.1:
 For GraalVM distribution based on JDK 11, you will need MSVC 2017 15.5.5 or later version.
 
 The last prerequisite, common for both GraalVM distribution based on JDK 11 and JDK 8, is the proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/). On Windows the `native-image` tool only works when it is executed from the **x64 Native Tools Command Prompt**.
+
+## Build a Native Image
+
+To build a native image of a class in the current working directory, use:
+```
+native-image [options] class [imagename] [options]
+```
+
+To build a native image of a JAR file, use:
+```
+native-image [options] -jar jarfile [imagename] [options]
+```
+The `native-image` command needs to provide the class path for all classes using
+the familiar option from the java launcher: `-cp` followed by a list of
+directories or JAR files, separated by `:`. The name of the class containing the
+main method is the last argument, or you can use `-jar` and provide a JAR
+file that specifies the main method in its manifest.
+
+
+As an example, we will take a small Java program to reverse a String using recursion:
+```
+public class Example {
+
+    public static void main(String[] args) {
+        String str = "Native Image is awesome";
+        String reversed = reverseString(str);
+        System.out.println("The reversed string is: " + reversed);
+    }
+
+    public static String reverseString(String str)
+    {
+        if (str.isEmpty())
+            return str;
+        return reverseString(str.substring(1)) + str.charAt(0);
+    }
+}
+```
+Compile the `Example.java` program and build a native image from the Java class:
+```
+javac Example.java
+native-image --no-fallback Example
+```
+The native image builder ahead-of-time compiles the `Example` class into a
+standalone executable, `example`, in the current working directory. The
+`--no-fallback` option prevents building a "fallback image". Run the executable:
+```
+./example
+```
+
+Another option to the native image builder that might be helpful is
+`--install-exit-handlers`. It is not recommended to register the default signal
+handlers when building a shared library. However, it is desirable to include
+signal handlers when build a native image for containerized environments like
+Docker containers. The `--install-exit-handlers` option gives you the same
+signal handlers that a JVM does.
 
 ### How to Determine What Version of GraalVM an Image Is Generated With?
 
