@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -187,8 +187,14 @@ public class LoopEx {
         @Override
         public boolean apply(Node n) {
             if (loopBegin().graph().isNew(mark, n)) {
-                // Newly created nodes are unknown.
-                return false;
+                // Newly created nodes are unknown. It is invariant if all of its inputs are
+                // invariants.
+                for (Node input : n.inputs()) {
+                    if (!apply(input)) {
+                        return false;
+                    }
+                }
+                return true;
             }
             return isOutsideLoop(n);
         }
@@ -198,24 +204,38 @@ public class LoopEx {
         int count = 0;
         StructuredGraph graph = loopBegin().graph();
         InvariantPredicate invariant = new InvariantPredicate();
+        NodeBitMap newLoopNodes = graph.createNodeBitMap();
         for (BinaryArithmeticNode<?> binary : whole().nodes().filter(BinaryArithmeticNode.class)) {
             if (!binary.isAssociative()) {
                 continue;
             }
-            ValueNode result = BinaryArithmeticNode.reassociate(binary, invariant, binary.getX(), binary.getY(), NodeView.DEFAULT);
+            ValueNode result = BinaryArithmeticNode.reassociateMatchedValues(binary, invariant, binary.getX(), binary.getY(), NodeView.DEFAULT);
+            if (result == binary) {
+                result = BinaryArithmeticNode.reassociateUnmatchedValues(binary, invariant, NodeView.DEFAULT);
+            }
             if (result != binary) {
                 if (!result.isAlive()) {
                     assert !result.isDeleted();
                     result = graph.addOrUniqueWithInputs(result);
+                    // Save all new added loop variants.
+                    newLoopNodes.markAndGrow(result);
+                    for (Node input : result.inputs()) {
+                        if (whole().nodes().isNew(input) && !invariant.apply(input)) {
+                            newLoopNodes.markAndGrow(input);
+                        }
+                    }
                 }
                 DebugContext debug = graph.getDebug();
                 if (debug.isLogEnabled()) {
-                    debug.log("%s : Reassociated %s into %s", graph.method().format("%H::%n"), binary, result);
+                    debug.log("%s : Re-associated %s into %s", graph.method().format("%H::%n"), binary, result);
                 }
                 binary.replaceAtUsages(result);
                 GraphUtil.killWithUnusedFloatingInputs(binary);
                 count++;
             }
+        }
+        if (newLoopNodes.isNotEmpty()) {
+            whole().nodes().union(newLoopNodes);
         }
         return count != 0;
     }

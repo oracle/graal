@@ -40,7 +40,9 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
 
 @NodeInfo(shortName = "<<")
 public final class LeftShiftNode extends ShiftNode<Shl> {
@@ -75,6 +77,28 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
         }
 
         return canonical(this, getArithmeticOp(), stamp(NodeView.DEFAULT), forX, forY);
+    }
+
+    /**
+     * Try to rewrite the current node to a {@linkplain MulNode} iff the
+     * {@linkplain LeftShiftNode#getX()} and {@linkplain LeftShiftNode#getY()} inputs represent
+     * numeric integers and {@linkplain LeftShiftNode#getY()} is a constant value. The resulting
+     * {@linkplain MulNode} replaces the current node in the {@linkplain LeftShiftNode#graph()}.
+     */
+    public void tryReplaceWithMulNode() {
+        if (this.getY().isConstant()) {
+            Constant c = getY().asConstant();
+            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
+                IntegerStamp xStamp = (IntegerStamp) getX().stamp(NodeView.DEFAULT);
+                IntegerStamp yStamp = (IntegerStamp) getY().stamp(NodeView.DEFAULT);
+                IntegerStamp selfStamp = (IntegerStamp) stamp(NodeView.DEFAULT);
+                if (xStamp.getBits() == yStamp.getBits() && xStamp.getBits() == selfStamp.getBits()) {
+                    long i = ((PrimitiveConstant) c).asLong();
+                    long multiplier = (long) Math.pow(2, i);
+                    replaceAtUsages(graph().addOrUnique(new MulNode(getX(), ConstantNode.forIntegerStamp(getY().stamp(NodeView.DEFAULT), multiplier, graph()))));
+                }
+            }
+        }
     }
 
     private static ValueNode canonical(LeftShiftNode leftShiftNode, ArithmeticOpTable.ShiftOp<Shl> op, Stamp stamp, ValueNode forX, ValueNode forY) {
