@@ -1374,7 +1374,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     Object getLocal(LocalLocation l) {
         assert l.engine == this.engine : invalidSharingError(this.engine, l.engine);
-        return l.readLocal(this, this.contextLocals);
+        return l.readLocal(this, this.contextLocals, false);
     }
 
     private Object[] getCurrentThreadLocals(PolyglotEngineImpl e) {
@@ -1435,7 +1435,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         assert l.engine == this.engine : invalidSharingError(this.engine, l.engine);
         // thread id is guaranteed to be unique
         if (CompilerDirectives.isPartialEvaluationConstant(l)) {
-            return l.readLocal(this, getCurrentThreadLocals(l.engine));
+            return l.readLocal(this, getCurrentThreadLocals(l.engine), true);
         } else {
             return getThreadLocalBoundary(l);
         }
@@ -1443,7 +1443,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     @TruffleBoundary
     private Object getThreadLocalBoundary(LocalLocation l) {
-        return l.readLocal(this, getCurrentThreadLocals(l.engine));
+        return l.readLocal(this, getCurrentThreadLocals(l.engine), true);
     }
 
     /*
@@ -1458,7 +1458,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         if (threadLocals == null) {
             return null;
         }
-        return l.readLocal(this, threadLocals);
+        return l.readLocal(this, threadLocals, true);
     }
 
     void initializeThreadLocals(PolyglotThreadInfo threadInfo) {
