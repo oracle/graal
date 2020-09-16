@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
+import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.util.Comparator;
 import java.util.function.IntFunction;
@@ -77,6 +78,13 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
+
+<<<<<<
+
+
+<HEAD
+=======
+        >>>>>>>5bbd672f...Implement meta-object interop APIs in Klass.
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRef, TruffleObject {
@@ -365,6 +373,32 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             throw UnsupportedMessageException.create();
         }
     }
+
+    // region ### Meta-objects
+
+    @ExportMessage
+    boolean isMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    public Object getMetaQualifiedName() {
+        assert isMetaObject();
+        return getMeta().java_lang_Class_getTypeName.invokeDirect(mirror());
+    }
+
+    @ExportMessage
+    Object getMetaSimpleName() {
+        assert isMetaObject();
+        return getMeta().java_lang_Class_getSimpleName.invokeDirect(mirror());
+    }
+
+    @ExportMessage
+    boolean isMetaInstance(Object instance) {
+        return instance instanceof StaticObject && instanceOf((StaticObject) instance, this);
+    }
+
+    // endregion ### Meta-objects
 
     // endregion Interop
 
