@@ -67,6 +67,7 @@ public @interface TruffleFromLibGraal {
         CountInlinedCalls(int.class, Object.class),
         CreateInliningPlan(Object.class, Object.class, Object.class, Object.class),
         CreateStringSupplier(Supplier.class, long.class),
+        DequeueInlined(void.class, Object.class),
         DequeueTargets(void.class, Object.class),
         FindCallNode(Object.class, Object.class, long.class),
         FindDecision(Object.class, Object.class, long.class),

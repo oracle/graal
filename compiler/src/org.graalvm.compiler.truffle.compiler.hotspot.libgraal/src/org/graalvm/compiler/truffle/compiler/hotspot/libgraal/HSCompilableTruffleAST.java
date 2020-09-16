@@ -29,6 +29,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CancelCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CompilableToString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.DequeueInlined;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallNodes;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilableCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilableName;
@@ -42,6 +43,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilabl
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callCancelCompilation;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callCompilableToString;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callCreateStringSupplier;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callDequeueInlined;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetCompilableCallCount;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetCallNodes;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetCompilableName;
@@ -238,6 +240,12 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
         JNIEnv env = env();
         JString jniReason = JNIUtil.createHSString(env, reason.toString());
         return callCancelCompilation(env, getHandle(), jniReason);
+    }
+
+    @TruffleFromLibGraal(DequeueInlined)
+    @Override
+    public void dequeueInlined() {
+        callDequeueInlined(env(), getHandle());
     }
 
     @TruffleFromLibGraal(IsSameOrSplit)
