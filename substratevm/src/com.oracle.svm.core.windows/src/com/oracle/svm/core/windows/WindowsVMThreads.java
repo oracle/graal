@@ -25,7 +25,6 @@
 package com.oracle.svm.core.windows;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -86,18 +85,6 @@ public final class WindowsVMThreads extends VMThreads {
          */
         WindowsVMLockSupport.initialize();
         return true;
-    }
-
-    @Uninterruptible(reason = "Thread state not set up.")
-    @Override
-    public IsolateThread allocateIsolateThread(int isolateThreadSize) {
-        return LibC.calloc(WordFactory.unsigned(1), WordFactory.unsigned(isolateThreadSize));
-    }
-
-    @Uninterruptible(reason = "Thread state not set up.")
-    @Override
-    public void freeIsolateThread(IsolateThread thread) {
-        LibC.free(thread);
     }
 
     @Uninterruptible(reason = "Thread state not set up.")
