@@ -1525,9 +1525,10 @@ public final class DebuggerSession implements Closeable {
         @TruffleBoundary
         private void doReturn(MaterializedFrame frame, Object result) {
             SteppingStrategy steppingStrategy;
+            Object newResult = null;
             try {
                 if (hasRootElement) {
-                    doStepAfter(frame, result);
+                    newResult = doStepAfter(frame, result);
                 }
             } finally {
                 steppingStrategy = strategyMap.get(Thread.currentThread());
@@ -1537,7 +1538,7 @@ public final class DebuggerSession implements Closeable {
                 }
             }
             if (steppingStrategy != null && steppingStrategy.isStopAfterCall()) {
-                Object newResult = notifyCallerReturn(context, steppingStrategy, this, SuspendAnchor.AFTER, result);
+                newResult = notifyCallerReturn(context, steppingStrategy, this, SuspendAnchor.AFTER, newResult != null ? newResult : result);
                 if (newResult != result) {
                     throw getContext().createUnwind(new ChangedReturnInfo(newResult));
                 }
