@@ -343,6 +343,16 @@ public class ImageCodeInfo {
         }
 
         @Override
+        public void setFreeArraysOnRelease(boolean value) {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public boolean getFreeArraysOnRelease() {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
         public boolean isNull() {
             return false;
         }

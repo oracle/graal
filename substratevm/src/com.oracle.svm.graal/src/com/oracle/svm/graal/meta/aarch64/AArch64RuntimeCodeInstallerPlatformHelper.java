@@ -32,10 +32,10 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.CodeSynchronizationOperations;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.code.AbstractRuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.graal.meta.RuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
 
 @AutomaticFeature
 @Platforms(Platform.AARCH64.class)

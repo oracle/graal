@@ -58,10 +58,10 @@ public final class InstalledCodeObserverSupport {
         observerFactories.add(observerFactory);
     }
 
-    public InstalledCodeObserver[] createObservers(DebugContext debug, SharedMethod method, CompilationResult compilation, Pointer code) {
+    public InstalledCodeObserver[] createObservers(DebugContext debug, SharedMethod method, CompilationResult compilation, Pointer code, int codeSize) {
         List<InstalledCodeObserver> observers = new ArrayList<>();
         for (InstalledCodeObserver.Factory factory : observerFactories) {
-            InstalledCodeObserver observer = factory.create(debug, method, compilation, code);
+            InstalledCodeObserver observer = factory.create(debug, method, compilation, code, codeSize);
             if (observer != null) {
                 observers.add(observer);
             }

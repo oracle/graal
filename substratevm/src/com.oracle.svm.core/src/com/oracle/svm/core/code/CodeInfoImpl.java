@@ -245,4 +245,10 @@ interface CodeInfoImpl extends CodeInfo {
     /** GC-specific data that may only be accessed by the GC. */
     @RawField
     Word getGCData();
+
+    @RawField
+    void setFreeArraysOnRelease(boolean value);
+
+    @RawField
+    boolean getFreeArraysOnRelease();
 }
