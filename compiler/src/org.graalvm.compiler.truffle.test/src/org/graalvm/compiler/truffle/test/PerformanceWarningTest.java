@@ -157,7 +157,6 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @Test
     public void failedTrivial() {
         testHelper(new TrivialCallsInnerNode(), true, "perf warn", "trivial");
-        testHelper(new TrivialHasBoundary(), true, "perf warn", "trivial");
     }
 
     private interface Interface {
@@ -412,34 +411,4 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             return "trivial";
         }
     }
-
-    protected class TrivialHasBoundary extends RootNode {
-
-        @Child private OptimizedDirectCallNode callNode;
-
-        public TrivialHasBoundary() {
-            super(null);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return boundary();
-        }
-
-        @TruffleBoundary
-        private int boundary() {
-            return 0;
-        }
-
-        @Override
-        protected boolean isTrivial() {
-            return true;
-        }
-
-        @Override
-        public String toString() {
-            return "trivial";
-        }
-    }
-
 }

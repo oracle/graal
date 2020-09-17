@@ -120,7 +120,10 @@ final class GraphManager {
             this.graph = graph;
             this.invokeToTruffleCallNode = plugin.getInvokeToTruffleCallNode();
             this.indirectInvokes = plugin.getIndirectInvokes();
-            this.trivial = !plugin.hasMaterializedCall() && graph.getNodes(LoopBeginNode.TYPE).count() == 0 && graph.getNodeCount() < TRIVIAL_NODE_COUNT_LIMIT;
+            this.trivial = invokeToTruffleCallNode.isEmpty() &&
+                            indirectInvokes.isEmpty() &&
+                            graph.getNodes(LoopBeginNode.TYPE).count() == 0 &&
+                            graph.getNodeCount() < TRIVIAL_NODE_COUNT_LIMIT;
         }
     }
 
