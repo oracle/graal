@@ -263,6 +263,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 
     private Support support;
+    // Checkstyle: stop
+    private ClassLoader imageClassLoader;
+    // Checkstyle: resume
 
     private final Set<ResolvedJavaMethod> blacklistMethods;
     private final Set<GraalFeature.CallTreeNode> blacklistViolations;
@@ -328,6 +331,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         if (support == null) {
             support = new Support();
         }
+        imageClassLoader = a.getApplicationClassLoader();
 
         TruffleRuntime runtime = Truffle.getRuntime();
         UserError.guarantee(runtime != null, "TruffleRuntime not available via Truffle.getRuntime()");
@@ -347,7 +351,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class)) {
             RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
         }
-        initializeTruffleReflectively(Thread.currentThread().getContextClassLoader());
+        initializeTruffleReflectively(imageClassLoader);
 
         // reinitialize language cache
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "reinitializeNativeImageState", Collections.emptyList());
@@ -368,7 +372,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         invokeStaticMethod("com.oracle.truffle.polyglot.InstrumentCache", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "resetPreInitializedEngine", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.impl.TruffleLocator", "resetNativeImageState", Collections.emptyList());
-        invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "resetNativeImageState", Collections.singletonList(ClassLoader.class), Thread.currentThread().getContextClassLoader());
+        invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "resetNativeImageState", Collections.singletonList(ClassLoader.class), imageClassLoader);
         invokeStaticMethod("com.oracle.truffle.api.nodes.Node", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.source.Source", "resetNativeImageState", Collections.emptyList());
         // clean up cached object layouts
