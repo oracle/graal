@@ -21,11 +21,14 @@
 # questions.
 #
 
+import re
+
 import mx
 import mx_benchmark
 import mx_espresso
 
 from mx_benchmark import GuestVm, JavaVm
+from mx_java_benchmarks import ScalaDaCapoBenchmarkSuite
 
 _suite = mx.suite('espresso')
 
@@ -111,3 +114,66 @@ mx_benchmark.java_vm_registry.add_vm(EspressoVm('inline-accessors', ['--experime
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(0, 0, 64, 'infinite-overhead', []), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(1.5, 0, 2048, '1.5-overhead', []), _suite)
 
+class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
+    """Scala DaCapo (warmup) benchmark suite implementation."""
+
+    def name(self):
+        return "scala-dacapo-warmup"
+
+    def rules(self, out, benchmarks, bmSuiteArgs):        
+        startupTime = 1
+        earlyWarmupTime = self.daCapoIterations()[benchmarks[0]] // 5
+        lateWarmupTime = self.daCapoIterations()[benchmarks[0]] * 3 // 4
+        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
+        if runArgs is None:
+            return []
+        totalIterations = int(runArgs[runArgs.index("-n") + 1])
+        return [
+            mx_benchmark.StdOutRule(
+                r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) completed warmup " + re.escape(str(startupTime)) + " in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+                {
+                    "benchmark": ("<benchmark>", str),
+                    "bench-suite": self.benchSuiteName(),                    
+                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
+                    "metric.name": "startup",
+                    "metric.value": ("<time>", int),
+                    "metric.unit": "ms",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": startupTime,
+                }
+            ),
+            mx_benchmark.StdOutRule(
+                r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) completed warmup " + re.escape(str(earlyWarmupTime)) + " in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+                {
+                    "benchmark": ("<benchmark>", str),
+                    "bench-suite": self.benchSuiteName(),
+                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
+                    "metric.name": "early-warmup",
+                    "metric.value": ("<time>", int),
+                    "metric.unit": "ms",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": startupTime,
+                }
+            ),
+            mx_benchmark.StdOutRule(
+                r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) completed warmup " + re.escape(str(lateWarmupTime)) + " in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+                {
+                    "benchmark": ("<benchmark>", str),
+                    "bench-suite": self.benchSuiteName(),
+                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
+                    "metric.name": "late-warmup",
+                    "metric.value": ("<time>", int),
+                    "metric.unit": "ms",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": lateWarmupTime,
+                }
+            )]
+  
+
+mx_benchmark.add_bm_suite(ScalaDaCapoWarmupBenchmarkSuite())

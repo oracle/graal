@@ -82,6 +82,15 @@ suite = {
                     }
                 }
             },
+            {
+                "name" : "java-benchmarks",
+                "subdir": True,
+                "version": "bafb42f3bafdb907f0ad3495fef6cd197a1fc8b1",
+                "urls": [
+                    {"url": "https://github.com/graalvm/graal", "kind": "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            }
         ],
     },
     "libraries": {
