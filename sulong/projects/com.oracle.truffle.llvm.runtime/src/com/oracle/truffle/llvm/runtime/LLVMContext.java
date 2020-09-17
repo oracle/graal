@@ -92,10 +92,12 @@ public final class LLVMContext {
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
+    private final Object truffleFilesLock = new Object();
     private final Toolchain toolchain;
     @CompilationFinal private Path internalLibraryPath;
     @CompilationFinal private TruffleFile internalLibraryPathFile;
     private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
+    private final EconomicMap<String, TruffleFile> truffleFiles = EconomicMap.create();
     private final Object externalLibrariesLock = new Object();
     private final List<String> internalLibraryNames;
 
@@ -693,6 +695,33 @@ public final class LLVMContext {
             } else {
                 externalLibraries.add(externalLib);
                 return externalLib;
+            }
+        }
+    }
+
+    /*
+     * The truffle file is first looked up based on the path if available, otherwise the name of the
+     * library is used.
+     */
+    public TruffleFile getOrNullTruffleFiles(String libName, String libPath) {
+        synchronized (truffleFilesLock) {
+            if (libPath != null) {
+                if (truffleFiles.containsKey(libPath)) {
+                    return truffleFiles.get(libPath);
+                }
+            } else {
+                if (truffleFiles.containsKey(libName)) {
+                    return truffleFiles.get(libName);
+                }
+            }
+            return null;
+        }
+    }
+
+    public void addTruffleFile(String key, TruffleFile file) {
+        synchronized (truffleFilesLock) {
+            if (!truffleFiles.containsKey(key)) {
+                truffleFiles.put(key, file);
             }
         }
     }

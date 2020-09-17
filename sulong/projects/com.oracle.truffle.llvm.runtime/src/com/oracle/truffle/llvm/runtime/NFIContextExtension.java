@@ -117,6 +117,17 @@ public final class NFIContextExtension implements ContextExtension {
         }
     }
 
+    public boolean containNativeLibrary(String name, String path) {
+        for (ExternalLibrary lib : nativeLibraries) {
+            if (lib.getName().equals(name)) {
+                if (lib.getPath().toString().equals(path)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     @TruffleBoundary
     public Object createNativeWrapper(LLVMFunctionDescriptor descriptor) {
         Object wrapper = null;

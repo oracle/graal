@@ -167,16 +167,20 @@ final class ParserDriver {
     private void addLibraryToNFI(String name, String libPath) {
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
         if (nfiContextExtension != null) {
+            if (nfiContextExtension.containNativeLibrary(name, libPath)) {
+                // return if the library is already in the nfi context extension.
+                return;
+            }
             // Need to create the external library here.
             ExternalLibrary library;
-            TruffleFile tf = DefaultLibraryLocator.INSTANCE.locate(context, name, "<native library>");
-            if (tf == null) {
+            TruffleFile file = DefaultLibraryLocator.INSTANCE.locate(context, name, "<native library>");
+            if (file == null) {
                 // Unable to locate the library -> will go to native
                 Path path = Paths.get(libPath);
                 LibraryLocator.traceDelegateNative(context, path);
                 library = ExternalLibrary.createFromPath(path, true, context.isInternalLibraryPath(path));
             } else {
-                library = ExternalLibrary.createFromFile(tf, true, context.isInternalLibraryFile(tf));
+                library = ExternalLibrary.createFromFile(file, true, context.isInternalLibraryFile(file));
             }
             nfiContextExtension.addNativeLibrary(library);
         }
@@ -196,7 +200,7 @@ final class ParserDriver {
                 // Look into the library cache in the language for the call target.
                 CallTarget calls = language.getCachedLibrary(file.getPath());
                 if (calls == null) {
-                    Source source = createDependencySource(sulongLibraryName, Paths.get(sulongLibraryName).toString(), file, false, context.isInternalLibraryFile(file));
+                    Source source = createDependencySource(sulongLibraryName, sulongLibraryName, file, false, context.isInternalLibraryFile(file));
                     // A source is null if it's a native library, which will be added to the NFI
                     // context extension instead.
                     if (source != null) {
@@ -215,7 +219,7 @@ final class ParserDriver {
             // Look into the library cache in the language for the call target.
             CallTarget calls = language.getCachedLibrary(file.getPath());
             if (calls == null) {
-                Source source = createDependencySource(externalLibraryName, Paths.get(externalLibraryName).toString(), file, true, context.isInternalLibraryFile(file));
+                Source source = createDependencySource(externalLibraryName, externalLibraryName, file, true, context.isInternalLibraryFile(file));
                 if (source != null) {
                     dependencies.add(source);
                 }
@@ -387,12 +391,17 @@ final class ParserDriver {
     private TruffleFile createTruffleFile(String libName, String libPath, LibraryLocator locator, String reason) {
         TruffleFile file = locator.locate(context, libName, reason);
         if (file == null) {
-            if (libPath != null) {
-                file = context.getEnv().getInternalTruffleFile(libPath);
-            } else {
-                Path path = Paths.get(libName);
-                LibraryLocator.traceDelegateNative(context, path);
-                file = context.getEnv().getInternalTruffleFile(path.toUri());
+            file = context.getOrNullTruffleFiles(libName, libPath);
+            if (file == null) {
+                if (libPath != null) {
+                    file = context.getEnv().getInternalTruffleFile(libPath);
+                    context.addTruffleFile(libPath, file);
+                } else {
+                    Path path = Paths.get(libName);
+                    LibraryLocator.traceDelegateNative(context, path);
+                    file = context.getEnv().getInternalTruffleFile(path.toUri());
+                    context.addTruffleFile(libName, file);
+                }
             }
         }
         return file;
