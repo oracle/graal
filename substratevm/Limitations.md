@@ -79,6 +79,19 @@ Using separate processes is now recommended for these cases.
 
 GraalVM Native Image implements some Java features in a different way than the Java HotSpot VM.
 
+### Signal Handlers
+
+Registering a signal handler requires to start a new thread that handles the
+signal and invokes the shutdown hooks. By default, no signal handlers are
+registered when building a native image, unless they are registered explicitly by the user.
+For example, it is not recommended to register the default signal
+handlers when building a shared library, but it is desirable to include
+signal handlers when building native images for containerized environments, like
+Docker containers.
+
+To register the default signal handlers, pass the `--install-exit-handlers` option to the
+`natie-image` builder. This option gives you the same signal handlers as a JVM does.
+
 ### Class Initializers
 By default, classes are initialized at image run time.
 This ensures compatibility, but limits some optimizations.

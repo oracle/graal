@@ -97,7 +97,6 @@ directories or JAR files, separated by `:`. The name of the class containing the
 main method is the last argument, or you can use `-jar` and provide a JAR
 file that specifies the main method in its manifest.
 
-
 As an example, we will take a small Java program to reverse a String using recursion:
 ```
 public class Example {
@@ -121,8 +120,7 @@ javac Example.java
 native-image --no-fallback Example
 ```
 The native image builder ahead-of-time compiles the `Example` class into a
-standalone executable, `example`, in the current working directory. The
-`--no-fallback` option prevents building a "fallback image". Run the executable:
+standalone executable, `example`, in the current working directory. Run the executable:
 ```
 ./example
 ```
@@ -130,7 +128,7 @@ standalone executable, `example`, in the current working directory. The
 Another option to the native image builder that might be helpful is
 `--install-exit-handlers`. It is not recommended to register the default signal
 handlers when building a shared library. However, it is desirable to include
-signal handlers when build a native image for containerized environments like
+signal handlers when building a native image for containerized environments, like
 Docker containers. The `--install-exit-handlers` option gives you the same
 signal handlers that a JVM does.
 
