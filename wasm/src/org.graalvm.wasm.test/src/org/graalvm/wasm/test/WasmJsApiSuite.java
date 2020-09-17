@@ -51,7 +51,9 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.ImportExportKind;
+import org.graalvm.wasm.api.Instance;
 import org.graalvm.wasm.api.Module;
 import org.graalvm.wasm.api.ModuleExportDescriptor;
 import org.graalvm.wasm.api.WebAssembly;
@@ -90,6 +92,8 @@ public class WasmJsApiSuite {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithExports, null);
+            final Module module = instantiatedSource.module();
+            final Instance instance = instantiatedSource.instance();
         });
     }
 

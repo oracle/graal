@@ -74,7 +74,7 @@ public final class WasmContext {
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker(language);
         this.moduleNameCount = 0;
-        instantiateBuiltinModules();
+        instantiateBuiltinInstances();
     }
 
     public CallTarget parse(Source source) {
@@ -123,14 +123,14 @@ public final class WasmContext {
         return moduleInstances;
     }
 
-    void registerModule(WasmInstance module) {
-        if (moduleInstances.containsKey(module.name())) {
-            throw new RuntimeException("Context already contains a module named '" + module.name() + "'.");
+    public void register(WasmInstance instance) {
+        if (moduleInstances.containsKey(instance.name())) {
+            throw new RuntimeException("Context already contains an instance named '" + instance.name() + "'.");
         }
-        moduleInstances.put(module.name(), module);
+        moduleInstances.put(instance.name(), instance);
     }
 
-    private void instantiateBuiltinModules() {
+    private void instantiateBuiltinInstances() {
         final String extraModuleValue = WasmOptions.Builtins.getValue(env.getOptions());
         if (extraModuleValue.equals("")) {
             return;
@@ -168,7 +168,7 @@ public final class WasmContext {
         final WasmInstance instance = new WasmInstance(module, module.storeConstantsPolicy());
         final BinaryParser reader = new BinaryParser(language, module);
         reader.readInstance(this, instance);
-        this.registerModule(instance);
+        this.register(instance);
         return instance;
     }
 }

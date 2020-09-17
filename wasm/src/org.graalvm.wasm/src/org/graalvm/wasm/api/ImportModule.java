@@ -56,8 +56,8 @@ import java.util.Map;
 public class ImportModule extends BuiltinModule {
     private final HashMap<String, Pair<WasmFunction, Executable>> functions;
 
-    public ImportModule(HashMap<String, Pair<WasmFunction, Executable>> functions) {
-        this.functions = functions;
+    public ImportModule() {
+        this.functions = new HashMap<>();
     }
 
     @Override
@@ -72,5 +72,9 @@ public class ImportModule extends BuiltinModule {
             defineFunction(instance, functionName, type.paramTypes(), type.returnTypes(), new ExecutableNode(context.language(), instance, info.getRight()));
         }
         return instance;
+    }
+
+    public void addFunction(String name, Pair<WasmFunction, Executable> info) {
+        functions.put(name, info);
     }
 }

@@ -107,4 +107,8 @@ public class Module extends Dictionary {
         // TODO: Implement once we support custom sections.
         return null;
     }
+
+    public WasmModule wasmModule() {
+        return module;
+    }
 }

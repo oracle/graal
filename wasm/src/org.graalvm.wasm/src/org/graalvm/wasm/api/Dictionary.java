@@ -102,4 +102,10 @@ public class Dictionary implements TruffleObject {
     final boolean isMemberReadable(String member) {
         return members.containsKey(member);
     }
+
+    public static Dictionary create(Object[] nameValuePairs) {
+        final Dictionary dictionary = new Dictionary();
+        dictionary.addMembers(nameValuePairs);
+        return dictionary;
+    }
 }

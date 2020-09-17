@@ -45,11 +45,16 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
+import org.graalvm.collections.Pair;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.exception.WasmJsApiException.Kind;
 
 import java.util.HashMap;
+import java.util.Map;
 
 @ExportLibrary(InteropLibrary.class)
 public class Instance extends Dictionary {
@@ -57,10 +62,10 @@ public class Instance extends Dictionary {
     private final Dictionary importObject;
 
     @CompilerDirectives.TruffleBoundary
-    public Instance(Module module, Dictionary importObject) {
+    public Instance(WasmContext context, Module module, Dictionary importObject) {
         this.module = module;
         this.importObject = importObject;
-        readImports(importObject);
+        instantiateModule(context, importObject);
         addMembers(new Object[]{
                         "module", this.module,
                         "importObject", this.importObject,
@@ -69,13 +74,19 @@ public class Instance extends Dictionary {
         });
     }
 
-    private void readImports(Dictionary importObject) {
+    private void instantiateModule(WasmContext context, Dictionary importObject) {
+        final HashMap<String, ImportModule> importModules = readImportModules(importObject);
+        instantiateCore(context, importModules);
+        initialize();
+    }
+
+    private HashMap<String, ImportModule> readImportModules(Dictionary importObject) {
         final Sequence<ModuleImportDescriptor> imports = module.imports();
         if (imports.getArraySize() != 0 && importObject != null) {
             throw new WasmJsApiException(Kind.TypeError, "Module requires imports, but import object is undefined.");
         }
 
-        HashMap<String, Executable> functions = new HashMap<>();
+        HashMap<String, ImportModule> importModules = new HashMap<>();
         try {
             int i = 0;
             while (i < module.imports().getArraySize()) {
@@ -87,8 +98,9 @@ public class Instance extends Dictionary {
                         if (!(member instanceof Executable)) {
                             throw new WasmJsApiException(Kind.LinkError, "Member " + member + " is not callable.");
                         }
-                        Executable f = (Executable) member;
-                        functions.put(d.name(), f);
+                        Executable e = (Executable) member;
+                        WasmFunction f = module.wasmModule().importedFunction(d.name());
+                        ensureImportModule(importModules, d.name()).addFunction(d.name(), Pair.create(f, e));
                         break;
                     default:
                         throw new WasmExecutionException(null, "Unimplemented case.");
@@ -99,6 +111,30 @@ public class Instance extends Dictionary {
         } catch (InvalidArrayIndexException | UnknownIdentifierException | ClassCastException e) {
             throw new WasmExecutionException(null, "Unexpected state.", e);
         }
+
+        return importModules;
+    }
+
+    private void instantiateCore(WasmContext context, HashMap<String, ImportModule> importModules) {
+        for (Map.Entry<String, ImportModule> entry : importModules.entrySet()) {
+            final String name = entry.getKey();
+            final ImportModule importModule = entry.getValue();
+            final WasmInstance instance = importModule.createInstance(context.language(), context, name);
+            context.register(instance);
+        }
+        // TODO: Create WasmInstance.
+    }
+
+    private void initialize() {
+    }
+
+    private ImportModule ensureImportModule(HashMap<String, ImportModule> importModules, String name) {
+        ImportModule importModule = importModules.get(name);
+        if (importModule == null) {
+            importModule = new ImportModule();
+            importModules.put(name, importModule);
+        }
+        return importModule;
     }
 
     private Object getMember(Dictionary object, String name) throws UnknownIdentifierException {

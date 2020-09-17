@@ -550,6 +550,15 @@ public abstract class SymbolTable {
         return importedFunctions;
     }
 
+    public WasmFunction importedFunction(String name) {
+        for (WasmFunction f : importedFunctions) {
+            if (f.name().equals(name)) {
+                return f;
+            }
+        }
+        return null;
+    }
+
     private void ensureGlobalsCapacity(int index) {
         while (index >= globalTypes.length) {
             final short[] nGlobalTypes = new short[globalTypes.length * 2];
