@@ -272,11 +272,14 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
              * are floating).
              */
             TypeReference expectedReceiverType = TypeReference.createTrusted(kit.getAssumptions(), invokeMethod.getDeclaringClass());
-            LogicNode instanceOf = kit.unique(InstanceOfNode.create(expectedReceiverType, unboxedHandle, null, null));
+            LogicNode instanceOf = kit.getGraph().addOrUniqueWithInputs(InstanceOfNode.create(expectedReceiverType, unboxedHandle));
             typeChecks = LogicConstantNode.and(typeChecks, instanceOf, BranchProbabilityNode.FAST_PATH_PROBABILITY);
             ifNode.setCondition(typeChecks); // safe because logic nodes are floating
             FixedGuardNode guard = kit.append(new FixedGuardNode(instanceOf, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
-            kit.append(PiNode.create(unboxedHandle, StampFactory.object(expectedReceiverType), guard));
+            ValueNode piNode = PiNode.create(unboxedHandle, StampFactory.object(expectedReceiverType), guard);
+            if (piNode != unboxedHandle) {
+                kit.append(piNode);
+            }
             args[0] = unboxedHandle;
             returnValue = support.createCallTypeMethodCall(kit, invokeMethod, invokeKind, state, args);
         }
