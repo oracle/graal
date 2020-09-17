@@ -712,7 +712,7 @@ public final class SimpleLanguageDAPTest {
         tester.finish();
     }
 
-//    @Test
+    @Test
     public void testReturnValue() throws Exception {
         tester = DAPTester.start(true);
         Source source = Source.newBuilder("sl", CODE_RET_VAL, "SLTest.sl").uri(new URI("file:///test/SLTest.sl")).build();
