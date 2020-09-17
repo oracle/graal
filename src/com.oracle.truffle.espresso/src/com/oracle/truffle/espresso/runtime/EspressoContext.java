@@ -418,35 +418,39 @@ public final class EspressoContext {
 
         initializeKnownClass(Type.java_lang_ref_Finalizer);
 
+        boolean multiThreaded = getEnv().getOptions().get(EspressoOptions.MultiThreaded);
         if (getJavaVersion().java8OrEarlier()) {
             // Initialize reference queue
-            this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
-                @SuppressWarnings("rawtypes")
-                @Override
-                protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
-                    StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
-                    meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
-                    getVM().JVM_MonitorNotify(lock, profiler);
-
-                }
-            });
-            meta.java_lang_System_initializeSystemClass.invokeDirect(null);
-        }
-        if (getJavaVersion().java9OrLater()) {
-            // Initialize reference queue
-            this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
-                @SuppressWarnings("rawtypes")
-                @Override
-                protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
-                    synchronized (pendingLock) {
-                        StaticObject obj = referencePendingList;
-                        referencePendingList = head.getGuestReference();
+            if (multiThreaded) {
+                this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
+                    @SuppressWarnings("rawtypes")
+                    @Override
+                    protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
+                        StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
                         meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
                         getVM().JVM_MonitorNotify(lock, profiler);
-                        pendingLock.notifyAll();
+
                     }
-                }
-            });
+                });
+            }
+            meta.java_lang_System_initializeSystemClass.invokeDirect(null);
+        } else if (getJavaVersion().java9OrLater()) {
+            // Initialize reference queue
+            if (multiThreaded) {
+                this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
+                    @SuppressWarnings("rawtypes")
+                    @Override
+                    protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
+                        synchronized (pendingLock) {
+                            StaticObject obj = referencePendingList;
+                            referencePendingList = head.getGuestReference();
+                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
+                            getVM().JVM_MonitorNotify(lock, profiler);
+                            pendingLock.notifyAll();
+                        }
+                    }
+                });
+            }
             // Call guest initialization
             meta.java_lang_System_initPhase1.invokeDirect(null);
             int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, false);
@@ -491,6 +495,11 @@ public final class EspressoContext {
 
         getLogger().log(Level.FINE, "VM booted in {0} ms", System.currentTimeMillis() - ticks);
         initVMDoneMs = System.currentTimeMillis();
+
+        // Truffle considers a language to be multi-threaded if it creates at least one
+        // polyglot thread, even if the thread is never started.
+        EspressoError.guarantee(multiThreaded || hostToGuestReferenceDrainThread == null,
+                        "The reference drain thread cannot be created with --java.MultiThreaded=false");
     }
 
     private void casNextIfNullAndMaybeClear(@SuppressWarnings("rawtypes") EspressoReference wrapper) {
