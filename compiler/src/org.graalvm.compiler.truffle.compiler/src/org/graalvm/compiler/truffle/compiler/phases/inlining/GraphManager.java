@@ -64,7 +64,7 @@ final class GraphManager {
             final PartialEvaluator.Request request = newRequest(truffleAST, false);
             request.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
             partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
-            entry = new Entry(request.graph, plugin.getInvokeToTruffleCallNode(), plugin.getIndirectInvokes(), !plugin.graphHasCalls());
+            entry = new Entry(request.graph, plugin.getInvokeToTruffleCallNode(), plugin.getIndirectInvokes(), !plugin.hasMaterializedCall());
             irCache.put(truffleAST, entry);
         }
         return entry;
@@ -89,7 +89,7 @@ final class GraphManager {
     Entry peRoot() {
         final PEAgnosticInlineInvokePlugin plugin = newPlugin();
         partialEvaluator.doGraphPE(rootRequest, plugin, graphCacheForInlining);
-        return new Entry(rootRequest.graph, plugin.getInvokeToTruffleCallNode(), plugin.getIndirectInvokes(), !plugin.graphHasCalls());
+        return new Entry(rootRequest.graph, plugin.getInvokeToTruffleCallNode(), plugin.getIndirectInvokes(), !plugin.hasMaterializedCall());
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST) {
