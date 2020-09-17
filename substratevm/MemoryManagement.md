@@ -8,8 +8,8 @@ used to build a native image, and memory used when executing this native image.
 During a native image build a representation of a whole program is created to
 figure out which classes and methods will be used at run time. It is a
 computationally intensive process. The native image builder uses the memory
-management of the HotSpot JVM --  the Parallel Collector, which is enabled with
-the `-XX:+UseParallelGC` command-line option.
+management of the HotSpot JVM --  the The G1 Garbage Collector, which is enabled with
+the `-XX:+UseG1GC` command-line option.
 The defaults for memory usage are:
 ```
 -Xss10M \
