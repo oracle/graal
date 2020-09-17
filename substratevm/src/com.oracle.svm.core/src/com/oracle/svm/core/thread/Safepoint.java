@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -516,6 +517,7 @@ public final class Safepoint {
         }
 
         private volatile int safepointState;
+        private volatile UnsignedWord safepointId;
 
         /** The thread requesting a safepoint. */
         private volatile IsolateThread requestingThread;
@@ -552,6 +554,7 @@ public final class Safepoint {
             waitForSafepoints(reason);
             Statistics.setFrozenNanos();
             safepointState = AT_SAFEPOINT;
+            safepointId = safepointId.add(1);
             return lock;
         }
 
@@ -798,6 +801,11 @@ public final class Safepoint {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected boolean isFrozen() {
             return safepointState == AT_SAFEPOINT;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected UnsignedWord getSafepointId() {
+            return safepointId;
         }
 
         /** A sample method to execute in a VMOperation. */
