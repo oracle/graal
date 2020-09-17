@@ -14,7 +14,7 @@ The **Native Image builder** or `native-image` is a utility that processes all
 the classes of your application and their dependencies, including those from the
 JDK. It analyses these classes to determine which classes, methods and fields
 are reachable during application execution. It then ahead-of-time compiles all
-reachable code into a native executable for a specific operating system
+reachable code and data into a native executable for a specific operating system
 and architecture. This entire process is called **image build time** to
 clearly distinguish it from the compilation of Java source code to bytecode.
 
@@ -66,11 +66,6 @@ On macOS use `xcode`:
 ```
 xcode-select --install
 ```
-
-If necessary, you can still build a native image that will not depend on C Libraries on the
-machine(s) to be run on. With the `--static` option all bits of a C library get
-embedded into the image. In this case, the image size gets bigger and certain C
-library features may not work.
 
 #### Prerequisites for Using Native Image on Windows
 To make use of Native Image on Windows, follow the further recommendations. The

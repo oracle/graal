@@ -36,7 +36,7 @@ Note that the use of `${.}` in a _native-image.properties_ file expands to the
 resource location that contains that exact configuration file. This can be
 useful if the _native-image.properties_ file wants to refer to resources within
 its "subfolder", for example, `-H:SubstitutionResources=${.}/substitutions.json`.
-Always make sure to use the optional variants that take resources, i.e., use
+Always make sure to use the option variants that take resources, i.e., use
 `-H:ResourceConfigurationResources` instead of `-H:ResourceConfigurationFiles`.
 Other options that are known to work in this context are:
 * `-H:DynamicProxyConfigurationResources`

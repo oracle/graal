@@ -8,9 +8,9 @@ used to build a native image, and memory used when executing this native image.
 During a native image build a representation of a whole program is created to
 figure out which classes and methods will be used at run time. It is a
 computationally intensive process. The native image builder uses the memory
-management of the HotSpot JVM --  the The G1 Garbage Collector, which is enabled with
-the `-XX:+UseG1GC` command-line option.
-The defaults for memory usage are:
+management of the HotSpot JVM with the default G1 Garbage Collector (G1). To enable the G1 Collector use: `-XX:+UseG1GC`.
+
+The defaults values for memory usage at image build time are:
 ```
 -Xss10M \
 -Xms1G \
@@ -18,6 +18,10 @@ The defaults for memory usage are:
 ```
 These defaults can be changed by passing `-J + <jvm option for memory>` to the native image builder, e.g., `-J-Xmx28g`.
 Also, the default number of CPUs used for image building is limited to 32 threads. Using more that 32 threads has diminishing returns.
+
+Check [this tutorial][https://www.oracle.com/technetwork/tutorials/tutorials-1876574.html]
+to get started with G1, learn how it functions internally, or see available
+command-lime options.
 
 #### Memory Management at Image Run Time
 When executing the built image, it will, by default, use up to
