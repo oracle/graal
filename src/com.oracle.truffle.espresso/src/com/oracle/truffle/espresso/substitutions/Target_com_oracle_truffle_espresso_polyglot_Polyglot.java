@@ -82,40 +82,6 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
 
                 InteropLibrary interopLibrary = InteropLibrary.getUncached();
 
-                if (meta.isBoxed(targetKlass)) {
-                    if (meta.isNumber(targetKlass)) {
-                        if (!interopLibrary.isNumber(value.rawForeignObject())) {
-                            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a foreign non-number to a number class");
-                        }
-                        return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
-                    }
-
-                    if (targetKlass == meta.java_lang_Boolean) {
-                        if (!interopLibrary.isBoolean(value.rawForeignObject())) {
-                            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a foreign non-boolean to Boolean");
-                        }
-                        return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
-                    }
-
-                    if (targetKlass == meta.java_lang_Character) {
-                        if (!interopLibrary.isString(value.rawForeignObject())) {
-                            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-string foreign object to Character");
-                        }
-
-                        String foreignCharacter;
-                        try {
-                            foreignCharacter = interopLibrary.asString(value.rawForeignObject());
-                        } catch (UnsupportedMessageException e) {
-                            CompilerDirectives.transferToInterpreter();
-                            throw EspressoError.shouldNotReachHere("Contract violation: InteropLibrary#isString returned true, but isString threw an exception");
-                        }
-                        if (foreignCharacter.length() != 1) {
-                            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a multicharacter foreign string to Character");
-                        }
-                        return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
-                    }
-                }
-
                 // TODO: remove eager conversion once TruffleString is available
                 /*
                  * Eager String conversion is necessary here since there's no way to access the

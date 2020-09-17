@@ -28,7 +28,6 @@ import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -43,10 +42,12 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -67,6 +68,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
+import com.oracle.truffle.espresso.nodes.interop.LookupFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -86,11 +88,13 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     private static final String COMPONENT = "component";
     private static final String SUPER = "super";
 
-    // Threshold for using binary search instead of linear search for interface lookup.
-    private static final int LINEAR_SEARCH_THRESHOLD = 4;
-
     @ExportMessage
-    final boolean isMemberReadable(String member) {
+    boolean isMemberReadable(String member, @Shared("lookupField") @Cached LookupFieldNode lookupField) {
+        Field field = lookupField.execute(this, member, true);
+        if (field != null) {
+            return true;
+        }
+
         if (STATIC_TO_CLASS.equals(member)) {
             return true;
         }
@@ -106,11 +110,24 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (getSuperKlass() != null && SUPER.equals(member)) {
             return true;
         }
+
         return false;
     }
 
     @ExportMessage
-    final Object readMember(String member) throws UnknownIdentifierException {
+    Object readMember(String member,
+                    @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
+                    @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException {
+
+        Field field = lookupFieldNode.execute(this, member, true);
+        if (field != null) {
+            Object result = field.get(this.tryInitializeAndGetStatics());
+            if (result instanceof StaticObject && ((StaticObject) result).isForeignObject()) {
+                return ((StaticObject) result).rawForeignObject();
+            }
+            return result;
+        }
+
         // Klass<T>.class == Class<T>
         if (STATIC_TO_CLASS.equals(member)) {
             return mirror();
@@ -128,13 +145,43 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (getSuperKlass() != null && SUPER.equals(member)) {
             return getSuperKlass();
         }
+
+        error.enter();
         throw UnknownIdentifierException.create(member);
+    }
+
+    @ExportMessage
+    boolean isMemberModifiable(String member, @Shared("lookupField") @Cached LookupFieldNode lookupField) {
+        Field field = lookupField.execute(this, member, true);
+        return field != null && !field.isFinalFlagSet();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+        return false;
+    }
+
+    @ExportMessage
+    final void writeMember(String member, Object value,
+                    @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
+                    @Shared("error") @Cached BranchProfile error,
+                    @Exclusive @Cached ToEspressoNode toEspressoNode) throws UnknownIdentifierException, UnsupportedTypeException {
+        Field field = lookupFieldNode.execute(this, member, true);
+        // Can only write to non-final fields.
+        if (field != null && !field.isFinalFlagSet()) {
+            Object espressoValue = toEspressoNode.execute(value, field.resolveTypeKlass());
+            field.set(tryInitializeAndGetStatics(), espressoValue);
+        } else {
+            error.enter();
+            throw UnknownIdentifierException.create(member);
+        }
     }
 
     @ExportMessage
     final boolean isMemberInvocable(String member) {
         for (Method m : getDeclaredMethods()) {
-            if (m.isStatic() && m.isPublic() && member.equals(m.getName().toString())) {
+            if (m.isPublic() && m.isStatic() && member.equals(m.getName().toString())) {
                 return true;
             }
         }
@@ -181,6 +228,13 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (getSuperKlass() != null) {
             members.add(SUPER);
         }
+
+        for (Field f : getDeclaredFields()) {
+            if (f.isPublic() && f.isStatic()) {
+                members.add(f.getNameAsString());
+            }
+        }
+
         return new KeysArray(members.toArray(new String[members.size()]));
     }
 
@@ -313,6 +367,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     // endregion Interop
+
+    // Threshold for using binary search instead of linear search for interface lookup.
+    private static final int LINEAR_SEARCH_THRESHOLD = 4;
 
     static final Comparator<Klass> KLASS_ID_COMPARATOR = new Comparator<Klass>() {
         @Override
