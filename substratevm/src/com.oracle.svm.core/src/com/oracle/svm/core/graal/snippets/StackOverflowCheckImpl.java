@@ -85,6 +85,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
@@ -138,6 +139,13 @@ final class StackOverflowCheckImpl implements StackOverflowCheck {
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
     @Override
     public void makeYellowZoneAvailable() {
+        /*
+         * Even though "yellow zones" and "recurring callbacks" are orthogonal features, running a
+         * recurring callback in the yellow zone is dangerous because a stack overflow in the
+         * recurring callback would then lead to a fatal error.
+         */
+        ThreadingSupportImpl.pauseRecurringCallback("Recurring callbacks are considered user code and must not run in yellow zone");
+
         if (!supportedByOS()) {
             return;
         }
@@ -167,6 +175,8 @@ final class StackOverflowCheckImpl implements StackOverflowCheck {
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
     @Override
     public void protectYellowZone() {
+        ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
+
         if (!supportedByOS()) {
             return;
         }
