@@ -234,7 +234,7 @@ public class FeatureImpl {
         }
 
         Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {
-            Set<AnalysisType> result = getUniverse().getSubtypes(baseType);
+            Set<AnalysisType> result = AnalysisUniverse.getSubtypes(baseType);
             result.removeIf(t -> !isReachable(t));
             return result;
         }
@@ -245,7 +245,7 @@ public class FeatureImpl {
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
-            return getUniverse().getMethodImplementations(getBigBang(), baseMethod);
+            return AnalysisUniverse.getMethodImplementations(getBigBang(), baseMethod);
         }
     }
 
