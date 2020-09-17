@@ -138,7 +138,7 @@ public final class HeapImplMemoryMXBean implements MemoryMXBean, NotificationEmi
 
         @Override
         public <T extends CodeInfo> boolean visitCode(T codeInfo) {
-            runtimeCodeInfoSize = runtimeCodeInfoSize.add(CodeInfoAccess.getCodeSize(codeInfo)).add(CodeInfoAccess.getMetadataSize(codeInfo));
+            runtimeCodeInfoSize = runtimeCodeInfoSize.add(CodeInfoAccess.getCodeAndDataMemorySize(codeInfo)).add(CodeInfoAccess.getMetadataSize(codeInfo));
             return true;
         }
     }

@@ -45,8 +45,8 @@ final class CodeInfoMemoryWalker implements MemoryWalker.CodeAccess<CodeInfo> {
     }
 
     @Override
-    public UnsignedWord getSize(CodeInfo codeInfo) {
-        return CodeInfoAccess.getCodeSize(codeInfo);
+    public UnsignedWord getCodeAndDataMemorySize(CodeInfo codeInfo) {
+        return CodeInfoAccess.getCodeSize(codeInfo).add(CodeInfoAccess.getCodeAndDataMemorySize(codeInfo));
     }
 
     @Override

@@ -117,7 +117,7 @@ public abstract class MemoryWalker {
 
         UnsignedWord getStart(T codeInfo);
 
-        UnsignedWord getSize(T codeInfo);
+        UnsignedWord getCodeAndDataMemorySize(T codeInfo);
 
         UnsignedWord getMetadataSize(T codeInfo);
 

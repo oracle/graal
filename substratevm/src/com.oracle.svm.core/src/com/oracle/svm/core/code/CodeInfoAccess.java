@@ -142,14 +142,34 @@ public final class CodeInfoAccess {
         return cast(info).getState();
     }
 
+    /** @see CodeInfoImpl#getCodeStart */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CodePointer getCodeStart(CodeInfo info) {
         return cast(info).getCodeStart();
     }
 
+    /** @see CodeInfoImpl#getCodeSize */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getCodeSize(CodeInfo info) {
         return cast(info).getCodeSize();
+    }
+
+    /** @see CodeInfoImpl#getDataSize */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getDataSize(CodeInfo info) {
+        return cast(info).getDataSize();
+    }
+
+    /** @see CodeInfoImpl#getDataOffset */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getDataOffset(CodeInfo info) {
+        return cast(info).getDataOffset();
+    }
+
+    /** @see CodeInfoImpl#getCodeAndDataMemorySize */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getCodeAndDataMemorySize(CodeInfo info) {
+        return cast(info).getCodeAndDataMemorySize();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

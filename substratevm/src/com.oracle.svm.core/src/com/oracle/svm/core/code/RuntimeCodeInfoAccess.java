@@ -65,10 +65,14 @@ public final class RuntimeCodeInfoAccess {
         return cast(info).getCodeObserverHandles();
     }
 
-    public static void initialize(CodeInfo info, Pointer start, int size, int tier, NonmovableArray<InstalledCodeObserverHandle> observerHandles) {
+    public static void initialize(CodeInfo info, Pointer codeStart, int codeSize, int dataOffset, int dataSize,
+                    int codeAndDataMemorySize, int tier, NonmovableArray<InstalledCodeObserverHandle> observerHandles) {
         CodeInfoImpl impl = cast(info);
-        impl.setCodeStart((CodePointer) start);
-        impl.setCodeSize(WordFactory.unsigned(size));
+        impl.setCodeStart((CodePointer) codeStart);
+        impl.setCodeSize(WordFactory.unsigned(codeSize));
+        impl.setDataOffset(WordFactory.unsigned(dataOffset));
+        impl.setDataSize(WordFactory.unsigned(dataSize));
+        impl.setCodeAndDataMemorySize(WordFactory.unsigned(codeAndDataMemorySize));
         impl.setTier(tier);
         impl.setCodeObserverHandles(observerHandles);
     }
@@ -173,7 +177,7 @@ public final class RuntimeCodeInfoAccess {
         NonmovableArrays.releaseUnmanagedArray(impl.getCodeObserverHandles());
         impl.setCodeObserverHandles(NonmovableArrays.nullArray());
 
-        releaseCodeMemory(impl.getCodeStart(), impl.getCodeSize());
+        releaseCodeMemory(impl.getCodeStart(), impl.getCodeAndDataMemorySize());
         /*
          * Note that we must not null-out any CodeInfo metadata as it can be accessed in a stack
          * walk even when CodeInfo data is already partially freed.
