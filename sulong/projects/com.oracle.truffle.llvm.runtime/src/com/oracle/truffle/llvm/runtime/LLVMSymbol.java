@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
@@ -86,6 +87,7 @@ public abstract class LLVMSymbol {
     }
 
     public String getKind() {
+        CompilerAsserts.neverPartOfCompilation();
         return this.getClass().getSimpleName();
     }
 
