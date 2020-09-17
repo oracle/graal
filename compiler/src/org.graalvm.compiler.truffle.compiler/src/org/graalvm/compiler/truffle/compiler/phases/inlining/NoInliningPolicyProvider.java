@@ -32,7 +32,7 @@ import org.graalvm.options.OptionValues;
 public class NoInliningPolicyProvider extends InliningPolicyProvider {
 
     private static final int PRIORITY = -2;
-    private static final String NAME = "No";
+    private static final String NAME = "None";
 
     public NoInliningPolicyProvider() {
         super(PRIORITY, NAME);
