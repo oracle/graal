@@ -729,11 +729,9 @@ public final class EspressoContext {
 
     private void initVmProperties() {
         final EspressoProperties.Builder builder = EspressoProperties.newPlatformBuilder();
-        // Only use host VM java.home matching Espresso version (8).
-        // Must explicitly pass '--java.JavaHome=/path/to/java8/home/jre' otherwise.
-        if (JavaVersionUtil.JAVA_SPEC == 8) {
-            builder.javaHome(Engine.findHome().resolve("jre"));
-        }
+        // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
+        // libraries bundled with GraalVM.
+        builder.javaHome(Engine.findHome());
         vmProperties = EspressoProperties.processOptions(getLanguage(), builder, getEnv().getOptions()).build();
         javaVersion = new JavaVersion(vmProperties.bootClassPathType().getJavaVersion());
     }
