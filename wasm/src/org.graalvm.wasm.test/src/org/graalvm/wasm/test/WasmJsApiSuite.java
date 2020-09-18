@@ -46,12 +46,13 @@ import java.util.function.Consumer;
 
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.api.Dictionary;
+import org.graalvm.wasm.api.Executable;
 import org.graalvm.wasm.api.ImportExportKind;
 import org.graalvm.wasm.api.Instance;
 import org.graalvm.wasm.api.Module;
@@ -92,12 +93,17 @@ public class WasmJsApiSuite {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithExports, null);
-            final Module module = instantiatedSource.module();
             final Instance instance = instantiatedSource.instance();
+            try {
+                final Executable main = (Executable) instance.exports().readMember("main");
+                main.executeFunction(new Object[0]);
+            } catch (UnknownIdentifierException e) {
+                e.printStackTrace();
+            }
         });
     }
 
-    private void runTest(Consumer<WasmContext> testCase) throws IOException {
+    private static void runTest(Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder("wasm");
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
         final Context context = contextBuilder.build();

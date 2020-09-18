@@ -55,6 +55,10 @@ public class Executable implements TruffleObject {
         this.function = function;
     }
 
+    public Object executeFunction(Object[] arguments) {
+        return function.apply(arguments);
+    }
+
     @SuppressWarnings({"unused"})
     @ExportMessage
     boolean isExecutable() {
@@ -64,6 +68,6 @@ public class Executable implements TruffleObject {
     @SuppressWarnings({"unused"})
     @ExportMessage
     Object execute(Object[] arguments) {
-        return function.apply(arguments);
+        return executeFunction(arguments);
     }
 }

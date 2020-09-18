@@ -80,6 +80,10 @@ public class Instance extends Dictionary {
         });
     }
 
+    public Dictionary exports() {
+        return exportObject;
+    }
+
     private WasmInstance instantiateModule(WasmContext context) {
         final HashMap<String, ImportModule> importModules = readImportModules();
         final WasmInstance wasmInstance = instantiateCore(context, importModules);
