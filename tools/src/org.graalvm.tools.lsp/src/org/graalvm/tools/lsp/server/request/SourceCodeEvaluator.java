@@ -51,7 +51,6 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -65,6 +64,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -169,15 +169,17 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
             InteropUtils.VariableInfo[] variables = InteropUtils.getNodeObjectVariables((InstrumentableNode) nearestNode);
             if (variables.length == 1) {
                 InteropUtils.VariableInfo var = variables[0];
-                for (Scope scope : env.findLocalScopes(nearestNode, coverageData.getFrame())) {
-                    if (INTEROP.isMemberReadable(scope.getVariables(), var.getName())) {
-                        logger.fine("Coverage-based variable look-up");
-                        try {
-                            Object value = INTEROP.readMember(scope.getVariables(), var.getName());
+                NodeLibrary nodeLibrary = NodeLibrary.getUncached(nearestNode);
+                if (nodeLibrary.hasScope(nearestNode, coverageData.getFrame())) {
+                    try {
+                        Object scope = nodeLibrary.getScope(nearestNode, coverageData.getFrame(), true);
+                        if (INTEROP.isMemberReadable(scope, var.getName())) {
+                            logger.fine("Coverage-based variable look-up");
+                            Object value = INTEROP.readMember(scope, var.getName());
                             return EvaluationResult.createResult(value);
-                        } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
-                            throw new AssertionError("Unexpected interop exception", ex);
                         }
+                    } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
+                        throw CompilerDirectives.shouldNotReachHere(ex);
                     }
                 }
             }

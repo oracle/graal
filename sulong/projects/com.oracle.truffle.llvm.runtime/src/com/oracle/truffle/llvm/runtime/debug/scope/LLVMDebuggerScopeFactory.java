@@ -39,7 +39,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.Node;
@@ -145,15 +144,17 @@ public final class LLVMDebuggerScopeFactory {
     }
 
     @TruffleBoundary
-    public static Iterable<Scope> createIRLevelScope(Node node, Frame frame, LLVMContext context) {
+    @SuppressWarnings("deprecation")
+    public static Iterable<com.oracle.truffle.api.Scope> createIRLevelScope(Node node, Frame frame, LLVMContext context) {
         DataLayout dataLayout = LLVMNode.findDataLayout(node);
-        final Scope localScope = Scope.newBuilder("function", getIRLevelEntries(frame, context, dataLayout)).node(node).build();
-        final Scope globalScope = Scope.newBuilder("module", getIRLevelEntries(node, context, dataLayout)).build();
+        final com.oracle.truffle.api.Scope localScope = com.oracle.truffle.api.Scope.newBuilder("function", getIRLevelEntries(frame, context, dataLayout)).node(node).build();
+        final com.oracle.truffle.api.Scope globalScope = com.oracle.truffle.api.Scope.newBuilder("module", getIRLevelEntries(node, context, dataLayout)).build();
         return Arrays.asList(localScope, globalScope);
     }
 
     @TruffleBoundary
-    public static Collection<Scope> createSourceLevelScope(Node node, Frame frame, LLVMContext context) {
+    @SuppressWarnings("deprecation")
+    public static Collection<com.oracle.truffle.api.Scope> createSourceLevelScope(Node node, Frame frame, LLVMContext context) {
         final LLVMSourceContext sourceContext = context.getSourceContext();
         final RootNode rootNode = node.getRootNode();
         LLVMSourceLocation scope = findSourceLocation(node);
@@ -179,7 +180,7 @@ public final class LLVMDebuggerScopeFactory {
             }
         }
 
-        List<Scope> scopeList = new ArrayList<>();
+        List<com.oracle.truffle.api.Scope> scopeList = new ArrayList<>();
         scopeList.add(baseScope.toScope(frame));
         for (; scope != null; scope = scope.getParent()) {
             // e.g. lambdas are compiled to calls to a method in a locally defined class. We
@@ -351,9 +352,10 @@ public final class LLVMDebuggerScopeFactory {
     private static final String DEFAULT_RECEIVER_NAME = "this";
     private static final String DEFAULT_RECEIVER = "<none>";
 
-    private Scope toScope(Frame frame) {
+    @SuppressWarnings("deprecation")
+    private com.oracle.truffle.api.Scope toScope(Frame frame) {
         final LLVMDebuggerScopeEntries variables = getVariables(frame);
-        final Scope.Builder scopeBuilder = Scope.newBuilder(name, variables);
+        final com.oracle.truffle.api.Scope.Builder scopeBuilder = com.oracle.truffle.api.Scope.newBuilder(name, variables);
 
         // while the Truffle API allows any name for the receiver, the chrome inspector protocol
         // requires "this" as member of the local scope. the current chrome inspector implementation

@@ -200,13 +200,27 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Object getScopedView(Env env, Node location, Frame frame, Object value) {
+        @SuppressWarnings("deprecation")
+        public Object getLegacyScopedView(Env env, Node location, Frame frame, Object value) {
             Object c = env.getLanguageContext();
             if (c == TruffleLanguage.Env.UNSET_CONTEXT) {
                 CompilerDirectives.transferToInterpreter();
                 return value;
             } else {
                 return env.getSpi().getScopedView(c, location, frame, value);
+            }
+        }
+
+        @Override
+        public Object getScope(Env env) {
+            Object c = env.getLanguageContext();
+            if (c == TruffleLanguage.Env.UNSET_CONTEXT) {
+                CompilerDirectives.transferToInterpreter();
+                return null;
+            } else {
+                Object result = env.getSpi().getScope(c);
+                assert ACCESSOR.interopSupport().isScopeObject(result) : String.format("%s is not a scope", result);
+                return result;
             }
         }
 
@@ -413,11 +427,13 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Iterable<Scope> findLocalScopes(TruffleLanguage.Env env, Node node, Frame frame) {
+        @SuppressWarnings("deprecation")
+        public Iterable<Scope> findLegacyLocalScopes(TruffleLanguage.Env env, Node node, Frame frame) {
             return env.findLocalScopes(node, frame);
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public Iterable<Scope> findTopScopes(TruffleLanguage.Env env) {
             return env.findTopScopes();
         }

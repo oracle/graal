@@ -956,7 +956,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         final TypeElement libraryBaseTypeElement = libraryExports.getLibrary().getTemplateType();
         final DeclaredType libraryBaseType = (DeclaredType) libraryBaseTypeElement.asType();
-        final TypeMirror libraryReceiverType = libraryExports.getLibrary().getExportsReceiverType();
 
         CodeTypeElement uncachedClass = createClass(libraryExports, null, modifiers(PRIVATE, STATIC, FINAL), "Uncached", libraryBaseType);
 
@@ -1048,7 +1047,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
             // uncached execute
             TypeMirror uncachedReceiverType = export.getReceiverType();
-            CodeTree uncachedReceiverExport = CodeTreeBuilder.createBuilder().maybeCast(libraryReceiverType, uncachedReceiverType, "receiver").build();
+            TypeMirror messageReceiverType = message.getExecutable().getParameters().get(0).asType();
+            CodeTree uncachedReceiverExport = CodeTreeBuilder.createBuilder().maybeCast(messageReceiverType, uncachedReceiverType, "receiver").build();
             CodeExecutableElement uncachedExecute;
             NodeData uncachedSpecializedNode = export.getSpecializedNode();
 

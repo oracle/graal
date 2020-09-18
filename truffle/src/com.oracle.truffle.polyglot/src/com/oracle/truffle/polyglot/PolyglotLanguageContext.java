@@ -70,7 +70,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.dsl.Cached;
@@ -78,6 +77,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -333,8 +333,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 if (this.hostBindings == null) {
                     Object prev = context.engine.enterIfNeeded(context);
                     try {
-                        Iterable<Scope> scopes = LANGUAGE.findTopScopes(env);
-                        this.hostBindings = this.asValue(PolyglotLanguageBindings.create(scopes));
+                        Object scope = LANGUAGE.getScope(env);
+                        assert InteropLibrary.getUncached().hasMembers(scope) : "Scope object must have members.";
+                        this.hostBindings = this.asValue(scope);
                     } finally {
                         context.engine.leaveIfNeeded(prev, context);
                     }
@@ -1030,13 +1031,13 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return true;
     }
 
-    private boolean validScopedView(Object result) {
+    private boolean validScopedView(Object result, Node location) {
         InteropLibrary lib = InteropLibrary.getFactory().getUncached(result);
         Class<?> languageClass = EngineAccessor.LANGUAGE.getLanguage(env).getClass();
         try {
             assert lib.hasLanguage(result) &&
                             lib.getLanguage(result) == languageClass : String.format("The returned scoped view of language '%s' must return the class '%s' for InteropLibrary.getLanguage." +
-                                            "Fix the implementation of %s.getScopedView to resolve this.", languageClass.getTypeName(), languageClass.getTypeName(), languageClass.getTypeName());
+                                            "Fix the implementation of %s.getView to resolve this.", languageClass.getTypeName(), languageClass.getTypeName(), location.getClass().getTypeName());
         } catch (UnsupportedMessageException e) {
             throw shouldNotReachHere(e);
         }
@@ -1052,8 +1053,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     public Object getScopedView(Node location, Frame frame, Object value) {
         validateLocationAndFrame(language.info, location, frame);
         Object languageView = getLanguageView(value);
-        Object result = EngineAccessor.LANGUAGE.getScopedView(env, location, frame, languageView);
-        assert validScopedView(result);
+        Object result = NodeLibrary.getUncached().getView(location, frame, languageView);
+        assert validScopedView(result, location);
         return result;
     }
 

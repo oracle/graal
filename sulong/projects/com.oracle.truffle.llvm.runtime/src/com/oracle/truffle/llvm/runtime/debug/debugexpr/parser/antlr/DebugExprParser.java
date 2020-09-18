@@ -35,7 +35,6 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory;
@@ -65,13 +64,14 @@ public class DebugExprParser {
     private final DebugExpressionLexer lexer;
     private final String asmSnippet;
 
-    public DebugExprParser(InlineParsingRequest request, Collection<Scope> globalScopes, LLVMContext context) {
+    @SuppressWarnings("deprecation")
+    public DebugExprParser(InlineParsingRequest request, Object globalScope, LLVMContext context) {
         asmSnippet = request.getSource().getCharacters().toString();
         lexer = new DebugExpressionLexer(CharStreams.fromString(asmSnippet));
         parser = new DebugExpressionParser(new CommonTokenStream(lexer));
 
-        final Collection<Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(request.getLocation(), request.getFrame(), context);
-        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.create(scopes, globalScopes);
+        final Collection<com.oracle.truffle.api.Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(request.getLocation(), request.getFrame(), context);
+        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.create(scopes, globalScope);
         parser.setNodeFactory(nodeFactory);
     }
 

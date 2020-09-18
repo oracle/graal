@@ -112,6 +112,7 @@ public abstract class TruffleLSPTest {
             public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, boolean cached) {
                 try (Context newContext = contextBuilder.build()) {
                     newContext.enter();
+                    newContext.initialize("sl");
                     try {
                         return CompletableFuture.completedFuture(taskWithResult.call());
                     } catch (Exception e) {

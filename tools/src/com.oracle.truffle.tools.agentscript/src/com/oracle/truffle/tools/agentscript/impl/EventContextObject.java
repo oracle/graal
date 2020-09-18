@@ -34,6 +34,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 @SuppressWarnings("unused")
@@ -151,4 +152,9 @@ final class EventContextObject implements TruffleObject {
     static boolean isMemberInvocable(EventContextObject obj, String member) {
         return "returnNow".equals(member) || "returnValue".equals(member);
     }
+
+    Node getInstrumentedNode() {
+        return context.getInstrumentedNode();
+    }
+
 }

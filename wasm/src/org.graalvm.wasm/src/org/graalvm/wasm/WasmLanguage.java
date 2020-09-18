@@ -41,7 +41,6 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import org.graalvm.wasm.exception.WasmValidationException;
@@ -112,7 +111,8 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     }
 
     @Override
-    protected Iterable<Scope> findTopScopes(WasmContext context) {
+    @SuppressWarnings("deprecation")
+    protected Iterable<com.oracle.truffle.api.Scope> findTopScopes(WasmContext context) {
         return context.getTopScopes();
     }
 

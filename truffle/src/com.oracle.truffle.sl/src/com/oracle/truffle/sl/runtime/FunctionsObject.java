@@ -112,9 +112,14 @@ final class FunctionsObject implements TruffleObject {
     }
 
     @ExportMessage
+    boolean isScope() {
+        return true;
+    }
+
+    @ExportMessage
     @TruffleBoundary
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return functions.toString();
+        return "global";
     }
 
     public static boolean isInstance(TruffleObject obj) {

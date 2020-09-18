@@ -61,6 +61,7 @@ import com.oracle.truffle.sl.nodes.interop.NodeObjectDescriptor;
 @NodeChild("valueNode")
 @NodeField(name = "slot", type = FrameSlot.class)
 @NodeField(name = "nameNode", type = SLExpressionNode.class)
+@NodeField(name = "declaration", type = boolean.class)
 public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
 
     /**
@@ -74,6 +75,8 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
      * the Truffle DSL based on the {@link NodeChild} annotation on the class.
      */
     protected abstract SLExpressionNode getNameNode();
+
+    public abstract boolean isDeclaration();
 
     /**
      * Specialized method to write a primitive {@code long} value. This is only possible if the
@@ -122,6 +125,8 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
         frame.setObject(getSlot(), value);
         return value;
     }
+
+    public abstract void executeWrite(VirtualFrame frame, Object value);
 
     /**
      * Guard function that the local variable has the type {@code long}.

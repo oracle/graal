@@ -43,7 +43,6 @@ package com.oracle.truffle.api.debug;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.net.URI;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -58,7 +57,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -72,6 +70,7 @@ import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -683,8 +682,18 @@ public class Breakpoint {
             // We're testing a different breakpoint at the same location
             if (rootInstanceRef != null) {
                 Object rootInstance = rootInstanceRef.get();
-                if (rootInstance != null && rootInstance != getCurrentRootInstance(context, this, frame.materialize())) {
-                    return false;
+                if (rootInstance != null) {
+                    Node contextNode = context.getInstrumentedNode();
+                    NodeLibrary contextNodeLibrary = NodeLibrary.getUncached(contextNode);
+                    if (contextNodeLibrary.hasRootInstance(contextNode, frame)) {
+                        try {
+                            if (rootInstance != contextNodeLibrary.getRootInstance(contextNode, frame)) {
+                                return false;
+                            }
+                        } catch (UnsupportedMessageException e) {
+                            throw CompilerDirectives.shouldNotReachHere(e);
+                        }
+                    }
                 }
             }
             AbstractBreakpointNode breakpointNode = ((AbstractBreakpointNode) node);
@@ -1252,21 +1261,12 @@ public class Breakpoint {
         }
     }
 
-    @TruffleBoundary
-    private static Object getCurrentRootInstance(EventContext context, Breakpoint breakpoint, MaterializedFrame frame) {
-        Iterable<Scope> localScopes = breakpoint.debugger.getEnv().findLocalScopes(context.getInstrumentedNode(), frame);
-        Iterator<Scope> localScopesIterator = localScopes.iterator();
-        if (localScopesIterator.hasNext()) {
-            return localScopesIterator.next().getRootInstance();
-        }
-        return null;
-    }
-
     private abstract static class AbstractBreakpointNode extends DebuggerNode {
 
         private final Breakpoint breakpoint;
         protected final BranchProfile breakBranch = BranchProfile.create();
 
+        @Child private NodeLibrary contextNodeLibrary;
         @Child private ConditionalBreakNode breakCondition;
         @CompilationFinal private Assumption conditionExistsUnchanged;
         @CompilationFinal protected boolean activeOnNoninternalCalls;
@@ -1276,6 +1276,9 @@ public class Breakpoint {
         AbstractBreakpointNode(Breakpoint breakpoint, EventContext context) {
             super(context);
             this.breakpoint = breakpoint;
+            if (breakpoint.rootInstanceRef != null) {
+                contextNodeLibrary = NodeLibrary.getFactory().create(context.getInstrumentedNode());
+            }
             this.conditionExistsUnchanged = breakpoint.getConditionExistsUnchanged();
             if (breakpoint.condition != null) {
                 this.breakCondition = new ConditionalBreakNode(context, breakpoint);
@@ -1340,19 +1343,9 @@ public class Breakpoint {
             }
             if (breakpoint.rootInstanceRef != null) {
                 Object rootInstance = breakpoint.rootInstanceRef.get();
-                if (rootInstance != null && rootInstance != getCurrentRootInstance(context, breakpoint, frame.materialize())) {
+                if (rootInstance != null && !testRootInstance(rootInstance, frame)) {
                     return result;
                 }
-            }
-            if (!conditionExistsUnchanged.isValid()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (breakpoint.condition != null) {
-                    this.breakCondition = insert(new ConditionalBreakNode(context, breakpoint));
-                    notifyInserted(this.breakCondition);
-                } else {
-                    this.breakCondition = null;
-                }
-                conditionExistsUnchanged = breakpoint.getConditionExistsUnchanged();
             }
             BreakpointConditionFailure conditionError = null;
             try {
@@ -1364,6 +1357,19 @@ public class Breakpoint {
             }
             breakBranch.enter();
             return breakpoint.doBreak(context, this, sessions, activeOnNoninternalCalls, frame.materialize(), onEnter, result, exception, conditionError);
+        }
+
+        private boolean testRootInstance(Object rootInstance, VirtualFrame frame) {
+            if (contextNodeLibrary.hasRootInstance(context.getInstrumentedNode(), frame)) {
+                try {
+                    if (rootInstance != contextNodeLibrary.getRootInstance(context.getInstrumentedNode(), frame)) {
+                        return false;
+                    }
+                } catch (UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+            }
+            return true;
         }
 
         @ExplodeLoop
@@ -1406,13 +1412,14 @@ public class Breakpoint {
         }
 
         boolean testCondition(VirtualFrame frame) throws BreakpointConditionFailure {
+            ConditionalBreakNode conditionNode = breakCondition;
             if (!conditionExistsUnchanged.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 if (breakpoint.condition != null) {
-                    this.breakCondition = insert(new ConditionalBreakNode(context, breakpoint));
-                    notifyInserted(this.breakCondition);
+                    this.breakCondition = conditionNode = insert(new ConditionalBreakNode(context, breakpoint));
+                    notifyInserted(conditionNode);
                 } else {
-                    this.breakCondition = null;
+                    this.breakCondition = conditionNode = null;
                 }
                 conditionExistsUnchanged = breakpoint.getConditionExistsUnchanged();
             }
@@ -1421,9 +1428,9 @@ public class Breakpoint {
                 // no sessions to hit. don't execute the breakpoint.
                 return false;
             }
-            if (breakCondition != null) {
+            if (conditionNode != null) {
                 try {
-                    return breakCondition.executeBreakCondition(frame, localSessions);
+                    return conditionNode.executeBreakCondition(frame, localSessions);
                 } catch (Throwable e) {
                     CompilerDirectives.transferToInterpreter();
                     throw new BreakpointConditionFailure(breakpoint, e);
@@ -1520,6 +1527,7 @@ public class Breakpoint {
                 try {
                     return interopLibrary.asBoolean(result);
                 } catch (UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
                 }
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
