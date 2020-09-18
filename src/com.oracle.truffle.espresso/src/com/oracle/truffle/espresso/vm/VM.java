@@ -56,7 +56,6 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.runtime.JavaVersion;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -1141,8 +1140,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         // Applications expect different formats e.g. 1.8 vs. 11
         String specVersion = getJavaVersion().java8OrEarlier()
-                ? "1." + getJavaVersion()
-                : getJavaVersion().toString();
+                        ? "1." + getJavaVersion()
+                        : getJavaVersion().toString();
 
         // Set VM information.
         setProperty.invokeWithConversions(properties, "java.vm.specification.version", specVersion);

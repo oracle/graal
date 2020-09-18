@@ -230,7 +230,7 @@ public interface EspressoProperties {
                         ? options.get(EspressoOptions.JavaHome)
                         : builder.javaHome();
         /*
-         * On Java 8, --java.JavaHome must point to the /jre folder, this is usability
+         * On Java 8, --java.JavaHome must point to the /jre folder, this is a usability
          * improvement/hack so users do not have to worry about appending /jre or not depending on
          * the version.
          */
