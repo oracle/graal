@@ -143,7 +143,7 @@ final class ParserDriver {
         if (result == null) {
             // If result is null, then the file parsed does not contain bitcode.
             // The NFI can handle it later if it's a native file.
-            addLibraryToNFI(source.getName(), source.getPath());
+            parseNativeLibrary(source.getName(), source.getPath());
             // An empty call target is returned for native libraries.
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         }
@@ -163,25 +163,16 @@ final class ParserDriver {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private void addLibraryToNFI(String name, String libPath) {
+    private void parseNativeLibrary(String libName, String libPath) {
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
         if (nfiContextExtension != null) {
-            if (nfiContextExtension.containNativeLibrary(name, libPath)) {
-                // return if the library is already in the nfi context extension.
-                return;
-            }
-            // Need to create the external library here.
-            ExternalLibrary library;
-            TruffleFile file = DefaultLibraryLocator.INSTANCE.locate(context, name, "<native library>");
+            TruffleFile file = DefaultLibraryLocator.INSTANCE.locate(context, libName, "<native library>");
             if (file == null) {
                 // Unable to locate the library -> will go to native
-                Path path = Paths.get(libPath);
-                LibraryLocator.traceDelegateNative(context, path);
-                library = ExternalLibrary.createFromPath(path, true, context.isInternalLibraryPath(path));
-            } else {
-                library = ExternalLibrary.createFromFile(file, true, context.isInternalLibraryFile(file));
+                LibraryLocator.traceDelegateNative(context, libPath);
+                file = context.getEnv().getInternalTruffleFile(libPath);
             }
-            nfiContextExtension.addNativeLibrary(library);
+            nfiContextExtension.parseNativeLibrary(file, context);
         }
     }
 
@@ -443,7 +434,7 @@ final class ParserDriver {
             } else {
                 // If the file or the path of the file does not exists, then assume that this is not
                 // a bitcode file, but a native file and the NFI is going to handle it.
-                addLibraryToNFI(libName, libPath);
+                parseNativeLibrary(libName, libPath);
                 return null;
             }
         }

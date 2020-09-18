@@ -300,9 +300,8 @@ public final class LLVMContext {
              */
             String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
             for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
-                ExternalLibrary library = addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>", false);
-                TruffleFile file = library.hasFile() ? library.getFile() : env.getInternalTruffleFile(library.getPath().toUri());
-                env.parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
+                TruffleFile file = InternalLibraryLocator.INSTANCE.locateLibrary(this, sulongLibraryNames[i], "<default bitcode library>");
+                env.parseInternal(Source.newBuilder("llvm", file).internal(isInternalLibraryFile(file)).build());
             }
 
             /*- TODO (PLi): after the default libraries have been loaded. The start function symbol,
@@ -604,9 +603,6 @@ public final class LLVMContext {
         }
     }
 
-    /**
-     * @see #addExternalLibrary(String, Object, LibraryLocator)
-     */
     public ExternalLibrary addExternalLibraryDefaultLocator(String lib, Object reason) {
         return addExternalLibrary(lib, reason, DefaultLibraryLocator.INSTANCE);
     }
