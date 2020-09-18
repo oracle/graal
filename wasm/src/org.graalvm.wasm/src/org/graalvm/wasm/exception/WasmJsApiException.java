@@ -70,4 +70,8 @@ public class WasmJsApiException extends RuntimeException implements TruffleExcep
     public Node getLocation() {
         return null;
     }
+
+    public Kind kind() {
+        return kind;
+    }
 }

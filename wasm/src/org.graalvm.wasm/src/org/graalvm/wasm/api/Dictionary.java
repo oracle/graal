@@ -85,8 +85,12 @@ public class Dictionary implements TruffleObject {
         for (int i = 0; i < nameValuePairs.length; i += 2) {
             String name = (String) nameValuePairs[i];
             Object value = nameValuePairs[i + 1];
-            members.put(name, value);
+            addMember(name, value);
         }
+    }
+
+    public void addMember(String name, Object value) {
+        members.put(name, value);
     }
 
     @SuppressWarnings({"unused"})
