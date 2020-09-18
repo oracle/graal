@@ -141,7 +141,7 @@ computationally intensive process. The defaults values for memory usage at image
 -Xmx14G \
 ```
 These defaults can be changed by passing `-J + <jvm option for memory>` to the native image builder, e.g., `-J-Xmx28g`.
-Also, the default number of CPUs used for image building is limited to 32 threads.
+Per default, image building uses of up to 32 threads (but not more than the number of processors available). For custom values `-H:NumberOfThreads=...` can be used.
 
 To set options to a native image builder, use `-H` or `-R` switch, depending on the flag. For example, to get some information on the memory allocation at image build time, run:
 ```
