@@ -14,6 +14,11 @@ default value of 80%, and on a machine with 4GB of RAM, it will at most use
 3,2GB of RAM. If the same image is executed on a machine that has 32GB of RAM,
 it will use up to 25,6GB.
 
+To set options to a native image, use the `-XX` switch. For example, to get some information on the memory allocation at run time, run:
+```
+./helloworld -XX:+PrintGC -XX:+VerboseGC
+```
+
 In general, there are different ways for specifying the heap size that a native image will use at run time:
 * Passing the arguments `-Xms`, `-Xmx`, and/or `-Xmn` when executing the native image, e.g., `./helloworld -Xms2m -Xmx10m -Xmn1m.` This always has the highest priority and overrides any other configured values.
   * `-Xmx` - maximum heap size in bytes. Note that this is not the maximum amount of consumed memory, because during GC the system can request more temporary memory. The value is specified in bytes, suffix `k`, `m`, or `g` can be used for scaling. The default value of `R:MaximumHeapSizePercent` is used if nothing else is specified.
