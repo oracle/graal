@@ -1138,11 +1138,16 @@ public final class VM extends NativeEnv implements ContextAccess {
             setNumberedProperty(setProperty, properties, "jdk.module.addmods", options.get(EspressoOptions.AddModules));
         }
 
+        // Applications expect different formats e.g. 1.8 vs. 11
+        String specVersion = getJavaVersion().java8OrEarlier()
+                        ? "1." + getJavaVersion()
+                        : getJavaVersion().toString();
+
         // Set VM information.
-        setProperty.invokeWithConversions(properties, "java.vm.specification.version", EspressoLanguage.VM_SPECIFICATION_VERSION);
+        setProperty.invokeWithConversions(properties, "java.vm.specification.version", specVersion);
         setProperty.invokeWithConversions(properties, "java.vm.specification.name", EspressoLanguage.VM_SPECIFICATION_NAME);
         setProperty.invokeWithConversions(properties, "java.vm.specification.vendor", EspressoLanguage.VM_SPECIFICATION_VENDOR);
-        setProperty.invokeWithConversions(properties, "java.vm.version", EspressoLanguage.VM_VERSION);
+        setProperty.invokeWithConversions(properties, "java.vm.version", specVersion + "-" + EspressoLanguage.VM_VERSION);
         setProperty.invokeWithConversions(properties, "java.vm.name", EspressoLanguage.VM_NAME);
         setProperty.invokeWithConversions(properties, "java.vm.vendor", EspressoLanguage.VM_VENDOR);
         setProperty.invokeWithConversions(properties, "java.vm.info", EspressoLanguage.VM_INFO);

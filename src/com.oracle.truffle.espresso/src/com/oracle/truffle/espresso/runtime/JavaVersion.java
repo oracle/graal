@@ -29,7 +29,7 @@ package com.oracle.truffle.espresso.runtime;
  * 
  * Makes it harder to access the raw int version: please add new predicates instead.
  */
-public class JavaVersion {
+public final class JavaVersion {
     private final int version;
 
     JavaVersion(int version) {

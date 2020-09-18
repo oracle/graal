@@ -67,13 +67,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final String ID = "java";
     public static final String NAME = "Java";
-    public static final String VERSION = "1.8";
+    public static final String VERSION = "1.8|11";
 
     // Espresso VM info
-    public static final String VM_SPECIFICATION_VERSION = "1.8";
     public static final String VM_SPECIFICATION_NAME = "Java Virtual Machine Specification";
     public static final String VM_SPECIFICATION_VENDOR = "Oracle Corporation";
-    public static final String VM_VERSION = "1.8.0_241";
+    public static final String VM_VERSION = /* 1.8|11 */ "espresso-20.3-b01";
     public static final String VM_VENDOR = "Oracle Corporation";
     public static final String VM_NAME = "Espresso 64-Bit VM";
     public static final String VM_INFO = "mixed mode";
