@@ -52,6 +52,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
 import org.graalvm.wasm.api.ImportExportKind;
 import org.graalvm.wasm.api.Instance;
@@ -96,7 +97,29 @@ public class WasmJsApiSuite {
             final Instance instance = instantiatedSource.instance();
             try {
                 final Executable main = (Executable) instance.exports().readMember("main");
-                main.executeFunction(new Object[0]);
+                int result = (int) main.executeFunction(new Object[0]);
+                Assert.assertEquals("Should return 42 from main.", 42, result);
+            } catch (UnknownIdentifierException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    @Test
+    public void testInstantiateWithImports() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            Dictionary importObject = Dictionary.create(new Object[]{
+                            "host", Dictionary.create(new Object[]{
+                                            "inc", new Executable(args -> ((int) args[0]) + 1)
+                            }),
+            });
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithImportsAndExports, importObject);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final Executable main = (Executable) instance.exports().readMember("addPlusOne");
+                int result = (int) main.executeFunction(new Object[]{17, 3});
+                Assert.assertEquals("17 + 3 + 1 = 21.", 21, result);
             } catch (UnknownIdentifierException e) {
                 e.printStackTrace();
             }
@@ -245,5 +268,132 @@ public class WasmJsApiSuite {
                     (byte) 0x41,
                     (byte) 0x2a,
                     (byte) 0x0b
+    };
+
+    // (module
+    // (func $inc (import "host" "inc") (param i32) (result i32))
+    // (func $addPlusOne (param $lhs i32) (param $rhs i32) (result i32)
+    // get_local $lhs
+    // get_local $rhs
+    // i32.add
+    // call $inc)
+    // (export "addPlusOne" (func $addPlusOne))
+    // )
+    private static final byte[] binaryWithImportsAndExports = new byte[]{
+                    (byte) 0x00,
+                    (byte) 0x61,
+                    (byte) 0x73,
+                    (byte) 0x6D,
+                    (byte) 0x01,
+                    (byte) 0x00,
+                    (byte) 0x00,
+                    (byte) 0x00,
+                    (byte) 0x01,
+                    (byte) 0x0C,
+                    (byte) 0x02,
+                    (byte) 0x60,
+                    (byte) 0x01,
+                    (byte) 0x7F,
+                    (byte) 0x01,
+                    (byte) 0x7F,
+                    (byte) 0x60,
+                    (byte) 0x02,
+                    (byte) 0x7F,
+                    (byte) 0x7F,
+                    (byte) 0x01,
+                    (byte) 0x7F,
+                    (byte) 0x02,
+                    (byte) 0x0C,
+                    (byte) 0x01,
+                    (byte) 0x04,
+                    (byte) 0x68,
+                    (byte) 0x6F,
+                    (byte) 0x73,
+                    (byte) 0x74,
+                    (byte) 0x03,
+                    (byte) 0x69,
+                    (byte) 0x6E,
+                    (byte) 0x63,
+                    (byte) 0x00,
+                    (byte) 0x00,
+                    (byte) 0x03,
+                    (byte) 0x02,
+                    (byte) 0x01,
+                    (byte) 0x01,
+                    (byte) 0x07,
+                    (byte) 0x0E,
+                    (byte) 0x01,
+                    (byte) 0x0A,
+                    (byte) 0x61,
+                    (byte) 0x64,
+                    (byte) 0x64,
+                    (byte) 0x50,
+                    (byte) 0x6C,
+                    (byte) 0x75,
+                    (byte) 0x73,
+                    (byte) 0x4F,
+                    (byte) 0x6E,
+                    (byte) 0x65,
+                    (byte) 0x00,
+                    (byte) 0x01,
+                    (byte) 0x0A,
+                    (byte) 0x0B,
+                    (byte) 0x01,
+                    (byte) 0x09,
+                    (byte) 0x00,
+                    (byte) 0x20,
+                    (byte) 0x00,
+                    (byte) 0x20,
+                    (byte) 0x01,
+                    (byte) 0x6A,
+                    (byte) 0x10,
+                    (byte) 0x00,
+                    (byte) 0x0B,
+                    (byte) 0x00,
+                    (byte) 0x2C,
+                    (byte) 0x04,
+                    (byte) 0x6E,
+                    (byte) 0x61,
+                    (byte) 0x6D,
+                    (byte) 0x65,
+                    (byte) 0x01,
+                    (byte) 0x12,
+                    (byte) 0x02,
+                    (byte) 0x00,
+                    (byte) 0x03,
+                    (byte) 0x69,
+                    (byte) 0x6E,
+                    (byte) 0x63,
+                    (byte) 0x01,
+                    (byte) 0x0A,
+                    (byte) 0x61,
+                    (byte) 0x64,
+                    (byte) 0x64,
+                    (byte) 0x50,
+                    (byte) 0x6C,
+                    (byte) 0x75,
+                    (byte) 0x73,
+                    (byte) 0x4F,
+                    (byte) 0x6E,
+                    (byte) 0x65,
+                    (byte) 0x02,
+                    (byte) 0x11,
+                    (byte) 0x02,
+                    (byte) 0x00,
+                    (byte) 0x01,
+                    (byte) 0x00,
+                    (byte) 0x00,
+                    (byte) 0x01,
+                    (byte) 0x02,
+                    (byte) 0x00,
+                    (byte) 0x03,
+                    (byte) 0x6C,
+                    (byte) 0x68,
+                    (byte) 0x73,
+                    (byte) 0x01,
+                    (byte) 0x03,
+                    (byte) 0x72,
+                    (byte) 0x68,
+                    (byte) 0x73
     };
 }
