@@ -391,19 +391,15 @@ final class ParserDriver {
     private TruffleFile createTruffleFile(String libName, String libPath, LibraryLocator locator, String reason) {
         TruffleFile file = locator.locate(context, libName, reason);
         if (file == null) {
-            file = context.getOrNullTruffleFiles(libName, libPath);
-            if (file == null) {
-                if (libPath != null) {
-                    file = context.getEnv().getInternalTruffleFile(libPath);
-                    context.addTruffleFile(libPath, file);
-                } else {
-                    Path path = Paths.get(libName);
-                    LibraryLocator.traceDelegateNative(context, path);
-                    file = context.getEnv().getInternalTruffleFile(path.toUri());
-                    context.addTruffleFile(libName, file);
-                }
+            if (libPath != null) {
+                file = context.getEnv().getInternalTruffleFile(libPath);
+            } else {
+                Path path = Paths.get(libName);
+                LibraryLocator.traceDelegateNative(context, path);
+                file = context.getEnv().getInternalTruffleFile(path.toUri());
             }
         }
+        file = context.getOrAddExternalLibrary(file);
         return file;
     }
 
