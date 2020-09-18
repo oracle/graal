@@ -117,7 +117,7 @@ public class Example {
 Compile the `Example.java` program and build a native image from the Java class:
 ```
 javac Example.java
-native-image --no-fallback Example
+native-image Example
 ```
 The native image builder ahead-of-time compiles the `Example` class into a
 standalone executable, `example`, in the current working directory. Run the executable:

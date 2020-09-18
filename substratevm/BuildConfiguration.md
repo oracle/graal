@@ -1,12 +1,16 @@
-# Native Image Configuration
+# Native Image Build Configuration
 
-* [Properties File Format](#properties-file-format)
+* [Embedding a Configuration File](#embedding-a-configuration-file)
+* [Configuration File Format](#configuration-file-format)
+* [Memory Configuration for Native Image Build](#memory-configuration-for-native-image-build)
 * [Runtime vs Build-Time Initialization](#runtime-vs-build-time-initialization)
 * [Assisted Configuration of Native Image Builds](#assisted-configuration-of-native-image-builds)
 * [Building Native Image with Java Reflection Example](#building-native-image-with-java-reflection-example)
 * [Agent Advanced Usage](#agent-advanced-usage)
 
 Native Image supports a wide range of options to configure a native image build process.
+
+## Embedding a Configuration File
 
 A recommended way to provide configuration is to embed a
 **native-image.properties** file into a project jar file. The Native Image tool
@@ -71,7 +75,8 @@ Executing [
 
 Typical examples of `META-INF/native-image` based native image configuration can be found in [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/tree/master/native-image-configure-examples).
 
-### Properties File Format
+## Configuration File Format
+
 A `native-image.properties` file is a regular Java properties file that can be
 used to specify native image configurations. The following properties are
 supported.
@@ -121,6 +126,28 @@ command line. Here is an example of a configuration file, saved as
 NativeImageArgs = --configurations-path /home/user/custom-image-configs \
                   -O1
 ```
+
+## Memory Configuration for Native Image Build
+
+GraalVM is based on Java HotSpot VM and uses the memory management of the underlying platform.
+The usual Java HotSpot command-line options for garbage collection apply to the Native Image builder.
+
+During the native image build, the representation of a whole program is created to
+figure out which classes and methods will be used at run time. It is a
+computationally intensive process. The defaults values for memory usage at image build time are:
+```
+-Xss10M \
+-Xms1G \
+-Xmx14G \
+```
+These defaults can be changed by passing `-J + <jvm option for memory>` to the native image builder, e.g., `-J-Xmx28g`.
+Also, the default number of CPUs used for image building is limited to 32 threads.
+
+To set options to a native image builder, use `-H` or `-R` switch, depending on the flag. For example, to get some information on the memory allocation at image build time, run:
+```
+native-image -R:+PrintGC -R:+VerboseGC -H:+UseG1GC <java-class-name>
+```
+Check other related options to the native image builder from the `native-image --expert-options-all` list.
 
 ## Runtime vs Build-Time Initialization
 
