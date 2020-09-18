@@ -228,7 +228,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     Variable emitByteSwap(Value operand);
 
     @SuppressWarnings("unused")
-    default Variable emitArrayCompareTo(JavaKind kind1, JavaKind kind2, int arrayBaseOffset1, int arrayBaseOffset2, Value array1, Value array2, Value length1, Value length2) {
+    default Variable emitArrayCompareTo(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length1, Value length2) {
         throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
     }
 
@@ -238,7 +238,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     @SuppressWarnings("unused")
-    default Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, int arrayBaseOffset1, int arrayBaseOffset2, Value array1, Value array2, Value length, boolean directPointers) {
+    default Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
         throw GraalError.unimplemented("Array.equals with different types substitution is not implemented on this architecture");
     }
 

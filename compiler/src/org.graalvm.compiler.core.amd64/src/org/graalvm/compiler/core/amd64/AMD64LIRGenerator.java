@@ -582,14 +582,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayCompareTo(JavaKind kind1, JavaKind kind2, int arrayBaseOffset1, int arrayBaseOffset2, Value array1, Value array2, Value length1, Value length2) {
+    public Variable emitArrayCompareTo(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length1, Value length2) {
         LIRKind resultKind = LIRKind.value(AMD64Kind.DWORD);
         RegisterValue raxRes = AMD64.rax.asValue(resultKind);
         RegisterValue cnt1 = AMD64.rcx.asValue(length1.getValueKind());
         RegisterValue cnt2 = AMD64.rdx.asValue(length2.getValueKind());
         emitMove(cnt1, length1);
         emitMove(cnt2, length2);
-        append(new AMD64ArrayCompareToOp(this, getAVX3Threshold(), kind1, kind2, arrayBaseOffset1, arrayBaseOffset2, raxRes, array1, array2, cnt1, cnt2));
+        append(new AMD64ArrayCompareToOp(this, getAVX3Threshold(), kind1, kind2, array1BaseOffset, array2BaseOffset, raxRes, array1, array2, cnt1, cnt2));
         Variable result = newVariable(resultKind);
         emitMove(result, raxRes);
         return result;
@@ -603,9 +603,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, int arrayBaseOffset1, int arrayBaseOffset2, Value array1, Value array2, Value length, boolean directPointers) {
+    public Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64ArrayEqualsOp(this, kind1, kind2, arrayBaseOffset1, arrayBaseOffset2, result, array1, array2, length, directPointers, getMaxVectorSize()));
+        append(new AMD64ArrayEqualsOp(this, kind1, kind2, array1BaseOffset, array2BaseOffset, result, array1, array2, length, directPointers, getMaxVectorSize()));
         return result;
     }
 
