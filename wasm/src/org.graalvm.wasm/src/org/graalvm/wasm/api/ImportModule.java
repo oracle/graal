@@ -55,9 +55,11 @@ import java.util.Map;
 
 public class ImportModule extends BuiltinModule {
     private final HashMap<String, Pair<WasmFunction, Executable>> functions;
+    private final HashMap<String, Memory> memories;
 
     public ImportModule() {
         this.functions = new HashMap<>();
+        memories = new HashMap<>();
     }
 
     @Override
@@ -71,10 +73,19 @@ public class ImportModule extends BuiltinModule {
             final SymbolTable.FunctionType type = function.type();
             defineFunction(instance, functionName, type.paramTypes(), type.returnTypes(), new ExecutableNode(context.language(), instance, info.getRight()));
         }
+        for (Map.Entry<String, Memory> entry : memories.entrySet()) {
+            final String memoryName = entry.getKey();
+            final Memory memory = entry.getValue();
+            defineExternalMemory(instance, memoryName, memory.wasmMemory());
+        }
         return instance;
     }
 
     public void addFunction(String name, Pair<WasmFunction, Executable> info) {
         functions.put(name, info);
+    }
+
+    public void addMemory(String name, Memory memory) {
+        memories.put(name, memory);
     }
 }

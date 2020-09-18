@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import org.graalvm.wasm.exception.WasmExecutionException;
+import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
 @ExportLibrary(InteropLibrary.class)
@@ -53,13 +54,16 @@ public class Memory extends Dictionary {
 
     public Memory(MemoryDescriptor descriptor) {
         this.descriptor = descriptor;
-        // TODO: Instantiate.
-        this.memory = null;
+        this.memory = new UnsafeWasmMemory(descriptor.initial(), descriptor.maximum());
         addMembers(new Object[]{
                         "descriptor", this.descriptor,
                         "grow", new Executable(args -> grow((Long) args[0])),
                         "buffer", new Executable(args -> new MemoryArrayBuffer(memory)),
         });
+    }
+
+    public WasmMemory wasmMemory() {
+        return memory;
     }
 
     @TruffleBoundary

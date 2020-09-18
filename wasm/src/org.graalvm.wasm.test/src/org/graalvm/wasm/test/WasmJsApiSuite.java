@@ -56,6 +56,8 @@ import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
 import org.graalvm.wasm.api.ImportExportKind;
 import org.graalvm.wasm.api.Instance;
+import org.graalvm.wasm.api.Memory;
+import org.graalvm.wasm.api.MemoryDescriptor;
 import org.graalvm.wasm.api.Module;
 import org.graalvm.wasm.api.ModuleExportDescriptor;
 import org.graalvm.wasm.api.WebAssembly;
@@ -117,9 +119,32 @@ public class WasmJsApiSuite {
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithImportsAndExports, importObject);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable main = (Executable) instance.exports().readMember("addPlusOne");
-                int result = (int) main.executeFunction(new Object[]{17, 3});
+                final Executable addPlusOne = (Executable) instance.exports().readMember("addPlusOne");
+                int result = (int) addPlusOne.executeFunction(new Object[]{17, 3});
                 Assert.assertEquals("17 + 3 + 1 = 21.", 21, result);
+            } catch (UnknownIdentifierException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    @Test
+    public void testInstantiateWithImportMemory() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Memory memory = new Memory(new MemoryDescriptor(1L, 4L));
+            Dictionary importObject = Dictionary.create(new Object[]{
+                            "host", Dictionary.create(new Object[]{
+                                            "defaultMemory", memory
+                            }),
+            });
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMemoryImport, importObject);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final Executable initZero = (Executable) instance.exports().readMember("initZero");
+                Assert.assertEquals("Must be zero initially.", 0, memory.wasmMemory().load_i32(null, 0L));
+                initZero.executeFunction(new Object[0]);
+                Assert.assertEquals("Must be 174 after initialization.", 174, memory.wasmMemory().load_i32(null, 0L));
             } catch (UnknownIdentifierException e) {
                 e.printStackTrace();
             }
@@ -152,122 +177,33 @@ public class WasmJsApiSuite {
         }
     }
 
+    // (module
+    // (type (;0;) (func))
+    // (type (;1;) (func (result i32)))
+    // (func (;0;) (type 0))
+    // (func (;1;) (type 1) (result i32)
+    // i32.const 42)
+    // (table (;0;) 1 1 funcref)
+    // (memory (;0;) 0)
+    // (global (;0;) (mut i32) (i32.const 66560))
+    // (global (;1;) i32 (i32.const 66560))
+    // (global (;2;) i32 (i32.const 1024))
+    // (export "main" (func 1))
+    // (export "memory" (memory 0))
+    // (export "__heap_base" (global 1))
+    // (export "__data_end" (global 2))
+    // )
     private static final byte[] binaryWithExports = new byte[]{
-                    (byte) 0x00,
-                    (byte) 0x61,
-                    (byte) 0x73,
-                    (byte) 0x6d,
-                    (byte) 0x01,
-                    (byte) 0x00,
-                    (byte) 0x00,
-                    (byte) 0x00,
-                    (byte) 0x01,
-                    (byte) 0x08,
-                    (byte) 0x02,
-                    (byte) 0x60,
-                    (byte) 0x00,
-                    (byte) 0x00,
-                    (byte) 0x60,
-                    (byte) 0x00,
-                    (byte) 0x01,
-                    (byte) 0x7f,
-                    (byte) 0x03,
-                    (byte) 0x03,
-                    (byte) 0x02,
-                    (byte) 0x00,
-                    (byte) 0x01,
-                    (byte) 0x04,
-                    (byte) 0x05,
-                    (byte) 0x01,
-                    (byte) 0x70,
-                    (byte) 0x01,
-                    (byte) 0x01,
-                    (byte) 0x01,
-                    (byte) 0x05,
-                    (byte) 0x03,
-                    (byte) 0x01,
-                    (byte) 0x00,
-                    (byte) 0x00,
-                    (byte) 0x06,
-                    (byte) 0x15,
-                    (byte) 0x03,
-                    (byte) 0x7f,
-                    (byte) 0x01,
-                    (byte) 0x41,
-                    (byte) 0x80,
-                    (byte) 0x88,
-                    (byte) 0x04,
-                    (byte) 0x0b,
-                    (byte) 0x7f,
-                    (byte) 0x00,
-                    (byte) 0x41,
-                    (byte) 0x80,
-                    (byte) 0x88,
-                    (byte) 0x04,
-                    (byte) 0x0b,
-                    (byte) 0x7f,
-                    (byte) 0x00,
-                    (byte) 0x41,
-                    (byte) 0x80,
-                    (byte) 0x08,
-                    (byte) 0x0b,
-                    (byte) 0x07,
-                    (byte) 0x2c,
-                    (byte) 0x04,
-                    (byte) 0x04,
-                    (byte) 0x6d,
-                    (byte) 0x61,
-                    (byte) 0x69,
-                    (byte) 0x6e,
-                    (byte) 0x00,
-                    (byte) 0x01,
-                    (byte) 0x06,
-                    (byte) 0x6d,
-                    (byte) 0x65,
-                    (byte) 0x6d,
-                    (byte) 0x6f,
-                    (byte) 0x72,
-                    (byte) 0x79,
-                    (byte) 0x02,
-                    (byte) 0x00,
-                    (byte) 0x0b,
-                    (byte) 0x5f,
-                    (byte) 0x5f,
-                    (byte) 0x68,
-                    (byte) 0x65,
-                    (byte) 0x61,
-                    (byte) 0x70,
-                    (byte) 0x5f,
-                    (byte) 0x62,
-                    (byte) 0x61,
-                    (byte) 0x73,
-                    (byte) 0x65,
-                    (byte) 0x03,
-                    (byte) 0x01,
-                    (byte) 0x0a,
-                    (byte) 0x5f,
-                    (byte) 0x5f,
-                    (byte) 0x64,
-                    (byte) 0x61,
-                    (byte) 0x74,
-                    (byte) 0x61,
-                    (byte) 0x5f,
-                    (byte) 0x65,
-                    (byte) 0x6e,
-                    (byte) 0x64,
-                    (byte) 0x03,
-                    (byte) 0x02,
-                    (byte) 0x0a,
-                    (byte) 0x09,
-                    (byte) 0x02,
-                    (byte) 0x02,
-                    (byte) 0x00,
-                    (byte) 0x0b,
-                    (byte) 0x04,
-                    (byte) 0x00,
-                    (byte) 0x41,
-                    (byte) 0x2a,
-                    (byte) 0x0b
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73,
+                    (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x08, (byte) 0x02, (byte) 0x60, (byte) 0x00, (byte) 0x00, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x7f, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x05, (byte) 0x01, (byte) 0x70, (byte) 0x01, (byte) 0x01,
+                    (byte) 0x01, (byte) 0x05, (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x15, (byte) 0x03, (byte) 0x7f, (byte) 0x01, (byte) 0x41, (byte) 0x80,
+                    (byte) 0x88, (byte) 0x04, (byte) 0x0b, (byte) 0x7f, (byte) 0x00, (byte) 0x41, (byte) 0x80, (byte) 0x88, (byte) 0x04, (byte) 0x0b, (byte) 0x7f, (byte) 0x00, (byte) 0x41,
+                    (byte) 0x80, (byte) 0x08, (byte) 0x0b, (byte) 0x07, (byte) 0x2c, (byte) 0x04, (byte) 0x04, (byte) 0x6d, (byte) 0x61, (byte) 0x69, (byte) 0x6e, (byte) 0x00, (byte) 0x01,
+                    (byte) 0x06, (byte) 0x6d, (byte) 0x65, (byte) 0x6d, (byte) 0x6f, (byte) 0x72, (byte) 0x79, (byte) 0x02, (byte) 0x00, (byte) 0x0b, (byte) 0x5f, (byte) 0x5f, (byte) 0x68,
+                    (byte) 0x65, (byte) 0x61, (byte) 0x70, (byte) 0x5f, (byte) 0x62, (byte) 0x61, (byte) 0x73, (byte) 0x65, (byte) 0x03, (byte) 0x01, (byte) 0x0a, (byte) 0x5f, (byte) 0x5f,
+                    (byte) 0x64, (byte) 0x61, (byte) 0x74, (byte) 0x61, (byte) 0x5f, (byte) 0x65, (byte) 0x6e, (byte) 0x64, (byte) 0x03, (byte) 0x02, (byte) 0x0a, (byte) 0x09, (byte) 0x02,
+                    (byte) 0x02, (byte) 0x00, (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x41, (byte) 0x2a, (byte) 0x0b
     };
 
     // (module
@@ -280,120 +216,33 @@ public class WasmJsApiSuite {
     // (export "addPlusOne" (func $addPlusOne))
     // )
     private static final byte[] binaryWithImportsAndExports = new byte[]{
-                    (byte) 0x00,
-                    (byte) 0x61,
-                    (byte) 0x73,
-                    (byte) 0x6D,
-                    (byte) 0x01,
-                    (byte) 0x00,
-                    (byte) 0x00,
-                    (byte) 0x00,
-                    (byte) 0x01,
-                    (byte) 0x0C,
-                    (byte) 0x02,
-                    (byte) 0x60,
-                    (byte) 0x01,
-                    (byte) 0x7F,
-                    (byte) 0x01,
-                    (byte) 0x7F,
-                    (byte) 0x60,
-                    (byte) 0x02,
-                    (byte) 0x7F,
-                    (byte) 0x7F,
-                    (byte) 0x01,
-                    (byte) 0x7F,
-                    (byte) 0x02,
-                    (byte) 0x0C,
-                    (byte) 0x01,
-                    (byte) 0x04,
-                    (byte) 0x68,
-                    (byte) 0x6F,
-                    (byte) 0x73,
-                    (byte) 0x74,
-                    (byte) 0x03,
-                    (byte) 0x69,
-                    (byte) 0x6E,
-                    (byte) 0x63,
-                    (byte) 0x00,
-                    (byte) 0x00,
-                    (byte) 0x03,
-                    (byte) 0x02,
-                    (byte) 0x01,
-                    (byte) 0x01,
-                    (byte) 0x07,
-                    (byte) 0x0E,
-                    (byte) 0x01,
-                    (byte) 0x0A,
-                    (byte) 0x61,
-                    (byte) 0x64,
-                    (byte) 0x64,
-                    (byte) 0x50,
-                    (byte) 0x6C,
-                    (byte) 0x75,
-                    (byte) 0x73,
-                    (byte) 0x4F,
-                    (byte) 0x6E,
-                    (byte) 0x65,
-                    (byte) 0x00,
-                    (byte) 0x01,
-                    (byte) 0x0A,
-                    (byte) 0x0B,
-                    (byte) 0x01,
-                    (byte) 0x09,
-                    (byte) 0x00,
-                    (byte) 0x20,
-                    (byte) 0x00,
-                    (byte) 0x20,
-                    (byte) 0x01,
-                    (byte) 0x6A,
-                    (byte) 0x10,
-                    (byte) 0x00,
-                    (byte) 0x0B,
-                    (byte) 0x00,
-                    (byte) 0x2C,
-                    (byte) 0x04,
-                    (byte) 0x6E,
-                    (byte) 0x61,
-                    (byte) 0x6D,
-                    (byte) 0x65,
-                    (byte) 0x01,
-                    (byte) 0x12,
-                    (byte) 0x02,
-                    (byte) 0x00,
-                    (byte) 0x03,
-                    (byte) 0x69,
-                    (byte) 0x6E,
-                    (byte) 0x63,
-                    (byte) 0x01,
-                    (byte) 0x0A,
-                    (byte) 0x61,
-                    (byte) 0x64,
-                    (byte) 0x64,
-                    (byte) 0x50,
-                    (byte) 0x6C,
-                    (byte) 0x75,
-                    (byte) 0x73,
-                    (byte) 0x4F,
-                    (byte) 0x6E,
-                    (byte) 0x65,
-                    (byte) 0x02,
-                    (byte) 0x11,
-                    (byte) 0x02,
-                    (byte) 0x00,
-                    (byte) 0x01,
-                    (byte) 0x00,
-                    (byte) 0x00,
-                    (byte) 0x01,
-                    (byte) 0x02,
-                    (byte) 0x00,
-                    (byte) 0x03,
-                    (byte) 0x6C,
-                    (byte) 0x68,
-                    (byte) 0x73,
-                    (byte) 0x01,
-                    (byte) 0x03,
-                    (byte) 0x72,
-                    (byte) 0x68,
-                    (byte) 0x73
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6D, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x0C, (byte) 0x02, (byte) 0x60, (byte) 0x01,
+                    (byte) 0x7F, (byte) 0x01, (byte) 0x7F, (byte) 0x60, (byte) 0x02, (byte) 0x7F, (byte) 0x7F, (byte) 0x01, (byte) 0x7F, (byte) 0x02, (byte) 0x0C, (byte) 0x01, (byte) 0x04,
+                    (byte) 0x68, (byte) 0x6F, (byte) 0x73, (byte) 0x74, (byte) 0x03, (byte) 0x69, (byte) 0x6E, (byte) 0x63, (byte) 0x00, (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01,
+                    (byte) 0x01, (byte) 0x07, (byte) 0x0E, (byte) 0x01, (byte) 0x0A, (byte) 0x61, (byte) 0x64, (byte) 0x64, (byte) 0x50, (byte) 0x6C, (byte) 0x75, (byte) 0x73, (byte) 0x4F,
+                    (byte) 0x6E, (byte) 0x65, (byte) 0x00, (byte) 0x01, (byte) 0x0A, (byte) 0x0B, (byte) 0x01, (byte) 0x09, (byte) 0x00, (byte) 0x20, (byte) 0x00, (byte) 0x20, (byte) 0x01,
+                    (byte) 0x6A, (byte) 0x10, (byte) 0x00, (byte) 0x0B, (byte) 0x00, (byte) 0x2C, (byte) 0x04, (byte) 0x6E, (byte) 0x61, (byte) 0x6D, (byte) 0x65, (byte) 0x01, (byte) 0x12,
+                    (byte) 0x02, (byte) 0x00, (byte) 0x03, (byte) 0x69, (byte) 0x6E, (byte) 0x63, (byte) 0x01, (byte) 0x0A, (byte) 0x61, (byte) 0x64, (byte) 0x64, (byte) 0x50, (byte) 0x6C,
+                    (byte) 0x75, (byte) 0x73, (byte) 0x4F, (byte) 0x6E, (byte) 0x65, (byte) 0x02, (byte) 0x11, (byte) 0x02, (byte) 0x00, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x01,
+                    (byte) 0x02, (byte) 0x00, (byte) 0x03, (byte) 0x6C, (byte) 0x68, (byte) 0x73, (byte) 0x01, (byte) 0x03, (byte) 0x72, (byte) 0x68, (byte) 0x73
+    };
+
+    // (module
+    // (import "host" "defaultMemory" (memory (;0;) 4))
+    // (func $initZero
+    // i32.const 0
+    // i32.const 174
+    // i32.store)
+    // (export "initZero" (func $initZero))
+    // )
+    private static final byte[] binaryWithMemoryImport = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x00, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65, (byte) 0x66,
+                    (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x4d, (byte) 0x65, (byte) 0x6d, (byte) 0x6f, (byte) 0x72, (byte) 0x79, (byte) 0x02, (byte) 0x00, (byte) 0x04,
+                    (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x07, (byte) 0x0c, (byte) 0x01, (byte) 0x08, (byte) 0x69, (byte) 0x6e, (byte) 0x69, (byte) 0x74, (byte) 0x5a,
+                    (byte) 0x65, (byte) 0x72, (byte) 0x6f, (byte) 0x00, (byte) 0x00, (byte) 0x0a, (byte) 0x0c, (byte) 0x01, (byte) 0x0a, (byte) 0x00, (byte) 0x41, (byte) 0x00, (byte) 0x41,
+                    (byte) 0xae, (byte) 0x01, (byte) 0x36, (byte) 0x02, (byte) 0x00, (byte) 0x0b, (byte) 0x00, (byte) 0x17, (byte) 0x04, (byte) 0x6e, (byte) 0x61, (byte) 0x6d, (byte) 0x65,
+                    (byte) 0x01, (byte) 0x0b, (byte) 0x01, (byte) 0x00, (byte) 0x08, (byte) 0x69, (byte) 0x6e, (byte) 0x69, (byte) 0x74, (byte) 0x5a, (byte) 0x65, (byte) 0x72, (byte) 0x6f,
+                    (byte) 0x02, (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x00,
     };
 }

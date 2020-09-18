@@ -739,6 +739,17 @@ public abstract class SymbolTable {
         });
     }
 
+    public void allocateExternalMemory(WasmMemory externalMemory) {
+        checkNotParsed();
+        validateSingleMemory();
+        memory = new MemoryInfo((int) externalMemory.pageSize(), (int) externalMemory.maxPageSize());
+        module().addLinkAction((context, instance) -> {
+            final int memoryIndex = context.memories().allocateExternalMemory(externalMemory);
+            final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);
+            instance.setMemory(allocatedMemory);
+        });
+    }
+
     public void importMemory(String moduleName, String memoryName, int initSize, int maxSize) {
         checkNotParsed();
         validateSingleMemory();

@@ -111,8 +111,15 @@ public class Instance extends Dictionary {
                         WasmFunction f = module.wasmModule().importedFunction(d.name());
                         ensureImportModule(importModules, d.module()).addFunction(d.name(), Pair.create(f, e));
                         break;
+                    case memory:
+                        if (!(member instanceof Memory)) {
+                            throw new WasmJsApiException(Kind.LinkError, "Member " + member + " is not a memory.");
+                        }
+                        final Memory memory = (Memory) member;
+                        ensureImportModule(importModules, d.module()).addMemory(d.name(), memory);
+                        break;
                     default:
-                        throw new WasmExecutionException(null, "Unimplemented case.");
+                        throw new WasmExecutionException(null, "Unimplemented case: " + d.kind());
                 }
 
                 i += 1;

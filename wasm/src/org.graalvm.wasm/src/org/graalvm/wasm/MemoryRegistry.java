@@ -67,13 +67,20 @@ public class MemoryRegistry {
         return numMemories;
     }
 
-    public int allocateMemory(SymbolTable.MemoryInfo info) {
+    private int allocateMemoryWith(WasmMemory memory) {
         ensureCapacity();
-        WasmMemory memory = new UnsafeWasmMemory(info.initialSize, info.maximumSize);
         memories[numMemories] = memory;
         int idx = numMemories;
         numMemories++;
         return idx;
+    }
+
+    public int allocateExternalMemory(WasmMemory externalMemory) {
+        return allocateMemoryWith(externalMemory);
+    }
+
+    public int allocateMemory(SymbolTable.MemoryInfo info) {
+        return allocateMemoryWith(new UnsafeWasmMemory(info.initialSize, info.maximumSize));
     }
 
     public WasmMemory memory(int index) {

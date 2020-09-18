@@ -56,4 +56,12 @@ public class MemoryDescriptor extends Dictionary {
                         "maximum", this.maximum,
         });
     }
+
+    public long initial() {
+        return initial;
+    }
+
+    public long maximum() {
+        return maximum;
+    }
 }
