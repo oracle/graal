@@ -2,28 +2,34 @@
 
 Substrate VM is an internal project
 name for the technology behind [GraalVM Native Image](README.md).
+This guide shows how to set up a development environment for the project.
 
 To get started, install [mx](https://github.com/graalvm/mx).
 Then point the `JAVA_HOME` variable to a JDK that supports a compatible version
-of the JVM Compiler Interface (JVMCI). JVMCI is a privileged low-level interface
-to the JVM, that can read metadata from the VM such as method bytecode and
+of the JVM Compiler Interface (JVMCI). JVMCI is a privileged, low-level interface
+to the JVM that can read metadata from the VM, such as method bytecode, and
 install machine code into the VM. Obtain JVMCI-enabled:
 * JDK 8 from [GitHub](https://github.com/graalvm/openjdk8-jvmci-builder/releases)
 * JDK 11 from [GitHub](https://github.com/graalvm/labs-openjdk-11/releases)
 
 #### Prerequisites
-For compilation `native-image` depends on the local toolchain, so make sure: `glibc-devel`, `zlib-devel` (header files for the C library and `zlib`) and `gcc` are available on your system.
+For compilation, `native-image` depends on the local toolchain. Install
+`glibc-devel`, `zlib-devel` (header files for the C library and `zlib`) and
+`gcc`, using a package manager available on your OS. Some Linux distributions
+may additionally require `libstdc++-static`.
+
 Unlike Linux or macOS platforms, building native images on Windows requires meeting certain prerequisites.
 The required Microsoft Visual C++ (MSVC) version depends on the JDK version that
 GraalVM is based on. For GraalVM distribution based on JDK 8, you will need MSVC
 2010 SP1 version. The recommended installation method is using Microsoft Windows
 SDK 7.1:
-1. Download the SDK file `GRMSDKX_EN_DVD.iso` for from [Microsoft](https://www.microsoft.com/en-gb/download).
+1. Download the SDK file `GRMSDKX_EN_DVD.iso` from [Microsoft](https://www.microsoft.com/en-gb/download).
 2. Mount the image by opening `F:\Setup\SDKSetup.exe` directly.
 For GraalVM distribution based on JDK 11, you will need MSVC 2017 15.5.5 or later version.
 
-After cloning the repository, run
+The last prerequisite, common for both GraalVM distribution based on JDK 11 and JDK 8, is the proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/). On Windows, the `native-image` tool only works when it is executed from the x64 Native Tools Command Prompt.
 
+After cloning the repository, run
 ```
 cd substratevm
 mx build
@@ -34,36 +40,33 @@ mx native-image HelloWorld
 ./helloworld
 ```
 
-To build Truffle-based images please refer to the documentation in the [VM suite](../vm/README.md).
+To build the polyglot images, refer to the documentation in the [VM suite](../vm/README.md).
 
 ## Build Script
 
-Using Substrate VM requires the `mx` tool to be installed first, so that it is on your `PATH`.
+Using Native Image in a development environment requires the `mx` tool to be installed first, so that it is on your `PATH`.
 Visit the [MX Homepage](https://github.com/graalvm/mx) for more details.
 
 In the main directory, invoke `mx help` to see the list of commands.
-Most of the commands are inherited from the Graal and Truffle code bases.
-The most important commands for the Substrate VM are listed below.
-More information on the parameters of a command is available by running `mx help <command>`
+Most of the commands are inherited from the [Graal](https://github.com/oracle/graal) and [Truffle](https://github.com/oracle/graal/tree/master/truffle) code bases.
+More information on a specific command is available by running `mx help <command>`.
+The most important commands for the Substrate VM are:
 
-* `build`: Compile all Java and native code.
-* `clean`: Remove all compilation artifacts.
-* `ideinit`: Create project files for Eclipse and other common IDEs.
+* `build`: compile all Java and native code
+* `clean`: remove all compilation artifacts
+* `ideinit`: create project files for Eclipse and other common IDEs
 See the [documentation on IDE integration](../compiler/docs/IDEs.md) for details.
 
 ## Building images
 
 After running `mx build` you can use `mx native-image` to build native images.
-You can specify the main entry point, i.e., the application you want to create the image for.
-For more information run `mx native-image --help`.
+You can specify the main entry point, i.e., the application you want to create the image for. For more information run `mx native-image --help`.
 
-Native image generation is performed by a Java program that runs on a JVMCI-enabled JDK.
-You can debug it with a regular Java debugger.
+A native image generation is performed by a Java program that runs on a JVMCI-enabled JDK. You can debug it with a regular Java debugger.
 Use `mx native-image --debug-attach` to start native image generation so that it waits for a Java debugger to attach first (by default, at port 8000).
-In Eclipse, use the debugging configuration _substratevm-localhost-8000_ to attach to it.
-This debugging configuration is automatically generated by `mx ideinit`.
+In Eclipse, use the debugging configuration _substratevm-localhost-8000_ to attach to it. This debugging configuration is automatically generated by `mx ideinit`.
 
-If you have to debug the compiler graphs that are built as part of building an image, proceed to the [debugging](../compiler/docs/Debugging.md) page.
+If you have to debug the compiler graphs that are built as part of an image, proceed to the [debugging](../compiler/docs/Debugging.md) page.
 You can use the [Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/20/docs/tools/igv/) tool to view individual compilation steps:
 ```
 mx igv &>/dev/null &
@@ -72,18 +75,17 @@ mx native-image HelloWorld -H:Dump= -H:MethodFilter=HelloWorld.*
 
 ## Images and Entry Points
 
-A native image can be built as a standalone executable, which is the default, or as a shared library by passing `--shared` to `native-image`. For an image to be useful, it needs to have at least one entry point method.
+A native image can be built as a standalone executable, which is the default, or as a shared library by passing `--shared` to the native image builder. For an image to be useful, it needs to have at least one entry point method.
 
-For executables, Substrate VM supports Java main methods with a signature that takes the command line arguments as an array of strings:
+For executables, Native Image supports Java main methods with a signature that takes the command line arguments as an array of strings:
 
 ```java
 public static void main(String[] arg) { /* ... */ }
 ```
 
-For shared libraries, SVM provides the `@CEntryPoint` annotation to specify entry point methods that should be exported and callable from C.
-Entry point methods must be static and may only have non-object parameters and return types – this includes Java primitives, but also Word types (including pointers).
-One of the parameters of an entry point method has to be of type `IsolateThread` or `Isolate`.
-This parameter provides the current thread's execution context for the call.
+For shared libraries, Native Image provides the `@CEntryPoint` annotation to specify entry point methods that should be exported and callable from C.
+Entry point methods must be static and may only have non-object parameters and return types – this includes Java primitives, but also Word types (including pointers). One of the parameters of an entry point method has to be of type `IsolateThread` or `Isolate`. This parameter provides the current thread's execution context for the call.
+
 For example:
 
 ```java
@@ -92,14 +94,13 @@ For example:
 }
 ```
 
-Shared library builds generate an additional C header file.
-This header file contains declarations for the [SVM C API](C-API.md), which allows creating isolates and attaching threads from C code, as well as declarations for each entry point in user code.
-The generated C declaration for the above example is:
+When building a shared library, an additional C header file is generated.
+This header file contains declarations for the [C API](C-API.md), which allows creating isolates and attaching threads from C code, as well as declarations for each entry point in user code. The generated C declaration for the above example is:
 ```c
 int add(graal_isolatethread_t* thread, int a, int b);
 ```
 
-Both executable images and shared library images can have an arbitrary number of entry points, for example to implement callbacks or APIs.
+Both executable images and shared library images can have an arbitrary number of entry points, for example, to implement callbacks or APIs.
 
 ## Options
 
@@ -107,8 +108,7 @@ More information about options and the important distinction between hosted and 
 
 ## Project Structure
 
-The list of projects is defined in a custom format in the file `mx.substratevm/suite.py`.
-It is never necessary to create new projects in the IDE.
+The list of projects is defined in a custom format in the file `mx.substratevm/suite.py`. It is never necessary to create new projects in the IDE.
 Instead, a new project is created by adding it in `suite.py` and running `mx ideinit` to generate a corresponding IDE project.
 
 ## Code Formatting
@@ -119,7 +119,7 @@ Style rules and procedures for checking adherence are described in the [style gu
 
 Sometimes, Eclipse gives strange error messages, especially after pulling a
 bigger changeset. Also, projects are frequently added or removed, leading to
-error messages about missing projects if you do not import the new projects. The
+error messages about missing projects if you do not import new projects. The
 following should reset everything:
 
 * Delete all projects in Eclipse
@@ -132,4 +132,4 @@ following should reset everything:
 
 ## License
 
-The Substrate VM is licensed under the GPL 2 with Classpath Exception.
+The Substrate VM project is licensed under the GPL 2 with Classpath Exception.
