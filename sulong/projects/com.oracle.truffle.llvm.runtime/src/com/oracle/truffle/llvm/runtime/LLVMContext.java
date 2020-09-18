@@ -97,7 +97,7 @@ public final class LLVMContext {
     @CompilationFinal private Path internalLibraryPath;
     @CompilationFinal private TruffleFile internalLibraryPathFile;
     private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
-    private final List<TruffleFile>  truffleFiles = new ArrayList<>();
+    private final List<TruffleFile> truffleFiles = new ArrayList<>();
     private final Object externalLibrariesLock = new Object();
     private final List<String> internalLibraryNames;
 
