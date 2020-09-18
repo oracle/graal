@@ -68,8 +68,8 @@ public abstract class InvokeVirtualNode extends QuickNode {
         return indirectCallNode.call(target.getCallTarget(), arguments);
     }
 
-    InvokeVirtualNode(Method resolutionSeed, int top, int curBCI) {
-        super(top, curBCI);
+    InvokeVirtualNode(Method resolutionSeed, int top, int curBCI, int opcode) {
+        super(top, curBCI, opcode);
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
         this.vtableIndex = resolutionSeed.getVTableIndex();
@@ -101,6 +101,11 @@ public abstract class InvokeVirtualNode extends QuickNode {
         assert receiver == args[0] : "receiver must be the first argument";
         Object result = executeVirtual(receiver, args);
         return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, resolutionSeed.getReturnKind());
+    }
+
+    @Override
+    public boolean redefined() {
+        return resolutionSeed.isRemovedByRedefition();
     }
 
     @Override

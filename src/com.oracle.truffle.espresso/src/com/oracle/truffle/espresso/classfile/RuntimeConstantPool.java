@@ -87,6 +87,13 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     private Resolvable.ResolvedConstant resolvedAt(Klass accessingKlass, int index, String description) {
+        return resolvedAt(accessingKlass, index, description, false);
+    }
+
+    private Resolvable.ResolvedConstant resolvedAt(Klass accessingKlass, int index, String description, boolean noCache) {
+        if (noCache) {
+            return ((Resolvable) pool.at(index, description)).resolve(this, index, accessingKlass);
+        }
         Resolvable.ResolvedConstant c = constants[index];
         if (c == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -118,7 +125,11 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     public Method resolvedMethodAt(Klass accessingKlass, int index) {
-        Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "method");
+        return resolvedMethodAt(accessingKlass, index, false);
+    }
+
+    public Method resolvedMethodAt(Klass accessingKlass, int index, boolean noCache) {
+        Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "method", noCache);
         return (Method) resolved.value();
     }
 

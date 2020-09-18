@@ -38,14 +38,24 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
     protected final int top;
 
     private final int callerBCI;
+    private final int opcode;
 
-    protected QuickNode(int top, int callerBCI) {
+    protected QuickNode(int top, int callerBCI, int opcode) {
         this.top = top;
         this.callerBCI = callerBCI;
+        this.opcode = opcode;
+    }
+
+    protected QuickNode(int top, int callerBCI) {
+        this(top, callerBCI, -1);
     }
 
     @Override
     public abstract int execute(VirtualFrame frame);
+
+    public boolean redefined() {
+        return false;
+    }
 
     public abstract boolean producedForeignObject(VirtualFrame frame);
 
@@ -71,5 +81,9 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
     @Override
     public SourceSection getSourceSection() {
         return getBytecodesNode().getSourceSectionAtBCI(callerBCI);
+    }
+
+    public final int getOpcode() {
+        return opcode;
     }
 }

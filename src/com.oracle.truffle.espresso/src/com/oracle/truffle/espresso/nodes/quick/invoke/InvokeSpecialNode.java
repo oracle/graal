@@ -36,8 +36,8 @@ public final class InvokeSpecialNode extends QuickNode {
     @CompilationFinal protected MethodVersion method;
     @Child private DirectCallNode directCallNode;
 
-    public InvokeSpecialNode(Method method, int top, int callerBCI) {
-        super(top, callerBCI);
+    public InvokeSpecialNode(Method method, int top, int callerBCI, int opcode) {
+        super(top, callerBCI, opcode);
         this.method = method.getMethodVersion();
         this.directCallNode = DirectCallNode.create(method.getCallTarget());
     }
@@ -67,5 +67,10 @@ public final class InvokeSpecialNode extends QuickNode {
 
     private int getResultAt() {
         return top - Signatures.slotsForParameters(method.getMethod().getParsedSignature()) - 1; // -receiver
+    }
+
+    @Override
+    public boolean redefined() {
+        return method.getMethod().isRemovedByRedefition();
     }
 }
