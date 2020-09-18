@@ -52,6 +52,7 @@ import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -82,6 +83,7 @@ import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -106,6 +108,8 @@ import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -558,11 +562,25 @@ public abstract class PartialEvaluator {
         GraphBuilderConfiguration newConfig = config.copy();
         InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
         registerTruffleInvocationPlugins(invocationPlugins, canDelayIntrinsification);
+        appendParsingNodePlugins(newConfig.getPlugins());
         return newConfig;
     }
 
     protected NodePlugin[] createNodePlugins(Plugins plugins) {
         return plugins.getNodePlugins();
+    }
+
+    protected void appendParsingNodePlugins(Plugins plugins) {
+        if (JavaVersionUtil.JAVA_SPEC >= 15) {
+            ResolvedJavaType type = TruffleCompilerRuntime.getRuntime().resolveType(providers.getMetaAccess(), "jdk.internal.access.foreign.MemorySegmentProxy");
+            ResolvedJavaMethod[] declaredMethods = type.getDeclaredMethods();
+            for (ResolvedJavaMethod m : declaredMethods) {
+                if (m.getName().equals("checkValidState")) {
+                    plugins.appendNodePlugin(new MemorySegmentCheckPlugin(m));
+                    break;
+                }
+            }
+        }
     }
 
     protected void registerTruffleInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
@@ -677,6 +695,28 @@ public abstract class PartialEvaluator {
             }
             // Continue onto other plugins.
             return null;
+        }
+    }
+
+    private static final class MemorySegmentCheckPlugin implements NodePlugin {
+
+        private final ResolvedJavaMethod checkValidStateMethod;
+
+        MemorySegmentCheckPlugin(ResolvedJavaMethod checkValidStateMethod) {
+            this.checkValidStateMethod = checkValidStateMethod;
+        }
+
+        @Override
+        public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+            if (checkValidStateMethod.equals(method)) {
+                if (b.needsExplicitException()) {
+                    return false;
+                } else {
+                    b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException));
+                    return true;
+                }
+            }
+            return NodePlugin.super.handleInvoke(b, method, args);
         }
     }
 }
