@@ -42,3 +42,30 @@ native-image -H:+UseLowLatencyGC HelloWorld
 
 Currently, G1 Garbage Collector can be applied to generate native images on Linux in the AMD64 builds.
 Note: The G1 Garbage Collector integration is available with **GraalVM Enterprise** only and is experimental.
+
+## Garbage Collection Policies Targeting Different Workloads
+
+A garbage collector is to provide automatic memory management. The garbage
+collectors provided with GraalVM Native Image (Serial GC and G1 GC) are adaptive
+garbage collectors with defaults that enable them to work efficiently without
+modification. There also exist different garbage collection policies. Different
+policies target different workloads. The policy decides how frequently to purge a cerain memory space.
+
+By definition, Old generation memory space holds the objects that survives for a
+long time and is triggered once becomes full or almost full.  The garbage
+collection that happens in Old generation is a time-consuming operation and halt
+an application at that moment. Fewer Old generation GC usually means less time
+spent in the GC, but also assumes higher memory footprint (memory occupied by a
+process held in RAM). GraalVM pursue the policy not to fill up to the full Old
+generation space and trigger GC more frequently.
+
+Filling up the Old generation completely before doing a full GC is recommended if you:
+* have manually set a reasonable maximum heap size.
+* run in a restricted environment like Docker where the physical memory size that
+gets reported is small and you really want to use up all the physical memory
+that you have.
+
+However, filling up the Old generation completely before triggering GC is not
+recommended if you run on a large server, where you start many processes, and do
+not configure the maximum heap size for each. Otherwise, you will severely
+overload your system.
