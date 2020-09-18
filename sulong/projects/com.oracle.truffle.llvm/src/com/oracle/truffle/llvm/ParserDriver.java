@@ -103,7 +103,7 @@ final class ParserDriver {
     private final AtomicInteger nextFreeBitcodeID;
     // Dependencies can either be Source or the call target if the library
     // has already been parsed.
-    private final ArrayList<Object> dependencies = new ArrayList<>();
+    private final ArrayList<Source> dependencies = new ArrayList<>();
 
     private ParserDriver(LLVMContext context, AtomicInteger moduleID) {
         this.context = context;
@@ -196,18 +196,9 @@ final class ParserDriver {
         for (String sulongLibraryName : sulongLibraryNames) {
             // Don't add the library itself as one of it's own dependency.
             if (!currentLib.equals(sulongLibraryName)) {
-                TruffleFile file = createTruffleFile(sulongLibraryName, null, InternalLibraryLocator.INSTANCE, "<default bitcode library>");
-                // Look into the library cache in the language for the call target.
-                CallTarget calls = language.getCachedLibrary(file.getPath());
-                if (calls == null) {
-                    Source source = createDependencySource(sulongLibraryName, sulongLibraryName, file, false, context.isInternalLibraryFile(file));
-                    // A source is null if it's a native library, which will be added to the NFI
-                    // context extension instead.
-                    if (source != null) {
-                        dependencies.add(source);
-                    }
-                } else {
-                    dependencies.add(calls);
+                Source source = createDependencySource(sulongLibraryName, sulongLibraryName, false, InternalLibraryLocator.INSTANCE);
+                if (source != null) {
+                    dependencies.add(source);
                 }
             }
         }
@@ -215,16 +206,10 @@ final class ParserDriver {
         // parse all libraries that were passed on the command-line
         List<String> externals = SulongEngineOption.getPolyglotOptionExternalLibraries(context.getEnv());
         for (String externalLibraryName : externals) {
-            TruffleFile file = createTruffleFile(externalLibraryName, null, DefaultLibraryLocator.INSTANCE, "<command-line bitcode library>");
             // Look into the library cache in the language for the call target.
-            CallTarget calls = language.getCachedLibrary(file.getPath());
-            if (calls == null) {
-                Source source = createDependencySource(externalLibraryName, externalLibraryName, file, true, context.isInternalLibraryFile(file));
-                if (source != null) {
-                    dependencies.add(source);
-                }
-            } else {
-                dependencies.add(calls);
+            Source source = createDependencySource(externalLibraryName, externalLibraryName, true, DefaultLibraryLocator.INSTANCE);
+            if (source != null) {
+                dependencies.add(source);
             }
         }
     }
@@ -413,27 +398,19 @@ final class ParserDriver {
         for (String lib : context.preprocessDependencies(binaryParserResult.getLibraries(), libFile)) {
             // don't add the library itself as one of it's own dependency.
             if (!libraryName.equals(lib)) {
-                TruffleFile file = createTruffleFile(lib, null, binaryParserResult.getLocator(), "<dependency library>");
                 // only create a source if the library has not already been parsed.
-                CallTarget calls = language.getCachedLibrary(file.getPath());
-                if (calls == null) {
-                    Path path = Paths.get(lib);
-                    Source source = createDependencySource(lib, path.toString(), file, true, context.isInternalLibraryPath(path));
-                    // A source is null if it's a native library, which will be added to the NFI
-                    // context extension instead.
-                    if (!dependencies.contains(source) && source != null) {
-                        dependencies.add(source);
-                    }
-                } else {
-                    if (!dependencies.contains(calls)) {
-                        dependencies.add(calls);
-                    }
+                Source source = createDependencySource(lib, lib, true, binaryParserResult.getLocator());
+                // A source is null if it's a native library, which will be added to the NFI
+                // context extension instead.
+                if (!dependencies.contains(source) && source != null) {
+                    dependencies.add(source);
                 }
             }
         }
     }
 
-    private Source createDependencySource(String libName, String libPath, TruffleFile file, boolean isNative, boolean isInternal) {
+    private Source createDependencySource(String libName, String libPath, boolean isNative, LibraryLocator libraryLocator) {
+        TruffleFile file = createTruffleFile(libName, null, libraryLocator, "<dependency library>");
         if (file != null && !file.isRegularFile()) {
             if (!isNative) {
                 throw new LLVMParserException("'" + file.getName() + "' is not a file or does not exist.");
@@ -446,12 +423,11 @@ final class ParserDriver {
         }
 
         Source source;
-        assert file != null;
         if (language.containsLibrarySource(file.getPath())) {
             source = language.getLibrarySource(file.getPath());
         } else {
             try {
-                source = Source.newBuilder("llvm", file).internal(isInternal).build();
+                source = Source.newBuilder("llvm", file).internal(context.isInternalLibraryFile(file)).build();
                 language.addLibrarySource(file.getPath(), source);
             } catch (IOException | SecurityException | OutOfMemoryError ex) {
                 throw new LLVMParserException("Error reading file " + file.getName() + ".");
