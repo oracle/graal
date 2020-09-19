@@ -168,8 +168,8 @@ public abstract class MakePairNode extends BinaryExpressionNode {
     @Specialization
     Object makePair(Object left, Object right,
                     @CachedLanguage MyLanguage language,
-                    @CachedLibrary(limit = "3") putLeft,
-                    @CachedLibrary(limit = "3") putRight) {
+                    @CachedLibrary(limit = "3") DynamicObjectLibrary putLeft,
+                    @CachedLibrary(limit = "3") DynamicObjectLibrary putRight) {
         MyObject obj = language.createObject();
         putLeft.put(obj, "left", left);
         putRight.put(obj, "right", right);
