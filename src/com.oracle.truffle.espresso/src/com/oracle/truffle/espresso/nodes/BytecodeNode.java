@@ -710,113 +710,18 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case ALOAD_2: // fall through
                     case ALOAD_3: putObject(frame, top, getLocalObject(frame, curOpcode - ALOAD_0)); break;
 
-                    case IALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putInt(frame, top - 2, getInterpreterToVM().getArrayInt(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putInt(frame, top - 2, getInterpreterToVM().getArrayInt(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Int);
-                            }
-                        }
-                        break;
-                    case LALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putLong(frame, top - 2, getInterpreterToVM().getArrayLong(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putLong(frame, top - 2, getInterpreterToVM().getArrayLong(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Long);
-                            }
-                        }
-                        break;
-                    case FALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Float);
-                            }
-                        }
-                        break;
-                    case DALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Double);
-                            }
-                        }
-                        break;
+                    case IALOAD: // fall through
+                    case LALOAD: // fall through
+                    case FALOAD: // fall through
+                    case DALOAD: // fall through
+                    case BALOAD: // fall through
+                    case CALOAD: // fall through
+                    case SALOAD: arrayLoad(frame, top, curBCI, curOpcode); break;
                     case AALOAD:
-                        if (noForeignObjects.isValid()) {
-                            StaticObject arrayElement = getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)));
-                            putObject(frame, top - 2, arrayElement);
-                            if (arrayElement.isForeignObject()) {
-                                CompilerDirectives.transferToInterpreterAndInvalidate();
-                                noForeignObjects.invalidate();
-                            }
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putObject(frame, top - 2, getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Object);
-                            }
-                        }
-                        break;
-                    case BALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putInt(frame, top - 2, getInterpreterToVM().getArrayByte(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putInt(frame, top - 2, getInterpreterToVM().getArrayByte(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Byte);
-                            }
-                        }
-                        break;
-                    case CALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putInt(frame, top - 2, getInterpreterToVM().getArrayChar(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putInt(frame, top - 2, getInterpreterToVM().getArrayChar(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Char);
-                            }
-                        }
-                        break;
-                    case SALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putInt(frame, top - 2, getInterpreterToVM().getArrayShort(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putInt(frame, top - 2, getInterpreterToVM().getArrayShort(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Short);
-                            }
+                        arrayLoad(frame, top, curBCI, curOpcode);
+                        if (noForeignObjects.isValid() && peekObject(frame, top - 2).isForeignObject()) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            noForeignObjects.invalidate();
                         }
                         break;
 
@@ -847,110 +752,14 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case ASTORE_2: // fall through
                     case ASTORE_3: setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, peekAndReleaseReturnAddressOrObject(frame, top - 1)); break;
 
-                    case IASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayInt(peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 3));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 3);
-                                getInterpreterToVM().setArrayInt(peekInt(frame, top - 1), peekInt(frame, top - 2), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Int);
-                            }
-                        }
-                        break;
-                    case LASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayLong(peekLong(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekAndReleaseObject(frame, top - 4)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 4));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 4);
-                                getInterpreterToVM().setArrayLong(peekLong(frame, top - 1), peekInt(frame, top - 3), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Long);
-                            }
-                        }
-                        break;
-                    case FASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayFloat(peekFloat(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 3));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 3);
-                                getInterpreterToVM().setArrayFloat(peekFloat(frame, top - 1), peekInt(frame, top - 2), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Float);
-                            }
-                        }
-                        break;
-                    case DASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayDouble(peekDouble(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekAndReleaseObject(frame, top - 4)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 4));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 4);
-                                getInterpreterToVM().setArrayDouble(peekDouble(frame, top - 1), peekInt(frame, top - 3), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Double);
-                            }
-                        }
-                        break;
-                    case AASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayObject(peekAndReleaseObject(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 3));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 3);
-                                getInterpreterToVM().setArrayObject(peekObject(frame, top - 1), peekInt(frame, top - 2), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Object);
-                            }
-                        }
-                        break;
-                    case BASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayByte((byte) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 3));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 3);
-                                getInterpreterToVM().setArrayByte((byte) peekInt(frame, top - 1), peekInt(frame, top - 2), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Byte);
-                            }
-                        }
-                        break;
-                    case CASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayChar((char) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 3));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 3);
-                                getInterpreterToVM().setArrayChar((char) peekInt(frame, top - 1), peekInt(frame, top - 2), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Char);
-                            }
-                        }
-                        break;
-                    case SASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayShort((short) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 3));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 3);
-                                getInterpreterToVM().setArrayShort((short) peekInt(frame, top - 1), peekInt(frame, top - 2), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Short);
-                            }
-                        }
-                        break;
+                    case IASTORE: // fall through
+                    case LASTORE: // fall through
+                    case FASTORE: // fall through
+                    case DASTORE: // fall through
+                    case AASTORE: // fall through
+                    case BASTORE: // fall through
+                    case CASTORE: // fall through
+                    case SASTORE: arrayStore(frame, top, curBCI, curOpcode); break;
 
                     case POP2:
                         putObject(frame, top - 1, null);
@@ -1469,6 +1278,102 @@ public final class BytecodeNode extends EspressoMethodNode {
                 throw EspressoError.shouldNotReachHere("non-branching bytecode");
         }
         // @formatter:on
+    }
+
+    private static JavaKind arrayAccessKind(int opcode) {
+        assert (IALOAD <= opcode && opcode <= SALOAD) || (IASTORE <= opcode && opcode <= SASTORE);
+        switch (opcode) {
+            case IALOAD: // fall through
+            case IASTORE: return JavaKind.Int;
+            case LALOAD: // fall through
+            case LASTORE: return JavaKind.Long;
+            case FALOAD: // fall through
+            case FASTORE: return JavaKind.Float;
+            case DALOAD: // fall through
+            case DASTORE: return JavaKind.Double;
+            case AALOAD: // fall through
+            case AASTORE: return JavaKind.Object;
+            case BALOAD: // fall through
+            case BASTORE: return JavaKind.Byte; // or Boolean
+            case CALOAD: // fall through
+            case CASTORE: return JavaKind.Char;
+            case SALOAD: // fall through
+            case SASTORE: return JavaKind.Short;
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    private void arrayLoad(VirtualFrame frame, int top, int curBCI, int loadOpcode) {
+        assert IALOAD <= loadOpcode && loadOpcode <= SALOAD;
+        JavaKind kind = arrayAccessKind(loadOpcode);
+        CompilerDirectives.isPartialEvaluationConstant(kind);
+        int index = peekInt(frame, top - 1);
+        StaticObject array = nullCheck(peekAndReleaseObject(frame, top - 2));
+        if (noForeignObjects.isValid() || array.isEspressoObject()) {
+            // @formatter:off
+            switch (kind) {
+                case Byte:    putInt(frame, top - 2, getInterpreterToVM().getArrayByte(index, array));      break;
+                case Short:   putInt(frame, top - 2, getInterpreterToVM().getArrayShort(index, array));     break;
+                case Char:    putInt(frame, top - 2, getInterpreterToVM().getArrayChar(index, array));      break;
+                case Int:     putInt(frame, top - 2, getInterpreterToVM().getArrayInt(index, array));       break;
+                case Float:   putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(index, array));   break;
+                case Long:    putLong(frame, top - 2, getInterpreterToVM().getArrayLong(index, array));     break;
+                case Double:  putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(index, array)); break;
+                case Object:  putObject(frame, top - 2, getInterpreterToVM().getArrayObject(index, array)); break;
+                default:
+                    CompilerDirectives.transferToInterpreter();
+                    throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // The array was released, it must be restored for the quickening.
+            putObject(frame, top - 2, array);
+            quickenArrayLoad(frame, top, curBCI, kind);
+        }
+    }
+
+    private void arrayStore(VirtualFrame frame, int top, int curBCI, int storeOpcode) {
+        assert IASTORE <= storeOpcode && storeOpcode <= SASTORE;
+        JavaKind kind = arrayAccessKind(storeOpcode);
+        CompilerDirectives.isPartialEvaluationConstant(kind);
+        int index;
+        StaticObject array;
+        if (kind.needsTwoSlots()) {
+            index = peekInt(frame, top - 3);
+            array = nullCheck(peekAndReleaseObject(frame, top - 4));
+        } else {
+            index = peekInt(frame, top - 2);
+            array = nullCheck(peekAndReleaseObject(frame, top - 3));
+        }
+        if (noForeignObjects.isValid() || array.isEspressoObject()) {
+            // @formatter:off
+            switch (kind) {
+                case Byte:    getInterpreterToVM().setArrayByte((byte) peekInt(frame, top - 1), index, array);   break;
+                case Short:   getInterpreterToVM().setArrayShort((short) peekInt(frame, top - 1), index, array); break;
+                case Char:    getInterpreterToVM().setArrayChar((char) peekInt(frame, top - 1), index, array);   break;
+                case Int:     getInterpreterToVM().setArrayInt(peekInt(frame, top - 1), index, array);           break;
+                case Float:   getInterpreterToVM().setArrayFloat(peekFloat(frame, top - 1), index, array);       break;
+                case Long:    getInterpreterToVM().setArrayLong(peekLong(frame, top - 1), index, array);         break;
+                case Double:  getInterpreterToVM().setArrayDouble(peekDouble(frame, top - 1), index, array);     break;
+                case Object:  getInterpreterToVM().setArrayObject(peekObject(frame, top - 1), index, array);     break;
+                default:
+                    CompilerDirectives.transferToInterpreter();
+                    throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // The array was released, it must be restored for the quickening.
+            if (kind.needsTwoSlots()) {
+                putObject(frame, top - 4, array);
+            } else {
+                putObject(frame, top - 3, array);
+            }
+            quickenArrayStore(frame, top, curBCI, kind);
+        }
     }
 
     private int checkBackEdge(int curBCI, int targetBCI, int top, int opcode) {
