@@ -1,46 +1,46 @@
 # Native Image
 
-GraalVM Native Image allows to ahead-of-time compile Java code to a standalone executable, called
-a **native image**. This executable includes the application classes, classes
-from its dependencies, runtime library classes from JDK, and statically linked
-native code from JDK. It does not run on the Java VM, but includes necessary
-components like memory management and thread scheduling from a different virtual
-machine, called "Substrate VM". Substrate VM is the name for the runtime
-components (like the deoptimizer, garbage collector, thread scheduling etc.).
-The resulting program has faster startup time and lower runtime memory overhead
-compared to a Java VM.
+Native Image is a technology to ahead-of-time compile Java code to a standalone
+executable, called a **native image**. This executable includes the application
+classes, classes from its dependencies, runtime library classes from JDK, and
+statically linked native code from JDK. It does not run on the Java VM, but
+includes necessary components like memory management and thread scheduling from
+a different virtual machine, called "Substrate VM". Substrate VM is the name for
+the runtime components (like the deoptimizer, garbage collector, thread
+scheduling etc.). The resulting program has faster startup time and lower
+runtime memory overhead compared to a JVM.
 
 The **Native Image builder** or `native-image` is a utility that processes all
 the classes of your application and their dependencies, including those from the
-JDK. It analyses these classes to determine which classes, methods and fields
-are reachable during application execution. It then ahead-of-time compiles all
-reachable code and data into a native executable for a specific operating system
-and architecture. This entire process is called **image build time** to
-clearly distinguish it from the compilation of Java source code to bytecode.
+JDK. It statically analyzes these data to determine which classes and methods
+are reachable during application execution. Then it ahead-of-time compiles that reachable data to a
+native executable for a specific operating system and architecture. This entire
+process is called an **image build time** to clearly distinguish it from the
+compilation of Java source code to bytecode.
 
-GraalVM Native Image supports JVM-based languages, e.g., Java, Scala, Clojure,
-Kotlin. The resulting native image can, optionally, execute dynamic languages
-like JavaScript, Ruby, R or Python. Polyglot embeddings can also be compiled
+Native Image supports JVM-based languages, e.g., Java, Scala, Clojure, Kotlin.
+The resulting image can, optionally, execute dynamic languages like
+JavaScript, Ruby, R or Python. Polyglot embeddings can also be compiled
 ahead-of-time. To inform `native-image` of guest languages used by an
-application, specify `--language:<languageId>` for each guest language used
-(e.g., `--language:js`).
+application, specify `--language:<languageId>` for each guest language (e.g.,
+`--language:js`).
 
 ### License
-GraalVM Native Image is licensed under the GPL 2 with Classpath Exception.
+
+The Native Image technology is distributed as a separate installable to GraalVM.
+Native Image for GraalVM Community Edition is licensed under the [GPL 2 with Classpath Exception](https://github.com/oracle/graal/blob/master/substratevm/LICENSE).
 
 ## Install Native Image
 
-Native Image is distributed as a separate installable and can be added to the core installation with the [GraalVM Updater](https://www.graalvm.org/docs/reference-manual/gu/) tool.
+Native Image can be added to the core installation with the [GraalVM Updater](https://www.graalvm.org/docs/reference-manual/gu/) tool.
 
-If you use GraalVM, run this command to install Native Image from GitHub:
+Run this command to install Native Image:
 ```
 gu install native-image
 ```
 
 After this additional step, the `native-image` executable will become available in
-the `bin` directory.
-
-Take a look at the [native image generation](https://www.graalvm.org/docs/examples/native-list-dir/) or [compiling a Java and Kotlin app ahead-of-time](https://www.graalvm.org/docs/examples/java-kotlin-aot/) samples.
+the `GRAALVM_HOME/bin` directory.
 
 ## Prerequisites
 
@@ -91,6 +91,7 @@ To build a native image of a JAR file, use:
 ```
 native-image [options] -jar jarfile [imagename] [options]
 ```
+
 The `native-image` command needs to provide the class path for all classes using
 the familiar option from the java launcher: `-cp` followed by a list of
 directories or JAR files, separated by `:`. The name of the class containing the
@@ -131,6 +132,8 @@ handlers when building a shared library. However, it is desirable to include
 signal handlers when building a native image for containerized environments, like
 Docker containers. The `--install-exit-handlers` option gives you the same
 signal handlers that a JVM does.
+
+For more complex examples, visit the [native image generation](https://www.graalvm.org/docs/examples/native-list-dir/) or [compiling a Java and Kotlin app ahead-of-time](https://www.graalvm.org/docs/examples/java-kotlin-aot/) pages.
 
 ### How to Determine What Version of GraalVM an Image Is Generated With?
 
