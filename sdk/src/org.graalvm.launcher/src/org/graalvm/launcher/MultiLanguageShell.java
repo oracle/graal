@@ -42,8 +42,6 @@ package org.graalvm.launcher;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -72,8 +70,6 @@ class MultiLanguageShell implements Closeable {
     private static final String WIDGET_NAME = "CHANGE_LANGUAGE_WIDGET";
     private final Map<Language, History> histories = new HashMap<>();
     private final Context context;
-    private final InputStream in;
-    private final OutputStream out;
     private final String startLanguage;
     private final List<Language> languages;
     private final Map<String, Language> prompts;
@@ -84,10 +80,8 @@ class MultiLanguageShell implements Closeable {
     private boolean verboseErrors = false;
     private String input = "";
 
-    MultiLanguageShell(Context context, InputStream in, OutputStream out, String defaultStartLanguage) throws IOException {
+    MultiLanguageShell(Context context, String defaultStartLanguage) throws IOException {
         this.context = context;
-        this.in = in;
-        this.out = out;
         this.languages = languages();
         this.prompts = prompts();
         this.terminal = terminal();
@@ -255,8 +249,9 @@ class MultiLanguageShell implements Closeable {
         }
     }
 
-    private Terminal terminal() throws IOException {
-        return TerminalBuilder.builder().jansi(true).jna(false).streams(in, out).system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
+    private static Terminal terminal() throws IOException {
+        // Create a system Terminal. JANSI and JNA are not shipped in the SDK JLINE3 jar.
+        return TerminalBuilder.builder().jansi(false).jna(false).system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
     }
 
     private Map<String, Language> prompts() {
