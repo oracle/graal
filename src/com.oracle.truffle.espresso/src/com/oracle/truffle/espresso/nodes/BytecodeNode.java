@@ -1049,7 +1049,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case ANEWARRAY   : putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), peekInt(frame, top - 1))); break;
                     case ARRAYLENGTH : arrayLength(frame, top, curBCI); break;
                     case ATHROW      : throw Meta.throwException(nullCheck(popObject(frame, top - 1)));
-                        
+
                     case CHECKCAST   : top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
                     case INSTANCEOF  : top += quickenInstanceOf(frame, top, curBCI, curOpcode); break;
 
@@ -1300,7 +1300,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     private void arrayLength(VirtualFrame frame, int top, int curBCI) {
         StaticObject array = nullCheck(popObject(frame, top - 1));
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
-            putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(popObject(frame, top - 1))));
+            putInt(frame, top - 1, InterpreterToVM.arrayLength(array));
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // The array was released, it must be restored for the quickening.
