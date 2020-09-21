@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,13 +26,11 @@ package org.graalvm.compiler.hotspot.test;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.java.BytecodeParserOptions;
 import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
-import org.graalvm.compiler.options.OptionValues;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -61,7 +59,7 @@ public class PolymorphicInliningTest extends GraalCompilerTest {
     @Test
     public void testBimorphicInlined() {
         ResolvedJavaMethod method = getResolvedJavaMethod("snippet");
-        StructuredGraph graph = parseForCompile(method, disableInlineDuringParsing());
+        StructuredGraph graph = parseForCompile(method);
 
         MetaAccessProvider metaAccess = getMetaAccess();
         ProfiledType[] injectedProfile = {
@@ -80,7 +78,7 @@ public class PolymorphicInliningTest extends GraalCompilerTest {
     @Test
     public void testBimorphicNotInlined() {
         ResolvedJavaMethod method = getResolvedJavaMethod("snippet");
-        StructuredGraph graph = parseForCompile(method, disableInlineDuringParsing());
+        StructuredGraph graph = parseForCompile(method);
 
         MetaAccessProvider metaAccess = getMetaAccess();
         ProfiledType[] injectedProfile = {
@@ -99,7 +97,7 @@ public class PolymorphicInliningTest extends GraalCompilerTest {
     @Test
     public void testMegamorphicInlined() {
         ResolvedJavaMethod method = getResolvedJavaMethod("snippet");
-        StructuredGraph graph = parseForCompile(method, disableInlineDuringParsing());
+        StructuredGraph graph = parseForCompile(method);
 
         MetaAccessProvider metaAccess = getMetaAccess();
         ProfiledType[] injectedProfile = {
@@ -117,7 +115,7 @@ public class PolymorphicInliningTest extends GraalCompilerTest {
     @Test
     public void testMegamorphicNotInlined() {
         ResolvedJavaMethod method = getResolvedJavaMethod("snippet");
-        StructuredGraph graph = parseForCompile(method, disableInlineDuringParsing());
+        StructuredGraph graph = parseForCompile(method);
 
         MetaAccessProvider metaAccess = getMetaAccess();
         ProfiledType[] injectedProfile = {
@@ -133,10 +131,6 @@ public class PolymorphicInliningTest extends GraalCompilerTest {
         assertTrue(getNodeCount(graph, InvokeNode.class) == 1);
         assertTrue(getNodeCount(graph, TypeSwitchNode.class) == 0);
         assertTrue(getNodeCount(graph, AbstractDeoptimizeNode.class) == 0);
-    }
-
-    private static OptionValues disableInlineDuringParsing() {
-        return new OptionValues(getInitialOptions(), BytecodeParserOptions.InlineDuringParsing, false, BytecodeParserOptions.InlineIntrinsicsDuringParsing, false);
     }
 
     private static void injectTypeProfile(StructuredGraph graph, String targetMethod, JavaTypeProfile profile) {
