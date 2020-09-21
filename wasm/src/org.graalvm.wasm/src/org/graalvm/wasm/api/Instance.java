@@ -46,6 +46,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.WasmContext;
@@ -65,11 +66,11 @@ public class Instance extends Dictionary {
     private final TruffleContext truffleContext;
     private final Module module;
     private final WasmInstance instance;
-    private final Dictionary importObject;
+    private final Object importObject;
     private final Dictionary exportObject;
 
     @CompilerDirectives.TruffleBoundary
-    public Instance(TruffleContext truffleContext, Module module, Dictionary importObject) {
+    public Instance(TruffleContext truffleContext, Module module, Object importObject) {
         this.truffleContext = truffleContext;
         this.module = module;
         this.importObject = importObject;
@@ -104,7 +105,7 @@ public class Instance extends Dictionary {
             int i = 0;
             while (i < module.imports().getArraySize()) {
                 final ModuleImportDescriptor d = (ModuleImportDescriptor) module.imports().readArrayElement(i);
-                final Dictionary importedModule = (Dictionary) getMember(importObject, d.module());
+                final Object importedModule = getMember(importObject, d.module());
                 final Object member = getMember(importedModule, d.name());
                 switch(d.kind()) {
                     case function:
@@ -135,7 +136,7 @@ public class Instance extends Dictionary {
 
                 i += 1;
             }
-        } catch (InvalidArrayIndexException | UnknownIdentifierException | ClassCastException e) {
+        } catch (InvalidArrayIndexException | UnknownIdentifierException | ClassCastException | UnsupportedMessageException e) {
             throw new WasmExecutionException(null, "Unexpected state.", e);
         }
 
@@ -189,11 +190,12 @@ public class Instance extends Dictionary {
         return importModule;
     }
 
-    private static Object getMember(Dictionary object, String name) throws UnknownIdentifierException {
-        if (!object.isMemberReadable(name)) {
+    private static Object getMember(Object object, String name) throws UnknownIdentifierException, UnsupportedMessageException {
+        final InteropLibrary lib = InteropLibrary.getUncached();
+        if (!lib.isMemberReadable(object, name)) {
             throw new WasmJsApiException(Kind.TypeError, "Object does not contain member " + name + ".");
         }
-        return object.readMember(name);
+        return lib.readMember(object, name);
     }
 
 }

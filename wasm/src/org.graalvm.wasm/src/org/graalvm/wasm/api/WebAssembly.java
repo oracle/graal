@@ -50,13 +50,13 @@ public class WebAssembly extends Dictionary {
         this.currentContext = currentContext;
     }
 
-    public WebAssemblyInstantiatedSource instantiate(byte[] source, Dictionary importObject) {
+    public WebAssemblyInstantiatedSource instantiate(byte[] source, Object importObject) {
         final Module module = compile(source);
         final Instance instance = instantiate(module, importObject);
         return new WebAssemblyInstantiatedSource(module, instance);
     }
 
-    public Instance instantiate(Module module, Dictionary importObject) {
+    public Instance instantiate(Module module, Object importObject) {
         final TruffleContext innerTruffleContext = currentContext.environment().newContextBuilder().build();
         final Object prev = innerTruffleContext.enter();
         try {

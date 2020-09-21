@@ -42,8 +42,11 @@ package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import org.graalvm.wasm.exception.WasmExecutionException;
+import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
@@ -62,8 +65,24 @@ public class Memory extends Dictionary {
         });
     }
 
-    public Memory(MemoryDescriptor descriptor) {
-        this(new UnsafeWasmMemory(descriptor.initial(), descriptor.maximum()));
+    public Memory(Object descriptor) {
+        this(new UnsafeWasmMemory(initial(descriptor), maximum(descriptor)));
+    }
+
+    private static long initial(Object descriptor) {
+        try {
+            return (Long) InteropLibrary.getUncached().readMember(descriptor, "initial");
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid memory descriptor " + descriptor);
+        }
+    }
+
+    private static long maximum(Object descriptor) {
+        try {
+            return (Long) InteropLibrary.getUncached().readMember(descriptor, "maximum");
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid memory descriptor " + descriptor);
+        }
     }
 
     public WasmMemory wasmMemory() {

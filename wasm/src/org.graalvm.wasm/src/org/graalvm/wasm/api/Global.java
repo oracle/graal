@@ -45,9 +45,9 @@ import com.oracle.truffle.api.library.ExportLibrary;
 
 @ExportLibrary(InteropLibrary.class)
 public class Global extends Dictionary {
-    private final GlobalDescriptor descriptor;
+    private final Object descriptor;
 
-    public Global(GlobalDescriptor descriptor) {
+    public Global(Object descriptor) {
         this.descriptor = descriptor;
         addMembers(new Object[]{
                         "descriptor", this.descriptor,
