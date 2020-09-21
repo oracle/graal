@@ -68,6 +68,7 @@ import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
+import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethodSupport;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -153,6 +154,11 @@ public class JNIAccessFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
+        /* Must be in the ImageSingletons before `JNIJavaCallWrapperMethod`s are created. */
+        if (!ImageSingletons.contains(JNIJavaCallWrapperMethodSupport.class)) {
+            ImageSingletons.add(JNIJavaCallWrapperMethodSupport.class, new JNIJavaCallWrapperMethodSupport());
+        }
+
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
         this.nativeLibraries = access.getNativeLibraries();
         this.haveJavaRuntimeReflectionSupport = ImageSingletons.contains(RuntimeReflectionSupport.class);

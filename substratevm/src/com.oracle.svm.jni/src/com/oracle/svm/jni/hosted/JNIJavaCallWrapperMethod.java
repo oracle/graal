@@ -43,7 +43,6 @@ import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -56,11 +55,10 @@ import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.LocationIdentity;
@@ -238,10 +236,10 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         /* Dynamically type-check the receiver type, and invoke the method if it matches. */
         InvokeKind invokeKind = invokeMethod.isStatic() ? InvokeKind.Static : //
                         ((nonVirtual || invokeMethod.isConstructor()) ? InvokeKind.Special : InvokeKind.Virtual);
-
+        JNIJavaCallWrapperMethodSupport support = ImageSingletons.lookup(JNIJavaCallWrapperMethodSupport.class);
         ValueNode invokeResult;
         if (!invokeMethod.hasReceiver()) {
-            invokeResult = createInvoke(kit, invokeMethod, invokeKind, state, kit.bci(), args);
+            invokeResult = support.createInvoke(kit, invokeMethod, invokeKind, false, state, kit.bci(), args);
         } else if (invokeMethod.isConstructor()) {
             /*
              * If the target method is a constructor, we can narrow down the JNI call to two
@@ -263,9 +261,9 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
              * passing it as the receiver.
              */
             kit.thenPart();
-            ValueNode createdReceiver = kit.append(new NewInstanceNode(receiverClass, true));
+            ValueNode createdReceiver = kit.append(support.instantiate(receiverClass, true));
             args[0] = createdReceiver;
-            createInvoke(kit, invokeMethod, invokeKind, state, kit.bci(), args);
+            support.createInvoke(kit, invokeMethod, invokeKind, true, state, kit.bci(), args);
 
             /*
              * If the constructor was called through `Call<Type>Method`, we must check that the
@@ -283,7 +281,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             FixedGuardNode guard = kit.append(new FixedGuardNode(instanceOf, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
             kit.append(PiNode.create(unboxedHandle, StampFactory.object(expectedTypeRef), guard));
             args[0] = unboxedHandle;
-            createInvoke(kit, invokeMethod, invokeKind, state, kit.bci(), args);
+            support.createInvoke(kit, invokeMethod, invokeKind, false, state, kit.bci(), args);
             kit.elsePart();
             ConstantNode exceptionObject = kit.createObject(cachedArgumentClassCastException);
             kit.setPendingException(exceptionObject);
@@ -311,7 +309,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             FixedGuardNode guard = kit.append(new FixedGuardNode(instanceOf, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
             kit.append(PiNode.create(unboxedHandle, StampFactory.object(expectedTypeRef), guard));
             args[0] = unboxedHandle;
-            invokeResult = createInvoke(kit, invokeMethod, invokeKind, state, kit.bci(), args);
+            invokeResult = support.createInvoke(kit, invokeMethod, invokeKind, false, state, kit.bci(), args);
         }
 
         /* If argument types are wrong, throw an exception */
@@ -344,37 +342,6 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         kit.createReturn(returnValue, returnKind);
 
         return kit.finalizeGraph();
-    }
-
-    private static ValueNode createInvoke(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind kind, FrameStateBuilder state, int bci, ValueNode... args) {
-        ValueNode formerPendingException = kit.getAndClearPendingException();
-
-        InvokeWithExceptionNode invoke = kit.startInvokeWithException(invokeMethod, kind, state, bci, args);
-
-        kit.noExceptionPart(); // no new exception was thrown, restore the formerly pending one
-        kit.setPendingException(formerPendingException);
-
-        kit.exceptionPart();
-        ExceptionObjectNode exceptionObject = kit.exceptionObject();
-        kit.setPendingException(exceptionObject);
-        ValueNode exceptionValue = null;
-        if (invoke.getStackKind() != JavaKind.Void) {
-            exceptionValue = kit.unique(ConstantNode.defaultForKind(invoke.getStackKind()));
-        }
-
-        AbstractMergeNode merge = kit.endInvokeWithException();
-        ValueNode returnValue = null;
-        JavaKind returnKind = invokeMethod.getSignature().getReturnKind();
-        if (invoke.getStackKind() != JavaKind.Void) {
-            ValueNode[] inputs = {invoke, exceptionValue};
-            returnValue = kit.getGraph().addWithoutUnique(new ValuePhiNode(invoke.stamp(NodeView.DEFAULT), merge, inputs));
-            state.push(returnKind, returnValue);
-        }
-        merge.setStateAfter(state.create(bci, merge));
-        if (invoke.getStackKind() != JavaKind.Void) {
-            state.pop(returnKind);
-        }
-        return returnValue;
     }
 
     /**
