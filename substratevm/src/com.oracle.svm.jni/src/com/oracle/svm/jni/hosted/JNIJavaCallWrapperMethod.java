@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
@@ -121,6 +122,12 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
     private static final ClassCastException cachedArgumentClassCastException;
     static {
         cachedArgumentClassCastException = new ClassCastException("Object argument to JNI call does not match type in Java signature");
+        cachedArgumentClassCastException.setStackTrace(new StackTraceElement[0]);
+    }
+
+    private static final NullPointerException cachedReceiverNullPointerException;
+    static {
+        cachedReceiverNullPointerException = new NullPointerException("The receiver of a JNI call must not be null");
         cachedArgumentClassCastException.setStackTrace(new StackTraceElement[0]);
     }
 
@@ -429,15 +436,24 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         ValueNode invokeResult = ImageSingletons.lookup(JNIJavaCallWrapperMethodSupport.class).createCallTypeMethodCall(kit, invokeMethod, invokeKind, state, args);
 
         kit.elsePart();
-        ConstantNode exceptionObject = kit.createObject(cachedArgumentClassCastException);
-        kit.setPendingException(exceptionObject);
+        kit.startIf(kit.unique(IsNullNode.create(receiver)), 0.5);
+        kit.thenPart();
+        ConstantNode nullExceptionObject = kit.createObject(cachedReceiverNullPointerException);
+        kit.setPendingException(nullExceptionObject);
+        kit.elsePart();
+        ConstantNode castExceptionObject = kit.createObject(cachedArgumentClassCastException);
+        kit.setPendingException(castExceptionObject);
+        AbstractMergeNode nullCheckMerge = kit.endIf();
+        nullCheckMerge.setStateAfter(state.create(kit.bci(), nullCheckMerge));
+        Stamp stamp = nullExceptionObject.stamp(NodeView.DEFAULT).meet(castExceptionObject.stamp(NodeView.DEFAULT));
+        ValuePhiNode exceptionResult = kit.unique(new ValuePhiNode(stamp, nullCheckMerge, new ValueNode[]{nullExceptionObject, castExceptionObject}));
 
         AbstractMergeNode receiverCheckMerge = kit.endIf();
         receiverCheckMerge.setStateAfter(state.create(kit.bci(), receiverCheckMerge));
         if (invokeResult == null) {
             return null;
         }
-        return kit.getGraph().addWithoutUnique(new ValuePhiNode(invokeResult.stamp(NodeView.DEFAULT), receiverCheckMerge, new ValueNode[]{invokeResult, exceptionObject}));
+        return kit.getGraph().addWithoutUnique(new ValuePhiNode(invokeResult.stamp(NodeView.DEFAULT), receiverCheckMerge, new ValueNode[]{invokeResult, exceptionResult}));
     }
 
     /**
