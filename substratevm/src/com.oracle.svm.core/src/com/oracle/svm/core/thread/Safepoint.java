@@ -66,6 +66,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
@@ -312,7 +313,7 @@ public final class Safepoint {
      * value.</li>
      * </ul>
      */
-    static final FastThreadLocalInt safepointRequested = FastThreadLocalFactory.createInt();
+    static final FastThreadLocalInt safepointRequested = FastThreadLocalFactory.createInt().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
     /** The value to reset a thread's {@link #safepointRequested} value to after a safepoint. */
     static final int THREAD_REQUEST_RESET = Integer.MAX_VALUE;
