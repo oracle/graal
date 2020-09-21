@@ -402,7 +402,7 @@ public final class NativeImageHeap implements ImageHeap {
                  * a separate object, we ensure that they never are duplicated. We use the blacklist
                  * to check that.
                  */
-                boolean shouldBlacklist = HybridLayout.hybridFieldsNeverDuplicated(clazz);
+                boolean shouldBlacklist = !HybridLayout.canHybridFieldsBeDuplicated(clazz);
                 hybridTypeIDSlotsField = hybridLayout.getTypeIDSlotsField();
                 if (hybridTypeIDSlotsField != null && shouldBlacklist) {
                     Object typeIDSlots = readObjectField(hybridTypeIDSlotsField, con);

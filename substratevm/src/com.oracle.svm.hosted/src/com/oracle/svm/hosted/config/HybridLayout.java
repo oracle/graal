@@ -55,8 +55,8 @@ public class HybridLayout<T> {
         return ImageSingletons.lookup(HybridLayoutSupport.class).isHybridField(field);
     }
 
-    public static boolean hybridFieldsNeverDuplicated(ResolvedJavaType clazz) {
-        return ImageSingletons.lookup(HybridLayoutSupport.class).hybridFieldsNeverDuplicated(clazz);
+    public static boolean canHybridFieldsBeDuplicated(ResolvedJavaType clazz) {
+        return ImageSingletons.lookup(HybridLayoutSupport.class).canHybridFieldsBeDuplicated(clazz);
     }
 
     private final ObjectLayout layout;

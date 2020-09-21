@@ -44,9 +44,9 @@ public class HybridLayoutSupport {
         return field.getAnnotation(Hybrid.Array.class) != null || field.getAnnotation(Hybrid.TypeIDSlots.class) != null;
     }
 
-    public boolean hybridFieldsNeverDuplicated(ResolvedJavaType clazz) {
+    public boolean canHybridFieldsBeDuplicated(ResolvedJavaType clazz) {
         assert isHybrid(clazz) : "Can only be called on hybrid types";
-        return clazz.getAnnotation(Hybrid.class).hybridFieldsNeverDuplicated();
+        return clazz.getAnnotation(Hybrid.class).canHybridFieldsBeDuplicated();
     }
 
     /**
