@@ -53,7 +53,7 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
     @Override
     public abstract int execute(VirtualFrame frame);
 
-    public boolean redefined() {
+    public boolean removedByRedefintion() {
         return false;
     }
 

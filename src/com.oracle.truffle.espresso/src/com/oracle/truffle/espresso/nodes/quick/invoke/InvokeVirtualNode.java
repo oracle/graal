@@ -104,7 +104,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
     }
 
     @Override
-    public boolean redefined() {
+    public boolean removedByRedefintion() {
         return resolutionSeed.isRemovedByRedefition();
     }
 

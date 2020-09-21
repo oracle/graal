@@ -1275,7 +1275,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case INVOKEDYNAMIC: top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
                     case QUICK: {
                         QuickNode quickNode = nodes[bs.readCPI(curBCI)];
-                        if (quickNode.redefined()) {
+                        if (quickNode.removedByRedefintion()) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             BytecodeStream original = new BytecodeStream(getMethodVersion().getCodeAttribute().getOriginalCode());
                             char cpi = original.readCPI(curBCI);
