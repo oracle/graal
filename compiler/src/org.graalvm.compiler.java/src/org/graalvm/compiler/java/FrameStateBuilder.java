@@ -340,22 +340,11 @@ public final class FrameStateBuilder implements SideEffectsState {
             throw shouldNotReachHere();
         }
 
-        if (pushedValues != null) {
-            assert pushedSlotKinds.length == pushedValues.length;
-            int stackSizeToRestore = stackSize;
-            for (int i = 0; i < pushedValues.length; i++) {
-                push(pushedSlotKinds[i], pushedValues[i]);
-            }
-            FrameState res = graph.add(new FrameState(outerFrameState, code, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
-            stackSize = stackSizeToRestore;
-            return res;
-        } else {
-            if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
-                assert outerFrameState == null;
-                clearLocals();
-            }
-            return graph.add(new FrameState(outerFrameState, code, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
+        if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+            assert outerFrameState == null;
+            clearLocals();
         }
+        return graph.add(new FrameState(outerFrameState, code, bci, locals, stack, stackSize, pushedSlotKinds, pushedValues, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
     }
 
     public NodeSourcePosition createBytecodePosition(int bci) {
@@ -1076,7 +1065,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         ValueNode[] newStack = {};
         ValueNode[] locks = {};
         assert monitorIds.length == 0;
-        stateAfterStart = graph.add(new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, newLocals, newStack, stackSize, locks, Collections.emptyList(), false, false));
+        stateAfterStart = graph.add(new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, newLocals, newStack, stackSize, null, null, locks, Collections.emptyList(), false, false));
         return stateAfterStart;
     }
 
