@@ -81,8 +81,8 @@ public final class WasmTable {
         return elements[index];
     }
 
-    public void set(int index, Object function) {
-        elements[index] = function;
+    public void set(int index, Object element) {
+        elements[index] = element;
     }
 
     public void initialize(int i, WasmFunctionInstance function) {
@@ -93,7 +93,7 @@ public final class WasmTable {
     }
 
     @SuppressWarnings({"unused", "static-method"})
-    public boolean grow(long delta) {
+    public boolean grow(int delta) {
         throw WasmExecutionException.create(null, "Tables cannot be grown.");
     }
 }

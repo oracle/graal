@@ -50,8 +50,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public class ExecutableNode extends WasmBuiltinRootNode {
     private final Executable executable;
 
-    public ExecutableNode(WasmLanguage language, WasmInstance module, Executable executable) {
-        super(language, module);
+    public ExecutableNode(WasmLanguage language, WasmInstance instance, Executable executable) {
+        super(language, instance);
         this.executable = executable;
     }
 
