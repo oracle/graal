@@ -79,7 +79,7 @@ public final class LLVMPolyglotWrite {
                 foreignWrite.writeMember(foreign, name, escapedValue);
             } catch (UnsupportedMessageException e) {
                 exception.enter();
-                throw new LLVMPolyglotException(foreignWrite, "Can not write member '%s' to polyglot value.", name);
+                throw new LLVMPolyglotException(foreignWrite, "Cannot write member '%s' to polyglot value.", name);
             } catch (UnknownIdentifierException e) {
                 exception.enter();
                 throw new LLVMPolyglotException(foreignWrite, "Member '%s' does not exist.", e.getUnknownIdentifier());
@@ -126,7 +126,7 @@ public final class LLVMPolyglotWrite {
                 foreignWrite.writeArrayElement(foreign, id, escapedValue);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(foreignWrite, "Can not write to index %d of polyglot value.", id);
+                throw new LLVMPolyglotException(foreignWrite, "Cannot write to index %d of polyglot value.", id);
             } catch (InvalidArrayIndexException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMPolyglotException(foreignWrite, "Index %d does not exist.", id);

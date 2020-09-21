@@ -206,6 +206,11 @@ public class LLVMForeignCallNode extends RootNode {
     }
 
     @Override
+    public String toString() {
+        return "LLVM:" + callNode.getCallTarget();
+    }
+
+    @Override
     public boolean isInternal() {
         return true;
     }
@@ -231,7 +236,7 @@ public class LLVMForeignCallNode extends RootNode {
         if (functionType instanceof LLVMInteropType.Function) {
             LLVMInteropType returnType = ((LLVMInteropType.Function) functionType).getReturnType();
             if (returnType instanceof LLVMInteropType.Value) {
-                return ((LLVMInteropType.Value) returnType).getBaseType();
+                return ((LLVMInteropType.Value) returnType).baseType;
             }
         }
         return null;
