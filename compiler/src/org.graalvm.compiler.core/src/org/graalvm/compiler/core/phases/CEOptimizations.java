@@ -24,11 +24,6 @@
  */
 package org.graalvm.compiler.core.phases;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
