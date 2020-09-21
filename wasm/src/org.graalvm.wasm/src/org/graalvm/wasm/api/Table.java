@@ -61,15 +61,19 @@ public class Table extends Dictionary {
     private final TableDescriptor descriptor;
     private final WasmTable table;
 
-    public Table(TableDescriptor descriptor) {
-        this.descriptor = descriptor;
-        this.table = new WasmTable(descriptor.initial(), descriptor.maximum());
+    public Table(WasmTable table) {
+        this.descriptor = new TableDescriptor(TableKind.anyfunc.name(), table.size(), table.maxSize());
+        this.table = table;
         addMembers(new Object[]{
-                        "descriptor", this.descriptor,
-                        "grow", new Executable(args -> grow((Integer) args[0])),
-                        "get", new Executable(args -> get((Integer) args[0])),
-                        "set", new Executable(args -> set((Integer) args[0], args[1])),
+                "descriptor", this.descriptor,
+                "grow", new Executable(args -> grow((Integer) args[0])),
+                "get", new Executable(args -> get((Integer) args[0])),
+                "set", new Executable(args -> set((Integer) args[0], args[1])),
         });
+    }
+
+    public Table(TableDescriptor descriptor) {
+        this(new WasmTable(descriptor.initial(), descriptor.maximum()));
     }
 
     @TruffleBoundary

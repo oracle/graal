@@ -51,6 +51,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.exception.WasmJsApiException.Kind;
@@ -170,6 +171,11 @@ public class Instance extends Dictionary {
         if (exportedMemory != null) {
             final WasmMemory memory = instance.memory();
             e.addMember(exportedMemory, new Memory(memory));
+        }
+        final String exportedTable = instance.symbolTable().exportedTable();
+        if (exportedTable != null) {
+            final WasmTable table = instance.table();
+            e.addMember(exportedTable, new Table(table));
         }
         return e;
     }
