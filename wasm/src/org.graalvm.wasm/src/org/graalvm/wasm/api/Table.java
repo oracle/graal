@@ -69,6 +69,10 @@ public class Table extends Dictionary {
         return new WasmExecutionException(null, "Range error.");
     }
 
+    public WasmTable wasmTable() {
+        return table;
+    }
+
     public long grow(long delta) {
         final long size = table.size();
         if (!table.grow(delta)) {

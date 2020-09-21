@@ -102,7 +102,7 @@ public class WasmJsApiSuite {
                 int result = (int) main.executeFunction(new Object[0]);
                 Assert.assertEquals("Should return 42 from main.", 42, result);
             } catch (UnknownIdentifierException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
         });
     }
@@ -123,7 +123,7 @@ public class WasmJsApiSuite {
                 int result = (int) addPlusOne.executeFunction(new Object[]{17, 3});
                 Assert.assertEquals("17 + 3 + 1 = 21.", 21, result);
             } catch (UnknownIdentifierException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
         });
     }
@@ -146,7 +146,26 @@ public class WasmJsApiSuite {
                 initZero.executeFunction(new Object[0]);
                 Assert.assertEquals("Must be 174 after initialization.", 174, memory.wasmMemory().load_i32(null, 0L));
             } catch (UnknownIdentifierException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testInstantiateWithExportMemory() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMemoryExport, null);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final Memory memory = (Memory) instance.exports().readMember("memory");
+                final Executable initZero = (Executable) instance.exports().readMember("readZero");
+                memory.wasmMemory().store_i32(null, 0L, 174);
+                final Object result = initZero.executeFunction(new Object[0]);
+                System.out.println(result);
+                Assert.assertEquals("Must be 174.", 174, result);
+            } catch (UnknownIdentifierException e) {
+                throw new RuntimeException(e);
             }
         });
     }
@@ -243,6 +262,23 @@ public class WasmJsApiSuite {
                     (byte) 0x65, (byte) 0x72, (byte) 0x6f, (byte) 0x00, (byte) 0x00, (byte) 0x0a, (byte) 0x0c, (byte) 0x01, (byte) 0x0a, (byte) 0x00, (byte) 0x41, (byte) 0x00, (byte) 0x41,
                     (byte) 0xae, (byte) 0x01, (byte) 0x36, (byte) 0x02, (byte) 0x00, (byte) 0x0b, (byte) 0x00, (byte) 0x17, (byte) 0x04, (byte) 0x6e, (byte) 0x61, (byte) 0x6d, (byte) 0x65,
                     (byte) 0x01, (byte) 0x0b, (byte) 0x01, (byte) 0x00, (byte) 0x08, (byte) 0x69, (byte) 0x6e, (byte) 0x69, (byte) 0x74, (byte) 0x5a, (byte) 0x65, (byte) 0x72, (byte) 0x6f,
+                    (byte) 0x02, (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x00,
+    };
+
+    // (module
+    //   (type $t0 (func (result i32)))
+    //   (func $readZero (export "readZero") (type $t0) (result i32)
+    //     i32.const 0
+    //     i32.load)
+    //   (memory $memory (export "memory") 4)
+    // )
+    private static final byte[] binaryWithMemoryExport = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x7f, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x05, (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x04, (byte) 0x07, (byte) 0x15,
+                    (byte) 0x02, (byte) 0x06, (byte) 0x6d, (byte) 0x65, (byte) 0x6d, (byte) 0x6f, (byte) 0x72, (byte) 0x79, (byte) 0x02, (byte) 0x00, (byte) 0x08, (byte) 0x72, (byte) 0x65,
+                    (byte) 0x61, (byte) 0x64, (byte) 0x5a, (byte) 0x65, (byte) 0x72, (byte) 0x6f, (byte) 0x00, (byte) 0x00, (byte) 0x0a, (byte) 0x09, (byte) 0x01, (byte) 0x07, (byte) 0x00,
+                    (byte) 0x41, (byte) 0x00, (byte) 0x28, (byte) 0x02, (byte) 0x00, (byte) 0x0b, (byte) 0x00, (byte) 0x17, (byte) 0x04, (byte) 0x6e, (byte) 0x61, (byte) 0x6d, (byte) 0x65,
+                    (byte) 0x01, (byte) 0x0b, (byte) 0x01, (byte) 0x00, (byte) 0x08, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x5a, (byte) 0x65, (byte) 0x72, (byte) 0x6f,
                     (byte) 0x02, (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x00,
     };
 }

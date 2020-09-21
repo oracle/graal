@@ -54,6 +54,7 @@ import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.exception.WasmJsApiException.Kind;
+import org.graalvm.wasm.memory.WasmMemory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -71,7 +72,9 @@ public class Instance extends Dictionary {
         this.truffleContext = truffleContext;
         this.module = module;
         this.importObject = importObject;
-        this.instance = instantiateModule(WasmContext.getCurrent());
+        final WasmContext instanceContext = WasmContext.getCurrent();
+        this.instance = instantiateModule(instanceContext);
+        instanceContext.linker().tryLink();
         this.exportObject = initializeExports();
         addMembers(new Object[]{
                         "module", this.module,
@@ -118,6 +121,12 @@ public class Instance extends Dictionary {
                         final Memory memory = (Memory) member;
                         ensureImportModule(importModules, d.module()).addMemory(d.name(), memory);
                         break;
+                    case table:
+                        if (!(member instanceof Table)) {
+                            throw new WasmJsApiException(Kind.LinkError, "Member " + member + " is not a table.");
+                        }
+                        final Table table = (Table) member;
+                        ensureImportModule(importModules, d.module()).addTable(d.name(), table);
                     default:
                         throw new WasmExecutionException(null, "Unimplemented case: " + d.kind());
                 }
@@ -155,6 +164,11 @@ public class Instance extends Dictionary {
                     truffleContext.leave(prev);
                 }
             }));
+        }
+        final String exportedMemory = instance.symbolTable().exportedMemory();
+        if (exportedMemory != null) {
+            final WasmMemory memory = instance.memory();
+            e.addMember(exportedMemory, new Memory(memory));
         }
         return e;
     }

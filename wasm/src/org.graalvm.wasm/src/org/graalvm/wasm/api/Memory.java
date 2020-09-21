@@ -52,14 +52,18 @@ public class Memory extends Dictionary {
     private final MemoryDescriptor descriptor;
     private final WasmMemory memory;
 
-    public Memory(MemoryDescriptor descriptor) {
-        this.descriptor = descriptor;
-        this.memory = new UnsafeWasmMemory(descriptor.initial(), descriptor.maximum());
+    public Memory(WasmMemory memory) {
+        this.descriptor = new MemoryDescriptor(memory.pageSize(), memory.maxPageSize());
+        this.memory = memory;
         addMembers(new Object[]{
-                        "descriptor", this.descriptor,
-                        "grow", new Executable(args -> grow((Long) args[0])),
-                        "buffer", new Executable(args -> new MemoryArrayBuffer(memory)),
+                "descriptor", this.descriptor,
+                "grow", new Executable(args -> grow((Long) args[0])),
+                "buffer", new Executable(args -> new MemoryArrayBuffer(memory)),
         });
+    }
+
+    public Memory(MemoryDescriptor descriptor) {
+        this(new UnsafeWasmMemory(descriptor.initial(), descriptor.maximum()));
     }
 
     public WasmMemory wasmMemory() {

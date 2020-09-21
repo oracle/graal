@@ -678,8 +678,18 @@ public abstract class SymbolTable {
         validateSingleTable();
         table = new TableInfo(initSize, maxSize);
         module().addLinkAction((context, instance) -> {
-            final WasmTable wasmTable = context.tables().allocateTable(initSize, maxSize);
-            instance.setTable(wasmTable);
+            final int index = context.tables().allocateTable(initSize, maxSize);
+            instance.setTable(context.tables().table(index));
+        });
+    }
+
+    public void allocateExternalTable(WasmTable externalTable) {
+        checkNotParsed();
+        validateSingleTable();
+        table = new TableInfo(externalTable.size(), externalTable.maxSize());
+        module().addLinkAction((context, instance) -> {
+            final int index = context.tables().allocateExternalTable(externalTable);
+            instance.setTable(context.tables().table(index));
         });
     }
 
@@ -780,7 +790,7 @@ public abstract class SymbolTable {
             throw new WasmValidationException("No memory has been declared or imported, so memory cannot be exported.");
         }
         exportedMemory = name;
-        module().addLinkAction((context, instance) -> context.linker().resolveMemoryExport(module(), name));
+        module().addLinkAction((context, instance) -> context.linker().resolveMemoryExport(instance, name));
     }
 
     int memoryCount() {
