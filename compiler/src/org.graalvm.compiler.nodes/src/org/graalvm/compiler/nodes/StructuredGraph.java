@@ -238,7 +238,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
 
         /**
-         * @see StructuredGraph#isSubstitution
+         * @see StructuredGraph#isSubstitution()
          */
         public Builder setIsSubstitution(boolean flag) {
             this.isSubstitution = flag;
