@@ -44,7 +44,7 @@ public final class LeafAssumptionGetterNode extends InlinedGetterNode {
         if (inlinedMethod.leafAssumption()) {
             StaticObject receiver = field.isStatic()
                             ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                            : nullCheck(root.peekAndReleaseObject(frame, top - 1));
+                            : nullCheck(root.popObject(frame, top - 1));
             int resultAt = inlinedMethod.isStatic() ? top : (top - 1);
             return (resultAt - top) + getFieldNode.getField(frame, root, receiver, resultAt, statementIndex);
         } else {
