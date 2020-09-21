@@ -1312,7 +1312,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     private void arrayLoad(VirtualFrame frame, int top, int curBCI, int loadOpcode) {
         assert IALOAD <= loadOpcode && loadOpcode <= SALOAD;
         JavaKind kind = arrayAccessKind(loadOpcode);
-        CompilerDirectives.isPartialEvaluationConstant(kind);
+        CompilerAsserts.partialEvaluationConstant(kind);
         int index = peekInt(frame, top - 1);
         StaticObject array = nullCheck(popObject(frame, top - 2));
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
@@ -1342,7 +1342,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     private void arrayStore(VirtualFrame frame, int top, int curBCI, int storeOpcode) {
         assert IASTORE <= storeOpcode && storeOpcode <= SASTORE;
         JavaKind kind = arrayAccessKind(storeOpcode);
-        CompilerDirectives.isPartialEvaluationConstant(kind);
+        CompilerAsserts.partialEvaluationConstant(kind);
         int index;
         StaticObject array;
         if (kind.needsTwoSlots()) {
