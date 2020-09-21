@@ -60,6 +60,9 @@ import org.graalvm.wasm.api.Memory;
 import org.graalvm.wasm.api.MemoryDescriptor;
 import org.graalvm.wasm.api.Module;
 import org.graalvm.wasm.api.ModuleExportDescriptor;
+import org.graalvm.wasm.api.Table;
+import org.graalvm.wasm.api.TableDescriptor;
+import org.graalvm.wasm.api.TableKind;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.api.WebAssemblyInstantiatedSource;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
@@ -159,11 +162,33 @@ public class WasmJsApiSuite {
             final Instance instance = instantiatedSource.instance();
             try {
                 final Memory memory = (Memory) instance.exports().readMember("memory");
-                final Executable initZero = (Executable) instance.exports().readMember("readZero");
+                final Executable readZero = (Executable) instance.exports().readMember("readZero");
                 memory.wasmMemory().store_i32(null, 0L, 174);
-                final Object result = initZero.executeFunction(new Object[0]);
+                final Object result = readZero.executeFunction(new Object[0]);
                 System.out.println(result);
                 Assert.assertEquals("Must be 174.", 174, result);
+            } catch (UnknownIdentifierException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testInstantiateWithImportTable() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Table table = new Table(new TableDescriptor(TableKind.anyfunc.name(), 1, 4));
+            Dictionary importObject = Dictionary.create(new Object[]{
+                            "host", Dictionary.create(new Object[]{
+                                            "defaultTable", table
+                            }),
+            });
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithTableImport, importObject);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final Executable callFirst = (Executable) instance.exports().readMember("callFirst");
+                Object result = callFirst.executeFunction(new Object[0]);
+                Assert.assertEquals("Must return 210.", 210, result);
             } catch (UnknownIdentifierException e) {
                 throw new RuntimeException(e);
             }
@@ -266,11 +291,11 @@ public class WasmJsApiSuite {
     };
 
     // (module
-    //   (type $t0 (func (result i32)))
-    //   (func $readZero (export "readZero") (type $t0) (result i32)
-    //     i32.const 0
-    //     i32.load)
-    //   (memory $memory (export "memory") 4)
+    // (type $t0 (func (result i32)))
+    // (func $readZero (export "readZero") (type $t0) (result i32)
+    // i32.const 0
+    // i32.load)
+    // (memory $memory (export "memory") 4)
     // )
     private static final byte[] binaryWithMemoryExport = new byte[]{
                     (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
@@ -280,5 +305,23 @@ public class WasmJsApiSuite {
                     (byte) 0x41, (byte) 0x00, (byte) 0x28, (byte) 0x02, (byte) 0x00, (byte) 0x0b, (byte) 0x00, (byte) 0x17, (byte) 0x04, (byte) 0x6e, (byte) 0x61, (byte) 0x6d, (byte) 0x65,
                     (byte) 0x01, (byte) 0x0b, (byte) 0x01, (byte) 0x00, (byte) 0x08, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x5a, (byte) 0x65, (byte) 0x72, (byte) 0x6f,
                     (byte) 0x02, (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x00,
+    };
+
+    // (module
+    // (import "host" "defaultTable" (table (;0;) 4 anyfunc))
+    // (func $callFirst
+    // i32.const 0
+    // call_indirect)
+    // (export "callFirst" (func $callFirst))
+    // )
+    private static final byte[] binaryWithTableImport = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x00, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0c, (byte) 0x64, (byte) 0x65, (byte) 0x66,
+                    (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x54, (byte) 0x61, (byte) 0x62, (byte) 0x6c, (byte) 0x65, (byte) 0x01, (byte) 0x70, (byte) 0x00, (byte) 0x04,
+                    (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x07, (byte) 0x0d, (byte) 0x01, (byte) 0x09, (byte) 0x63, (byte) 0x61, (byte) 0x6c, (byte) 0x6c, (byte) 0x46,
+                    (byte) 0x69, (byte) 0x72, (byte) 0x73, (byte) 0x74, (byte) 0x00, (byte) 0x00, (byte) 0x0a, (byte) 0x09, (byte) 0x01, (byte) 0x07, (byte) 0x00, (byte) 0x41, (byte) 0x00,
+                    (byte) 0x11, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x00, (byte) 0x18, (byte) 0x04, (byte) 0x6e, (byte) 0x61, (byte) 0x6d, (byte) 0x65, (byte) 0x01, (byte) 0x0c,
+                    (byte) 0x01, (byte) 0x00, (byte) 0x09, (byte) 0x63, (byte) 0x61, (byte) 0x6c, (byte) 0x6c, (byte) 0x46, (byte) 0x69, (byte) 0x72, (byte) 0x73, (byte) 0x74, (byte) 0x02,
+                    (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x00,
     };
 }

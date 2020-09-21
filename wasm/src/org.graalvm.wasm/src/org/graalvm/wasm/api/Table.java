@@ -54,8 +54,7 @@ public class Table extends Dictionary {
 
     public Table(TableDescriptor descriptor) {
         this.descriptor = descriptor;
-        // TODO: Instantiate the table.
-        this.table = null;
+        this.table = new WasmTable(descriptor.initial(), descriptor.maximum());
         addMembers(new Object[]{
                         "descriptor", this.descriptor,
                         "grow", new Executable(args -> grow((Long) args[0])),

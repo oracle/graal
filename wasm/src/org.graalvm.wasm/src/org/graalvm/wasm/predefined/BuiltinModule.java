@@ -96,9 +96,9 @@ public abstract class BuiltinModule {
         return index;
     }
 
-    protected void defineExternalTable(WasmInstance instance, String memoryName, WasmTable externalTable) {
+    protected void defineExternalTable(WasmInstance instance, String tableName, WasmTable externalTable) {
         instance.symbolTable().allocateExternalTable(externalTable);
-        instance.symbolTable().exportMemory(memoryName);
+        instance.symbolTable().exportTable(tableName);
     }
 
     protected int defineTable(WasmInstance instance, String tableName, int initSize, int maxSize, byte type) {

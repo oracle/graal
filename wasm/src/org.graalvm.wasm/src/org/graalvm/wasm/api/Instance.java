@@ -127,6 +127,7 @@ public class Instance extends Dictionary {
                         }
                         final Table table = (Table) member;
                         ensureImportModule(importModules, d.module()).addTable(d.name(), table);
+                        break;
                     default:
                         throw new WasmExecutionException(null, "Unimplemented case: " + d.kind());
                 }
