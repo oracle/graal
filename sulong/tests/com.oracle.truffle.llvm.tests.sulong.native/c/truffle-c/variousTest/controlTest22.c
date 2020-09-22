@@ -28,6 +28,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-    switch (3) {}
+    switch (3) {
+        case 3:
+            break;
+    }
     return 1;
 }

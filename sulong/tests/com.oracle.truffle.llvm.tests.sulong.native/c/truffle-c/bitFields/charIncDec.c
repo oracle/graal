@@ -41,6 +41,9 @@ int main() {
     if (t.a != 1) {
         abort();
     }
+/* Not entirely sure what's going on here on aarch64 */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-constant-out-of-range-compare"
     if (++t.a != -2) {
         abort();
     }
@@ -50,6 +53,7 @@ int main() {
     if (t.a-- != -2) {
         abort();
     }
+#pragma clang diagnostic pop
     if (t.a != 1) {
         abort();
     }

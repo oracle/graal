@@ -27,9 +27,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-long a = "asdf";
+const char *a = "asdf";
 
 int main() {
-    long b = "asdf";
+    const char *b = "asdf";
     return a == b;
 }

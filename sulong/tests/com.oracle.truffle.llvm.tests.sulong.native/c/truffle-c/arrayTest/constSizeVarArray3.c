@@ -43,6 +43,5 @@ int func(int n) {
 }
 
 int main() {
-    long n = 5;
     return func(10);
 }

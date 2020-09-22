@@ -28,7 +28,10 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 long function(char t1[4]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstring-compare"
     return t1 == "asdf";
+#pragma clang diagnostic pop
 }
 
 int main() {
