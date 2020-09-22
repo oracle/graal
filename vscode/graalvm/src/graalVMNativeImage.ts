@@ -42,15 +42,19 @@ export async function addNativeImageToPOM() {
     }
 
     const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
-    const version: string | undefined = getGraalVMVersion(graalVMHome);
-    if (!version) {
+    const fullVersion: string | undefined = await getGraalVMVersion(graalVMHome);
+    if (!fullVersion) {
         vscode.window.showErrorMessage("Cannot get the version information of the selected GraalVM.");
         return;
     }
-
+    const version: string[] | null = fullVersion.match(/\d+\.\d+\.\d+(-dev)?/);
+    if (!version || version.length === 0) {
+        vscode.window.showErrorMessage("Cannot get the version information of the selected GraalVM.");
+        return;
+    }
     const rawArtefactInfo: Promise<string> = new Promise<string>((resolve, reject) => {
         let result: string = "";
-        https.get(url.parse(`${URL_SEARCH}?q=g:"${GID}"+AND+a:"${AID}"+AND+v:"${version}"&vt=json`), (res: http.IncomingMessage) => {
+        https.get(url.parse(`${URL_SEARCH}?q=g:"${GID}"+AND+a:"${AID}"+AND+v:"${version[0]}"&vt=json`), (res: http.IncomingMessage) => {
             res.on("data", chunk => {
                 result = result.concat(chunk.toString());
             });
@@ -71,7 +75,7 @@ export async function addNativeImageToPOM() {
 
     let install: boolean = true;
     if (!artefactAvailable) {
-        if (NO === await vscode.window.showInformationMessage(`Unable to verify the native-image artefact version ${version}. Continue anyway?`, YES, NO)) {
+        if (NO === await vscode.window.showInformationMessage(`Unable to verify the native-image artefact version ${fullVersion}. Continue anyway?`, YES, NO)) {
             return;
         }
     }
@@ -99,17 +103,17 @@ export async function addNativeImageToPOM() {
                 switch (top) {
                     case 'plugins':
                         if (!insertOffset && stack.length > 1 && stack[stack.length - 1] === 'build' && stack[stack.length - 2] === 'project') {
-                            toInsert = getPlugin(getIndent(doc, insertOffset = parser.startTagPosition - 1), indent, eol, version);
+                            toInsert = getPlugin(getIndent(doc, insertOffset = parser.startTagPosition - 1), indent, eol, fullVersion);
                         }
                         break;
                     case 'build':
                         if (!insertOffset && stack.length > 0 && stack[stack.length - 1] === 'project') {
-                            toInsert = getPlugins(getIndent(doc, insertOffset = parser.startTagPosition - 1), indent, eol, version);
+                            toInsert = getPlugins(getIndent(doc, insertOffset = parser.startTagPosition - 1), indent, eol, fullVersion);
                         }
                         break;
                     case 'project':
                         if (!insertOffset) {
-                            toInsert = getBuild(getIndent(doc, insertOffset = parser.startTagPosition - 1), indent, eol, version);
+                            toInsert = getBuild(getIndent(doc, insertOffset = parser.startTagPosition - 1), indent, eol, fullVersion);
                         }
                         break;
                 }
