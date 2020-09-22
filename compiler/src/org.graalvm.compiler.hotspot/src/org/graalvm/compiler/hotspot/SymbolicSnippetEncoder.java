@@ -59,6 +59,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.hotspot.EncodedSnippets.GraalCapability;
+import org.graalvm.compiler.hotspot.EncodedSnippets.GraphData;
 import org.graalvm.compiler.hotspot.EncodedSnippets.SymbolicEncodedGraph;
 import org.graalvm.compiler.hotspot.EncodedSnippets.SymbolicResolvedJavaField;
 import org.graalvm.compiler.hotspot.EncodedSnippets.SymbolicResolvedJavaMethod;
@@ -158,12 +159,16 @@ public class SymbolicSnippetEncoder {
 
         public abstract String keyString();
 
+        public abstract Class<?> receiverClass();
     }
 
     static class SnippetKey extends GraphKey {
 
-        SnippetKey(ResolvedJavaMethod method, ResolvedJavaMethod original) {
+        private final Class<?> receiverClass;
+
+        SnippetKey(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver) {
             super(method, original);
+            this.receiverClass = receiver != null ? receiver.getClass() : null;
         }
 
         @Override
@@ -175,13 +180,12 @@ public class SymbolicSnippetEncoder {
                 return false;
             }
             SnippetKey that = (SnippetKey) o;
-            return Objects.equals(method, that.method) &&
-                            Objects.equals(original, that.original);
+            return Objects.equals(method, that.method) && Objects.equals(original, that.original) && Objects.equals(receiverClass, that.receiverClass);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(method, original);
+            return Objects.hash(method, original, receiverClass);
         }
 
         @Override
@@ -190,10 +194,16 @@ public class SymbolicSnippetEncoder {
         }
 
         @Override
+        public Class<?> receiverClass() {
+            return receiverClass;
+        }
+
+        @Override
         public String toString() {
             return "SnippetKey{" +
                             "method=" + method +
                             ", original=" + original +
+                            ", receiverClass=" + receiverClass +
                             '}';
         }
     }
@@ -206,6 +216,7 @@ public class SymbolicSnippetEncoder {
             super(method, original);
             this.context = context;
             this.plugin = plugin;
+            assert method.isStatic() : "must be non-virtual";
         }
 
         @Override
@@ -233,6 +244,11 @@ public class SymbolicSnippetEncoder {
         }
 
         @Override
+        public Class<?> receiverClass() {
+            return null;
+        }
+
+        @Override
         public String toString() {
             return "MethodSubstitutionKey{" +
                             "method=" + method +
@@ -246,9 +262,7 @@ public class SymbolicSnippetEncoder {
     /**
      * All the graphs parsed so far.
      */
-    private EconomicMap<String, StructuredGraph> preparedSnippetGraphs = EconomicMap.create();
-
-    private EconomicMap<String, GraphKey> keyToMethod = EconomicMap.create();
+    private EconomicMap<GraphKey, StructuredGraph> preparedSnippetGraphs = EconomicMap.create();
 
     private EconomicMap<String, SnippetParameterInfo> snippetParameterInfos = EconomicMap.create();
 
@@ -341,7 +355,7 @@ public class SymbolicSnippetEncoder {
 
     synchronized void checkRegistered(MethodSubstitutionPlugin plugin) {
         if (!knownPlugins.contains(plugin)) {
-            throw new GraalError("missing plugin should have been registered during construction");
+            throw new GraalError("missing plugin should have been registered during construction " + plugin + " " + knownPlugins);
         }
     }
 
@@ -355,8 +369,7 @@ public class SymbolicSnippetEncoder {
         StructuredGraph subst = buildGraph(method, original, originalMethodString, null, true, false, context, options);
         MethodSubstitutionKey key = new MethodSubstitutionKey(method, original, context, plugin);
         originalMethods.put(key.keyString(), originalMethodString);
-        preparedSnippetGraphs.put(key.keyString(), subst);
-        keyToMethod.put(key.keyString(), key);
+        preparedSnippetGraphs.put(key, subst);
     }
 
     private StructuredGraph buildGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, String originalMethodString, Object receiver, boolean requireInlining, boolean trackNodeSourcePosition,
@@ -455,7 +468,7 @@ public class SymbolicSnippetEncoder {
             }
             preparedPlugins = plugins.size();
         }
-        EconomicMap<String, StructuredGraph> graphs = this.preparedSnippetGraphs;
+        EconomicMap<GraphKey, StructuredGraph> graphs = this.preparedSnippetGraphs;
         if (encodedGraphs != graphs.size()) {
             DebugContext debug = openDebugContext("SnippetEncoder", null, options);
             try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
@@ -475,16 +488,14 @@ public class SymbolicSnippetEncoder {
     synchronized void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         if (IS_BUILDING_NATIVE_IMAGE || UseEncodedGraphs.getValue(options)) {
             assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
-            SnippetKey key = new SnippetKey(method, original);
-            String keyString = key.keyString();
-            if (!preparedSnippetGraphs.containsKey(keyString)) {
+            SnippetKey key = new SnippetKey(method, original, receiver);
+            if (!preparedSnippetGraphs.containsKey(key)) {
                 if (original != null) {
-                    originalMethods.put(keyString, methodKey(original));
+                    originalMethods.put(key.keyString(), methodKey(original));
                 }
                 StructuredGraph snippet = buildGraph(method, original, null, receiver, true, trackNodeSourcePosition, INLINE_AFTER_PARSING, options);
-                preparedSnippetGraphs.put(keyString, snippet);
-                snippetParameterInfos.put(keyString, new SnippetParameterInfo(method));
-                keyToMethod.put(keyString, key);
+                preparedSnippetGraphs.put(key, snippet);
+                snippetParameterInfos.put(key.keyString(), new SnippetParameterInfo(method));
             }
         }
 
@@ -497,11 +508,14 @@ public class SymbolicSnippetEncoder {
         }
         encoder.finishPrepare();
 
-        EconomicMap<String, EncodedSnippets.GraphData> graphDatas = EconomicMap.create();
-        MapCursor<String, StructuredGraph> cursor = preparedSnippetGraphs.getEntries();
+        EconomicMap<String, GraphData> graphDatas = EconomicMap.create();
+        MapCursor<GraphKey, StructuredGraph> cursor = preparedSnippetGraphs.getEntries();
         while (cursor.advance()) {
-            EncodedSnippets.GraphData data = new EncodedSnippets.GraphData(encoder.encode(cursor.getValue()), originalMethods.get(cursor.getKey()), snippetParameterInfos.get(cursor.getKey()));
-            graphDatas.put(cursor.getKey(), data);
+            GraphKey key = cursor.getKey();
+            String keyString = key.keyString();
+            GraphData previous = graphDatas.get(keyString);
+            GraphData data = GraphData.create(encoder.encode(cursor.getValue()), originalMethods.get(keyString), snippetParameterInfos.get(keyString), key.receiverClass(), previous);
+            graphDatas.put(keyString, data);
         }
 
         byte[] snippetEncoding = encoder.getEncoding();
