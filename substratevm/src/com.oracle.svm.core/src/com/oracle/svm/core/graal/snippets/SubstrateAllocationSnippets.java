@@ -501,6 +501,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 int layoutEncoding = hub.getLayoutEncoding();
                 int arrayBaseOffset = (int) LayoutEncoding.getArrayBaseOffset(layoutEncoding).rawValue();
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
+                boolean fillContents = node.fillContents();
+                assert fillContents : "fillContents must be true for hybrid allocations";
                 /* Hybrid layouts have the same header as array layouts. */
                 int fillStartOffset = arrayHeaderSize();
 
@@ -511,7 +513,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
                 args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
-                args.addConst("fillContents", node.fillContents());
+                args.addConst("fillContents", fillContents);
                 args.addConst("fillStartOffset", fillStartOffset);
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", length.isConstant());
