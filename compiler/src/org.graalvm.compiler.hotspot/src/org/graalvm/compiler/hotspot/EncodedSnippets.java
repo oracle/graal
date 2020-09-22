@@ -206,7 +206,12 @@ public class EncodedSnippets {
             }
         }
 
-        int startOffset = data.getStartOffset(args != null ? args[0].getClass() : null);
+        Class<?> receiverClass = null;
+        if (!method.isStatic()) {
+            assert args != null && args[0] != null : "must have a receiver";
+            receiverClass = args[0].getClass();
+        }
+        int startOffset = data.getStartOffset(receiverClass);
         SymbolicEncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, data.originalMethod, method.getDeclaringClass());
         return decodeSnippetGraph(encodedGraph, method, replacements, args, allowAssumptions, options, IS_IN_NATIVE_IMAGE);
     }

@@ -168,6 +168,7 @@ public class SymbolicSnippetEncoder {
 
         SnippetKey(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver) {
             super(method, original);
+            assert method.isStatic() == (receiver == null) : "static must not have receiver and non-static must";
             this.receiverClass = receiver != null ? receiver.getClass() : null;
         }
 
