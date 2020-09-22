@@ -504,7 +504,7 @@ final class DITypeExtractor implements MetadataVisitor {
             MDValue mdValue = (MDValue) mdSubprogram.getFunction();
             FunctionDefinition function = (FunctionDefinition) mdValue.getValue();
             List<LLVMSourceType> typeList = new ArrayList<>();
-            typeList.add(LLVMSourceType.VOID);// return type
+            typeList.add(LLVMSourceType.VOID); // return type
             for (FunctionParameter fp : function.getParameters()) {
                 // TODO pichristoph find LLVMSourceType of fp
                 typeList.add(UNKNOWN);
