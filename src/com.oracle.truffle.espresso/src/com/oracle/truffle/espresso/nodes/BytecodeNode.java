@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.STRICT;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AASTORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ACONST_NULL;
@@ -256,11 +257,14 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.bytecode.MapperBCI;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
@@ -2168,39 +2172,57 @@ public final class BytecodeNode extends EspressoMethodNode {
     private int putField(final VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
 
-        if (opcode == PUTFIELD) {
-            // Otherwise, if the resolved field is a static field, putfield throws an
-            // IncompatibleClassChangeError.
-            if (field.isStatic()) {
+        /*
+         * PUTFIELD: Otherwise, if the resolved field is a static field, putfield throws an
+         * IncompatibleClassChangeError.
+         *
+         * PUTSTATIC: Otherwise, if the resolved field is not a static (class) field or an interface
+         * field, putstatic throws an IncompatibleClassChangeError.
+         */
+        if (field.isStatic() != (opcode == PUTSTATIC)) {
+            CompilerDirectives.transferToInterpreter();
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError,
+                            String.format("Expected %s field %s.%s",
+                                            (opcode == PUTSTATIC) ? "static" : "non-static",
+                                            field.getDeclaringKlass().getNameAsString(),
+                                            field.getNameAsString()));
+        }
+
+        /*
+         * PUTFIELD: Otherwise, if the field is final, it must be declared in the current class, and
+         * the instruction must occur in an instance initialization method (<init>) of the current
+         * class. Otherwise, an IllegalAccessError is thrown.
+         * 
+         * PUTSTATIC: Otherwise, if the field is final, it must be declared in the current class,
+         * and the instruction must occur in the <clinit> method of the current class. Otherwise, an
+         * IllegalAccessError is thrown.
+         */
+        if (field.isFinalFlagSet()) {
+            if (field.getDeclaringKlass() != getMethod().getDeclaringKlass()) {
                 CompilerDirectives.transferToInterpreter();
-                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalAccessError,
+                                String.format("Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
+                                                (opcode == PUTSTATIC) ? "static" : "non-static",
+                                                field.getDeclaringKlass().getNameAsString(),
+                                                field.getNameAsString(),
+                                                getMethod().getDeclaringKlass().getNameAsString()));
             }
-            // Otherwise, if the field is final, it must be declared in the current class, and
-            // the instruction must occur in an instance initialization method (<init>) of the
-            // current class. Otherwise, an IllegalAccessError is thrown.
-            if (field.isFinalFlagSet()) {
-                if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass()) ||
-                                (getJavaVersion().java9OrLater() && !getMethod().isConstructor())) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw Meta.throwException(getMeta().java_lang_IllegalAccessError);
-                }
-            }
-        } else if (opcode == PUTSTATIC) {
-            // Otherwise, if the resolved field is not a static (class) field or an interface
-            // field, putstatic throws an IncompatibleClassChange
-            if (!field.isStatic()) {
+
+            boolean enforceInitializerCheck = (getContext().SpecCompliancyMode == STRICT) ||
+                            // HotSpot enforces this only for >= Java 9 (v53) .class files.
+                            field.getDeclaringKlass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
+
+            if (enforceInitializerCheck &&
+                            ((opcode == PUTFIELD && !getMethod().isConstructor()) ||
+                                            (opcode == PUTSTATIC && !getMethod().isClassInitializer()))) {
                 CompilerDirectives.transferToInterpreter();
-                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
-            }
-            // Otherwise, if the field is final, it must be declared in the current class, and the
-            // instruction must occur in the <clinit> method of the current class. Otherwise, an
-            // IllegalAccessError is thrown.
-            if (field.isFinalFlagSet()) {
-                if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass()) ||
-                                (getJavaVersion().java9OrLater() && !getMethod().isClassInitializer())) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw Meta.throwException(getMeta().java_lang_IllegalAccessError);
-                }
+                throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalAccessError,
+                                String.format("Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
+                                                (opcode == PUTSTATIC) ? "static" : "non-static",
+                                                field.getDeclaringKlass().getNameAsString(),
+                                                field.getNameAsString(),
+                                                getMethod().getNameAsString(),
+                                                (opcode == PUTSTATIC) ? "<clinit>" : "<init>"));
             }
         }
 
