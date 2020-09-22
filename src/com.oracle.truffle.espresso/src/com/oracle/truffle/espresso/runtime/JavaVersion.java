@@ -60,6 +60,10 @@ public final class JavaVersion {
         return java9OrLater();
     }
 
+    public int classFileVersion() {
+        return version + 44;
+    }
+
     @Override
     public String toString() {
         return Integer.toString(version);
