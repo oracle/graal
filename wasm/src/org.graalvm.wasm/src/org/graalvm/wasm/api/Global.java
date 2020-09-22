@@ -55,13 +55,13 @@ public class Global extends Dictionary {
 
     public Global(Object descriptor, Object value) {
         this.descriptor = descriptor;
-        this.value = value;
         try {
             this.valueType = ValueType.valueOf((String) InteropLibrary.getUncached().readMember(descriptor, "value"));
             this.mutable = (boolean) InteropLibrary.getUncached().readMember(descriptor, "mutable");
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid global descriptor: " + descriptor);
         }
+        setInternal(value);
         addMembers(new Object[]{
                         "descriptor", this.descriptor,
                         "valueOf", new Executable(args -> get()),
@@ -79,5 +79,41 @@ public class Global extends Dictionary {
 
     public boolean mutable() {
         return mutable;
+    }
+
+    public void set(Object value) {
+        if (!mutable) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Global is not mutable.");
+        }
+        setInternal(value);
+    }
+
+    private void setInternal(Object value) {
+        switch(valueType) {
+            case i32:
+                if (!(value instanceof Integer)) {
+                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Global type " + valueType + ", value: " + value);
+                }
+                this.value = value;
+                break;
+            case i64:
+                if (!(value instanceof Long)) {
+                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Global type " + valueType + ", value: " + value);
+                }
+                this.value = value;
+                break;
+            case f32:
+                if (!(value instanceof Float)) {
+                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Global type " + valueType + ", value: " + value);
+                }
+                this.value = value;
+                break;
+            case f64:
+                if (!(value instanceof Double)) {
+                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Global type " + valueType + ", value: " + value);
+                }
+                this.value = value;
+                break;
+        }
     }
 }

@@ -58,12 +58,15 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
+import org.graalvm.wasm.api.Global;
+import org.graalvm.wasm.api.GlobalDescriptor;
 import org.graalvm.wasm.api.ImportExportKind;
 import org.graalvm.wasm.api.Instance;
 import org.graalvm.wasm.api.Memory;
 import org.graalvm.wasm.api.MemoryDescriptor;
 import org.graalvm.wasm.api.Module;
 import org.graalvm.wasm.api.ModuleExportDescriptor;
+import org.graalvm.wasm.api.ProxyGlobal;
 import org.graalvm.wasm.api.Table;
 import org.graalvm.wasm.api.TableDescriptor;
 import org.graalvm.wasm.api.TableKind;
@@ -216,6 +219,47 @@ public class WasmJsApiSuite {
             } catch (UnsupportedMessageException e) {
                 throw new RuntimeException(e);
             } catch (ArityException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testInstantiateWithImportGlobal() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Global global = new Global(new GlobalDescriptor("i32", false), 17);
+            Dictionary importObject = Dictionary.create(new Object[]{
+                            "host", Dictionary.create(new Object[]{
+                                            "defaultGlobal", global
+                            }),
+            });
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithGlobalImport, importObject);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final Executable readGlobal = (Executable) instance.exports().readMember("readGlobal");
+                Assert.assertEquals("Must be 17 initially.", 17, readGlobal.executeFunction(new Object[0]));
+            } catch (UnknownIdentifierException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testInstantiateWithExportGlobal() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithGlobalExport, null);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final ProxyGlobal global = (ProxyGlobal) instance.exports().readMember("exportedGlobal");
+                Assert.assertEquals("Exported global must be 1096.", 1096, global.get());
+                final Executable setGlobal = (Executable) instance.exports().readMember("setGlobal");
+                final Executable getGlobal = (Executable) instance.exports().readMember("getGlobal");
+                Assert.assertEquals("Must be 2345 initially.", 2345, getGlobal.executeFunction(new Object[0]));
+                setGlobal.executeFunction(new Object[]{25});
+                Assert.assertEquals("Must be 25 later.", 25, getGlobal.executeFunction(new Object[0]));
+            } catch (UnknownIdentifierException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -374,5 +418,49 @@ public class WasmJsApiSuite {
                     (byte) 0x00, (byte) 0x0a, (byte) 0x09, (byte) 0x01, (byte) 0x07, (byte) 0x00, (byte) 0x20, (byte) 0x00, (byte) 0x20, (byte) 0x00, (byte) 0x6c, (byte) 0x0b, (byte) 0x00,
                     (byte) 0x17, (byte) 0x04, (byte) 0x6e, (byte) 0x61, (byte) 0x6d, (byte) 0x65, (byte) 0x01, (byte) 0x09, (byte) 0x01, (byte) 0x00, (byte) 0x06, (byte) 0x73, (byte) 0x71,
                     (byte) 0x75, (byte) 0x61, (byte) 0x72, (byte) 0x65, (byte) 0x02, (byte) 0x05, (byte) 0x01, (byte) 0x00, (byte) 0x01, (byte) 0x00, (byte) 0x00,
+    };
+
+    // (module
+    // (type $t0 (func (result i32)))
+    // (global $global (import "host" "defaultGlobal") i32)
+    // (func $readGlobal (export "readGlobal") (type $t0) (result i32)
+    // get_global $global
+    // )
+    // )
+    private static final byte[] binaryWithGlobalImport = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x7f, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
+                    (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x7f,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x07, (byte) 0x0e, (byte) 0x01, (byte) 0x0a, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64,
+                    (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x00, (byte) 0x00, (byte) 0x0a, (byte) 0x06, (byte) 0x01, (byte) 0x04, (byte) 0x00,
+                    (byte) 0x23, (byte) 0x00, (byte) 0x0b, (byte) 0x00, (byte) 0x19, (byte) 0x04, (byte) 0x6e, (byte) 0x61, (byte) 0x6d, (byte) 0x65, (byte) 0x01, (byte) 0x0d, (byte) 0x01,
+                    (byte) 0x00, (byte) 0x0a, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x02,
+                    (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x00,
+    };
+
+    // (module
+    // (global i32 (i32.const 1096))
+    // (global (mut i32) (i32.const 2345))
+    // (func $setGlobal (export "setGlobal") (param i32)
+    // get_local 0
+    // set_global 1
+    // )
+    // (func $getGlobal (export "getGlobal") (result i32)
+    // get_global 1
+    // )
+    // (export "exportedGlobal" (global 0))
+    // )
+    private static final byte[] binaryWithGlobalExport = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x09, (byte) 0x02, (byte) 0x60, (byte) 0x01,
+                    (byte) 0x7f, (byte) 0x00, (byte) 0x60, (byte) 0x00, (byte) 0x01, (byte) 0x7f, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x01, (byte) 0x06, (byte) 0x0d,
+                    (byte) 0x02, (byte) 0x7f, (byte) 0x00, (byte) 0x41, (byte) 0xc8, (byte) 0x08, (byte) 0x0b, (byte) 0x7f, (byte) 0x01, (byte) 0x41, (byte) 0xa9, (byte) 0x12, (byte) 0x0b,
+                    (byte) 0x07, (byte) 0x2a, (byte) 0x03, (byte) 0x09, (byte) 0x73, (byte) 0x65, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c,
+                    (byte) 0x00, (byte) 0x00, (byte) 0x09, (byte) 0x67, (byte) 0x65, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x0e, (byte) 0x65, (byte) 0x78, (byte) 0x70, (byte) 0x6f, (byte) 0x72, (byte) 0x74, (byte) 0x65, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
+                    (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x00, (byte) 0x0a, (byte) 0x0d, (byte) 0x02, (byte) 0x06, (byte) 0x00, (byte) 0x20, (byte) 0x00, (byte) 0x24,
+                    (byte) 0x01, (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x01, (byte) 0x0b, (byte) 0x00, (byte) 0x27, (byte) 0x04, (byte) 0x6e, (byte) 0x61, (byte) 0x6d,
+                    (byte) 0x65, (byte) 0x01, (byte) 0x17, (byte) 0x02, (byte) 0x00, (byte) 0x09, (byte) 0x73, (byte) 0x65, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
+                    (byte) 0x61, (byte) 0x6c, (byte) 0x01, (byte) 0x09, (byte) 0x67, (byte) 0x65, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c,
+                    (byte) 0x02, (byte) 0x07, (byte) 0x02, (byte) 0x00, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x00,
     };
 }
