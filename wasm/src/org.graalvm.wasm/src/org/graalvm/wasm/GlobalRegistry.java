@@ -48,6 +48,13 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmTrap;
 
+/**
+ * The global registry holds the global values in the WebAssembly engine instance.
+ *
+ * Global values that are declared in some WebAssembly module are stored in an array of longs.
+ * Global values can also be external objects that are accessed via Interop -- such globals are
+ * stored inside an array of objects, and their addresses are negative.
+ */
 public class GlobalRegistry {
     private static final int INITIAL_GLOBALS_SIZE = 8;
 

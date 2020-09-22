@@ -108,7 +108,7 @@ public class Instance extends Dictionary {
                 final ModuleImportDescriptor d = (ModuleImportDescriptor) module.imports().readArrayElement(i);
                 final Object importedModule = getMember(importObject, d.module());
                 final Object member = getMember(importedModule, d.name());
-                switch(d.kind()) {
+                switch (d.kind()) {
                     case function:
                         if (!lib.isExecutable(member)) {
                             throw new WasmJsApiException(Kind.LinkError, "Member " + member + " is not callable.");

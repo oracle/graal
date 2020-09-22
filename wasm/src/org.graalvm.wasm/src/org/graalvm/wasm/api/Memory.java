@@ -59,9 +59,9 @@ public class Memory extends Dictionary {
         this.descriptor = new MemoryDescriptor(memory.pageSize(), memory.maxPageSize());
         this.memory = memory;
         addMembers(new Object[]{
-                "descriptor", this.descriptor,
-                "grow", new Executable(args -> grow((Long) args[0])),
-                "buffer", new Executable(args -> new MemoryArrayBuffer(memory)),
+                        "descriptor", this.descriptor,
+                        "grow", new Executable(args -> grow((Long) args[0])),
+                        "buffer", new Executable(args -> new MemoryArrayBuffer(memory)),
         });
     }
 

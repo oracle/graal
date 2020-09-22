@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
+import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
@@ -125,7 +126,7 @@ public final class WasmContext {
 
     public void register(WasmInstance instance) {
         if (moduleInstances.containsKey(instance.name())) {
-            throw new RuntimeException("Context already contains an instance named '" + instance.name() + "'.");
+            throw new WasmExecutionException(null, "Context already contains an instance named '" + instance.name() + "'.");
         }
         moduleInstances.put(instance.name(), instance);
     }

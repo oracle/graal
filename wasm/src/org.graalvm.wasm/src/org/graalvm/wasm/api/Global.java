@@ -89,7 +89,7 @@ public class Global extends Dictionary {
     }
 
     private void setInternal(Object value) {
-        switch(valueType) {
+        switch (valueType) {
             case i32:
                 if (!(value instanceof Integer)) {
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Global type " + valueType + ", value: " + value);

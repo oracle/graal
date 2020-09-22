@@ -278,7 +278,7 @@ public class WasmJsApiSuite {
         run.execute(new GuestCode(testCase));
     }
 
-    private static class GuestCode implements Consumer<WasmContext>, TruffleObject {
+    private static final class GuestCode implements Consumer<WasmContext>, TruffleObject {
         private final Consumer<WasmContext> testCase;
 
         private GuestCode(Consumer<WasmContext> testCase) {
