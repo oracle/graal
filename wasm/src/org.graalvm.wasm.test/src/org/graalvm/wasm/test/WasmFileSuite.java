@@ -69,7 +69,7 @@ import com.oracle.truffle.api.Truffle;
 
 import static junit.framework.TestCase.fail;
 
-public abstract class WasmSuiteBase extends WasmTestBase {
+public abstract class WasmFileSuite extends AbstractWasmSuite {
 
     private static final String MOVE_LEFT = "\u001b[1D";
     private static final String TEST_PASSED_ICON = "\uD83D\uDE0D";

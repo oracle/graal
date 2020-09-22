@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,31 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
+public class WebAssemblyInstantiatedSource extends Dictionary {
+    private final Module module;
+    private final Instance instance;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
-public class EmscriptenResizeHeap extends AbortNode {
-    public EmscriptenResizeHeap(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+    public WebAssemblyInstantiatedSource(Module module, Instance instance) {
+        this.module = module;
+        this.instance = instance;
+        addMembers(new Object[]{
+                        "module", this.module,
+                        "instance", this.instance,
+        });
     }
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("EmscriptenResizeHeap EXECUTE");
-
-        // Heap resizing is not supported by default by emscripten
-        // (need to specify `-s ALLOW_MEMORY_GROWTH=1` on compilation).
-        return super.execute(frame);
+    public Module module() {
+        return module;
     }
 
-    @Override
-    public String builtinNodeName() {
-        return "_emscripten_resize_heap";
+    public Instance instance() {
+        return instance;
     }
 }

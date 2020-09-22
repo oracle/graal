@@ -40,43 +40,26 @@
  */
 package org.graalvm.wasm.predefined.emscripten;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static org.graalvm.wasm.WasmTracing.trace;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
-public class LLVMExp2F64 extends WasmBuiltinRootNode {
-    public LLVMExp2F64(WasmLanguage language, WasmInstance module) {
+public class AbortOnCannotGrowMemoryNode extends AbortNode {
+    public AbortOnCannotGrowMemoryNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        Object[] args = frame.getArguments();
-        assert args.length == 1;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
-
-        double x = (double) args[0];
-
-        trace("LLVMExp2F64 EXECUTE");
-
-        return exp2(x);
+        trace("AbortOnCannotGrowMemoryNode EXECUTE");
+        return super.execute(frame);
     }
 
     @Override
     public String builtinNodeName() {
-        return "_llvm_exp2_f64";
-    }
-
-    // TODO: Remove the boundary here.
-    @CompilerDirectives.TruffleBoundary
-    double exp2(double x) {
-        return Math.pow(2, x);
+        return "abortOnCannotGrowMemory";
     }
 }

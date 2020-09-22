@@ -38,63 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.testutil;
+package org.graalvm.wasm.predefined.emscripten;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
-import org.graalvm.wasm.Assert;
-import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.WasmInstance;
 
-/**
- * Records the context state (memory and global variables) into a custom object.
- */
-public class SaveContextNode extends WasmBuiltinRootNode {
-    public SaveContextNode(WasmLanguage language, WasmInstance module) {
+import static org.graalvm.wasm.WasmTracing.trace;
+
+public class SegfaultNode extends AbortNode {
+    public SegfaultNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        return saveModuleState();
+        trace("SegfaultNode");
+        return super.execute(frame);
     }
 
     @Override
     public String builtinNodeName() {
-        return TestutilModule.Names.RESET_CONTEXT;
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private ContextState saveModuleState() {
-        final WasmContext context = contextReference().get();
-        Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, only 0 or 1 memories can be saved.");
-        final WasmMemory currentMemory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
-        final GlobalRegistry globals = context.globals().duplicate();
-        final ContextState state = new ContextState(currentMemory, globals);
-
-        return state;
-    }
-
-    static final class ContextState implements TruffleObject {
-        private final WasmMemory memory;
-        private final GlobalRegistry globals;
-
-        private ContextState(WasmMemory memory, GlobalRegistry globals) {
-            this.memory = memory;
-            this.globals = globals;
-        }
-
-        public WasmMemory memory() {
-            return memory;
-        }
-
-        public GlobalRegistry globals() {
-            return globals;
-        }
+        return "SegfaultNode";
     }
 }

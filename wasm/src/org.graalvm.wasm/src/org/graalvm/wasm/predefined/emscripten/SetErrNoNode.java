@@ -38,40 +38,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.test;
+package org.graalvm.wasm.predefined.emscripten;
 
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.function.Predicate;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import org.graalvm.wasm.test.options.WasmTestOptions;
-import org.junit.Test;
+import static org.graalvm.wasm.WasmTracing.trace;
 
-public abstract class WasmTestBase {
-    protected static final Predicate<? super Path> isWastFile = f -> f.getFileName().toString().endsWith(".wast");
-    protected static final Predicate<? super Path> isWatFile = f -> f.getFileName().toString().endsWith(".wat");
-    protected static final Predicate<? super Path> isResultFile = f -> f.getFileName().toString().endsWith(".result");
-
-    enum WasmTestStatus {
-        OK,
-        SKIPPED;
+public class SetErrNoNode extends WasmBuiltinRootNode {
+    public SetErrNoNode(WasmLanguage language, WasmInstance module) {
+        super(language, module);
     }
 
-    protected static Predicate<String> filterTestName() {
-        if (WasmTestOptions.TEST_FILTER != null && !WasmTestOptions.TEST_FILTER.isEmpty()) {
-            return name -> name.matches(WasmTestOptions.TEST_FILTER);
-        } else {
-            return name -> true;
+    @Override
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+        Object[] args = frame.getArguments();
+        assert args.length == 1;
+        for (Object arg : args) {
+            trace("argument: %s", arg);
         }
+
+        int value = (int) args[0];
+
+        trace("SetErrNoNode EXECUTE");
+
+        // TODO: Get address (3120) via call to `___errno_location` WebAssembly function.
+        WasmMemory memory = instance.memory();
+        memory.store_i32(this, 3120, value);
+
+        return value;
     }
 
-    public static String readFileToString(Path path, Charset charset) throws IOException {
-        byte[] rawBytes = Files.readAllBytes(path);
-        return new String(rawBytes, charset);
+    @Override
+    public String builtinNodeName() {
+        return "___setErrNo";
     }
-
-    @Test
-    public abstract void test() throws IOException;
 }

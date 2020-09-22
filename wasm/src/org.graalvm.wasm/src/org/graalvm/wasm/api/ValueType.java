@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import com.oracle.truffle.api.CompilerDirectives;
+import org.graalvm.wasm.ValueTypes;
+import org.graalvm.wasm.exception.WasmExecutionException;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+public enum ValueType {
+    i32(ValueTypes.I32_TYPE),
+    i64(ValueTypes.I64_TYPE),
+    f32(ValueTypes.F32_TYPE),
+    f64(ValueTypes.F64_TYPE);
 
-public class Lock extends WasmBuiltinRootNode {
-    public Lock(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+    private final byte byteValue;
+
+    ValueType(byte byteValue) {
+        this.byteValue = byteValue;
     }
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("Lock EXECUTE");
-        return WasmVoidResult.getInstance();
+    @CompilerDirectives.TruffleBoundary
+    public static ValueType parse(String name) {
+        return valueOf(name);
     }
 
-    @Override
-    public String builtinNodeName() {
-        return "___lock";
+    public static ValueType fromByteValue(byte value) {
+        switch (value) {
+            case ValueTypes.I32_TYPE:
+                return i32;
+            case ValueTypes.I64_TYPE:
+                return i64;
+            case ValueTypes.F32_TYPE:
+                return f32;
+            case ValueTypes.F64_TYPE:
+                return f64;
+            default:
+                throw WasmExecutionException.create(null, "Unknown value type: 0x" + Integer.toHexString(value));
+        }
+    }
+
+    public byte byteValue() {
+        return byteValue;
     }
 }

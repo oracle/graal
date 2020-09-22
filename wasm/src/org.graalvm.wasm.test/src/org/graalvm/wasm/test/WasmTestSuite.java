@@ -78,6 +78,7 @@ import org.graalvm.wasm.test.suites.webassembly.IssueSuite;
                 WasiSuite.class,
                 LinkerSuite.class,
                 WasmPolyglotTestSuite.class,
+                WasmJsApiSuite.class,
 })
 public class WasmTestSuite {
     @Test

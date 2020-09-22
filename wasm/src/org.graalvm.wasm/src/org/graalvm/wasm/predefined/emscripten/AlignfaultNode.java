@@ -44,38 +44,22 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
-public class EmscriptenMemcpyBig extends WasmBuiltinRootNode {
-    public EmscriptenMemcpyBig(WasmLanguage language, WasmInstance module) {
+public class AlignfaultNode extends AbortNode {
+    public AlignfaultNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        Object[] args = frame.getArguments();
-        assert args.length == 3;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
-
-        int dest = (int) args[0];
-        int src = (int) args[1];
-        int num = (int) args[2];
-
-        trace("EmscriptenMemcpyBig EXECUTE");
-
-        WasmMemory memory = instance.memory();
-        memory.copy(this, src, dest, num);
-
-        return 0;
+        trace("AlignfaultNode");
+        return super.execute(frame);
     }
 
     @Override
     public String builtinNodeName() {
-        return "_emscripten_memcpy_big";
+        return "AlignfaultNode";
     }
 }

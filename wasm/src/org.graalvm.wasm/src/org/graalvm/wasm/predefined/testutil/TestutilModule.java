@@ -87,18 +87,18 @@ public class TestutilModule extends BuiltinModule {
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         final Path temporaryDirectory = createTemporaryDirectory();
         final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        WasmInstance module = new WasmInstance(new WasmModule(name, null, storeConstantsPolicy), storeConstantsPolicy);
+        WasmInstance instance = new WasmInstance(new WasmModule(name, null, storeConstantsPolicy), storeConstantsPolicy);
 
         // Note: in the following methods, the types are not important here, since these methods
         // are not accessed by Wasm code.
-        defineFunction(module, Names.RESET_CONTEXT, types(), types(), new ResetContextNode(language, module));
-        defineFunction(module, Names.SAVE_CONTEXT, types(), types(), new SaveContextNode(language, module));
-        defineFunction(module, Names.COMPARE_CONTEXTS, types(), types(), new CompareContextsNode(language, module));
-        defineFunction(module, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitialization(language));
+        defineFunction(instance, Names.RESET_CONTEXT, types(), types(), new ResetContextNode(language, instance));
+        defineFunction(instance, Names.SAVE_CONTEXT, types(), types(), new SaveContextNodeNode(language, instance));
+        defineFunction(instance, Names.COMPARE_CONTEXTS, types(), types(), new CompareContextsNode(language, instance));
+        defineFunction(instance, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitializationNode(language));
 
         // The following methods are exposed to the Wasm test programs.
-        defineFunction(module, Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), new SaveBinaryFile(language, temporaryDirectory));
+        defineFunction(instance, Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), new SaveBinaryFileNode(language, temporaryDirectory));
 
-        return module;
+        return instance;
     }
 }

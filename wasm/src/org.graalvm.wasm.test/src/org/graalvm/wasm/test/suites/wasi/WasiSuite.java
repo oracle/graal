@@ -42,10 +42,10 @@ package org.graalvm.wasm.test.suites.wasi;
 
 import java.io.IOException;
 
-import org.graalvm.wasm.test.WasmSuiteBase;
+import org.graalvm.wasm.test.WasmFileSuite;
 import org.junit.Test;
 
-public class WasiSuite extends WasmSuiteBase {
+public class WasiSuite extends WasmFileSuite {
     @Override
     protected String testResource() {
         return "wasi";

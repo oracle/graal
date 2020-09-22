@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,28 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmInstance;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+@ExportLibrary(InteropLibrary.class)
+public class GlobalDescriptor extends Dictionary {
+    private final ValueType valueType;
+    private final Boolean mutable;
 
-public class Segfault extends AbortNode {
-    public Segfault(WasmLanguage language, WasmInstance module) {
-        super(language, module);
-    }
-
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("Segfault");
-        return super.execute(frame);
-    }
-
-    @Override
-    public String builtinNodeName() {
-        return "Segfault";
+    public GlobalDescriptor(String valueType, Boolean mutable) {
+        this.valueType = ValueType.valueOf(valueType);
+        this.mutable = mutable;
+        addMembers(new Object[]{
+                        "value", this.valueType.name(),
+                        "mutable", this.mutable,
+        });
     }
 }

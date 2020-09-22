@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,43 +38,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import com.oracle.truffle.api.CompilerDirectives;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+public enum TableKind {
+    anyfunc;
 
-public class SetErrNo extends WasmBuiltinRootNode {
-    public SetErrNo(WasmLanguage language, WasmInstance module) {
-        super(language, module);
-    }
-
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        Object[] args = frame.getArguments();
-        assert args.length == 1;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
-
-        int value = (int) args[0];
-
-        trace("SetErrNo EXECUTE");
-
-        // TODO: Get address (3120) via call to `___errno_location` WebAssembly function.
-        WasmMemory memory = instance.memory();
-        memory.store_i32(this, 3120, value);
-
-        return value;
-    }
-
-    @Override
-    public String builtinNodeName() {
-        return "___setErrNo";
+    @CompilerDirectives.TruffleBoundary
+    public static TableKind parse(String name) {
+        return valueOf(name);
     }
 }

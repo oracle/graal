@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,33 +38,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+import java.util.function.Function;
 
-public class EmscriptenGetHeapSize extends WasmBuiltinRootNode {
-    public EmscriptenGetHeapSize(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+@ExportLibrary(InteropLibrary.class)
+public class Executable implements TruffleObject {
+    private final Function<Object[], Object> function;
+
+    public Executable(Function<Object[], Object> function) {
+        this.function = function;
     }
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("EmscriptenGetHeapSize EXECUTE");
-
-        WasmMemory memory = instance.memory();
-        final long byteSize = memory.byteSize();
-        return (int) byteSize;
+    public Object executeFunction(Object[] arguments) {
+        return function.apply(arguments);
     }
 
-    @Override
-    public String builtinNodeName() {
-        return "_emscripten_get_heap_size";
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
+    }
+
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    Object execute(Object[] arguments) {
+        return executeFunction(arguments);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,45 +38,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.testutil;
+package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmVoidResult;
 
-import java.util.function.Consumer;
+public enum ImportExportKind {
+    function,
+    table,
+    memory,
+    global;
 
-/**
- * Initialize the module using the initialization object provided by the test suite. The
- * initialization will set certain globals and memory locations to specific values. This is done
- * because certain language backends emit non-WebAssembly code that is used to initialize parts of
- * the memory.
- */
-public class RunCustomInitialization extends RootNode {
-    public RunCustomInitialization(WasmLanguage language) {
-        super(language, null);
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        initializeModule(frame.getArguments()[0]);
-        return WasmVoidResult.getInstance();
-    }
-
-    @Override
-    public String getName() {
-        return TestutilModule.Names.RUN_CUSTOM_INITIALIZATION;
-    }
-
-    @SuppressWarnings("unchecked")
     @CompilerDirectives.TruffleBoundary
-    private static void initializeModule(Object initialization) {
-        if (initialization != null) {
-            WasmContext context = WasmContext.getCurrent();
-            ((Consumer<WasmContext>) initialization).accept(context);
-        }
+    public static ImportExportKind parse(String name) {
+        return valueOf(name);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,79 +38,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.wasi;
+package org.graalvm.wasm.predefined.emscripten;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.WasmExecutionException;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import static org.graalvm.wasm.WasmTracing.trace;
 
-public class WasiClockTimeGet extends WasmBuiltinRootNode {
-    // https://github.com/WebAssembly/WASI/blob/master/phases/snapshot/docs.md#-clockid-enumu32
-    public enum ClockId {
-        Realtime,
-        Monotonic,
-        ProcessCpuTime,
-        ThreadCpuTime
-    }
-
-    static final ClockId[] clockIdValues = ClockId.values();
-
-    public WasiClockTimeGet(WasmLanguage language, WasmInstance module) {
+public class EmscriptenResizeHeapNode extends AbortNode {
+    public EmscriptenResizeHeapNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final WasmMemory memory = instance.memory();
-        final int id = (int) frame.getArguments()[0];
-        // Ignored for now
-        // final long precision = (long) frame.getArguments()[1];
-        final int resultAddress = (int) frame.getArguments()[2];
+        trace("EmscriptenResizeHeapNode EXECUTE");
 
-        final ClockId clockId = clockIdValues[id];
-        switch (clockId) {
-            case Realtime:
-                long result = realtimeNow();
-                memory.store_i64(this, resultAddress, result);
-                break;
-            case Monotonic:
-            case ProcessCpuTime:
-            case ThreadCpuTime:
-                throw unimplementedClock(clockId);
-        }
-
-        return 0;
-    }
-
-    @TruffleBoundary
-    private static long realtimeNow() {
-        return ChronoUnit.NANOS.between(Instant.EPOCH, Instant.now());
-    }
-
-    @TruffleBoundary
-    private WasmExecutionException unimplementedClock(final ClockId clockId) {
-        throw new WasmExecutionException(this, "Unimplemented ClockID: " + clockId.name());
-    }
-
-    @TruffleBoundary
-    private void checkEncodable(String argument) {
-        if (!StandardCharsets.US_ASCII.newEncoder().canEncode(argument)) {
-            throw new WasmExecutionException(this, "Argument '" + argument + "' contains non-ASCII characters.");
-        }
+        // Heap resizing is not supported by default by emscripten
+        // (need to specify `-s ALLOW_MEMORY_GROWTH=1` on compilation).
+        return super.execute(frame);
     }
 
     @Override
     public String builtinNodeName() {
-        return "__wasi_args_get";
+        return "_emscripten_resize_heap";
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,28 +38,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.api;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmInstance;
+@ExportLibrary(InteropLibrary.class)
+public class MemoryDescriptor extends Dictionary {
+    private final Long initial;
+    private final Long maximum;
 
-public class AbortOnCannotGrowMemory extends AbortNode {
-    public AbortOnCannotGrowMemory(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+    public MemoryDescriptor(Long initial, Long maximum) {
+        this.initial = initial;
+        this.maximum = maximum;
+        addMembers(new Object[]{
+                        "initial", this.initial,
+                        "maximum", this.maximum,
+        });
     }
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("AbortOnCannotGrowMemory EXECUTE");
-        return super.execute(frame);
+    public long initial() {
+        return initial;
     }
 
-    @Override
-    public String builtinNodeName() {
-        return "abortOnCannotGrowMemory";
+    public long maximum() {
+        return maximum;
     }
 }

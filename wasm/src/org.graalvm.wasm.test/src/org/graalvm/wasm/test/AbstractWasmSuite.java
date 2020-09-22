@@ -38,30 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.test;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.function.Predicate;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+import org.graalvm.wasm.test.options.WasmTestOptions;
+import org.junit.Test;
 
-public class Unlock extends WasmBuiltinRootNode {
-    public Unlock(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+public abstract class AbstractWasmSuite {
+    protected static final Predicate<? super Path> isWastFile = f -> f.getFileName().toString().endsWith(".wast");
+    protected static final Predicate<? super Path> isWatFile = f -> f.getFileName().toString().endsWith(".wat");
+    protected static final Predicate<? super Path> isResultFile = f -> f.getFileName().toString().endsWith(".result");
+
+    enum WasmTestStatus {
+        OK,
+        SKIPPED;
     }
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("Unlock EXECUTE");
-        return WasmVoidResult.getInstance();
+    protected static Predicate<String> filterTestName() {
+        if (WasmTestOptions.TEST_FILTER != null && !WasmTestOptions.TEST_FILTER.isEmpty()) {
+            return name -> name.matches(WasmTestOptions.TEST_FILTER);
+        } else {
+            return name -> true;
+        }
     }
 
-    @Override
-    public String builtinNodeName() {
-        return "___unlock";
+    public static String readFileToString(Path path, Charset charset) throws IOException {
+        byte[] rawBytes = Files.readAllBytes(path);
+        return new String(rawBytes, charset);
     }
+
+    @Test
+    public abstract void test() throws IOException;
 }

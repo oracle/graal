@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,50 +38,75 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.api;
+
+import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+@ExportLibrary(InteropLibrary.class)
+public class MemoryArrayBuffer implements TruffleObject {
+    private final WasmMemory memory;
 
-public class GetTimeOfDay extends WasmBuiltinRootNode {
-    public GetTimeOfDay(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+    public MemoryArrayBuffer(WasmMemory memory) {
+        this.memory = memory;
     }
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        Object[] args = frame.getArguments();
-        assert args.length == 2;
-        for (Object arg : args) {
-            trace("GetTimeOfDay argument: %s", arg);
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    boolean hasArrayElements() {
+        return true;
+    }
+
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    long getArraySize() {
+        return memory.byteSize();
+    }
+
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < getArraySize();
+    }
+
+    @SuppressWarnings({"unused", "static-method"})
+    @ExportMessage
+    final boolean isArrayElementModifiable(long index) {
+        return false;
+    }
+
+    @SuppressWarnings({"unused", "static-method"})
+    @ExportMessage
+    final boolean isArrayElementInsertable(long index) {
+        return false;
+    }
+
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    public Object readArrayElement(long index) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            transferToInterpreter();
+            throw InvalidArrayIndexException.create(index);
         }
-
-        int ptr = (int) args[0];
-
-        trace("GetTimeOfDay EXECUTE");
-
-        long now = getCurrentTime();
-        WasmMemory memory = instance.memory();
-        memory.store_i32(this, ptr, (int) (now / 1000));
-        memory.store_i32(this, ptr + 4, (int) (now % 1000 * 1000));
-
-        return 0;
-    }
-
-    @Override
-    public String builtinNodeName() {
-        return "_gettimeofday";
+        return memory.load_i32_8u(null, index);
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static long getCurrentTime() {
-        return System.currentTimeMillis();
+    private static UnsupportedMessageException unsupported() {
+        return UnsupportedMessageException.create();
+    }
+
+    @SuppressWarnings({"unused", "static-method"})
+    @ExportMessage
+    final void writeArrayElement(long index, Object arg2) throws UnsupportedMessageException {
+        throw unsupported();
     }
 }
