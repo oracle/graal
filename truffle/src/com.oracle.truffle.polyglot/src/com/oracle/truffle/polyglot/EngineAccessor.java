@@ -1264,6 +1264,12 @@ final class EngineAccessor extends Accessor {
 
         @Override
         @SuppressWarnings("deprecation")
+        public boolean legacyScopesHasScope(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes) {
+            return LegacyScopesBridge.legacyScopesHasScope(node, legacyScopes);
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
         public Object legacyScopes2ScopeObject(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes, Class<? extends TruffleLanguage<?>> language) {
             return LegacyScopesBridge.legacyScopes2ScopeObject(node, legacyScopes, language);
         }
