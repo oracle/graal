@@ -31,14 +31,15 @@ package com.oracle.truffle.llvm.runtime.interop.access;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -275,23 +276,20 @@ public abstract class LLVMInteropType implements TruffleObject {
     public static final class Clazz extends Struct {
 
         @CompilationFinal(dimensions = 1) final Method[] methods;
-        private Clazz superclass;
+        private HashSet<Clazz> superclasses;
         private VTable vtable;
         private Boolean virtualMethods;
 
         Clazz(String name, StructMember[] members, Method[] methods, long size) {
             super(name, members, size);
             this.methods = methods;
-            this.superclass = null;
             this.vtable = null;
             this.virtualMethods = null;
+            this.superclasses = new HashSet<>();
         }
 
-        public void setSuperClass(Clazz superclass) {
-            if (this.superclass == null) {
-                this.virtualMethods = null;
-                this.superclass = superclass;
-            }
+        public void addSuperClass(Clazz superclass) {
+            superclasses.add(superclass);
         }
 
         public Method getMethod(int i) {
@@ -311,8 +309,11 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return method;
                 }
             }
-            if (superclass != null) {
-                return superclass.findMethod(memberName);
+            for (Clazz superclass : superclasses) {
+                Method method = superclass.findMethod(memberName);
+                if (method != null) {
+                    return method;
+                }
             }
             return null;
         }
@@ -324,8 +325,11 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return member;
                 }
             }
-            if (superclass != null) {
-                return superclass.findMember(memberName);
+            for (Clazz superclass : superclasses) {
+                StructMember member = superclass.findMember(memberName);
+                if (member != null) {
+                    return member;
+                }
             }
             return null;
         }
@@ -346,29 +350,20 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return method;
                 }
             }
-            if (superclass != null) {
-                return superclass.findMethodByArgumentsWithSelf(memberName, arguments);
-            } else if (expectedArgCount >= 0) {
+            for (Clazz superclass : superclasses) {
+                Method method = superclass.findMethodByArgumentsWithSelf(memberName, arguments);
+                if (method != null) {
+                    return method;
+                }
+            }
+            if (expectedArgCount >= 0) {
                 throw ArityException.create(expectedArgCount, arguments.length - 1);
             }
             return null;
         }
 
-        public Method findMethodByArguments(Object receiver, String memberName, Object[] arguments) throws ArityException, UnknownIdentifierException {
-            Object[] newArgs = new Object[arguments.length + 1];
-            newArgs[0] = receiver;
-            for (int i = 1; i < arguments.length; i++) {
-                newArgs[i] = arguments[i - 1];
-            }
-            Method method = findMethodByArgumentsWithSelf(memberName, newArgs);
-            if (method == null) {
-                throw UnknownIdentifierException.create(memberName);
-            }
-            return method;
-        }
-
-        public Clazz getSuperclass() {
-            return superclass;
+        public Set<Clazz> getSuperClasses() {
+            return superclasses.stream().collect(Collectors.toSet());
         }
 
         public boolean hasVirtualMethods() {
@@ -379,8 +374,10 @@ public abstract class LLVMInteropType implements TruffleObject {
                         return true;
                     }
                 }
-                if (superclass != null) {
-                    return superclass.hasVirtualMethods();
+                for (Clazz superclass : superclasses) {
+                    if (superclass.hasVirtualMethods()) {
+                        return true;
+                    }
                 }
                 virtualMethods = false;
             }
@@ -395,7 +392,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         public void buildVTable() {
             virtualMethods = null;
             if (vtable == null && hasVirtualMethods()) {
-                if (superclass != null) {
+                for (Clazz superclass : superclasses) {
                     superclass.buildVTable();
                 }
                 vtable = new VTable(this);
@@ -411,14 +408,17 @@ public abstract class LLVMInteropType implements TruffleObject {
         VTable(Clazz clazz) {
             this.clazz = clazz;
             this.table = new HashMap<>();
-            for (Clazz c = clazz; c != null; c = c.superclass) {
+            List<Clazz> list = clazz.getSuperClasses().stream().collect(Collectors.toList());
+            list.add(0, clazz);
+            do {
+                Clazz c = list.remove(0);
+                list.addAll(c.superclasses);
                 for (Method m : c.methods) {
                     if (m != null && m.getVirtualIndex() >= 0) {
-                        // only put into map if absent!
                         table.putIfAbsent(m.virtualIndex, m);
                     }
                 }
-            }
+            } while (list.size() > 0);
         }
 
         public LLVMInteropType.Method findMethod(long virtualIndex) {
@@ -428,6 +428,12 @@ public abstract class LLVMInteropType implements TruffleObject {
                 throw new NoSuchElementException(String.format("No method in %s with virtualIndex %d", clazz.name, virtualIndex));
             }
             return m;
+        }
+
+        public void print() {
+            for (long i = 0; i < table.size(); i++) {
+                System.out.printf("%3d %s\n", i, table.get(i).getLinkageName());
+            }
         }
 
     }
@@ -726,7 +732,7 @@ public abstract class LLVMInteropType implements TruffleObject {
                         convertClass(sourceSuperClazz);
                     }
                     Clazz superClazz = (Clazz) typeCache.get(sourceSuperClazz);
-                    ret.setSuperClass(superClazz);
+                    ret.addSuperClass(superClazz);
                 }
                 long startOffset = member.getOffset() / 8;
                 long endOffset = startOffset + (memberType.getSize() + 7) / 8;

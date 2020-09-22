@@ -289,6 +289,7 @@ abstract class CommonPointerLibraries {
         }
 
         @Specialization(replaces = "doCached")
+
         static Object doResolve(LLVMPointerImpl receiver, String member, Object[] arguments,
                         @CachedContext(LLVMLanguage.class) LLVMContext context,
                         @CachedLibrary(limit = "5") InteropLibrary interop,
@@ -296,7 +297,7 @@ abstract class CommonPointerLibraries {
                         throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException {
             Object[] newArguments = addSelfObject(receiver, arguments);
             LLVMInteropType.Clazz newClazz = asClazz(receiver);
-            Method newMethod = newClazz.findMethodByArguments(receiver, member, arguments);
+            Method newMethod = newClazz.findMethodByArgumentsWithSelf(member, arguments);
             LLVMFunction newLLVMFunction = getLLVMFunction(context, newMethod, newClazz, member);
             Object newReceiver = dynAccessSymbolNode.execute(newLLVMFunction);
             return interop.execute(newReceiver, newArguments);
@@ -307,14 +308,16 @@ abstract class CommonPointerLibraries {
         return context.getGlobalScope().getFunction(method.getLinkageName());
     }
 
-    static Object invokeVirtualMethod(Method method, Object[] arguments, LLVMPointerImpl receiver) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+    static Object invokeVirtualMethod(Method method, Object[] arguments, LLVMPointerImpl receiver)
+                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         // TODO pichristoph restructure in nodes (getElementPtrNode, ...)
         LLVMMemory memory = LLVMLanguage.getLanguage().getLLVMMemory();
 
         final long vtableAddress = memory.getI64(null, receiver.asNative());
         final long methodOffset = method.getVirtualIndex() * 8;
         final long methodAddress = memory.getI64(null, vtableAddress + methodOffset);
-
+        final long topOffset = memory.getI64(null, vtableAddress - 16);
+        arguments[0] = new LLVMPointerImpl(null, receiver.asNative() + topOffset, receiver.getExportType());
         LLVMPointerImpl methodPointer = new LLVMPointerImpl(null, methodAddress, null);
 
         return InteropLibrary.getUncached(methodPointer).execute(methodPointer, arguments);
@@ -326,15 +329,6 @@ abstract class CommonPointerLibraries {
             throw UnsupportedMessageException.create();
         }
         return (Clazz) type;
-    }
-
-    static Object[] addSelfObject(Object receiver, Object[] arguments) {
-        Object[] newArgs = new Object[arguments.length + 1];
-        newArgs[0] = receiver;
-        for (int i = 1; i < newArgs.length; i++) {
-            newArgs[i] = arguments[i - 1];
-        }
-        return newArgs;
     }
 
     /**
@@ -363,6 +357,15 @@ abstract class CommonPointerLibraries {
         LLVMFunctionDescriptor fn = LLVMLanguage.getContext().createFunctionDescriptor(llvmFunction, new LLVMFunctionCode(llvmFunction));
 
         return InteropLibrary.getUncached().execute(fn, arguments);
+    }
+
+    static Object[] addSelfObject(Object receiver, Object[] rawArgs) {
+        Object[] newArguments = new Object[rawArgs.length + 1];
+        newArguments[0] = receiver;
+        for (int i = 0; i < rawArgs.length; i++) {
+            newArguments[i + 1] = rawArgs[i];
+        }
+        return newArguments;
     }
 
     @ExportMessage

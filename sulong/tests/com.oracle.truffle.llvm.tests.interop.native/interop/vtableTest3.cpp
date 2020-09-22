@@ -45,14 +45,21 @@ class A3 {
 		virtual int a3();
 };
 
+class A4 {
+	public:
+		virtual int a4(int x);
+};
+
 POLYGLOT_DECLARE_TYPE(A1);
 POLYGLOT_DECLARE_TYPE(A2);
 POLYGLOT_DECLARE_TYPE(A3);
+POLYGLOT_DECLARE_TYPE(A4);
 
-class Impl: public A1, public A2, public A3 {
+class Impl: public A1, public A2, public A3, public A4 {
 	public:
 		virtual int a1();
 		virtual int a2();
+		virtual int a4(int x);
 		virtual int impl();
 };
 
@@ -68,9 +75,15 @@ void* getA3() {
 	return polyglot_from_A3(new Impl());
 }
 
+void* getA4() {
+	return polyglot_from_A4(new Impl());
+}
+
 int A1::a1() {return 1;}
 int A2::a2() {return 2;}
 int A3::a3() {return 3;}
+int A4::a4(int x) {return 4+x;}
 int Impl::a1() {return 11;}
 int Impl::a2() {return 12;}
+int Impl::a4(int x) {return 14+x;}
 int Impl::impl() {return 10;}

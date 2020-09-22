@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.parser.metadata.Flags;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
@@ -57,6 +56,8 @@ import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
@@ -498,7 +499,21 @@ final class DITypeExtractor implements MetadataVisitor {
 
     @Override
     public void visit(MDSubprogram mdSubprogram) {
-        parsedTypes.put(mdSubprogram, resolve(mdSubprogram.getType()));
+        LLVMSourceType llvmSourceType;
+        if (Flags.THUNK.isSetIn(mdSubprogram.getFlags())) {
+            MDValue mdValue = (MDValue) mdSubprogram.getFunction();
+            FunctionDefinition function = (FunctionDefinition) mdValue.getValue();
+            List<LLVMSourceType> typeList = new ArrayList<>();
+            typeList.add(LLVMSourceType.VOID);// return type
+            for (FunctionParameter fp : function.getParameters()) {
+                // TODO pichristoph find LLVMSourceType of fp
+                typeList.add(UNKNOWN);
+            }
+            llvmSourceType = new LLVMSourceFunctionType(typeList);
+        } else {
+            llvmSourceType = resolve(mdSubprogram.getType());
+        }
+        parsedTypes.put(mdSubprogram, llvmSourceType);
     }
 
     @Override

@@ -35,7 +35,8 @@ public enum Flags {
     ARTIFICIAL(1L << 6),
     OBJECT_POINTER(1L << 10),
     STATIC_MEMBER(1L << 12),
-    BITFIELD(1L << 19);
+    BITFIELD(1L << 19),
+    THUNK(1L << 25);
 
     private final long mask;
 

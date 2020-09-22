@@ -84,16 +84,18 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
             return makeAccessLocation.execute(foreign, member.name, member.type, offset - member.startOffset);
         } catch (LLVMPolyglotException e) {
             // normal way failed
-            if (member.name != null && member.name.startsWith("super (") && classType.getSuperclass() != null) {
+            if (member.name != null && member.name.startsWith("super (")) {
                 /*
                  * field not found in super class: assume flat class model and look in current
                  * object (='foreign') with information of parent class
                  */
-                for (StructMember s : classType.getSuperclass().members) {
-                    if (s.startOffset == offset) {
-                        MakeAccessLocation makeAccessLocation2 = MakeAccessLocationNodeGen.create();
-                        super.insert(makeAccessLocation2);
-                        return doClazz(classType.getSuperclass(), foreign, offset, makeAccessLocation2);
+                for (LLVMInteropType.Clazz superclass : type.getSuperClasses()) {
+                    for (StructMember s : superclass.members) {
+                        if (s.startOffset == offset) {
+                            MakeAccessLocation makeAccessLocation2 = MakeAccessLocationNodeGen.create();
+                            super.insert(makeAccessLocation2);
+                            return doClazz(superclass, foreign, offset, makeAccessLocation2);
+                        }
                     }
                 }
             }

@@ -45,10 +45,12 @@ public class CxxVTableTest3 extends InteropTestBase {
     private static Value getA1;
     private static Value getA2;
     private static Value getA3;
+    private static Value getA4;
 
     private static Value consA1;
     private static Value consA2;
     private static Value consA3;
+    private static Value consA4;
     private static Value consImpl;
 
     @BeforeClass
@@ -57,9 +59,11 @@ public class CxxVTableTest3 extends InteropTestBase {
         getA1 = testCppLibrary.getMember("getA1");
         getA2 = testCppLibrary.getMember("getA2");
         getA3 = testCppLibrary.getMember("getA3");
+        getA4 = testCppLibrary.getMember("getA4");
         consA1 = testCppLibrary.getMember("A1");
         consA2 = testCppLibrary.getMember("A2");
         consA3 = testCppLibrary.getMember("A3");
+        consA4 = testCppLibrary.getMember("A4");
         consImpl = testCppLibrary.getMember("Impl");
     }
 
@@ -68,6 +72,7 @@ public class CxxVTableTest3 extends InteropTestBase {
         Assert.assertEquals(1, consA1.newInstance().invokeMember("a1").asInt());
         Assert.assertEquals(2, consA2.newInstance().invokeMember("a2").asInt());
         Assert.assertEquals(3, consA3.newInstance().invokeMember("a3").asInt());
+        Assert.assertEquals(8, consA4.newInstance().invokeMember("a4", 4).asInt());
         Assert.assertEquals(10, consImpl.newInstance().invokeMember("impl").asInt());
     }
 
@@ -80,6 +85,7 @@ public class CxxVTableTest3 extends InteropTestBase {
     public void testVirtuality() {
         Assert.assertEquals(12, getA2.execute().invokeMember("a2").asInt());
         Assert.assertEquals(3, getA3.execute().invokeMember("a3").asInt());
+        Assert.assertEquals(28, getA4.execute().invokeMember("a4", 14).asInt());
     }
 
     @Test(expected = IllegalArgumentException.class)
