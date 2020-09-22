@@ -29,16 +29,20 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
@@ -49,6 +53,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.SubstrateMethodCallTargetNode;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -108,4 +113,16 @@ public class HostedGraphKit extends SubstrateGraphKit {
         append(new DeadEndNode());
     }
 
+    public LoadFieldNode createLoadFieldNode(ConstantNode receiver, Class<BoxedRelocatedPointer> clazz, String fieldName) {
+        try {
+            ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(clazz);
+            if (type instanceof AnalysisType) {
+                ((AnalysisType) type).registerAsReachable();
+            }
+            ResolvedJavaField field = providers.getMetaAccess().lookupJavaField(clazz.getDeclaredField(fieldName));
+            return LoadFieldNode.createOverrideStamp(StampPair.createSingle(wordStamp((ResolvedJavaType) field.getType())), receiver, field);
+        } catch (NoSuchFieldException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
 }

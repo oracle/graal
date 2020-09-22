@@ -2419,27 +2419,42 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                     List<TruffleStackTraceElement> asyncStack = TruffleStackTrace.getAsynchronousStackTrace(lastCallTarget[0], lastFrame[0]);
                     switch (count) {
                         case 0:
-                            assertNull(asyncStack);
+                            checkNull(asyncStack);
                             break;
                         case 1:
-                            assertEquals(testDepth, asyncStack.size());
+                            checkEquals(testDepth, asyncStack.size());
                             TruffleStackTraceElement lastElement = asyncStack.get(testDepth - 1);
-                            assertNull(lastElement.getFrame());
+                            checkNull(lastElement.getFrame());
                             env.setAsynchronousStackDepth(Integer.MAX_VALUE);
                             break;
                         case 2:
-                            assertEquals(prgDepth, asyncStack.size());
+                            checkEquals(prgDepth, asyncStack.size());
                             lastElement = asyncStack.get(prgDepth - 1);
                             asyncStack = TruffleStackTrace.getAsynchronousStackTrace(lastElement.getTarget(), lastElement.getFrame());
-                            assertEquals(testDepth, asyncStack.size());
+                            checkEquals(testDepth, asyncStack.size());
                             lastElement = asyncStack.get(testDepth - 1);
-                            assertNull(lastElement.getFrame());
+                            checkNull(lastElement.getFrame());
                             instrumentationFinished.countDown();
                             break;
                         default:
-                            throw new IllegalStateException(Integer.toString(count));
+                            illegalState();
                     }
                     count++;
+                }
+
+                @TruffleBoundary
+                private void illegalState() throws IllegalStateException {
+                    throw new IllegalStateException(Integer.toString(count));
+                }
+
+                @TruffleBoundary
+                private void checkEquals(int expected, int found) {
+                    assertEquals(expected, found);
+                }
+
+                @TruffleBoundary
+                private void checkNull(Object obj) {
+                    assertNull(obj);
                 }
 
                 @Override

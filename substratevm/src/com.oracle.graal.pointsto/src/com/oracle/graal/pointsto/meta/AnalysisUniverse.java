@@ -51,6 +51,7 @@ import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -352,11 +353,15 @@ public class AnalysisUniverse implements Universe {
 
         if (!sealed) {
             /*
-             * Lookup the field declaring class eagerly to trigger computation of automatic
-             * substitutions. There might be an automatic substitution for the current field and we
-             * want to register it before the analysis field is created.
+             * Trigger computation of automatic substitutions. There might be an automatic
+             * substitution for the current field and we want to register it before the analysis
+             * field is created. This also ensures that the class is initialized (if the class is
+             * registered for initialization at build time) before any constant folding of static
+             * fields is attempted. Calling ensureInitialized() here at field lookup avoids calling
+             * it during constant folding.
              */
-            lookup(field.getDeclaringClass());
+            AnalysisType declaringType = lookup(field.getDeclaringClass());
+            declaringType.ensureInitialized();
         }
 
         field = substitutions.lookup(field);
@@ -451,7 +456,7 @@ public class AnalysisUniverse implements Universe {
         assert !(constantPool instanceof WrappedConstantPool);
         WrappedConstantPool result = constantPools.get(constantPool);
         if (result == null) {
-            WrappedConstantPool newValue = new WrappedConstantPool(this, constantPool, defaultAccessingClass);
+            WrappedConstantPool newValue = new AnalysisConstantPool(this, constantPool, defaultAccessingClass);
             WrappedConstantPool oldValue = constantPools.putIfAbsent(constantPool, newValue);
             result = oldValue != null ? oldValue : newValue;
         }

@@ -243,7 +243,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
          * The class constant of the declaring class is used for exception metadata, so marking a
          * method as invoked also makes the declaring class reachable.
          */
-        getDeclaringClass().registerAsInTypeCheck();
+        getDeclaringClass().registerAsReachable();
     }
 
     /** Get the set of all callers for this method, as inferred by the static analysis. */
@@ -283,7 +283,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
          * The class constant of the declaring class is used for exception metadata, so marking a
          * method as invoked also makes the declaring class reachable.
          */
-        getDeclaringClass().registerAsInTypeCheck();
+        getDeclaringClass().registerAsReachable();
     }
 
     public boolean isRootMethod() {

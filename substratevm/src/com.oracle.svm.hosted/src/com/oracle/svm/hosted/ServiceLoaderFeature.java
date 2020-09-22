@@ -124,7 +124,7 @@ public class ServiceLoaderFeature implements Feature {
 
     @SuppressWarnings("try")
     private boolean handleType(AnalysisType type, DuringAnalysisAccessImpl access) {
-        if (!type.isInTypeCheck() || type.isArray()) {
+        if (!type.isReachable() || type.isArray()) {
             /*
              * Type is not seen as used yet by the static analysis. Note that a constant class
              * literal is enough to register a type as "in type check". Arrays are also never

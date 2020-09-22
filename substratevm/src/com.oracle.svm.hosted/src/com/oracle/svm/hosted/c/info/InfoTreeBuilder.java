@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.graalvm.compiler.bytecode.BridgeMethodUtils;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumConstant;
@@ -51,10 +52,13 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.graal.pointsto.infrastructure.WrappedElement;
+import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.c.CTypedef;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.hosted.c.BuiltinDirectives;
+import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.c.NativeCodeContext;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
@@ -71,6 +75,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InfoTreeBuilder {
 
+    private final Providers originalProviders;
     private final NativeLibraries nativeLibs;
     private final NativeCodeContext codeCtx;
     private final NativeCodeInfo nativeCodeInfo;
@@ -93,6 +98,7 @@ public class InfoTreeBuilder {
             name = nameBuilder.toString();
         }
         this.nativeCodeInfo = new NativeCodeInfo(name, codeCtx.getDirectives(), isBuiltin);
+        originalProviders = GraalAccess.getOriginalProviders();
     }
 
     public NativeCodeInfo construct() {
@@ -582,9 +588,11 @@ public class InfoTreeBuilder {
         }
         EnumInfo enumInfo = new EnumInfo(name, type);
 
-        for (ResolvedJavaField field : type.getStaticFields()) {
+        /* Use the wrapped type to avoid registering all CEnum annotated classes as reachable. */
+        ResolvedJavaType wrappedType = ((WrappedJavaType) type).getWrapped();
+        for (ResolvedJavaField field : wrappedType.getStaticFields()) {
             assert Modifier.isStatic(field.getModifiers());
-            if (Modifier.isFinal(field.getModifiers()) && field.getType().equals(type)) {
+            if (Modifier.isFinal(field.getModifiers()) && field.getType().equals(wrappedType)) {
                 createEnumConstantInfo(enumInfo, field);
             }
         }
@@ -601,8 +609,9 @@ public class InfoTreeBuilder {
     }
 
     private void createEnumConstantInfo(EnumInfo enumInfo, ResolvedJavaField field) {
-        JavaConstant enumValue = nativeLibs.getConstantReflection().readFieldValue(field, null);
-        assert enumValue.isNonNull() && nativeLibs.getMetaAccess().lookupJavaType(enumValue).equals(enumInfo.getAnnotatedElement());
+        JavaConstant enumValue = originalProviders.getConstantReflection().readFieldValue(field, null);
+        ResolvedJavaType originalType = originalProviders.getMetaAccess().lookupJavaType(enumValue);
+        assert enumValue.isNonNull() && originalType.equals(((WrappedElement) enumInfo.getAnnotatedElement()).getWrapped());
 
         CEnumConstant fieldAnnotation = field.getAnnotation(CEnumConstant.class);
         String name = "";
@@ -615,7 +624,8 @@ public class InfoTreeBuilder {
             name = field.getName();
         }
 
-        EnumConstantInfo constantInfo = new EnumConstantInfo(name, field, includeInLookup, nativeLibs.getSnippetReflection().asObject(Enum.class, enumValue));
+        Enum<?> value = originalProviders.getSnippetReflection().asObject(Enum.class, enumValue);
+        EnumConstantInfo constantInfo = new EnumConstantInfo(name, field, includeInLookup, value);
         enumInfo.adoptChild(constantInfo);
     }
 
