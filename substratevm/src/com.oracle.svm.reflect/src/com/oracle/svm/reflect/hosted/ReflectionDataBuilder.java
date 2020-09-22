@@ -237,6 +237,11 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
     private void processClass(DuringAnalysisAccessImpl access, Class<?> clazz) {
         AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
+        /*
+         * Make sure the class is registered as reachable before its fields are accessed below to
+         * build the reflection metadata.
+         */
+        type.registerAsReachable();
         DynamicHub hub = access.getHostVM().dynamicHub(type);
 
         if (reflectionClasses.contains(clazz)) {

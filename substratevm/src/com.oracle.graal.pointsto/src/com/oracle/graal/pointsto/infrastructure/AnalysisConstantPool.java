@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle.api;
-
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+package com.oracle.graal.pointsto.infrastructure;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.heap.ReferenceInternals;
-import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class SubstrateKnownTruffleTypes extends KnownTruffleTypes {
+public class AnalysisConstantPool extends WrappedConstantPool {
 
-    public final ResolvedJavaField referentField = findField(lookupType(Target_java_lang_ref_Reference.class), ReferenceInternals.REFERENT_FIELD_NAME);
-
-    public SubstrateKnownTruffleTypes(MetaAccessProvider metaAccess) {
-        super(metaAccess);
+    public AnalysisConstantPool(Universe universe, ConstantPool wrapped, WrappedJavaType defaultAccessingClass) {
+        super(universe, wrapped, defaultAccessingClass);
     }
 
     @Override
-    protected ResolvedJavaType lookupType(String className) {
-        AnalysisType type = (AnalysisType) super.lookupType(className);
-        type.registerAsReachable();
-        return type;
-    }
-
-    @Override
-    protected ResolvedJavaType lookupType(Class<?> c) {
-        AnalysisType type = (AnalysisType) super.lookupType(c);
-        type.registerAsReachable();
-        return type;
+    public JavaField lookupField(int cpi, ResolvedJavaMethod method, int opcode) {
+        ResolvedJavaMethod substMethod = universe.resolveSubstitution(((WrappedJavaMethod) method).getWrapped());
+        JavaField field = wrapped.lookupField(cpi, substMethod, opcode);
+        JavaType declaringClass = field.getDeclaringClass();
+        if (declaringClass instanceof ResolvedJavaType) {
+            AnalysisType fieldDeclaringType = ((AnalysisUniverse) universe).lookup(declaringClass);
+            fieldDeclaringType.registerAsReachable();
+        }
+        return universe.lookupAllowUnresolved(field);
     }
 }

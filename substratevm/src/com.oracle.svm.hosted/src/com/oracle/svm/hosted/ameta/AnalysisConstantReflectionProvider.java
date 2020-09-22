@@ -277,21 +277,19 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
         DynamicHub dynamicHub = getHostVM().dynamicHub(type);
+        registerAsReachable(getHostVM(), dynamicHub);
         assert dynamicHub != null : type.toClassName() + " has a null dynamicHub.";
-        registerHub(getHostVM(), dynamicHub);
         return SubstrateObjectConstant.forObject(dynamicHub);
+    }
+
+    protected static void registerAsReachable(SVMHost hostVM, DynamicHub dynamicHub) {
+        assert dynamicHub != null;
+        /* Make sure that the DynamicHub of this type ends up in the native image. */
+        AnalysisType valueType = hostVM.lookupType(dynamicHub);
+        valueType.registerAsReachable();
     }
 
     private SVMHost getHostVM() {
         return (SVMHost) universe.hostVM();
-    }
-
-    protected static void registerHub(SVMHost hostVM, DynamicHub dynamicHub) {
-        assert dynamicHub != null;
-        /* Make sure that the DynamicHub of this type ends up in the native image. */
-        AnalysisType valueType = hostVM.lookupType(dynamicHub);
-        if (!valueType.isInTypeCheck()) {
-            valueType.registerAsInTypeCheck();
-        }
     }
 }
