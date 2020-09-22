@@ -80,6 +80,7 @@ import com.oracle.svm.core.allocationprofile.AllocationSite;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
 import com.oracle.svm.core.graal.nodes.UnreachableNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -130,6 +131,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter int arrayBaseOffset,
                     @ConstantParameter int log2ElementSize,
                     @ConstantParameter boolean fillContents,
+                    @ConstantParameter int fillStartOffset,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter boolean maybeUnroll,
                     @ConstantParameter boolean supportsBulkZeroing,
@@ -137,7 +139,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedHub = checkHub(hub);
         Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), length, arrayBaseOffset, log2ElementSize, fillContents,
-                        emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
+                        fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
 
@@ -159,7 +161,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
 
         Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedArrayHub), WordFactory.nullPointer(), length, arrayBaseOffset, log2ElementSize, fillContents,
-                        emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
+                        arrayBaseOffset, emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
 
@@ -340,6 +342,10 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
     }
 
+    private static int hybridArrayInstanceFieldOffset() {
+        return ConfigurationValues.getObjectLayout().getArrayLengthOffset() + ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
+    }
+
     @Override
     protected final int objectAlignment() {
         return ConfigurationValues.getObjectLayout().getAlignment();
@@ -420,6 +426,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
 
         public void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
             lowerings.put(NewInstanceNode.class, new NewInstanceLowering());
+            lowerings.put(SubstrateNewHybridInstanceNode.class, new NewHybridInstanceLowering());
             lowerings.put(NewArrayNode.class, new NewArrayLowering());
             lowerings.put(DynamicNewInstanceNode.class, new DynamicNewInstanceLowering());
             lowerings.put(DynamicNewArrayNode.class, new DynamicNewArrayLowering());
@@ -480,6 +487,40 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
+        private class NewHybridInstanceLowering implements NodeLoweringProvider<SubstrateNewHybridInstanceNode> {
+            @Override
+            public void lower(SubstrateNewHybridInstanceNode node, LoweringTool tool) {
+                StructuredGraph graph = node.graph();
+                if (graph.getGuardsStage() != StructuredGraph.GuardsStage.AFTER_FSA) {
+                    return;
+                }
+
+                SharedType instanceClass = (SharedType) node.instanceClass();
+                ValueNode length = node.length();
+                DynamicHub hub = instanceClass.getHub();
+                int layoutEncoding = hub.getLayoutEncoding();
+                int arrayBaseOffset = (int) LayoutEncoding.getArrayBaseOffset(layoutEncoding).rawValue();
+                int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
+
+                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
+
+                Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
+                args.add("hub", hubConstant);
+                args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
+                args.addConst("arrayBaseOffset", arrayBaseOffset);
+                args.addConst("log2ElementSize", log2ElementSize);
+                args.addConst("fillContents", node.fillContents());
+                args.addConst("fillStartOffset", hybridArrayInstanceFieldOffset());
+                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.addConst("maybeUnroll", length.isConstant());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.addConst("profilingData", getProfilingData(node, instanceClass));
+
+                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            }
+        }
+
         private class NewArrayLowering implements NodeLoweringProvider<NewArrayNode> {
             @Override
             public void lower(NewArrayNode node, LoweringTool tool) {
@@ -502,6 +543,14 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
                 args.addConst("fillContents", node.fillContents());
+                /*
+                 * Some optimization passes (escape analysis, vectorization, explicit allocation of
+                 * uninitialized arrays using Unsafe, ...) separate allocation and zeroing, and
+                 * expect the zeroing to start at the beginning of the elements. Therefore, we
+                 * should only start zeroing at the array base offset, and be careful not to zero
+                 * the fields before (e.g. identity hash code).
+                 */
+                args.addConst("fillStartOffset", arrayBaseOffset);
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", length.isConstant());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
