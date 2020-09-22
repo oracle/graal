@@ -316,6 +316,10 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         return ConfigurationValues.getObjectLayout().getFirstFieldOffset();
     }
 
+    protected static int arrayHeaderSize() {
+        return ConfigurationValues.getObjectLayout().getArrayIdentityHashcodeOffset();
+    }
+
     @Override
     protected final void profileAllocation(AllocationProfilingData profilingData, UnsignedWord size) {
         if (AllocationSite.Options.AllocationProfiling.getValue()) {
@@ -340,10 +344,6 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     @Override
     public final int arrayLengthOffset() {
         return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
-    }
-
-    private static int hybridArrayInstanceFieldOffset() {
-        return ConfigurationValues.getObjectLayout().getArrayLengthOffset() + ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
     }
 
     @Override
@@ -501,6 +501,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 int layoutEncoding = hub.getLayoutEncoding();
                 int arrayBaseOffset = (int) LayoutEncoding.getArrayBaseOffset(layoutEncoding).rawValue();
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
+                /* Hybrid layouts have the same header as array layouts. */
+                int fillStartOffset = arrayHeaderSize();
 
                 ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
 
@@ -510,7 +512,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
                 args.addConst("fillContents", node.fillContents());
-                args.addConst("fillStartOffset", hybridArrayInstanceFieldOffset());
+                args.addConst("fillStartOffset", fillStartOffset);
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", length.isConstant());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
@@ -543,14 +545,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
                 args.addConst("fillContents", node.fillContents());
-                /*
-                 * Some optimization passes (escape analysis, vectorization, explicit allocation of
-                 * uninitialized arrays using Unsafe, ...) separate allocation and zeroing, and
-                 * expect the zeroing to start at the beginning of the elements. Therefore, we
-                 * should only start zeroing at the array base offset, and be careful not to zero
-                 * the fields before (e.g. identity hash code).
-                 */
-                args.addConst("fillStartOffset", arrayBaseOffset);
+                args.addConst("fillStartOffset", arrayHeaderSize());
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", length.isConstant());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
