@@ -53,7 +53,6 @@ import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.api.Global;
 import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.emscripten.EmscriptenModule;
@@ -91,7 +90,7 @@ public abstract class BuiltinModule {
         return function;
     }
 
-    protected int defineExternalGlobal(WasmInstance instance, String globalName, Global global) {
+    protected int defineExternalGlobal(WasmInstance instance, String globalName, Object global) {
         int index = instance.symbolTable().maxGlobalIndex() + 1;
         instance.symbolTable().declareExportedExternalGlobal(globalName, index, global);
         return index;

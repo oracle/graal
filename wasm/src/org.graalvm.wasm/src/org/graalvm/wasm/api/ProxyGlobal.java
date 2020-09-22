@@ -73,6 +73,13 @@ public class ProxyGlobal extends Dictionary {
         });
     }
 
+    @SuppressWarnings({"unused", "static-method"})
+    @ExportMessage
+    @Override
+    public boolean isMemberReadable(String member) {
+        return member.equals("value") || super.isMemberReadable(member);
+    }
+
     @SuppressWarnings({"unused"})
     @ExportMessage
     @Override

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
@@ -76,6 +77,24 @@ public class Table extends Dictionary {
 
     public Table(Object descriptor) {
         this(new WasmTable(initial(descriptor), maximum(descriptor)));
+    }
+
+    @SuppressWarnings({"unused", "static-method"})
+    @ExportMessage
+    @Override
+    public boolean isMemberReadable(String member) {
+        return member.equals("length") || super.isMemberReadable(member);
+    }
+
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    @Override
+    public Object readMember(String member) throws UnknownIdentifierException {
+        if (member.equals("length")) {
+            return table.size();
+        } else {
+            return super.readMember(member);
+        }
     }
 
     private static int initial(Object descriptor) {

@@ -49,8 +49,12 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import org.graalvm.wasm.api.Global;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import org.graalvm.wasm.api.ValueType;
 import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.exception.WasmLinkerException;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -589,15 +593,21 @@ public abstract class SymbolTable {
         globalTypes[index] = globalType;
     }
 
-    void declareExternalGlobal(int index, Global global) {
-        final byte valueType = global.valueType().byteValue();
-        final byte mutability = (byte) (global.mutable() ? GlobalModifier.MUTABLE : GlobalModifier.CONSTANT);
-        allocateGlobal(index, valueType, mutability);
-        module().addLinkAction((context, instance) -> {
-            final GlobalRegistry globals = context.globals();
-            final int address = globals.allocateExternalGlobal(global);
-            instance.setGlobalAddress(index, address);
-        });
+    void declareExternalGlobal(int index, Object global) {
+        final InteropLibrary lib = InteropLibrary.getUncached();
+        try {
+            final Object descriptor = lib.readMember(global, "descriptor");
+            final byte valueType = ValueType.parse((String) lib.readMember(descriptor, "value")).byteValue();
+            final byte mutability = (byte) ((boolean) lib.readMember(descriptor, "mutable") ? GlobalModifier.MUTABLE : GlobalModifier.CONSTANT);
+            allocateGlobal(index, valueType, mutability);
+            module().addLinkAction((context, instance) -> {
+                final GlobalRegistry globals = context.globals();
+                final int address = globals.allocateExternalGlobal(global);
+                instance.setGlobalAddress(index, address);
+            });
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            throw new WasmExecutionException(null, "Global does not have a valid descriptor: " + global);
+        }
     }
 
     void declareGlobal(int index, byte valueType, byte mutability) {
@@ -679,7 +689,7 @@ public abstract class SymbolTable {
         module().addLinkAction((context, instance) -> context.linker().resolveGlobalExport(module(), name, index));
     }
 
-    public void declareExportedExternalGlobal(String name, int index, Global global) {
+    public void declareExportedExternalGlobal(String name, int index, Object global) {
         checkNotParsed();
         declareExternalGlobal(index, global);
         exportGlobal(name, index);

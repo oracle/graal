@@ -54,10 +54,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ImportModule extends BuiltinModule {
-    private final HashMap<String, Pair<WasmFunction, Executable>> functions;
+    private final HashMap<String, Pair<WasmFunction, Object>> functions;
     private final HashMap<String, Memory> memories;
     private final HashMap<String, Table> tables;
-    private final HashMap<String, Global> globals;
+    private final HashMap<String, Object> globals;
 
     public ImportModule() {
         this.functions = new HashMap<>();
@@ -70,9 +70,9 @@ public class ImportModule extends BuiltinModule {
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
         WasmInstance instance = new WasmInstance(new WasmModule(name, null, storeConstantsPolicy), storeConstantsPolicy);
-        for (Map.Entry<String, Pair<WasmFunction, Executable>> entry : functions.entrySet()) {
+        for (Map.Entry<String, Pair<WasmFunction, Object>> entry : functions.entrySet()) {
             final String functionName = entry.getKey();
-            final Pair<WasmFunction, Executable> info = entry.getValue();
+            final Pair<WasmFunction, Object> info = entry.getValue();
             final WasmFunction function = info.getLeft();
             final SymbolTable.FunctionType type = function.type();
             defineFunction(instance, functionName, type.paramTypes(), type.returnTypes(), new ExecutableNode(context.language(), instance, info.getRight()));
@@ -87,15 +87,15 @@ public class ImportModule extends BuiltinModule {
             final Table table = entry.getValue();
             defineExternalTable(instance, tableName, table.wasmTable());
         }
-        for (Map.Entry<String, Global> entry : globals.entrySet()) {
+        for (Map.Entry<String, Object> entry : globals.entrySet()) {
             final String globalName = entry.getKey();
-            final Global global = entry.getValue();
+            final Object global = entry.getValue();
             defineExternalGlobal(instance, globalName, global);
         }
         return instance;
     }
 
-    public void addFunction(String name, Pair<WasmFunction, Executable> info) {
+    public void addFunction(String name, Pair<WasmFunction, Object> info) {
         functions.put(name, info);
     }
 
@@ -107,7 +107,7 @@ public class ImportModule extends BuiltinModule {
         tables.put(name, table);
     }
 
-    public void addGlobal(String name, Global global) {
+    public void addGlobal(String name, Object global) {
         globals.put(name, global);
     }
 }
