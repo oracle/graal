@@ -2169,6 +2169,7 @@ public final class BytecodeNode extends EspressoMethodNode {
      */
     private int putField(final VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
+        CompilerAsserts.partialEvaluationConstant(field);
 
         /*
          * PUTFIELD: Otherwise, if the resolved field is a static field, putfield throws an
@@ -2326,20 +2327,20 @@ public final class BytecodeNode extends EspressoMethodNode {
         assert opcode == GETFIELD || opcode == GETSTATIC;
         CompilerAsserts.partialEvaluationConstant(field);
 
-        if (opcode == GETFIELD) {
-            // Otherwise, if the resolved field is a static field, getfield throws an
-            // IncompatibleClassChangeError.
-            if (field.isStatic()) {
-                CompilerDirectives.transferToInterpreter();
-                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
-            }
-        } else if (opcode == GETSTATIC) {
-            // Otherwise, if the resolved field is not a static (class) field or an interface
-            // field, getstatic throws an IncompatibleClassChangeError.
-            if (!field.isStatic()) {
-                CompilerDirectives.transferToInterpreter();
-                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
-            }
+        /*
+         * GETFIELD: Otherwise, if the resolved field is a static field, getfield throws an
+         * IncompatibleClassChangeError.
+         * 
+         * GETSTATIC: Otherwise, if the resolved field is not a static (class) field or an interface
+         * field, getstatic throws an IncompatibleClassChangeError.
+         */
+        if (field.isStatic() != (opcode == GETSTATIC)) {
+            CompilerDirectives.transferToInterpreter();
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError,
+                            String.format("Expected %s field %s.%s",
+                                            (opcode == GETSTATIC) ? "static" : "non-static",
+                                            field.getDeclaringKlass().getNameAsString(),
+                                            field.getNameAsString()));
         }
 
         assert field.isStatic() == (opcode == GETSTATIC);
