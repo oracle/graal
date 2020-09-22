@@ -24,14 +24,13 @@
  */
 package com.oracle.truffle.tools.coverage;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 final class BooleanCoverageNode extends AbstractCoverageNode {
 
-    @CompilerDirectives.CompilationFinal volatile boolean covered;
+    volatile boolean covered;
 
     BooleanCoverageNode(SourceSection sourceSection, Node instrumentedNode, boolean isRoot, boolean isStatement) {
         super(sourceSection, instrumentedNode, isRoot, isStatement);
@@ -43,9 +42,13 @@ final class BooleanCoverageNode extends AbstractCoverageNode {
     }
 
     @Override
+    void reset() {
+        covered = false;
+    }
+
+    @Override
     protected void onEnter(VirtualFrame frame) {
         if (!covered) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             covered = true;
         }
     }

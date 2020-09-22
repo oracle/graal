@@ -169,13 +169,23 @@ public final class CoverageTracker implements AutoCloseable {
      * @since 19.3.0
      */
     public synchronized SourceCoverage[] getCoverage() {
-        return sourceCoverage(mapping());
+        return sourceCoverage(mapping(false));
     }
 
-    private Map<Source, Map<SourceSection, RootData>> mapping() {
+    /**
+     * TODO.
+     * 
+     * @return the coverage gathered thus far.
+     * @since 19.3.0
+     */
+    public synchronized SourceCoverage[] resetCoverage() {
+        return sourceCoverage(mapping(true));
+    }
+
+    private Map<Source, Map<SourceSection, RootData>> mapping(boolean reset) {
         Map<Source, Map<SourceSection, RootData>> sourceCoverage = new HashMap<>();
         processLoaded(sourceCoverage);
-        processCovered(sourceCoverage);
+        processCovered(sourceCoverage, reset);
         return sourceCoverage;
     }
 
@@ -210,7 +220,7 @@ public final class CoverageTracker implements AutoCloseable {
         }
     }
 
-    private void processCovered(Map<Source, Map<SourceSection, RootData>> mapping) {
+    private void processCovered(Map<Source, Map<SourceSection, RootData>> mapping, boolean reset) {
         for (AbstractCoverageNode coverageNode : coverageNodes) {
             final SourceSection section = coverageNode.sourceSection;
             final Source source = section.getSource();
@@ -224,13 +234,12 @@ public final class CoverageTracker implements AutoCloseable {
             if (coverageNode.isRoot && coverageNode.isCovered()) {
                 rootData.covered = true;
                 rootData.count = count;
-                continue;
-            }
-            if (coverageNode.isStatement) {
+            } else if (coverageNode.isStatement) {
                 rootData.coveredStatements.put(section, count);
-                continue;
             }
-            throw new IllegalStateException("Found a node without adequate tag.");
+            if (reset) {
+                coverageNode.reset();
+            }
         }
     }
 
