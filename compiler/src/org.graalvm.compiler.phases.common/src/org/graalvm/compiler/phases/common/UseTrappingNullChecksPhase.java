@@ -221,6 +221,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
 
     private static void replaceWithTrappingNullCheck(AbstractDeoptimizeNode deopt, IfNode ifNode, LogicNode condition, DeoptimizationReason deoptimizationReason, long implicitNullCheckLimit) {
         DebugContext debug = deopt.getDebug();
+        StructuredGraph graph = deopt.graph();
         counterTrappingNullCheck.increment(debug);
         if (deopt instanceof DynamicDeoptimizeNode) {
             counterTrappingNullCheckDynamicDeoptimize.increment(debug);
@@ -235,7 +236,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         DeoptimizingFixedWithNextNode trappingNullCheck = null;
         FixedNode nextNonTrapping = nonTrappingContinuation.next();
         ValueNode value = isNullNode.getValue();
-        if (OptImplicitNullChecks.getValue(ifNode.graph().getOptions()) && implicitNullCheckLimit > 0) {
+        if (OptImplicitNullChecks.getValue(graph.getOptions()) && implicitNullCheckLimit > 0) {
             if (nextNonTrapping instanceof FixedAccessNode) {
                 FixedAccessNode fixedAccessNode = (FixedAccessNode) nextNonTrapping;
                 if (fixedAccessNode.canNullCheck()) {
@@ -254,10 +255,10 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
                         // Opportunity for implicit null check as part of an existing read found!
                         fixedAccessNode.setStateBefore(deopt.stateBefore());
                         fixedAccessNode.setNullCheck(true);
-                        deopt.graph().removeSplit(ifNode, nonTrappingContinuation);
+                        graph.removeSplit(ifNode, nonTrappingContinuation);
                         trappingNullCheck = fixedAccessNode;
                         counterTrappingNullCheckExistingRead.increment(debug);
-                        deopt.getDebug().log("Added implicit null check to %s", fixedAccessNode);
+                        debug.log("Added implicit null check to %s", fixedAccessNode);
                     }
                 }
             }
@@ -265,9 +266,9 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
 
         if (trappingNullCheck == null) {
             // Need to add a null check node.
-            trappingNullCheck = deopt.graph().add(new NullCheckNode(value));
-            deopt.graph().replaceSplit(ifNode, trappingNullCheck, nonTrappingContinuation);
-            deopt.getDebug().log("Inserted NullCheckNode %s", trappingNullCheck);
+            trappingNullCheck = graph.add(new NullCheckNode(value));
+            graph.replaceSplit(ifNode, trappingNullCheck, nonTrappingContinuation);
+            debug.log("Inserted NullCheckNode %s", trappingNullCheck);
         }
 
         trappingNullCheck.setStateBefore(deopt.stateBefore());

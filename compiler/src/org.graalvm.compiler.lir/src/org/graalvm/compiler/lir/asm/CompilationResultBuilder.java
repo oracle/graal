@@ -116,6 +116,19 @@ public class CompilationResultBuilder {
         }
     }
 
+    private static class PendingImplicitException {
+
+        public final int codeOffset;
+        public final LabelRef dispatchOffset;
+        public final DebugInfo debugInfo;
+
+        PendingImplicitException(int pcOffset, LabelRef dispatchOffset, DebugInfo debugInfo) {
+            this.codeOffset = pcOffset;
+            this.dispatchOffset = dispatchOffset;
+            this.debugInfo = debugInfo;
+        }
+    }
+
     public final Assembler asm;
     public final DataBuilder dataBuilder;
     public final CompilationResult compilationResult;
@@ -142,6 +155,7 @@ public class CompilationResultBuilder {
     public final FrameContext frameContext;
 
     private List<ExceptionInfo> exceptionInfoList;
+    private List<PendingImplicitException> pendingImplicitExceptionList;
 
     private final OptionValues options;
     private final DebugContext debug;
@@ -257,6 +271,12 @@ public class CompilationResultBuilder {
                 compilationResult.recordExceptionHandler(codeOffset, ei.exceptionEdge.label().position());
             }
         }
+        if (pendingImplicitExceptionList != null) {
+            for (PendingImplicitException pendingImplicitException : pendingImplicitExceptionList) {
+                compilationResult.recordImplicitException(pendingImplicitException.codeOffset,
+                                pendingImplicitException.dispatchOffset.label().position(), pendingImplicitException.debugInfo);
+            }
+        }
         closeCompilationResult();
     }
 
@@ -279,8 +299,15 @@ public class CompilationResultBuilder {
     }
 
     public void recordImplicitException(int pcOffset, LIRFrameState info) {
-        compilationResult.recordInfopoint(pcOffset, info.debugInfo(), InfopointReason.IMPLICIT_EXCEPTION);
+        compilationResult.recordImplicitException(pcOffset, pcOffset, info.debugInfo());
         assert info.exceptionEdge == null;
+    }
+
+    public void recordImplicitException(int pcOffset, LabelRef dispatchEdge, LIRFrameState info) {
+        if (pendingImplicitExceptionList == null) {
+            pendingImplicitExceptionList = new ArrayList<>(4);
+        }
+        pendingImplicitExceptionList.add(new PendingImplicitException(pcOffset, dispatchEdge, info.debugInfo()));
     }
 
     public boolean isImplicitExceptionExist(int pcOffset) {
@@ -288,6 +315,13 @@ public class CompilationResultBuilder {
         for (Infopoint infopoint : infopoints) {
             if (infopoint.pcOffset == pcOffset && infopoint.reason == InfopointReason.IMPLICIT_EXCEPTION) {
                 return true;
+            }
+        }
+        if (pendingImplicitExceptionList != null) {
+            for (PendingImplicitException pendingImplicitException : pendingImplicitExceptionList) {
+                if (pendingImplicitException.codeOffset == pcOffset) {
+                    return true;
+                }
             }
         }
         return false;
@@ -594,6 +628,9 @@ public class CompilationResultBuilder {
         compilationResult.resetForEmittingCode();
         if (exceptionInfoList != null) {
             exceptionInfoList.clear();
+        }
+        if (pendingImplicitExceptionList != null) {
+            pendingImplicitExceptionList.clear();
         }
         if (dataCache != null) {
             dataCache.clear();
