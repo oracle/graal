@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.api.Global;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.exception.WasmLinkerException;
@@ -588,6 +589,17 @@ public abstract class SymbolTable {
         globalTypes[index] = globalType;
     }
 
+    void declareExternalGlobal(int index, Global global) {
+        final byte valueType = global.valueType().byteValue();
+        final byte mutability = (byte) (global.mutable() ? GlobalModifier.MUTABLE : GlobalModifier.CONSTANT);
+        allocateGlobal(index, valueType, mutability);
+        module().addLinkAction((context, instance) -> {
+            final GlobalRegistry globals = context.globals();
+            final int address = globals.allocateExternalGlobal(global);
+            instance.setGlobalAddress(index, address);
+        });
+    }
+
     void declareGlobal(int index, byte valueType, byte mutability) {
         allocateGlobal(index, valueType, mutability);
         module().addLinkAction((context, instance) -> {
@@ -626,6 +638,10 @@ public abstract class SymbolTable {
         }
     }
 
+    public boolean isGlobalMutable(int index) {
+        return globalMutability(index) == GlobalModifier.MUTABLE;
+    }
+
     public byte globalValueType(int index) {
         return (byte) (globalTypes[index] & 0xff);
     }
@@ -661,6 +677,12 @@ public abstract class SymbolTable {
         globalTypes[index] |= GLOBAL_EXPORT_BIT;
         exportedGlobals.put(name, index);
         module().addLinkAction((context, instance) -> context.linker().resolveGlobalExport(module(), name, index));
+    }
+
+    public void declareExportedExternalGlobal(String name, int index, Global global) {
+        checkNotParsed();
+        declareExternalGlobal(index, global);
+        exportGlobal(name, index);
     }
 
     public void declareExportedGlobalWithValue(String name, int index, byte valueType, byte mutability, long value) {

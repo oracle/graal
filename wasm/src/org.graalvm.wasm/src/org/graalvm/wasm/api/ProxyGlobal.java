@@ -40,22 +40,27 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.library.ExportMessage;
+import org.graalvm.wasm.GlobalRegistry;
+import org.graalvm.wasm.exception.WasmJsApiException;
+
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
-import org.graalvm.wasm.exception.WasmJsApiException;
 
 @ExportLibrary(InteropLibrary.class)
-public class Global extends Dictionary {
+public class ProxyGlobal extends Dictionary {
     private final Object descriptor;
     private final ValueType valueType;
     private final boolean mutable;
-    private Object value;
+    private final GlobalRegistry globals;
+    private final int address;
 
-    public Global(Object descriptor, Object value) {
+    public ProxyGlobal(Object descriptor, GlobalRegistry globals, int address) {
         this.descriptor = descriptor;
-        this.value = value;
+        this.globals = globals;
+        this.address = address;
         try {
             this.valueType = ValueType.valueOf((String) InteropLibrary.getUncached().readMember(descriptor, "value"));
             this.mutable = (boolean) InteropLibrary.getUncached().readMember(descriptor, "mutable");
@@ -65,16 +70,37 @@ public class Global extends Dictionary {
         addMembers(new Object[]{
                         "descriptor", this.descriptor,
                         "valueOf", new Executable(args -> get()),
-                        "value", value,
         });
     }
 
-    public Object get() {
-        return value;
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    @Override
+    public Object readMember(String member) throws UnknownIdentifierException {
+        if (member.equals("value")) {
+            return get();
+        } else {
+            return super.readMember(member);
+        }
     }
 
-    public ValueType valueType() {
-        return valueType;
+    public Object get() {
+        switch (valueType) {
+            case i32:
+                return globals.loadAsInt(address);
+            case i64:
+                return globals.loadAsLong(address);
+            case f32:
+                return globals.loadAsFloat(address);
+            case f64:
+                return globals.loadAsDouble(address);
+            default:
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Unknown value type: " + valueType);
+        }
+    }
+
+    public String valueType() {
+        return valueType.name();
     }
 
     public boolean mutable() {

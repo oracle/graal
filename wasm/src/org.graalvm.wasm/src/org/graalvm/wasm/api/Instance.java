@@ -77,7 +77,7 @@ public class Instance extends Dictionary {
         final WasmContext instanceContext = WasmContext.getCurrent();
         this.instance = instantiateModule(instanceContext);
         instanceContext.linker().tryLink();
-        this.exportObject = initializeExports();
+        this.exportObject = initializeExports(instanceContext);
         addMembers(new Object[]{
                         "module", this.module,
                         "importObject", this.importObject,
@@ -130,6 +130,13 @@ public class Instance extends Dictionary {
                         final Table table = (Table) member;
                         ensureImportModule(importModules, d.module()).addTable(d.name(), table);
                         break;
+                    case global:
+                        if (!(member instanceof Global)) {
+                            throw new WasmJsApiException(Kind.LinkError, "Member " + member + " is not a global.");
+                        }
+                        final Global global = (Global) member;
+                        ensureImportModule(importModules, d.module()).addGlobal(d.name(), global);
+                        break;
                     default:
                         throw new WasmExecutionException(null, "Unimplemented case: " + d.kind());
                 }
@@ -153,7 +160,7 @@ public class Instance extends Dictionary {
         return context.readInstance(module.wasmModule());
     }
 
-    private Dictionary initializeExports() {
+    private Dictionary initializeExports(WasmContext context) {
         Dictionary e = new Dictionary();
         for (Map.Entry<String, WasmFunction> entry : instance.symbolTable().exportedFunctions().entrySet()) {
             String name = entry.getKey();
@@ -177,6 +184,19 @@ public class Instance extends Dictionary {
         if (exportedTable != null) {
             final WasmTable table = instance.table();
             e.addMember(exportedTable, new Table(table));
+        }
+        for (Map.Entry<String, Integer> entry : instance.symbolTable().exportedGlobals().entrySet()) {
+            final String name = entry.getKey();
+            final int index = entry.getValue();
+            final int address = instance.globalAddress(index);
+            if (address < 0) {
+                Object global = context.globals().externalGlobal(address);
+                e.addMember(name, global);
+            } else {
+                final ValueType valueType = ValueType.fromByteValue(instance.symbolTable().globalValueType(index));
+                final boolean mutable = instance.symbolTable().isGlobalMutable(index);
+                e.addMember(name, new ProxyGlobal(new GlobalDescriptor(valueType.name(), mutable), context.globals(), address));
+            }
         }
         return e;
     }
