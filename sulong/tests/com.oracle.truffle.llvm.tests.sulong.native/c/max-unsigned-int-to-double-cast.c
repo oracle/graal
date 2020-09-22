@@ -58,6 +58,9 @@ int main() {
     testCase(-1, -1);
     testCase(0, 0);
     testCase(1.5, 1);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winteger-overflow"
     testCase(INT_MAX + 1, -2147483648);
+#pragma clang diagnostic pop
     testCase(INT_MAX, 2147483647);
 }
