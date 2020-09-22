@@ -28,6 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <alloca.h>
+
 static void store_a(volatile int *p, int x) {
     __asm__ __volatile__("mov %1, %0" : "=m"(*p) : "r"(x) : "memory");
 }
