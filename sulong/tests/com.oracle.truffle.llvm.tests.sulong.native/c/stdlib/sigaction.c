@@ -32,10 +32,10 @@
 #include <stdio.h>
 #include <errno.h>
 
-void old_style_handler_old(int signo) {
+void old_style_handler_old(__attribute__((unused)) int signo) {
 }
 
-void old_style_handler_new(int signo) {
+void old_style_handler_new(__attribute__((unused)) int signo) {
 }
 
 int main(void) {

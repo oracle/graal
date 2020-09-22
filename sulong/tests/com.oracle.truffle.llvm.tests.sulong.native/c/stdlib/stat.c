@@ -33,7 +33,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-int main(int argc, char **argv) {
+int main(__attribute__((unused)) int argc, char **argv) {
     int file = 0;
     if ((file = open(argv[0], O_RDONLY)) < -1)
         return 1;
