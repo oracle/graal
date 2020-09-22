@@ -106,8 +106,8 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Override
-    public void initializeObjectHeader(Word memory, Word objectHeader, Word prototypeMarkWord, boolean isArray) {
-        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(memory, objectHeader);
+    public void initializeObjectHeader(Word memory, Word objectHeader, Word prototypeMarkWord, boolean isArray, boolean fillContents) {
+        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(memory, objectHeader, fillContents);
     }
 
     @Override

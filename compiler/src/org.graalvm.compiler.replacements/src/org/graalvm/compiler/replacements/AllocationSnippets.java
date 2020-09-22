@@ -71,12 +71,6 @@ public abstract class AllocationSnippets implements Snippets {
         return verifyOop(result);
     }
 
-    /**
-     * Previously in Substrate the object hashcode identity was not part of the header. Instead, the
-     * object was filled starting at an "arrayZeroingOffset". Unfortunately, this was not compatible
-     * with other optimization passes which separate allocation and zeroing, and expect the zeroing
-     * to start at the beginning of the elements.
-     */
     protected Object allocateArrayImpl(Word hub,
                     Word prototypeMarkWord,
                     int length,
@@ -276,7 +270,7 @@ public abstract class AllocationSnippets implements Snippets {
                     boolean emitMemoryBarrier,
                     boolean constantSize,
                     AllocationSnippetCounters snippetCounters) {
-        initializeObjectHeader(memory, hub, prototypeMarkWord, false);
+        initializeObjectHeader(memory, hub, prototypeMarkWord, false, fillContents);
         int headerSize = instanceHeaderSize();
         if (fillContents) {
             zeroMemory(memory, headerSize, size, constantSize, false, false, false, snippetCounters);
@@ -307,7 +301,7 @@ public abstract class AllocationSnippets implements Snippets {
         memory.writeInt(arrayLengthOffset(), length, LocationIdentity.init());
         // Store hub last as the concurrent garbage collectors assume length is valid if hub field
         // is not null.
-        initializeObjectHeader(memory, hub, prototypeMarkWord, true);
+        initializeObjectHeader(memory, hub, prototypeMarkWord, true, fillContents);
         if (fillContents) {
             zeroMemory(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
@@ -356,7 +350,7 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected abstract int instanceHeaderSize();
 
-    public abstract void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray);
+    public abstract void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray, boolean fillContents);
 
     protected abstract Object callNewInstanceStub(Word hub);
 

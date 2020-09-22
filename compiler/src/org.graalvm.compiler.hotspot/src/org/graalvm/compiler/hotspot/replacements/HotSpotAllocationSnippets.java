@@ -329,6 +329,10 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         int arrayBaseOffset = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
 
+        /*
+         * On HotSpot, we must only zero starting from `arrayBaseOffset` (see
+         * `Templates#lower(NewArrayNode, LoweringTool)`.
+         */
         Object result = allocateArrayImpl(nonNullKlass.asWord(), prototypeMarkWord, length, arrayBaseOffset, log2ElementSize, fillContents, arrayBaseOffset, emitMemoryBarrier, false,
                         supportsBulkZeroing, supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
@@ -487,7 +491,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    public final void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray) {
+    public final void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray, boolean fillContents) {
         KlassPointer klassPtr = KlassPointer.fromWord(hub);
         Word markWord = prototypeMarkWord;
         if (!isArray && HotSpotReplacementsUtil.useBiasedLocking(INJECTED_VMCONFIG)) {
@@ -725,6 +729,15 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("arrayBaseOffset", arrayBaseOffset);
             args.addConst("log2ElementSize", log2ElementSize);
             args.addConst("fillContents", node.fillContents());
+            /*
+             * On HotSpot, we may only use the `arrayBaseOffset` as the `fillStartOffset` because
+             * there are optimizations (escape analysis, vectorization, explicit allocation of
+             * uninitialized arrays using `sun.misc.Unsafe`, ...) that split the allocation and the
+             * zeroing into two separate operations. However, these optimizations do not know about
+             * the synthetic identity hashcode field, so when they emit the separate zeroing
+             * operation, they zero starting at the array base offset. To ensure that the identity
+             * hashcode is zeroed.
+             */
             args.addConst("fillStartOffset", arrayBaseOffset);
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
             args.addConst("maybeUnroll", length.isConstant());

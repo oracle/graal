@@ -173,7 +173,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub) {
+    public void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub, boolean fillContents) {
         if (getReferenceSize() == Integer.BYTES) {
             dynamicAssert(getIdentityHashCodeOffset() == getHubOffset() + 4, "assumed layout to optimize initializing write");
             dynamicAssert(encodedHub.and(WordFactory.unsigned(0xFFFFFFFF00000000L)).isNull(), "hub can only use 32 bit");
@@ -181,7 +181,19 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             objectPointer.writeLong(getHubOffset(), encodedHub.rawValue(), LocationIdentity.INIT_LOCATION);
         } else {
             objectPointer.writeWord(getHubOffset(), encodedHub, LocationIdentity.INIT_LOCATION);
-            objectPointer.writeInt(getIdentityHashCodeOffset(), 0, LocationIdentity.INIT_LOCATION);
+            /*
+             * For array layouts, when `fillContents` is `false`, some optimization phases may
+             * separate the object initialization and zeroing into two separate operations. These
+             * optimizations don't know about the synthetic identity hashcode field, and therefore
+             * start the zeroing at the array base. In that case, we must zero the identity hashcode
+             * in the header initialization to ensure that it's zeroed at least once.
+             *
+             * The zeroing has a similar check to ensure that the identity hashcode isn't zeroed a
+             * second time; together, these checks ensure that it's zeroed exactly once.
+             */
+            if (!fillContents) {
+                objectPointer.writeInt(getIdentityHashCodeOffset(), 0, LocationIdentity.INIT_LOCATION);
+            }
         }
     }
 
