@@ -74,21 +74,38 @@ public class EncodedSnippets {
             this.info = info;
         }
 
-        public static GraphData create(int startOffset, String originalMethod, SnippetParameterInfo snippetParameterInfo, Class<?> receiverClass, GraphData previous) {
-            // Most snippets and all method substitutions are static methods but some snippets use
-            // virtual dispatch for specialization. Ensure that these are tracked separate encoded
-            // graphs.
+        /**
+         * Record the data for an encoded graph. Most graphs are from static methods and can only
+         * have a single instantiation but snippets might come for a non-static method and rely on
+         * the type of the receiver to devirtualize invokes. In that case each pair of method and
+         * receiver represents a potentially different instantiation and these are linked into a
+         * chain of {@link VirtualGraphData VirtualGraphDatas}.
+         *
+         * @param startOffset offset of the encoded graph
+         * @param originalMethod method parsed for the graph
+         * @param snippetParameterInfo parameter information for snippets
+         * @param receiverClass static type of the receiver for non-virtual methods
+         * @param existingGraph a previous encoding of this same graph
+         */
+        public static GraphData create(int startOffset, String originalMethod, SnippetParameterInfo snippetParameterInfo, Class<?> receiverClass, GraphData existingGraph) {
             if (receiverClass == null) {
-                assert previous == null : originalMethod;
+                assert existingGraph == null : originalMethod;
                 return new StaticGraphData(startOffset, originalMethod, snippetParameterInfo);
             } else {
-                return new VirtualGraphData(startOffset, originalMethod, snippetParameterInfo, receiverClass, (VirtualGraphData) previous);
+                return new VirtualGraphData(startOffset, originalMethod, snippetParameterInfo, receiverClass, (VirtualGraphData) existingGraph);
             }
         }
 
+        /**
+         * Return the proper starting offset based on the actual receiver type of the instantiation
+         * which may be null.
+         */
         abstract int getStartOffset(Class<?> receiverClass);
     }
 
+    /**
+     * Graph data for a snippet or method substitution defined by a static method.
+     */
     static class StaticGraphData extends GraphData {
 
         StaticGraphData(int startOffset, String originalMethod, SnippetParameterInfo info) {
@@ -102,6 +119,9 @@ public class EncodedSnippets {
         }
     }
 
+    /**
+     * Graph data for a snippet defined by a virtual method. Method substitutions can't be virtual.
+     */
     static class VirtualGraphData extends GraphData {
         private final Class<?> receiverClass;
         private final VirtualGraphData next;
