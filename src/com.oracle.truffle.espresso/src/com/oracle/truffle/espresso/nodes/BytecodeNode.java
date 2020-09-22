@@ -479,7 +479,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     public int popInt(VirtualFrame frame, int slot) {
         int result = peekInt(frame, slot);
         if (CompilerDirectives.inCompiledCode()) {
-            putInt(frame, slot, 0);
+            putObject(frame, slot, null);
         }
         return result;
     }
@@ -515,7 +515,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     public float popFloat(VirtualFrame frame, int slot) {
         float result = peekFloat(frame, slot);
         if (CompilerDirectives.inCompiledCode()) {
-            putFloat(frame, slot, 0f);
+            putObject(frame, slot, null);
         }
         return result;
     }
@@ -527,7 +527,8 @@ public final class BytecodeNode extends EspressoMethodNode {
     public long popLong(VirtualFrame frame, int slot) {
         long result = peekLong(frame, slot);
         if (CompilerDirectives.inCompiledCode()) {
-            putLong(frame, slot - 1, 0L);
+            putObject(frame, slot - 1, null);
+            putObject(frame, slot, null);
         }
         return result;
     }
@@ -539,7 +540,8 @@ public final class BytecodeNode extends EspressoMethodNode {
     public double popDouble(VirtualFrame frame, int slot) {
         double result = peekDouble(frame, slot);
         if (CompilerDirectives.inCompiledCode()) {
-            putDouble(frame, slot - 1, 0d);
+            putObject(frame, slot - 1, null);
+            putObject(frame, slot, null);
         }
         return result;
     }
@@ -741,7 +743,6 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case ALOAD_2: // fall through
                     case ALOAD_3: putObject(frame, top, getLocalObject(frame, curOpcode - ALOAD_0)); break;
 
-<<<<<<< HEAD
                     case IALOAD: // fall through
                     case LALOAD: // fall through
                     case FALOAD: // fall through
@@ -1083,9 +1084,9 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case NEW: putObject(frame, top, InterpreterToVM.newObject(resolveType(curOpcode, bs.readCPI(curBCI)), true)); break;
                     case NEWARRAY: putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), popInt(frame, top - 1), getMeta())); break;
                     case ANEWARRAY: putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), popInt(frame, top - 1))); break;
-                    case ARRAYLENGTH: putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(peekAndReleaseObject(frame, top - 1)))); break;
+                    case ARRAYLENGTH: arrayLength(frame, top, curBCI); break;
 
-                    case ATHROW: throw Meta.throwException(nullCheck(peekAndReleaseObject(frame, top - 1)));
+                    case ATHROW: throw Meta.throwException(nullCheck(popObject(frame, top - 1)));
 
                     case CHECKCAST   : top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
                     case INSTANCEOF  : top += quickenInstanceOf(frame, top, curBCI, curOpcode); break;
@@ -1289,7 +1290,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             case IF_ICMPGT : return popInt(frame, top - 1)  < popInt(frame, top - 2);
             case IF_ICMPLE : return popInt(frame, top - 1) >= popInt(frame, top - 2);
             case IF_ACMPEQ : return popObject(frame, top - 1) == popObject(frame, top - 2);
-            case IF_ACMPNE : return poObject(frame, top - 1) != popObject(frame, top - 2);
+            case IF_ACMPNE : return popObject(frame, top - 1) != popObject(frame, top - 2);
             case GOTO      : // fall though
             case GOTO_W    : return true; // unconditional
             case IFNULL    : return StaticObject.isNull(popObject(frame, top - 1));
@@ -1350,7 +1351,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         assert IALOAD <= loadOpcode && loadOpcode <= SALOAD;
         JavaKind kind = arrayAccessKind(loadOpcode);
         CompilerAsserts.partialEvaluationConstant(kind);
-        int index = peekInt(frame, top - 1);
+        int index = popInt(frame, top - 1);
         StaticObject array = nullCheck(popObject(frame, top - 2));
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
             // @formatter:off
@@ -1372,6 +1373,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // The array was released, it must be restored for the quickening.
             putObject(frame, top - 2, array);
+            putInt(frame, top - 1, index);
             quickenArrayLoad(frame, top, curBCI, kind);
         }
     }
@@ -1383,23 +1385,23 @@ public final class BytecodeNode extends EspressoMethodNode {
         int index;
         StaticObject array;
         if (kind.needsTwoSlots()) {
-            index = peekInt(frame, top - 3);
+            index = popInt(frame, top - 3);
             array = nullCheck(popObject(frame, top - 4));
         } else {
-            index = peekInt(frame, top - 2);
+            index = popInt(frame, top - 2);
             array = nullCheck(popObject(frame, top - 3));
         }
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
             // @formatter:off
             switch (kind) {
-                case Byte:    getInterpreterToVM().setArrayByte((byte) peekInt(frame, top - 1), index, array);   break;
-                case Short:   getInterpreterToVM().setArrayShort((short) peekInt(frame, top - 1), index, array); break;
-                case Char:    getInterpreterToVM().setArrayChar((char) peekInt(frame, top - 1), index, array);   break;
-                case Int:     getInterpreterToVM().setArrayInt(peekInt(frame, top - 1), index, array);           break;
-                case Float:   getInterpreterToVM().setArrayFloat(peekFloat(frame, top - 1), index, array);       break;
-                case Long:    getInterpreterToVM().setArrayLong(peekLong(frame, top - 1), index, array);         break;
-                case Double:  getInterpreterToVM().setArrayDouble(peekDouble(frame, top - 1), index, array);     break;
-                case Object:  getInterpreterToVM().setArrayObject(peekObject(frame, top - 1), index, array);     break;
+                case Byte:    getInterpreterToVM().setArrayByte((byte) popInt(frame, top - 1), index, array);   break;
+                case Short:   getInterpreterToVM().setArrayShort((short) popInt(frame, top - 1), index, array); break;
+                case Char:    getInterpreterToVM().setArrayChar((char) popInt(frame, top - 1), index, array);   break;
+                case Int:     getInterpreterToVM().setArrayInt(popInt(frame, top - 1), index, array);           break;
+                case Float:   getInterpreterToVM().setArrayFloat(popFloat(frame, top - 1), index, array);       break;
+                case Long:    getInterpreterToVM().setArrayLong(popLong(frame, top - 1), index, array);         break;
+                case Double:  getInterpreterToVM().setArrayDouble(popDouble(frame, top - 1), index, array);     break;
+                case Object:  getInterpreterToVM().setArrayObject(popObject(frame, top - 1), index, array);     break;
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere();
@@ -1410,8 +1412,10 @@ public final class BytecodeNode extends EspressoMethodNode {
             // The array was released, it must be restored for the quickening.
             if (kind.needsTwoSlots()) {
                 putObject(frame, top - 4, array);
+                putInt(frame, top - 3, index);
             } else {
                 putObject(frame, top - 3, array);
+                putInt(frame, top - 2, index);
             }
             quickenArrayStore(frame, top, curBCI, kind);
         }
@@ -1449,9 +1453,11 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private void dup1(VirtualFrame frame, int top) {
         // value1 -> value1, value1
-        JavaKind k1 = peekKind(frame, top - 1);
-        Object v1 = peekValue(frame, top - 1);
-        putKindUnsafe1(frame, top, v1, k1);
+        if (frame.isObject(stackSlots[top - 1])) {
+            putObject(frame, top, peekObject(frame, top - 1));
+        } else {
+            putInt(frame, top, peekInt(frame, top - 1));
+        }
     }
 
     private void dupx1(VirtualFrame frame, int top) {

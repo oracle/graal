@@ -45,15 +45,11 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public abstract class AbstractSetFieldNode extends Node {
     final Field field;
     final String fieldName;
-    private final boolean isStatic;
-    private final int slotCount;
     static final int CACHED_LIBRARY_LIMIT = 3;
 
     AbstractSetFieldNode(Field field) {
         this.field = field;
         this.fieldName = field.getNameAsString();
-        this.slotCount = field.getKind().getSlotCount();
-        this.isStatic = field.isStatic();
     }
 
     public abstract void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex);
@@ -334,9 +330,8 @@ abstract class ObjectSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, int top, int statementIndex) {
+    public void setField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int top, int statementIndex) {
         StaticObject value = root.popObject(frame, top - 1);
-        StaticObject receiver = getReceiver(frame, root, top);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);
     }

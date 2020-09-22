@@ -46,7 +46,7 @@ public final class QuickenedPutFieldNode extends QuickNode {
     @Override
     public int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
-        StaticObject receiver = nullCheck(root.peekAndReleaseObject(frame, top - 1 - slotCount));
+        StaticObject receiver = nullCheck(root.popObject(frame, top - 1 - slotCount));
         setFieldNode.setField(frame, root, receiver, top, statementIndex);
         return -slotCount - 1; // -receiver
     }

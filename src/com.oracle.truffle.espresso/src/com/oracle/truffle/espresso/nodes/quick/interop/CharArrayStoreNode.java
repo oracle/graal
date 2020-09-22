@@ -48,8 +48,8 @@ public abstract class CharArrayStoreNode extends QuickNode {
     public final int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
         StaticObject array = nullCheck(root.popObject(frame, top - 3));
-        int index = root.peekInt(frame, top - 2);
-        char value = (char) root.peekInt(frame, top - 1);
+        int index = root.popInt(frame, top - 2);
+        char value = (char) root.popInt(frame, top - 1);
         executeStore(array, index, value);
         return Bytecodes.stackEffectOf(Bytecodes.LASTORE);
     }
