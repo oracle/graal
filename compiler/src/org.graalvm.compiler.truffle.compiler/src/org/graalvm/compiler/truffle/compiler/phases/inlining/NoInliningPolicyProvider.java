@@ -31,7 +31,7 @@ import org.graalvm.options.OptionValues;
 @ServiceProvider(InliningPolicyProvider.class)
 public class NoInliningPolicyProvider extends InliningPolicyProvider {
 
-    private static final int PRIORITY = -2;
+    private static final int PRIORITY = -1;
     private static final String NAME = "None";
 
     public NoInliningPolicyProvider() {
