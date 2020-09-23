@@ -143,12 +143,24 @@ public final class EspressoContext {
      * Controls behavior of context closing. Until an exit method has been called, context closing
      * waits for all non-daemon threads to finish.
      */
-    private volatile boolean isClosing = false;
+    private volatile byte closingStatus = NOT_CLOSING;
     private volatile int exitStatus = -1;
+    private volatile boolean initExitStatus = false;
+
+    private static final byte NOT_CLOSING = 0;
+    private static final byte SHUTDOWN = 1;
+    private static final byte CLOSING = 2;
 
     public int getExitStatus() {
         assert isClosing();
+        if (isExitStatusUninit()) {
+            return 0;
+        }
         return exitStatus;
+    }
+
+    private boolean isExitStatusUninit() {
+        return !initExitStatus;
     }
 
     /**
@@ -886,7 +898,11 @@ public final class EspressoContext {
     }
 
     public boolean isClosing() {
-        return isClosing;
+        return closingStatus == CLOSING;
+    }
+
+    public boolean isInShutdown() {
+        return closingStatus == SHUTDOWN;
     }
 
     // region Options
@@ -948,16 +964,31 @@ public final class EspressoContext {
                 if (isClosing()) {
                     return;
                 }
-                isClosing = true;
-                exitStatus = code;
+                closingStatus = CLOSING;
+                tryInitExitStatus(code);
                 // Wake up spinning main thread.
                 sync.notifyAll();
             }
             teardown();
+        } else {
+            tryInitExitStatus(code);
         }
         // At this point, the exit code given should have been register. If not, this means that
         // another closing was started before us, and we should use the previous' exit code.
         throw new EspressoExitException(getExitStatus());
+    }
+
+    private void tryInitExitStatus(int code) {
+        if (isExitStatusUninit()) {
+            Object sync = getShutdownSynchronizer();
+            synchronized (sync) {
+                assert Thread.holdsLock(getShutdownSynchronizer());
+                if (isExitStatusUninit()) {
+                    initExitStatus = true;
+                    exitStatus = code;
+                }
+            }
+        }
     }
 
     /**
@@ -975,7 +1006,20 @@ public final class EspressoContext {
         } catch (EspressoException | EspressoExitException e) {
             /* Suppress guest exception so as not to bypass teardown */
         }
+        if (!isInShutdown()) {
+            // Skip if Shutdown.shutdown called an exit method.
+            throw new EspressoExitException(getExitStatus());
+        }
+        Object s = getShutdownSynchronizer();
+        synchronized (s) {
+            if (!isInShutdown()) {
+                // If a daemon thread called an exit in-between
+                throw new EspressoExitException(getExitStatus());
+            }
+            closingStatus = CLOSING;
+        }
         teardown();
+
     }
 
     private void waitForClose() throws EspressoExitException {
@@ -984,7 +1028,7 @@ public final class EspressoContext {
         synchronized (synchronizer) {
             while (true) {
                 if (isClosing()) {
-                    throw new EspressoExitException(exitStatus);
+                    throw new EspressoExitException(getExitStatus());
                 }
                 if (hasActiveNonDaemon(initiating)) {
                     try {
@@ -993,8 +1037,7 @@ public final class EspressoContext {
                         /* loop back */
                     }
                 } else {
-                    isClosing = true;
-                    exitStatus = 0; // regular exit
+                    closingStatus = SHUTDOWN;
                     return;
                 }
             }
