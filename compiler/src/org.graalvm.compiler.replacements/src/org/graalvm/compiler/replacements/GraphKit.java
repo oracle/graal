@@ -209,7 +209,7 @@ public class GraphKit implements GraphBuilderTool {
 
     private void updateLastFixed(FixedNode result) {
         assert lastFixedNode != null;
-        assert result.predecessor() == null;
+        assert result.predecessor() == null : "Expected the predecessor of " + result + " to be null, but it was " + result.predecessor();
         graph.addAfterFixed(lastFixedNode, result);
         if (result instanceof FixedWithNextNode) {
             lastFixedNode = (FixedWithNextNode) result;

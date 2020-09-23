@@ -657,7 +657,7 @@ public class CompileQueue {
 
     public static boolean callerAnnotatedWith(Invoke invoke, Class<? extends Annotation> annotationClass) {
         for (FrameState state = invoke.stateAfter(); state != null; state = state.outerFrameState()) {
-            assert state.getMethod() != null : String.format("FrameState method must not be null, but %s refers to a null method", state);
+            assert state.getMethod() != null : state;
             if (state.getMethod().getAnnotation(annotationClass) != null) {
                 return true;
             }
