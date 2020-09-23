@@ -380,8 +380,8 @@ public abstract class RootNode extends ExecutableNode {
      * A trivial root node is defined as a root node that:
      * <ol>
      * <li>Never increases code size when inlined, i.e. is always less complex then the call.</li>
-     * <li>Never performs calls.</li>
-     * <li>Never contains TruffleBoundary calls or loops.</li>
+     * <li>Never performs guest language calls.</li>
+     * <li>Never contains loops.</li>
      * <li>Is small (for a language-specific definition of small).</li>
      * </ol>
      *

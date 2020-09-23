@@ -279,7 +279,7 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Whether to use multiple Truffle compilation tiers by default.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> MultiTier = new OptionKey<>(false);
 
-    @Option(help = "Explicitly pick a first tier inlining policy by name (None, Trivial). Default policy is 'Trivial'.", category = OptionCategory.EXPERT)
+    @Option(help = "Explicitly pick a first tier inlining policy by name (None, TrivialOnly). If empty (default) the lowest priority policy (TrivialOnly) is chosen.", category = OptionCategory.INTERNAL)
     public static final OptionKey<String> FirstTierInliningPolicy = new OptionKey<>("");
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
@@ -494,7 +494,7 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceInliningDetails = new OptionKey<>(false);
 
-    @Option(help = "Explicitly pick a inlining policy by name. Highest priority chosen by default.", category = OptionCategory.EXPERT)
+    @Option(help = "Explicitly pick a inlining policy by name. If empty (default) the highest priority chosen by default.", category = OptionCategory.INTERNAL)
     public static final OptionKey<String> InliningPolicy = new OptionKey<>("");
 
     @Option(help = "The base expansion budget for language-agnostic inlining.", category = OptionCategory.EXPERT)
