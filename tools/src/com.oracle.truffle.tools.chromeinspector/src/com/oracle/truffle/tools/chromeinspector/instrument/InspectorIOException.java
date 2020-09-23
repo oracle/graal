@@ -41,11 +41,6 @@ class InspectorIOException extends AbstractTruffleException {
     }
 
     @ExportMessage
-    boolean isExceptionUnwind() {
-        return true;
-    }
-
-    @ExportMessage
     ExceptionType getExceptionType() {
         return ExceptionType.EXIT;
     }

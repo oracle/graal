@@ -1200,13 +1200,7 @@ public class Breakpoint {
 
         @Override
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-            boolean uncatchable = false;
-            try {
-                uncatchable = interop.isException(exception) && interop.isExceptionUnwind(exception);
-            } catch (UnsupportedMessageException um) {
-                CompilerDirectives.shouldNotReachHere(um);
-            }
-            if (!(exception instanceof ControlFlowException || uncatchable)) {
+            if (!(exception instanceof ControlFlowException || exception instanceof ThreadDeath)) {
                 onNode(frame, false, null, exception);
             }
         }
@@ -1215,11 +1209,8 @@ public class Breakpoint {
 
     private static class BreakpointAfterNodeException extends AbstractBreakpointNode {
 
-        @Child private InteropLibrary interop;
-
         BreakpointAfterNodeException(Breakpoint breakpoint, EventContext context) {
             super(breakpoint, context);
-            interop = InteropLibrary.getFactory().createDispatched(5);
         }
 
         @Override
@@ -1244,13 +1235,7 @@ public class Breakpoint {
 
         @Override
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-            boolean uncatchable = false;
-            try {
-                uncatchable = interop.isException(exception) && interop.isExceptionUnwind(exception);
-            } catch (UnsupportedMessageException um) {
-                CompilerDirectives.shouldNotReachHere(um);
-            }
-            if (!(exception instanceof ControlFlowException || uncatchable)) {
+            if (!(exception instanceof ControlFlowException || exception instanceof ThreadDeath)) {
                 SessionList sessions = computeUniqueActiveSessions();
                 if (sessions == null) {
                     return;

@@ -110,6 +110,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
 import com.oracle.truffle.polyglot.PolyglotLocals.AbstractContextLocal;
@@ -1360,8 +1361,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
     }
 
-    @SuppressWarnings({"deprecation", "serial"})
-    static final class CancelExecution extends ThreadDeath implements com.oracle.truffle.api.TruffleException {
+    @SuppressWarnings("serial")
+    static final class CancelExecution extends ThreadDeath {
 
         private final Node location;
         private final String cancelMessage;
@@ -1373,9 +1374,12 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             this.resourceLimit = resourceLimit;
         }
 
-        @Override
-        public Node getLocation() {
+        Node getLocation() {
             return location;
+        }
+
+        SourceSection getSourceLocation() {
+            return location == null ? null : location.getEncapsulatingSourceSection();
         }
 
         public boolean isResourceLimit() {
@@ -1390,12 +1394,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 return cancelMessage;
             }
         }
-
-        @Override
-        public boolean isCancelled() {
-            return true;
-        }
-
     }
 
     @Override

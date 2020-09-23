@@ -183,6 +183,11 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public Object getPolyglotLanguageContext(Env env) {
+            return env.getPolyglotLanguageContext();
+        }
+
+        @Override
         public Object getFileSystemContext(TruffleFile file) {
             return file.getFileSystemContext();
         }

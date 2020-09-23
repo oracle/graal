@@ -117,14 +117,12 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -1306,7 +1304,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             run("STATEMENT");
             Assert.fail("KillException in onEnter() cancels engine execution");
         } catch (PolyglotException ex) {
-            assertEquals(MyKillException.MESSAGE, ex.getMessage());
+            assertTrue(ex.getMessage(), ex.getMessage().contains(MyKillException.class.getName()));
         }
         Assert.assertEquals("KillException is not an execution event", 0, returnExceptionalCount.get());
     }
@@ -1330,7 +1328,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             run("STATEMENT");
             Assert.fail("KillException in onReturnValue() cancels engine execution");
         } catch (PolyglotException ex) {
-            assertEquals(MyKillException.MESSAGE, ex.getMessage());
+            assertTrue(ex.getMessage(), ex.getMessage().contains(MyKillException.class.getName()));
         }
         Assert.assertEquals("KillException is not an execution event", 0, returnExceptionalCount.get());
     }
@@ -2465,26 +2463,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
     }
 
-    @ExportLibrary(InteropLibrary.class)
-    static final class MyKillException extends AbstractTruffleException {
-
-        static final long serialVersionUID = 1;
-        static final String MESSAGE = "kill exception";
-
-        MyKillException() {
-            super(MESSAGE);
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean isExceptionUnwind() {
-            return true;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        ExceptionType getExceptionType() {
-            return ExceptionType.CANCEL;
-        }
+    @SuppressWarnings("serial")
+    private static final class MyKillException extends ThreadDeath {
     }
 }

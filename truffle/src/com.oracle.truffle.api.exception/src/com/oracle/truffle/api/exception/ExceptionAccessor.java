@@ -96,11 +96,6 @@ final class ExceptionAccessor extends Accessor {
         }
 
         @Override
-        public boolean isExceptionUnwind(Object receiver) {
-            return false;
-        }
-
-        @Override
         public Object getExceptionType(Object receiver) {
             return ExceptionType.RUNTIME_ERROR;
         }

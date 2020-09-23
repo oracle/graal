@@ -284,13 +284,7 @@ public class LanguageSPITest {
     }
 
     @SuppressWarnings("serial")
-    @ExportLibrary(InteropLibrary.class)
     static class Interrupted extends AbstractTruffleException {
-
-        @ExportMessage
-        ExceptionType getExceptionType() {
-            return ExceptionType.CANCEL;
-        }
     }
 
     @SuppressWarnings({"serial"})
@@ -365,8 +359,6 @@ public class LanguageSPITest {
                 if (!(cause instanceof PolyglotException)) {
                     throw new AssertionError(cause);
                 }
-                PolyglotException polyglotException = (PolyglotException) cause;
-                assertTrue(polyglotException.isCancelled());
             }
             engine.close();
         } finally {

@@ -127,25 +127,14 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             try {
                 ExceptionType exceptionType = interop.getExceptionType(exception);
                 this.internal = false;
-                this.cancelled = exceptionType == ExceptionType.CANCEL;
+                this.cancelled = isCancelled(exception);    // Handle legacy TruffleException
                 this.syntaxError = exceptionType == ExceptionType.PARSE_ERROR;
                 this.exit = exceptionType == ExceptionType.EXIT;
                 this.exitStatus = this.exit ? interop.getExceptionExitStatus(exception) : 0;
                 this.incompleteSource = this.syntaxError ? interop.isExceptionIncompleteSource(exception) : false;
 
                 if (interop.hasSourceLocation(exception)) {
-                    com.oracle.truffle.api.source.SourceSection section = interop.getSourceLocation(exception);
-                    com.oracle.truffle.api.source.Source truffleSource = section.getSource();
-                    String language = truffleSource.getLanguage();
-                    if (language == null) {
-                        Objects.requireNonNull(engine, "Source location can not be accepted without language context.");
-                        PolyglotLanguage foundLanguage = engine.findLanguage(null, language, truffleSource.getMimeType(), false, true);
-                        if (foundLanguage != null) {
-                            language = foundLanguage.getId();
-                        }
-                    }
-                    Source source = polyglot.getAPIAccess().newSource(language, truffleSource);
-                    this.sourceLocation = polyglot.getAPIAccess().newSourceSection(source, section);
+                    this.sourceLocation = newSourceSection(interop.getSourceLocation(exception));
                 } else {
                     this.sourceLocation = null;
                 }
@@ -167,13 +156,14 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 throw CompilerDirectives.shouldNotReachHere(ume);
             }
         } else {
-            this.cancelled = false;
-            this.internal = !resourceExhausted;
+            this.cancelled = isCancelled(exception);
+            this.internal = !cancelled && !resourceExhausted;
             this.syntaxError = false;
             this.incompleteSource = false;
-            this.exit = false;
-            this.exitStatus = 0;
-            this.sourceLocation = null;
+            this.exit = isExit(exception);
+            this.exitStatus = exit ? getExitStatus(exception) : 0;
+            com.oracle.truffle.api.source.SourceSection locaction = getSourceLocation(exception);
+            this.sourceLocation = locaction != null ? newSourceSection(locaction) : null;
             this.guestObject = null;
         }
         if (isHostException()) {
@@ -202,6 +192,64 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             toCheck = e;
         }
         return toCheck instanceof StackOverflowError || toCheck instanceof OutOfMemoryError;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean isCancelled(Throwable e) {
+        if (e instanceof CancelExecution) {
+            return true;
+        }
+        // Legacy TruffleException
+        if (e instanceof com.oracle.truffle.api.TruffleException) {
+            return ((com.oracle.truffle.api.TruffleException) e).isCancelled();
+        }
+        return false;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean isExit(Throwable e) {
+        // TODO: Add check of an exception from the coordinated exit here
+        // Legacy TruffleException
+        if (e instanceof com.oracle.truffle.api.TruffleException) {
+            return ((com.oracle.truffle.api.TruffleException) e).isExit();
+        }
+        return false;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int getExitStatus(Throwable e) {
+        // TODO: Add exit status from the coordinated exit here
+        // Legacy TruffleException
+        if (e instanceof com.oracle.truffle.api.TruffleException) {
+            return ((com.oracle.truffle.api.TruffleException) e).getExitStatus();
+        }
+        return 0;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static com.oracle.truffle.api.source.SourceSection getSourceLocation(Throwable e) {
+        if (e instanceof CancelExecution) {
+            return ((CancelExecution) e).getSourceLocation();
+        }
+        // Legacy TruffleException
+        if (e instanceof com.oracle.truffle.api.TruffleException) {
+            return ((com.oracle.truffle.api.TruffleException) e).getSourceLocation();
+        }
+        return null;
+    }
+
+    private SourceSection newSourceSection(com.oracle.truffle.api.source.SourceSection section) {
+        com.oracle.truffle.api.source.Source truffleSource = section.getSource();
+        String language = truffleSource.getLanguage();
+        if (language == null) {
+            Objects.requireNonNull(engine, "Source location can not be accepted without language context.");
+            PolyglotLanguage foundLanguage = engine.findLanguage(null, language, truffleSource.getMimeType(), false, true);
+            if (foundLanguage != null) {
+                language = foundLanguage.getId();
+            }
+        }
+        Source source = polyglot.getAPIAccess().newSource(language, truffleSource);
+        return polyglot.getAPIAccess().newSourceSection(source, section);
     }
 
     @Override

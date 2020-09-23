@@ -291,6 +291,8 @@ public abstract class Accessor {
 
         public abstract TruffleContext getTruffleContext(Object polyglotLanguageContext);
 
+        public abstract TruffleContext getCreatorTruffleContext(Object polyglotLanguageContext);
+
         public abstract Object toGuestValue(Object obj, Object languageContext);
 
         public abstract Object getPolyglotEngine(Object polyglotLanguageInstance);
@@ -570,6 +572,8 @@ public abstract class Accessor {
 
         public abstract Object getContext(Env env);
 
+        public abstract Object getPolyglotLanguageContext(Env env);
+
         public abstract TruffleLanguage<?> getSPI(Env env);
 
         public abstract InstrumentInfo createInstrument(Object polyglotInstrument, String id, String name, String version);
@@ -774,8 +778,6 @@ public abstract class Accessor {
         public abstract boolean isException(Object receiver);
 
         public abstract RuntimeException throwException(Object receiver);
-
-        public abstract boolean isExceptionUnwind(Object receiver);
 
         public abstract Object getExceptionType(Object receiver);
 

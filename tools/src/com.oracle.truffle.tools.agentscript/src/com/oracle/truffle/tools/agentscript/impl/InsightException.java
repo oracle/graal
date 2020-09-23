@@ -66,11 +66,6 @@ final class InsightException extends AbstractTruffleException {
     }
 
     @ExportMessage
-    boolean isExceptionUnwind() {
-        return exitCode >= 0;
-    }
-
-    @ExportMessage
     int getExceptionExitStatus() throws UnsupportedMessageException {
         if (exitCode < 0) {
             throw UnsupportedMessageException.create();

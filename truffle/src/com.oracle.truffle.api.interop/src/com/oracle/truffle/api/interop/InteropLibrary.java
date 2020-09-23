@@ -1298,29 +1298,6 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns {@code true} if receiver value represents an exception which should not be caught.
-     * Throws {@code UnsupportedMessageException} when the receiver is not an
-     * {@link #isException(Object) exception}.
-     * <p>
-     * Languages should not execute catch blocks nor finally blocks when they catch an unwind
-     * exception. For a sample {@code TryCatchNode} implementation see {@link #isException(Object)
-     * isException}.
-     *
-     * @see #isException(Object)
-     * @since 20.3
-     */
-    public boolean isExceptionUnwind(Object receiver) throws UnsupportedMessageException {
-        // A workaround for missing inheritance feature for default exports.
-        if (InteropAccessor.EXCEPTION.isException(receiver)) {
-            return InteropAccessor.EXCEPTION.isExceptionUnwind(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.isExceptionUnwind(receiver);
-        } else {
-            throw UnsupportedMessageException.create();
-        }
-    }
-
-    /**
      * Returns {@link ExceptionType exception type} of the receiver. Throws
      * {@code UnsupportedMessageException} when the receiver is not an {@link #isException(Object)
      * exception}.
@@ -1332,7 +1309,7 @@ public abstract class InteropLibrary extends Library {
      * @see ExceptionType
      * @since 20.3
      */
-    @Abstract(ifExported = {"isExceptionUnwind", "getExceptionExitStatus", "isExceptionIncompleteSource"})
+    @Abstract(ifExported = {"getExceptionExitStatus", "isExceptionIncompleteSource"})
     public ExceptionType getExceptionType(Object receiver) throws UnsupportedMessageException {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
@@ -3179,13 +3156,6 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
-        public boolean isExceptionUnwind(Object receiver) throws UnsupportedMessageException {
-            assert preCondition(receiver);
-            boolean result = delegate.isExceptionUnwind(receiver);
-            return result;
-        }
-
-        @Override
         public ExceptionType getExceptionType(Object receiver) throws UnsupportedMessageException {
             assert preCondition(receiver);
             ExceptionType result = delegate.getExceptionType(receiver);
@@ -3213,6 +3183,7 @@ public abstract class InteropLibrary extends Library {
             }
             assert preCondition(receiver);
             boolean wasException = delegate.isException(receiver);
+            boolean wasTruffleException = false;
             boolean unsupported = false;
             try {
                 throw delegate.throwException(receiver);
@@ -3221,9 +3192,13 @@ public abstract class InteropLibrary extends Library {
                 assert !wasException : violationInvariant(receiver);
                 unsupported = true;
                 throw e;
+            } catch (Throwable e) {
+                wasTruffleException = LegacyTruffleExceptionSupport.isTruffleException(e);
+                throw e;
             } finally {
                 if (!unsupported) {
                     assert wasException : violationInvariant(receiver);
+                    assert wasTruffleException : violationInvariant(receiver);
                 }
             }
         }
@@ -3797,24 +3772,19 @@ class InteropLibrarySnippets {
             }
             exceptionProfile.enter();
             if (exceptions.isException(ex)) {
-                if (exceptions.isExceptionUnwind(ex)) {
-                    // no finally blocks for unwind
-                    throw exceptions.throwException(ex);
-                } else {
-                    if (catchBlk != null) {
-                        try {
-                            catchBlk.executeVoid(frame);
-                            return null;
-                        } catch (Throwable catchEx) {
-                            return executeCatchBlock(frame, catchEx, null);
-                        }
-                    } else {
-                        return ex;
+                if (catchBlk != null) {
+                    try {
+                        catchBlk.executeVoid(frame);
+                        return null;
+                    } catch (Throwable catchEx) {
+                        return executeCatchBlock(frame, catchEx, null);
                     }
+                } else {
+                    // run finally block
+                    return ex;
                 }
             } else {
-                // do not run finally blocks for internal errors
-                CompilerDirectives.transferToInterpreterAndInvalidate();
+                // do not run finally blocks for internal errors or unwinds
                 throw (T) ex;
             }
         }

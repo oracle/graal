@@ -53,13 +53,6 @@ import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
  */
 public enum ExceptionType implements TruffleObject {
     /**
-     * Indicates that guest language application was cancelled during its execution.
-     *
-     * @since 20.3
-     */
-    CANCEL,
-
-    /**
      * Indicates that the application was exited within the guest language program. To obtain the
      * exit status use {@link InteropLibrary#getExceptionExitStatus(Object) getExceptionExitStatus}.
      *

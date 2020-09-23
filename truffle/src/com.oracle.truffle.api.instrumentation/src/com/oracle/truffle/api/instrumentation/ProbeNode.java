@@ -62,8 +62,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.EngineInstrumenter;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -153,7 +151,6 @@ public final class ProbeNode extends Node {
     @CompilationFinal private volatile EventContext context;
 
     @Child private volatile ProbeNode.EventChainNode chain;
-    @Child private volatile InteropLibrary interop;
 
     /*
      * We cache to ensure that the instrumented tags and source sections are always compilation
@@ -282,18 +279,8 @@ public final class ProbeNode extends Node {
         if (exception instanceof UnwindException) {
             profileBranch(SEEN_UNWIND);
             unwind = (UnwindException) exception;
-        } else {
-            if (interop == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                interop = insert(InteropLibrary.getFactory().createDispatched(5));
-            }
-            try {
-                if (interop.isException(exception) && interop.isExceptionUnwind(exception)) {
-                    interop.throwException(exception);
-                }
-            } catch (UnsupportedMessageException um) {
-                CompilerDirectives.shouldNotReachHere(um);
-            }
+        } else if (exception instanceof ThreadDeath) {
+            throw (ThreadDeath) exception;
         }
         EventChainNode localChain = lazyUpdate(frame);
         if (localChain != null) {
@@ -661,13 +648,9 @@ public final class ProbeNode extends Node {
      */
     @TruffleBoundary
     static void exceptionEventForClientInstrument(EventBinding.Source<?> b, String eventName, Throwable t) {
-        InteropLibrary interop = InteropLibrary.getUncached();
-        try {
-            if (interop.isException(t) && interop.isExceptionUnwind(t)) {
-                interop.throwException(t);
-            }
-        } catch (UnsupportedMessageException um) {
-            CompilerDirectives.shouldNotReachHere(um);
+        if (t instanceof ThreadDeath) {
+            // Terminates guest language execution immediately
+            throw (ThreadDeath) t;
         }
         final Object polyglotEngine = InstrumentAccessor.engineAccess().getCurrentPolyglotEngine();
         if (b.getInstrumenter() instanceof EngineInstrumenter || (polyglotEngine != null && InstrumentAccessor.engineAccess().isInstrumentExceptionsAreThrown(polyglotEngine))) {
