@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.interop;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 
@@ -63,8 +62,11 @@ final class LegacyNodeExports {
     @ExportMessage
     @TruffleBoundary
     static boolean hasScope(Node node, Frame frame) {
-        Iterable<com.oracle.truffle.api.Scope> scopes = findLocalScopes(node, frame);
-        return (scopes instanceof Collection) ? !((Collection<?>) scopes).isEmpty() : scopes.iterator().hasNext();
+        Iterator<com.oracle.truffle.api.Scope> scopes = findLocalScopes(node, frame).iterator();
+        if (!scopes.hasNext()) {
+            return false;
+        }
+        return InteropAccessor.ACCESSOR.engineSupport().legacyScopesHasScope(node, scopes);
     }
 
     @ExportMessage
@@ -77,7 +79,11 @@ final class LegacyNodeExports {
         }
         TruffleLanguage.Env env = findEnv(node);
         TruffleLanguage<?> spi = InteropAccessor.ACCESSOR.languageSupport().getLanguage(env);
-        return InteropAccessor.ACCESSOR.engineSupport().legacyScopes2ScopeObject(node, scopes, (Class<? extends TruffleLanguage<?>>) spi.getClass());
+        Object scope = InteropAccessor.ACCESSOR.engineSupport().legacyScopes2ScopeObject(node, scopes, (Class<? extends TruffleLanguage<?>>) spi.getClass());
+        if (scope == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return scope;
     }
 
     @ExportMessage

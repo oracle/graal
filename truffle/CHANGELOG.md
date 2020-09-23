@@ -24,6 +24,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated com.oracle.truffle.api.Scope class and methods in TruffleLanguage and TruffleInstrument.Env, which provide the scope information through that class.
 * Added scope information into InteropLibrary: [InteropLibrary.isScope](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#isScope-java.lang.Object-), [InteropLibrary.hasScopeParent](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#hasScopeParent-java.lang.Object-) and [InteropLibrary.getScopeParent](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#getScopeParent-java.lang.Object-)
 * Added utility method to find an instrumentable parent node [InstrumentableNode.findInstrumentableParent](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/InstrumentableNode.html#findInstrumentableParent-com.oracle.truffle.api.nodes.Node-).
+* Deprecated `DebugScope.getArguments()` without replacement. This API was added without use-case.
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.

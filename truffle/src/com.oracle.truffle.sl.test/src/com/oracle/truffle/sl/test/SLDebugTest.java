@@ -138,19 +138,6 @@ public class SLDebugTest {
         checkDebugValues("variables", frame.getScope(), expectedFrame);
     }
 
-    protected void checkArgs(DebugStackFrame frame, String... expectedArgs) {
-        Iterable<DebugValue> arguments = null;
-        DebugScope scope = frame.getScope();
-        while (scope != null) {
-            if (scope.isFunctionScope()) {
-                arguments = scope.getArguments();
-                break;
-            }
-            scope = scope.getParent();
-        }
-        checkDebugValues("arguments", arguments, expectedArgs);
-    }
-
     private static void checkDebugValues(String msg, DebugScope scope, String... expected) {
         Map<String, DebugValue> valMap = new HashMap<>();
         DebugScope currentScope = scope;
@@ -206,19 +193,17 @@ public class SLDebugTest {
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 6, true, "return 1", "n", "1");
-                checkArgs(event.getTopStackFrame(), "n", "1");
                 Iterator<DebugStackFrame> sfi = event.getStackFrames().iterator();
                 for (int i = 1; i <= 5; i++) {
-                    checkArgs(sfi.next(), "n", Integer.toString(i));
+                    checkStack(sfi.next(), "fac", "n", Integer.toString(i));
                 }
-                checkArgs(sfi.next()); // main
+                checkStack(sfi.next(), "main");
                 assertSame(breakpoint, event.getBreakpoints().iterator().next());
                 event.prepareStepOver(1);
             });
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 8, false, "fac(n - 1)", "n", "2");
-                checkArgs(event.getTopStackFrame(), "n", "2");
                 assertEquals("1", event.getReturnValue().toDisplayString());
                 assertTrue(event.getBreakpoints().isEmpty());
                 event.prepareStepOut(1);
@@ -247,7 +232,6 @@ public class SLDebugTest {
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "main", 2, false, "fac(5)");
-                checkArgs(event.getTopStackFrame());
                 assertEquals("120", event.getReturnValue().toDisplayString());
                 assertTrue(event.getBreakpoints().isEmpty());
                 event.prepareStepOut(1);
@@ -903,27 +887,23 @@ public class SLDebugTest {
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
                 assertEquals(6, frame.getSourceSection().getStartLine());
-                checkArgs(frame, "n", "11", "m", "20");
                 checkStack(frame, "fnc", "n", "11", "m", "20");
                 event.prepareStepOver(4);
             });
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
                 assertEquals(10, frame.getSourceSection().getStartLine());
-                checkArgs(frame, "n", "11", "m", "20");
                 checkStack(frame, "fnc", "n", "9", "m", "10", "x", "121");
                 event.prepareUnwindFrame(frame);
             });
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
                 assertEquals(3, frame.getSourceSection().getStartLine());
-                checkArgs(frame);
                 checkStack(frame, "main", "i", "11");
             });
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
                 assertEquals(6, frame.getSourceSection().getStartLine());
-                checkArgs(frame, "n", "11", "m", "20");
                 checkStack(frame, "fnc", "n", "11", "m", "20");
             });
             assertEquals("121", expectDone());
@@ -1320,12 +1300,16 @@ public class SLDebugTest {
                 assertTrue(exception.getMessage(), exception.getMessage().startsWith("Type error"));
                 SourceSection throwLocation = exception.getThrowLocation();
                 assertEquals(6, throwLocation.getStartLine());
-                // Repair the 'n' argument and rewind
-                event.getTopStackFrame().getScope().getArguments().iterator().next().set(event.getTopStackFrame().eval("function main() {return 2;}"));
+                // Rewind and then repair the 'n' argument.
                 event.prepareUnwindFrame(event.getTopStackFrame());
             });
             expectSuspended((SuspendedEvent event) -> {
                 assert event != null;
+                // Step into after unwind to change the arguments.
+                event.prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                event.getTopStackFrame().getScope().getDeclaredValue("n").set(event.getTopStackFrame().eval("function main() {return 2;}"));
                 // Continue after unwind
             });
             assertEquals("5", expectDone());

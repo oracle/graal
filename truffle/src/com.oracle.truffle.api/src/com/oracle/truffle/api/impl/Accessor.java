@@ -504,6 +504,8 @@ public abstract class Accessor {
 
         public abstract Iterable<com.oracle.truffle.api.Scope> topScopesToLegacy(Object scope);
 
+        public abstract boolean legacyScopesHasScope(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes);
+
         public abstract Object legacyScopes2ScopeObject(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes, Class<? extends TruffleLanguage<?>> language);
 
     }
