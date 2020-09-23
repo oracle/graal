@@ -160,18 +160,16 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         // prepare the phis
         final Map<InstructionBlock, List<Phi>> phis = LLVMPhiManager.getPhis(method);
 
-        // setup the uniquesRegion
-        UniquesRegion uniquesRegion = new UniquesRegion();
-        GetStackSpaceFactory getStackSpaceFactory = GetStackSpaceFactory.createGetUniqueStackSpaceFactory(uniquesRegion);
-
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(phis, method, runtime.getContext().lifetimeAnalysisStream());
 
         // setup the frameDescriptor
         FrameDescriptor frame = new FrameDescriptor();
+        UniquesRegion uniquesRegion = new UniquesRegion();
+        GetStackSpaceFactory getStackSpaceFactory = GetStackSpaceFactory.createGetUniqueStackSpaceFactory(uniquesRegion, frame);
         LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, frame, getStackSpaceFactory, dataLayout, options.get(SulongEngineOption.LL_DEBUG));
 
         frame.addFrameSlot(LLVMUserException.FRAME_SLOT_ID, null, FrameSlotKind.Object);
-        frame.addFrameSlot(LLVMStack.FRAME_ID, PointerType.VOID, FrameSlotKind.Object);
+        LLVMStack.getStackPointerSlot(frame);
 
         for (FunctionParameter parameter : method.getParameters()) {
             symbols.findOrAddFrameSlot(frame, parameter);
@@ -227,7 +225,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         LLVMSourceLocation location = method.getLexicalScope();
         LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame(frame, symbols).toArray(LLVMStatementNode.NO_STATEMENTS);
-        LLVMExpressionNode body = nodeFactory.createFunctionBlockNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), blockNodes, uniquesRegion.build(), copyArgumentsToFrameArray, location,
+        LLVMExpressionNode body = nodeFactory.createFunctionBlockNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), blockNodes, uniquesRegion, copyArgumentsToFrameArray, location,
                         frame, loopSuccessorSlot, info);
 
         RootNode rootNode = nodeFactory.createFunctionStartNode(body, frame, method.getName(), method.getSourceName(), method.getParameters().size(), source, location);

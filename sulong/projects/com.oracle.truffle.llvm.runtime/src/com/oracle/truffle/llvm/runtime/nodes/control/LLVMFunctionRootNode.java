@@ -38,8 +38,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMInitializeStackFrameNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackCloseable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMUniquesRegionAllocNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
@@ -50,18 +50,19 @@ public abstract class LLVMFunctionRootNode extends LLVMExpressionNode {
     private static final FrameSlot[] NO_SLOTS = new FrameSlot[0];
 
     @Children private final LLVMStatementNode[] copyArgumentsToFrame;
+    @Child private LLVMInitializeStackFrameNode initializeStackFrameNode;
     @Child private LLVMUniquesRegionAllocNode uniquesRegionAllocNode;
     @Child private LLVMExpressionNode rootBody;
-    private final FrameSlot stackSlot;
 
     @CompilationFinal(dimensions = 1) private final FrameSlot[] frameSlotsToInitialize;
 
-    public LLVMFunctionRootNode(LLVMUniquesRegionAllocNode uniquesRegionAllocNode, LLVMStatementNode[] copyArgumentsToFrame, LLVMDispatchBasicBlockNode rootBody, FrameDescriptor frameDescriptor) {
+    public LLVMFunctionRootNode(LLVMUniquesRegionAllocNode uniquesRegionAllocNode, LLVMInitializeStackFrameNode initializeStackFrameNode, LLVMStatementNode[] copyArgumentsToFrame,
+                    LLVMDispatchBasicBlockNode rootBody, FrameDescriptor frameDescriptor) {
         this.uniquesRegionAllocNode = uniquesRegionAllocNode;
+        this.initializeStackFrameNode = initializeStackFrameNode;
         this.copyArgumentsToFrame = copyArgumentsToFrame;
         this.rootBody = rootBody;
         this.frameSlotsToInitialize = frameDescriptor.getSlots().toArray(NO_SLOTS);
-        this.stackSlot = frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID);
     }
 
     @ExplodeLoop
@@ -74,11 +75,11 @@ public abstract class LLVMFunctionRootNode extends LLVMExpressionNode {
     @Specialization
     public Object doRun(VirtualFrame frame) {
         nullStack(frame);
-        LLVMStack llvmStack = (LLVMStack) frame.getArguments()[0];
-        try (StackPointer stackPointer = llvmStack.newFrame()) {
-            frame.setObject(stackSlot, stackPointer);
+        try (StackCloseable stackPointer = initializeStackFrameNode.execute(frame)) {
             copyArgumentsToFrame(frame);
-            uniquesRegionAllocNode.execute(frame);
+            if (uniquesRegionAllocNode != null) {
+                uniquesRegionAllocNode.execute(frame);
+            }
 
             return rootBody.executeGeneric(frame);
         }

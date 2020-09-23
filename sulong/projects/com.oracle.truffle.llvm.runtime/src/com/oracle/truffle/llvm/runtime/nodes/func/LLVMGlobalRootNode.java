@@ -43,7 +43,8 @@ import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMInitializeStackFrameNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackCloseable;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -58,10 +59,14 @@ public class LLVMGlobalRootNode extends RootNode {
     private final DirectCallNode startFunction;
     private final int mainFunctionType;
     private final String applicationPath;
-    @Child LLVMAccessSymbolNode accessMainFunction;
 
-    public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, LLVMFunction mainFunction, CallTarget startFunction, String applicationPath) {
+    @Child private LLVMAccessSymbolNode accessMainFunction;
+    @Child private LLVMInitializeStackFrameNode initializeStackFrameNode;
+
+    public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, LLVMInitializeStackFrameNode initializeStackFrameNode, LLVMFunction mainFunction, CallTarget startFunction,
+                    String applicationPath) {
         super(language, descriptor);
+        this.initializeStackFrameNode = initializeStackFrameNode;
         this.startFunction = Truffle.getRuntime().createDirectCallNode(startFunction);
         this.mainFunctionType = getMainFunctionType(mainFunction);
         this.accessMainFunction = LLVMAccessSymbolNodeGen.create(mainFunction);
@@ -82,7 +87,7 @@ public class LLVMGlobalRootNode extends RootNode {
     @TruffleBoundary
     private Object executeWithoutFrame() {
         LLVMStack stack = getContext().getThreadingStack().getStack();
-        try (StackPointer basePointer = stack.newFrame()) {
+        try (StackCloseable basePointer = initializeStackFrameNode.execute(stack)) {
             try {
                 Object appPath = new LLVMArgumentBuffer(applicationPath);
                 LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(appPath);

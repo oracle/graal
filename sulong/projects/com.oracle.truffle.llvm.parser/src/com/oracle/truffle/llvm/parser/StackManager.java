@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,9 +30,7 @@
 package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 public final class StackManager {
 
@@ -42,7 +40,7 @@ public final class StackManager {
 
     public static FrameDescriptor createRootFrame() {
         FrameDescriptor rootFrame = new FrameDescriptor();
-        rootFrame.addFrameSlot(LLVMStack.FRAME_ID, PointerType.VOID, FrameSlotKind.Object);
+        LLVMStack.getStackPointerSlot(rootFrame);
         return rootFrame;
     }
 }

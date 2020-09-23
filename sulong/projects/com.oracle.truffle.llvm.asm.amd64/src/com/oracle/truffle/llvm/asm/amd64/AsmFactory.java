@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.asm.amd64;
 
-import static com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -44,7 +42,9 @@ import com.oracle.truffle.llvm.runtime.LLVMGetStackPointerFromFrameNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMAccessStackPointerNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
@@ -248,10 +248,11 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
-class AsmFactory {
+public class AsmFactory {
     private static final int REG_START_INDEX = 1;
     private static final String TEMP_REGISTER_PREFIX = "__$$tmp_r_";
 
@@ -274,11 +275,15 @@ class AsmFactory {
     private String currentPrefix;
 
     private final LLVMLanguage language;
+    private final NodeFactory nodeFactory;
 
-    AsmFactory(LLVMLanguage language, TypeArrayBuilder argTypes, String asmFlags, Type retType, Type[] retTypes, long[] retOffsets) {
+    private final FrameSlot stackPointerSlot;
+
+    public AsmFactory(LLVMLanguage language, TypeArrayBuilder argTypes, String asmFlags, Type retType, Type[] retTypes, long[] retOffsets, NodeFactory nodeFactory) {
         this.language = language;
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;
+        this.nodeFactory = nodeFactory;
         this.frameDescriptor = new FrameDescriptor();
         this.statements = new ArrayList<>();
         this.arguments = new ArrayList<>();
@@ -286,6 +291,7 @@ class AsmFactory {
         this.retType = retType;
         this.retTypes = retTypes;
         this.retOffsets = retOffsets;
+        this.stackPointerSlot = LLVMStack.getStackPointerSlot(frameDescriptor);
         parseArguments();
     }
 
@@ -404,7 +410,7 @@ class AsmFactory {
 
     LLVMInlineAssemblyRootNode finishInline() {
         getArguments();
-        return new LLVMInlineAssemblyRootNode(language, frameDescriptor, statements, arguments, result);
+        return new LLVMInlineAssemblyRootNode(language, frameDescriptor, nodeFactory.createStackFrameInit(frameDescriptor), statements, arguments, result);
     }
 
     void setPrefix(String prefix) {
@@ -454,7 +460,7 @@ class AsmFactory {
             }
             case "popf":
             case "popfw": {
-                LLVMExpressionNode read = LLVMAMD64PopwNodeGen.create();
+                LLVMExpressionNode read = LLVMAMD64PopwNodeGen.create(createAccessStackPointer());
                 statements.add(LLVMAMD64WriteFlagswNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF), getFlagWrite(LLVMAMD64Flags.PF), getFlagWrite(LLVMAMD64Flags.AF),
                                 getFlagWrite(LLVMAMD64Flags.ZF), getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), read));
                 break;
@@ -463,7 +469,7 @@ class AsmFactory {
             case "pushfw": {
                 LLVMExpressionNode flags = LLVMAMD64ReadFlagswNodeGen.create(getFlag(LLVMAMD64Flags.CF), getFlag(LLVMAMD64Flags.PF), getFlag(LLVMAMD64Flags.AF), getFlag(LLVMAMD64Flags.ZF),
                                 getFlag(LLVMAMD64Flags.SF), getFlag(LLVMAMD64Flags.OF));
-                statements.add(LLVMAMD64PushwNodeGen.create(flags));
+                statements.add(LLVMAMD64PushwNodeGen.create(createAccessStackPointer(), flags));
                 break;
             }
             case "std":
@@ -677,13 +683,13 @@ class AsmFactory {
                     dstType = ((PointerType) dstType).getPointeeType();
                     switch (getPrimitiveType(dstType)) {
                         case I16:
-                            out = LLVMAMD64PopwNodeGen.create();
+                            out = LLVMAMD64PopwNodeGen.create(createAccessStackPointer());
                             break;
                         case I32:
-                            out = LLVMAMD64PoplNodeGen.create();
+                            out = LLVMAMD64PoplNodeGen.create(createAccessStackPointer());
                             break;
                         case I64:
-                            out = LLVMAMD64PopqNodeGen.create();
+                            out = LLVMAMD64PopqNodeGen.create(createAccessStackPointer());
                             break;
                         default:
                             throw invalidOperandType(dstType);
@@ -691,13 +697,13 @@ class AsmFactory {
                 } else {
                     switch (getPrimitiveType(dstType)) {
                         case I16:
-                            out = LLVMAMD64PopwNodeGen.create();
+                            out = LLVMAMD64PopwNodeGen.create(createAccessStackPointer());
                             break;
                         case I32:
-                            out = LLVMAMD64PoplNodeGen.create();
+                            out = LLVMAMD64PoplNodeGen.create(createAccessStackPointer());
                             break;
                         case I64:
-                            out = LLVMAMD64PopqNodeGen.create();
+                            out = LLVMAMD64PopqNodeGen.create(createAccessStackPointer());
                             break;
                         default:
                             throw invalidOperandType(dstType);
@@ -714,13 +720,13 @@ class AsmFactory {
                     LLVMExpressionNode src = getOperandLoad(dstType, operand);
                     switch (getPrimitiveType(dstType)) {
                         case I16:
-                            statements.add(LLVMAMD64PushwNodeGen.create(src));
+                            statements.add(LLVMAMD64PushwNodeGen.create(createAccessStackPointer(), src));
                             return;
                         case I32:
-                            statements.add(LLVMAMD64PushlNodeGen.create(src));
+                            statements.add(LLVMAMD64PushlNodeGen.create(createAccessStackPointer(), src));
                             return;
                         case I64:
-                            statements.add(LLVMAMD64PushqNodeGen.create(src));
+                            statements.add(LLVMAMD64PushqNodeGen.create(createAccessStackPointer(), src));
                             return;
                         default:
                             throw invalidOperandType(dstType);
@@ -729,13 +735,13 @@ class AsmFactory {
                     LLVMExpressionNode src = getOperandLoad(dstType, operand);
                     switch (getPrimitiveType(dstType)) {
                         case I16:
-                            statements.add(LLVMAMD64PushwNodeGen.create(src));
+                            statements.add(LLVMAMD64PushwNodeGen.create(createAccessStackPointer(), src));
                             return;
                         case I32:
-                            statements.add(LLVMAMD64PushlNodeGen.create(src));
+                            statements.add(LLVMAMD64PushlNodeGen.create(createAccessStackPointer(), src));
                             return;
                         case I64:
-                            statements.add(LLVMAMD64PushqNodeGen.create(src));
+                            statements.add(LLVMAMD64PushqNodeGen.create(createAccessStackPointer(), src));
                             return;
                         default:
                             throw invalidOperandType(dstType);
@@ -762,6 +768,10 @@ class AsmFactory {
             throw new IllegalArgumentException("unknown operand width");
         }
         statements.add(getOperandStore(dstType, dst, out));
+    }
+
+    private LLVMAccessStackPointerNode createAccessStackPointer() {
+        return nodeFactory.createAccessStackPointer(frameDescriptor);
     }
 
     void createUnaryOperation(String operation, AsmOperand operand) {
@@ -923,22 +933,22 @@ class AsmFactory {
                 out = LLVMAMD64BswapqNodeGen.create(src);
                 break;
             case "popw":
-                out = LLVMAMD64PopwNodeGen.create();
+                out = LLVMAMD64PopwNodeGen.create(createAccessStackPointer());
                 break;
             case "popl":
-                out = LLVMAMD64PoplNodeGen.create();
+                out = LLVMAMD64PoplNodeGen.create(createAccessStackPointer());
                 break;
             case "popq":
-                out = LLVMAMD64PopqNodeGen.create();
+                out = LLVMAMD64PopqNodeGen.create(createAccessStackPointer());
                 break;
             case "pushw":
-                statements.add(LLVMAMD64PushwNodeGen.create(src));
+                statements.add(LLVMAMD64PushwNodeGen.create(createAccessStackPointer(), src));
                 return;
             case "pushl":
-                statements.add(LLVMAMD64PushlNodeGen.create(src));
+                statements.add(LLVMAMD64PushlNodeGen.create(createAccessStackPointer(), src));
                 return;
             case "pushq":
-                statements.add(LLVMAMD64PushqNodeGen.create(src));
+                statements.add(LLVMAMD64PushqNodeGen.create(createAccessStackPointer(), src));
                 return;
             default:
                 statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
@@ -1776,12 +1786,8 @@ class AsmFactory {
         arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.OF), zero));
 
         // copy stack pointer
-        FrameSlot stackSlot = frameDescriptor.addFrameSlot(LLVMStack.FRAME_ID);
-        LLVMExpressionNode stackPointer = LLVMGetStackPointerFromFrameNode.create(stackSlot);
-        frameDescriptor.setFrameSlotKind(stackSlot, FrameSlotKind.Object);
-        arguments.add(LLVMWritePointerNodeGen.create(stackSlot, stackPointer));
-
-        arguments.add(LLVMWritePointerNodeGen.create(getRegisterSlot("rsp"), stackPointer));
+        arguments.add(LLVMWritePointerNodeGen.create(stackPointerSlot, LLVMGetStackPointerFromFrameNode.create(stackPointerSlot)));
+        arguments.add(LLVMWritePointerNodeGen.create(getRegisterSlot("rsp"), LLVMGetStackPointerFromFrameNode.create(stackPointerSlot)));
 
         assert retType instanceof VoidType || retType != null;
     }

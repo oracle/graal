@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -38,19 +39,14 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMGetStackFromFrameNode extends LLVMExpressionNode {
 
-    public static LLVMGetStackFromFrameNode create(FrameSlot frameSlot) {
-        return LLVMGetStackFromFrameNodeGen.create(frameSlot);
-    }
-
     private final FrameSlot llvmStackSlot;
 
-    LLVMGetStackFromFrameNode(FrameSlot llvmStackSlot) {
-        this.llvmStackSlot = llvmStackSlot;
+    LLVMGetStackFromFrameNode(FrameDescriptor frameDescriptor) {
+        this.llvmStackSlot = LLVMStack.getStackPointerSlot(frameDescriptor);
     }
 
     @Specialization
     LLVMStack getLLVMStack(VirtualFrame frame) {
         return ((LLVMStack.StackPointer) FrameUtil.getObjectSafe(frame, llvmStackSlot)).getLLVMStack();
     }
-
 }

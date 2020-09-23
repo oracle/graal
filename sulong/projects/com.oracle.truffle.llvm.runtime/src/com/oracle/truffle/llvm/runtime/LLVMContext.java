@@ -43,6 +43,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -54,9 +56,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -78,7 +77,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.HandleContainer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -87,7 +85,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
-import org.graalvm.collections.EconomicMap;
 
 public final class LLVMContext {
 
@@ -242,18 +239,16 @@ public final class LLVMContext {
     abstract static class InitializeContextNode extends LLVMStatementNode {
 
         @CompilationFinal private ContextReference<LLVMContext> ctxRef;
-        private final FrameSlot stackPointer;
 
-        @Child DirectCallNode initContext;
+        @Child private DirectCallNode initContext;
 
-        InitializeContextNode(LLVMFunctionDescriptor initContextDescriptor, FrameDescriptor rootFrame) {
-            this.stackPointer = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
+        InitializeContextNode(LLVMFunctionDescriptor initContextDescriptor) {
             RootCallTarget initContextFunction = initContextDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
             this.initContext = DirectCallNode.create(initContextFunction);
         }
 
         @Specialization
-        public void doInit(VirtualFrame frame) {
+        public void doInit() {
             if (ctxRef == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 ctxRef = lookupContextReference(LLVMLanguage.class);
@@ -263,8 +258,7 @@ public final class LLVMContext {
                 assert !ctx.cleanupNecessary;
                 ctx.initialized = true;
                 ctx.cleanupNecessary = true;
-                StackPointer sp = (StackPointer) FrameUtil.getObjectSafe(frame, this.stackPointer);
-                Object[] args = new Object[]{sp.getLLVMStack(), ctx.getApplicationArguments(), getEnvironmentVariables(), getRandomValues()};
+                Object[] args = new Object[]{ctx.getThreadingStack().getStack(), ctx.getApplicationArguments(), getEnvironmentVariables(), getRandomValues()};
                 initContext.call(args);
             }
         }
@@ -392,14 +386,14 @@ public final class LLVMContext {
         return threadingStack != null;
     }
 
-    public LLVMStatementNode createInitializeContextNode(FrameDescriptor rootFrame) {
+    public LLVMStatementNode createInitializeContextNode() {
         // we can't do the initialization in the LLVMContext constructor nor in
         // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
         // do it in a delayed way.
         if (sulongInitContext == null) {
             throw new IllegalStateException("Context cannot be initialized:" + SULONG_INIT_CONTEXT + " was not found");
         }
-        return InitializeContextNodeGen.create(createFunctionDescriptor(sulongInitContext), rootFrame);
+        return InitializeContextNodeGen.create(createFunctionDescriptor(sulongInitContext));
     }
 
     public Toolchain getToolchain() {

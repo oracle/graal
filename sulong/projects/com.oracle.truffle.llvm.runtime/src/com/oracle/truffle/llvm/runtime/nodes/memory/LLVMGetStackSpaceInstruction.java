@@ -34,79 +34,47 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
 import com.oracle.truffle.llvm.runtime.except.LLVMStackOverflowError;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniqueSlot;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
 
     protected final long size;
     protected final int alignment;
-    protected final Type symbolType;
 
     @CompilationFinal private FrameSlot stackPointer;
 
-    public LLVMGetStackSpaceInstruction(long size, int alignment, Type symbolType) {
+    public LLVMGetStackSpaceInstruction(long size, int alignment) {
         this.size = size;
         this.alignment = alignment;
-        this.symbolType = symbolType;
     }
 
     @Override
     public String toString() {
-        return getShortString("size", "alignment", "symbolType");
+        return getShortString("size", "alignment", "stackPointer");
     }
 
     protected FrameSlot getStackPointerSlot() {
         if (stackPointer == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
+            stackPointer = LLVMStack.getStackPointerSlot(getRootNode().getFrameDescriptor());
         }
         return stackPointer;
     }
 
-    public abstract static class LLVMGetStackForConstInstruction extends LLVMGetStackSpaceInstruction {
+    public abstract static class LLVMAllocaConstInstruction extends LLVMGetStackSpaceInstruction {
 
-        public LLVMGetStackForConstInstruction(long size, int alignment, Type symbolType) {
-            super(size, alignment, symbolType);
-        }
-
-        @CompilationFinal(dimensions = 1) private Type[] types = null;
-        @CompilationFinal(dimensions = 1) private long[] offsets = null;
-
-        public void setTypes(Type[] types) {
-            this.types = types;
-        }
-
-        public void setOffsets(long[] offsets) {
-            this.offsets = offsets;
-        }
-
-        public Type[] getTypes() {
-            return types;
-        }
-
-        public long[] getOffsets() {
-            return offsets;
-        }
-
-        public int getLength() {
-            return offsets.length;
-        }
-
-    }
-
-    public abstract static class LLVMAllocaConstInstruction extends LLVMGetStackForConstInstruction {
-
-        public LLVMAllocaConstInstruction(long size, int alignment, Type symbolType) {
-            super(size, alignment, symbolType);
+        public LLVMAllocaConstInstruction(long size, int alignment) {
+            super(size, alignment);
         }
 
         @Specialization
@@ -121,31 +89,37 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
         }
     }
 
-    public abstract static class LLVMGetUniqueStackSpaceInstruction extends LLVMGetStackForConstInstruction {
+    public abstract static class LLVMGetUniqueStackSpaceInstruction extends LLVMExpressionNode {
 
-        private final UniqueSlot uniqueSlot;
+        private final long slotOffset;
+        private final FrameSlot uniquesRegionFrameSlot;
 
-        public LLVMGetUniqueStackSpaceInstruction(long size, int alignment, Type symbolType, UniqueSlot uniqueSlot) {
-            super(size, alignment, symbolType);
-            this.uniqueSlot = uniqueSlot;
+        public LLVMGetUniqueStackSpaceInstruction(long slotOffset, FrameDescriptor desc) {
+            this.slotOffset = slotOffset;
+            this.uniquesRegionFrameSlot = LLVMStack.getUniquesRegionSlot(desc);
         }
 
         @Override
         public String toString() {
-            return getShortString("size", "alignment", "symbolType", "uniqueSlot");
+            return getShortString("size", "alignment", "slotOffset", "uniquesRegionFrameSlot");
         }
 
         @Specialization
-        protected LLVMNativePointer doOp(VirtualFrame frame) {
-            return LLVMNativePointer.create(uniqueSlot.toPointer(frame, getStackPointerSlot()));
+        protected LLVMPointer doOp(VirtualFrame frame) {
+            try {
+                return ((LLVMPointer) frame.getObject(uniquesRegionFrameSlot)).increment(slotOffset);
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new LLVMAllocationFailureException(this, e);
+            }
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAllocaInstruction extends LLVMGetStackSpaceInstruction {
 
-        public LLVMAllocaInstruction(long size, int alignment, Type symbolType) {
-            super(size, alignment, symbolType);
+        public LLVMAllocaInstruction(long size, int alignment) {
+            super(size, alignment);
         }
 
         public abstract LLVMNativePointer executeWithTarget(VirtualFrame frame, long sizeInBytes);
@@ -153,12 +127,7 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame, int nr,
                         @CachedLanguage LLVMLanguage language) {
-            try {
-                return LLVMNativePointer.create(LLVMStack.allocateStackMemory(this, frame, language.getLLVMMemory(), getStackPointerSlot(), size * nr, alignment));
-            } catch (LLVMStackOverflowError soe) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMAllocationFailureException(this, soe);
-            }
+            return doOp(frame, (long) nr, language);
         }
 
         @Specialization

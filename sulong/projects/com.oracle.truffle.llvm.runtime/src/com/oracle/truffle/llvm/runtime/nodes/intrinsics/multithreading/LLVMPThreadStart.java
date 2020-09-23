@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -39,9 +38,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMGetStackFromFrameNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMInitializeStackFrameNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackCloseable;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -107,7 +107,7 @@ public final class LLVMPThreadStart {
 
     public static final class LLVMPThreadFunctionRootNode extends RootNode {
 
-        private static FrameDescriptor createFrameDescriptor() {
+        public static FrameDescriptor createFrameDescriptor() {
             final FrameDescriptor descriptor = new FrameDescriptor();
             descriptor.addFrameSlot("function");
             descriptor.addFrameSlot("arg");
@@ -116,6 +116,7 @@ public final class LLVMPThreadStart {
         }
 
         @Child private LLVMExpressionNode callNode;
+        @Child private LLVMInitializeStackFrameNode initializeStackFrameNode;
 
         private final FrameSlot functionSlot;
         private final FrameSlot argSlot;
@@ -123,10 +124,9 @@ public final class LLVMPThreadStart {
 
         @CompilationFinal ContextReference<LLVMContext> ctxRef;
 
-        @TruffleBoundary
-        public LLVMPThreadFunctionRootNode(LLVMLanguage language) {
-            super(language, createFrameDescriptor());
-            final FrameDescriptor descriptor = getFrameDescriptor();
+        public LLVMPThreadFunctionRootNode(LLVMLanguage language, FrameDescriptor descriptor, NodeFactory nodeFactory) {
+            super(language, descriptor);
+            this.initializeStackFrameNode = nodeFactory.createStackFrameInit(descriptor);
             this.functionSlot = descriptor.findFrameSlot("function");
             this.argSlot = descriptor.findFrameSlot("arg");
             this.spSlot = descriptor.findFrameSlot("sp");
@@ -134,7 +134,7 @@ public final class LLVMPThreadStart {
             this.callNode = CommonNodeFactory.createFunctionCall(
                             CommonNodeFactory.createFrameRead(PointerType.VOID, functionSlot),
                             new LLVMExpressionNode[]{
-                                            LLVMGetStackFromFrameNodeGen.create(spSlot),
+                                            nodeFactory.createGetStackFromFrame(descriptor),
                                             CommonNodeFactory.createFrameRead(PointerType.VOID, argSlot)
                             },
                             FunctionType.create(PointerType.VOID, PointerType.VOID, false));
@@ -147,7 +147,7 @@ public final class LLVMPThreadStart {
                 ctxRef = lookupContextReference(LLVMLanguage.class);
             }
 
-            try (LLVMStack.StackPointer sp = ctxRef.get().getThreadingStack().getStack().newFrame()) {
+            try (StackCloseable sp = initializeStackFrameNode.execute(ctxRef.get().getThreadingStack().getStack())) {
 
                 // copy arguments to frame
                 final Object[] arguments = frame.getArguments();

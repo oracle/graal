@@ -38,7 +38,7 @@ import com.oracle.truffle.api.nodes.Node;
 public class LLVMAllocationFailureException extends LLVMException {
     private static final long serialVersionUID = -7961190942838521293L;
 
-    public LLVMAllocationFailureException(Node node, LLVMStackOverflowError cause) {
+    public LLVMAllocationFailureException(Node node, Throwable cause) {
         super(node, cause.getMessage(), cause);
     }
 }

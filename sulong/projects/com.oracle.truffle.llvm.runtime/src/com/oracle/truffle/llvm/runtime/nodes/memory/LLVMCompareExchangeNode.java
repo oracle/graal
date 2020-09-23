@@ -106,7 +106,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         private FrameSlot getStackPointerSlot() {
             if (stackPointerSlot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                stackPointerSlot = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
+                stackPointerSlot = LLVMStack.getStackPointerSlot(getRootNode().getFrameDescriptor());
             }
             return stackPointerSlot;
         }

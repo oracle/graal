@@ -30,30 +30,27 @@
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMInitializeStackFrameNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackCloseable;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 public class LLVMStatementRootNode extends RootNode {
 
-    @Child LLVMStatementNode statement;
-    private final FrameSlot stackPointerSlot;
+    @Child private LLVMStatementNode statement;
+    @Child private LLVMInitializeStackFrameNode initializeStackFrameNode;
 
-    public LLVMStatementRootNode(LLVMLanguage language, LLVMStatementNode statement, FrameDescriptor descriptor) {
+    public LLVMStatementRootNode(LLVMLanguage language, LLVMStatementNode statement, FrameDescriptor descriptor, LLVMInitializeStackFrameNode initializeStackFrameNode) {
         super(language, descriptor);
         this.statement = statement;
-        stackPointerSlot = descriptor.findFrameSlot(LLVMStack.FRAME_ID);
+        this.initializeStackFrameNode = initializeStackFrameNode;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        LLVMStack stack = (LLVMStack) frame.getArguments()[0];
-        try (StackPointer stackPointer = stack.newFrame()) {
-            frame.setObject(stackPointerSlot, stackPointer);
+        try (StackCloseable stackPointer = initializeStackFrameNode.execute(frame)) {
             statement.execute(frame);
         }
         return null;

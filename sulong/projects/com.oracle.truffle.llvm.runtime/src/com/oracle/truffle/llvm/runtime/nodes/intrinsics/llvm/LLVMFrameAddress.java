@@ -29,39 +29,32 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMAccessStackPointerNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class, value = "val")
 public abstract class LLVMFrameAddress extends LLVMBuiltin {
 
-    @CompilationFinal private FrameSlot stackPointer;
-
-    private FrameSlot getStackPointerSlot() {
-        if (stackPointer == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
-        }
-        return stackPointer;
+    static LLVMAccessStackPointerNode createAccess(VirtualFrame frame) {
+        LLVMContext context = LLVMLanguage.getContext();
+        NodeFactory nodeFactory = LLVMLanguage.getLanguage().getActiveConfiguration().createNodeFactory(context, context.getLibsulongDataLayout());
+        return nodeFactory.createAccessStackPointer(frame.getFrameDescriptor());
     }
 
     @Specialization
-    protected LLVMNativePointer doPointee(VirtualFrame frame, int frameLevel,
-                    @CachedLanguage LLVMLanguage language) {
+    protected LLVMPointer doPointee(VirtualFrame frame, int frameLevel,
+                    @Cached("createAccess(frame)") LLVMAccessStackPointerNode accessStackPointer) {
         if (frameLevel == 0) {
-            StackPointer pointer = (StackPointer) FrameUtil.getObjectSafe(frame, getStackPointerSlot());
-            return LLVMNativePointer.create(pointer.get(this, language.getLLVMMemory()));
+            return accessStackPointer.executeGet(frame);
         } else {
             return LLVMNativePointer.createNull();
         }

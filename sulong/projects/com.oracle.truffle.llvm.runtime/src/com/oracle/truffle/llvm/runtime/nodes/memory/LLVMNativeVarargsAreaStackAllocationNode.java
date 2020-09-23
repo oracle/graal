@@ -50,7 +50,7 @@ public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode 
     protected FrameSlot getStackPointerSlot() {
         if (stackPointer == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
+            stackPointer = LLVMStack.getStackPointerSlot(getRootNode().getFrameDescriptor());
         }
         return stackPointer;
     }
