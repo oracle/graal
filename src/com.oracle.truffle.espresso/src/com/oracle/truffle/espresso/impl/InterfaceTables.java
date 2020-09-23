@@ -391,17 +391,6 @@ final class InterfaceTables {
      * freshly spawned proxy method pointing to either of them, which is set to fail on invocation.
      */
     public static Method resolveMaximallySpecific(Method m1, Method m2) {
-        boolean b1 = m1.isAbstract();
-        boolean b2 = m2.isAbstract();
-        if (b1 && b2) {
-            return m1;
-        }
-        if (b1) {
-            return m2;
-        }
-        if (b2) {
-            return m1;
-        }
         Klass k1 = m1.getDeclaringKlass();
         Klass k2 = m2.getDeclaringKlass();
         if (k1.isAssignableFrom(k2)) {
@@ -409,6 +398,17 @@ final class InterfaceTables {
         } else if (k2.isAssignableFrom(k1)) {
             return m1;
         } else {
+            boolean b1 = m1.isAbstract();
+            boolean b2 = m2.isAbstract();
+            if (b1 && b2) {
+                return m1;
+            }
+            if (b1) {
+                return m2;
+            }
+            if (b2) {
+                return m1;
+            }
             // JVM specs:
             // Can *declare* ambiguous default method (in bytecodes only, javac wouldn't compile
             // it). (5.4.3.3.)
