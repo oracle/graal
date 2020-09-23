@@ -262,7 +262,9 @@ public final class ObjectKlass extends Klass {
     private void actualInit() {
         checkErroneousInitialization();
         synchronized (this) {
-            if (!(isInitializedOrPrepared())) { // Check under lock
+            // Double-check under lock
+            checkErroneousInitialization();
+            if (!(isInitializedOrPrepared())) {
                 try {
                     /*
                      * Spec fragment: Then, initialize each final static field of C with the
