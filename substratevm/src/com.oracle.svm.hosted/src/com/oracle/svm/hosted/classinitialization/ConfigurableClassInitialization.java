@@ -135,7 +135,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public boolean canBeProvenSafe(Class<?> clazz) {
         InitKind initKind = specifiedInitKindFor(clazz);
-        return initKind == null || (initKind.isDelayed() && !isStrictlyDefined(clazz));
+        return initKind == null || (initKind.isRunTime() && !isStrictlyDefined(clazz));
     }
 
     private Boolean isStrictlyDefined(Class<?> clazz) {
@@ -396,7 +396,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             if (previousKind == InitKind.BUILD_TIME) {
                 throw UserError.abort("The information that the class should be initialized during image building has already been used, " +
                                 "so it is too late to register the class initializer of" + clazz.getTypeName() + " for re-running. The reason for re-run request is " + reason);
-            } else if (previousKind.isDelayed()) {
+            } else if (previousKind.isRunTime()) {
                 throw UserError.abort("Class or a superclass is already registered for delaying the class initializer, " +
                                 "so it is too late to register the class initializer of" + clazz.getTypeName() + " for re-running. The reason for re-run request is " + reason);
             }
@@ -504,7 +504,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
          */
         Set<Class<?>> illegalyInitialized = new HashSet<>();
         for (Map.Entry<Class<?>, InitKind> entry : classInitKinds.entrySet()) {
-            if (entry.getValue().isDelayed() && !UNSAFE.shouldBeInitialized(entry.getKey())) {
+            if (entry.getValue().isRunTime() && !UNSAFE.shouldBeInitialized(entry.getKey())) {
                 illegalyInitialized.add(entry.getKey());
             }
         }
@@ -521,7 +521,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                                                     c.getTypeName(), "initialize-at-build-time")))
                                     .append("\n");
                 } else {
-                    assert specifiedKind.isDelayed() : "Specified kind must be the same as actual kind for type " + c.getTypeName();
+                    assert specifiedKind.isRunTime() : "Specified kind must be the same as actual kind for type " + c.getTypeName();
                     String reason = classInitializationConfiguration.lookupReason(c.getTypeName());
                     detailedMessage.append(c.getTypeName()).append(" the class was requested to be initialized at run time (").append(reason).append("). ")
                                     .append(classInitializationErrorMessage(c, "Try avoiding to initialize the class that caused initialization of " + c.getTypeName()))
@@ -601,7 +601,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         InitKind result = superResult.max(clazzResult);
 
         if (memoize) {
-            if (!result.isDelayed()) {
+            if (!result.isRunTime()) {
                 result = result.max(ensureClassInitialized(clazz, false));
             }
             InitKind previous = classInitKinds.put(clazz, result);

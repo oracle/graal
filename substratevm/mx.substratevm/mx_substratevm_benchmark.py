@@ -74,22 +74,32 @@ RENAISSANCE_EXTRA_PROFILE_ARGS = [
 ]
 
 _RENAISSANCE_EXTRA_VM_ARGS = {
-    'chi-square'        : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
-                           '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.hadoop.metrics2.MetricsSystem$Callback',
-                           '-Dnative-image.benchmark.extra-image-build-argument=-H:IncludeResourceBundles=sun.security.util.Resources,javax.servlet.http.LocalStrings,javax.servlet.LocalStrings',
+    'chi-square'        : [
+                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
                            '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
-                           '-Dnative-image.benchmark.extra-image-build-argument=-H:-ThrowUnsafeOffsetErrors'],
-    'finagle-http'      : ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=com.fasterxml.jackson.annotation.JsonProperty$Access', '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
-    'log-regression'    : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
-                           '-Dnative-image.benchmark.extra-image-build-argument=-H:IncludeResourceBundles=sun.security.util.Resources,javax.servlet.http.LocalStrings,javax.servlet.LocalStrings',
+                          ],
+    'finagle-http'      : [
+                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'
+                          ],
+    'log-regression'    : [
+                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
                            '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
-                           '-Dnative-image.benchmark.extra-image-build-argument=-H:-ThrowUnsafeOffsetErrors',
-                           # GR-24903
-                           '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=org.apache.hadoop.io.compress.zlib.BuiltInZlibInflater'],
-    'movie-lens'        : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.hadoop.metrics2.MetricsSystem$Callback',
-                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime', '-Dnative-image.benchmark.extra-image-build-argument=-H:IncludeResourceBundles=sun.security.util.Resources'],
-    'page-rank'         : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.hadoop.metrics2.MetricsSystem$Callback',
-                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime']
+                          ],
+    'movie-lens'        : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
+                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
+                          ],
+    'dec-tree'          : [
+                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
+                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
+                          ],
+    'page-rank'         : [
+                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
+                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'
+                          ],
+    'naive-bayes'       : [
+                            '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
+                            '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'
+                          ],
 }
 
 _renaissance_config = {
