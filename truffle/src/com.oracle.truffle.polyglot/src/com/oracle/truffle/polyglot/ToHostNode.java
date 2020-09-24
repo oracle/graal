@@ -223,7 +223,7 @@ abstract class ToHostNode extends Node {
         return targetType.cast(convertedValue);
     }
 
-    static boolean canConvertToPrimitive(Object value, Class<?> targetType, InteropLibrary interop) {
+    static boolean canConvertToPrimitive(Object value, Class<?> targetType, InteropLibrary interop, int priority) {
         if (HostObject.isJavaInstance(targetType, value)) {
             return true;
         }
@@ -234,22 +234,7 @@ abstract class ToHostNode extends Node {
         if (convertedValue != null) {
             return true;
         }
-        return false;
-    }
 
-    @SuppressWarnings({"unused"})
-    static boolean canConvert(Object value, Class<?> targetType, Type genericType, Boolean allowsImplementation,
-                    PolyglotLanguageContext languageContext, int priority,
-                    InteropLibrary interop,
-                    TargetMappingNode targetMapping) {
-        if (targetMapping != null) {
-            if (targetMapping.execute(value, targetType, languageContext, interop, true) == Boolean.TRUE) {
-                return true;
-            }
-        }
-        if (canConvertToPrimitive(value, targetType, interop)) {
-            return true;
-        }
         if (priority <= STRICT) {
             return false;
         }
@@ -264,6 +249,27 @@ abstract class ToHostNode extends Node {
                 }
             }
         }
+
+        return false;
+    }
+
+    @SuppressWarnings({"unused"})
+    static boolean canConvert(Object value, Class<?> targetType, Type genericType, Boolean allowsImplementation,
+                    PolyglotLanguageContext languageContext, int priority,
+                    InteropLibrary interop,
+                    TargetMappingNode targetMapping) {
+        if (targetMapping != null) {
+            if (targetMapping.execute(value, targetType, languageContext, interop, true) == Boolean.TRUE) {
+                return true;
+            }
+        }
+        if (canConvertToPrimitive(value, targetType, interop, priority)) {
+            return true;
+        }
+        if (priority <= STRICT) {
+            return false;
+        }
+
         if (targetType == Value.class && languageContext != null) {
             return true;
         } else if (value instanceof TruffleObject) {

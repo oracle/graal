@@ -323,7 +323,7 @@ abstract class HostExecuteNode extends Node {
             if (arg == null) {
                 argType = NullCheckNode.INSTANCE;
             } else if (multiple && ToHostNode.isPrimitiveTarget(targetType)) {
-                argType = createPrimitiveTargetCheck(applicable, selected, arg, targetType, i, varArgs);
+                argType = createPrimitiveTargetCheck(applicable, selected, arg, targetType, i, priority, varArgs);
             } else if (arg instanceof HostObject) {
                 argType = new JavaObjectType(((HostObject) arg).getObjectClass());
             } else {
@@ -344,7 +344,7 @@ abstract class HostExecuteNode extends Node {
         assert checkArgTypes(args, cachedArgTypes, InteropLibrary.getFactory().getUncached(), languageContext, false) : Arrays.toString(cachedArgTypes);
     }
 
-    private static TypeCheckNode createPrimitiveTargetCheck(List<SingleMethod> applicable, SingleMethod selected, Object arg, Class<?> targetType, int parameterIndex, boolean varArgs) {
+    private static TypeCheckNode createPrimitiveTargetCheck(List<SingleMethod> applicable, SingleMethod selected, Object arg, Class<?> targetType, int parameterIndex, int priority, boolean varArgs) {
         Class<?> currentTargetType = targetType;
 
         Collection<Class<?>> otherPossibleTypes = new ArrayList<>();
@@ -373,7 +373,7 @@ abstract class HostExecuteNode extends Node {
                 otherPossibleTypes.add(paramType);
             }
         }
-        return new PrimitiveType(currentTargetType, otherPossibleTypes.toArray(EMPTY_CLASS_ARRAY));
+        return new PrimitiveType(currentTargetType, otherPossibleTypes.toArray(EMPTY_CLASS_ARRAY), priority);
     }
 
     @ExplodeLoop
@@ -396,10 +396,9 @@ abstract class HostExecuteNode extends Node {
             int parameterCount = overload.getParameterCount();
             if (args.length == parameterCount) {
                 Class<?> varArgParamType = overload.getParameterTypes()[parameterCount - 1];
-                return !isSubtypeOf(args[parameterCount - 1], varArgParamType) &&
-                                !ToHostNode.canConvert(args[parameterCount - 1], varArgParamType, overload.getGenericParameterTypes()[parameterCount - 1],
-                                                null, languageContext, ToHostNode.LOOSE,
-                                                InteropLibrary.getFactory().getUncached(), TargetMappingNode.getUncached());
+                return !ToHostNode.canConvert(args[parameterCount - 1], varArgParamType, overload.getGenericParameterTypes()[parameterCount - 1],
+                                null, languageContext, ToHostNode.LOOSE,
+                                InteropLibrary.getFactory().getUncached(), TargetMappingNode.getUncached());
             } else {
                 assert args.length != parameterCount;
                 return true;
@@ -523,10 +522,9 @@ abstract class HostExecuteNode extends Node {
                     Type[] genericParameterTypes = candidate.getGenericParameterTypes();
                     boolean applicable = true;
                     for (int i = 0; i < paramCount; i++) {
-                        if (!isSubtypeOf(args[i], parameterTypes[i]) &&
-                                        !ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], null,
-                                                        languageContext, priority, InteropLibrary.getFactory().getUncached(args[i]),
-                                                        TargetMappingNode.getUncached())) {
+                        if (!ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], null,
+                                        languageContext, priority, InteropLibrary.getFactory().getUncached(args[i]),
+                                        TargetMappingNode.getUncached())) {
                             applicable = false;
                             break;
                         }
@@ -544,10 +542,9 @@ abstract class HostExecuteNode extends Node {
                     Type[] genericParameterTypes = candidate.getGenericParameterTypes();
                     boolean applicable = true;
                     for (int i = 0; i < parameterCount - 1; i++) {
-                        if (!isSubtypeOf(args[i], parameterTypes[i]) &&
-                                        !ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], null,
-                                                        languageContext, priority, InteropLibrary.getFactory().getUncached(args[i]),
-                                                        TargetMappingNode.getUncached())) {
+                        if (!ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], null,
+                                        languageContext, priority, InteropLibrary.getFactory().getUncached(args[i]),
+                                        TargetMappingNode.getUncached())) {
                             applicable = false;
                             break;
                         }
@@ -562,10 +559,9 @@ abstract class HostExecuteNode extends Node {
                             varArgsGenericComponentType = varArgsComponentType;
                         }
                         for (int i = parameterCount - 1; i < args.length; i++) {
-                            if (!isSubtypeOf(args[i], varArgsComponentType) &&
-                                            !ToHostNode.canConvert(args[i], varArgsComponentType, varArgsGenericComponentType, null,
-                                                            languageContext, priority,
-                                                            InteropLibrary.getFactory().getUncached(args[i]), TargetMappingNode.getUncached())) {
+                            if (!ToHostNode.canConvert(args[i], varArgsComponentType, varArgsGenericComponentType, null,
+                                            languageContext, priority,
+                                            InteropLibrary.getFactory().getUncached(args[i]), TargetMappingNode.getUncached())) {
                                 applicable = false;
                                 break;
                             }
@@ -962,10 +958,12 @@ abstract class HostExecuteNode extends Node {
     static final class PrimitiveType extends TypeCheckNode {
         final Class<?> targetType;
         @CompilationFinal(dimensions = 1) final Class<?>[] otherTypes;
+        final int priority;
 
-        PrimitiveType(Class<?> targetType, Class<?>[] otherTypes) {
+        PrimitiveType(Class<?> targetType, Class<?>[] otherTypes, int priority) {
             this.targetType = targetType;
             this.otherTypes = otherTypes;
+            this.priority = priority;
         }
 
         @Override
@@ -1004,11 +1002,11 @@ abstract class HostExecuteNode extends Node {
         @Override
         public boolean execute(Object value, InteropLibrary interop, PolyglotLanguageContext languageContext) {
             for (Class<?> otherType : otherTypes) {
-                if (ToHostNode.canConvertToPrimitive(value, otherType, interop)) {
+                if (ToHostNode.canConvertToPrimitive(value, otherType, interop, priority)) {
                     return false;
                 }
             }
-            return ToHostNode.canConvertToPrimitive(value, targetType, interop);
+            return ToHostNode.canConvertToPrimitive(value, targetType, interop, priority);
         }
     }
 
