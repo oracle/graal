@@ -583,7 +583,7 @@ public final class ClassfileParser {
                 methodFlags = ACC_STATIC;
             } else if ((methodFlags & ACC_STATIC) == ACC_STATIC) {
                 methodFlags &= (ACC_STRICT | ACC_STATIC);
-            } else {
+            } else if (context.getJavaVersion().java9OrLater()) {
                 throw ConstantPool.classFormatError("Method <clinit> is not static.");
             }
             // extraFlags = INITIALIZER | methodFlags;
