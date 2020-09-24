@@ -29,7 +29,6 @@ import java.util.logging.Level;
 import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -118,8 +117,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return context;
     }
 
+    // Remove in GR-26337
+    @SuppressWarnings("deprecation")
     @Override
-    protected Iterable<Scope> findLocalScopes(EspressoContext context, Node node, Frame frame) {
+    protected Iterable<com.oracle.truffle.api.Scope> findLocalScopes(EspressoContext context, Node node, Frame frame) {
         int currentBci;
 
         Node espressoNode = findKnownEspressoNode(node);
@@ -175,7 +176,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                 }
             }
         }
-        Scope scope = Scope.newBuilder(SCOPE_NAME, EspressoScope.createVariables(liveLocals, frame)).node(scopeNode).build();
+        com.oracle.truffle.api.Scope scope = com.oracle.truffle.api.Scope.newBuilder(SCOPE_NAME, EspressoScope.createVariables(liveLocals, frame)).node(scopeNode).build();
         return Collections.singletonList(scope);
     }
 
