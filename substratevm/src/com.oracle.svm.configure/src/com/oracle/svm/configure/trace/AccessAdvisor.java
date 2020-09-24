@@ -57,7 +57,6 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("java.nio.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.text.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.time.**", RuleNode.Inclusion.Exclude);
-        internalCallerFilter.addOrGetChildren("java.util.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("javax.crypto.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("javax.lang.model.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("javax.net.**", RuleNode.Inclusion.Exclude);
