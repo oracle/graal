@@ -113,7 +113,7 @@ public interface InvokeDynamicConstant extends PoolConstant {
             StaticObject name = meta.toGuestString(specifier.getName(pool));
             Symbol<Signature> invokeSignature = Signatures.check(specifier.getDescriptor(pool));
             Symbol<Type>[] parsedInvokeSignature = meta.getSignatures().parsed(invokeSignature);
-            StaticObject methodType = MethodTypeConstant.signatureToMethodType(parsedInvokeSignature, accessingKlass, meta);
+            StaticObject methodType = MethodTypeConstant.signatureToMethodType(parsedInvokeSignature, accessingKlass, meta.getContext().getJavaVersion().java8OrEarlier(), meta);
             StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
             StaticObject memberName;
             if (meta.getJavaVersion().varHandlesEnabled()) {
