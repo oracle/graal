@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso;
 
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptors;
@@ -86,7 +87,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private final Types types;
     private final Signatures signatures;
 
-    private long startupClock = 0;
+    private long startupClockNanos = 0;
 
     public EspressoLanguage() {
         // Initialize statically defined symbols and substitutions.
@@ -198,17 +199,18 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
-        startupClock = System.currentTimeMillis();
+        startupClockNanos = System.nanoTime();
         context.initializeContext();
     }
 
     @Override
     protected void finalizeContext(EspressoContext context) {
-        long totalTime = System.currentTimeMillis() - startupClock;
-        if (totalTime > 10000) {
-            context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} s", (totalTime / 1000));
+        long elapsedTimeNanos = System.nanoTime() - startupClockNanos;
+        long seconds = TimeUnit.NANOSECONDS.toSeconds(elapsedTimeNanos);
+        if (seconds > 10) {
+            context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} s", seconds);
         } else {
-            context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} ms", totalTime);
+            context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedTimeNanos));
         }
 
         context.prepareDispose();

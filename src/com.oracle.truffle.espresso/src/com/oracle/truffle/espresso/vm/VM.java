@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
@@ -2422,13 +2423,14 @@ public final class VM extends NativeEnv implements ContextAccess {
                     /* jmmLongAttribute */ int att) {
         switch (att) {
             case JMM_JVM_INIT_DONE_TIME_MS:
-                return getContext().initVMDoneMs;
+                return TimeUnit.NANOSECONDS.toMillis(getContext().initDoneTimeNanos);
             case JMM_CLASS_LOADED_COUNT:
                 return getRegistries().getLoadedClassesCount();
             case JMM_CLASS_UNLOADED_COUNT:
                 return 0L;
             case JMM_JVM_UPTIME_MS:
-                return System.currentTimeMillis() - getContext().initVMDoneMs;
+                long elapsedNanos = System.nanoTime() - getContext().initDoneTimeNanos;
+                return TimeUnit.NANOSECONDS.toMillis(elapsedNanos);
             case JMM_OS_PROCESS_ID:
                 String processName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
                 String[] parts = processName.split("@");
