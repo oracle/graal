@@ -132,11 +132,11 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
     }
 
     private static byte[] generateProxyClass14(final String name, Class<?>[] interfaces, ClassLoader loader) {
+        assert JavaVersionUtil.JAVA_SPEC >= 14;
         /* { Allow reflection in hosted code. Checkstyle: stop. */
         try {
             if (generateProxyMethod == null) {
-                final String packageName = (JavaVersionUtil.JAVA_SPEC <= 8 ? "sun.misc." : "java.lang.reflect.");
-                generateProxyMethod = ReflectionUtil.lookupMethod(Class.forName(packageName + "ProxyGenerator"), "generateProxyClass", ClassLoader.class, String.class, List.class, int.class);
+                generateProxyMethod = ReflectionUtil.lookupMethod(Class.forName("java.lang.reflect.ProxyGenerator"), "generateProxyClass", ClassLoader.class, String.class, List.class, int.class);
             }
             List<Class<?>> ilist = new ArrayList<>(Arrays.asList(interfaces));
             return (byte[]) generateProxyMethod.invoke(null, loader, name, ilist, (ACC_PUBLIC | ACC_FINAL | ACC_SUPER));
