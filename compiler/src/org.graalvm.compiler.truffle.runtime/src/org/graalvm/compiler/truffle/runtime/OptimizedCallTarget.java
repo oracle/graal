@@ -324,6 +324,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return runtime().forObject(getNodeRewritingAssumption());
     }
 
+    @Override
+    public boolean isTrivial() {
+        return GraalRuntimeAccessor.NODES.isTrivial(rootNode);
+    }
+
     /**
      * @return an existing or the newly initialized node rewriting assumption.
      */

@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AsJavaConstant;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTrivial;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CancelCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CompilableToString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
@@ -49,6 +50,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilabl
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetNodeRewritingAssumptionConstant;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetNonTrivialNodeCount;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callIsSameOrSplit;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callIsTrivial;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callOnCompilationFailed;
 import static org.graalvm.libgraal.jni.JNILibGraalScope.env;
 import static org.graalvm.libgraal.jni.JNILibGraalScope.scope;
@@ -124,6 +126,12 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
     public JavaConstant getNodeRewritingAssumptionConstant() {
         long javaConstantHandle = callGetNodeRewritingAssumptionConstant(env(), getHandle());
         return LibGraal.unhand(JavaConstant.class, javaConstantHandle);
+    }
+
+    @TruffleFromLibGraal(IsTrivial)
+    @Override
+    public boolean isTrivial() {
+        return callIsTrivial(env(), getHandle());
     }
 
     @TruffleFromLibGraal(AsJavaConstant)

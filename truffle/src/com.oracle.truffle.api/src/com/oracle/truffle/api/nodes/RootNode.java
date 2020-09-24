@@ -375,6 +375,27 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
+     * Is this root node to be considered trivial by the runtime.
+     *
+     * A trivial root node is defined as a root node that:
+     * <ol>
+     * <li>Never increases code size when inlined, i.e. is always less complex then the call.</li>
+     * <li>Never performs guest language calls.</li>
+     * <li>Never contains loops.</li>
+     * <li>Is small (for a language-specific definition of small).</li>
+     * </ol>
+     *
+     * An good example of trivial root nodes would be getters and setters in java.
+     *
+     * @since 20.3.0
+     * @return <code>true </code>if this root node should be considered trivial by the runtime.
+     *         <code>false</code> otherwise.
+     */
+    protected boolean isTrivial() {
+        return false;
+    }
+
+    /**
      * Provide a list of stack frames that led to a schedule of asynchronous execution of this root
      * node on the provided frame. The asynchronous frames are expected to be found here when
      * {@link Env#getAsynchronousStackDepth()} is positive. The language is free to provide

@@ -169,6 +169,7 @@ public abstract class Accessor {
 
         public abstract void forceAdoption(Node parent, Node child);
 
+        public abstract boolean isTrivial(RootNode rootNode);
     }
 
     public abstract static class SourceSupport extends Support {

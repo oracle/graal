@@ -212,15 +212,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return testTvmci;
     }
 
-    private static boolean useInlining(TruffleCompilationTask task, OptimizedCallTarget sourceTarget) {
-        return sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining) && (task.isLastTier() || sourceTarget.getOptionValue(PolyglotCompilerOptions.FirstTierInlining));
-    }
-
     @Override
     public TruffleInlining createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task) {
         final OptimizedCallTarget sourceTarget = (OptimizedCallTarget) compilable;
         final TruffleInliningPolicy policy;
-        if (task != null && useInlining(task, sourceTarget)) {
+        if (task != null && sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining) &&
+                        !sourceTarget.getOptionValue(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
             policy = TruffleInliningPolicy.getInliningPolicy();
         } else {
             policy = TruffleInliningPolicy.getNoInliningPolicy();

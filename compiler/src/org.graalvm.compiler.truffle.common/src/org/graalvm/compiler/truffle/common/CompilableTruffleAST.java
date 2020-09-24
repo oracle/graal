@@ -140,4 +140,10 @@ public interface CompilableTruffleAST {
         e.printStackTrace(pw);
         return sw.toString();
     }
+
+    /**
+     * @return <code>true</code> is the root nodes of this AST trivial, <code>false</code>
+     *         otherwise.
+     */
+    boolean isTrivial();
 }

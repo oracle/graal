@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,8 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 @NodeInfo(nameTemplate = "{p#truffleAST}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class CallNode extends Node implements Comparable<CallNode> {
@@ -57,6 +60,9 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     private final double rootRelativeFrequency;
     private final int depth;
     private final int id;
+    // Should be final, but needs to be mutable to be corrected if the language marks a non-trivial
+    // root node as trivial
+    private boolean trivial;
     // Effectively final, populated only as part of expansion. Cannot be final because of Successor
     // annotation
     @Successor private NodeSuccessorList<CallNode> children;
@@ -82,6 +88,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         this.truffleCaller = truffleCaller;
         this.truffleAST = truffleAST;
         this.truffleCallees = truffleAST == null ? new TruffleCallNode[0] : truffleAST.getCallNodes();
+        this.trivial = truffleAST != null && truffleAST.isTrivial();
         this.children = new NodeSuccessorList<>(this, 0);
         this.depth = depth;
         this.id = id;
@@ -97,7 +104,9 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         callTree.add(root);
         root.ir = request.graph;
         root.policyData = callTree.getPolicy().newCallNodeData(root);
-        EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = callTree.getGraphManager().peRoot();
+        final GraphManager.Entry entry = callTree.getGraphManager().peRoot();
+        EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = entry.invokeToTruffleCallNode;
+        root.verifyTrivial(entry);
         addChildren(root, invokeToTruffleCallNode);
         root.state = State.Inlined;
         callTree.getPolicy().afterExpand(root);
@@ -219,9 +228,18 @@ public final class CallNode extends Node implements Comparable<CallNode> {
             state = State.BailedOut;
             return;
         }
+        verifyTrivial(entry);
         ir = copyGraphAndAddChildren(entry);
         addIndirectChildren(entry);
         getPolicy().afterExpand(this);
+    }
+
+    private void verifyTrivial(GraphManager.Entry entry) {
+        if (trivial && !entry.trivial) {
+            trivial = false;
+            PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.TRIVIAL_FAIL, truffleAST, Collections.emptyList(),
+                            "Root node of target marked trivial but not trivial after PE", Collections.emptyMap());
+        }
     }
 
     private StructuredGraph copyGraphAndAddChildren(GraphManager.Entry entry) {
@@ -329,6 +347,10 @@ public final class CallNode extends Node implements Comparable<CallNode> {
 
     public double getRootRelativeFrequency() {
         return rootRelativeFrequency;
+    }
+
+    public boolean isTrivial() {
+        return trivial;
     }
 
     public Object getPolicyData() {
