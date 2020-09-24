@@ -70,6 +70,9 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import static com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType.UNKNOWN;
@@ -499,19 +502,23 @@ final class DITypeExtractor implements MetadataVisitor {
 
     @Override
     public void visit(MDSubprogram mdSubprogram) {
-        LLVMSourceType llvmSourceType;
+        // 'this' parameter of thunk methods is missing in the debug info, thus fix here.
+        LLVMSourceType llvmSourceType = resolve(mdSubprogram.getType());
         if (Flags.THUNK.isSetIn(mdSubprogram.getFlags())) {
-            MDValue mdValue = (MDValue) mdSubprogram.getFunction();
-            FunctionDefinition function = (FunctionDefinition) mdValue.getValue();
-            List<LLVMSourceType> typeList = new ArrayList<>();
-            typeList.add(LLVMSourceType.VOID); // return type
-            for (FunctionParameter fp : function.getParameters()) {
-                // TODO pichristoph find LLVMSourceType of fp
-                typeList.add(UNKNOWN);
+            SymbolImpl symbol = MDValue.getIfInstance(mdSubprogram.getFunction());
+            if (symbol != null && symbol instanceof FunctionDefinition) {
+                FunctionDefinition function = (FunctionDefinition) symbol;
+                final DataLayout dataLayout = LLVMLanguage.getContext().getLibsulongDataLayout();
+                LLVMSourceType llvmSourceReturnType = LLVMSourceTypeFactory.resolveType(function.getType().getReturnType(), dataLayout);
+                List<LLVMSourceType> typeList = new ArrayList<>();
+                typeList.add(llvmSourceReturnType);
+                for (FunctionParameter fp : function.getParameters()) {
+                    LLVMSourceType parameterSourceType = LLVMSourceTypeFactory.resolveType(fp.getType(),
+                                    dataLayout);
+                    typeList.add(parameterSourceType);
+                }
+                llvmSourceType = new LLVMSourceFunctionType(typeList);
             }
-            llvmSourceType = new LLVMSourceFunctionType(typeList);
-        } else {
-            llvmSourceType = resolve(mdSubprogram.getType());
         }
         parsedTypes.put(mdSubprogram, llvmSourceType);
     }
