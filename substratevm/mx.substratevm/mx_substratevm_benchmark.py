@@ -334,7 +334,9 @@ _DACAPO_EXTRA_VM_ARGS = {
     'h2':         ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
     'pmd':        ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.skip-agent-assertions=true'],
     'sunflow':    ['-Dnative-image.benchmark.skip-agent-assertions=true'],
-    'xalan':      ['-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'],
+    # org.apache.crimson.parser.Parser2 is force initialized at build-time due to non-determinism in class initialization
+    # order that can lead to runtime issues. See GR-26324.
+    'xalan':      ['-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime', '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.crimson.parser.Parser2'],
     'fop':        ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.skip-agent-assertions=true', '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'],
     'batik':      ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath']
 }
