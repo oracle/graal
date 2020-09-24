@@ -1258,8 +1258,19 @@ public class NativeImage {
         int exitStatus = 1;
         try {
             Path argsFile = null;
+            Path[] argsFileBox = new Path[1];
             if (config.useJavaModules()) {
                 /* For Java > 8 we use an argument file to pass the options to the builder */
+                argsFile = Files.createTempFile("native-image", "args");
+                argsFileBox[0] = argsFile;
+                Runtime.getRuntime().addShutdownHook(new Thread() {
+                    @Override
+                    public void run() {
+                        if (argsFileBox[0] != null) {
+                            argsFileBox[0].toFile().delete();
+                        }
+                    }
+                });                
                 argsFile = Files.createTempFile("native-image", "args");
                 argsFile.toFile().deleteOnExit();
                 Files.write(argsFile, (Iterable<String>) command.stream().skip(1).map(NativeImage::quoteFileArg)::iterator);
@@ -1273,10 +1284,8 @@ public class NativeImage {
             Process p = pb.inheritIO().start();
             exitStatus = p.waitFor();
             if (exitStatus != 0 && isVerbose() && argsFile != null) {
-                /* Create a copy of the argument file for failure analysis */
-                Path argsFileCopy = Paths.get("native-image-failure.args");
-                Files.copy(argsFile, argsFileCopy, StandardCopyOption.REPLACE_EXISTING);
-                showMessage("Argument file: " + argsFileCopy);
+                argsFileBox[0] = null;
+                showMessage("Argument file: " + argsFile);
             }
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());
