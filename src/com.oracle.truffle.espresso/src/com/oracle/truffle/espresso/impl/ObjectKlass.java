@@ -607,20 +607,6 @@ public final class ObjectKlass extends Klass {
         return iKlassTable;
     }
 
-    int lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature, Klass subClass) {
-        for (int i = 0; i < vtable.length; i++) {
-            Method m = vtable[i];
-            if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
-                if (m.isProtected() || m.isPublic()) {
-                    return i;
-                } else if (sameRuntimePackage(subClass)) {
-                    return i;
-                }
-            }
-        }
-        return -1;
-    }
-
     List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result) {
         for (Method m : vtable) {
             if (!m.isStatic() && !m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
@@ -668,7 +654,6 @@ public final class ObjectKlass extends Klass {
                  * Methods in superInterf.getInterfaceMethodsTable() are all non-static non-private
                  * methods declared in superInterf.
                  */
-
                 if (name == superM.getName() && signature == superM.getRawSignature()) {
                     if (resolved == null) {
                         resolved = superM;
