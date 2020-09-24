@@ -1274,9 +1274,9 @@ public class NativeImage {
             exitStatus = p.waitFor();
             if (exitStatus != 0 && isVerbose() && argsFile != null) {
                 /* Create a copy of the argument file for failure analysis */
-                Path tmpDir = Paths.get(System.getProperty("java.io.tmpdir"));
-                Path argsFileCopy = tmpDir.resolve("native-image-failure.args");
+                Path argsFileCopy = Paths.get("native-image-failure.args");
                 Files.copy(argsFile, argsFileCopy, StandardCopyOption.REPLACE_EXISTING);
+                showMessage("Argument file: " + argsFileCopy);
             }
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());
