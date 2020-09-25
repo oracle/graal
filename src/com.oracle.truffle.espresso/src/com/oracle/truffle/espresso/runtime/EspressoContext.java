@@ -973,7 +973,7 @@ public final class EspressoContext {
         } else {
             tryInitExitStatus(code);
         }
-        // At this point, the exit code given should have been register. If not, this means that
+        // At this point, the exit code given should have been registered. If not, this means that
         // another closing was started before us, and we should use the previous' exit code.
         throw new EspressoExitException(getExitStatus());
     }
