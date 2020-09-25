@@ -1,6 +1,6 @@
-# URL Protocols on Native Image
+# URL Protocols in Native Image
 
-URL Protocols on Native Image can be divided into three classes:
+URL Protocols in Native Image can be divided into three classes:
 
 * supported and enabled by default
 * supported and disabled by default

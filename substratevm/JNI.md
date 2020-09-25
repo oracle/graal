@@ -1,4 +1,4 @@
-# Java Native Interface (JNI) on Native Image
+# Java Native Interface (JNI) in Native Image
 
 JNI is a native API that enables Java code to interact with native code and vice versa.
 This page gives an overview of the JNI implementation in Native Image.

@@ -1,7 +1,7 @@
-# JCA Security Services on Native Image
+# JCA Security Services in Native Image
 
 This section refers to the use of the services provided by the [Java Cryptography Architecture (JCA)](https://docs.oracle.com/javase/8/docs/technotes/guides/security/crypto/CryptoSpec.html) framework.
-The JCA framework relies on reflection to achieve algorithm independence and extensibility, therefore it requires a custom configuration on Native Image.
+The JCA framework relies on reflection to achieve algorithm independence and extensibility, therefore it requires a custom configuration in Native Image.
 Additionally, seed generators that use system files like `/dev/random` or `/dev/urandom` need to be reinitialized at run time.
 
 By default a native image is built with support for the `SecureRandom` and `MessageDigest` engines from the `SUN` provider.
@@ -11,7 +11,7 @@ The reason behind enabling only core security services by default is that you ca
 This helps keep the overall image size small.
 
 Note: the `--enable-all-security-services` option is enabled by default when `https` support is enabled.
-See the [URL Protocols on Native Image](URLProtocols.md) guide for more details.
+See the [URL Protocols in Native Image](URLProtocols.md) guide for more details.
 
 ## Provider Registration
 The native image builder captures the list of providers and their preference order from the underlying JVM.

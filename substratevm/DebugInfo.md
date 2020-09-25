@@ -9,7 +9,7 @@ javac Hello.java
 native-image -H:GenerateDebugInfo=1 Hello
 ```
 The resulting image should contain code (method) debug records in a
-format the GNU Debugger (GNU) understands (Windows support is still under development).
+format the GNU Debugger (GDB) understands (Windows support is still under development).
 At present it makes no difference which positive value is supplied to the `GenerateDebugInfo` option.
 
 The `GenerateDebugInfo` option also enables caching of sources for any

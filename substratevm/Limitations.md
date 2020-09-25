@@ -41,7 +41,7 @@ For more details, read the [Dynamic Proxies support](DynamicProxy.md) guide.
 
 ### JCA (Java Cryptography Architecture)
 The JCA security services must be enabled using the option `--enable-all-security-services`.
-They require a custom configuration on Native Image since the JCA framework relies on reflection to achieve algorithm extensibility. For more details, read the [Security Services](JCASecurityServices.md) guide.
+They require a custom configuration in Native Image since the JCA framework relies on reflection to achieve algorithm extensibility. For more details, read the [Security Services](JCASecurityServices.md) guide.
 
 ### JNI (Java Native Interface)
 Native code may access Java objects, classes, methods and fields by name, in a similar way to using the reflection API in Java code.

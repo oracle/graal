@@ -1,4 +1,4 @@
-# Logging on Native Image
+# Logging in Native Image
 
 Out of the box, Native Image supports logging using the `java.util.logging.*` API.
 
@@ -38,7 +38,8 @@ public class BuildTimeLoggerInit {
 }
 ```
 
-The `logging.properties` file is processed at image build time. It does not need to be included in the native image, therefore reducing the image size.
+The `logging.properties` file is processed at image build time.
+It does not need to be included in the native image, therefore reducing the image size.
 
 `LoggerHolder.LOGGER` is also initialized at image build time and is readily available at run time, therefore improving the startup.
 Unless the application needs to process a custom `logging.properties` configuration at run time, this approach is recommended.

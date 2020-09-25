@@ -1,4 +1,4 @@
-# Dynamic Proxy on Native Image
+# Dynamic Proxy in Native Image
 
 Java dynamic proxies, implemented by `java.lang.reflect.Proxy`, provide a mechanism which enables object level access control by routing all method invocations through `java.lang.reflect.InvocationHandler`.
 Dynamic proxy classes are generated from a list of interfaces.

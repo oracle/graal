@@ -61,7 +61,7 @@ Executing [
 ]
 ```
 
-Typical examples of `META-INF/native-image` based Native Image configuration can be found in [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/tree/master/native-image-configure-examples).
+Typical examples of `META-INF/native-image` based native image configuration can be found in [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/tree/master/native-image-configure-examples).
 
 ### Properties File Format
 A `native-image.properties` file is a regular Java properties file that can be

@@ -44,7 +44,7 @@ Then:
 
 See also the [guide on assisted configuration of Java resources and other dynamic features](Configuration.md#assisted-configuration-of-native-image-builds).
 
-## Resource Bundles on Native Image
+## Resource Bundles in Native Image
 
 Java localization support (`java.util.ResourceBundle`) enables Java code to load L10N resources and show the right user messages suitable for actual runtime settings like time locale and format, etc.
 

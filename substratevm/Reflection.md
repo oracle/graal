@@ -33,7 +33,7 @@ That is why the analysis does not accept `Class[]` arguments coming from static 
 Although this may seem too restrictive, it covers the most commonly used patterns of the Reflection API calls.
 
 The only exception to the constant arguments rule is that the `ClassLoader` argument of `Class.forName(String, ClassLoader)` does not need to be a constant; it is ignored and instead a class loader that can load all the classes on the class path is used.
-The analysis runs to a fixed point which means that a chain of calls like `Class.forName(String).getMethod(String, Class[])` will first replace the class constant and then the method will effectively reduce this to `java.lang.reflect.Method`.
+The analysis runs to a fix point which means that a chain of calls like `Class.forName(String).getMethod(String, Class[])` will first replace the class constant and then the method will effectively reduce this to `java.lang.reflect.Method`.
 
 Following are examples of calls that can be intercepted and replaced with the corresponding element:
 
