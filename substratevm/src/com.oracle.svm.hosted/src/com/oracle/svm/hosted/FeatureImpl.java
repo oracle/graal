@@ -359,6 +359,7 @@ public class FeatureImpl {
         }
 
         public void registerAsFrozenUnsafeAccessed(Field field) {
+            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
             registerAsFrozenUnsafeAccessed(getMetaAccess().lookupJavaField(field));
         }
 
