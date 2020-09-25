@@ -2581,7 +2581,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // endregion Management
 
-    // startregion Modules
+    // region Modules
 
     @VmImpl
     @JniImpl
