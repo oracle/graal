@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 
 public final class StackManager {
 
@@ -40,7 +39,6 @@ public final class StackManager {
 
     public static FrameDescriptor createRootFrame() {
         FrameDescriptor rootFrame = new FrameDescriptor();
-        LLVMStack.getStackPointerSlot(rootFrame);
         return rootFrame;
     }
 }

@@ -393,7 +393,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final TypeArrayBuilder argTypes = new TypeArrayBuilder(argumentCount);
         int argIndex = 0;
         // stack pointer
-        argNodes[argIndex] = nodeFactory.createGetStackFromFrame(frame);
+        argNodes[argIndex] = nodeFactory.createGetStackFromFrame();
         argTypes.set(argIndex, new PointerType(null));
         argIndex++;
 
@@ -442,7 +442,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             // cannot optimize reads here - landingpad doesn't evaluate all arguments
             entries[i] = symbols.resolve(landingpadInstruction.getClauseSymbols()[i]);
         }
-        LLVMExpressionNode getStack = nodeFactory.createGetStackFromFrame(frame);
+        LLVMExpressionNode getStack = nodeFactory.createGetStackFromFrame();
         LLVMExpressionNode landingPad = nodeFactory.createLandingPad(allocateLandingPadValue, getExceptionSlot(), landingpadInstruction.isCleanup(), landingpadInstruction.getClauseTypes(),
                         entries, getStack);
         createFrameWrite(landingPad, landingpadInstruction);
@@ -575,7 +575,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final TypeArrayBuilder argTypes = new TypeArrayBuilder(argumentCount);
 
         int argIndex = 0;
-        argNodes[argIndex] = nodeFactory.createGetStackFromFrame(frame);
+        argNodes[argIndex] = nodeFactory.createGetStackFromFrame();
         argTypes.set(argIndex, new PointerType(null));
         argIndex++;
 
@@ -619,7 +619,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[argumentCount];
         final TypeArrayBuilder argTypes = new TypeArrayBuilder(argumentCount);
         int argIndex = 0;
-        argNodes[argIndex] = nodeFactory.createGetStackFromFrame(frame);
+        argNodes[argIndex] = nodeFactory.createGetStackFromFrame();
         argTypes.set(argIndex, new PointerType(null));
         argIndex++;
         final SymbolImpl target = call.getCallTarget();
@@ -672,7 +672,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final TypeArrayBuilder argsType = new TypeArrayBuilder(argumentCount);
 
         int argIndex = 0;
-        args[argIndex] = nodeFactory.createGetStackFromFrame(frame);
+        args[argIndex] = nodeFactory.createGetStackFromFrame();
         argsType.set(argIndex, new PointerType(null));
         argIndex++;
 

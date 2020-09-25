@@ -31,27 +31,27 @@ package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMInitializeStackFrameNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackCloseable;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 
-public class LLVMStatementRootNode extends RootNode {
+public class LLVMStatementRootNode extends LLVMRootNode {
 
     @Child private LLVMStatementNode statement;
-    @Child private LLVMInitializeStackFrameNode initializeStackFrameNode;
 
-    public LLVMStatementRootNode(LLVMLanguage language, LLVMStatementNode statement, FrameDescriptor descriptor, LLVMInitializeStackFrameNode initializeStackFrameNode) {
-        super(language, descriptor);
+    public LLVMStatementRootNode(LLVMLanguage language, LLVMStatementNode statement, FrameDescriptor descriptor, LLVMStackAccess stackAccess) {
+        super(language, descriptor, stackAccess);
         this.statement = statement;
-        this.initializeStackFrameNode = initializeStackFrameNode;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        try (StackCloseable stackPointer = initializeStackFrameNode.execute(frame)) {
+        stackAccess.executeEnter(frame);
+        try {
             statement.execute(frame);
+        } finally {
+            stackAccess.executeExit(frame);
         }
         return null;
     }

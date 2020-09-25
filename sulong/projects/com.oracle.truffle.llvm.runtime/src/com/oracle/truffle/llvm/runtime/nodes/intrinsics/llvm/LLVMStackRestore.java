@@ -29,30 +29,35 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMAccessStackPointerNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMStackRestore extends LLVMBuiltin {
+abstract class LLVMStackBuiltin extends LLVMBuiltin {
 
-    static LLVMAccessStackPointerNode createAccess(VirtualFrame frame) {
-        LLVMContext context = LLVMLanguage.getContext();
-        NodeFactory nodeFactory = LLVMLanguage.getLanguage().getActiveConfiguration().createNodeFactory(context, context.getLibsulongDataLayout());
-        return nodeFactory.createAccessStackPointer(frame.getFrameDescriptor());
+    @CompilationFinal private LLVMStackAccess stackAccess;
+
+    protected LLVMStackAccess ensureStackAccess() {
+        if (stackAccess == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            stackAccess = ((LLVMRootNode) getRootNode()).getStackAccess();
+        }
+        return stackAccess;
     }
+}
+
+@NodeChild(type = LLVMExpressionNode.class)
+public abstract class LLVMStackRestore extends LLVMStackBuiltin {
 
     @Specialization
-    protected Object doVoid(VirtualFrame frame, LLVMPointer addr,
-                    @Cached("createAccess(frame)") LLVMAccessStackPointerNode accessStackPointer) {
-        accessStackPointer.executeSet(frame, addr);
+    protected Object doVoid(VirtualFrame frame, LLVMPointer addr) {
+        ensureStackAccess().executeSet(frame, addr);
         return null;
     }
 }

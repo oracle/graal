@@ -33,27 +33,23 @@ import java.util.List;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMInitializeStackFrameNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackCloseable;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.base.LLVMInlineAssemblyBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.base.LLVMInlineAssemblyBlockNodeGen;
 
-public class LLVMInlineAssemblyRootNode extends RootNode {
+public class LLVMInlineAssemblyRootNode extends LLVMRootNode {
 
     @Child private LLVMInlineAssemblyBlockNode prologue;
     @Child private LLVMInlineAssemblyBlockNode block;
 
     @Child private LLVMExpressionNode result;
-    @Child private LLVMInitializeStackFrameNode initializeStackFrameNode;
 
-    public LLVMInlineAssemblyRootNode(LLVMLanguage language, FrameDescriptor frameDescriptor, LLVMInitializeStackFrameNode initializeStackFrameNode,
-                    List<LLVMStatementNode> statements, List<LLVMStatementNode> writeNodes, LLVMExpressionNode result) {
-        super(language, frameDescriptor);
-        this.initializeStackFrameNode = initializeStackFrameNode;
+    public LLVMInlineAssemblyRootNode(LLVMLanguage language, FrameDescriptor frameDescriptor, LLVMStackAccess stackAccess, List<LLVMStatementNode> statements, List<LLVMStatementNode> writeNodes,
+                    LLVMExpressionNode result) {
+        super(language, frameDescriptor, stackAccess);
         this.prologue = LLVMInlineAssemblyBlockNodeGen.create(writeNodes);
         this.block = LLVMInlineAssemblyBlockNodeGen.create(statements);
         this.result = result;
@@ -74,10 +70,13 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        try (StackCloseable stackPointer = initializeStackFrameNode.execute(frame)) {
+        stackAccess.executeEnter(frame);
+        try {
             prologue.execute(frame);
             block.execute(frame);
             return result == null ? 0 : result.executeGeneric(frame);
+        } finally {
+            stackAccess.executeExit(frame);
         }
     }
 }

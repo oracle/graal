@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.asm;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMAccessStackPointerNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
@@ -40,59 +40,59 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
 
-    @Child protected LLVMAccessStackPointerNode accessStackPointer;
+    protected final LLVMStackAccess stackAccess;
 
-    protected LLVMAMD64PopNode(LLVMAccessStackPointerNode accessStackPointer) {
-        this.accessStackPointer = accessStackPointer;
+    protected LLVMAMD64PopNode(LLVMStackAccess stackAccess) {
+        this.stackAccess = stackAccess;
     }
 
     public abstract static class LLVMAMD64PopwNode extends LLVMAMD64PopNode {
-        protected LLVMAMD64PopwNode(LLVMAccessStackPointerNode accessStackPointer) {
-            super(accessStackPointer);
+        protected LLVMAMD64PopwNode(LLVMStackAccess stackAccess) {
+            super(stackAccess);
         }
 
         @Specialization
         protected Object doI16(VirtualFrame frame,
                         @Cached LLVMI64LoadNode load) {
-            LLVMPointer stackPointer = accessStackPointer.executeGet(frame);
+            LLVMPointer stackPointer = stackAccess.executeGet(frame);
             try {
                 return load.executeWithTarget(stackPointer);
             } finally {
-                accessStackPointer.executeSet(frame, stackPointer.increment(LLVMExpressionNode.I16_SIZE_IN_BYTES));
+                stackAccess.executeSet(frame, stackPointer.increment(LLVMExpressionNode.I16_SIZE_IN_BYTES));
             }
         }
     }
 
     public abstract static class LLVMAMD64PoplNode extends LLVMAMD64PopNode {
-        protected LLVMAMD64PoplNode(LLVMAccessStackPointerNode accessStackPointer) {
-            super(accessStackPointer);
+        protected LLVMAMD64PoplNode(LLVMStackAccess stackAccess) {
+            super(stackAccess);
         }
 
         @Specialization
         protected Object doI32(VirtualFrame frame,
                         @Cached LLVMI32LoadNode load) {
-            LLVMPointer stackPointer = accessStackPointer.executeGet(frame);
+            LLVMPointer stackPointer = stackAccess.executeGet(frame);
             try {
                 return load.executeWithTarget(stackPointer);
             } finally {
-                accessStackPointer.executeSet(frame, stackPointer.increment(LLVMExpressionNode.I32_SIZE_IN_BYTES));
+                stackAccess.executeSet(frame, stackPointer.increment(LLVMExpressionNode.I32_SIZE_IN_BYTES));
             }
         }
     }
 
     public abstract static class LLVMAMD64PopqNode extends LLVMAMD64PopNode {
-        protected LLVMAMD64PopqNode(LLVMAccessStackPointerNode accessStackPointer) {
-            super(accessStackPointer);
+        protected LLVMAMD64PopqNode(LLVMStackAccess stackAccess) {
+            super(stackAccess);
         }
 
         @Specialization
         protected Object doI64(VirtualFrame frame,
                         @Cached LLVMI64LoadNode load) {
-            LLVMPointer stackPointer = accessStackPointer.executeGet(frame);
+            LLVMPointer stackPointer = stackAccess.executeGet(frame);
             try {
                 return load.executeWithTarget(stackPointer);
             } finally {
-                accessStackPointer.executeSet(frame, stackPointer.increment(LLVMExpressionNode.I64_SIZE_IN_BYTES));
+                stackAccess.executeSet(frame, stackPointer.increment(LLVMExpressionNode.I64_SIZE_IN_BYTES));
             }
         }
     }

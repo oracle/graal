@@ -29,26 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMAccessStackPointerNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMStackSave extends LLVMBuiltin {
-
-    static LLVMAccessStackPointerNode createAccess(VirtualFrame frame) {
-        LLVMContext context = LLVMLanguage.getContext();
-        NodeFactory nodeFactory = LLVMLanguage.getLanguage().getActiveConfiguration().createNodeFactory(context, context.getLibsulongDataLayout());
-        return nodeFactory.createAccessStackPointer(frame.getFrameDescriptor());
-    }
+public abstract class LLVMStackSave extends LLVMStackBuiltin {
 
     @Specialization
-    protected LLVMPointer doPointee(VirtualFrame frame,
-                    @Cached("createAccess(frame)") LLVMAccessStackPointerNode accessStackPointer) {
-        return accessStackPointer.executeGet(frame);
+    protected LLVMPointer doPointee(VirtualFrame frame) {
+        return ensureStackAccess().executeGet(frame);
     }
 }

@@ -112,7 +112,7 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
         if (destructors.length > 0) {
             FrameDescriptor frameDescriptor = StackManager.createRootFrame();
             LLVMStatementRootNode root = new LLVMStatementRootNode(language, StaticInitsNodeGen.create(destructors, "fini", moduleName), frameDescriptor,
-                            parserResult.getRuntime().getNodeFactory().createStackFrameInit(frameDescriptor));
+                            parserResult.getRuntime().getNodeFactory().createStackAccess(frameDescriptor));
             return Truffle.getRuntime().createCallTarget(root);
         } else {
             return null;
@@ -151,7 +151,6 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
             final int indexedTypeLength = functionType.getAlignment(dataLayout);
 
             final ArrayList<Pair<Integer, LLVMStatementNode>> structors = new ArrayList<>(elemCount);
-            FrameDescriptor rootFrame = StackManager.createRootFrame();
             for (int i = 0; i < elemCount; i++) {
                 final LLVMExpressionNode globalVarAddress = nodeFactory.createLiteral(global, new PointerType(globalSymbol.getType()));
                 final LLVMExpressionNode iNode = nodeFactory.createLiteral(i, PrimitiveType.I32);
@@ -161,7 +160,7 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
                 final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
                 final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(indexedTypeLength, functionType, loadedStruct, oneLiteralNode);
                 final LLVMExpressionNode loadedFunction = CommonNodeFactory.createLoad(functionType, functionLoadTarget);
-                final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{nodeFactory.createGetStackFromFrame(rootFrame)};
+                final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{nodeFactory.createGetStackFromFrame()};
                 final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(CommonNodeFactory.createFunctionCall(loadedFunction, argNodes, functionType));
 
                 final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);

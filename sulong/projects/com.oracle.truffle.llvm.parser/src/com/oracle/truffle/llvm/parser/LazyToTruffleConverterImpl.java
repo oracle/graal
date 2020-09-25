@@ -84,7 +84,6 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -169,7 +168,6 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, frame, getStackSpaceFactory, dataLayout, options.get(SulongEngineOption.LL_DEBUG));
 
         frame.addFrameSlot(LLVMUserException.FRAME_SLOT_ID, null, FrameSlotKind.Object);
-        LLVMStack.getStackPointerSlot(frame);
 
         for (FunctionParameter parameter : method.getParameters()) {
             symbols.findOrAddFrameSlot(frame, parameter);
@@ -225,10 +223,8 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         LLVMSourceLocation location = method.getLexicalScope();
         LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame(frame, symbols).toArray(LLVMStatementNode.NO_STATEMENTS);
-        LLVMExpressionNode body = nodeFactory.createFunctionBlockNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), blockNodes, uniquesRegion, copyArgumentsToFrameArray, location,
-                        frame, loopSuccessorSlot, info);
-
-        RootNode rootNode = nodeFactory.createFunctionStartNode(body, frame, method.getName(), method.getSourceName(), method.getParameters().size(), source, location);
+        RootNode rootNode = nodeFactory.createFunction(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), blockNodes, uniquesRegion, copyArgumentsToFrameArray, frame, loopSuccessorSlot, info,
+                        method.getName(), method.getSourceName(), method.getParameters().size(), source, location);
         method.onAfterParse();
 
         if (printAST) {
