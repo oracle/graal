@@ -102,8 +102,7 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
     @Test
     public void conversionToClassNull() {
         Object meta = languageEnv.findMetaObject(languageEnv.asGuestValue(null));
-        assertSame(Void.class,
-                        languageEnv.asHostObject(meta));
+        assertNull(meta);
     }
 
     @Test
