@@ -4,9 +4,12 @@ This page looks at memory management models available for native images.
 
 ## Memory Management at Image Run Time
 
-The memory management when executing a native image is handled by Serial Garbage
-Collector (Serial GC) -- GraalVM's garbage collector implementation.
-Serial GC is default for Native Image in GraalVM Enterprise and Community Editions.
+A native image, when being executed, does not run on a JVM, but on a runtime
+system provided with GraalVM. That runtime includes all necessary components,
+like memory management, thread scheduling, etc. The memory management is handled
+by GraalVM's garbage collector implementation -- Serial Garbage Collector
+(Serial GC). Serial GC is default for Native Image in GraalVM Enterprise and
+Community Editions.
 
 When running an executable, it will, by default, use up to
 `-H:MaximumHeapSizePercent` of the physical memory size. For example, with the
