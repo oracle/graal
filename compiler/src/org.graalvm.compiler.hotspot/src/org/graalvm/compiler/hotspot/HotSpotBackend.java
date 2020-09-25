@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -507,7 +507,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
         while (cursor.advance()) {
             SaveRegistersOp save = cursor.getValue();
             save.remove(destroyedRegisters);
-            if (cursor.getKey() != LIRFrameState.NO_STATE) {
+            if (cursor.getKey() != LIRFrameState.NO_CALLEE_SAVE_INFO) {
                 cursor.getKey().debugInfo().setCalleeSaveInfo(save.getMap(frameMap));
             }
         }

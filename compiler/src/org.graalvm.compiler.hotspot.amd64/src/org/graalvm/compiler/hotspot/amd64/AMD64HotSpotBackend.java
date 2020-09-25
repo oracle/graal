@@ -332,6 +332,29 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         if (!frameContext.isStub) {
             HotSpotForeignCallsProvider foreignCalls = providers.getForeignCalls();
+            if (crb.getPendingImplicitExceptionList() != null) {
+                for (CompilationResultBuilder.PendingImplicitException pendingImplicitException : crb.getPendingImplicitExceptionList()) {
+                    // Insert stub code that stores the corresponding deoptimization action &
+                    // reason, as well as the failed speculation, and calls into
+                    // DEOPT_BLOB_UNCOMMON_TRAP. Note that we use the debugging info at the
+                    // exceptional PC that triggers this implicit exception, we cannot touch
+                    // any register/stack slot in this stub, so as to preserve a valid mapping for
+                    // constructing the interpreter frame.
+                    int pos = asm.position();
+                    Register thread = getProviders().getRegisters().getThreadRegister();
+                    // Store deoptimization reason and action into thread local storage.
+                    asm.movl(new AMD64Address(thread, config.pendingDeoptimizationOffset), pendingImplicitException.state.deoptReasonAndAction.asInt());
+
+                    // Store speculation into thread local storage. As AMD64 does not support
+                    // 64-bit long integer memory store, we break it into two 32-bit integer store.
+                    long speculationAsLong = pendingImplicitException.state.deoptSpeculation.asLong();
+                    asm.movl(new AMD64Address(thread, config.pendingFailedSpeculationOffset), (int) speculationAsLong);
+                    asm.movl(new AMD64Address(thread, config.pendingFailedSpeculationOffset + 4), (int) (speculationAsLong >> 32));
+
+                    AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNCOMMON_TRAP), null, false, pendingImplicitException.state);
+                    crb.recordImplicitException(pendingImplicitException.codeOffset, pos, pendingImplicitException.state);
+                }
+            }
             crb.recordMark(HotSpotMarkId.EXCEPTION_HANDLER_ENTRY);
             AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, false, null);
             crb.recordMark(HotSpotMarkId.DEOPT_HANDLER_ENTRY);

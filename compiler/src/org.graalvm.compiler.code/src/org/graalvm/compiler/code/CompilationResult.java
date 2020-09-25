@@ -49,7 +49,7 @@ import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.ExceptionHandler;
-import jdk.vm.ci.code.site.ImplicitException;
+import jdk.vm.ci.code.site.ImplicitExceptionDispatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.code.site.Mark;
@@ -594,7 +594,7 @@ public class CompilationResult {
      * @param debugInfo the debug info for the infopoint
      */
     public void recordImplicitException(int codePos, int dispatchPos, DebugInfo debugInfo) {
-        addInfopoint(new ImplicitException(codePos, dispatchPos, debugInfo));
+        addInfopoint(new ImplicitExceptionDispatch(codePos, dispatchPos, debugInfo));
     }
 
     /**
