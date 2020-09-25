@@ -2281,7 +2281,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Object.class};
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, null};
             }
 
             @Override
