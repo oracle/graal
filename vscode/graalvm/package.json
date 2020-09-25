@@ -38,12 +38,12 @@
 				"graalvm.home": {
 					"type": "string",
 					"default": "",
-					"description": "Path to GraalVM installation"
+					"description": "Path to the active GraalVM installation"
 				},
-				"graalvm.checkForMissingComponents": {
-					"type": "boolean",
-					"default": true,
-					"description": "Ask for missing GraaVM Components installation on IDE startup"
+				"graalvm.installations": {
+					"type": "array",
+					"default": [],
+					"description": "Paths to GraalVM installations"
 				},
 				"graalvm.languageServer.currentWorkDir": {
 					"type": "string",
@@ -75,17 +75,37 @@
 		"commands": [
 			{
 				"command": "extension.graalvm.selectGraalVMHome",
-				"title": "Select GraalVM Installation",
+				"title": "Set Active GraalVM Installation",
+				"icon": "$(home)",
 				"category": "GraalVM"
 			},
 			{
 				"command": "extension.graalvm.installGraalVM",
-				"title": "Install GraalVM",
+				"title": "Download & Install GraalVM",
+				"icon": "$(desktop-download)",
 				"category": "GraalVM"
+			},
+			{
+				"command": "extension.graalvm.addExistingGraalVM",
+				"title": "Add Existing GraalVM",
+				"icon": "$(new-folder)",
+				"category": "GraalVM"
+			},
+			{
+				"command": "extension.graalvm.refreshInstallations",
+				"title": "Refresh",
+				"icon": "$(refresh)"
 			},
 			{
 				"command": "extension.graalvm.installGraalVMComponent",
 				"title": "Install GraalVM Component",
+				"icon": "$(add)",
+				"category": "GraalVM"
+			},
+			{
+				"command": "extension.graalvm.uninstallGraalVMComponent",
+				"title": "Uninstall GraalVM Component",
+				"icon": "$(trash)",
 				"category": "GraalVM"
 			},
 			{
@@ -109,11 +129,70 @@
 				"category": "GraalVM"
 			}
 		],
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "graalvm-explorer",
+					"title": "GraalVM",
+					"icon": "resources/graalvm.svg"
+				}
+			]
+		},
+		"viewsWelcome": [
+			{
+				"view": "graalvm-installations",
+				"contents": "No GraalVM installation found.\n[Download & Install GraalVM](command:extension.graalvm.installGraalVM)\n[Add Existing GraalVM](command:extension.graalvm.addExistingGraalVM)"
+			}
+		],
+		"views": {
+			"graalvm-explorer": [
+				{
+					"id": "graalvm-installations",
+					"name": "Installations",
+					"icon": "resources/graalvm.svg",
+					"contextualTitle": "GraalVM Installations"
+				}
+			]
+		},
 		"menus": {
 			"editor/context": [
 				{
 					"command": "extension.graalvm.toggleCodeCoverage",
 					"group": "4_coverage"
+				}
+			],
+			"view/title": [
+				{
+					"command": "extension.graalvm.installGraalVM",
+					"when": "view == graalvm-installations",
+					"group": "navigation@1"
+				},
+				{
+					"command": "extension.graalvm.addExistingGraalVM",
+					"when": "view == graalvm-installations",
+					"group": "navigation@2"
+				},
+				{
+					"command": "extension.graalvm.refreshInstallations",
+					"when": "view == graalvm-installations",
+					"group": "navigation@3"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "extension.graalvm.selectGraalVMHome",
+					"when": "view == graalvm-installations && viewItem == graalvmInstallation",
+					"group": "inline"
+				},
+				{
+					"command": "extension.graalvm.installGraalVMComponent",
+					"when": "view == graalvm-installations && viewItem == graalvmComponent",
+					"group": "inline"
+				},
+				{
+					"command": "extension.graalvm.uninstallGraalVMComponent",
+					"when": "view == graalvm-installations && viewItem == graalvmComponentInstalled",
+					"group": "inline"
 				}
 			]
 		},
@@ -495,9 +574,8 @@
 		"lint": "tslint -p ./"
 	},
 	"dependencies": {
+		"decompress": "4.2.1",
 		"sax": "^1.2.4",
-		"tar": "^6.0.1",
-		"unzipper": "0.10.11",
 		"vscode-chrome-debug-core": "^6.8.8",
 		"vscode-languageclient": "^5.2.1"
 	},
@@ -505,8 +583,7 @@
 		"@types/mocha": "^7.0.2",
 		"@types/node": "^12.12.30",
 		"@types/sax": "^1.2.1",
-		"@types/tar": "^4.0.3",
-		"@types/unzipper": "^0.10.3",
+		"@types/decompress": "^4.2.3",
 		"@types/vscode": "1.44.0",
 		"ts-loader": "^6.2.1",
 		"tslint": "^6.1.0",
