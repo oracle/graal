@@ -1268,7 +1268,7 @@ public class NativeImage {
                             argsFileBox[0].toFile().delete();
                         }
                     }
-                });                
+                });
                 Files.write(argsFile, (Iterable<String>) command.stream().skip(1).map(NativeImage::quoteFileArg)::iterator);
                 List<String> atCommand = new ArrayList<>();
                 atCommand.add(command.get(0));
