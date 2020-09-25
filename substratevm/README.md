@@ -5,7 +5,7 @@ executable, called a **native image**. This executable includes the application
 classes, classes from its dependencies, runtime library classes from JDK, and
 statically linked native code from JDK. It does not run on the Java VM, but
 includes necessary components like memory management and thread scheduling from
-a different virtual machine, called "Substrate VM". Substrate VM is the name for
+a different runtime system, called "Substrate VM". Substrate VM is the name for
 the runtime components (like the deoptimizer, garbage collector, thread
 scheduling etc.). The resulting program has faster startup time and lower
 runtime memory overhead compared to a JVM.
@@ -35,7 +35,7 @@ Native Image for GraalVM Community Edition is licensed under the [GPL 2 with Cla
 Native Image can be added to the core installation with the [GraalVM Updater](https://www.graalvm.org/docs/reference-manual/gu/) tool.
 
 Run this command to install Native Image:
-```
+```shell
 gu install native-image
 ```
 
@@ -49,21 +49,21 @@ For compilation `native-image` depends on the local toolchain. Install
 and `gcc`, using a package manager available on your OS. Some Linux distributions may additionally require `libstdc++-static`.
 
 On Oracle Linux use `yum` package manager:
-```
+```shell
 sudo yum install gcc glibc-devel zlib-devel
 ```
 You can still install `libstdc++-static` as long as the optional repositories are enabled (_ol7_optional_latest_ on Oracle Linux 7 and _ol8_codeready_builder_ on Oracle Linux 8).
 
 On  Ubuntu Linux use `apt-get` package manager:
-```
+```shell
 sudo apt-get install build-essential libz-dev zlib1g-dev
 ```
 On other Linux distributions use `dnf` package manager:
-```
+```shell
 sudo dnf install gcc glibc-devel zlib-devel libstdc++-static
 ```
 On macOS use `xcode`:
-```
+```shell
 xcode-select --install
 ```
 
@@ -83,12 +83,12 @@ The last prerequisite, common for both GraalVM distribution based on JDK 11 and 
 ## Build a Native Image
 
 To build a native image of a class in the current working directory, use:
-```
+```shell
 native-image [options] class [imagename] [options]
 ```
 
 To build a native image of a JAR file, use:
-```
+```shell
 native-image [options] -jar jarfile [imagename] [options]
 ```
 
@@ -99,7 +99,7 @@ main method is the last argument, or you can use `-jar` and provide a JAR
 file that specifies the main method in its manifest.
 
 As an example, we will take a small Java program to reverse a String using recursion:
-```
+```java
 public class Example {
 
     public static void main(String[] args) {
@@ -116,13 +116,13 @@ public class Example {
 }
 ```
 Compile the `Example.java` program and build a native image from the Java class:
-```
+```shell
 javac Example.java
 native-image Example
 ```
 The native image builder ahead-of-time compiles the `Example` class into a
 standalone executable, `example`, in the current working directory. Run the executable:
-```
+```shell
 ./example
 ```
 
@@ -139,7 +139,7 @@ For more complex examples, visit the [native image generation](https://www.graal
 
 Assuming you have a Java class file _EmptyHello.class_ containing an empty main method
 and have generated an empty shared object `emptyhello` with GraalVM Native Image Generator utility of it:
-```
+```shell
 native-image -cp hello EmptyHello
 [emptyhello:11228]    classlist:     149.59 ms
 ...
@@ -149,12 +149,12 @@ If you do not know what GraalVM distribution is set to the `PATH` environment
 variable, how to determine if a native image was compiled with Community or
 Enterprise Edition? Run this command:
 
-```
+```shell
 strings emptyhello | grep com.oracle.svm.core.VM
 ```
 
 The expected output should match the following:
-```
+```shell
 com.oracle.svm.core.VM GraalVM 20.2.0 Java 11 EE
 ```
 
@@ -165,11 +165,11 @@ code interpreted or compiled using GraalVM Enterprise Edition. There is a
 GraalVM string embedded in each image that allows to figure out the version and
 variant of the base (Community or Enterprise) used to build an image.
 The following command will query that information from an image:
-```
+```shell
 strings <path to native-image exe or shared object> | grep com.oracle.svm.core.VM
 ```
 Here is an example output:
-```
+```shell
 com.oracle.svm.core.VM.Target.LibC=com.oracle.svm.core.posix.linux.libc.GLibC
 com.oracle.svm.core.VM.Target.Platform=org.graalvm.nativeimage.Platform$LINUX_AMD64
 com.oracle.svm.core.VM.Target.StaticLibraries=liblibchelper.a|libnet.a|libffi.a|libextnet.a|libnio.a|libjava.a|libfdlibm.a|libzip.a|libjvm.a
@@ -178,7 +178,7 @@ com.oracle.svm.core.VM.Target.Libraries=pthread|dl|z|rt
 com.oracle.svm.core.VM.Target.CCompiler=gcc|redhat|x86_64|10.2.1
 ```
 If the image was build with Oracle GraalVM Enterprise Edition the output would instead contain:
-```
+```shell
 com.oracle.svm.core.VM=GraalVM 20.2.0 Java 11 EE
 ```
 
@@ -190,4 +190,4 @@ able to build a highly optimized native executable, GraalVM runs an aggressive s
 analysis that requires a closed-world assumption, which means that all classes
 and all bytecodes that are reachable at run time must be known at build time.
 Therefore, it is not possible to load new data that have not been available
-during ahead-of-time compilation. Continue reading to the [GraalVM Native Image Compatibility and Optimization Guide](Limitations.md).
+during ahead-of-time compilation. Continue reading to [GraalVM Native Image Compatibility and Optimization](Limitations.md).

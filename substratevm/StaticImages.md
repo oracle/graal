@@ -7,7 +7,7 @@ This makes them suitable for use in a `FROM scratch` Docker container.
  - Right now, this only works on Linux AMD64 on Java 11
  - You will need `gcc`, `make` and `configure`.
  - Create a directory that will hold the libraries we build. We will refer to this directory as `${RESULT_DIR}`
- - Download the latest `musl` release from [here](https://musl.libc.org/). This document will use `musl-1.2.0`  
+ - Download the latest `musl` release from [here](https://musl.libc.org/). This document will use `musl-1.2.0`
  - Download the latest `zlib` release from [here](https://zlib.net/). This document will use `zlib-1.2.11`
 
 ### Building musl

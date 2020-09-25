@@ -46,7 +46,7 @@ Unless the application needs to process a custom `logging.properties` configurat
 
 The logger can also be initialized at run time, as in the code below:
 
-```
+```java
 public class RuntimeLoggerInit {
     public static void main(String[] args) throws IOException {
         LogManager.getLogManager().readConfiguration(RuntimeLoggerInit.class.getResourceAsStream("logging.properties"));

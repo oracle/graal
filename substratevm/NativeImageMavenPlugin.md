@@ -7,7 +7,7 @@ One can build a native image directly with Maven
 using the `mvn package` command without running the `native-image` tool as a
 separate step. It is sufficient to add `native-image-maven-plugin` into the
 `<plugins>` section of the `pom.xml` file:
-```
+```xml
 <plugin>
     <groupId>org.graalvm.nativeimage</groupId>
     <artifactId>native-image-maven-plugin</artifactId>
@@ -31,7 +31,7 @@ separate step. It is sufficient to add `native-image-maven-plugin` into the
 ```
 and the `org.graalvm.sdk` library dependency in the `<dependencies>` list:
 
-```
+```xml
 <dependency>
     <groupId>org.graalvm.sdk</groupId>
     <artifactId>graal-sdk</artifactId>
@@ -61,7 +61,7 @@ It is also possible to customize `native-image-maven-plugin` within a
 2. Configuration parameter `<imageName>`. If an image filename is not set explicitly, use parameter `<imageName>` to provide a custom filename for the image.
 3. Configuration parameter `<buildArgs>`. If you want to pass additional options for the image building, use the `<buildArgs>` parameter the definition of the plugin. For example, to build a native image with assertions enabled that uses _com.test.classname_ as a main class, add:
 
-```
+```xml
 <configuration>
     <imageName>executable-name</imageName>
     <mainClass>com.test.classname</mainClass>

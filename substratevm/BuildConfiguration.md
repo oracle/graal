@@ -52,7 +52,7 @@ Other options that are known to work in this context are:
 By having such a composable _native-image.properties_ file, building an image
 does not require any additional arguments specified on command line. It is
 sufficient to just run the following command:
-```
+```shell
 $JAVA_HOME/bin/native-image -jar target/<name>.jar
 ```
 
@@ -60,7 +60,7 @@ To debug which configuration data gets applied for the image building use `nativ
 --verbose`. This will show from where `native-image` picks up the
 configurations to construct the final composite configuration command line
 options for the image builder.
-```
+```shell
 native-image --verbose -jar build/basic-app-0.1-all.jar
 Apply jar:file://~/build/basic-app-0.1-all.jar!/META-INF/native-image/io.netty/common/native-image.properties
 Apply jar:file://~/build/basic-app-0.1-all.jar!/META-INF/native-image/io.netty/buffer/native-image.properties
@@ -129,8 +129,8 @@ NativeImageArgs = --configurations-path /home/user/custom-image-configs \
 
 ## Memory Configuration for Native Image Build
 
-GraalVM is based on Java HotSpot VM and uses the memory management of the underlying platform.
-The usual Java HotSpot command-line options for garbage collection apply to the Native Image builder.
+The native image build runs on the Java HotSpot VM and uses the memory management of the underlying platform.
+The usual Java HotSpot command-line options for garbage collection apply to the native image builder.
 
 During the native image build, the representation of a whole program is created to
 figure out which classes and methods will be used at run time. It is a
@@ -141,12 +141,9 @@ computationally intensive process. The defaults values for memory usage at image
 -Xmx14G \
 ```
 These defaults can be changed by passing `-J + <jvm option for memory>` to the native image builder, e.g., `-J-Xmx28g`.
-Per default, image building uses of up to 32 threads (but not more than the number of processors available). For custom values `-H:NumberOfThreads=...` can be used.
 
-To set options to a native image builder, use `-H` or `-R` switch, depending on the flag. For example, to get some information on the memory allocation at image build time, run:
-```
-native-image -R:+PrintGC -R:+VerboseGC -H:+UseG1GC <java-class-name>
-```
+By default, image building uses of up to 32 threads (but not more than the number of processors available). For custom values `-H:NumberOfThreads=...` can be used.
+
 Check other related options to the native image builder from the `native-image --expert-options-all` list.
 
 ## Runtime vs Build-Time Initialization
@@ -175,8 +172,8 @@ For more information, continue reading to the [Class Initialization in Native Im
 Native images are built ahead of runtime and their build relies on a static analysis of which code will be reachable. However, this analysis cannot always completely predict all usages of the Java Native Interface (JNI), Java Reflection, Dynamic Proxy objects (`java.lang.reflect.Proxy`) or class path resources (`Class.getResource`). Undetected usages of these dynamic features need to be provided to the `native-image` tool in the form of configuration files.
 
 In order to make preparing these configuration files easier and more convenient, GraalVM provides an _agent_ that tracks all usages of dynamic features of an execution on a regular Java VM. It can be enabled on the command line of the GraalVM `java` command:
-```
-$GRAALVM_HOME/bin/java -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/ ...
+```shell
+$JAVA_HOME/bin/java -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/ ...
 ```
 
 Note that `-agentlib` must be specified _before_ a `-jar` option or a class name or any application parameters in the `java` command line.
@@ -184,8 +181,8 @@ Note that `-agentlib` must be specified _before_ a `-jar` option or a class name
 During execution, the agent interfaces with the Java VM to intercept all calls that look up classes, methods, fields, resources or request proxy accesses. The agent then generates the files `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json` in the specified output directory, which is `/path/to/config-dir/` in the example above. The generated files are stand-alone configuration files in _JSON_ format which contain all intercepted dynamic accesses.
 
 It can be necessary to run the target application more than once with different inputs to trigger separate execution paths for a better coverage of dynamic accesses. The agent supports this with the `config-merge-dir` option which adds the intercepted accesses to an existing set of configuration files:
-```
-$GRAALVM_HOME/bin/java -agentlib:native-image-agent=config-merge-dir=/path/to/config-dir/ ...
+```shell
+$JAVA_HOME/bin/java -agentlib:native-image-agent=config-merge-dir=/path/to/config-dir/ ...
                                                               ^^^^^
 ```
 
@@ -196,8 +193,8 @@ By default the agent will write the configuration files after the JVM process te
 - `config-write-initial-delay-secs`: The number of seconds before the first write is schedule for execution. Supports only integer values greater or equal to zero. Enabled only if `config-write-period-secs` is greater than zero.
 
 For example:
-```
-$GRAALVM_HOME/bin/java -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/,config-write-period-secs=300,config-write-initial-delay-secs=5 ...
+```shell
+$JAVA_HOME/bin/java -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/,config-write-period-secs=300,config-write-initial-delay-secs=5 ...
 ```
 
 It is advisable to manually review the generated configuration files. Because the agent observes only code that was executed, the resulting configurations can be missing elements that are used in other code paths. It could also make sense to simplify the generated configurations to make any future manual maintenance easier.
@@ -208,7 +205,7 @@ The generated configuration files can be supplied to the `native-image` tool by 
 
 For demonstration purposes, save the following code as _ReflectionExample.java_ file:
 
-```
+```java
 import java.lang.reflect.Method;
 
 class StringReverser {
@@ -244,7 +241,7 @@ arguments. Providing any other class or method name on the command line leads to
 an exception.
 
 Having compiled the example, invoke each method:
-```
+```shell
 $JAVA_HOME/bin/javac ReflectionExample.java
 $JAVA_HOME/bin/java ReflectionExample StringReverser reverse "hello"
 olleh
@@ -253,7 +250,7 @@ HELLO
 ```
 
 Build a native image as regularly, without a reflection configuration file and run a resulting image:
-```
+```shell
 $JAVA_HOME/bin/native-image ReflectionExample
 [reflectionexample:59625]    classlist:     467.66 ms
 ...
@@ -267,16 +264,16 @@ configuration file to be later feed into the native image generation together
 with a `--no-fallback` option.
 
 1. Create a directory `META-INF/native-image` in the working directory:
-```
+```shell
 mkdir -p META-INF/native-image
 ```
 2. Enable the agent and pass necessary command line arguments:
-```
+```shell
 $JAVA_HOME/bin/java -agentlib:native-image-agent=config-output-dir=META-INF/native-image ReflectionExample StringReverser reverse "hello"
 ```
 This command creates a _reflection-config.json_ file which makes the `StringReverser` class and the `reverse()` method accessible via reflection. The _jni-config.json_, _proxy-config.json_ ,and _resource-config.json_ configuration files are written in that directory too.
 3. Build a native image:
-```
+```shell
 $JAVA_HOME/bin/native-image --no-fallback ReflectionExample
 ```
 The native image generator automatically picks up configuration files in
@@ -287,7 +284,7 @@ directory structure is defined by the tool.
 
 4. Test the methods, but remember that you have not run the tracing agent twice to create a configuration
 that supports both:
-```
+```shell
 ./reflectionexample StringReverser reverse "hello"
 olleh
 ./reflectionexample  StringCapitalizer capitalize "hello"
@@ -304,7 +301,7 @@ are possible in a native image. You can either manually edit the
 _reflection-config.json_ file, or re-run the tracing agent to transform the
 existing configuration file, or extend it by using `config-merge-dir` option:
 
-```
+```shell
 $JAVA_HOME/bin/java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image ReflectionExample StringCapitalizer capitalize "hello"
 ```
 Note, the different option `config-merge-dir` instructs the agent to extend the
@@ -351,7 +348,7 @@ A directory containing configuration files that is not part of the class path ca
 ### Injecting the agent via the process environment
 
 Altering the `java` command line to inject the agent can prove to be difficult if the Java process is launched by an application or script file or if Java is even embedded in an existing process. In that case, it is also possible to inject the agent via the `JAVA_TOOL_OPTIONS` environment variable. This environment variable can be picked up by multiple Java processes which run at the same time, in which case each agent must write to a separate output directory with `config-output-dir`. (The next section describes how to merge sets of configuration files.) In order to use separate paths with a single global `JAVA_TOOL_OPTIONS` variable, the agent's output path options support placeholders:
-```
+```shell
 export JAVA_TOOL_OPTIONS="java -agentlib:native-image-agent=config-output-dir=/path/to/config-output-dir-{pid}-{datetime}/"
 ```
 
@@ -360,12 +357,12 @@ The `{pid}` placeholder is replaced with the process identifier, while `{datetim
 ### The Configuration Tool
 
 When using the agent in multiple processes at the same time as described in the previous section, `config-output-dir` is a safe option, but results in multiple sets of configuration files. The `native-image-configure` tool can be used to merge these configuration files. This tool must first be built with:
-```
+```shell
 native-image --tool:native-image-configure
 ```
 
 Then, the tool can be used to merge sets of configuration files as follows:
-```
+```shell
 native-image-configure generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/
 ```
 
@@ -376,18 +373,18 @@ An arbitrary number of `--input-dir` arguments with sets of configuration files 
 ### Trace Files
 
 In the examples above, `native-image-agent` has been used to both keep track of the dynamic accesses in a Java VM and then to generate a set of configuration files from them. However, for a better understanding of the execution, the agent can also write a _trace file_ in JSON format that contains each individual access:
-```
-$GRAALVM_HOME/bin/java -agentlib:native-image-agent=trace-output=/path/to/trace-file.json ...
+```shell
+$JAVA_HOME/bin/java -agentlib:native-image-agent=trace-output=/path/to/trace-file.json ...
 ```
 
 The `native-image-configure` tool can transform trace files to configuration files that can be used in native image builds. The following command reads and processes `trace-file.json` and generates a set of configuration files in directory `/path/to/config-dir/`:
-```
+```shell
 native-image-configure generate --trace-input=/path/to/trace-file.json --output-dir=/path/to/config-dir/
 ```
 
 ### Interoperability
 
 Although the agent is distributed with Graal VM, it uses the Java VM Tool Interface (JVMTI) and can potentially be used with other Java VMs that support JVMTI. In this case, it is necessary to provide the absolute path of the agent:
-```
+```shell
 /path/to/some/java -agentpath:/path/to/graalvm/jre/lib/amd64/libnative-image-agent.so=<options> ...
 ```

@@ -17,13 +17,13 @@ faster. You can collect multiple profile files and add them to the image build.
 
 1. Compile a Java program, build a native image of it with the `--pgo-instrument` option to collect the
 profiling information and run the resulting binary:
-```
+```shell
 javac MyClass.java
 native-image --pgo-instrument MyClass
 ./myclass
 ```
 2. Build the second native image specifying the path to the _profile.iprof_ file containing profile-guided optimization data and run the binary:
-```
+```shell
 native-image --pgo profile.iprof MyClass
 ./myclass
 ```
@@ -33,14 +33,14 @@ application in JIT mode and then use this information to generate
 a highly-optimized native binary.
 
 1. Run a Java program in JIT mode with a `-Dgraal.PGOInstrument` flag to gather the profiling information:
-```
+```shell
 java -Dgraal.PGOInstrument=myclass.iprof MyClass
 ```
 2. Use the collected data to generate a native image:
-```
+```shell
 native-image --pgo=myclass.iprof MyClass
 ```
 3. Run the resulting binary:
-```
+```shell
 ./myclass
 ```

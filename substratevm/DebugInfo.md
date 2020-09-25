@@ -4,9 +4,9 @@ To add debug info to a generated native image add flag
 `-H:GenerateDebugInfo=<N>` to the native image command line (where `N` is
 a positive integer value -- the default value `0` means generate no
 debug info). For example,
-```
+```shell
 javac Hello.java
-mx native-image -H:GenerateDebugInfo=1 Hello
+native-image -H:GenerateDebugInfo=1 Hello
 ```
 The resulting image should contain code (method) debug records in a
 format the GNU Debugger understands (Windows support is still under development).
@@ -35,13 +35,13 @@ source locations). However, source layouts do vary and it may not be
 possible to find all sources. Hence, users can specify the location of
 source files explicitly on the command line using option
 `DebugInfoSourceSearchPath`:
-```
+```shell
 javac --source-path apps/greeter/src \
     -d apps/greeter/classes org/my/greeter/*Greeter.java
 javac -cp apps/greeter/classes \
     --source-path apps/hello/src \
     -d apps/hello/classes org/my/hello/Hello.java
-mx native-image -H:GenerateDebugInfo=1 \
+native-image -H:GenerateDebugInfo=1 \
     -H:DebugInfoSourceSearchPath=apps/hello/src \
     -H:DebugInfoSourceSearchPath=apps/greeter/src \
     -cp apps/hello/classes:apps/greeter/classes org.my.hello.Hello
@@ -52,8 +52,8 @@ to this option can be either an absolute or relative path. It can
 identify either a directory, a source jar or a source zip file. It is
 also possible to specify several source roots at once using a comma
 separator:
-```
-mx native-image -H:GenerateDebugInfo=1 \
+```shell
+native-image -H:GenerateDebugInfo=1 \
     -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
     -cp apps/target/hello.jar:apps/target/greeter.jar \
     org.my.Hello
@@ -63,9 +63,9 @@ located under local directory sources. Option DebugInfoSourceCacheRoot
 can be used to specify an alternative location for the top level
 directory. As an example, the following variant of the previous
 command specifies the same target but employs an absolute path:
-```
+```shell
 SOURCE_CACHE_ROOT=$PWD/sources
-mx native-image -H:GenerateDebugInfo=1 \
+native-image -H:GenerateDebugInfo=1 \
     -H:DebugInfoSourceCacheRoot=$SOURCE_CACHE_ROOT \
     -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
     -cp apps/target/hello.jar:apps/target/greeter.jar \
@@ -189,7 +189,7 @@ sources are being included.
 
 You can also add extra directories to the search path using the `set
 directories` command:
-```
+```shell
 (gdb) set directories /path/to/my/sources/:/path/to/my/other/sources
 ```
 Note that the GNU Debugger does not understand zip format file systems so any extra entries you

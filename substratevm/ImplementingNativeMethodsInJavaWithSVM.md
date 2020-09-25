@@ -37,8 +37,8 @@ to the `jclass` value for the class declaring the method. The third parameter is
 portable (e.g. `long`) identifier of the [SubstrateVM isolatethread](C-API.md).
 The rest of the parameters are the actual parameters of the Java `Native.add`
 method described in the next section. Compile the code with shared option on:
-```
-$GRAALVM/bin/native-image --shared -H:Name=libnativeimpl -cp nativeimpl
+```shell
+$JAVA_HOME/bin/native-image --shared -H:Name=libnativeimpl -cp nativeimpl
 ```
 and the `libnativeimpl.so` is generated. We are ready to use it from standard
 Java code.

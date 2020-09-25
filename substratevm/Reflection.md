@@ -34,7 +34,7 @@ The analysis runs to a fix point which means that a chain of calls like `Class.f
 
 Following are examples of calls that can be intercepted and replaced with the corresponding element:
 
-```
+```java
 Class.forName("java.lang.Integer")
 Class.forName("java.lang.Integer", true, ClassLoader.getSystemClassLoader())
 Class.forName("java.lang.Integer").getMethod("equals", Object.class)
@@ -47,19 +47,19 @@ Integer.class.getDeclaredField("value")
 
 The following ways to declare and populate an array are equivalent from the point of view of the analysis:
 
-```
+```java
 Class<?>[] params0 = new Class<?>[]{String.class, int.class};
 Integer.class.getMethod("parseInt", params0);
 ```
 
-```
+```java
 Class<?>[] params1 = new Class<?>[2];
 params1[0] = Class.forName("java.lang.String");
 params1[1] = int.class;
 Integer.class.getMethod("parseInt", params1);
 ```
 
-```
+```java
 Class<?>[] params2 = {String.class, int.class};
 Integer.class.getMethod("parseInt", params2);
 ```

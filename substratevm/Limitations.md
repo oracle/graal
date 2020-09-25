@@ -90,7 +90,7 @@ signal handlers when building native images for containerized environments, like
 Docker containers.
 
 To register the default signal handlers, pass the `--install-exit-handlers` option to the
-`natie-image` builder. This option gives you the same signal handlers as a JVM does.
+`native-image` builder. This option gives you the same signal handlers as a JVM does.
 
 ### Class Initializers
 By default, classes are initialized at image run time.
