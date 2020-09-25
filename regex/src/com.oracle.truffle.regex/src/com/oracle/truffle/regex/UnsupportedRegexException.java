@@ -59,7 +59,7 @@ public final class UnsupportedRegexException extends AbstractTruffleException {
     }
 
     public UnsupportedRegexException(String reason, Throwable cause) {
-        super(null, cause, -1, null);
+        super(null, cause, UNLIMITED_STACK_TRACE, null);
         this.reason = reason;
     }
 

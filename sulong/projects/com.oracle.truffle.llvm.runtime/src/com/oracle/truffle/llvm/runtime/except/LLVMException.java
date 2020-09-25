@@ -40,7 +40,7 @@ public abstract class LLVMException extends AbstractTruffleException {
     private static final long serialVersionUID = 1L;
 
     protected LLVMException(Node location, String message, Throwable cause) {
-        super(message, cause, -1, location);
+        super(message, cause, UNLIMITED_STACK_TRACE, location);
     }
 
     protected LLVMException(Node location, String message) {

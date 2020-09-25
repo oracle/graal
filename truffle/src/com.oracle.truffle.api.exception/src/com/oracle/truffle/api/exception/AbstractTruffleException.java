@@ -138,6 +138,8 @@ import com.oracle.truffle.api.source.SourceSection;
 @SuppressWarnings({"serial", "deprecation"})
 public abstract class AbstractTruffleException extends RuntimeException implements TruffleObject, com.oracle.truffle.api.TruffleException {
 
+    public static final int UNLIMITED_STACK_TRACE = -1;
+
     private final int stackTraceElementLimit;
     private final Throwable internalCause;
     private final Node location;
@@ -149,7 +151,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * @since 20.3
      */
     protected AbstractTruffleException() {
-        this(null, null, -1, null);
+        this(null, null, UNLIMITED_STACK_TRACE, null);
     }
 
     /**
@@ -158,7 +160,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * @since 20.3
      */
     protected AbstractTruffleException(Node location) {
-        this(null, null, -1, location);
+        this(null, null, UNLIMITED_STACK_TRACE, location);
     }
 
     /**
@@ -167,7 +169,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * @since 20.3
      */
     protected AbstractTruffleException(String message) {
-        this(message, null, -1, null);
+        this(message, null, UNLIMITED_STACK_TRACE, null);
     }
 
     /**
@@ -176,7 +178,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * @since 20.3
      */
     protected AbstractTruffleException(String message, Node location) {
-        this(message, null, -1, location);
+        this(message, null, UNLIMITED_STACK_TRACE, location);
     }
 
     /**
@@ -184,8 +186,8 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      *
      * @param message the exception message or {@code null}
      * @param internalCause a Truffle exception causing this exception or {@code null}
-     * @param stackTraceElementLimit a stack trace limit. Use {@code -1} for unlimited stack trace
-     *            length.
+     * @param stackTraceElementLimit a stack trace limit. Use {@link #UNLIMITED_STACK_TRACE} for
+     *            unlimited stack trace length.
      *
      * @since 20.3
      */

@@ -57,6 +57,6 @@ public class WasmValidationException extends AbstractTruffleException {
 
     @TruffleBoundary
     public WasmValidationException(String message, Throwable cause) {
-        super(message, cause, -1, null);
+        super(message, cause, UNLIMITED_STACK_TRACE, null);
     }
 }

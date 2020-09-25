@@ -59,9 +59,8 @@ public class WasmExecutionException extends AbstractTruffleException {
     }
 
     public WasmExecutionException(Node location, String message, Throwable cause) {
-        super(message, cause);
+        super(message, cause, UNLIMITED_STACK_TRACE, location);
         CompilerAsserts.neverPartOfCompilation();
-        this.location = location;
     }
 
     @TruffleBoundary

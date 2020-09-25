@@ -36,7 +36,7 @@ public final class LSPIOException extends AbstractTruffleException {
     private static final long serialVersionUID = 310418381621312260L;
 
     public LSPIOException(String message, Throwable e) {
-        super(message, e, -1, null);
+        super(message, e, UNLIMITED_STACK_TRACE, null);
     }
 
     @ExportMessage

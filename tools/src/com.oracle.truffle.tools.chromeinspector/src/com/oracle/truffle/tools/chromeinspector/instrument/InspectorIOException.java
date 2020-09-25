@@ -37,7 +37,7 @@ class InspectorIOException extends AbstractTruffleException {
     private static final long serialVersionUID = 1205823327748715981L;
 
     InspectorIOException(String hostAndPort, IOException e) {
-        super(String.format("Starting inspector on %s failed: %s", hostAndPort, e.getLocalizedMessage()), e, -1, null);
+        super(String.format("Starting inspector on %s failed: %s", hostAndPort, e.getLocalizedMessage()), e, UNLIMITED_STACK_TRACE, null);
     }
 
     @ExportMessage

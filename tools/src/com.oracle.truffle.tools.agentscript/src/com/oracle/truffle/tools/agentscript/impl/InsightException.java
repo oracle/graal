@@ -50,7 +50,7 @@ final class InsightException extends AbstractTruffleException {
 
     @TruffleBoundary
     private InsightException(String msg, Throwable cause, int exitCode) {
-        super("insight: " + msg, cause, -1, null);
+        super("insight: " + msg, cause, UNLIMITED_STACK_TRACE, null);
         this.exitCode = exitCode;
     }
 

@@ -42,13 +42,12 @@ package org.graalvm.wasm.exception;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
 /**
  * Thrown for various error condition when using the Wasm-JS API.
  */
-public class WasmJsApiException extends RuntimeException implements TruffleException {
+public class WasmJsApiException extends AbstractTruffleException {
 
     public enum Kind {
         TypeError,
@@ -64,11 +63,6 @@ public class WasmJsApiException extends RuntimeException implements TruffleExcep
         super(message);
         CompilerAsserts.neverPartOfCompilation();
         this.kind = kind;
-    }
-
-    @Override
-    public Node getLocation() {
-        return null;
     }
 
     public Kind kind() {

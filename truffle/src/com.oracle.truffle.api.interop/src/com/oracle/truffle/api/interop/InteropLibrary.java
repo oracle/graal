@@ -275,8 +275,9 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns {@code true} if the receiver has an declaring meta object. Invoking this message does
-     * not cause any observable side-effects. Returns {@code false} by default.
+     * Returns {@code true} if the receiver has a declaring meta object. The declaring meta object
+     * is the meta object of the executable owner. Invoking this message does not cause any
+     * observable side-effects. Returns {@code false} by default.
      *
      * @see #getDeclaringMetaObject(Object)
      * @since 20.3
@@ -287,8 +288,9 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns declaring meta object. Throws {@code UnsupportedMessageException} when the receiver
-     * is has no {@link #hasDeclaringMetaObject(Object) declaring meta object}.
+     * Returns declaring meta object. The declaring meta object is the meta object of the executable
+     * owner. Throws {@code UnsupportedMessageException} when the receiver is has no
+     * {@link #hasDeclaringMetaObject(Object) declaring meta object}.
      *
      * @see #hasDeclaringMetaObject(Object)
      * @since 20.3
