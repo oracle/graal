@@ -672,39 +672,25 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public boolean dataEquals(Node a, Node b) {
         assert a.getClass() == b.getClass();
-        for (int i = 0; i < data.getCount(); ++i) {
+
+        final Fields data = this.data;
+        final int n = data.getCount();
+
+        int nonPrimsRemain = 0;
+
+        for (int i = 0; i < n; ++i) {
             Class<?> type = data.getType(i);
             if (type.isPrimitive()) {
                 if (type == Integer.TYPE) {
-                    int aInt = data.getInt(a, i);
-                    int bInt = data.getInt(b, i);
-                    if (aInt != bInt) {
-                        return false;
-                    }
+                    if (!data.equalInt(i, a, b)) return false;
                 } else if (type == Boolean.TYPE) {
-                    boolean aBoolean = data.getBoolean(a, i);
-                    boolean bBoolean = data.getBoolean(b, i);
-                    if (aBoolean != bBoolean) {
-                        return false;
-                    }
+                    if (!data.equalBoolean(i, a, b)) return false;
                 } else if (type == Long.TYPE) {
-                    long aLong = data.getLong(a, i);
-                    long bLong = data.getLong(b, i);
-                    if (aLong != bLong) {
-                        return false;
-                    }
+                    if (!data.equalLong(i, a, b)) return false;
                 } else if (type == Float.TYPE) {
-                    float aFloat = data.getFloat(a, i);
-                    float bFloat = data.getFloat(b, i);
-                    if (aFloat != bFloat) {
-                        return false;
-                    }
+                    if (!data.equalFloat(i, a, b)) return false;
                 } else if (type == Double.TYPE) {
-                    double aDouble = data.getDouble(a, i);
-                    double bDouble = data.getDouble(b, i);
-                    if (aDouble != bDouble) {
-                        return false;
-                    }
+                    if (!data.equalDouble(i, a, b)) return false;
                 } else if (type == Short.TYPE) {
                     short aShort = data.getShort(a, i);
                     short bShort = data.getShort(b, i);
@@ -726,21 +712,33 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                 } else {
                     assert false : "unhandled type: " + type;
                 }
-            } else {
-                Object objectA = data.getObject(a, i);
-                Object objectB = data.getObject(b, i);
-                assert !isLambda(objectA) || !isLambda(objectB) : "lambdas are not permitted in fields of " + this.toString();
-                if (objectA != objectB) {
-                    if (objectA != null && objectB != null) {
-                        if (!deepEquals0(objectA, objectB)) {
+            } else
+                nonPrimsRemain++;
+        }
+
+        //defer non-primitive comparison until after all primitives have been tested
+        if (nonPrimsRemain > 0) {
+            //TODO use bitset to track the entries in the previous loop to avoid comparing all for non-primitive
+            for (int i = 0; i < n; ++i) {
+                if (!data.getType(i).isPrimitive()) {
+                    Object objectA = data.getObject(a, i);
+                    Object objectB = data.getObject(b, i);
+                    assert !isLambda(objectA) || !isLambda(objectB) : "lambdas are not permitted in fields of " + this.toString();
+                    if (objectA != objectB) {
+                        if (objectA != null && objectB != null) {
+                            if (!deepEquals0(objectA, objectB)) {
+                                return false;
+                            }
+                        } else {
                             return false;
                         }
-                    } else {
-                        return false;
                     }
-                }
-            }
+                    if (--nonPrimsRemain <= 0)
+                        break;
+              }
+           }
         }
+
         return true;
     }
 
@@ -754,13 +752,14 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             return true;
         }
         Edges toEdges = getEdges(fromEdges.type());
-        if (pos.getIndex() >= toEdges.getCount()) {
+        final int index = pos.getIndex();
+        if (index >= toEdges.getCount()) {
             return false;
         }
-        if (pos.getIndex() >= fromEdges.getCount()) {
+        if (index >= fromEdges.getCount()) {
             return false;
         }
-        return toEdges.isSame(fromEdges, pos.getIndex());
+        return toEdges.isSame(fromEdges, index);
     }
 
     static void updateEdgesInPlace(Node node, InplaceUpdateClosure duplicationReplacement, Edges edges) {
@@ -799,7 +798,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private static NodeList<Node> updateEdgeListCopy(Node node, NodeList<Node> list, InplaceUpdateClosure duplicationReplacement, Edges.Type type) {
         NodeList<Node> result = type == Edges.Type.Inputs ? new NodeInputList<>(node, list.size()) : new NodeSuccessorList<>(node, list.size());
 
-        for (int i = 0; i < list.count(); ++i) {
+        final int n = list.count();
+        for (int i = 0; i < n; ++i) {
             Node oldNode = list.get(i);
             if (oldNode != null) {
                 Node newNode = duplicationReplacement.replacement(oldNode, type);
@@ -895,8 +895,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         // re-wire inputs
         for (Node oldNode : nodes) {
             Node node = newNodes.get(oldNode);
-            NodeClass<?> nodeClass = node.getNodeClass();
             if (replacements == null || replacements.replacement(oldNode) == oldNode) {
+                NodeClass<?> nodeClass = node.getNodeClass();
                 nodeClass.updateInputSuccInPlace(node, replacementClosure);
             } else {
                 transferEdgesDifferentNodeClass(graph, replacements, newNodes, oldNode, node);

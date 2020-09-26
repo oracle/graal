@@ -33,6 +33,7 @@ import java.util.List;
 
 import org.graalvm.compiler.debug.GraalError;
 
+import org.graalvm.compiler.graph.Node;
 import sun.misc.Unsafe;
 
 /**
@@ -102,6 +103,31 @@ public class Fields {
         }
     }
 
+    public boolean equalInt(int i, Node a, Node b) {
+        assert types[i] == int.class;
+        final long offset = offsets[i];
+        return UNSAFE.getInt(a, offset) == UNSAFE.getInt(b, offset);
+    }
+    public boolean equalBoolean(int i, Node a, Node b) {
+        assert types[i] == boolean.class;
+        final long offset = offsets[i];
+        return UNSAFE.getBoolean(a, offset) == UNSAFE.getBoolean(b, offset);
+    }
+    public boolean equalLong(int i, Node a, Node b) {
+        assert types[i] == long.class;
+        final long offset = offsets[i];
+        return UNSAFE.getLong(a, offset) == UNSAFE.getLong(b, offset);
+    }
+    public boolean equalFloat(int i, Node a, Node b) {
+        assert types[i] == float.class;
+        final long offset = offsets[i];
+        return UNSAFE.getFloat(a, offset) == UNSAFE.getFloat(b, offset);
+    }
+    public boolean equalDouble(int i, Node a, Node b) {
+        assert types[i] == double.class;
+        final long offset = offsets[i];
+        return UNSAFE.getDouble(a, offset) == UNSAFE.getDouble(b, offset);
+    }
     /**
      * Function enabling an object field value to be replaced with another value when being copied
      * within {@link Fields#copy(Object, Object, ObjectTransformer)}.
