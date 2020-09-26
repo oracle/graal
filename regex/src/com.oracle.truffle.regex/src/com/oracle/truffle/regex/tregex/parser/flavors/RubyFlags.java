@@ -43,7 +43,6 @@ package com.oracle.truffle.regex.tregex.parser.flavors;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
-import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
@@ -51,17 +50,14 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  */
 public final class RubyFlags extends AbstractConstantKeysObject {
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("ASCII", "DOTALL", "IGNORECASE", "LOCALE", "MULTILINE", "TEMPLATE", "UNICODE", "VERBOSE");
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("EXTENDED", "IGNORECASE", "MULTILINE");
 
     private final int value;
 
-    private static final String FLAGS = "iLmsxatu";
-    private static final String TYPE_FLAGS = "Lau";
-    private static final String GLOBAL_FLAGS = "t";
+    private static final String FLAGS = "imx";
     private static final String INTERNAL_FLAGS = "y";
 
     public static final RubyFlags EMPTY_INSTANCE = new RubyFlags("");
-    public static final RubyFlags TYPE_FLAGS_INSTANCE = new RubyFlags(TYPE_FLAGS);
 
     public RubyFlags(String source) {
         int bits = 0;
@@ -93,37 +89,18 @@ public final class RubyFlags extends AbstractConstantKeysObject {
         return hasFlag('i');
     }
 
-    public boolean isLocale() {
-        return hasFlag('L');
-    }
-
-    public boolean isMultiLine() {
+    public boolean isMultiline() {
         return hasFlag('m');
     }
 
-    public boolean isDotAll() {
-        return hasFlag('s');
-    }
-
-    public boolean isVerbose() {
+    public boolean isExtended() {
         return hasFlag('x');
-    }
-
-    public boolean isAscii() {
-        return hasFlag('a');
-    }
-
-    public boolean isTemplate() {
-        return hasFlag('t');
-    }
-
-    public boolean isUnicode() {
-        return hasFlag('u');
     }
 
     public boolean isSticky() {
         return hasFlag('y');
     }
+
 
     public RubyFlags addFlag(int flagChar) {
         return new RubyFlags(this.value | maskForFlag(flagChar));
@@ -137,56 +114,8 @@ public final class RubyFlags extends AbstractConstantKeysObject {
         return new RubyFlags(this.value & ~otherFlags.value);
     }
 
-    /**
-     * Verifies that there is at most one type flag and that the type flag is compatible with the
-     * chosen regular expression mode. If a string pattern is used, ensures that the unicode flag is
-     * set by default.
-     */
-    public RubyFlags fixFlags(boolean bytes) {
-        if (bytes) {
-            if (hasFlag('u')) {
-                throw new RegexSyntaxException("cannot use UNICODE flag with a bytes pattern");
-            }
-            if (hasFlag('a') && hasFlag('L')) {
-                throw new RegexSyntaxException("ASCII and LOCALE flags are incompatible");
-            }
-            return this;
-        } else {
-            if (hasFlag('L')) {
-                throw new RegexSyntaxException("cannot use LOCALE flag with a str pattern");
-            }
-            if (hasFlag('a') && hasFlag('u')) {
-                throw new RegexSyntaxException("ASCII and UNICODE flags are incompatible");
-            }
-            if (!hasFlag('a')) {
-                return addFlag('u');
-            } else {
-                return this;
-            }
-        }
-    }
-
     public static boolean isValidFlagChar(int candidateChar) {
         return FLAGS.indexOf(candidateChar) >= 0;
-    }
-
-    public int numberOfTypeFlags() {
-        int typeFlags = 0;
-        for (int i = 0; i < TYPE_FLAGS.length(); i++) {
-            if (hasFlag(TYPE_FLAGS.charAt(i))) {
-                typeFlags++;
-            }
-        }
-        return typeFlags;
-    }
-
-    public boolean includesGlobalFlags() {
-        for (int i = 0; i < GLOBAL_FLAGS.length(); i++) {
-            if (hasFlag(GLOBAL_FLAGS.charAt(i))) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public boolean overlaps(RubyFlags otherFlags) {
@@ -223,22 +152,12 @@ public final class RubyFlags extends AbstractConstantKeysObject {
     @Override
     public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
         switch (symbol) {
-            case "ASCII":
-                return isAscii();
-            case "DOTALL":
-                return isDotAll();
+            case "EXTENDED":
+                return isExtended();
             case "IGNORECASE":
                 return isIgnoreCase();
-            case "LOCALE":
-                return isLocale();
             case "MULTILINE":
-                return isMultiLine();
-            case "TEMPLATE":
-                return isTemplate();
-            case "UNICODE":
-                return isUnicode();
-            case "VERBOSE":
-                return isVerbose();
+                return isMultiline();
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnknownIdentifierException.create(symbol);

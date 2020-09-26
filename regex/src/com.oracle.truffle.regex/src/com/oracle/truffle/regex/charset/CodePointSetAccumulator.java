@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.charset;
 import java.util.Iterator;
 
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 public class CodePointSetAccumulator implements Iterable<Range> {
 
@@ -65,6 +66,10 @@ public class CodePointSetAccumulator implements Iterable<Range> {
 
     public void addRange(int lo, int hi) {
         acc.addRange(lo, hi);
+    }
+
+    public void addCodePoint(int cp) {
+        addRange(cp, cp);
     }
 
     public void appendRange(Range r) {
@@ -101,6 +106,22 @@ public class CodePointSetAccumulator implements Iterable<Range> {
 
     public CodePointSet toCodePointSet() {
         return CodePointSet.create(acc);
+    }
+
+    public void invert(CodePointSetAccumulator target, Encoding encoding) {
+        if (acc.isEmpty()) {
+            target.addRange(encoding.getMinValue(), encoding.getMaxValue());
+            return;
+        }
+        if (acc.getMin() > encoding.getMinValue()) {
+            target.addRange(encoding.getMinValue(), acc.getMin() - 1);
+        }
+        for (int i = 1; i < acc.size(); i++) {
+            target.addRange(acc.getHi(i - 1) + 1, acc.getLo(i) - 1);
+        }
+        if (acc.getMax() < encoding.getMaxValue()) {
+            target.addRange(acc.getMax() + 1, encoding.getMaxValue());
+        }
     }
 
     @Override
