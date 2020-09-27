@@ -5,6 +5,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 ## Version 20.3.0
 * Added a `log.file` option that allows redirection of all language, instrument or engine logging to a file. The handler configured with the `Context.Builder.logHandler` method has precedence over the new option.
 * The option `-Dgraal.LogFile` is no longer inherited by the polyglot engine. Use the `log.file` option or configure a log handler instead.
+* Added the ability to specify a `TargetMappingPrecedence` of target type mappings for `HostAccess`  configurations that influence conversion order and precedence in relation to default  mappings and other target type mappings.
 
 ## Version 20.2.0
 * Added `-Dpolyglot.engine.AllowExperimentalOptions=true` to allow experimental options for all polyglot engines of a host VM. This system property is intended to be used for testing only and should not be enabled in production environments.

@@ -1155,7 +1155,7 @@ final class HostObject implements TruffleObject {
             } else {
                 boolean canConvert = ToHostNode.canConvert(other, c, c,
                                 ToHostNode.allowsImplementation(languageContext, c),
-                                languageContext, ToHostNode.MAX,
+                                languageContext, ToHostNode.LOWEST,
                                 InteropLibrary.getFactory().getUncached(other),
                                 TargetMappingNode.getUncached());
                 return canConvert;

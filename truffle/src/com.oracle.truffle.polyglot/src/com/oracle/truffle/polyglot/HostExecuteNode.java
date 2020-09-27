@@ -315,7 +315,9 @@ abstract class HostExecuteNode extends Node {
                         if (otherPossibleMappings == null) {
                             otherPossibleMappings = new LinkedHashSet<>();
                         }
-                        otherPossibleMappings.addAll(Arrays.asList(otherMappings));
+                        for (PolyglotTargetMapping mapping : otherMappings) {
+                            otherPossibleMappings.add(mapping);
+                        }
                     }
                 }
             }
@@ -332,7 +334,7 @@ abstract class HostExecuteNode extends Node {
             PolyglotTargetMapping[] mappings = cache.getMappings(targetType);
             if (mappings.length > 0 || otherPossibleMappings != null) {
                 PolyglotTargetMapping[] otherMappings = otherPossibleMappings != null ? otherPossibleMappings.toArray(HostClassCache.EMPTY_MAPPINGS) : HostClassCache.EMPTY_MAPPINGS;
-                argType = new TargetMappingType(argType, mappings, otherMappings);
+                argType = new TargetMappingType(argType, mappings, otherMappings, priority);
             }
             /*
              * We need to eagerly insert as the cachedArgTypes might be used before they are adopted
@@ -899,11 +901,14 @@ abstract class HostExecuteNode extends Node {
         @Child TargetMappingNode targetMapping;
         @Children final SingleMappingNode[] mappingNodes;
         @Children final SingleMappingNode[] otherMappingNodes;
+        final int priority;
 
         TargetMappingType(TypeCheckNode fallback,
                         PolyglotTargetMapping[] mappings,
-                        PolyglotTargetMapping[] otherMappings) {
+                        PolyglotTargetMapping[] otherMappings,
+                        int priority) {
             this.fallback = fallback;
+            this.priority = priority;
             this.mappings = mappings;
             this.otherMappings = otherMappings;
             this.mappingNodes = new SingleMappingNode[mappings.length];
@@ -921,14 +926,22 @@ abstract class HostExecuteNode extends Node {
         @ExplodeLoop
         boolean execute(Object test, InteropLibrary interop, PolyglotLanguageContext languageContext) {
             for (int i = 0; i < otherMappingNodes.length; i++) {
-                Object result = otherMappingNodes[i].execute(test, otherMappings[i], languageContext, interop, true);
+                PolyglotTargetMapping mapping = otherMappings[i];
+                if (mapping.hostPriority > priority) {
+                    break;
+                }
+                Object result = otherMappingNodes[i].execute(test, mapping, languageContext, interop, true);
                 if (result == Boolean.TRUE) {
                     return false;
                 }
             }
 
             for (int i = 0; i < mappingNodes.length; i++) {
-                Object result = mappingNodes[i].execute(test, mappings[i], languageContext, interop, true);
+                PolyglotTargetMapping mapping = mappings[i];
+                if (mapping.hostPriority > priority) {
+                    break;
+                }
+                Object result = mappingNodes[i].execute(test, mapping, languageContext, interop, true);
                 if (result == Boolean.TRUE) {
                     return true;
                 }
@@ -1002,11 +1015,11 @@ abstract class HostExecuteNode extends Node {
         @Override
         public boolean execute(Object value, InteropLibrary interop, PolyglotLanguageContext languageContext) {
             for (Class<?> otherType : otherTypes) {
-                if (ToHostNode.canConvertToPrimitive(value, otherType, interop, priority)) {
+                if (ToHostNode.canConvert(value, otherType, otherType, null, languageContext, priority, interop, null)) {
                     return false;
                 }
             }
-            return ToHostNode.canConvertToPrimitive(value, targetType, interop, priority);
+            return ToHostNode.canConvert(value, targetType, targetType, null, languageContext, priority, interop, null);
         }
     }
 
