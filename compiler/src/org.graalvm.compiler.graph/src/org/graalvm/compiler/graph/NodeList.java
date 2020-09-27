@@ -338,9 +338,8 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @Override
     public boolean contains(T other) {
         for (int i = 0; i < size; i++) {
-            if (nodes[i] == other) {
+            if (nodes[i] == other)
                 return true;
-            }
         }
         return false;
     }
@@ -354,7 +353,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @Override
     public void snapshotTo(Collection<? super T> to) {
         for (int i = 0; i < size; i++) {
-            to.add(get(i));
+            to.add((T)nodes[i]);
         }
     }
 
