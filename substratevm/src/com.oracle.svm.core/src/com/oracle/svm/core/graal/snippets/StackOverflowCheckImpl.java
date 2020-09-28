@@ -63,6 +63,7 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -255,7 +256,7 @@ final class InsertStackOverflowCheckPhase extends Phase {
              */
             return;
 
-        } else if (graph.method().getAnnotation(CFunction.class) != null) {
+        } else if (graph.method().getAnnotation(CFunction.class) != null || graph.method().getAnnotation(InvokeCFunctionPointer.class) != null) {
             /*
              * We are leaving Java code. C code (and the transitioning frame to C code) can run in
              * the red zone of the stack. This avoids reporting a StackOverflowError at a strange
