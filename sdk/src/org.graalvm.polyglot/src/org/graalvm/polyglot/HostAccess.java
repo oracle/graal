@@ -361,10 +361,10 @@ public final class HostAccess {
      * {@link #HIGH high} precedences are invoked before all {@link Value#as(Class) default
      * mappings}. {@link #LOW Low} after all loss less conversions and {@link #LOWEST lowest} after
      * all other default mappings.
-     * <li>To disambiguate multiple selected overloads on method invocation. The precedence defines
-     * which method has precedence over other applicable methods. {@link #HIGHEST Highest} have
-     * higher and {@link #HIGH high} have the same precedence as the default loss-less mapping. The
-     * precedence {@link #LOW low} declares equal precedence than all lossy coercions and
+     * <li>To disambiguate multiple selected overloads on method invocation. The overload precedence
+     * defines which method has precedence over other applicable methods. {@link #HIGHEST Highest}
+     * have higher and {@link #HIGH high} have the same precedence as the default loss-less mapping.
+     * The precedence {@link #LOW low} declares equal precedence than all lossy coercions and
      * {@link #LOWEST lowest} defines precedence lower than all default mappings.
      * </ul>
      *
@@ -384,7 +384,7 @@ public final class HostAccess {
         /**
          * Defines high or default precedence and conversion order for a target type mapping. This
          * precedence makes mappings be used before all other default mappings and treated with
-         * equal precedence as default loss less mappings like primitive coercions.
+         * equal overload precedence as default loss less mappings like primitive coercions.
          *
          * @since 20.3
          */
@@ -393,7 +393,7 @@ public final class HostAccess {
         /**
          * Defines low precedence and conversion order for a target type mapping. This precedence
          * makes mappings be used before all other default lossy mappings and treated with equal
-         * precedence as default lossy mappings, like mappings to Map.
+         * overload precedence as default lossy mappings, like mappings to Map.
          *
          * @since 20.3
          */
@@ -401,8 +401,8 @@ public final class HostAccess {
 
         /**
          * Defines lowest precedence and conversion order for a target type mapping. This precedence
-         * makes mappings be used after all other default mappings and treated with lower precedence
-         * as all default mappings or other target type mappings.
+         * makes mappings be used after all other default mappings and treated with lower overload
+         * precedence as all default mappings or other target type mappings.
          *
          * @since 20.3
          */
@@ -603,7 +603,7 @@ public final class HostAccess {
          * Adds a custom source to target type mapping for Java host calls, host field assignments
          * and {@link Value#as(Class) explicit value conversions}. Method is equivalent to calling
          * the targetTypeMapping method with precedence {@link TargetMappingPrecedence#HIGH}.
-         * 
+         *
          * @since 19.0
          */
         public <S, T> Builder targetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> accepts, Function<S, T> converter) {
@@ -660,7 +660,7 @@ public final class HostAccess {
          * <li>{@link TargetMappingPrecedence#LOW} or {@link TargetMappingPrecedence#LOWEST}: The
          * String method overload will be selected and invoked as the target mapping has a lower
          * precedence than default.
-         * <li>In this example the outcome of low and very low are equivalent. There are differences
+         * <li>In this example the outcome of low and lowest are equivalent. There are differences
          * between low and lowest. See {@link TargetMappingPrecedence} for details.
          * </ul>
          * <p>
