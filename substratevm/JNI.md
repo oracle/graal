@@ -82,7 +82,7 @@ Alternatively, instead of requiring symbols that conform to JNI name mangling sc
 ### JNI Functions
 JNI provides a set of functions that native code can use to interact with Java code.
 Substrate VM implements these functions using `@CEntryPoint`, for example:
-```c
+```java
 @CEntryPoint(...) private static void DeleteGlobalRef(JNIEnvironment env, JNIObjectHandle globalRef) { /* setup; */ JNIGlobalHandles.singleton().delete(globalRef); }
 ```
 JNI specifies that these functions are provided via function pointers in a C struct that is accessible via the `JNIEnv*` argument.
