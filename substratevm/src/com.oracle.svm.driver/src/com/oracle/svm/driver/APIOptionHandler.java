@@ -44,6 +44,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOption.APIOptionKind;
@@ -57,6 +58,8 @@ import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final class OptionInfo {
+        final String[] variants;
+        final char valueSeparator;
         final String builderOption;
         final String defaultValue;
         final String helpText;
@@ -66,8 +69,10 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
         final List<Function<Object, Object>> valueTransformers;
 
-        OptionInfo(String builderOption, String defaultValue, String helpText, boolean hasPathArguments, boolean defaultFinal, String deprecationWarning,
+        OptionInfo(String[] variants, char valueSeparator, String builderOption, String defaultValue, String helpText, boolean hasPathArguments, boolean defaultFinal, String deprecationWarning,
                         List<Function<Object, Object>> valueTransformers) {
+            this.variants = variants;
+            this.valueSeparator = valueSeparator;
             this.builderOption = builderOption;
             this.defaultValue = defaultValue;
             this.helpText = helpText;
@@ -115,7 +120,10 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
             for (APIOption apiAnnotation : apiAnnotations) {
                 String builderOption = optionPrefix;
-                String apiOptionName = APIOption.Utils.name(apiAnnotation);
+
+                VMError.guarantee(apiAnnotation.name().length > 0,
+                                String.format("APIOption for %s does not provide a name entry", optionDescriptor.getLocation()));
+                String apiOptionName = APIOption.Utils.optionName(apiAnnotation.name()[0]);
                 String rawOptionName = optionDescriptor.getName();
                 boolean booleanOption = false;
                 if (optionDescriptor.getOptionValueType().equals(Boolean.class)) {
@@ -168,7 +176,8 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     }
                 }
                 apiOptions.put(apiOptionName,
-                                new APIOptionHandler.OptionInfo(builderOption, defaultValue, helpText, apiAnnotation.kind().equals(APIOptionKind.Paths),
+                                new APIOptionHandler.OptionInfo(apiAnnotation.name(), apiAnnotation.valueSeparator(), builderOption, defaultValue, helpText,
+                                                apiAnnotation.kind().equals(APIOptionKind.Paths),
                                                 booleanOption || apiAnnotation.fixedValue().length > 0, apiAnnotation.deprecated(), valueTransformers));
             }
         } catch (NoSuchFieldException e) {
@@ -189,23 +198,39 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     String translateOption(String arg) {
-        String[] optionParts = arg.split("=", 2);
-        OptionInfo option = apiOptions.get(optionParts[0]);
+        OptionInfo option = null;
+        String[] optionNameAndOptionValue = null;
+        found: for (OptionInfo optionInfo : apiOptions.values()) {
+            for (String variant : optionInfo.variants) {
+                String optionName = APIOption.Utils.optionName(variant);
+                if (arg.equals(optionName)) {
+                    option = optionInfo;
+                    optionNameAndOptionValue = new String[]{optionName};
+                    break found;
+                }
+                if (arg.startsWith(optionName + optionInfo.valueSeparator)) {
+                    option = optionInfo;
+                    optionNameAndOptionValue = SubstrateUtil.split(arg, Character.toString(optionInfo.valueSeparator), 2);
+                    break found;
+                }
+            }
+
+        }
         if (option != null) {
             if (!option.deprecationWarning.isEmpty()) {
-                NativeImage.showWarning("Using a deprecated option " + optionParts[0] + ". " + option.deprecationWarning);
+                NativeImage.showWarning("Using a deprecated option " + optionNameAndOptionValue[0] + ". " + option.deprecationWarning);
             }
             String builderOption = option.builderOption;
             String optionValue = option.defaultValue;
-            if (optionParts.length == 2) {
+            if (optionNameAndOptionValue.length == 2) {
                 if (option.defaultFinal) {
-                    NativeImage.showError("Passing values to option " + optionParts[0] + " is not supported.");
+                    NativeImage.showError("Passing values to option " + optionNameAndOptionValue[0] + " is not supported.");
                 }
-                optionValue = optionParts[1];
+                optionValue = optionNameAndOptionValue[1];
             }
             if (optionValue != null) {
                 if (option.hasPathArguments) {
-                    optionValue = Arrays.stream(optionValue.split(","))
+                    optionValue = Arrays.stream(SubstrateUtil.split(optionValue, ","))
                                     .filter(s -> !s.isEmpty())
                                     .map(this::tryCanonicalize)
                                     .collect(Collectors.joining(","));

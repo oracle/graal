@@ -110,7 +110,7 @@ import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.OS;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -472,7 +472,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         }
 
         hotSpotSubstrateReplacements.encode(impl.getBigBang().getOptions());
-        if (!SubstrateOptions.getRuntimeAssertionsForClass(SnippetParameterInfo.class.getName())) {
+        if (!RuntimeAssertionsSupport.singleton().desiredAssertionStatus(SnippetParameterInfo.class)) {
             // Clear that saved names if assertions aren't enabled
             hotSpotSubstrateReplacements.clearSnippetParameterNames();
         }

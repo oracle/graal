@@ -105,6 +105,7 @@ import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
@@ -912,16 +913,16 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 JavaConstant constantReceiver = receiver.get().asJavaConstant();
                 if (constantReceiver != null && constantReceiver.isNonNull()) {
-                    Object clazz = snippetReflection.asObject(Object.class, constantReceiver);
-                    String className;
-                    if (clazz instanceof Class) {
-                        className = ((Class<?>) clazz).getName();
-                    } else if (clazz instanceof DynamicHub) {
-                        className = ((DynamicHub) clazz).getName();
+                    Object clazzOrHub = snippetReflection.asObject(Object.class, constantReceiver);
+                    boolean desiredAssertionStatus;
+                    if (clazzOrHub instanceof Class) {
+                        desiredAssertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus((Class<?>) clazzOrHub);
+                    } else if (clazzOrHub instanceof DynamicHub) {
+                        desiredAssertionStatus = ((DynamicHub) clazzOrHub).desiredAssertionStatus();
                     } else {
-                        throw VMError.shouldNotReachHere("Unexpected class object: " + clazz);
+                        throw VMError.shouldNotReachHere("Unexpected class object: " + clazzOrHub);
                     }
-                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(!SubstrateOptions.getRuntimeAssertionsForClass(className)));
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(!desiredAssertionStatus));
                     return true;
                 }
                 return false;

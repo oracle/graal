@@ -37,7 +37,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -231,7 +231,8 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
      */
     private static JavaConstant interceptAssertionStatus(AnalysisField field, JavaConstant value) {
         if (field.isStatic() && field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
-            boolean assertionsEnabled = SubstrateOptions.getRuntimeAssertionsForClass(field.getDeclaringClass().toJavaName());
+            Class<?> clazz = field.getDeclaringClass().getJavaClass();
+            boolean assertionsEnabled = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(clazz);
             return JavaConstant.forBoolean(!assertionsEnabled);
         }
         return value;
