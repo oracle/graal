@@ -463,7 +463,7 @@ public class NativeImageGenerator {
             this.imageBuildPool = createForkJoinPool(loader, maxConcurrentThreads);
             imageBuildPool.submit(() -> {
 
-                ImageSingletons.add(ClassLoaderQuery.class, cl -> cl == loader.getClassLoader());
+                ImageSingletons.add(ClassLoaderQuery.class, new ClassLoaderQueryImpl(loader.getClassLoader()));
                 ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
                 ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
                 watchdog = new DeadlockWatchdog();
