@@ -141,11 +141,9 @@ final class HostClassCache {
         }
 
         for (Entry<Class<?>, Object> object : localMappings.entrySet()) {
-            Collections.sort(((List<PolyglotTargetMapping>) object.getValue()));
-        }
-
-        for (Entry<Class<?>, Object> object : localMappings.entrySet()) {
-            object.setValue(((List<?>) object.getValue()).toArray(EMPTY_MAPPINGS));
+            List<PolyglotTargetMapping> classMappings = ((List<PolyglotTargetMapping>) object.getValue());
+            Collections.sort(classMappings);
+            object.setValue(classMappings.toArray(EMPTY_MAPPINGS));
         }
         return localMappings;
     }
