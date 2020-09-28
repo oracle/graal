@@ -1351,7 +1351,7 @@ public class NativeImageGenerator {
 
         Phase addressLoweringPhase = backend.newAddressLoweringPhase(runtimeCallProviders.getCodeCache());
         if (firstTier) {
-            lowTier.findPhase(ExpandLogicPhase.class).add(addressLoweringPhase);
+            lowTier.findPhase(ExpandLogicPhase.class, true).add(addressLoweringPhase);
         } else {
             lowTier.findPhase(FixReadsPhase.class).add(addressLoweringPhase);
         }
