@@ -1725,7 +1725,6 @@ suite = {
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Truffle",
-      "jacoco" : "exclude",
     },
 
     "org.graalvm.compiler.truffle.options" : {
@@ -1774,7 +1773,6 @@ suite = {
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Truffle",
-      "jacoco" : "exclude",
     },
 
     "org.graalvm.compiler.truffle.compiler.amd64" : {
@@ -1790,7 +1788,6 @@ suite = {
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Truffle",
-      "jacoco" : "exclude",
     },
 
     "org.graalvm.compiler.truffle.runtime.serviceprovider" : {

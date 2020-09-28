@@ -149,7 +149,8 @@ def _check_jvmci_version(jdk):
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
 
-mx_gate.add_jacoco_includes(['org.graalvm.compiler.*'])
+mx_gate.add_jacoco_includes(['org.graalvm.*'])
+mx_gate.add_jacoco_excludes(['com.oracle.truffle.*'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
 
 def _get_XX_option_value(vmargs, name, default):
