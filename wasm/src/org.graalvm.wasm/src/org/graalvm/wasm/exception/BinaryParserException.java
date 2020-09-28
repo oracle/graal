@@ -57,4 +57,14 @@ public class BinaryParserException extends RuntimeException implements TruffleEx
     public Node getLocation() {
         return null;
     }
+
+    @Override
+    public boolean isSyntaxError() {
+        return true;
+    }
+
+    @Override
+    public boolean isInternalError() {
+        return false;
+    }
 }
