@@ -44,9 +44,16 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 public class BinaryParserException extends RuntimeException implements TruffleException {
 
     private static final long serialVersionUID = -84137683950579647L;
+
+    @TruffleBoundary
+    public static BinaryParserException format(String format, Object arg) {
+        return new BinaryParserException(String.format(format, arg));
+    }
 
     public BinaryParserException(String message) {
         super(message);
