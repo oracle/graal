@@ -55,6 +55,11 @@ public class ThreadLocalRandomAccessors extends RandomAccessors {
         return SINGLETON.getOrInitializeSeeder();
     }
 
+    /** The setter is necessary if ThreadLocalRandom is initilized at run time. */
+    public static void setSeeder(AtomicLong value) {
+        SINGLETON.seeder = value;
+    }
+
     @Override
     long mix64(long l) {
         return Target_java_util_concurrent_ThreadLocalRandom.mix64(l);
