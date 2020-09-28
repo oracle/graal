@@ -47,7 +47,7 @@ public abstract class RandomAccessors {
                         }
                     });
 
-    private volatile AtomicLong seeder;
+    protected volatile AtomicLong seeder;
 
     protected AtomicLong getOrInitializeSeeder() {
         AtomicLong result = seeder;
