@@ -145,48 +145,6 @@ public class SubstrateOptions {
     @Option(help = "Use a card remembered set heap for GC")//
     public static final HostedOptionKey<Boolean> UseCardRememberedSetHeap = new HostedOptionKey<>(true);
 
-    @Option(help = "Print summary GC information after each collection", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Boolean> PrintGC = new RuntimeOptionKey<>(false);
-
-    @Option(help = "Print more information about the heap before and after each collection", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Boolean> VerboseGC = new RuntimeOptionKey<>(false);
-
-    @Option(help = "Determines if references from runtime-compiled code to Java heap objects should be treated as strong or weak.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> TreatRuntimeCodeInfoReferencesAsWeak = new HostedOptionKey<>(true);
-
-    @Option(help = "Verify the heap before and after each collection.")//
-    public static final HostedOptionKey<Boolean> VerifyHeap = new HostedOptionKey<>(false);
-
-    @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MinHeapSize = new RuntimeOptionKey<Long>(0L) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
-            if (!SubstrateUtil.HOSTED) {
-                XOptions.getXms().setValue(newValue);
-            }
-        }
-    };
-
-    @Option(help = "The maximum heap size at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MaxHeapSize = new RuntimeOptionKey<Long>(0L) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
-            if (!SubstrateUtil.HOSTED) {
-                XOptions.getXmx().setValue(newValue);
-            }
-        }
-    };
-
-    @Option(help = "The maximum size of the young generation at run-time, in bytes", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MaxNewSize = new RuntimeOptionKey<Long>(0L) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
-            if (!SubstrateUtil.HOSTED) {
-                XOptions.getXmn().setValue(newValue);
-            }
-        }
-    };
-
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<Long>(0L) {
         @Override
