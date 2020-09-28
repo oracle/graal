@@ -62,8 +62,6 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -241,30 +239,14 @@ final class InsertStackOverflowCheckPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        if (graph.method().getAnnotation(Uninterruptible.class) != null) {
+        if (((SharedMethod) graph.method()).isUninterruptible()) {
             /*
-             * Method annotated with {@link Uninterruptible}, are allowed to use the yellow and red
-             * zones of the stack. Also, the thread register and stack boundary might not be set up.
-             * We cannot do a stack overflow check.
-             */
-            return;
-
-        } else if (((SharedMethod) graph.method()).isEntryPoint()) {
-            /*
-             * The thread register is not yet set up. Entry point stubs are synthetic methods and
-             * therefore not annotated with @Uninterruptible.
-             */
-            return;
-
-        } else if (graph.method().getAnnotation(CFunction.class) != null || graph.method().getAnnotation(InvokeCFunctionPointer.class) != null) {
-            /*
-             * We are leaving Java code. C code (and the transitioning frame to C code) can run in
-             * the red zone of the stack. This avoids reporting a StackOverflowError at a strange
-             * place from the point of view of the user.
+             * Uninterruptible methods are allowed to use the yellow and red zones of the stack.
+             * Also, the thread register and stack boundary might not be set up. We cannot do a
+             * stack overflow check.
              */
             return;
         }
-
         /*
          * Insert the stack overflow node at the beginning of the graph. Note that it is not
          * strictly necessary that the stack overflow check is really the first piece of machine
