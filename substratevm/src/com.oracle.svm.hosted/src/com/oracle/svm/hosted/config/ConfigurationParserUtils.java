@@ -42,6 +42,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.hosted.NativeImageOptions;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -53,7 +54,6 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.json.JSONParserException;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.NativeImageOptions;
 
 public final class ConfigurationParserUtils {
 
@@ -130,14 +130,22 @@ public final class ConfigurationParserUtils {
     private static void doParseAndRegister(ConfigurationParser parser, Reader reader, String featureName, Object location, HostedOptionKey<String[]> option) {
         try {
             parser.parseAndRegister(reader);
+        } catch (NoClassDefFoundError e) {
+            String errorMessage = unwrapErrorMessage(e);
+            throw UserError.abort(errorMessage);
         } catch (IOException | JSONParserException e) {
-            String errorMessage = e.getMessage();
-            if (errorMessage == null || errorMessage.isEmpty()) {
-                errorMessage = e.toString();
-            }
+            String errorMessage = unwrapErrorMessage(e);
             throw UserError.abort("Error parsing " + featureName + " configuration in " + location + ":\n" + errorMessage +
                             "\nVerify that the configuration matches the schema described in the " +
-                            SubstrateOptionsParser.commandArgument(PrintFlags, "+") + " output for option " + option.getName() + ".");
+                            SubstrateOptionsParser.commandArgument(PrintFlags, "<option-category>(User, Expert, Debug)") + " output for option " + option.getName() + ".");
         }
+    }
+
+    private static String unwrapErrorMessage(Throwable e) {
+        String errorMessage = e.getMessage();
+        if (errorMessage == null || errorMessage.isEmpty()) {
+            errorMessage = e.toString();
+        }
+        return errorMessage;
     }
 }
