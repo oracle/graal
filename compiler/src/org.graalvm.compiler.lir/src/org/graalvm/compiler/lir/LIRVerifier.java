@@ -28,6 +28,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
+import static org.graalvm.compiler.lir.LIRValueUtil.stripCast;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
@@ -238,7 +239,8 @@ public final class LIRVerifier {
     }
 
     // @formatter:off
-    private static void allowed(Object op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+    private static void allowed(Object op, Value val, OperandMode mode, EnumSet<OperandFlag> flags) {
+        Value value = stripCast(val);
         if ((isVariable(value) && flags.contains(OperandFlag.REG)) ||
             (isRegister(value) && flags.contains(OperandFlag.REG)) ||
             (isStackSlotValue(value) && flags.contains(OperandFlag.STACK)) ||
