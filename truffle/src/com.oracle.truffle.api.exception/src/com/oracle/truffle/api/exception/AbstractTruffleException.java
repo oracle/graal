@@ -42,6 +42,7 @@ package com.oracle.truffle.api.exception;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -179,6 +180,25 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      */
     protected AbstractTruffleException(String message, Node location) {
         this(message, null, UNLIMITED_STACK_TRACE, location);
+    }
+
+    /**
+     * Creates a new AbstractTruffleException initialized from the given prototype. The exception
+     * message, internal cause, stack trace limit, location, suppressed exceptions and Truffle stack
+     * trace of a newly created {@link AbstractTruffleException} are inherited from the given
+     * {@link AbstractTruffleException}.
+     *
+     * @since 20.3
+     */
+    @TruffleBoundary
+    protected AbstractTruffleException(AbstractTruffleException prototype) {
+        this(prototype.getMessage(), prototype.getCause(), prototype.getStackTraceElementLimit(), prototype.getLocation());
+        for (Throwable t : prototype.getSuppressed()) {
+            this.addSuppressed(t);
+        }
+        TruffleStackTrace.fillIn(prototype);
+        assert prototype.lazyStackTrace != null : "Prototype mast have a stack trace after fillIn.";
+        this.lazyStackTrace = prototype.lazyStackTrace;
     }
 
     /**
