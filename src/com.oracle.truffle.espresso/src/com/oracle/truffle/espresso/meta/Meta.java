@@ -292,7 +292,7 @@ public final class Meta implements ContextAccess {
         HIDDEN_DEATH_THROWABLE = java_lang_Thread.lookupHiddenField(Name.HIDDEN_DEATH_THROWABLE);
         HIDDEN_SUSPEND_LOCK = java_lang_Thread.lookupHiddenField(Name.HIDDEN_SUSPEND_LOCK);
 
-        if (context.EnableManagement) {
+        if (context.managementEnabled()) {
             HIDDEN_THREAD_BLOCKED_OBJECT = java_lang_Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
             HIDDEN_THREAD_BLOCKED_COUNT = java_lang_Thread.lookupHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
             HIDDEN_THREAD_WAITED_COUNT = java_lang_Thread.lookupHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);

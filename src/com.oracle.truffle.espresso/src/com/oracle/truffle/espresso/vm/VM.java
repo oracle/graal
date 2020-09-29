@@ -261,7 +261,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                             "disposeMokapotContext",
                             "(env, pointer): void");
 
-            if (jniEnv.getContext().EnableManagement) {
+            if (jniEnv.getContext().managementEnabled()) {
                 initializeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                                 "initializeManagementContext", "(env, (pointer): pointer, sint32): pointer");
 
@@ -644,7 +644,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         StaticObject currentThread = context.getCurrentThread();
         try {
             Target_java_lang_Thread.fromRunnable(currentThread, getMeta(), (timeout > 0 ? State.TIMED_WAITING : State.WAITING));
-            if (context.EnableManagement) {
+            if (context.managementEnabled()) {
                 // Locks bookkeeping.
                 currentThread.setHiddenField(getMeta().HIDDEN_THREAD_BLOCKED_OBJECT, self);
                 Target_java_lang_Thread.incrementThreadCounter(currentThread, getMeta().HIDDEN_THREAD_WAITED_COUNT);
@@ -663,7 +663,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             profiler.profile(2);
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, e.getMessage());
         } finally {
-            if (context.EnableManagement) {
+            if (context.managementEnabled()) {
                 currentThread.setHiddenField(getMeta().HIDDEN_THREAD_BLOCKED_OBJECT, null);
             }
             Target_java_lang_Thread.toRunnable(currentThread, getMeta(), State.RUNNABLE);
@@ -1056,7 +1056,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         assert !getUncached().isNull(vmPtr) : "Mokapot already disposed";
         try {
 
-            if (getContext().EnableManagement) {
+            if (getContext().managementEnabled()) {
                 if (managementPtr != null) {
                     getUncached().execute(disposeManagementContext, managementPtr, managementVersion);
                     this.managementPtr = null;
@@ -2171,7 +2171,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             return RawPointer.nullInstance();
         }
         EspressoContext context = getContext();
-        if (!context.EnableManagement) {
+        if (!context.managementEnabled()) {
             getLogger().severe("JVM_GetManagement: Experimental support for java.lang.management native APIs is disabled.\n" +
                             "Use '--java.EnableManagement=true' to enable experimental support for j.l.management native APIs.");
             return RawPointer.nullInstance();

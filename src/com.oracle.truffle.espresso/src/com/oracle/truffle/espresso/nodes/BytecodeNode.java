@@ -1758,7 +1758,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
                 char cpi = bs.readCPI(curBCI);
                 Method resolutionSeed = resolveMethod(opcode, cpi);
-                QuickNode invoke = dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors);
+                QuickNode invoke = dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().shouldInlineFieldAccessors());
                 quick = injectQuick(curBCI, invoke, QUICK);
             }
         }
@@ -1892,7 +1892,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     // endregion quickenForeign
 
     private QuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowFieldAccessInlining) {
-        assert !allowFieldAccessInlining || getContext().InlineFieldAccessors;
+        assert !allowFieldAccessInlining || getContext().shouldInlineFieldAccessors();
         QuickNode invoke;
         Method resolved = resolutionSeed;
         switch (opcode) {
@@ -2293,7 +2293,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                                 getMethod().getDeclaringKlass().getNameAsString()));
             }
 
-            boolean enforceInitializerCheck = (getContext().SpecCompliancyMode == STRICT) ||
+            boolean enforceInitializerCheck = (getContext().specCompliancyMode() == STRICT) ||
                             // HotSpot enforces this only for >= Java 9 (v53) .class files.
                             field.getDeclaringKlass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
 

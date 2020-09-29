@@ -363,7 +363,7 @@ public final class InterpreterToVM implements ContextAccess {
         if (!monitorTryLock(lock)) {
             StaticObject thread = context.getCurrentThread();
             Target_java_lang_Thread.fromRunnable(thread, meta, Target_java_lang_Thread.State.BLOCKED);
-            if (context.EnableManagement) {
+            if (context.managementEnabled()) {
                 // Locks bookkeeping.
                 thread.setHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, obj);
                 Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
@@ -372,7 +372,7 @@ public final class InterpreterToVM implements ContextAccess {
             context.getJDWPListener().onContendedMonitorEnter(obj);
             monitorUnsafeEnter(lock);
             context.getJDWPListener().onContendedMonitorEntered(obj);
-            if (context.EnableManagement) {
+            if (context.managementEnabled()) {
                 thread.setHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, null);
             }
             Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
