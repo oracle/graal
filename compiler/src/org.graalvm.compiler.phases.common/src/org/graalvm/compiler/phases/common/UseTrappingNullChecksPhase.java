@@ -30,7 +30,6 @@ import java.util.List;
 
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -221,10 +220,6 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
             }
             LogicNode condition = ifNode.condition();
             if (condition instanceof IsNullNode) {
-                if (deoptimizationReason != DeoptimizationReason.NullCheckException && deoptimizationReason != DeoptimizationReason.UnreachedCode &&
-                                deoptimizationReason != DeoptimizationReason.TypeCheckedInliningViolated) {
-                    TTY.println("Not a null check or unreached %s %s", predecessor, deoptimizationReason);
-                }
                 replaceWithTrappingNullCheck(deopt, ifNode, condition, deoptimizationReason, implicitNullCheckLimit, deoptReasonAndAction, deoptSpeculation);
             }
         }
