@@ -177,8 +177,16 @@ abstract class HostExecuteNode extends Node {
                     @Shared("errorBranch") @Cached BranchProfile errorBranch,
                     @Shared("engine") @Cached(value = "languageContext.context.engine", allowUncached = true) PolyglotEngineImpl engine) throws ArityException, UnsupportedTypeException {
         int parameterCount = method.getParameterCount();
-        int minArity = method.isVarArgs() ? parameterCount - 1 : parameterCount;
-        if (args.length < minArity) {
+        int minArity;
+        boolean arityError;
+        if (isVarArgsProfile.profile(method.isVarArgs())) {
+            minArity = parameterCount - 1;
+            arityError = args.length < minArity;
+        } else {
+            minArity = parameterCount;
+            arityError = args.length != minArity;
+        }
+        if (arityError) {
             errorBranch.enter();
             throw ArityException.create(minArity, args.length);
         }

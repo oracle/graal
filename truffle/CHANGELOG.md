@@ -5,6 +5,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.
 * Added new specialization utility to print detailed statistics about specialization instances and execution count. See [Specialization Statistics Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/SpecializationHistogram.md) for details on how to use it.
+* Added new specialization compilation mode that ignores "fast path" specializations and generates calls only to "slow path" specializations. This mode is intended for testing purposes to increase tests coverage. See [Specialization testing documentation](https://github.com/oracle/graal/blob/master/truffle/docs/SpecializationTesting.md) for more details.
 * Added [TruffleFile.readSymbolicLink](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#readSymbolicLink--) method to read the symbolic link target.
 * Added [ReportPolymorphism.Megamorphic](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Megamorphic.html) annotation for expressing the "report only megamorphic specializations" use case when reporting polymorphism.
 
