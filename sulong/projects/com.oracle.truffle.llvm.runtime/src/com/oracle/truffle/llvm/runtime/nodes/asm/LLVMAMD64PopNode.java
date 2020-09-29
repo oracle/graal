@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -53,7 +54,7 @@ public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
 
         @Specialization
         protected Object doI16(VirtualFrame frame,
-                        @Cached LLVMI64LoadNode load) {
+                        @Cached LLVMI16LoadNode load) {
             LLVMPointer stackPointer = stackAccess.executeGet(frame);
             try {
                 return load.executeWithTarget(stackPointer);
