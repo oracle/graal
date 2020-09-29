@@ -60,10 +60,12 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
@@ -170,11 +172,17 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
     private static void tryUseTrappingNullCheck(AbstractDeoptimizeNode deopt, Node predecessor, DeoptimizationReason deoptimizationReason,
                     Speculation speculation, long implicitNullCheckLimit, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
         assert predecessor != null;
-        if (deoptimizationReason != DeoptimizationReason.NullCheckException && deoptimizationReason != DeoptimizationReason.UnreachedCode &&
+        if (!GraalServices.supportArbitraryImplicitException() && deoptimizationReason != DeoptimizationReason.NullCheckException && deoptimizationReason != DeoptimizationReason.UnreachedCode &&
                         deoptimizationReason != DeoptimizationReason.TypeCheckedInliningViolated) {
             deopt.getDebug().log(DebugContext.INFO_LEVEL, "Not a null check or unreached %s", predecessor);
             return;
         }
+        assert speculation != null;
+        if (!GraalServices.supportArbitraryImplicitException() && !speculation.equals(SpeculationLog.NO_SPECULATION)) {
+            deopt.getDebug().log(DebugContext.INFO_LEVEL, "Has a speculation %s", predecessor);
+            return;
+        }
+
         // Skip over loop exit nodes.
         Node pred = predecessor;
         while (pred instanceof LoopExitNode) {

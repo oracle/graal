@@ -112,15 +112,18 @@ import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -784,10 +787,21 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         assert state != null : "Deopt node=" + deopt + " needs a state ";
         if (deopt instanceof ImplicitNullCheckNode) {
             ImplicitNullCheckNode implicitNullCheck = (ImplicitNullCheckNode) deopt;
+            assert isValidImplicitLIRFrameState(implicitNullCheck) : "Unsupported implicit exception";
             return getDebugInfoBuilder().build(deopt, state, exceptionEdge, implicitNullCheck.getDeoptReasonAndAction(), implicitNullCheck.getDeoptSpeculation());
         } else {
             return getDebugInfoBuilder().build(deopt, state, exceptionEdge, null, null);
         }
+    }
+
+    private boolean isValidImplicitLIRFrameState(ImplicitNullCheckNode implicitNullCheck) {
+        if (GraalServices.supportArbitraryImplicitException()) {
+            return true;
+        }
+        DeoptimizationReason deoptimizationReason = getLIRGeneratorTool().getMetaAccess().decodeDeoptReason(implicitNullCheck.getDeoptReasonAndAction());
+        SpeculationLog.Speculation speculation = getLIRGeneratorTool().getMetaAccess().decodeSpeculation(implicitNullCheck.getDeoptSpeculation(), implicitNullCheck.graph().getSpeculationLog());
+        return (deoptimizationReason == DeoptimizationReason.NullCheckException || deoptimizationReason == DeoptimizationReason.UnreachedCode ||
+                        deoptimizationReason == DeoptimizationReason.TypeCheckedInliningViolated) && speculation == SpeculationLog.NO_SPECULATION;
     }
 
     @Override
