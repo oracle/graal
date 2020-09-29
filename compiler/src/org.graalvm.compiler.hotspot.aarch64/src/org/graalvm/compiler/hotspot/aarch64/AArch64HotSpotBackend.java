@@ -31,6 +31,7 @@ import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 
@@ -75,7 +76,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
-import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CompilationRequest;
@@ -403,18 +403,20 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                         int pos = masm.position();
                         Register thread = getProviders().getRegisters().getThreadRegister();
                         // Store deoptimization reason and action into thread local storage.
-                        AArch64Address pendingDeoptimization = AArch64Address.createAddress(AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thread, AArch64.zr,
-                                        config.pendingDeoptimizationOffset / AArch64Kind.DWORD.getSizeInBytes(), true, null);
+                        int dwordSizeInBits = AArch64Kind.DWORD.getSizeInBytes() * Byte.SIZE;
+                        AArch64Address pendingDeoptimization = AArch64Address.createImmediateAddress(dwordSizeInBits, IMMEDIATE_UNSIGNED_SCALED, thread, config.pendingDeoptimizationOffset);
                         masm.mov(scratch, pendingImplicitException.state.deoptReasonAndAction.asInt());
-                        masm.str(AArch64Kind.DWORD.getSizeInBytes() * Byte.SIZE, scratch, pendingDeoptimization);
+                        masm.str(dwordSizeInBits, scratch, pendingDeoptimization);
 
                         // Store speculation into thread local storage.
-                        AArch64Address pendingSpeculation = AArch64Address.createAddress(AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thread, AArch64.zr,
-                                        config.pendingFailedSpeculationOffset / AArch64Kind.QWORD.getSizeInBytes(), true, null);
+                        int qwordSizeInBits = AArch64Kind.QWORD.getSizeInBytes() * Byte.SIZE;
+                        AArch64Address pendingSpeculation = AArch64Address.createImmediateAddress(qwordSizeInBits, IMMEDIATE_UNSIGNED_SCALED, thread, config.pendingFailedSpeculationOffset);
                         masm.mov(scratch, pendingImplicitException.state.deoptSpeculation.asLong());
-                        masm.str(AArch64Kind.QWORD.getSizeInBytes() * Byte.SIZE, scratch, pendingSpeculation);
+                        masm.str(qwordSizeInBits, scratch, pendingSpeculation);
 
-                        AArch64Call.directCall(crb, masm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNCOMMON_TRAP), scratch, pendingImplicitException.state);
+                        ForeignCallLinkage uncommonTrapBlob = foreignCalls.lookupForeignCall(DEOPT_BLOB_UNCOMMON_TRAP);
+                        Register helper = AArch64Call.isNearCall(uncommonTrapBlob) ? null : scratch;
+                        AArch64Call.directCall(crb, masm, uncommonTrapBlob, helper, pendingImplicitException.state);
                         crb.recordImplicitException(pendingImplicitException.codeOffset, pos, pendingImplicitException.state);
                     }
                 }
