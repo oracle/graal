@@ -51,7 +51,7 @@ import org.graalvm.compiler.serviceprovider.IsolateUtil;
 
 final class LibGraalMemoryPoolMBean implements DynamicMBean {
 
-    private static final String BASE_OBJECT_NAME = "java.lang:type=MemoryPool,name=Libgraal";
+    private static final String BASE_OBJECT_NAME = "org.graalvm.compiler.hotspot:type=Libgraal";
     private static final String MEMORY_MANAGER = "Libgraal Memory Pool";
 
     private static final String ATTR_NAME = "Name";
