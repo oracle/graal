@@ -133,6 +133,10 @@ class PrimitiveOperand extends Operand {
     public String toString() {
         return kind.toString();
     }
+
+    public PrimitiveOperand toStack() {
+        return this;
+    }
 }
 
 final class ReturnAddressOperand extends PrimitiveOperand {

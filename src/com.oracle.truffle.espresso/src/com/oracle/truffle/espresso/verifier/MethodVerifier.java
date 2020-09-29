@@ -411,6 +411,11 @@ public final class MethodVerifier implements ContextAccess {
             }
             return null;
         }
+
+        @Override
+        public PrimitiveOperand toStack() {
+            return Byte;
+        }
     };
 
     // We want to be able to share this instance between context, so its resolution must be
@@ -451,6 +456,13 @@ public final class MethodVerifier implements ContextAccess {
         @Override
         public String toString() {
             return "null";
+        }
+
+        @Override
+        Operand getComponent() {
+            // jvms-4.7.6: aaload
+            // We define the component type of null to be null.
+            return this;
         }
     };
 
@@ -2507,7 +2519,7 @@ public final class MethodVerifier implements ContextAccess {
         if (op != Null && !kind.compliesWith(op.getComponent())) {
             throw new VerifyError("Loading " + kind + " from " + op + " array.");
         }
-        stack.push(op.getComponent());
+        stack.push(kind.toStack());
     }
 
     private static void xastore(OperandStack stack, PrimitiveOperand kind) {

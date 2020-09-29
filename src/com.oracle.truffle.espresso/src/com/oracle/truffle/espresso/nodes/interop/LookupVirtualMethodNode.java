@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.nodes.interop;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -84,11 +85,26 @@ public abstract class LookupVirtualMethodNode extends Node {
     }
 
     @Specialization(replaces = "doCached")
-    Method doGeneric(ObjectKlass klass, String methodName, int arity) {
+    @TruffleBoundary
+    Method doGeneric(ObjectKlass klass, String key, int arity) {
         Method resolved = null;
+        String methodName;
+        String signature = null;
+        int colonIndex = key.indexOf(':');
+        if (colonIndex >= 0) {
+            String[] split = key.split(":");
+            if (split.length != 2) {
+                return null;
+            }
+            methodName = split[0];
+            signature = split[1];
+        } else {
+            methodName = key;
+        }
         for (Method m : klass.getVTable()) {
             if (isCanditate(m)) {
-                if (m.getName().toString().equals(methodName) && m.getParameterCount() == arity) {
+                if (m.getName().toString().equals(methodName) && m.getParameterCount() == arity &&
+                                (signature == null || m.getSignatureAsString().equals(signature))) {
                     if (resolved != null) {
                         return null;
                     }

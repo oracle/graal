@@ -583,7 +583,7 @@ public final class ClassfileParser {
                 methodFlags = ACC_STATIC;
             } else if ((methodFlags & ACC_STATIC) == ACC_STATIC) {
                 methodFlags &= (ACC_STRICT | ACC_STATIC);
-            } else {
+            } else if (context.getJavaVersion().java9OrLater()) {
                 throw ConstantPool.classFormatError("Method <clinit> is not static.");
             }
             // extraFlags = INITIALIZER | methodFlags;
@@ -1005,7 +1005,7 @@ public final class ClassfileParser {
             final int outerClassIndex = innerClassInfo.outerClassIndex;
             innerClassInfos[i] = innerClassInfo;
 
-            if (majorVersion >= JAVA_7_VERSION) {
+            if (context.getJavaVersion().java9OrLater() && majorVersion >= JAVA_7_VERSION) {
                 if (innerClassInfo.innerNameIndex == 0 && outerClassIndex != 0) {
                     throw ConstantPool.classFormatError("InnerClassesAttribute: the value of the outer_class_info_index item must be zero if the value of the inner_name_index item is zero.");
                 }
@@ -1049,6 +1049,7 @@ public final class ClassfileParser {
             }
         }
         return new InnerClassesAttribute(name, innerClassInfos);
+
     }
 
     private NestHostAttribute parseNestHostAttribute(Symbol<Name> attributeName) {
