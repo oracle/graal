@@ -1002,8 +1002,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     /**
-     * Implementation of the DebugLineInfo API interface that allows line number info to be passed
-     * to an ObjectFile when generation of debug info is enabled.
+     * Implementation of the DebugLineInfo API interface that allows line number info (and more) to
+     * be passed to an ObjectFile when generation of debug info is enabled.
      */
     private class NativeImageDebugLineInfo implements DebugLineInfo {
         private final int bci;
@@ -1012,15 +1012,29 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private final int hi;
         private Path cachePath;
         private Path fullFilePath;
+        private DebugLineInfo callersLineInfo;
 
         NativeImageDebugLineInfo(SourceMapping sourceMapping) {
-            NodeSourcePosition position = sourceMapping.getSourcePosition();
+            this(sourceMapping.getSourcePosition(), sourceMapping.getStartOffset(), sourceMapping.getEndOffset());
+        }
+
+        NativeImageDebugLineInfo(DebugLineInfo lineInfo, NodeSourcePosition position) {
+            this(position, lineInfo.addressLo(), lineInfo.addressHi());
+        }
+
+        NativeImageDebugLineInfo(NodeSourcePosition position, int lo, int hi) {
             int posbci = position.getBCI();
             this.bci = (posbci >= 0 ? posbci : 0);
             this.method = position.getMethod();
-            this.lo = sourceMapping.getStartOffset();
-            this.hi = sourceMapping.getEndOffset();
+            this.lo = lo;
+            this.hi = hi;
             this.cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
+            final NodeSourcePosition callerPosition = position.getCaller();
+            if (callerPosition != null) {
+                callersLineInfo = new NativeImageDebugLineInfo(this, callerPosition);
+            } else {
+                callersLineInfo = null;
+            }
             computeFullFilePath();
         }
 
@@ -1157,6 +1171,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public int modifiers() {
             return method.getModifiers();
+        }
+
+        @Override
+        public DebugLineInfo getCaller() {
+            return callersLineInfo;
         }
 
         @SuppressWarnings("try")

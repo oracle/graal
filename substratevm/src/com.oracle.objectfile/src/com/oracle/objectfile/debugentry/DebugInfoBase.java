@@ -255,7 +255,7 @@ public abstract class DebugInfoBase {
                 Path filePathAtLine = debugLineInfo.filePath();
                 String classNameAtLine = TypeEntry.canonicalize(debugLineInfo.ownerType());
                 String methodNameAtLine = debugLineInfo.name();
-                boolean isInlined = false;
+                boolean isInlined = debugLineInfo.getCaller() != null;
                 int loAtLine = lo + debugLineInfo.addressLo();
                 int hiAtLine = lo + debugLineInfo.addressHi();
                 int line = debugLineInfo.line();
