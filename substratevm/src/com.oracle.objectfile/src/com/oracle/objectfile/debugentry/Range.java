@@ -36,6 +36,7 @@ public class Range {
     private static final String CLASS_DELIMITER = ".";
     private final Range caller;
     private final MethodEntry methodEntry;
+    private final String fullMethodName;
     private final String fullMethodNameWithParams;
     private final int lo;
     private final int hi;
@@ -64,6 +65,7 @@ public class Range {
             stringTable.uniqueDebugString(methodEntry.fileEntry.getPathName());
         }
         this.methodEntry = methodEntry;
+        this.fullMethodName = isInline ? stringTable.uniqueDebugString(constructClassAndMethodName()) : stringTable.uniqueString(constructClassAndMethodName());
         this.fullMethodNameWithParams = stringTable.uniqueString(constructClassAndMethodNameWithParams());
         this.lo = lo;
         this.hi = hi;
@@ -111,7 +113,7 @@ public class Range {
     }
 
     public String getFullMethodName() {
-        return constructClassAndMethodName();
+        return fullMethodName;
     }
 
     public String getFullMethodNameWithParams() {

@@ -78,6 +78,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_ABBREV_CODE_class_layout2 = 9;
     public static final int DW_ABBREV_CODE_class_pointer = 10;
     public static final int DW_ABBREV_CODE_method_location = 11;
+    public static final int DW_ABBREV_CODE_method_location_inline = 32;
     public static final int DW_ABBREV_CODE_static_field_location = 12;
     public static final int DW_ABBREV_CODE_array_layout = 13;
     public static final int DW_ABBREV_CODE_array_pointer = 14;
@@ -86,8 +87,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_ABBREV_CODE_indirect_layout = 17;
     public static final int DW_ABBREV_CODE_indirect_pointer = 18;
     /* Level 2 DIEs. */
-    public static final int DW_ABBREV_CODE_method_declaration1 = 19;
-    public static final int DW_ABBREV_CODE_method_declaration2 = 20;
+    public static final int DW_ABBREV_CODE_method_declaration = 19;
+    public static final int DW_ABBREV_CODE_method_declaration_static = 20;
     public static final int DW_ABBREV_CODE_field_declaration1 = 21;
     public static final int DW_ABBREV_CODE_field_declaration2 = 22;
     public static final int DW_ABBREV_CODE_field_declaration3 = 23;
@@ -100,6 +101,11 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 29;
     public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 30;
     public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 31;
+
+    /* Level X DIEs */
+    public static final int DW_ABBREV_CODE_inlined_subroutine = 33;
+    public static final int DW_ABBREV_CODE_inlined_subroutine_with_children = 34;
+
     /*
      * Define all the Dwarf tags we need for our DIEs.
      */
@@ -116,6 +122,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_TAG_subprogram = 0x2e;
     public static final int DW_TAG_variable = 0x34;
     public static final int DW_TAG_unspecified_type = 0x3b;
+    public static final int DW_TAG_inlined_subroutine = 0x1d;
 
     /*
      * Define all the Dwarf attributes we need for our DIEs.
@@ -131,6 +138,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_AT_language = 0x13;
     public static final int DW_AT_comp_dir = 0x1b;
     public static final int DW_AT_containing_type = 0x1d;
+    public static final int DW_AT_inline = 0x20;
+    public static final int DW_AT_abstract_origin = 0x31;
     public static final int DW_AT_accessibility = 0x32;
     public static final int DW_AT_artificial = 0x34;
     public static final int DW_AT_data_member_location = 0x38;
@@ -146,6 +155,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_AT_type = 0x49;
     public static final int DW_AT_data_location = 0x50;
     public static final int DW_AT_use_UTF8 = 0x53;
+    public static final int DW_AT_call_file = 0x58;
+    public static final int DW_AT_call_line = 0x59;
     public static final int DW_AT_object_pointer = 0x64;
 
     /*
@@ -158,6 +169,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
     @SuppressWarnings("unused") public static final int DW_FORM_data8 = 0x7;
     @SuppressWarnings("unused") private static final int DW_FORM_string = 0x8;
     @SuppressWarnings("unused") public static final int DW_FORM_block1 = 0x0a;
+    @SuppressWarnings("unused") public static final int DW_FORM_ref1 = 0x11;
+    @SuppressWarnings("unused") public static final int DW_FORM_ref2 = 0x12;
+    public static final int DW_FORM_ref4 = 0x13;
+    @SuppressWarnings("unused") public static final int DW_FORM_ref8 = 0x14;
     public static final int DW_FORM_ref_addr = 0x10;
     public static final int DW_FORM_data1 = 0x0b;
     public static final int DW_FORM_flag = 0xc;
@@ -181,6 +196,13 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * Value for DW_AT_language attribute with form DATA1.
      */
     public static final byte DW_LANG_Java = 0xb;
+    /*
+     * Values for {@link DW_AT_inline} attribute with form DATA1.
+     */
+    @SuppressWarnings("unused") public static final byte DW_INL_not_inlined = 0;
+    public static final byte DW_INL_inlined = 1;
+    @SuppressWarnings("unused") public static final byte DW_INL_declared_not_inlined = 2;
+    @SuppressWarnings("unused") public static final byte DW_INL_declared_inlined = 3;
 
     /*
      * DW_AT_Accessibility attribute values.

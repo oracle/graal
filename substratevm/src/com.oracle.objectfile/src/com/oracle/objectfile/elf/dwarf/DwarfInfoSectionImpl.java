@@ -679,7 +679,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int modifiers = method.getModifiers();
         boolean isStatic = Modifier.isStatic(modifiers);
         log(context, "  [0x%08x] method declaration %s", pos, methodKey);
-        int abbrevCode = (isStatic ? DwarfDebugInfo.DW_ABBREV_CODE_method_declaration2 : DwarfDebugInfo.DW_ABBREV_CODE_method_declaration1);
+        int abbrevCode = (isStatic ? DwarfDebugInfo.DW_ABBREV_CODE_method_declaration_static : DwarfDebugInfo.DW_ABBREV_CODE_method_declaration);
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     external  true", pos);
@@ -708,7 +708,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int typeIdx = getLayoutIndex(classEntry);
         log(context, "  [0x%08x]     containing_type 0x%x (%s)", pos, typeIdx, classEntry.getTypeName());
         pos = writeAttrRefAddr(typeIdx, buffer, pos);
-        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_declaration1) {
+        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_declaration) {
             /* Record the current position so we can back patch the object pointer. */
             int objectPointerIndex = pos;
             /*
@@ -1230,13 +1230,23 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeMethodLocation(DebugContext context, ClassEntry classEntry, Range range, byte[] buffer, int p) {
         int pos = p;
         log(context, "  [0x%08x] method location", pos);
-        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_method_location;
-        log(context, "  [0x%08x] <1> Abbrev Number  %d", pos, abbrevCode);
+        int abbrevCode;
+        if (range.isInlined()) {
+            abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_method_location_inline;
+        } else {
+            abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_method_location;
+        }
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        log(context, "  [0x%08x]     lo_pc  0x%08x", pos, range.getLo());
-        pos = writeAttrAddress(range.getLo(), buffer, pos);
-        log(context, "  [0x%08x]     hi_pc  0x%08x", pos, range.getHi());
-        pos = writeAttrAddress(range.getHi(), buffer, pos);
+        if (range.isInlined()) {
+            verboseLog(context, "  [0x%08x]     inline  0x%X", pos, DwarfDebugInfo.DW_INL_inlined);
+            pos = writeAttrData1(DwarfDebugInfo.DW_INL_inlined, buffer, pos);
+        } else {
+            log(context, "  [0x%08x]     lo_pc  0x%08x", pos, range.getLo());
+            pos = writeAttrAddress(range.getLo(), buffer, pos);
+            log(context, "  [0x%08x]     hi_pc  0x%08x", pos, range.getHi());
+            pos = writeAttrAddress(range.getHi(), buffer, pos);
+        }
         /*
          * Should pass true only if method is non-private.
          */
@@ -1251,6 +1261,51 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * Write a terminating null attribute.
          */
         return writeAttrNull(buffer, pos);
+    }
+
+    private int writeInlineSubroutine(DebugContext context, ClassEntry classEntry, Range range, byte[] buffer, int p, int subprogramOffset, int depth) {
+        assert range.isInlined();
+        int pos = p;
+        final Range callerSubrange = range.getCaller();
+        assert callerSubrange != null;
+        int callLine = callerSubrange.getLine();
+        assert callLine >= -1 : callLine;
+        if (callLine == -1) {
+            log(context, "  Unable to retrieve call line for inlined method %s", range.getFullMethodName());
+            return p;
+        }
+        Integer fileIndex;
+        if (callerSubrange == range) {
+            fileIndex = 1;
+        } else {
+            FileEntry subFileEntry = callerSubrange.getFileEntry();
+            assert subFileEntry != null;
+            fileIndex = classEntry.localFilesIdx(subFileEntry);
+            assert fileIndex != null;
+        }
+        final int code;
+        if (range.withChildren()) {
+            code = DwarfDebugInfo.DW_ABBREV_CODE_inlined_subroutine_with_children;
+        } else {
+            code = DwarfDebugInfo.DW_ABBREV_CODE_inlined_subroutine;
+        }
+        verboseLog(context, "  [0x%08x] <%d> Abbrev Number  %d", pos, depth + 2, code);
+        pos = writeAbbrevCode(code, buffer, pos);
+        verboseLog(context, "  [0x%08x]     abstract_origin  0x%X", pos, subprogramOffset);
+        pos = writeAttrRef4(subprogramOffset, buffer, pos);
+        verboseLog(context, "  [0x%08x]     lo_pc  0x%08x", pos, range.getLo());
+        pos = writeAttrAddress(range.getLo(), buffer, pos);
+        verboseLog(context, "  [0x%08x]     hi_pc  0x%08x", pos, range.getHi());
+        pos = writeAttrAddress(range.getHi(), buffer, pos);
+        verboseLog(context, "  [0x%08x]     call_file  %d", pos, fileIndex);
+        pos = writeAttrData4(fileIndex, buffer, pos);
+        verboseLog(context, "  [0x%08x]     call_line  %d", pos, callLine);
+        pos = writeAttrData4(callLine, buffer, pos);
+        return pos;
+    }
+
+    private int writeAttrRef4(int reference, byte[] buffer, int p) {
+        return writeAttrData4(reference, buffer, p);
     }
 
     private int writeCUHeader(byte[] buffer, int p) {
