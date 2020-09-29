@@ -192,7 +192,7 @@ public final class ObjectKlass extends Klass {
             InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, superKlass, superInterfaces, methods);
             iKlassTable = methodCR.klassTable;
             mirandaMethods = methodCR.mirandas;
-            vtable = VirtualTable.create(superKlass, methods, this, mirandaMethods, pool.getClassLoader());
+            vtable = VirtualTable.create(superKlass, methods, this, mirandaMethods, pool.getClassLoader(), false);
             itable = InterfaceTables.fixTables(vtable, mirandaMethods, methods, methodCR.tables, iKlassTable);
         }
         if (superKlass != null) {
@@ -1109,7 +1109,7 @@ public final class ObjectKlass extends Klass {
                 InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, getSuperKlass(), superInterfaces, newDeclaredMethods);
                 iKlassTable = methodCR.klassTable;
                 mirandaMethods = methodCR.mirandas;
-                vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, pool.getClassLoader());
+                vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, pool.getClassLoader(), true);
                 itable = InterfaceTables.fixTables(vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
             }
             // in case of an added/removed virtual method, we must also update the tables
@@ -1174,11 +1174,11 @@ public final class ObjectKlass extends Klass {
             InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, getSuperKlass(), getSuperInterfaces(), newDeclaredMethods);
             iKlassTable = methodCR.klassTable;
             mirandaMethods = methodCR.mirandas;
-            vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, oldVersion.pool.getClassLoader());
+            vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, oldVersion.pool.getClassLoader(), true);
             itable = InterfaceTables.fixTables(vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
         }
 
-        redefineCache = new RedefinitionCache(oldVersion.pool, oldVersion.linkedKlass, oldVersion.declaredMethods, mirandaMethods, vtable, itable, iKlassTable);
+        redefineCache = new RedefinitionCache(oldVersion.pool, oldVersion.linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
         oldVersion.assumption.invalidate();
     }
 
