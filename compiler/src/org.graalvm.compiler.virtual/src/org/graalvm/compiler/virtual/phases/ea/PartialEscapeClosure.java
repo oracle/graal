@@ -96,8 +96,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      */
     private final NodeBitMap hasVirtualInputs;
 
-    private BitSet allocationsOutsideLoops;
-
     /**
      * This is handed out to implementers of {@link Virtualizable}.
      */
@@ -208,12 +206,21 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         return processNodeInternal(node, state, effects, lastFixedNode);
     }
 
+    @Override
+    protected void processStateBeforeLoopOnOverflow(BlockT initialState, FixedNode materializeBefore, GraphEffectList effects) {
+        for (int i = 0; i < initialState.getStateCount(); i++) {
+            if (initialState.hasObjectState(i) && initialState.getObjectState(i).isVirtual()) {
+                VirtualObjectNode virtual = virtualObjects.get(i);
+                initialState.materializeBefore(materializeBefore, virtual, effects);
+            }
+        }
+    }
+
     private boolean processNodeInternal(Node node, BlockT state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
         FixedNode nextFixedNode = lastFixedNode == null ? null : lastFixedNode.next();
         VirtualUtil.trace(node.getOptions(), debug, "%s", node);
-
         if (requiresProcessing(node)) {
-            if (processVirtualizable((ValueNode) node, nextFixedNode, state, effects) == false) {
+            if (!processVirtualizable((ValueNode) node, nextFixedNode, state, effects)) {
                 return false;
             }
             if (tool.isDeleted()) {
@@ -223,7 +230,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
         if (hasVirtualInputs.isMarked(node) && node instanceof ValueNode) {
             if (node instanceof Virtualizable) {
-                if (processVirtualizable((ValueNode) node, nextFixedNode, state, effects) == false) {
+                if (!processVirtualizable((ValueNode) node, nextFixedNode, state, effects)) {
                     return false;
                 }
                 if (tool.isDeleted()) {
@@ -269,24 +276,27 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     }
                 }
                 break;
+            case MATERIALIZE_ALL:
+                boolean virtualizationResult = virtualize(node, tool);
+                for (VirtualObjectNode virtualObject : virtualObjects) {
+                    ValueNode alias = getAlias(virtualObject);
+                    if (alias instanceof VirtualObjectNode) {
+                        int id = ((VirtualObjectNode) alias).getObjectId();
+                        if (state.hasObjectState(id)) {
+                            FixedNode materializeBefore = insertBefore;
+                            if (insertBefore == node && tool.isDeleted()) {
+                                materializeBefore = ((FixedWithNextNode) insertBefore).next();
+                            }
+                            ensureMaterialized(state, id, materializeBefore, effects, COUNTER_MATERIALIZATIONS);
+                        }
+                    }
+                }
+                return virtualizationResult;
+
             default:
                 throw GraalError.shouldNotReachHere("Unknown effects closure mode " + currentMode);
         }
-        boolean virtualizationResult = virtualize(node, tool);
-        if (loopDepth == 0 && node instanceof VirtualizableAllocation) {
-            if (currentMode == EffectsClosureMode.REGULAR_VIRTUALIZATION) {
-                assert node.isAlive();
-                ValueNode alias = getAlias(node);
-                if (alias instanceof VirtualObjectNode) {
-                    int id = ((VirtualObjectNode) alias).getObjectId();
-                    if (allocationsOutsideLoops == null) {
-                        allocationsOutsideLoops = new BitSet();
-                    }
-                    allocationsOutsideLoops.set(id);
-                }
-            }
-        }
-        return virtualizationResult;
+        return virtualize(node, tool);
     }
 
     protected boolean virtualize(ValueNode node, VirtualizerTool vt) {
@@ -476,15 +486,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     throw new RetryableBailoutException(
                                     "Materializing an ensureVirtualized marked allocation inside a very deep loop nest, this may lead to exponential " + "runtime of the partial escape analysis.");
                 }
-                if (allocationsOutsideLoops != null && allocationsOutsideLoops.get(object)) {
-                    /*
-                     * If we have an allocation outside all loops (outside the outermost loop) and
-                     * materialize it at a depth > cutoff we have lost and give up since this would
-                     * cause an exponential loop processing along all loops
-                     */
-                    throw new PartialEscapePhase.DisablePartialEvaluationException(
-                                    "Materializing object " + state.getObjectState(object) + " not possible this would cause exponential runtime of the algorthim");
-                }
                 /*
                  * If we ever enter a state where we do not allow new virtualizations to occur, we
                  * can never materialize something since no new virtualizations happened in the
@@ -567,7 +568,9 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     }
                 }
             } while (change);
-            currentMode = EffectsClosureMode.STOP_NEW_VIRTUALIZATIONS_LOOP_NEST;
+            if (currentMode == EffectsClosureMode.REGULAR_VIRTUALIZATION) {
+                currentMode = EffectsClosureMode.STOP_NEW_VIRTUALIZATIONS_LOOP_NEST;
+            }
         }
         return initialState;
     }
