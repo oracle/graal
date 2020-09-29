@@ -119,6 +119,7 @@ public final class ObjectKlass extends Klass {
     private final StaticObject definingClassLoader;
 
     @CompilationFinal volatile RedefinitionCache redefineCache;
+    private Field redefinitionCountField;
 
     // used for class redefintion whenrefreshing vtables etc.
     private final ArrayList<ObjectKlass> subTypes = new ArrayList<>(8);
@@ -1127,7 +1128,28 @@ public final class ObjectKlass extends Klass {
         }
 
         redefineCache = new RedefinitionCache(pool, linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
+
+        // flush caches before invalidating to avoid races
+        // a potential thread fetching new reflection data
+        // will be blocked at entry until the redefinition
+        // transaction is ended
+        flushReflectionCaches();
         oldVersion.assumption.invalidate();
+    }
+
+    private void flushReflectionCaches() {
+        // increment the redefine count on the class instance to flush reflection caches
+        if (redefinitionCountField == null) {
+            for (Field f : mirror().getKlass().getDeclaredFields()) {
+                // TODO(Gregersen) - is the field name the same on all JDKs?
+                if ("classRedefinedCount".equals(f.getNameAsString())) {
+                    redefinitionCountField = f;
+                    break;
+                }
+            }
+        }
+        int value = InterpreterToVM.getFieldInt(mirror(), redefinitionCountField);
+        InterpreterToVM.setFieldInt(++value, mirror(), redefinitionCountField);
     }
 
     private static Method findMethod(ParserMethod changedMethod, Method[] declaredMethods) {
@@ -1179,6 +1201,12 @@ public final class ObjectKlass extends Klass {
         }
 
         redefineCache = new RedefinitionCache(oldVersion.pool, oldVersion.linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
+
+        // flush caches before invalidating to avoid races
+        // a potential thread fetching new reflection data
+        // will be blocked at entry until the redefinition
+        // transaction is ended
+        flushReflectionCaches();
         oldVersion.assumption.invalidate();
     }
 
