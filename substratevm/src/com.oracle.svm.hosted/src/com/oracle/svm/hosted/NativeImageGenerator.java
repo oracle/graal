@@ -293,7 +293,7 @@ public class NativeImageGenerator {
     private final ImageClassLoader loader;
     private final HostedOptionProvider optionProvider;
 
-    private ForkJoinPool imageBuildPool;
+    private ForkJoinPool buildExecutor;
     private DeadlockWatchdog watchdog;
     private AnalysisUniverse aUniverse;
     private HostedUniverse hUniverse;
@@ -460,8 +460,8 @@ public class NativeImageGenerator {
             setSystemPropertiesForImageLate(k);
 
             int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(new OptionValues(optionProvider.getHostedValues()));
-            this.imageBuildPool = createForkJoinPool(loader, maxConcurrentThreads);
-            imageBuildPool.submit(() -> {
+            this.buildExecutor = createForkJoinPool(maxConcurrentThreads);
+            buildExecutor.submit(() -> {
 
                 ImageSingletons.add(ClassLoaderQuery.class, new ClassLoaderQueryImpl(loader.getClassLoader()));
                 ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
@@ -493,7 +493,7 @@ public class NativeImageGenerator {
                 throw (Error) e.getCause();
             }
         } finally {
-            shutdownPoolSafe();
+            shutdownBuildExecutor();
         }
     }
 
@@ -522,19 +522,9 @@ public class NativeImageGenerator {
         System.clearProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY);
     }
 
-    private static ForkJoinPool createForkJoinPool(ImageClassLoader loader, int maxConcurrentThreads) {
+    private ForkJoinPool createForkJoinPool(int maxConcurrentThreads) {
         ImageSingletonsSupportImpl.HostedManagement vmConfig = new ImageSingletonsSupportImpl.HostedManagement();
         ImageSingletonsSupportImpl.HostedManagement.installInThread(vmConfig);
-        return createForkJoinPool(loader, maxConcurrentThreads, vmConfig);
-    }
-
-    private static ForkJoinPool createForkJoinPool(OptionValues options, ImageClassLoader loader) {
-        int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(options);
-        ImageSingletonsSupportImpl.HostedManagement vmConfig = ImageSingletonsSupportImpl.HostedManagement.getAndAssertExists();
-        return createForkJoinPool(loader, maxConcurrentThreads, vmConfig);
-    }
-
-    private static ForkJoinPool createForkJoinPool(ImageClassLoader loader, int maxConcurrentThreads, ImageSingletonsSupportImpl.HostedManagement vmConfig) {
         return new ForkJoinPool(
                         maxConcurrentThreads,
                         pool -> new ForkJoinWorkerThread(pool) {
@@ -867,7 +857,7 @@ public class NativeImageGenerator {
                 AnnotationSubstitutionProcessor annotationSubstitutions = createDeclarativeSubstitutionProcessor(originalMetaAccess, loader, classInitializationSupport);
                 CEnumCallWrapperSubstitutionProcessor cEnumProcessor = new CEnumCallWrapperSubstitutionProcessor();
                 aUniverse = createAnalysisUniverse(options, target, loader, originalMetaAccess, originalSnippetReflection, annotationSubstitutions, cEnumProcessor,
-                                classInitializationSupport, Collections.singletonList(harnessSubstitutions));
+                                classInitializationSupport, Collections.singletonList(harnessSubstitutions), buildExecutor);
 
                 AnalysisMetaAccess aMetaAccess = new SVMAnalysisMetaAccess(aUniverse, originalMetaAccess);
                 AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(aUniverse, originalProviders.getConstantReflection(), classInitializationSupport);
@@ -914,12 +904,12 @@ public class NativeImageGenerator {
 
     public static AnalysisUniverse createAnalysisUniverse(OptionValues options, TargetDescription target, ImageClassLoader loader, MetaAccessProvider originalMetaAccess,
                     SnippetReflectionProvider originalSnippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, SubstitutionProcessor cEnumProcessor,
-                    ClassInitializationSupport classInitializationSupport, List<SubstitutionProcessor> additionalSubstitutions) {
+                    ClassInitializationSupport classInitializationSupport, List<SubstitutionProcessor> additionalSubstitutions, ForkJoinPool buildExecutor) {
         UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = createAutomaticUnsafeSubstitutions(originalSnippetReflection, annotationSubstitutions);
         SubstitutionProcessor aSubstitutions = createAnalysisSubstitutionProcessor(originalMetaAccess, originalSnippetReflection, cEnumProcessor, automaticSubstitutions,
                         annotationSubstitutions, additionalSubstitutions);
 
-        SVMHost hostVM = new SVMHost(options, createForkJoinPool(options, loader), loader.getClassLoader(), classInitializationSupport, automaticSubstitutions);
+        SVMHost hostVM = new SVMHost(options, buildExecutor, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions);
         automaticSubstitutions.init(loader, originalMetaAccess, hostVM);
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
                         : new DefaultAnalysisPolicy(options);
@@ -1108,12 +1098,12 @@ public class NativeImageGenerator {
     }
 
     public void interruptBuild() {
-        shutdownPoolSafe();
+        shutdownBuildExecutor();
     }
 
-    private void shutdownPoolSafe() {
-        if (imageBuildPool != null) {
-            imageBuildPool.shutdownNow();
+    private void shutdownBuildExecutor() {
+        if (buildExecutor != null) {
+            buildExecutor.shutdownNow();
         }
     }
 
