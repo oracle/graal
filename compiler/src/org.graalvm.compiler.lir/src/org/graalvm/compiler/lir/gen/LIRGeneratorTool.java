@@ -297,10 +297,6 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         return getResult().getFrameMapBuilder().allocateStackSlots(slots);
     }
 
-    default Value emitTimeStamp() {
-        throw new GraalError("Emitting code to return the current value of the timestamp counter is not currently supported on %s", target().arch);
-    }
-
     default Value emitTimeStampWithProcid() {
         throw new GraalError("Emitting code to return the current value of the timestamp counter with procid is not currently supported on %s", target().arch);
     }

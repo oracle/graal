@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,9 +36,9 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 /**
- * AMD64 rdtscp operation. The timestamp result is in EDX:EAX, the processor ID is left in ECX.
- * Note that the processor ID is the contents of IA32_TSC_AUX, so it's up to the OS to set it.
- * Linux apparently puts 12-bits for the chip ID, followed by 12-bits for the CPU ID.
+ * AMD64 rdtscp operation. The timestamp result is in EDX:EAX, the processor ID is left in ECX. Note
+ * that the processor ID is the contents of IA32_TSC_AUX, so it's up to the OS to set it. Linux
+ * apparently puts 12-bits for the chip ID, followed by 12-bits for the CPU ID.
  */
 @Opcode("RDTSCP")
 public class AMD64ReadTimestampCounterWithProcid extends AMD64LIRInstruction {

@@ -98,7 +98,7 @@ public class BenchmarkCounters {
         public static final OptionKey<Boolean> BenchmarkCountersDumpStatic = new OptionKey<>(false);
         @Option(help = "file:doc-files/AbortOnBenchmarkCounterOverflowHelp.txt", type = OptionType.Debug)
         public static final OptionKey<Boolean> AbortOnBenchmarkCounterOverflow = new OptionKey<>(false);
-        @Option(help = "Turn off to print all counters > 0", type = OptionType.Debug)
+        @Option(help = "Use a cutoff to print only most significant counters.", type = OptionType.Debug)
         public static final OptionKey<Boolean> BenchmarkCounterPrintingCutoff = new OptionKey<>(true);
         //@formatter:on
     }
