@@ -334,36 +334,8 @@ public abstract class LLVMInteropType implements TruffleObject {
             return null;
         }
 
-        @TruffleBoundary
-        public Method findMethodByArgumentsWithSelf(String memberName, Object[] arguments) throws ArityException {
-            int expectedArgCount = -1;
-            for (Method method : methods) {
-                if (method.getName().equals(memberName)) {
-                    // check parameters to resolve overloaded methods
-                    LLVMInteropType[] types = method.parameterTypes;
-                    if (types.length + 1 == arguments.length) {
-                        return method;
-                    } else {
-                        expectedArgCount = types.length;
-                    }
-                } else if (method.getLinkageName().equals(memberName)) {
-                    return method;
-                }
-            }
-            for (Clazz superclass : superclasses) {
-                Method method = superclass.findMethodByArgumentsWithSelf(memberName, arguments);
-                if (method != null) {
-                    return method;
-                }
-            }
-            if (expectedArgCount >= 0) {
-                throw ArityException.create(expectedArgCount, arguments.length - 1);
-            }
-            return null;
-        }
-
         public Set<Clazz> getSuperClasses() {
-            return superclasses.stream().collect(Collectors.toSet());
+            return new HashSet<>(superclasses);
         }
 
         public boolean hasVirtualMethods() {
@@ -397,6 +369,34 @@ public abstract class LLVMInteropType implements TruffleObject {
                 }
                 vtable = new VTable(this);
             }
+        }
+
+        @TruffleBoundary
+        public Method findMethodByArgumentsWithSelf(String memberName, Object[] arguments) throws ArityException {
+            int expectedArgCount = -1;
+            for (Method method : methods) {
+                if (method.getName().equals(memberName)) {
+                    // check parameters to resolve overloaded methods
+                    LLVMInteropType[] types = method.parameterTypes;
+                    if (types.length + 1 == arguments.length) {
+                        return method;
+                    } else {
+                        expectedArgCount = types.length;
+                    }
+                } else if (method.getLinkageName().equals(memberName)) {
+                    return method;
+                }
+            }
+            for (Clazz c : superclasses) {
+                Method m = c.findMethodByArgumentsWithSelf(memberName, arguments);
+                if (m != null) {
+                    return m;
+                }
+            }
+            if (expectedArgCount >= 0) {
+                throw ArityException.create(expectedArgCount, arguments.length - 1);
+            }
+            return null;
         }
 
     }

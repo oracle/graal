@@ -57,21 +57,18 @@ import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropInvokeNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Clazz;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Method;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Struct;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.StructMember;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetIndexPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNode;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;<<<<<<<HEAD
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;=======>>>>>>>restructure invokeMember message
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
 
@@ -261,6 +258,7 @@ abstract class CommonPointerLibraries {
         return false;
     }
 
+<<<<<<< HEAD
     @ExportMessage
     @ImportStatic(LLVMLanguage.class)
     static class InvokeMember {
@@ -323,6 +321,8 @@ abstract class CommonPointerLibraries {
         return InteropLibrary.getUncached(methodPointer).execute(methodPointer, arguments);
     }
 
+=======
+>>>>>>> restructure invokeMember message
     static LLVMInteropType.Clazz asClazz(LLVMPointerImpl receiver) throws UnsupportedMessageException {
         LLVMInteropType type = receiver.getExportType();
         if (!(type instanceof LLVMInteropType.Clazz)) {
@@ -331,41 +331,19 @@ abstract class CommonPointerLibraries {
         return (Clazz) type;
     }
 
-    /**
-     * @param receiver
-     * @see InteropLibrary#isMemberInsertable(Object, String)
-     */
     @ExportMessage
-    static Object invokeMember(LLVMPointerImpl receiver, String member, Object[] arguments)
-                    throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        LLVMInteropType type = receiver.getExportType();
-        if (!(type instanceof LLVMInteropType.Clazz)) {
-            throw UnsupportedTypeException.create(new Object[]{receiver}, receiver + " cannot be casted to LLVMInteropType.Clazz");
-        }
-        LLVMInteropType.Clazz clazz = (LLVMInteropType.Clazz) receiver.getExportType();
-        Method method = clazz.findMethod(member);
-        if (method == null) {
-            throw UnknownIdentifierException.create(member);
-        }
-        LLVMFunction llvmFunction = LLVMLanguage.getContext().getGlobalScope().getFunction(method.getLinkageName());
-        // change from receiver.foo(arguments) to interopLibrary.execute(foo, [receiver+arguments])
-        Object[] newArguments = new Object[arguments.length + 1];
-        newArguments[0] = receiver;
-        for (int i = 0; i < arguments.length; i++) {
-            newArguments[i + 1] = arguments[i];
-        }
-        LLVMFunctionDescriptor fn = LLVMLanguage.getContext().createFunctionDescriptor(llvmFunction, new LLVMFunctionCode(llvmFunction));
-
-        return InteropLibrary.getUncached().execute(fn, arguments);
+    static Object invokeMember(LLVMPointerImpl receiver, String member, Object[] arguments, @Cached LLVMInteropInvokeNode invoke)
+                    throws UnsupportedMessageException, ArityException, UnknownIdentifierException,
+                    UnsupportedTypeException {
+        return invoke.execute(receiver, receiver.getExportType(), member, arguments);
     }
 
-    static Object[] addSelfObject(Object receiver, Object[] rawArgs) {
-        Object[] newArguments = new Object[rawArgs.length + 1];
-        newArguments[0] = receiver;
-        for (int i = 0; i < rawArgs.length; i++) {
-            newArguments[i + 1] = rawArgs[i];
+    static Struct getExportStruct(LLVMPointerImpl receiver) {
+        if (receiver.getExportType() instanceof Struct) {
+            return (Struct) receiver.getExportType();
+        } else {
+            return null;
         }
-        return newArguments;
     }
 
     @ExportMessage
