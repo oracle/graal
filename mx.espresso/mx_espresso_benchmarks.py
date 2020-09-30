@@ -21,8 +21,6 @@
 # questions.
 #
 
-import re
-
 import mx
 import mx_benchmark
 import mx_espresso
@@ -119,7 +117,7 @@ mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(0, 0, 64, 'infinite-overh
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(1.5, 0, 2048, '1.5-overhead', []), _suite)
 
 
-def warmupIterations(startup = None, earlyWarmup = None, lateWarmup = None):
+def warmupIterations(startup=None, earlyWarmup=None, lateWarmup=None):
     result = dict()
     if startup is not None:
         result["startup"] = startup
@@ -152,8 +150,8 @@ class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disab
 
     def accumulateResults(self, results, metricName="warmup"):
         """
-        Postprocess results to compute the cumulative metric.value, including all previous iterations.
-        Adds new entries with name "cumulative-" + metricName.
+        Postprocess results to compute the cumulative metric.value, over all previous iterations.
+        Adds new entries with matric.name = "cumulative-" + metricName.
         """
         benchmarkNames = {r["benchmark"] for r in results}
         for benchmark in benchmarkNames:
@@ -172,8 +170,7 @@ class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disab
 
     def warmupResults(self, results, warmupIterations, metricName="cumulative-warmup"):
         """
-        Postprocess results to compute the resulting time by taking the average of last N runs,
-        where N is obtained using getExtraIterationCount.
+        Postprocess results to add new entries for specific iterations.
         """
         benchmarkNames = {r["benchmark"] for r in results}
         for benchmark in benchmarkNames:
@@ -188,10 +185,9 @@ class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disab
                                 results.append(newEntry)
 
     def run(self, benchmarks, bmSuiteArgs):
-        results = super(ScalaDaCapoWarmupBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)        
+        results = super(ScalaDaCapoWarmupBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
         self.accumulateResults(results)
         self.warmupResults(results, scala_dacapo_warmup_iterations)
         return [r for r in results if r["metric.name"] in ["startup", "early-warmup", "late-warmup"]]
 
 mx_benchmark.add_bm_suite(ScalaDaCapoWarmupBenchmarkSuite())
-
