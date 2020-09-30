@@ -178,7 +178,7 @@ class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disab
                 entries = [result for result in results if result["metric.name"] == metricName and result["benchmark"] == benchmark]
                 if entries:
                     for entry in entries:
-                        for key, iteration in warmupIterations[benchmark].iteritems():
+                        for key, iteration in warmupIterations[benchmark].items():
                             if entry["metric.iteration"] == iteration:
                                 newEntry = entry.copy()
                                 newEntry["metric.name"] = key
