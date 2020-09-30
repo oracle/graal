@@ -74,22 +74,32 @@ RENAISSANCE_EXTRA_PROFILE_ARGS = [
 ]
 
 _RENAISSANCE_EXTRA_VM_ARGS = {
-    'chi-square'        : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
-                           '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.hadoop.metrics2.MetricsSystem$Callback',
-                           '-Dnative-image.benchmark.extra-image-build-argument=-H:IncludeResourceBundles=sun.security.util.Resources,javax.servlet.http.LocalStrings,javax.servlet.LocalStrings',
+    'chi-square'        : [
+                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
                            '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
-                           '-Dnative-image.benchmark.extra-image-build-argument=-H:-ThrowUnsafeOffsetErrors'],
-    'finagle-http'      : ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=com.fasterxml.jackson.annotation.JsonProperty$Access', '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
-    'log-regression'    : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
-                           '-Dnative-image.benchmark.extra-image-build-argument=-H:IncludeResourceBundles=sun.security.util.Resources,javax.servlet.http.LocalStrings,javax.servlet.LocalStrings',
+                          ],
+    'finagle-http'      : [
+                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'
+                          ],
+    'log-regression'    : [
+                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
                            '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
-                           '-Dnative-image.benchmark.extra-image-build-argument=-H:-ThrowUnsafeOffsetErrors',
-                           # GR-24903
-                           '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=org.apache.hadoop.io.compress.zlib.BuiltInZlibInflater'],
-    'movie-lens'        : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.hadoop.metrics2.MetricsSystem$Callback',
-                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime', '-Dnative-image.benchmark.extra-image-build-argument=-H:IncludeResourceBundles=sun.security.util.Resources'],
-    'page-rank'         : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.hadoop.metrics2.MetricsSystem$Callback',
-                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime']
+                          ],
+    'movie-lens'        : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
+                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
+                          ],
+    'dec-tree'          : [
+                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
+                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime',
+                          ],
+    'page-rank'         : [
+                           '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
+                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'
+                          ],
+    'naive-bayes'       : [
+                            '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
+                            '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'
+                          ],
 }
 
 _renaissance_config = {
@@ -324,10 +334,11 @@ _DACAPO_EXTRA_VM_ARGS = {
     'h2':         ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
     'pmd':        ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.skip-agent-assertions=true'],
     'sunflow':    ['-Dnative-image.benchmark.skip-agent-assertions=true'],
-    'xalan':      ['-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'],
+    # org.apache.crimson.parser.Parser2 is force initialized at build-time due to non-determinism in class initialization
+    # order that can lead to runtime issues. See GR-26324.
+    'xalan':      ['-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime', '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.crimson.parser.Parser2'],
     'fop':        ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.skip-agent-assertions=true', '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'],
-    # GR-19371
-    'batik':       ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath']
+    'batik':      ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath']
 }
 
 _DACAPO_EXTRA_AGENT_ARGS = [
@@ -370,13 +381,13 @@ _dacapo_resources = {
 
 _daCapo_iterations = {
     'avrora'     : 20,
-    'batik'      : 40, # GR-21832
+    'batik'      : 40,
     'eclipse'    : -1, # Not supported on Hotspot
-    'fop'        : 40, # GR-21831, GR-21832
+    'fop'        : 40,
     'h2'         : 25,
-    'jython'     : -1, # Dynamically generates classes, hence can't be supported on SVM for now
-    'luindex'    : 15, # GR-17943
-    'lusearch'   : 40, # GR-17943
+    'jython'     : 20,
+    'luindex'    : 15,
+    'lusearch'   : 40,
     'pmd'        : 30,
     'sunflow'    : 35,
     'tomcat'     : -1, # Not supported on Hotspot
@@ -465,14 +476,14 @@ _scala_dacapo_resources = {
 }
 
 _scala_dacapo_iterations = {
-    'scalac'        : -1, # depends on awt
+    'scalac'        : 30,
     'scalariform'   : 30,
     'scalap'        : 120,
-    'scaladoc'      : -1, # depends on awt
-    'scalatest'     : 60, # GR-21548
+    'scaladoc'      : 30,
+    'scalatest'     : 60,
     'scalaxb'       : 60,
     'kiama'         : 40,
-    'factorie'      : 6,  # GR-21543
+    'factorie'      : 6,
     'specs'         : 4,
     'apparat'       : 5,
     'tmt'           : 12,
@@ -492,6 +503,7 @@ _scala_daCapo_exclude_lib = {
     'scalatest'   : ['scala-library-2.8.0.jar'],
     'scalaxb'     : ['scala-library-2.8.0.jar'],
     'tmt'         : ['scala-library-2.8.0.jar'],
+    'scalac'      : ['scala-library-2.8.0.jar'],
 }
 
 _scala_daCapo_additional_lib = {

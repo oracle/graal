@@ -340,22 +340,11 @@ public final class FrameStateBuilder implements SideEffectsState {
             throw shouldNotReachHere();
         }
 
-        if (pushedValues != null) {
-            assert pushedSlotKinds.length == pushedValues.length;
-            int stackSizeToRestore = stackSize;
-            for (int i = 0; i < pushedValues.length; i++) {
-                push(pushedSlotKinds[i], pushedValues[i]);
-            }
-            FrameState res = graph.add(new FrameState(outerFrameState, code, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
-            stackSize = stackSizeToRestore;
-            return res;
-        } else {
-            if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
-                assert outerFrameState == null;
-                clearLocals();
-            }
-            return graph.add(new FrameState(outerFrameState, code, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
+        if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+            assert outerFrameState == null;
+            clearLocals();
         }
+        return graph.add(new FrameState(outerFrameState, code, bci, locals, stack, stackSize, pushedSlotKinds, pushedValues, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
     }
 
     public NodeSourcePosition createBytecodePosition(int bci) {
@@ -665,14 +654,25 @@ public final class FrameStateBuilder implements SideEffectsState {
         if (liveIn) {
             for (int i = 0; i < locals.length; i++) {
                 if (!liveness.localIsLiveIn(block, i)) {
-                    assert locals[i] != TWO_SLOT_MARKER || locals[i - 1] == null : "Clearing of second slot must have cleared the first slot too";
+                    if (locals[i] == TWO_SLOT_MARKER) {
+                        /*
+                         * Clearing a slot is equivalent to a storeLocal() of that slot: if the old
+                         * value is the upper half of a two-slot value, both slots need to be
+                         * cleared. The liveness analysis cannot detect these cases and also mark
+                         * the previous slot as non-live because at the beginning / end of the block
+                         * the slot at index i - 1 can be occupied by a live single-slot value.
+                         */
+                        locals[i - 1] = null;
+                    }
                     locals[i] = null;
                 }
             }
         } else {
             for (int i = 0; i < locals.length; i++) {
                 if (!liveness.localIsLiveOut(block, i)) {
-                    assert locals[i] != TWO_SLOT_MARKER || locals[i - 1] == null : "Clearing of second slot must have cleared the first slot too";
+                    if (locals[i] == TWO_SLOT_MARKER) {
+                        locals[i - 1] = null;
+                    }
                     locals[i] = null;
                 }
             }
@@ -1076,7 +1076,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         ValueNode[] newStack = {};
         ValueNode[] locks = {};
         assert monitorIds.length == 0;
-        stateAfterStart = graph.add(new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, newLocals, newStack, stackSize, locks, Collections.emptyList(), false, false));
+        stateAfterStart = graph.add(new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, newLocals, newStack, stackSize, null, null, locks, Collections.emptyList(), false, false));
         return stateAfterStart;
     }
 

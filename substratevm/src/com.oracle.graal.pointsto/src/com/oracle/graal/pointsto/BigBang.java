@@ -432,7 +432,9 @@ public abstract class BigBang {
     }
 
     public AnalysisType addSystemClass(Class<?> clazz, boolean addFields, boolean addArrayClass) {
-        return addSystemClass(metaAccess.lookupJavaType(clazz), addFields, addArrayClass);
+        AnalysisType type = metaAccess.lookupJavaType(clazz);
+        type.registerAsReachable();
+        return addSystemClass(type, addFields, addArrayClass);
     }
 
     @SuppressWarnings({"try"})

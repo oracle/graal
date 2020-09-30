@@ -194,7 +194,7 @@ abstract class ManagedMemMoveHelperNode extends LLVMNode {
 
         private static MemReadHelperNode createManaged(Object type, NativeTypeLibrary nativeTypes, LLVMManagedReadLibrary managedRead) {
             if (type instanceof LLVMInteropType.Array) {
-                long elementSize = ((LLVMInteropType.Array) type).getElementSize();
+                long elementSize = ((LLVMInteropType.Array) type).elementSize;
                 if (elementSize == 2) {
                     return MemReadI16NodeGen.create(nativeTypes, managedRead);
                 } else if (elementSize == 4) {
@@ -300,7 +300,7 @@ abstract class ManagedMemMoveHelperNode extends LLVMNode {
                 if (nativeTypes.accepts(managed.getObject()) && managedRead.accepts(managed.getObject()) && managedRead.isReadable(managed.getObject())) {
                     Object type = nativeTypes.getNativeType(managed.getObject());
                     if (type instanceof LLVMInteropType.Array) {
-                        return ((LLVMInteropType.Array) type).getElementSize() == getAccessSize();
+                        return ((LLVMInteropType.Array) type).elementSize == getAccessSize();
                     } else {
                         return getAccessSize() == 1;
                     }
@@ -410,7 +410,7 @@ abstract class ManagedMemMoveHelperNode extends LLVMNode {
 
         private static MemWriteHelperNode createManaged(Object type, NativeTypeLibrary nativeTypes, LLVMManagedWriteLibrary managedWrite) {
             if (type instanceof LLVMInteropType.Array) {
-                long elementSize = ((LLVMInteropType.Array) type).getElementSize();
+                long elementSize = ((LLVMInteropType.Array) type).elementSize;
                 if (elementSize == 2) {
                     return MemWriteI16NodeGen.create(nativeTypes, managedWrite);
                 } else if (elementSize == 4) {
@@ -516,7 +516,7 @@ abstract class ManagedMemMoveHelperNode extends LLVMNode {
                 if (nativeTypes.accepts(managed.getObject()) && managedWrite.accepts(managed.getObject()) && managedWrite.isWritable(managed.getObject())) {
                     Object type = nativeTypes.getNativeType(managed.getObject());
                     if (type instanceof LLVMInteropType.Array) {
-                        return ((LLVMInteropType.Array) type).getElementSize() == getAccessSize();
+                        return ((LLVMInteropType.Array) type).elementSize == getAccessSize();
                     } else {
                         return getAccessSize() == 1;
                     }

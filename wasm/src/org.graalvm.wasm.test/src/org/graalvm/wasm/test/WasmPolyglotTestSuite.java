@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.test;
 
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
@@ -52,7 +53,17 @@ import org.graalvm.polyglot.io.ByteSequence;
 
 public class WasmPolyglotTestSuite {
     @Test
-    public void test() throws IOException {
+    public void testEmpty() throws IOException {
+        try (Context context = Context.newBuilder().build()) {
+            context.parse(Source.newBuilder("wasm", ByteSequence.create(new byte[0]), "someName").build());
+        } catch (PolyglotException pex) {
+            Assert.assertTrue("Must be a syntax error.", pex.isSyntaxError());
+            Assert.assertTrue("Must not be an internal error.", !pex.isInternalError());
+        }
+    }
+
+    @Test
+    public void test42() throws IOException {
         Context.Builder contextBuilder = Context.newBuilder("wasm");
         Source.Builder sourceBuilder = Source.newBuilder("wasm",
                         ByteSequence.create(binary),

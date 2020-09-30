@@ -164,6 +164,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @CompilationFinal private volatile ReturnProfile returnProfile;
     @CompilationFinal private Class<? extends Throwable> profiledExceptionType;
 
+    /**
+     * Was the target already dequeued due to inlining. We keep track of this to prevent
+     * continuously dequeuing the target for single caller when the single caller itself has
+     * multiple callers.
+     */
+    private volatile boolean dequeueInlined = false;
+
     public static final class ArgumentsProfile {
         private static final String ARGUMENT_TYPES_ASSUMPTION_NAME = "Profiled Argument Types";
         private static final Class<?>[] EMPTY_ARGUMENT_TYPES = new Class<?>[0];
@@ -322,6 +329,22 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @Override
     public JavaConstant getNodeRewritingAssumptionConstant() {
         return runtime().forObject(getNodeRewritingAssumption());
+    }
+
+    @Override
+    public boolean isTrivial() {
+        return GraalRuntimeAccessor.NODES.isTrivial(rootNode);
+    }
+
+    /**
+     * We intentionally do not synchronize here since as it's not worth the sync costs.
+     */
+    @Override
+    public void dequeueInlined() {
+        if (!dequeueInlined) {
+            dequeueInlined = true;
+            cancelCompilation("Target inlined into only caller");
+        }
     }
 
     /**

@@ -122,7 +122,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
                         @Cached ReinterpretLongAsLLVM fromLongToLLVM,
                         @Cached BranchProfile exception,
                         @Cached BranchProfile outOfBounds,
-                        @Bind("location.type.getKind().foreignToLLVMType") ForeignToLLVMType locationType,
+                        @Bind("location.type.kind.foreignToLLVMType") ForeignToLLVMType locationType,
                         @Bind("accessType.getSizeInBytes()") int accessTypeSizeInBytes) {
             assert identifier == (Long) location.identifier;
             long idx = identifier;
@@ -154,14 +154,14 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
         }
 
         static boolean isLocationTypeNullOrSameSize(AccessLocation location, ForeignToLLVMType accessType) {
-            return location.type == null || location.type.getKind().foreignToLLVMType.getSizeInBytes() == accessType.getSizeInBytes();
+            return location.type == null || location.type.kind.foreignToLLVMType.getSizeInBytes() == accessType.getSizeInBytes();
         }
 
         @Fallback
         Object fallback(@SuppressWarnings("unused") Object identifier, AccessLocation location, ForeignToLLVMType accessType) {
             assert location.type != null;
             throw new LLVMPolyglotException(this, "Cannot read %d byte(s) from foreign object of element size %d", accessType.getSizeInBytes(),
-                            location.type.getKind().foreignToLLVMType.getSizeInBytes());
+                            location.type.kind.foreignToLLVMType.getSizeInBytes());
         }
     }
 

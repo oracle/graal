@@ -44,9 +44,9 @@ import java.io.IOException;
 
 import org.junit.Test;
 
-import org.graalvm.wasm.test.WasmSuiteBase;
+import org.graalvm.wasm.test.WasmFileSuite;
 
-public class MultipleFunctionsSuite extends WasmSuiteBase {
+public class MultipleFunctionsSuite extends WasmFileSuite {
     @Override
     protected String testResource() {
         return "multiple-functions";

@@ -30,8 +30,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -42,6 +40,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
@@ -56,7 +56,6 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.MethodPointer;
-import com.oracle.svm.jni.JNIThreadLocalEnvironmentFeature;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 import com.oracle.svm.jni.functions.JNIFunctions.UnimplementedWithJNIEnvArgument;
 import com.oracle.svm.jni.functions.JNIFunctions.UnimplementedWithJavaVMArgument;
@@ -91,7 +90,7 @@ public class JNIFunctionTablesFeature implements Feature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(JNIAccessFeature.class, JNIThreadLocalEnvironmentFeature.class);
+        return Arrays.asList(JNIAccessFeature.class);
     }
 
     @Override

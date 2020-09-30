@@ -70,6 +70,7 @@ import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
@@ -83,7 +84,7 @@ public abstract class JavaThreads {
     }
 
     /** The {@link java.lang.Thread} for the {@link IsolateThread}. */
-    static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class);
+    static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class).setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     /**
      * The number of running non-daemon threads. The initial value accounts for the main thread,

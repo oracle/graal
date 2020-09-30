@@ -40,4 +40,8 @@ public class LLVMMemoryException extends LLVMException {
     public LLVMMemoryException(Node node, Throwable cause) {
         super(node, cause.getMessage(), cause);
     }
+
+    public LLVMMemoryException(Node node, String message) {
+        super(node, message);
+    }
 }

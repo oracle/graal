@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -60,6 +60,6 @@ public abstract class LLVMPolyglotAsTyped extends LLVMIntrinsic {
     @Specialization
     LLVMManagedPointer doError(@SuppressWarnings("unused") LLVMPointer object, LLVMInteropType.Value type) {
         CompilerDirectives.transferToInterpreter();
-        throw new LLVMPolyglotException(this, "polyglot_as_typed can not be used with primitive type (%s).", type.getKind());
+        throw new LLVMPolyglotException(this, "polyglot_as_typed can not be used with primitive type (%s).", type.kind);
     }
 }

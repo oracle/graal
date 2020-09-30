@@ -25,7 +25,6 @@
 package com.oracle.svm.core.posix.thread;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -68,18 +67,6 @@ public final class PosixVMThreads extends VMThreads {
     @Override
     protected boolean initializeOnce() {
         return PthreadVMLockSupport.initialize();
-    }
-
-    @Uninterruptible(reason = "Thread state not set up.")
-    @Override
-    public IsolateThread allocateIsolateThread(int isolateThreadSize) {
-        return LibC.calloc(WordFactory.unsigned(1), WordFactory.unsigned(isolateThreadSize));
-    }
-
-    @Uninterruptible(reason = "Thread state not set up.")
-    @Override
-    public void freeIsolateThread(IsolateThread thread) {
-        LibC.free(thread);
     }
 
     interface FILE extends PointerBase {

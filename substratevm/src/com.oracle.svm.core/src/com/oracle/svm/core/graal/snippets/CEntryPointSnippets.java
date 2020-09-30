@@ -31,8 +31,6 @@ import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurr
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -68,7 +66,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -83,7 +81,6 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
-import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
@@ -97,7 +94,7 @@ import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
-//Checkstyle: stop
+// Checkstyle: stop
 import sun.misc.Unsafe;
 // Checkstyle: resume
 
@@ -475,7 +472,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Fold
     static boolean runtimeAssertionsEnabled() {
-        return SubstrateOptions.getRuntimeAssertionsForClass(CEntryPointSnippets.class.getName());
+        return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(CEntryPointSnippets.class);
     }
 
     /**
@@ -500,23 +497,22 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return runtimeCall(REPORT_EXCEPTION, exception);
     }
 
+    @Uninterruptible(reason = "Avoid StackOverflowError and safepoints until they are disabled permanently", calleeMustBe = false)
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static int reportException(Throwable exception) {
+        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+        StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+
         logException(exception);
         ImageSingletons.lookup(LogHandler.class).fatalError();
         return CEntryPointErrors.UNSPECIFIED; // unreachable
     }
 
     private static void logException(Throwable exception) {
-        Log log = Log.log();
-        if (log.isEnabled()) {
-            if (NoAllocationVerifier.isActive()) {
-                log.exception(exception);
-            } else {
-                StringWriter writer = new StringWriter();
-                exception.printStackTrace(new PrintWriter(writer));
-                log.string(writer.toString()); // no newline needed
-            }
+        try {
+            Log.log().exception(exception);
+        } catch (Throwable ex) {
+            /* Logging failed, so there is nothing we can do anymore to log. */
         }
     }
 

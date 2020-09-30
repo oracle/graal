@@ -50,12 +50,11 @@ public class HostedDynamicHubFeature implements Feature {
         if (source instanceof Class) {
             Class<?> clazz = (Class<?>) source;
             DynamicHub dynamicHub = hostVM.dynamicHub(metaAccess.lookupJavaType(clazz));
-
-            AnalysisConstantReflectionProvider.registerHub(hostVM, dynamicHub);
+            AnalysisConstantReflectionProvider.registerAsReachable(hostVM, dynamicHub);
             return dynamicHub;
-
-        } else if (source instanceof DynamicHub) {
-            AnalysisConstantReflectionProvider.registerHub(hostVM, (DynamicHub) source);
+        }
+        if (source instanceof DynamicHub) {
+            AnalysisConstantReflectionProvider.registerAsReachable(hostVM, (DynamicHub) source);
         }
         return source;
     }

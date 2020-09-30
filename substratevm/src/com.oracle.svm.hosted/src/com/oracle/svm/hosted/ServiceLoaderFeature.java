@@ -124,7 +124,7 @@ public class ServiceLoaderFeature implements Feature {
 
     @SuppressWarnings("try")
     private boolean handleType(AnalysisType type, DuringAnalysisAccessImpl access) {
-        if (!type.isInTypeCheck() || type.isArray()) {
+        if (!type.isReachable() || type.isArray()) {
             /*
              * Type is not seen as used yet by the static analysis. Note that a constant class
              * literal is enough to register a type as "in type check". Arrays are also never
@@ -216,6 +216,20 @@ public class ServiceLoaderFeature implements Feature {
                 continue;
             }
 
+            try {
+                /*
+                 * Check if the implementation class has a nullary constructor. The
+                 * ServiceLoaderFeature documentation specifies that "the only requirement enforced
+                 * is that provider classes must have a zero-argument constructor so that they can
+                 * be instantiated during loading". Since we eagerly scan all services we ignore
+                 * service classes that don't respect the requirement. On HotSpot trying to load
+                 * such a service would lead to a ServiceConfigurationError.
+                 */
+                implementationClass.getDeclaredConstructor();
+            } catch (NoSuchMethodException ex) {
+                continue;
+            }
+
             /* Allow Class.forName at run time for the service implementation. */
             RuntimeReflection.register(implementationClass);
             /* Allow reflective instantiation at run time for the service implementation. */
@@ -224,6 +238,7 @@ public class ServiceLoaderFeature implements Feature {
             /* Add line to the new resource that will be available at run time. */
             newResourceValue.append(implementationClass.getName());
             newResourceValue.append('\n');
+
         }
 
         DebugContext debugContext = access.getDebugContext();

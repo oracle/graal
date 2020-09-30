@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -78,7 +78,7 @@ public final class CodeInfoAccess {
 
     @Fold
     static boolean haveAssertions() {
-        return SubstrateOptions.getRuntimeAssertionsForClass(CodeInfoAccess.class.getName());
+        return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(CodeInfoAccess.class);
     }
 
     @Uninterruptible(reason = "The handle should only be accessed from uninterruptible code to prevent that the GC frees the CodeInfo.", callerMustBe = true)

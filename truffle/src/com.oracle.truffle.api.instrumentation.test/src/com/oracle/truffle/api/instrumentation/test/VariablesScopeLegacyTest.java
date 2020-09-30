@@ -73,6 +73,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -117,6 +118,9 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
                     scopeTested = true;
                     try {
                         tester.doTestScope(env, context.getInstrumentedNode(), frame);
+                        if (tester.isTestOnRoot()) {
+                            tester.doTestScope(env, context.getInstrumentedNode().getRootNode(), frame);
+                        }
                     } catch (Throwable t) {
                         failure = t;
                     }
@@ -146,6 +150,9 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
         }
 
         interface Tester {
+
+            boolean isTestOnRoot();
+
             void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception;
         }
     }
@@ -176,6 +183,11 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
     }
 
     private static class DefaultScopeTester implements TestScopeLegacyInstrument.Tester {
+
+        @Override
+        public boolean isTestOnRoot() {
+            return false;
+        }
 
         public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception {
             Iterable<com.oracle.truffle.api.Scope> lscopes = env.findLocalScopes(node, null); // lexical
@@ -256,6 +268,9 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
         TestScopeLegacyInstrument.INSTANCE.setTester(new CustomScopeTester());
         context.eval(source);
         TestScopeLegacyInstrument.INSTANCE.checkForFailure();
+        TestScopeLegacyInstrument.INSTANCE.setTester(new CustomScopeLibraryTester());
+        context.eval(source);
+        TestScopeLegacyInstrument.INSTANCE.checkForFailure();
     }
 
     @TruffleLanguage.Registration(name = "", id = "test-custom-variables-scope-legacy-language")
@@ -294,8 +309,11 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
                             if (!hasNext()) {
                                 throw new NoSuchElementException();
                             }
-                            com.oracle.truffle.api.Scope scope = com.oracle.truffle.api.Scope.newBuilder(next.getName(), next.getVariables(frame)).node(next.getNode()).arguments(
-                                            next.getArguments(frame)).build();
+                            com.oracle.truffle.api.Scope.Builder scopeBuilder = com.oracle.truffle.api.Scope.newBuilder(next.getName(), next.getVariables(frame));
+                            scopeBuilder.node(next.getNode());
+                            scopeBuilder.receiver(next.getReceiverName(), next.getReceiverValue());
+                            scopeBuilder.arguments(next.getArguments(frame));
+                            com.oracle.truffle.api.Scope scope = scopeBuilder.build();
                             previous = next;
                             next = null;
                             return scope;
@@ -406,21 +424,35 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
         // Checkstyle: resume
 
         private final Node node;
+        private final boolean hasReceiver;
 
         CustomScope(Node node) {
+            this(node, true);
+        }
+
+        private CustomScope(Node node, boolean hasReceiver) {
             this.node = node;
+            this.hasReceiver = hasReceiver;
             LAST_INSTANCE = this;
         }
 
-        protected String getName() {
+        String getName() {
             return "CustomScope.getName";
         }
 
-        protected Node getNode() {
-            return node;
+        private boolean isAtRoot() {
+            return node instanceof RootNode;
         }
 
-        protected Object getVariables(Frame f) {
+        Node getNode() {
+            if (isAtRoot()) {
+                return node.getRootNode();
+            } else {
+                return node;
+            }
+        }
+
+        Object getVariables(Frame f) {
             if (f == null) {
                 return new TestLegacyObject("V1");
             } else {
@@ -428,7 +460,7 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
             }
         }
 
-        protected Object getArguments(Frame f) {
+        Object getArguments(Frame f) {
             if (f == null) {
                 return new TestLegacyObject("A1");
             } else {
@@ -436,10 +468,23 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
             }
         }
 
-        protected CustomScope findParent() {
+        String getReceiverName() {
+            return "THIS";
+        }
+
+        Object getReceiverValue() {
+            if (hasReceiver) {
+                return "thisValue";
+            } else {
+                return null;
+            }
+        }
+
+        CustomScope findParent() {
             Node parent = node.getParent();
-            if (parent != null && !(parent instanceof RootNode)) {
-                return new CustomScope(parent);
+            if (parent != null) {
+                // The legacy bridge need to work with all nodes, including the RootNode.
+                return new CustomScope(parent, false);
             } else {
                 return null;
             }
@@ -449,30 +494,54 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
     private static class CustomScopeTester implements TestScopeLegacyInstrument.Tester {
 
         @Override
+        public boolean isTestOnRoot() {
+            return true;
+        }
+
+        @Override
         public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) {
+            if (node instanceof RootNode) {
+                Iterable<com.oracle.truffle.api.Scope> lscopes = env.findLocalScopes(node, null);
+                Iterator<com.oracle.truffle.api.Scope> literator = lscopes.iterator();
+                assertTrue(literator.hasNext());
+                com.oracle.truffle.api.Scope lscope = literator.next();
+                try {
+                    assertEquals("V1", InteropLibrary.getUncached().readMember(lscope.getVariables(), "value"));
+                } catch (InteropException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+                assertFalse(literator.hasNext());
+                return;
+            }
+
             assertNull(CustomScope.LAST_INSTANCE);
             Iterable<com.oracle.truffle.api.Scope> lscopes = env.findLocalScopes(node, null);
             Iterator<com.oracle.truffle.api.Scope> literator = lscopes.iterator();
             assertNotNull(CustomScope.LAST_INSTANCE);
             assertTrue(literator.hasNext());
             com.oracle.truffle.api.Scope lscope = literator.next();
-            testScopeContent(lscope, null);
+            testScopeContent(lscope, null, true);
 
             Iterable<com.oracle.truffle.api.Scope> dscopes = env.findLocalScopes(node, frame);
             Iterator<com.oracle.truffle.api.Scope> diterator = dscopes.iterator();
             com.oracle.truffle.api.Scope dscope = diterator.next();
-            testScopeContent(dscope, frame);
+            testScopeContent(dscope, frame, true);
 
             assertTrue(literator.hasNext());
             lscope = literator.next();
-            testScopeContent(lscope, null);
+            testScopeContent(lscope, null, false);
 
             assertTrue(diterator.hasNext());
             dscope = diterator.next();
-            testScopeContent(dscope, frame);
+            testScopeContent(dscope, frame, false);
 
             assertTrue(literator.hasNext());
             lscope = literator.next();
+            testScopeContent(lscope, null, false);
+
+            assertTrue(literator.hasNext());
+            lscope = literator.next();
+            testScopeContent(lscope, null, false);
 
             assertFalse(literator.hasNext());
             try {
@@ -484,7 +553,7 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
             doTestTopScope(env);
         }
 
-        private static void testScopeContent(com.oracle.truffle.api.Scope scope, Frame frame) {
+        private static void testScopeContent(com.oracle.truffle.api.Scope scope, Frame frame, boolean hasReceiver) {
             assertEquals("CustomScope.getName", scope.getName());
 
             try {
@@ -498,6 +567,12 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
                     assertEquals("A1", InteropLibrary.getUncached().readMember(scope.getArguments(), "value"));
                 } else {
                     assertEquals("A1A2A3", InteropLibrary.getUncached().readMember(scope.getArguments(), "value"));
+                }
+                assertEquals("THIS", scope.getReceiverName());
+                if (hasReceiver) {
+                    assertEquals("thisValue", scope.getReceiver());
+                } else {
+                    assertNull(scope.getReceiver());
                 }
             } catch (InteropException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
@@ -519,6 +594,36 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
             assertTrue(INTEROP.hasMembers(variables));
         }
 
+    }
+
+    private static class CustomScopeLibraryTester implements TestScopeLegacyInstrument.Tester {
+
+        @Override
+        public boolean isTestOnRoot() {
+            return false;
+        }
+
+        @Override
+        public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) {
+            NodeLibrary nodeLibrary = NodeLibrary.getUncached(node);
+            assertTrue(nodeLibrary.hasScope(node, frame));
+            assertTrue(nodeLibrary.hasReceiverMember(node, frame));
+            try {
+                assertEquals("THIS", nodeLibrary.getReceiverMember(node, frame));
+                Object scope = nodeLibrary.getScope(node, frame, true);
+                InteropLibrary interop = InteropLibrary.getUncached();
+                assertTrue(interop.isScope(scope));
+                if (frame == null) {
+                    assertEquals("V1", interop.readMember(scope, "value"));
+                } else {
+                    assertEquals("V1V2V3", interop.readMember(scope, "value"));
+                }
+                assertEquals("thisValue", interop.readMember(scope, "THIS"));
+                assertTrue(interop.hasScopeParent(scope));
+            } catch (InteropException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)

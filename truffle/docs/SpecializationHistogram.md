@@ -20,7 +20,7 @@ mx build -c -A-Atruffle.dsl.GenerateSpecializationStatistics=true
 ```
 
 After the rebuild the specialization statistics are ready to be use.
-Make sure that your IDE does not recompile in the sources automatically in the meantime.
+Make sure that your IDE does not recompile the sources automatically in the meantime.
 In this tutorial we use a simple `test.js` script:
 
 ```js

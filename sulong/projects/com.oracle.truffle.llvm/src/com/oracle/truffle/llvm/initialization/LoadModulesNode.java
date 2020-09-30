@@ -29,6 +29,12 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
+import java.nio.file.Path;
+import java.util.ArrayDeque;
+import java.util.BitSet;
+import java.util.List;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
@@ -36,7 +42,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -44,7 +49,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
-import com.oracle.truffle.llvm.parser.StackManager;
 import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
@@ -57,16 +61,10 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.SulongLibrary;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
-
-import java.nio.file.Path;
-import java.util.ArrayDeque;
-import java.util.BitSet;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * The {@link LoadModulesNode} initialise the library. This involves building the scopes (local
@@ -90,13 +88,12 @@ import java.util.Objects;
  * while the dependencies will return null.
  *
  */
-public final class LoadModulesNode extends RootNode {
+public final class LoadModulesNode extends LLVMRootNode {
 
     private static final String MAIN_METHOD_NAME = "main";
     private static final String START_METHOD_NAME = "_start";
 
     @CompilerDirectives.CompilationFinal RootCallTarget mainFunctionCallTarget;
-    final FrameSlot stackPointerSlot;
     final String sourceName;
     final int bitcodeID;
     final Source source;
@@ -135,15 +132,14 @@ public final class LoadModulesNode extends RootNode {
         }
     }
 
-    private LoadModulesNode(String name, LLVMParserResult parserResult, LLVMContext context,
-                    FrameDescriptor rootFrame, boolean lazyParsing, List<Object> dependenciesSource, Source source, LLVMLanguage language) throws Type.TypeOverflowException {
+    private LoadModulesNode(String name, LLVMParserResult parserResult, LLVMContext context, FrameDescriptor rootFrame, boolean lazyParsing, List<Object> dependenciesSource, Source source,
+                    LLVMLanguage language) throws Type.TypeOverflowException {
 
-        super(language, rootFrame);
+        super(language, rootFrame, parserResult.getRuntime().getNodeFactory().createStackAccess(rootFrame));
         this.mainFunctionCallTarget = null;
         this.sourceName = name;
         this.source = source;
         this.bitcodeID = parserResult.getRuntime().getBitcodeID();
-        this.stackPointerSlot = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
         this.parserResult = parserResult;
         this.dependenciesSource = dependenciesSource;
         this.language = language;
@@ -173,14 +169,12 @@ public final class LoadModulesNode extends RootNode {
         return source.createUnavailableSection();
     }
 
-    public static LoadModulesNode create(String name, LLVMParserResult parserResult, FrameDescriptor rootFrame,
-                    boolean lazyParsing, LLVMContext context, List<Object> dependencySources, Source source, LLVMLanguage language) {
-        LoadModulesNode node = null;
+    public static LoadModulesNode create(String name, LLVMParserResult parserResult, boolean lazyParsing, LLVMContext context, List<Object> dependencySources, Source source,
+                    LLVMLanguage language) {
         try {
-            node = new LoadModulesNode(name, parserResult, context, rootFrame, lazyParsing, dependencySources, source, language);
-            return node;
+            return new LoadModulesNode(name, parserResult, context, new FrameDescriptor(), lazyParsing, dependencySources, source, language);
         } catch (Type.TypeOverflowException e) {
-            throw new LLVMUnsupportedException(node, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
+            throw new LLVMUnsupportedException(null, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
         }
     }
 
@@ -223,10 +217,10 @@ public final class LoadModulesNode extends RootNode {
                 if (mainFunction != null) {
                     RootCallTarget startCallTarget = startFunctionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
                     Path applicationPath = mainFunction.getLibrary().getPath();
-                    RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
+                    RootNode rootNode = new LLVMGlobalRootNode(language, new FrameDescriptor(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
                     mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
                 }
-                initContext = this.insert(context.createInitializeContextNode(getFrameDescriptor()));
+                initContext = this.insert(context.createInitializeContextNode());
                 hasInitialised = true;
             }
 
@@ -246,8 +240,8 @@ public final class LoadModulesNode extends RootNode {
     private LLVMScope loadModule(VirtualFrame frame,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
 
-        try (LLVMStack.StackPointer stackPointer = ctxRef.get().getThreadingStack().getStack().newFrame()) {
-            frame.setObject(stackPointerSlot, stackPointer);
+        stackAccess.executeEnter(frame, ctxRef.get().getThreadingStack().getStack());
+        try {
             LLVMLoadingPhase phase;
             LLVMLocalScope localScope = null;
             BitSet visited;
@@ -365,6 +359,8 @@ public final class LoadModulesNode extends RootNode {
                 return resultScope;
             }
             return null;
+        } finally {
+            stackAccess.executeExit(frame);
         }
     }
 

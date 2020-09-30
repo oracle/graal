@@ -48,6 +48,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -392,7 +393,7 @@ public final class GCImpl implements GC {
 
     @Fold
     static boolean runtimeAssertions() {
-        return SubstrateOptions.getRuntimeAssertionsForClass(GCImpl.class.getName());
+        return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(GCImpl.class);
     }
 
     @Fold

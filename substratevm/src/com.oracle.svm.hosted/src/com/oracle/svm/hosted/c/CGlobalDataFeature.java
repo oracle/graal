@@ -67,6 +67,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataImpl;
@@ -83,6 +84,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticFeature
 public class CGlobalDataFeature implements GraalFeature {
@@ -135,6 +137,11 @@ public class CGlobalDataFeature implements GraalFeature {
                     ValueNode cGlobalDataInfo = (ValueNode) builderContext.handleReplacedInvoke(InvokeKind.Virtual, getCGlobalDataInfoResolvedMethod,
                                     new ValueNode[]{nonConstantRegistryNode, cGlobalDataNode}, false);
                     builderContext.pop(cGlobalDataInfo.getStackKind());
+
+                    ResolvedJavaType resolvedJavaType = builderContext.getMetaAccess().lookupJavaType(CGlobalDataInfo.class);
+                    if (resolvedJavaType instanceof AnalysisType) {
+                        ((AnalysisType) resolvedJavaType).registerAsReachable();
+                    }
 
                     ResolvedJavaField offset = builderContext.getMetaAccess().lookupJavaField(offsetField);
                     ValueNode offsetFieldNode = builderContext.add(LoadFieldNode.create(builderContext.getAssumptions(), cGlobalDataInfo, offset)); // cGlobalDataInfo.offset

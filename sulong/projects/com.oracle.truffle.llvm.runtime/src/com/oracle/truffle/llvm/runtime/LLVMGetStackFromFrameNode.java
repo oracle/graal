@@ -29,28 +29,28 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 
 public abstract class LLVMGetStackFromFrameNode extends LLVMExpressionNode {
 
-    public static LLVMGetStackFromFrameNode create(FrameSlot frameSlot) {
-        return LLVMGetStackFromFrameNodeGen.create(frameSlot);
-    }
+    @CompilationFinal private LLVMStackAccess stackAccess;
 
-    private final FrameSlot llvmStackSlot;
-
-    LLVMGetStackFromFrameNode(FrameSlot llvmStackSlot) {
-        this.llvmStackSlot = llvmStackSlot;
+    protected LLVMStackAccess ensureStackAccess() {
+        if (stackAccess == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            stackAccess = ((LLVMRootNode) getRootNode()).getStackAccess();
+        }
+        return stackAccess;
     }
 
     @Specialization
-    LLVMStack getLLVMStack(VirtualFrame frame) {
-        return ((LLVMStack.StackPointer) FrameUtil.getObjectSafe(frame, llvmStackSlot)).getLLVMStack();
+    Object getStack(VirtualFrame frame) {
+        return ensureStackAccess().executeGetStack(frame);
     }
-
 }

@@ -67,7 +67,7 @@ public class VMFeature implements Feature {
         String fieldName = "VERSION_INFO";
         try {
             Field declaredField = VM.class.getDeclaredField(fieldName);
-            access.registerAsRead(access.getMetaAccess().lookupJavaField(declaredField));
+            access.registerAsRead(declaredField);
         } catch (NoSuchFieldException e) {
             VMError.shouldNotReachHere(VM.class.getName() + " should have field " + fieldName);
         }

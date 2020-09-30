@@ -29,67 +29,72 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMAMD64PopNode extends LLVMExpressionNode {
-    protected FrameSlot getStackPointerSlot() {
-        CompilerAsserts.neverPartOfCompilation();
-        return getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
+
+    protected final LLVMStackAccess stackAccess;
+
+    protected LLVMAMD64PopNode(LLVMStackAccess stackAccess) {
+        this.stackAccess = stackAccess;
     }
 
     public abstract static class LLVMAMD64PopwNode extends LLVMAMD64PopNode {
+        protected LLVMAMD64PopwNode(LLVMStackAccess stackAccess) {
+            super(stackAccess);
+        }
+
         @Specialization
-        protected short doI16(VirtualFrame frame,
-                        @Cached("getStackPointerSlot()") FrameSlot slot,
-                        @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getLLVMMemory();
-            StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
-            long sp = basePointer.get(this, memory);
-            short value = memory.getI16(this, sp);
-            sp += LLVMExpressionNode.I16_SIZE_IN_BYTES;
-            basePointer.set(sp);
-            return value;
+        protected Object doI16(VirtualFrame frame,
+                        @Cached LLVMI16LoadNode load) {
+            LLVMPointer stackPointer = stackAccess.executeGet(frame);
+            try {
+                return load.executeWithTarget(stackPointer);
+            } finally {
+                stackAccess.executeSet(frame, stackPointer.increment(LLVMExpressionNode.I16_SIZE_IN_BYTES));
+            }
         }
     }
 
     public abstract static class LLVMAMD64PoplNode extends LLVMAMD64PopNode {
+        protected LLVMAMD64PoplNode(LLVMStackAccess stackAccess) {
+            super(stackAccess);
+        }
+
         @Specialization
-        protected int doI32(VirtualFrame frame,
-                        @Cached("getStackPointerSlot()") FrameSlot slot,
-                        @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getLLVMMemory();
-            StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
-            long sp = basePointer.get(this, memory);
-            int value = memory.getI32(this, sp);
-            sp += LLVMExpressionNode.I32_SIZE_IN_BYTES;
-            basePointer.set(sp);
-            return value;
+        protected Object doI32(VirtualFrame frame,
+                        @Cached LLVMI32LoadNode load) {
+            LLVMPointer stackPointer = stackAccess.executeGet(frame);
+            try {
+                return load.executeWithTarget(stackPointer);
+            } finally {
+                stackAccess.executeSet(frame, stackPointer.increment(LLVMExpressionNode.I32_SIZE_IN_BYTES));
+            }
         }
     }
 
     public abstract static class LLVMAMD64PopqNode extends LLVMAMD64PopNode {
+        protected LLVMAMD64PopqNode(LLVMStackAccess stackAccess) {
+            super(stackAccess);
+        }
+
         @Specialization
-        protected long doI64(VirtualFrame frame,
-                        @Cached("getStackPointerSlot()") FrameSlot slot,
-                        @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getLLVMMemory();
-            StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
-            long sp = basePointer.get(this, memory);
-            long value = memory.getI64(this, sp);
-            sp += LLVMExpressionNode.I64_SIZE_IN_BYTES;
-            basePointer.set(sp);
-            return value;
+        protected Object doI64(VirtualFrame frame,
+                        @Cached LLVMI64LoadNode load) {
+            LLVMPointer stackPointer = stackAccess.executeGet(frame);
+            try {
+                return load.executeWithTarget(stackPointer);
+            } finally {
+                stackAccess.executeSet(frame, stackPointer.increment(LLVMExpressionNode.I64_SIZE_IN_BYTES));
+            }
         }
     }
 }

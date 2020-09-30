@@ -29,7 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.global;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -54,19 +58,57 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @ExportLibrary(LLVMManagedWriteLibrary.class)
 public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
+    private static final int MAX_CACHED_WRITES = 3;
+
+    private static final class State {
+        final Object value;
+        final Assumption assumption;
+        final int writeCount;
+
+        State(Object value, int writeCount) {
+            assert writeCount <= MAX_CACHED_WRITES;
+            this.value = value;
+            this.writeCount = writeCount;
+            this.assumption = Truffle.getRuntime().createAssumption();
+        }
+    }
+
     private long address;
-    private Object contents;
+
+    @CompilationFinal private State contents;
+    private Object fallbackContents;
 
     public LLVMGlobalContainer() {
-        contents = 0L;
+        contents = new State(0L, 0);
     }
 
     public Object get() {
-        return contents;
+        while (true) {
+            State c = contents;
+            if (c.assumption.isValid()) {
+                return c.value;
+            }
+            if (c.writeCount == MAX_CACHED_WRITES) {
+                return fallbackContents;
+            }
+            // invalidation in progress, re-read
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
     }
 
     public void set(Object value) {
-        contents = value;
+        State c = contents;
+        if (c.writeCount < MAX_CACHED_WRITES) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            contents = new State(value, c.writeCount + 1);
+            c.assumption.invalidate();
+        } else {
+            if (c.assumption.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                c.assumption.invalidate();
+            }
+            fallbackContents = value;
+        }
     }
 
     @ExportMessage
@@ -100,10 +142,11 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
             LLVMNativePointer pointer = memory.allocateMemory(toNative, 8);
             address = pointer.asNative();
             long value;
-            if (contents instanceof Number) {
-                value = ((Number) contents).longValue();
+            Object global = get();
+            if (global instanceof Number) {
+                value = ((Number) global).longValue();
             } else {
-                value = toNative.executeWithTarget(contents).asNative();
+                value = toNative.executeWithTarget(global).asNative();
             }
             memory.putI64(toNative, pointer, value);
         }

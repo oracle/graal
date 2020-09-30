@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,10 @@
 package org.graalvm.compiler.hotspot.test;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.graalvm.compiler.java.BytecodeParserOptions;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
-import org.graalvm.compiler.options.OptionValues;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -53,8 +51,7 @@ public class ObjectHashCodeInliningTest extends GraalCompilerTest {
                         new ProfiledType(metaAccess.lookupJavaType(Object.class), 0.1D)};
 
         ResolvedJavaMethod method = getResolvedJavaMethod("getHash");
-        StructuredGraph graph = parseForCompile(method,
-                        new OptionValues(getInitialOptions(), BytecodeParserOptions.InlineDuringParsing, false, BytecodeParserOptions.InlineIntrinsicsDuringParsing, false));
+        StructuredGraph graph = parseForCompile(method);
         for (MethodCallTargetNode callTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
             if ("Object.hashCode".equals(callTargetNode.targetName())) {
                 callTargetNode.setJavaTypeProfile(new JavaTypeProfile(TriState.FALSE, 0.0D, injectedProfile));

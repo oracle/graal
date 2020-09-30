@@ -63,16 +63,85 @@ import jdk.vm.ci.meta.UnresolvedJavaMethod;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class EncodedSnippets {
-    static class GraphData {
+    abstract static class GraphData {
         int startOffset;
         String originalMethod;
-
         SnippetParameterInfo info;
 
         GraphData(int startOffset, String originalMethod, SnippetParameterInfo info) {
             this.startOffset = startOffset;
             this.originalMethod = originalMethod;
             this.info = info;
+        }
+
+        /**
+         * Record the data for an encoded graph. Most graphs are from static methods and can only
+         * have a single instantiation but snippets might come for a non-static method and rely on
+         * the type of the receiver to devirtualize invokes. In that case each pair of method and
+         * receiver represents a potentially different instantiation and these are linked into a
+         * chain of {@link VirtualGraphData VirtualGraphDatas}.
+         *
+         * @param startOffset offset of the encoded graph
+         * @param originalMethod method parsed for the graph
+         * @param snippetParameterInfo parameter information for snippets
+         * @param receiverClass static type of the receiver for non-virtual methods
+         * @param existingGraph a previous encoding of this same graph
+         */
+        public static GraphData create(int startOffset, String originalMethod, SnippetParameterInfo snippetParameterInfo, Class<?> receiverClass, GraphData existingGraph) {
+            if (receiverClass == null) {
+                assert existingGraph == null : originalMethod;
+                return new StaticGraphData(startOffset, originalMethod, snippetParameterInfo);
+            } else {
+                return new VirtualGraphData(startOffset, originalMethod, snippetParameterInfo, receiverClass, (VirtualGraphData) existingGraph);
+            }
+        }
+
+        /**
+         * Return the proper starting offset based on the actual receiver type of the instantiation
+         * which may be null.
+         */
+        abstract int getStartOffset(Class<?> receiverClass);
+    }
+
+    /**
+     * Graph data for a snippet or method substitution defined by a static method.
+     */
+    static class StaticGraphData extends GraphData {
+
+        StaticGraphData(int startOffset, String originalMethod, SnippetParameterInfo info) {
+            super(startOffset, originalMethod, info);
+        }
+
+        @Override
+        int getStartOffset(Class<?> receiverClass) {
+            assert receiverClass == null;
+            return startOffset;
+        }
+    }
+
+    /**
+     * Graph data for a snippet defined by a virtual method. Method substitutions can't be virtual.
+     */
+    static class VirtualGraphData extends GraphData {
+        private final Class<?> receiverClass;
+        private final VirtualGraphData next;
+
+        VirtualGraphData(int startOffset, String originalMethod, SnippetParameterInfo info, Class<?> receiverClass, VirtualGraphData next) {
+            super(startOffset, originalMethod, info);
+            this.receiverClass = receiverClass;
+            this.next = next;
+        }
+
+        @Override
+        int getStartOffset(Class<?> aClass) {
+            VirtualGraphData start = this;
+            while (start != null) {
+                if (start.receiverClass == aClass) {
+                    return start.startOffset;
+                }
+                start = start.next;
+            }
+            throw GraalError.shouldNotReachHere("missing receiver type " + aClass);
         }
     }
 
@@ -110,7 +179,7 @@ public class EncodedSnippets {
         }
 
         ResolvedJavaType accessingClass = replacements.getProviders().getMetaAccess().lookupJavaType(plugin.getDeclaringClass());
-        return decodeGraph(original, accessingClass, data.startOffset, replacements, contextToUse, allowAssumptions, cancellable, options);
+        return decodeGraph(original, accessingClass, data.getStartOffset(null), replacements, contextToUse, allowAssumptions, cancellable, options);
     }
 
     /**
@@ -157,7 +226,13 @@ public class EncodedSnippets {
             }
         }
 
-        SymbolicEncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, data.startOffset, snippetObjects, snippetNodeClasses, data.originalMethod, method.getDeclaringClass());
+        Class<?> receiverClass = null;
+        if (!method.isStatic()) {
+            assert args != null && args[0] != null : "must have a receiver";
+            receiverClass = args[0].getClass();
+        }
+        int startOffset = data.getStartOffset(receiverClass);
+        SymbolicEncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, data.originalMethod, method.getDeclaringClass());
         return decodeSnippetGraph(encodedGraph, method, replacements, args, allowAssumptions, options, IS_IN_NATIVE_IMAGE);
     }
 

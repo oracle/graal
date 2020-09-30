@@ -68,7 +68,6 @@ public final class CacheExpression extends MessageContainer {
     private boolean eagerInitialize;
     private Message uncachedExpressionError;
     private boolean requiresBoundary;
-    private String sharedGroup;
     private boolean mergedLibrary;
     private boolean guardForNull;
     private boolean isWeakReference;
@@ -88,7 +87,6 @@ public final class CacheExpression extends MessageContainer {
         copy.defaultExpression = this.defaultExpression;
         copy.uncachedExpression = this.uncachedExpression;
         copy.alwaysInitialized = this.alwaysInitialized;
-        copy.sharedGroup = this.sharedGroup;
         return copy;
     }
 
@@ -122,10 +120,6 @@ public final class CacheExpression extends MessageContainer {
 
     public TypeMirror getLanguageType() {
         return languageType;
-    }
-
-    public void setSharedGroup(String sharedGroup) {
-        this.sharedGroup = sharedGroup;
     }
 
     public AnnotationMirror getSharedGroupMirror() {

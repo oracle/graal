@@ -237,6 +237,11 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
     private void processClass(DuringAnalysisAccessImpl access, Class<?> clazz) {
         AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
+        /*
+         * Make sure the class is registered as reachable before its fields are accessed below to
+         * build the reflection metadata.
+         */
+        type.registerAsReachable();
         DynamicHub hub = access.getHostVM().dynamicHub(type);
 
         if (reflectionClasses.contains(clazz)) {
@@ -256,7 +261,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             clazz.getConstructors();
             clazz.getDeclaredClasses();
             clazz.getClasses();
-        } catch (NoClassDefFoundError e) {
+        } catch (TypeNotPresentException | NoClassDefFoundError e) {
             /*
              * If any of the methods or fields reference missing types in their signatures a
              * NoClassDefFoundError is thrown. Skip registering reflection metadata for this class.
@@ -316,7 +321,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         try {
             enclosingMethod = clazz.getEnclosingMethod();
             enclosingConstructor = clazz.getEnclosingConstructor();
-        } catch (NoClassDefFoundError e) {
+        } catch (TypeNotPresentException | NoClassDefFoundError e) {
             /*
              * If any of the methods or fields in the class of the enclosing method reference
              * missing types in their signatures a NoClassDefFoundError is thrown. Skip the class.

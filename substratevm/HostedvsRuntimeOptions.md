@@ -3,10 +3,10 @@
 Along with all the options listed in the [Options](Options.md)
 guide,  Native Image also distinguishes hosted and runtime options.
 
-* Hosted options: configure a native image generation, i.e., influence what is put into the image and how the image is built.
+* Hosted options: configure a native image build, i.e., influence what is put into the image and how the image is built.
 These are set using the prefix `-H:` on the command line.
 
-* Runtime options: get their initial value during a native image generation, using the prefix `-R:` on the command line of the native image builder. At runtime, the default prefix is `-XX:` (but this is application-specific and not mandated by Native Image).
+* Runtime options: get their initial value during an image generation, using the prefix `-R:` on the command line for the native image builder. At runtime, the default prefix is `-XX:` (but this is application-specific and not mandated by Native Image).
 
 For developer documentation on how to define and use options, read the documentation of the `com.oracle.svm.core.option` package.
 
@@ -24,9 +24,9 @@ The GraalVM compiler options that work as expected include `Dump`, `DumpOnError`
 handlers.
 
 For example:
-* To dump Graal graphs of the native image builder: `-H:Dump= -H:MethodFilter=ClassName.MethodName`.
+* To dump the compiler graphs of the native image builder: `-H:Dump= -H:MethodFilter=ClassName.MethodName`.
 
-* To dump Graal graphs at runtime, specify the dump flags at runtime with: `-XX:Dump= -XX:MethodFilter=ClassName.MethodName`.
+* To dump the compile graphs at runtime, specify the dump flags at runtime: `-XX:Dump= -XX:MethodFilter=ClassName.MethodName`.
 
 ### Debug Options
 These options enable additional checks in the generated executable to help with debugging:

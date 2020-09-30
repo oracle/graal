@@ -141,8 +141,7 @@ public final class DebugScope {
 
     /**
      * Test if this scope represents the function scope at the frame it was
-     * {@link DebugStackFrame#getScope() obtained from}. {@link #getArguments() arguments} of
-     * function scope represent arguments of the appropriate function.
+     * {@link DebugStackFrame#getScope() obtained from}.
      *
      * @since 0.26
      */
@@ -218,16 +217,37 @@ public final class DebugScope {
      *         concept of arguments.
      * @throws DebugException when guest language code throws an exception
      * @since 0.26
+     * @deprecated since 20.3 Use {@link #getDeclaredValues()} on the {@link SourceElement#ROOT}.
      */
+    @Deprecated
     public Iterable<DebugValue> getArguments() throws DebugException {
         verifyValidState();
         if (node == null) {
             return null;
         }
         try {
-            Object argumentsObj = getArguments(node, frame);
+            Node argNode = node;
+            while (argNode != null && (!(argNode instanceof InstrumentableNode) || !((InstrumentableNode) argNode).hasTag(StandardTags.RootTag.class))) {
+                argNode = argNode.getParent();
+            }
+            if (argNode == null || !NODE.hasScope(argNode, frame)) {
+                return null;
+            }
+            Object argumentsObj;
+            try {
+                argumentsObj = NODE.getScope(argNode, frame, true);
+                if (INTEROP.hasScopeParent(argumentsObj)) {
+                    argumentsObj = new SubtractedVariables(argumentsObj, INTEROP.getScopeParent(argumentsObj));
+                }
+            } catch (UnsupportedMessageException e) {
+                return null;
+            }
             if (argumentsObj != null) {
-                ValuePropertiesCollection properties = DebugValue.getProperties(argumentsObj, null, session, getLanguage(), this);
+                String receiverName = null;
+                if (NODE.hasReceiverMember(argNode, frame)) {
+                    receiverName = INTEROP.asString(NODE.getReceiverMember(argNode, frame));
+                }
+                ValuePropertiesCollection properties = DebugValue.getProperties(argumentsObj, receiverName, session, getLanguage(), this);
                 if (properties != null) {
                     return properties;
                 }
@@ -241,25 +261,6 @@ public final class DebugScope {
             throw new DebugException(session, ex, language, null, true, null);
         }
         return null;
-    }
-
-    private static Object getArguments(Node node, Frame frame) {
-        Node n = node;
-        while (n != null && (!(n instanceof InstrumentableNode) || !((InstrumentableNode) n).hasTag(StandardTags.RootTag.class))) {
-            n = n.getParent();
-        }
-        if (n == null || !NODE.hasScope(n, frame)) {
-            return null;
-        }
-        try {
-            Object argScope = NODE.getScope(n, frame, true);
-            if (INTEROP.hasScopeParent(argScope)) {
-                argScope = new SubtractedVariables(argScope, INTEROP.getScopeParent(argScope));
-            }
-            return argScope;
-        } catch (UnsupportedMessageException e) {
-            return null;
-        }
     }
 
     /**

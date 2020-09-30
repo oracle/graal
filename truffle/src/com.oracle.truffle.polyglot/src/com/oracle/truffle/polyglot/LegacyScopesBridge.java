@@ -53,6 +53,7 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
@@ -89,6 +90,7 @@ final class LegacyScopesBridge {
         } catch (UnsupportedMessageException ex) {
             return Collections.emptyList();
         }
+        String receiverName = getReceiverName(nodeLibrary, node, frame);
         SourceSection rootSection = node.getRootNode().getSourceSection();
         ArrayList<com.oracle.truffle.api.Scope> scopes = new ArrayList<>(5);
         while (scopeObject != null) {
@@ -102,10 +104,21 @@ final class LegacyScopesBridge {
                 }
             }
             Object variables;
+            Object variablesWithReceiver;
             if (scopeParent != null) {
-                variables = new SubtractedVariables(scopeObject, scopeParent);
+                variablesWithReceiver = new SubtractedVariables(scopeObject, scopeParent, null);
+                if (receiverName != null) {
+                    variables = new SubtractedVariables(scopeObject, scopeParent, receiverName);
+                } else {
+                    variables = variablesWithReceiver;
+                }
             } else {
-                variables = scopeObject;
+                variablesWithReceiver = scopeObject;
+                if (receiverName != null) {
+                    variables = new NoReceiverVariables(scopeObject, receiverName);
+                } else {
+                    variables = scopeObject;
+                }
             }
             String name;
             try {
@@ -127,7 +140,7 @@ final class LegacyScopesBridge {
             if (sourceLocation != null) {
                 if (sourceLocation.equals(rootSection)) {
                     // The "function" scope
-                    buildFunctionScope(node, frame, nodeLibrary, scopeBuilder, variables);
+                    buildFunctionScope(node, frame, nodeLibrary, scopeBuilder, variablesWithReceiver);
                 } else {
                     // find the node of the SourceSection
                     Node scopeNode = node;
@@ -146,7 +159,18 @@ final class LegacyScopesBridge {
         return scopes;
     }
 
-    private static void buildFunctionScope(Node node, Frame frame, NodeLibrary nodeLibrary, com.oracle.truffle.api.Scope.Builder scopeBuilder, Object variables) {
+    private static String getReceiverName(NodeLibrary nodeLibrary, Node node, Frame frame) {
+        if (nodeLibrary.hasReceiverMember(node, frame)) {
+            try {
+                return INTEROP.asString(nodeLibrary.getReceiverMember(node, frame));
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+        return null;
+    }
+
+    private static void buildFunctionScope(Node node, Frame frame, NodeLibrary nodeLibrary, com.oracle.truffle.api.Scope.Builder scopeBuilder, Object variablesWithReceiver) {
         scopeBuilder.node(node.getRootNode());
         Object arguments = getArguments(node, frame);
         if (arguments != null) {
@@ -156,8 +180,8 @@ final class LegacyScopesBridge {
             try {
                 String receiverName = InteropLibrary.getUncached().asString(nodeLibrary.getReceiverMember(node, frame));
                 Object receiverValue = null;
-                if (InteropLibrary.getUncached().isMemberReadable(variables, receiverName)) {
-                    receiverValue = InteropLibrary.getUncached().readMember(variables, receiverName);
+                if (InteropLibrary.getUncached().isMemberReadable(variablesWithReceiver, receiverName)) {
+                    receiverValue = InteropLibrary.getUncached().readMember(variablesWithReceiver, receiverName);
                 }
                 scopeBuilder.receiver(receiverName, receiverValue);
             } catch (UnsupportedMessageException | UnknownIdentifierException ex) {
@@ -191,7 +215,7 @@ final class LegacyScopesBridge {
             }
             Object variables;
             if (scopeParent != null) {
-                variables = new SubtractedVariables(scopeObject, scopeParent);
+                variables = new SubtractedVariables(scopeObject, scopeParent, null);
             } else {
                 variables = scopeObject;
             }
@@ -214,14 +238,16 @@ final class LegacyScopesBridge {
         while (n != null && (!(n instanceof InstrumentableNode) || !((InstrumentableNode) n).hasTag(StandardTags.RootTag.class))) {
             n = n.getParent();
         }
-        assert n != null : String.format("Node %s does not have a parent node tagged with RootTag.", node);
         if (n == null || !NodeLibrary.getUncached().hasScope(n, frame)) {
             return null;
         }
         try {
             Object argScope = NodeLibrary.getUncached().getScope(n, frame, true);
+            String receiverName = getReceiverName(NodeLibrary.getUncached(), n, frame);
             if (InteropLibrary.getUncached().hasScopeParent(argScope)) {
-                argScope = new SubtractedVariables(argScope, InteropLibrary.getUncached().getScopeParent(argScope));
+                argScope = new SubtractedVariables(argScope, InteropLibrary.getUncached().getScopeParent(argScope), receiverName);
+            } else if (receiverName != null) {
+                argScope = new NoReceiverVariables(argScope, receiverName);
             }
             return argScope;
         } catch (UnsupportedMessageException e) {
@@ -229,15 +255,37 @@ final class LegacyScopesBridge {
         }
     }
 
+    static boolean legacyScopesHasScope(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes) {
+        assert legacyScopes.hasNext();
+        if (node instanceof InstrumentableNode && ((InstrumentableNode) node).hasTag(StandardTags.RootTag.class)) {
+            while (legacyScopes.hasNext()) {
+                com.oracle.truffle.api.Scope scope = legacyScopes.next();
+                if (scope.getNode() == null || scope.getNode() instanceof RootNode) {
+                    return scope.getArguments() != null;
+                }
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
+
     static Object legacyScopes2ScopeObject(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes, Class<? extends TruffleLanguage<?>> language) {
+        assert legacyScopes.hasNext();
         CompilerAsserts.neverPartOfCompilation();
         if (node instanceof InstrumentableNode && ((InstrumentableNode) node).hasTag(StandardTags.RootTag.class)) {
             // Provide the arguments
-            if (!legacyScopes.hasNext()) {
-                return null;
+            while (legacyScopes.hasNext()) {
+                com.oracle.truffle.api.Scope scope = legacyScopes.next();
+                if (scope.getNode() == null || scope.getNode() instanceof RootNode) {
+                    Object argumentsObj = scope.getArguments();
+                    if (argumentsObj == null) {
+                        return null;
+                    }
+                    return new MergedScopes(new com.oracle.truffle.api.Scope[]{scope}, new Object[]{argumentsObj}, language);
+                }
             }
-            com.oracle.truffle.api.Scope scope = legacyScopes.next();
-            return new MergedScopes(new com.oracle.truffle.api.Scope[]{scope}, new Object[]{scope.getArguments()}, language);
+            return null;
         }
         ArrayList<com.oracle.truffle.api.Scope> scopesList = new ArrayList<>(5);
         while (legacyScopes.hasNext()) {
@@ -252,18 +300,147 @@ final class LegacyScopesBridge {
     }
 
     @ExportLibrary(InteropLibrary.class)
+    static class NoReceiverVariables implements TruffleObject {
+
+        private final Object allVariables;
+        private final InteropLibrary allLibrary;
+        private final String receiverName;
+
+        NoReceiverVariables(Object allVariables, String receiverName) {
+            this.allVariables = allVariables;
+            this.allLibrary = InteropLibrary.getUncached(allVariables);
+            assert receiverName != null;
+            this.receiverName = receiverName;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final boolean hasMembers() {
+            return allLibrary.hasMembers(allVariables);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+            return new SubtractedReceiver(allLibrary.getMembers(allVariables, includeInternal));
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final boolean isMemberReadable(String member) {
+            if (receiverName.equals(member)) {
+                return false;
+            }
+            return allLibrary.isMemberReadable(allVariables, member);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final Object readMember(String member) throws UnknownIdentifierException, UnsupportedMessageException {
+            if (isMemberReadable(member)) {
+                return allLibrary.readMember(allVariables, member);
+            } else {
+                throw UnknownIdentifierException.create(member);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final boolean isMemberModifiable(String member) {
+            if (receiverName.equals(member)) {
+                return false;
+            }
+            return allLibrary.isMemberModifiable(allVariables, member);
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+            return false;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final void writeMember(String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+            if (isMemberModifiable(member)) {
+                allLibrary.writeMember(allVariables, member, value);
+            } else {
+                throw UnknownIdentifierException.create(member);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final boolean hasMemberReadSideEffects(String member) {
+            return isMemberReadable(member) && allLibrary.hasMemberReadSideEffects(allVariables, member);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final boolean hasMemberWriteSideEffects(String member) {
+            return isMemberModifiable(member) && allLibrary.hasMemberWriteSideEffects(allVariables, member);
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class SubtractedReceiver implements TruffleObject {
+
+        private final Object allKeys;
+        private final long allSize;
+
+        SubtractedReceiver(Object allKeys) throws UnsupportedMessageException {
+            this.allKeys = allKeys;
+            this.allSize = INTEROP.getArraySize(allKeys);
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return allSize - 1;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index,
+                        @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interop) throws InvalidArrayIndexException, UnsupportedMessageException {
+            if (0 <= index && index < getArraySize()) {
+                return interop.readArrayElement(allKeys, index);
+            } else {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long index,
+                        @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interop) {
+            if (0 <= index && index < getArraySize()) {
+                return interop.isArrayElementReadable(allKeys, index);
+            } else {
+                return false;
+            }
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
     static class SubtractedVariables implements TruffleObject {
 
         private final Object allVariables;
         private final InteropLibrary allLibrary;
         private final Object removedVariables;
         private final InteropLibrary removedLibrary;
+        private final String receiverName;
 
-        SubtractedVariables(Object allVariables, Object removedVariables) {
+        SubtractedVariables(Object allVariables, Object removedVariables, String receiverName) {
             this.allVariables = allVariables;
             this.allLibrary = InteropLibrary.getUncached(allVariables);
             this.removedVariables = removedVariables;
             this.removedLibrary = InteropLibrary.getUncached(removedVariables);
+            this.receiverName = receiverName;
         }
 
         @ExportMessage
@@ -275,12 +452,15 @@ final class LegacyScopesBridge {
         @ExportMessage
         @TruffleBoundary
         final Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
-            return new SubtractedKeys(allLibrary.getMembers(allVariables, includeInternal), removedLibrary.getMembers(removedVariables, includeInternal));
+            return new SubtractedKeys(allLibrary.getMembers(allVariables, includeInternal), removedLibrary.getMembers(removedVariables, includeInternal), receiverName);
         }
 
         @ExportMessage
         @TruffleBoundary
         final boolean isMemberReadable(String member) {
+            if (receiverName != null && receiverName.equals(member)) {
+                return false;
+            }
             if (!allLibrary.isMemberReadable(allVariables, member)) {
                 return false;
             }
@@ -321,6 +501,9 @@ final class LegacyScopesBridge {
         @ExportMessage
         @TruffleBoundary
         final boolean isMemberModifiable(String member) {
+            if (receiverName != null && receiverName.equals(member)) {
+                return false;
+            }
             if (!allLibrary.isMemberModifiable(allVariables, member)) {
                 return false;
             }
@@ -367,11 +550,29 @@ final class LegacyScopesBridge {
         private final Object allKeys;
         private final long allSize;
         private final long removedSize;
+        private final long size;
 
-        SubtractedKeys(Object allKeys, Object removedKeys) throws UnsupportedMessageException {
+        SubtractedKeys(Object allKeys, Object removedKeys, String receiverNameOrig) throws UnsupportedMessageException {
             this.allKeys = allKeys;
             this.allSize = INTEROP.getArraySize(allKeys);
             this.removedSize = INTEROP.getArraySize(removedKeys);
+            String receiverName = receiverNameOrig;
+            if (receiverName != null) {
+                long receiverIndex = allSize - removedSize - 1;
+                if (receiverIndex < 0) {
+                    receiverName = null;
+                } else {
+                    try {
+                        if (!receiverName.equals(InteropLibrary.getUncached().readArrayElement(allKeys, receiverIndex))) {
+                            // The receiver is not actually present in variables
+                            receiverName = null;
+                        }
+                    } catch (InteropException e) {
+                        CompilerDirectives.shouldNotReachHere(e);
+                    }
+                }
+            }
+            this.size = allSize - removedSize - (receiverName != null ? 1 : 0);
         }
 
         @ExportMessage
@@ -382,7 +583,7 @@ final class LegacyScopesBridge {
 
         @ExportMessage
         long getArraySize() {
-            return allSize - removedSize;
+            return size;
         }
 
         @ExportMessage

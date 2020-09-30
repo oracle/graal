@@ -5,6 +5,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.
 * Added new specialization utility to print detailed statistics about specialization instances and execution count. See [Specialization Statistics Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/SpecializationHistogram.md) for details on how to use it.
+* Added new specialization compilation mode that ignores "fast path" specializations and generates calls only to "slow path" specializations. This mode is intended for testing purposes to increase tests coverage. See [Specialization testing documentation](https://github.com/oracle/graal/blob/master/truffle/docs/SpecializationTesting.md) for more details.
 * Added [TruffleFile.readSymbolicLink](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#readSymbolicLink--) method to read the symbolic link target.
 * Added [ReportPolymorphism.Megamorphic](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Megamorphic.html) annotation for expressing the "report only megamorphic specializations" use case when reporting polymorphism.
 
@@ -24,6 +25,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated com.oracle.truffle.api.Scope class and methods in TruffleLanguage and TruffleInstrument.Env, which provide the scope information through that class.
 * Added scope information into InteropLibrary: [InteropLibrary.isScope](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#isScope-java.lang.Object-), [InteropLibrary.hasScopeParent](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#hasScopeParent-java.lang.Object-) and [InteropLibrary.getScopeParent](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#getScopeParent-java.lang.Object-)
 * Added utility method to find an instrumentable parent node [InstrumentableNode.findInstrumentableParent](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/InstrumentableNode.html#findInstrumentableParent-com.oracle.truffle.api.nodes.Node-).
+* Deprecated `DebugScope.getArguments()` without replacement. This API was added without use-case.
+* Added the [RootNode.isTrivial](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#isTrivial) method, for specifying root nodes that are always more efficient to inline than not to.
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.

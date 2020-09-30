@@ -36,7 +36,10 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.NeverInline;
@@ -49,9 +52,11 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -186,18 +191,45 @@ public abstract class VMThreads {
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
     protected abstract boolean initializeOnce();
 
+    /*
+     * Stores the unaligned memory address returned by calloc, so that we can properly free the
+     * memory again.
+     */
+    private static final FastThreadLocalWord<Pointer> unalignedIsolateThreadMemoryTL = FastThreadLocalFactory.createWord();
+
     /**
      * Allocate native memory for a {@link IsolateThread}. The returned memory must be initialized
      * to 0.
      */
     @Uninterruptible(reason = "Thread state not set up.")
-    public abstract IsolateThread allocateIsolateThread(int isolateThreadSize);
+    public IsolateThread allocateIsolateThread(int isolateThreadSize) {
+        /*
+         * We prefer to have the IsolateThread aligned on cache-line boundary, to avoid false
+         * sharing with native memory allocated before it. But until we have the real cache line
+         * size from the OS, we just use a hard-coded best guess. Using an inaccurate value does not
+         * lead to correctness problems.
+         */
+        UnsignedWord alignment = WordFactory.unsigned(64);
+
+        UnsignedWord memorySize = WordFactory.unsigned(isolateThreadSize).add(alignment);
+        Pointer memory = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(memorySize);
+        if (memory.isNull()) {
+            return WordFactory.nullPointer();
+        }
+
+        IsolateThread isolateThread = (IsolateThread) UnsignedUtils.roundUp(memory, alignment);
+        unalignedIsolateThreadMemoryTL.set(isolateThread, memory);
+        return isolateThread;
+    }
 
     /**
      * Free the native memory allocated by {@link #allocateIsolateThread}.
      */
     @Uninterruptible(reason = "Thread state not set up.")
-    public abstract void freeIsolateThread(IsolateThread thread);
+    public void freeIsolateThread(IsolateThread thread) {
+        Pointer memory = unalignedIsolateThreadMemoryTL.get(thread);
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(memory);
+    }
 
     /**
      * Report a fatal error to the user and exit. This method must not return.
@@ -533,7 +565,7 @@ public abstract class VMThreads {
     public static class StatusSupport {
 
         /** The status of a {@link IsolateThread}. */
-        public static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt();
+        public static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
         /**
          * Boolean flag whether safepoints are disabled. This is a separate thread local in addition

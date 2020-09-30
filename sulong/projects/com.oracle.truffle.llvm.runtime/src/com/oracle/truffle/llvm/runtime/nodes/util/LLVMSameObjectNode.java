@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.nodes.util;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -65,18 +64,12 @@ public abstract class LLVMSameObjectNode extends LLVMNode {
         return true;
     }
 
-    @Specialization(limit = "3", guards = {"aForeigns.isForeign(a)", "bForeigns.isForeign(b)"})
+    @Specialization(limit = "3", guards = "a != b")
     boolean doForeign(Object a, Object b,
                     @CachedLibrary("a") LLVMAsForeignLibrary aForeigns,
                     @CachedLibrary("b") LLVMAsForeignLibrary bForeigns,
                     @Cached CompareForeignNode compare) {
-        return compare.execute(aForeigns.asForeign(a), bForeigns.asForeign(b));
-    }
-
-    @Fallback
-    boolean doNotSame(Object a, Object b) {
-        assert a != b;
-        return false;
+        return aForeigns.isForeign(a) && bForeigns.isForeign(b) && compare.execute(aForeigns.asForeign(a), bForeigns.asForeign(b));
     }
 
     @GenerateUncached

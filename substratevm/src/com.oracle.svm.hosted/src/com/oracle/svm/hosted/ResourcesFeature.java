@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,6 @@ import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.util.ModuleSupport;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -67,6 +66,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.util.ModuleSupport;
 
 @AutomaticFeature
 public final class ResourcesFeature implements Feature {
@@ -133,42 +133,39 @@ public final class ResourcesFeature implements Feature {
             }
         }
 
-        for (Pattern pattern : patterns) {
+        /*
+         * Since IncludeResources takes regular expressions it's safer to disallow passing
+         * more than one regex with a single IncludeResources option. Note that it's still
+         * possible pass multiple IncludeResources regular expressions by passing each as
+         * its own IncludeResources option. E.g.
+         * @formatter:off
+         * -H:IncludeResources=nobel/prizes.json -H:IncludeResources=fields/prizes.json
+         * @formatter:on
+         */
 
-            /*
-             * Since IncludeResources takes regular expressions it's safer to disallow passing
-             * more than one regex with a single IncludeResources option. Note that it's still
-             * possible pass multiple IncludeResources regular expressions by passing each as
-             * its own IncludeResources option. E.g.
-             * @formatter:off
-             * -H:IncludeResources=nobel/prizes.json -H:IncludeResources=fields/prizes.json
-             * @formatter:on
-             */
-
-            final Set<File> todo = new HashSet<>();
-            // Checkstyle: stop
-            final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-            if (contextClassLoader instanceof URLClassLoader) {
-                for (URL url : ((URLClassLoader) contextClassLoader).getURLs()) {
-                    try {
-                        final File file = new File(url.toURI());
-                        todo.add(file);
-                    } catch (URISyntaxException | IllegalArgumentException e) {
-                        throw UserError.abort("Unable to handle imagecp element '" + url.toExternalForm() + "'. Make sure that all imagecp entries are either directories or valid jar files.");
-                    }
+        final Set<File> todo = new HashSet<>();
+        // Checkstyle: stop
+        final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        if (contextClassLoader instanceof URLClassLoader) {
+            for (URL url : ((URLClassLoader) contextClassLoader).getURLs()) {
+                try {
+                    final File file = new File(url.toURI());
+                    todo.add(file);
+                } catch (URISyntaxException | IllegalArgumentException e) {
+                    throw UserError.abort("Unable to handle imagecp element '" + url.toExternalForm() + "'. Make sure that all imagecp entries are either directories or valid jar files.");
                 }
             }
-            // Checkstyle: resume
-            for (File element : todo) {
-                try {
-                    if (element.isDirectory()) {
-                        scanDirectory(debugContext, element, "", pattern);
-                    } else {
-                        scanJar(debugContext, element, pattern);
-                    }
-                } catch (IOException ex) {
-                    throw UserError.abort("Unable to handle classpath element '" + element + "'. Make sure that all classpath entries are either directories or valid jar files.");
+        }
+        // Checkstyle: resume
+        for (File element : todo) {
+            try {
+                if (element.isDirectory()) {
+                    scanDirectory(debugContext, element, "", patterns);
+                } else {
+                    scanJar(debugContext, element, patterns);
                 }
+            } catch (IOException ex) {
+                throw UserError.abort("Unable to handle classpath element '" + element + "'. Make sure that all classpath entries are either directories or valid jar files.");
             }
         }
         newResources.clear();

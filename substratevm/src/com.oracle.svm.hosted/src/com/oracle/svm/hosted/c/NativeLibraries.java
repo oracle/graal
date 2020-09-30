@@ -50,6 +50,9 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.word.BarrieredAccess;
+import org.graalvm.compiler.word.ObjectAccess;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
@@ -66,8 +69,10 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
@@ -230,14 +235,19 @@ public final class NativeLibraries {
         errors = new ArrayList<>();
         compilationUnitToContext = new HashMap<>();
 
-        wordBaseType = metaAccess.lookupJavaType(WordBase.class);
-        signedType = metaAccess.lookupJavaType(SignedWord.class);
-        unsignedType = metaAccess.lookupJavaType(UnsignedWord.class);
-        pointerBaseType = metaAccess.lookupJavaType(PointerBase.class);
-        stringType = metaAccess.lookupJavaType(String.class);
-        byteArrayType = metaAccess.lookupJavaType(byte[].class);
-        enumType = metaAccess.lookupJavaType(Enum.class);
-        locationIdentityType = metaAccess.lookupJavaType(LocationIdentity.class);
+        wordBaseType = lookupAndRegisterType(WordBase.class);
+        signedType = lookupAndRegisterType(SignedWord.class);
+        unsignedType = lookupAndRegisterType(UnsignedWord.class);
+        pointerBaseType = lookupAndRegisterType(PointerBase.class);
+        stringType = lookupAndRegisterType(String.class);
+        byteArrayType = lookupAndRegisterType(byte[].class);
+        enumType = lookupAndRegisterType(Enum.class);
+        locationIdentityType = lookupAndRegisterType(LocationIdentity.class);
+
+        lookupAndRegisterType(Word.class);
+        lookupAndRegisterType(WordFactory.class);
+        lookupAndRegisterType(ObjectAccess.class);
+        lookupAndRegisterType(BarrieredAccess.class);
 
         annotated = new LinkedHashSet<>();
 
@@ -256,6 +266,12 @@ public final class NativeLibraries {
         libraryPaths = initCLibraryPath();
 
         this.cache = new CAnnotationProcessorCache();
+    }
+
+    private ResolvedJavaType lookupAndRegisterType(Class<?> clazz) {
+        AnalysisType type = (AnalysisType) metaAccess.lookupJavaType(clazz);
+        type.registerAsReachable();
+        return type;
     }
 
     public MetaAccessProvider getMetaAccess() {
@@ -561,6 +577,10 @@ public final class NativeLibraries {
 
     public boolean isEnum(ResolvedJavaType type) {
         return enumType.isAssignableFrom(type);
+    }
+
+    public ResolvedJavaType enumType() {
+        return enumType;
     }
 
     public ResolvedJavaType getPointerBaseType() {

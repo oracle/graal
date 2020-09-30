@@ -29,6 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.options.OptionDescriptors;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -54,15 +59,12 @@ import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprExecutableNode;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.options.OptionDescriptors;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE}, //
@@ -226,8 +228,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) {
         Object globalScope = getScope(getCurrentContext(LLVMLanguage.class));
-        final com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser d = new com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser(request, globalScope,
-                        getCurrentContext(LLVMLanguage.class));
+        final DebugExprParser d = new DebugExprParser(request, globalScope, getCurrentContext(LLVMLanguage.class));
         try {
             return new DebugExprExecutableNode(d.parse());
         } catch (DebugExprException | LLVMParserException e) {
