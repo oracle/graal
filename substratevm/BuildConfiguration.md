@@ -138,9 +138,11 @@ computationally intensive process. The defaults values for memory usage at image
 ```
 -Xss10M \
 -Xms1G \
--Xmx14G \
 ```
-These defaults can be changed by passing `-J + <jvm option for memory>` to the native image builder, e.g., `-J-Xmx28g`.
+These defaults can be changed by passing `-J + <jvm option for memory>` to the native image builder.
+
+The `-Xmx` value is computed by using 80% of the physical memory size, but no more than 14G per server.
+Providing a larger value for `-Xmx` on command line is possible, e.g., `-J-Xmx26G`.
 
 By default, image building uses of up to 32 threads (but not more than the number of processors available). For custom values `-H:NumberOfThreads=...` can be used.
 
