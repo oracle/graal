@@ -66,7 +66,7 @@ public class ValidationSuite extends WasmFileSuite {
                     // The arity `m` must not be larger than 1.
                     // Validated in: SymbolTable.allocateFunctionType
                     binaryCase(
-                                    "Function: cannot return more than one value",
+                                    "Function - cannot return more than one value",
                                     "A function can return at most one result.",
                                     // (module
                                     // (func $f (result i32) i32.const 42 i32.const 42)
@@ -78,15 +78,15 @@ public class ValidationSuite extends WasmFileSuite {
                     // Validated in: BinaryParser.readTableLimits
                     // Note: Limit is lowered to `2^31 - 1` due to Java indices limit.
                     stringCase(
-                                    "Table: initial size out of bounds",
+                                    "Table - initial size out of bounds",
                                     "Invalid initial table size, must be less than upper bound: 2147483648 should be <= 2147483647.",
                                     "(table $table1 2147483648 funcref)"),
                     stringCase(
-                                    "Table: initial size out of bounds",
+                                    "Table - initial size out of bounds",
                                     "Invalid max table size, must be less than upper bound: 2147483648 should be <= 2147483647.",
                                     "(table $table1 1 2147483648 funcref)"),
                     stringCase(
-                                    "Table: max size lower than initial size",
+                                    "Table - max size lower than initial size",
                                     "Invalid initial table size, must be less than max table size: 2 should be <= 1.",
                                     "(table $table1 2 1 funcref)"),
 
@@ -94,15 +94,15 @@ public class ValidationSuite extends WasmFileSuite {
                     // The limits `limits` must be valid within range `2^16`.
                     // Validated in: BinaryParser.readMemoryLimits
                     stringCase(
-                                    "Memory: initial size out of bounds",
+                                    "Memory - initial size out of bounds",
                                     "Invalid initial memory size, must be less than upper bound: 2147483648 should be <= 65536.",
                                     "(memory $memory1 2147483648)"),
                     stringCase(
-                                    "Memory: max size out of bounds",
+                                    "Memory - max size out of bounds",
                                     "Invalid max memory size, must be less than upper bound: 2147483648 should be <= 65536.",
                                     "(memory $memory1 1 2147483648)"),
                     stringCase(
-                                    "Memory: max size lower than initial size",
+                                    "Memory - max size lower than initial size",
                                     "Invalid initial memory size, must be less than max memory size: 2 should be <= 1.",
                                     "(memory $memory1 2 1)"),
 
@@ -115,11 +115,11 @@ public class ValidationSuite extends WasmFileSuite {
                     // The type `C.types[x]` must be defined in the context.
                     // Validated in: SymbolTable.allocateFunction
                     stringCase(
-                                    "Function: invalid type index",
+                                    "Function - invalid type index",
                                     "Function type out of bounds: 1 should be < 1.",
                                     "(type (func (result i32))) (func (export \"f\") (type 1))"),
                     stringCase(
-                                    "Function: invalid type index",
+                                    "Function - invalid type index",
                                     "Function type out of bounds: 4294967254 should be < 1.",
                                     "(type (func (result i32))) (func (export \"f\") (type 4294967254))"),
 
@@ -149,7 +149,7 @@ public class ValidationSuite extends WasmFileSuite {
                     // The table `C.tables[x]` must be defined in the context.
                     // Validated in: BinaryParser.readElementSection
                     binaryCase(
-                                    "Element segment: invalid table index",
+                                    "Element segment - invalid table index",
                                     "Invalid table index: 5 should = 0.",
                                     // (module
                                     // (table 1 funcref)
@@ -173,7 +173,7 @@ public class ValidationSuite extends WasmFileSuite {
                     // context.
                     // Validated in: SymbolTable.function
                     stringCase(
-                                    "Element segments: invalid function index",
+                                    "Element segments - invalid function index",
                                     "Function index out of bounds: 1 should be < 1.",
                                     "(table 1 funcref) (elem (i32.const 0) 1)"),
 
@@ -181,7 +181,7 @@ public class ValidationSuite extends WasmFileSuite {
                     // The memory `C.mems[x]` must be defined in the context.
                     // Validated in: BinaryParser.readDataSection
                     binaryCase(
-                                    "Data segment: invalid memory index",
+                                    "Data segment - invalid memory index",
                                     "Invalid memory index, only the memory index 0 is currently supported.: 5 should = 0.",
                                     // (module
                                     // (memory 1)
@@ -199,71 +199,71 @@ public class ValidationSuite extends WasmFileSuite {
                     // The function `C.funcs[x]` must be defined in the context.
                     // Validated in: SymbolTable.function
                     stringCase(
-                                    "Start function: invalid index",
+                                    "Start function - invalid index",
                                     "Function index out of bounds: 1 should be < 1.",
                                     "(start 1)"),
 
                     // The type of `C.funcs[x]` must be [] -> [].
                     // Validated in SymbolTable.startFunction
                     stringCase(
-                                    "Start function: returns a value",
+                                    "Start function - returns a value",
                                     "Start function cannot return a value.",
                                     "(start 0) (func (result i32) i32.const 42)"),
                     stringCase(
-                                    "Start function: takes arguments",
+                                    "Start function - takes arguments",
                                     "Start function cannot take arguments.",
                                     "(start 0) (func (param i32))"),
 
                     // The length of `C.tables` must not be larger than 1.
                     // Validated in: BinaryParser.readTableSection
                     stringCase(
-                                    "Module: two tables (2 locals)",
+                                    "Module - two tables (2 locals)",
                                     "Can import or declare at most one table per module: 2 should be <= 1.",
                                     "(table $table1 1 funcref) (table $table2 1 funcref)"),
                     stringCase(
-                                    "Module: two tables (1 local and 1 import)",
+                                    "Module - two tables (1 local and 1 import)",
                                     "Can import or declare at most one table per module: 2 should be <= 1.",
                                     "(table $table2 (import \"some\" \"table\") 1 funcref) (table $table1 1 funcref)"),
                     // Validated in: SymbolTable.validateSingleTable
                     stringCase(
-                                    "Module: two tables (2 imports)",
+                                    "Module - two tables (2 imports)",
                                     "A table has been already imported in the module.",
                                     "(table $table1 (import \"some\" \"table\") 1 funcref) (table $table2 (import \"some\" \"table\") 1 funcref)"),
 
                     // The length of `C.mems` must not be larger than 1.
                     // Validated in: BinaryParser.readMemorySection
                     stringCase(
-                                    "Module: two memories (2 locals)",
+                                    "Module - two memories (2 locals)",
                                     "Can import or declare at most one memory per module: 2 should be <= 1.",
                                     "(memory $mem1 1) (memory $mem2 1)"),
                     stringCase(
-                                    "Module: two memories (1 local and 1 import)",
+                                    "Module - two memories (1 local and 1 import)",
                                     "Can import or declare at most one memory per module: 2 should be <= 1.",
                                     "(memory $mem1 (import \"some\" \"memory\") 1) (memory $mem2 1)"),
                     // Validated in: SymbolTable.validateSingleMemory
                     stringCase(
-                                    "Module: two memories (2 imports)",
+                                    "Module - two memories (2 imports)",
                                     "Memory has been already imported in the module.",
                                     "(memory $mem1 (import \"some\" \"memory\") 1) (memory $mem2 (import \"some\" \"memory\") 1)"),
 
                     // All export names `export_i.name` must be different.
                     // Validated in: SymbolTable.checkUniqueExport
                     stringCase(
-                                    "Module: duplicate export (2 functions)",
+                                    "Module - duplicate export (2 functions)",
                                     "All export names must be different, but 'a' is exported twice.",
                                     "(func (export \"a\") (result i32) i32.const 42) (func (export \"a\") (result i32) i32.const 42)"),
                     stringCase(
-                                    "Module: duplicate export (function and memory)",
+                                    "Module - duplicate export (function and memory)",
                                     "All export names must be different, but 'a' is exported twice.",
                                     "(func (export \"a\") (result i32) i32.const 42) (memory (export \"a\") 1)"),
 
                     binaryCase(
-                                    "Custom Section: missing name",
+                                    "Custom Section - missing name",
                                     "The binary is truncated at: 10",
                                     "0061 736d 0100 0000 0000"),
 
                     binaryCase(
-                                    "Custom Section: excessive name length",
+                                    "Custom Section - excessive name length",
                                     "Declared section (0x00) size is incorrect: 4 should = 1.",
                                     "0061 736d 0100 0000 0001 0300 0100"),
     };
