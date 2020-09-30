@@ -176,6 +176,12 @@ local espresso_benchmark(env, suite, host_jvm=_host_jvm(env), host_jvm_config=_h
 local espresso_minheap_benchmark(env, suite, guest_jvm_config) =
   espresso_benchmark(env, suite, host_jvm='server', host_jvm_config='default', guest_jvm='espresso-minheap', guest_jvm_config=guest_jvm_config, extra_args=['--', '--iterations', '1']);
 
+local espresso_interpreter_benchmark(env, suite) =
+  espresso_benchmark(env, suite, guest_jvm_config='interpreter', extra_args=['--', '--iterations', '1']);
+
+local espresso_multi_tier_benchmark(env, suite) =
+  espresso_benchmark(env, suite, guest_jvm_config='multi-tier');
+
 local jdk8_gate_windows           = base.jdk8 + base.gate          + base.windows;
 local jdk8_gate_darwin            = base.jdk8 + base.gate          + base.darwin;
 local jdk8_gate_linux             = base.jdk8 + base.gate          + base.linux;
@@ -189,8 +195,15 @@ local jdk8_on_demand_bench_linux  = base.jdk8 + base.onDemandBench + base.x52;
 local espresso_configs = ['jvm-ce', 'jvm-ee', 'native-ce', 'native-ee'];
 local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
-// Skip benchmakrs that fail in jvm mode due to dlmopen limitations.
-local scala_dacapo = 'scala-dacapo:*[scalac,kiama]';
+// Scala DaCapo benchmarks that run in both JVM and native modes, excluding factorie which is very slow.
+local scala_dacapo_jvm_fast(warmup=false) = 'scala-dacapo' + (if warmup then '-warmup' else '') + ':*[scalap,scalac,scaladoc,kiama,scalariform,scalaxb]';
+
+# Scala DaCapo benchmarks that run on Espresso JVM.
+local scala_dacapo_jvm = ["scalap", "scalac", "scaladoc", "factorie", "kiama", "scalariform", "scalaxb"];
+
+# Scala DaCapo benchmarks that run ONLY on Espresso native.
+local scala_dacapo_native_only = ["apparat", "tmt", "scalatest", "actors", "specs"];
+
 local awfy = 'awfy:*';
 
 {
@@ -226,22 +239,38 @@ local awfy = 'awfy:*';
     jdk8_gate_windows             + clone_build_run('native-ce', hello_world_args)                        + {name: 'espresso-gate-native-ce-hello-world-jdk8-windows-amd64'},
     jdk8_gate_windows             + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk8-windows-amd64'},
 
-    // Benchmarks (post-merge)
+    // AWFY peak perf. benchmarks (post-merge)
     jdk8_bench_linux              + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},
     jdk8_bench_linux              + espresso_benchmark('jvm-ee', awfy)                                    + {name: 'espresso-bench-jvm-ee-awfy-jdk8-linux-amd64'},
     jdk8_bench_linux              + espresso_benchmark('native-ce', awfy)                                 + {name: 'espresso-bench-native-ce-awfy-jdk8-linux-amd64'},
     jdk8_bench_linux              + espresso_benchmark('native-ee', awfy)                                 + {name: 'espresso-bench-native-ee-awfy-jdk8-linux-amd64'},
 
+    // AWFY interpreter benchmarks (post-merge)
+    jdk8_bench_linux              + espresso_interpreter_benchmark('jvm-ce', awfy)                        + {name: 'espresso-bench-jvm-ce-awfy_interpreter-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_interpreter_benchmark('jvm-ee', awfy)                        + {name: 'espresso-bench-jvm-ee-awfy_interpreter-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_interpreter_benchmark('native-ce', awfy)                     + {name: 'espresso-bench-native-ce-awfy_interpreter-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_interpreter_benchmark('native-ee', awfy)                     + {name: 'espresso-bench-native-ee-awfy_interpreter-jdk8-linux-amd64'},
+
+    // Scala DaCapo warmup benchmarks (post-merge)
+    jdk8_bench_linux              + espresso_benchmark('jvm-ce', scala_dacapo_jvm_fast(warmup=true))      + {name: 'espresso-bench-jvm-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=true))      + {name: 'espresso-bench-jvm-ee-scala_dacapo_warmup-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_benchmark('native-ce', scala_dacapo_jvm_fast(warmup=true))   + {name: 'espresso-bench-native-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_benchmark('native-ee', scala_dacapo_jvm_fast(warmup=true))   + {name: 'espresso-bench-native-ee-scala_dacapo_warmup-jdk8-linux-amd64'},
+
+    // Scala DaCapo warmup benchmarks --engine.MultiTier (post-merge)
+    jdk8_bench_linux              + espresso_multi_tier_benchmark('jvm-ce', scala_dacapo_jvm_fast(warmup=true))      + {name: 'espresso-bench-jvm-ce-scala_dacapo_warmup_multi_tier-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_multi_tier_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=true))      + {name: 'espresso-bench-jvm-ee-scala_dacapo_warmup_multi_tier-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_multi_tier_benchmark('native-ce', scala_dacapo_jvm_fast(warmup=true))   + {name: 'espresso-bench-native-ce-scala_dacapo_warmup_multi_tier-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_multi_tier_benchmark('native-ee', scala_dacapo_jvm_fast(warmup=true))   + {name: 'espresso-bench-native-ee-scala_dacapo_warmup_multi_tier-jdk8-linux-amd64'},
+
+    // Scala DaCapo peak perf. benchmarks (post-merge)
+    jdk8_bench_linux              + espresso_benchmark('jvm-ce', scala_dacapo_jvm_fast(warmup=false))     + {name: 'espresso-bench-jvm-ce-scala_dacapo-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=false))     + {name: 'espresso-bench-jvm-ee-scala_dacapo-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_benchmark('native-ce', scala_dacapo_jvm_fast(warmup=false))  + {name: 'espresso-bench-native-ce-scala_dacapo-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_benchmark('native-ee', scala_dacapo_jvm_fast(warmup=false))  + {name: 'espresso-bench-native-ee-scala_dacapo-jdk8-linux-amd64'},
+
     // On-demand
     jdk8_on_demand_linux          + espresso_minheap_benchmark('jvm-ce', awfy, 'infinite-overhead')       + {name: 'espresso-jvm-ce-awfy-minheap-infinite-ovh-jdk8-linux-amd64'},
     jdk8_on_demand_bench_linux    + espresso_minheap_benchmark('jvm-ce', awfy, '1.5-overhead')            + {name: 'espresso-bench-jvm-ce-awfy-minheap-1.5-ovh-jdk8-linux-amd64'},
-
-    // TODO: Adjust number of iterations for Espresso.
-    // jdk8_bench_linux   + espresso_benchmark('jvm-ce', scala_dacapo)                            + {name: 'espresso-bench-jvm-ce-scala-dacapo-jdk8-linux-amd64'},
-    // jdk8_bench_linux   + espresso_benchmark('jvm-ee', scala_dacapo)                            + {name: 'espresso-bench-jvm-ee-scala-dacapo-jdk8-linux-amd64'},
-
-    // Compilation on SVM is broken GR-22475
-    // jdk8_bench_linux   + espresso_benchmark('native-ce', scala_dacapo)                         + {name: 'espresso-bench-native-ce-scala-dacapo-jdk8-linux-amd64'},
-    // jdk8_bench_linux   + espresso_benchmark('native-ee', scala_dacapo)                         + {name: 'espresso-bench-native-ee-scala-dacapo-jdk8-linux-amd64'},
   ],
 }
