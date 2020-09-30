@@ -252,6 +252,11 @@ public class BackgroundCompileQueue {
         public int compareTo(RequestImpl<?> that) {
             int diff = priority.value - that.priority.value;
             if (diff == 0) {
+                OptimizedCallTarget thisTarget = targetRef.get();
+                OptimizedCallTarget thatTarget = that.targetRef.get();
+                if (thisTarget != null && thatTarget != null/* && optimizedCallTarget.getName().contains("SolveVelocityConstraints")*/) {
+                    return -1 * Long.compare(thisTarget.getCallAndLoopCount(), thatTarget.getCallAndLoopCount());
+                }
                 diff = Long.compare(this.id, that.id);
             }
             return diff;
