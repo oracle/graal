@@ -202,7 +202,10 @@ final class ParserDriver {
                     if (calls != null) {
                         dependencies.add(calls);
                     } else {
-                        dependencies.add(createDependencySource(sulongLibraryName, null, false, InternalLibraryLocator.INSTANCE, file));
+                        Source source = createDependencySource(sulongLibraryName, null, false, file);
+                        if (source != null) {
+                            dependencies.add(source);
+                        }
                     }
                 }
             }
@@ -213,7 +216,7 @@ final class ParserDriver {
         for (String externalLibraryName : externals) {
             // Look into the library cache in the language for the call target.
             if (!currentLib.equals(externalLibraryName)) {
-                TruffleFile file = createTruffleFile(externalLibraryName, null, InternalLibraryLocator.INSTANCE, "<command-line library>");
+                TruffleFile file = createTruffleFile(externalLibraryName, null, DefaultLibraryLocator.INSTANCE, "<command-line library>");
                 // Look into the library cache in the language for the call target.
                 if (file != null) {
                     CallTarget calls = language.getCachedLibrary(file.getPath());
@@ -222,7 +225,10 @@ final class ParserDriver {
                     } else {
                         // for native libraries, the path is the same as the library's name. The NFI
                         // will figure out the path.
-                        dependencies.add(createDependencySource(externalLibraryName, externalLibraryName, true, InternalLibraryLocator.INSTANCE, file));
+                        Source source = createDependencySource(externalLibraryName, externalLibraryName, true, file);
+                        if (source != null) {
+                            dependencies.add(source);
+                        }
                     }
                 }
             }
@@ -415,21 +421,23 @@ final class ParserDriver {
             // don't add the library itself as one of it's own dependency.
             if (!libraryName.equals(lib)) {
                 // only create a source if the library has not already been parsed.
-                Source source = createDependencySource(lib, lib, true, binaryParserResult.getLocator(), null);
-                // A source is null if it's a native library, which will be added to the NFI
-                // context extension instead.
-                if (!dependencies.contains(source) && source != null) {
-                    dependencies.add(source);
+                TruffleFile file = createTruffleFile(lib, null, binaryParserResult.getLocator(), "<dependency library>");
+                CallTarget calls = language.getCachedLibrary(file.getPath());
+                if (calls != null) {
+                    dependencies.add(calls);
+                } else {
+                    Source source = createDependencySource(lib, lib, true, file);
+                    // A source is null if it's a native library, which will be added to the NFI
+                    // context extension instead.
+                    if (!dependencies.contains(source) && source != null) {
+                        dependencies.add(source);
+                    }
                 }
             }
         }
     }
 
-    private Source createDependencySource(String libName, String libPath, boolean isNative, LibraryLocator libraryLocator, TruffleFile truffleFile) {
-        TruffleFile file = truffleFile;
-        if (file == null) {
-            file = createTruffleFile(libName, null, libraryLocator, "<dependency library>");
-        }
+    private Source createDependencySource(String libName, String libPath, boolean isNative, TruffleFile file) {
         assert file != null;
         if (!file.isRegularFile()) {
             if (!isNative) {
