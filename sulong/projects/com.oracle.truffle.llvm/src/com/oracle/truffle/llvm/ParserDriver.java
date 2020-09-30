@@ -223,7 +223,7 @@ final class ParserDriver {
                     if (calls != null) {
                         dependencies.add(calls);
                     } else {
-                        dependencies.add(createDependencySource(externalLibraryName, null, false, InternalLibraryLocator.INSTANCE, file));
+                        dependencies.add(createDependencySource(externalLibraryName, null, true, InternalLibraryLocator.INSTANCE, file));
                     }
                 }
             }
