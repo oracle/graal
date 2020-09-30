@@ -198,7 +198,7 @@ public final class RestrictHeapAccessAnnotationChecker {
                         message += "]";
                     }
                 }
-                throw UserError.abort(message);
+                throw UserError.abort("%s", message);
             }
         }
 

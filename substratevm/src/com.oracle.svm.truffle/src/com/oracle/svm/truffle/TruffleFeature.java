@@ -921,10 +921,10 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 collectImplementations(frameType, implementations);
 
                 if (implementations.size() > 1) {
-                    throw UserError.abort("More than one implementation of " + Frame.class.getTypeName() +
-                                    " found. For performance reasons, Truffle languages must not provide new implementations, and instead only use the single implementation provided by the Truffle runtime. " +
-                                    "To disable this check, add " + SubstrateOptionsParser.commandArgument(Options.TruffleCheckFrameImplementation, "-") + " to the native-image command line. " +
-                                    "Found classes: " + implementations.stream().map(m -> m.toJavaName(true)).collect(Collectors.joining(", ")));
+                    throw UserError.abort("More than one implementation of %s found. For performance reasons, Truffle languages must not provide new implementations, " +
+                                    "and instead only use the single implementation provided by the Truffle runtime. To disable this check, add %s to the native-image command line. Found classes: %s",
+                                    Frame.class.getTypeName(), SubstrateOptionsParser.commandArgument(Options.TruffleCheckFrameImplementation, "-"),
+                                    implementations.stream().map(m -> m.toJavaName(true)).collect(Collectors.joining(", ")));
                 } else {
                     assert implementations.size() == 0 || implementations.iterator().next() == frameType.getSingleImplementor();
                 }

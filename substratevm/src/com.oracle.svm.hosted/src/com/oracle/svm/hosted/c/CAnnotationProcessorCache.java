@@ -90,10 +90,9 @@ public final class CAnnotationProcessorCache {
     public CAnnotationProcessorCache() {
         if ((Options.UseCAPCache.getValue() || Options.NewCAPCache.getValue())) {
             if (Options.CAPCacheDir.getValue() == null || Options.CAPCacheDir.getValue().isEmpty()) {
-                throw UserError.abort("Path to C Annotation Processor Cache must be specified using " +
-                                SubstrateOptionsParser.commandArgument(Options.CAPCacheDir, "") + " when the option " +
-                                SubstrateOptionsParser.commandArgument(Options.UseCAPCache, "+") + " or " +
-                                SubstrateOptionsParser.commandArgument(Options.NewCAPCache, "+") + " is used.");
+                throw UserError.abort("Path to C Annotation Processor Cache must be specified using %s when the option %s or %s is used.",
+                                SubstrateOptionsParser.commandArgument(Options.CAPCacheDir, ""), SubstrateOptionsParser.commandArgument(Options.UseCAPCache, "+"),
+                                SubstrateOptionsParser.commandArgument(Options.NewCAPCache, "+"));
             }
             Path cachePath = FileSystems.getDefault().getPath(Options.CAPCacheDir.getValue()).toAbsolutePath();
             cache = cachePath.toFile();
@@ -101,7 +100,7 @@ public final class CAnnotationProcessorCache {
                 try {
                     cache = Files.createDirectories(cachePath).toFile();
                 } catch (IOException e) {
-                    throw UserError.abort("Could not create C Annotation Processor Cache directory: " + e.getMessage());
+                    throw UserError.abort("Could not create C Annotation Processor Cache directory: %s", e.getMessage());
                 }
             } else if (!cache.isDirectory()) {
                 throw UserError.abort("Path to C Annotation Processor Cache is not a directory");
@@ -117,14 +116,13 @@ public final class CAnnotationProcessorCache {
                 try {
                     query = Files.createDirectories(queryPath).toFile();
                 } catch (IOException e) {
-                    throw UserError.abort("Could not create query code directory: " + e.getMessage());
+                    throw UserError.abort("Could not create query code directory: %s", e.getMessage());
                 }
             } else if (!query.isDirectory()) {
                 throw UserError.abort("Path to query code directory is not a directory");
             }
         } else if (Options.ExitAfterQueryCodeGeneration.hasBeenSet()) {
-            throw UserError.abort("Query code directory wasn't specified, use  " +
-                            SubstrateOptionsParser.commandArgument(CAnnotationProcessorCache.Options.QueryCodeDir, "PATH") + " option.");
+            throw UserError.abort("Query code directory wasn't specified, use %s option.", SubstrateOptionsParser.commandArgument(Options.QueryCodeDir, "PATH"));
         }
     }
 
@@ -137,9 +135,8 @@ public final class CAnnotationProcessorCache {
         try (FileInputStream fis = new FileInputStream(file)) {
             QueryResultParser.parse(nativeLibs, nativeCodeInfo, fis);
         } catch (IOException e) {
-            throw UserError.abort("Could not load CAPCache file. " +
-                            "Ensure that options " + Options.UseCAPCache.getName() + " and " + Options.NewCAPCache + " are used on the same version of your application. " +
-                            "Raw error: " + e.getMessage());
+            throw UserError.abort("Could not load CAPCache file. Ensure that options %s and %s are used on the same version of your application. Raw error: %s",
+                            Options.UseCAPCache.getName(), Options.NewCAPCache, e.getMessage());
         }
     }
 

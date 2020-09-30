@@ -200,8 +200,7 @@ public final class NativeLibraries {
                 return;
             }
             if (discovered.contains(dep)) {
-                String message = String.format("While building list of static libraries dependencies a cycle was discovered for dependency: %s ", dep.getName());
-                UserError.abort(message);
+                UserError.abort("While building list of static libraries dependencies a cycle was discovered for dependency: %s ", dep.getName());
             }
 
             discovered.add(dep);
@@ -459,7 +458,7 @@ public final class NativeLibraries {
                                 .filter(path -> path.getFileName().toString().endsWith(libSuffix))
                                 .forEachOrdered(candidate -> allStaticLibs.put(candidate.getFileName(), candidate));
             } catch (IOException e) {
-                UserError.abort(e, "Invalid library path " + libraryPath);
+                UserError.abort(e, "Invalid library path %s", libraryPath);
             }
         }
         return allStaticLibs;
@@ -476,7 +475,7 @@ public final class NativeLibraries {
             try {
                 unit = ReflectionUtil.newInstance(compilationUnit);
             } catch (ReflectionUtilError ex) {
-                throw UserError.abort(ex.getCause(), "can't construct compilation unit " + compilationUnit.getCanonicalName());
+                throw UserError.abort(ex.getCause(), "Cannot construct compilation unit %s", compilationUnit.getCanonicalName());
             }
 
             if (classInitializationSupport != null) {

@@ -331,19 +331,19 @@ public class NativeImageGenerator {
             try {
                 platformClass = classLoader.loadClass(platformClassName);
             } catch (ClassNotFoundException ex) {
-                throw UserError.abort("Could not find platform class " + platformClassName +
-                                " that was specified explicitly on the command line using the system property " + Platform.PLATFORM_PROPERTY_NAME);
+                throw UserError.abort("Could not find platform class %s that was specified explicitly on the command line using the system property %s",
+                                platformClassName, Platform.PLATFORM_PROPERTY_NAME);
             }
 
             Object result;
             try {
                 result = ReflectionUtil.newInstance(platformClass);
             } catch (ReflectionUtilError ex) {
-                throw UserError.abort(ex.getCause(), "Could not instantiate platform class " + platformClassName + ". Ensure the class is not abstract and has a no-argument constructor.");
+                throw UserError.abort(ex.getCause(), "Could not instantiate platform class %s. Ensure the class is not abstract and has a no-argument constructor.", platformClassName);
             }
 
             if (!(result instanceof Platform)) {
-                throw UserError.abort("Platform class " + platformClassName + " does not implement " + Platform.class.getTypeName());
+                throw UserError.abort("Platform class %s does not implement %s", platformClassName, Platform.class.getTypeName());
             }
             return (Platform) result;
         }
@@ -428,7 +428,7 @@ public class NativeImageGenerator {
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers.
             return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
         } else {
-            throw UserError.abort("Architecture specified by platform is not supported: " + platform.getClass().getTypeName());
+            throw UserError.abort("Architecture specified by platform is not supported: %s", platform.getClass().getTypeName());
         }
     }
 
@@ -591,7 +591,7 @@ public class NativeImageGenerator {
                     }
                 }
                 if (hostedEntryPoints.size() == 0) {
-                    throw UserError.abort("Warning: no entry points found, i.e., no method annotated with @" + CEntryPoint.class.getSimpleName());
+                    throw UserError.abort("Warning: no entry points found, i.e., no method annotated with @%s", CEntryPoint.class.getSimpleName());
                 }
 
                 bigbang.getUnsupportedFeatures().report(bigbang);
@@ -720,9 +720,9 @@ public class NativeImageGenerator {
                              * probably have an endless loop (but at least we have a performance
                              * problem because we re-start the analysis so often).
                              */
-                            throw UserError.abort("Static analysis did not reach a fix point after " + numIterations +
-                                            " iterations because a Feature keeps requesting new analysis iterations. The analysis itself " +
-                                            (analysisChanged ? "DID" : "DID NOT") + " find a change in type states in the last iteration.");
+                            throw UserError.abort("Static analysis did not reach a fix point after %d iterations because a Feature keeps requesting new analysis iterations. " +
+                                            "The analysis itself %s find a change in type states in the last iteration.",
+                                            numIterations, analysisChanged ? "DID" : "DID NOT");
                         }
 
                         /*
@@ -1076,7 +1076,7 @@ public class NativeImageGenerator {
     private void registerEntryPoints(Map<Method, CEntryPointData> entryPoints) {
         for (Method m : loader.findAnnotatedMethods(CEntryPoint.class)) {
             if (!Modifier.isStatic(m.getModifiers())) {
-                throw UserError.abort("entry point method " + m.getDeclaringClass().getName() + "." + m.getName() + " is not static. Add a static modifier to the method.");
+                throw UserError.abort("Entry point method %s.%s is not static. Add a static modifier to the method.", m.getDeclaringClass().getName(), m.getName());
             }
 
             boolean include = true;

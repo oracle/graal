@@ -1114,6 +1114,6 @@ public class SubstrateGraphBuilderPlugins {
             parameterName = String.valueOf(parameterIndex);
         }
 
-        throw UserError.abort(message + ": parameter " + parameterName + " of call to " + targetMethod.format("%H.%n(%p)") + " in " + b.getMethod().asStackTraceElement(b.bci()));
+        throw UserError.abort("%s: parameter %s of call to %s in %s", message, parameterName, targetMethod, b.getMethod().asStackTraceElement(b.bci()));
     }
 }

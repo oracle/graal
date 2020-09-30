@@ -395,7 +395,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         } else if (executionContext.threadCount == 1) {
             contextIndex = executionContext.lastThreadIndex;
         } else {
-            UserError.abort("@" + CEntryPoint.class.getSimpleName() + " requires exactly one execution context parameter of type %s: %s",
+            UserError.abort("@%s requires exactly one execution context parameter of type %s: %s", CEntryPoint.class.getSimpleName(),
                             IsolateThread.class.getSimpleName(), targetMethod);
         }
         ValueNode contextValue = args[contextIndex];

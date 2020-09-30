@@ -543,7 +543,7 @@ public final class NativeImageBuildServer {
     private static ImageBuildTask loadCompilationTask(ArrayList<String> arguments, ClassLoader classLoader) {
         Optional<String> taskParameter = arguments.stream().filter(arg -> arg.startsWith(TASK_PREFIX)).findFirst();
         if (!taskParameter.isPresent()) {
-            throw UserError.abort("image building task not specified. Provide the fully qualified task name after the \"" + TASK_PREFIX + "\" argument.");
+            throw UserError.abort("Image building task not specified. Provide the fully qualified task name after the \"%s\" argument.", TASK_PREFIX);
         }
         arguments.removeAll(arguments.stream().filter(arg -> arg.startsWith(TASK_PREFIX)).collect(Collectors.toList()));
         final String task = taskParameter.get().substring(TASK_PREFIX.length());
@@ -551,9 +551,9 @@ public final class NativeImageBuildServer {
             Class<?> imageTaskClass = Class.forName(task, true, classLoader);
             return (ImageBuildTask) imageTaskClass.getDeclaredConstructor().newInstance();
         } catch (ClassNotFoundException e) {
-            throw UserError.abort("image building task " + task + " can not be found. Make sure that " + task + " is present on the classpath.");
+            throw UserError.abort("Image building task %1$s can not be found. Make sure that %1$s is present on the classpath.", task);
         } catch (IllegalArgumentException | InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
-            throw UserError.abort("image building task " + task + " must have a public constructor without parameters.");
+            throw UserError.abort("Image building task %s must have a public constructor without parameters.", task);
         }
     }
 }

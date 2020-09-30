@@ -58,11 +58,11 @@ public final class HeapPolicy {
     @Platforms(Platform.HOSTED_ONLY.class)
     HeapPolicy(FeatureAccess access) {
         if (!SubstrateUtil.isPowerOf2(getAlignedHeapChunkSize().rawValue())) {
-            throw UserError.abort("AlignedHeapChunkSize (" + getAlignedHeapChunkSize().rawValue() + ")" + " should be a power of 2.");
+            throw UserError.abort("AlignedHeapChunkSize (%d) should be a power of 2.", getAlignedHeapChunkSize().rawValue());
         }
         if (!getLargeArrayThreshold().belowOrEqual(getAlignedHeapChunkSize())) {
-            throw UserError.abort("LargeArrayThreshold (" + getLargeArrayThreshold().rawValue() + ")" +
-                            " should be below or equal to AlignedHeapChunkSize (" + getAlignedHeapChunkSize().rawValue() + ").");
+            throw UserError.abort("LargeArrayThreshold (%d) should be below or equal to AlignedHeapChunkSize (%d).",
+                            getLargeArrayThreshold().rawValue(), getAlignedHeapChunkSize().rawValue());
         }
         userRequestedGCPolicy = instantiatePolicy(access, HeapPolicy.HintGCPolicy.class, HeapPolicyOptions.UserRequestedGCPolicy.getValue());
         collectOnAllocationPolicy = new SometimesCollectOnAllocation();
@@ -72,16 +72,16 @@ public final class HeapPolicy {
     static <T> T instantiatePolicy(FeatureAccess access, Class<T> policyClass, String className) {
         Class<?> policy = access.findClassByName(className);
         if (policy == null) {
-            throw UserError.abort("policy " + className + " does not exist. It must be a fully qualified class name.");
+            throw UserError.abort("Policy %s does not exist. It must be a fully qualified class name.", className);
         }
         Object result;
         try {
             result = policy.getDeclaredConstructor().newInstance();
         } catch (Exception ex) {
-            throw UserError.abort("policy " + className + " cannot be instantiated.");
+            throw UserError.abort("Policy %s cannot be instantiated.", className);
         }
         if (!policyClass.isInstance(result)) {
-            throw UserError.abort("policy " + className + " does not extend " + policyClass.getTypeName() + ".");
+            throw UserError.abort("Policy %s does not extend %s.", className, policyClass.getTypeName());
         }
         return policyClass.cast(result);
     }

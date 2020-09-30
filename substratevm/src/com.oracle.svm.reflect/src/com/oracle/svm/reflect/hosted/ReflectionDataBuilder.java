@@ -164,7 +164,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
     private void checkNotSealed() {
         if (sealed) {
-            throw UserError.abort("Too late to add classes, methods, and fields for reflective access. Registration must happen in a Feature before the analysis has finised.");
+            throw UserError.abort("Too late to add classes, methods, and fields for reflective access. Registration must happen in a Feature before the analysis has finished.");
         }
     }
 
