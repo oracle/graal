@@ -158,9 +158,9 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         properties.put("GraalNodes", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
         properties.put("CodeSize", result.getTargetCodeSize());
         if (target.getCodeAddress() != 0) {
-            properties.put("CodeAddress", "0x" + Long.toHexString(target.getCodeAddress()));
+            properties.put("Addr", "0x" + Long.toHexString(target.getCodeAddress()));
         } else {
-            properties.put("CodeAddress", "N/A");
+            properties.put("Addr", "N/A");
         }
         properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
 
