@@ -64,7 +64,6 @@ import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
@@ -78,51 +77,84 @@ public final class EspressoContext {
 
     private final EspressoLanguage language;
     private final TruffleLanguage.Env env;
+
+    private String[] mainArguments;
+
+    // region Runtime
     private final StringTable strings;
     private final ClassRegistries registries;
     private final Substitutions substitutions;
     private final MethodHandleIntrinsics methodHandleIntrinsics;
-    private StaticObject mainThreadGroup;
+    // endregion Runtime
 
+    // region Helpers
     private final EspressoThreadManager threadManager;
-    private final EspressoShutdownManager shutdownManager;
-    private final EspressoReferenceDrainManager referenceDrainManager;
-    private final EspressoOptionCollector optionCollector;
+    private final EspressoShutdownHandler shutdownManager;
+    private final EspressoReferenceDrainer referenceDrainer;
+    // endregion Helpers
 
+    // region ID
     private final AtomicInteger klassIdProvider = new AtomicInteger();
     private final AtomicInteger loaderIdProvider = new AtomicInteger();
     private final int bootClassLoaderID = getNewLoaderId();
+    // endregion ID
 
+    // region InitControl
     public long initDoneTimeNanos;
-
-    private boolean mainThreadCreated;
-    private JDWPContextImpl jdwpContext;
-    private VMListener eventListener;
-    private boolean contextReady;
-
     @CompilationFinal private boolean modulesInitialized = false;
     @CompilationFinal private boolean metaInitialized = false;
     private boolean initialized = false;
-
     private Classpath bootClasspath;
-    private String[] mainArguments;
+    // endregion InitControl
+
+    // region JDWP
+    private JDWPContextImpl jdwpContext;
+    private VMListener eventListener;
+    private boolean contextReady;
+    // endregion JDWP
+
+    // region Options
+    // Checkstyle: stop field name check
+
+    // Performance control
+    final boolean InlineFieldAccessors;
+    final boolean InlineMethodHandle;
+    final boolean SplitMethodHandles;
+
+    // Behavior control
+    final boolean EnableManagement;
+    final boolean MultiThreaded;
+    final boolean SoftExit;
+    final EspressoOptions.VerifyMode Verify;
+    final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
+
+    // Debug option
+    final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
+
+    // Checkstyle: resume field name check
+    // endregion Options
 
     // Must be initialized after the context instance creation.
-    @CompilationFinal private InterpreterToVM interpreterToVM;
+
+    // region VM
     @CompilationFinal private Meta meta;
-    @CompilationFinal private JniEnv jniEnv;
     @CompilationFinal private VM vm;
+    @CompilationFinal private JniEnv jniEnv;
+    @CompilationFinal private InterpreterToVM interpreterToVM;
     @CompilationFinal private JImageLibrary jimageLibrary;
     @CompilationFinal private EspressoProperties vmProperties;
     @CompilationFinal private JavaVersion javaVersion;
+    // endregion VM
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
 
+    // region ThreadDeprecated
     // Set on calling guest Thread.stop0(), or when closing context.
     @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
+    // endregion ThreadDeprecated
 
     public TruffleLogger getLogger() {
         return logger;
@@ -143,14 +175,28 @@ public final class EspressoContext {
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
         this.language = language;
+
         this.registries = new ClassRegistries(this);
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);
         this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
+
         this.threadManager = new EspressoThreadManager(this);
-        this.optionCollector = new EspressoOptionCollector(this, env);
-        this.referenceDrainManager = new EspressoReferenceDrainManager(this);
-        this.shutdownManager = new EspressoShutdownManager(this, threadManager, referenceDrainManager);
+        this.referenceDrainer = new EspressoReferenceDrainer(this);
+        this.shutdownManager = new EspressoShutdownHandler(this, threadManager, referenceDrainer);
+
+        // null if not specified
+        this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions);
+
+        this.InlineFieldAccessors = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.InlineFieldAccessors);
+        this.InlineMethodHandle = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.InlineMethodHandle);
+        this.SplitMethodHandles = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.SplitMethodHandles);
+        this.Verify = env.getOptions().get(EspressoOptions.Verify);
+        this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
+        this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
+        this.MultiThreaded = env.getOptions().get(EspressoOptions.MultiThreaded);
+        this.SoftExit = env.getOptions().get(EspressoOptions.SoftExit);
+
     }
 
     public ClassRegistries getRegistries() {
@@ -227,7 +273,7 @@ public final class EspressoContext {
         this.initialized = true;
         this.jdwpContext = new JDWPContextImpl(this);
         this.eventListener = jdwpContext.jdwpInit(env, getMainThread());
-        referenceDrainManager.startReferenceDrain();
+        referenceDrainer.startReferenceDrain();
     }
 
     public VMListener getJDWPListener() {
@@ -283,11 +329,11 @@ public final class EspressoContext {
             initializeKnownClass(type);
         }
 
-        createMainThread();
+        threadManager.createMainThread(meta);
 
         initializeKnownClass(Type.java_lang_ref_Finalizer);
 
-        referenceDrainManager.initReferenceDrain();
+        referenceDrainer.initReferenceDrain();
 
         // Call guest initialization
         if (getJavaVersion().java8OrEarlier()) {
@@ -340,81 +386,6 @@ public final class EspressoContext {
         long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
         getLogger().log(Level.FINE, "VM booted in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
 
-    }
-
-    /**
-     * The order in which methods are called and fields are set here is important, it mimics
-     * HotSpot's implementation.
-     */
-    private void createMainThread() {
-        StaticObject systemThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
-        meta.java_lang_ThreadGroup.lookupDeclaredMethod(Name._init_, Signature._void) // private
-                                                                                      // ThreadGroup()
-                        .invokeDirect(systemThreadGroup);
-        StaticObject mainThread = meta.java_lang_Thread.allocateInstance();
-        // Allow guest Thread.currentThread() to work.
-        mainThread.setIntField(meta.java_lang_Thread_priority, Thread.NORM_PRIORITY);
-        mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
-        mainThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
-        mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
-
-        threadManager.registerMainThread(Thread.currentThread(), mainThread);
-
-        // Guest Thread.currentThread() must work as this point.
-        meta.java_lang_ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
-                        .lookupDeclaredMethod(Name._init_, Signature._void_ThreadGroup_String) //
-                        .invokeDirect(mainThreadGroup,
-                                        /* parent */ systemThreadGroup,
-                                        /* name */ meta.toGuestString("main"));
-
-        meta.java_lang_Thread // public Thread(ThreadGroup group, String name)
-                        .lookupDeclaredMethod(Name._init_, Signature._void_ThreadGroup_String) //
-                        .invokeDirect(mainThread,
-                                        /* group */ mainThreadGroup,
-                                        /* name */ meta.toGuestString("main"));
-        mainThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
-
-        mainThreadCreated = true;
-    }
-
-    /**
-     * Creates a new guest thread from the host thread, and adds it to the main thread group.
-     */
-    public synchronized void createThread(Thread hostThread) {
-        if (meta == null) {
-            // initial thread used to initialize the context and spawn the VM.
-            // Don't attempt guest thread creation
-            return;
-        }
-        if (getGuestThreadFromHost(hostThread) != null) {
-            // already a live guest thread for this host thread
-            return;
-        }
-        StaticObject guestThread = meta.java_lang_Thread.allocateInstance();
-        // Allow guest Thread.currentThread() to work.
-        guestThread.setIntField(meta.java_lang_Thread_priority, Thread.NORM_PRIORITY);
-        guestThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
-        guestThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
-
-        // register the new guest thread
-        threadManager.registerThread(hostThread, guestThread);
-
-        meta.java_lang_Thread // public Thread(ThreadGroup group, String name)
-                        .lookupDeclaredMethod(Name._init_, Signature._void_ThreadGroup_Runnable) //
-                        .invokeDirect(guestThread,
-                                        /* group */ mainThreadGroup,
-                                        /* runnable */ StaticObject.NULL);
-        guestThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
-
-        // now add to the main thread group
-        meta.java_lang_ThreadGroup // public void add(Thread t)
-                        .lookupDeclaredMethod(Name.add, Signature._void_Thread).invokeDirect(mainThreadGroup,
-                                        /* thread */ guestThread);
-    }
-
-    public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {
-        // simply calling Thread.exit() will do most of what's needed
-        // TODO(Gregersen) - /browse/GR-20077
     }
 
     private void initVmProperties() {
@@ -525,6 +496,18 @@ public final class EspressoContext {
 
     // region Thread management
 
+    /**
+     * Creates a new guest thread from the host thread, and adds it to the main thread group.
+     */
+    public void createThread(Thread hostThread) {
+        threadManager.createGuestThreadFromHost(hostThread, meta);
+    }
+
+    public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {
+        // simply calling Thread.exit() will do most of what's needed
+        // TODO(Gregersen) - /browse/GR-20077
+    }
+
     public StaticObject getGuestThreadFromHost(Thread host) {
         return threadManager.getGuestThreadFromHost(host);
     }
@@ -588,7 +571,7 @@ public final class EspressoContext {
     }
 
     public boolean isMainThreadCreated() {
-        return mainThreadCreated;
+        return threadManager.isMainThreadCreated();
     }
 
     public StaticObject getMainThread() {
@@ -596,50 +579,50 @@ public final class EspressoContext {
     }
 
     public StaticObject getMainThreadGroup() {
-        return mainThreadGroup;
+        return threadManager.getMainThreadGroup();
     }
 
     // endregion Thread management
 
-    // region options
+    // region OptionAccess
 
     public EspressoOptions.SpecCompliancyMode specCompliancyMode() {
-        return optionCollector.SpecCompliancyMode;
+        return SpecCompliancyMode;
     }
 
     public boolean managementEnabled() {
-        return optionCollector.EnableManagement;
+        return EnableManagement;
     }
 
     public boolean multiThreaded() {
-        return optionCollector.MultiThreaded;
+        return MultiThreaded;
     }
 
     public boolean shouldTrySoftExit() {
-        return optionCollector.SoftExit;
+        return SoftExit;
     }
 
     public EspressoOptions.VerifyMode verifyMode() {
-        return optionCollector.Verify;
+        return Verify;
     }
 
     public JDWPOptions jdwpOptions() {
-        return optionCollector.JDWPOptions;
+        return JDWPOptions;
     }
 
     public boolean shouldInlineFieldAccessors() {
-        return optionCollector.InlineFieldAccessors;
+        return InlineFieldAccessors;
     }
 
     public boolean shouldSplitMethodHandles() {
-        return optionCollector.SplitMethodHandles;
+        return SplitMethodHandles;
     }
 
     public boolean shouldInlineMethodHandles() {
-        return optionCollector.InlineMethodHandle;
+        return InlineMethodHandle;
     }
 
-    // endregion options
+    // endregion OptionAccess
 
     // region Shutdown
 
@@ -668,19 +651,19 @@ public final class EspressoContext {
     // region ReferenceDrain
 
     public ReferenceQueue<StaticObject> getReferenceQueue() {
-        return referenceDrainManager.getReferenceQueue();
+        return referenceDrainer.getReferenceQueue();
     }
 
     public StaticObject getAndClearReferencePendingList() {
-        return referenceDrainManager.getAndClearReferencePendingList();
+        return referenceDrainer.getAndClearReferencePendingList();
     }
 
     public boolean hasReferencePendingList() {
-        return referenceDrainManager.hasReferencePendingList();
+        return referenceDrainer.hasReferencePendingList();
     }
 
     public void waitForReferencePendingList() {
-        referenceDrainManager.waitForReferencePendingList();
+        referenceDrainer.waitForReferencePendingList();
     }
 
     // endregion ReferenceDrain

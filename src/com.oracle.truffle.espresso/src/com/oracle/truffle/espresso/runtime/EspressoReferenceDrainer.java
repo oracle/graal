@@ -35,7 +35,7 @@ import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
-class EspressoReferenceDrainManager implements ContextAccess {
+class EspressoReferenceDrainer implements ContextAccess {
     private final EspressoContext context;
     private Thread hostToGuestReferenceDrainThread;
 
@@ -44,7 +44,7 @@ class EspressoReferenceDrainManager implements ContextAccess {
     private final Object pendingLock = new Object() {
     };
 
-    EspressoReferenceDrainManager(EspressoContext context) {
+    EspressoReferenceDrainer(EspressoContext context) {
         this.context = context;
     }
 

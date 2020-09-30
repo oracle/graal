@@ -653,7 +653,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         return Double.longBitsToDouble(FrameUtil.getLongSafe(frame, locals[slot]));
     }
 
-    // region Local accessors
+    // endregion Local accessors
 
     @Override
     void initializeBody(VirtualFrame frame) {

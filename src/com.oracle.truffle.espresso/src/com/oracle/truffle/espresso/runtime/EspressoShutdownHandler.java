@@ -27,23 +27,34 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
-class EspressoShutdownManager implements ContextAccess {
+class EspressoShutdownHandler implements ContextAccess {
+
+    // region context
+
     private final EspressoContext context;
     private final EspressoThreadManager threadManager;
-    private final EspressoReferenceDrainManager referenceDrainManager;
-
-    EspressoShutdownManager(EspressoContext context,
-                    EspressoThreadManager threadManager,
-                    EspressoReferenceDrainManager referenceDrainManager) {
-        this.context = context;
-        this.threadManager = threadManager;
-        this.referenceDrainManager = referenceDrainManager;
-    }
+    private final EspressoReferenceDrainer referenceDrainer;
 
     @Override
     public EspressoContext getContext() {
         return context;
     }
+
+    // endregion context
+
+    EspressoShutdownHandler(EspressoContext context,
+                    EspressoThreadManager threadManager,
+                    EspressoReferenceDrainer referenceDrainer) {
+        this.context = context;
+        this.threadManager = threadManager;
+        this.referenceDrainer = referenceDrainer;
+    }
+
+    /**
+     * The amount of time the teardown process should wait (in total) for threads to complete before
+     * moving on to the next phase.
+     */
+    private static final long MAX_KILL_PHASE_WAIT = 100;
 
     /**
      * Controls behavior of context closing. Until an exit method has been called, context closing
@@ -51,6 +62,13 @@ class EspressoShutdownManager implements ContextAccess {
      */
     private volatile boolean isClosing = false;
     private volatile int exitStatus = -1;
+
+    /**
+     * On return of the main method, host main thread waits on this synchronizer. Once a thread
+     * terminates, or an exit method is called, it is notified
+     */
+    private final Object shutdownSynchronizer = new Object() {
+    };
 
     boolean isClosing() {
         return isClosing;
@@ -73,13 +91,6 @@ class EspressoShutdownManager implements ContextAccess {
         isClosing = true;
         exitStatus = code;
     }
-
-    /**
-     * On return of the main method, host main thread waits on this synchronizer. Once a thread
-     * terminates, or an exit method is called, it is notified
-     */
-    private final Object shutdownSynchronizer = new Object() {
-    };
 
     Object getShutdownSynchronizer() {
         return shutdownSynchronizer;
@@ -115,7 +126,7 @@ class EspressoShutdownManager implements ContextAccess {
      * <li>Waits for all other non-daemon thread to naturally terminate.
      * <li>If all threads have terminated, and no other thread called an exit method, then:
      * <li>This calls guest {@code java.lang.Shutdown#shutdown()}
-     * <li>Proceeds to teadown leftover daemon threads.
+     * <li>Proceeds to teardown leftover daemon threads.
      */
     @TruffleBoundary
     void destroyVM() {
@@ -174,8 +185,6 @@ class EspressoShutdownManager implements ContextAccess {
         return false;
     }
 
-    private static final long MAX_KILL_PHASE_WAIT = 100;
-
     private void teardown() {
         assert isClosing();
         getContext().invalidateNoThreadStop("Killing the VM");
@@ -211,7 +220,7 @@ class EspressoShutdownManager implements ContextAccess {
             teardownPhase4(initiatingThread);
         }
 
-        Thread hostToGuestReferenceDrainThread = referenceDrainManager.referenceDrain();
+        Thread hostToGuestReferenceDrainThread = referenceDrainer.referenceDrain();
         if (getContext().multiThreaded()) {
             hostToGuestReferenceDrainThread.interrupt();
             try {
