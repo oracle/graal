@@ -232,6 +232,10 @@ public class SubstrateOptionsParser {
                 if (optionType.isArray()) {
                     OptionKey<?> optionKey = desc.getOptionKey();
                     Object addValue = parseValue(optionType.getComponentType(), optionName, valueString);
+                    if (addValue instanceof OptionParseResult) {
+                        return (OptionParseResult) addValue;
+                    }
+
                     Object previous = valuesMap.get(optionKey);
                     if (previous == null) {
                         value = Array.newInstance(optionType.getComponentType(), 1);
@@ -243,6 +247,9 @@ public class SubstrateOptionsParser {
                     }
                 } else {
                     value = parseValue(optionType, optionName, valueString);
+                    if (value instanceof OptionParseResult) {
+                        return (OptionParseResult) value;
+                    }
                 }
             } catch (NumberFormatException ex) {
                 return OptionParseResult.error("Invalid value for option '" + optionName + "': '" + valueString + "' is not a valid number");
