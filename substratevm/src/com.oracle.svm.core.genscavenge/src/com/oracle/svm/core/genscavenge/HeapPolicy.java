@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -145,7 +145,7 @@ public final class HeapPolicy {
                             .string(" ]").newline();
             return maximumYoungGenerationSize;
         }
-        long hostedValue = SubstrateOptions.MaxNewSize.getHostedValue();
+        long hostedValue = SubstrateGCOptions.MaxNewSize.getHostedValue();
         if (hostedValue != 0) {
             trace.string("  returns maximumYoungGenerationSize: ").unsigned(hostedValue).string(" ]").newline();
             return WordFactory.unsigned(hostedValue);
@@ -185,7 +185,7 @@ public final class HeapPolicy {
             HeapPolicy.setMaximumHeapSize(WordFactory.unsigned(xmx.getValue()));
             return maximumHeapSize;
         }
-        long hostedValue = SubstrateOptions.MaxHeapSize.getHostedValue();
+        long hostedValue = SubstrateGCOptions.MaxHeapSize.getHostedValue();
         if (hostedValue != 0) {
             return WordFactory.unsigned(hostedValue);
         }
@@ -245,7 +245,7 @@ public final class HeapPolicy {
             trace.string("  returns: ").unsigned(minimumHeapSize).string(" ]").newline();
             return minimumHeapSize;
         }
-        long hostedValue = SubstrateOptions.MinHeapSize.getHostedValue();
+        long hostedValue = SubstrateGCOptions.MinHeapSize.getHostedValue();
         if (hostedValue != 0) {
             trace.string("  returns: ").unsigned(hostedValue).string(" ]").newline();
             return WordFactory.unsigned(hostedValue);
