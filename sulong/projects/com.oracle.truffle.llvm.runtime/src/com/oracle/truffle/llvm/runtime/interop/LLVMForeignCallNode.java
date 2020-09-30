@@ -200,7 +200,6 @@ public class LLVMForeignCallNode extends RootNode {
         this.returnBaseType = getReturnBaseType(interopType);
         this.getStack = LLVMGetStackFromThreadNode.create();
         this.callNode = DirectCallNode.create(getCallTarget(function));
-        this.callNode.forceInlining();
         this.prepareValueForEscape = LLVMDataEscapeNode.create(function.getLLVMFunction().getType().getReturnType());
         this.packArguments = PackForeignArgumentsNodeGen.create(function.getLLVMFunction().getType(), interopType, sourceType);
     }
@@ -257,5 +256,10 @@ public class LLVMForeignCallNode extends RootNode {
     @SuppressWarnings("unchecked")
     private static <E extends Exception> RuntimeException silenceException(@SuppressWarnings("unused") Class<E> type, Exception ex) throws E {
         throw (E) ex;
+    }
+
+    @Override
+    public boolean isCloningAllowed() {
+        return true;
     }
 }
