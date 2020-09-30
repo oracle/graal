@@ -169,12 +169,10 @@ public final class LoadModulesNode extends LLVMRootNode {
         return source.createUnavailableSection();
     }
 
-    public static LoadModulesNode create(String name, LLVMParserResult parserResult, FrameDescriptor rootFrame,
+    public static LoadModulesNode create(String name, LLVMParserResult parserResult,
                     boolean lazyParsing, LLVMContext context, List<Object> dependencySources, Source source, LLVMLanguage language) {
-        LoadModulesNode node = null;
         try {
-            node = new LoadModulesNode(name, parserResult, context, rootFrame, lazyParsing, dependencySources, source, language);
-            return node;
+            return new LoadModulesNode(name, parserResult, context, new FrameDescriptor(), lazyParsing, dependencySources, source, language);
         } catch (Type.TypeOverflowException e) {
             throw new LLVMUnsupportedException(null, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
         }
