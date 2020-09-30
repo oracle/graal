@@ -305,7 +305,7 @@ public interface TruffleCompilerRuntime {
      * @since 20.1.0
      */
     default void logEvent(CompilableTruffleAST compilable, int depth, String event, String subject, Map<String, Object> properties, String message) {
-        String formattedMessage = formatEvent(depth, event, 16, subject, 60, properties, 20);
+        String formattedMessage = formatEvent(depth, event, 16, subject, 60, properties, 0);
         if (message != null) {
             formattedMessage = String.format("%s%n%s", formattedMessage, message);
         }
