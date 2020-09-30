@@ -516,6 +516,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              * Now write a row for each subrange lo and hi.
              */
             for (Range subrange : primaryEntry.getSubranges()) {
+                if (subrange.withChildren()) {
+                    /* skip caller subranges */
+                    continue;
+                }
                 assert subrange.getLo() >= primaryRange.getLo();
                 assert subrange.getHi() <= primaryRange.getHi();
                 FileEntry subFileEntry = subrange.getFileEntry();

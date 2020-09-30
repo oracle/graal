@@ -34,11 +34,14 @@ package com.oracle.objectfile.debugentry;
 
 public class Range {
     private static final String CLASS_DELIMITER = ".";
+    private final Range caller;
     private final MethodEntry methodEntry;
     private final String fullMethodNameWithParams;
     private final int lo;
     private final int hi;
     private final int line;
+    private final boolean isInlined;
+    private final boolean withChildren;
     /*
      * This is null for a primary range.
      */
@@ -48,13 +51,13 @@ public class Range {
      * Create a primary range.
      */
     public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line) {
-        this(stringTable, methodEntry, lo, hi, line, null);
+        this(stringTable, methodEntry, lo, hi, line, null, false, false, null);
     }
 
     /*
      * Create a primary or secondary range.
      */
-    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary) {
+    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary, boolean isInline, boolean withChildren, Range caller) {
         assert methodEntry != null;
         if (methodEntry.fileEntry != null) {
             stringTable.uniqueDebugString(methodEntry.fileEntry.getFileName());
@@ -65,7 +68,10 @@ public class Range {
         this.lo = lo;
         this.hi = hi;
         this.line = line;
+        this.isInlined = isInline;
         this.primary = primary;
+        this.withChildren = withChildren;
+        this.caller = caller;
     }
 
     public boolean contains(Range other) {
@@ -166,5 +172,17 @@ public class Range {
 
     public MethodEntry getMethodEntry() {
         return methodEntry;
+    }
+
+    public boolean isInlined() {
+        return isInlined;
+    }
+
+    public boolean withChildren() {
+        return withChildren;
+    }
+
+    public Range getCaller() {
+        return caller;
     }
 }
