@@ -256,6 +256,16 @@ public class ValidationSuite extends WasmFileSuite {
                                     "Module: duplicate export (function and memory)",
                                     "All export names must be different, but 'a' is exported twice.",
                                     "(func (export \"a\") (result i32) i32.const 42) (memory (export \"a\") 1)"),
+
+                    binaryCase(
+                                    "Custom Section: missing name",
+                                    "The binary is truncated at: 10",
+                                    "0061 736d 0100 0000 0000"),
+
+                    binaryCase(
+                                    "Custom Section: excessive name length",
+                                    "Declared section (0x00) size is incorrect: 4 should = 1.",
+                                    "0061 736d 0100 0000 0001 0300 0100"),
     };
 
     private static Properties opts = SystemProperties.createFromOptions(
