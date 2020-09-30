@@ -38,6 +38,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CountInlinedCalls;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateInliningPlan;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.DequeueInlined;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.DequeueTargets;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindDecision;
@@ -417,6 +418,11 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(CancelCompilation)
     static boolean cancelCompilation(Object compilableTruffleAST, String reason) {
         return ((CompilableTruffleAST) compilableTruffleAST).cancelCompilation(reason);
+    }
+
+    @TruffleFromLibGraal(DequeueInlined)
+    static void dequeueInlined(Object compilableTruffleAST) {
+        ((CompilableTruffleAST) compilableTruffleAST).dequeueInlined();
     }
 
     @TruffleFromLibGraal(FindCallNode)
