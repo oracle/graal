@@ -111,8 +111,38 @@ class EspressoMinHeapVm(EspressoVm):
 # Register soon-to-become-default configurations.
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('default', []), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('interpreter', ['--experimental-options', '--engine.Compilation=false']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier', ['--experimental-options', '--engine.MultiTier']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('no-inlining', ['--experimental-options', '--engine.Inlining=false']), _suite)
+
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(0, 0, 64, 'infinite-overhead', []), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(1.5, 0, 2048, '1.5-overhead', []), _suite)
+
+
+def warmupIterations(startup = None, earlyWarmup = None, lateWarmup = None):
+    result = dict()
+    if startup is not None:
+        result["startup"] = startup
+    if earlyWarmup is not None:
+        result["early-warmup"] = earlyWarmup
+    if lateWarmup is not None:
+        result["late-warmup"] = lateWarmup
+    return result
+
+scala_dacapo_warmup_iterations = {
+    "actors"      : warmupIterations(0, 10/3, 10 - 1),
+    "apparat"     : warmupIterations(0, 5/3, 5 - 1),
+    "factorie"    : warmupIterations(0, 6/3, 6 - 1),
+    "kiama"       : warmupIterations(0, 40/3, 40 - 1),
+    "scalac"      : warmupIterations(0, 30/3, 30 - 1),
+    "scaladoc"    : warmupIterations(0, 20/3, 20 - 1),
+    "scalap"      : warmupIterations(0, 120/3, 120 - 1),
+    "scalariform" : warmupIterations(0, 30/3, 30 - 1),
+    "scalatest"   : warmupIterations(0, 60/3, 60 - 1),
+    "scalaxb"     : warmupIterations(0, 60/3, 60 - 1),
+    "specs"       : warmupIterations(0, 20/3, 20 - 1),
+    "tmt"         : warmupIterations(0, 12/3, 12 - 1),
+}
 
 class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
     """Scala DaCapo (warmup) benchmark suite implementation."""
@@ -120,60 +150,48 @@ class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disab
     def name(self):
         return "scala-dacapo-warmup"
 
-    def rules(self, out, benchmarks, bmSuiteArgs):        
-        startupTime = 1
-        earlyWarmupTime = self.daCapoIterations()[benchmarks[0]] // 5
-        lateWarmupTime = self.daCapoIterations()[benchmarks[0]] * 3 // 4
-        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
-        if runArgs is None:
-            return []
-        totalIterations = int(runArgs[runArgs.index("-n") + 1])
-        return [
-            mx_benchmark.StdOutRule(
-                r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) completed warmup " + re.escape(str(startupTime)) + " in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
-                {
-                    "benchmark": ("<benchmark>", str),
-                    "bench-suite": self.benchSuiteName(),                    
-                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
-                    "metric.name": "startup",
-                    "metric.value": ("<time>", int),
-                    "metric.unit": "ms",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": startupTime,
-                }
-            ),
-            mx_benchmark.StdOutRule(
-                r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) completed warmup " + re.escape(str(earlyWarmupTime)) + " in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
-                {
-                    "benchmark": ("<benchmark>", str),
-                    "bench-suite": self.benchSuiteName(),
-                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
-                    "metric.name": "early-warmup",
-                    "metric.value": ("<time>", int),
-                    "metric.unit": "ms",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": startupTime,
-                }
-            ),
-            mx_benchmark.StdOutRule(
-                r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) completed warmup " + re.escape(str(lateWarmupTime)) + " in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
-                {
-                    "benchmark": ("<benchmark>", str),
-                    "bench-suite": self.benchSuiteName(),
-                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
-                    "metric.name": "late-warmup",
-                    "metric.value": ("<time>", int),
-                    "metric.unit": "ms",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": lateWarmupTime,
-                }
-            )]
-  
+    def accumulateResults(self, results, metricName="warmup"):
+        """
+        Postprocess results to compute the cumulative metric.value, including all previous iterations.
+        Adds new entries with name "cumulative-" + metricName.
+        """
+        benchmarkNames = {r["benchmark"] for r in results}
+        for benchmark in benchmarkNames:
+            entries = [result for result in results if result["metric.name"] == metricName and result["benchmark"] == benchmark]
+            if entries:
+                for entry in entries:
+                    aggregates = [e for e in entries if e["metric.iteration"] <= entry["metric.iteration"]]
+                    cumulativeValue = sum((e["metric.value"] for e in aggregates))
+                    newEntry = entry.copy()
+                    newEntry.update({
+                        "metric.value": cumulativeValue,
+                        "metric.name": "cumulative-" + metricName,
+                        "metric.cumulative-over": len(aggregates)
+                    })
+                    results.append(newEntry)
+
+    def warmupResults(self, results, warmupIterations, metricName="cumulative-warmup"):
+        """
+        Postprocess results to compute the resulting time by taking the average of last N runs,
+        where N is obtained using getExtraIterationCount.
+        """
+        benchmarkNames = {r["benchmark"] for r in results}
+        for benchmark in benchmarkNames:
+            if benchmark in warmupIterations:
+                entries = [result for result in results if result["metric.name"] == metricName and result["benchmark"] == benchmark]
+                if entries:
+                    for entry in entries:
+                        for key, iteration in warmupIterations[benchmark].iteritems():
+                            if entry["metric.iteration"] == iteration:
+                                newEntry = entry.copy()
+                                newEntry["metric.name"] = key
+                                results.append(newEntry)
+
+    def run(self, benchmarks, bmSuiteArgs):
+        results = super(ScalaDaCapoWarmupBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)        
+        self.accumulateResults(results)
+        self.warmupResults(results, scala_dacapo_warmup_iterations)
+        return [r for r in results if r["metric.name"] in ["startup", "early-warmup", "late-warmup"]]
 
 mx_benchmark.add_bm_suite(ScalaDaCapoWarmupBenchmarkSuite())
+
