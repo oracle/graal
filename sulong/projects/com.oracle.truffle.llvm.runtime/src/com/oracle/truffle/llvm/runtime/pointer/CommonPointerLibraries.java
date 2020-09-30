@@ -249,13 +249,22 @@ abstract class CommonPointerLibraries {
      * @see InteropLibrary#isMemberInsertable(Object, String)
      */
     @ExportMessage
-    static boolean isMemberInvocable(LLVMPointerImpl receiver, String ident) {
+    static boolean isMemberInvocable(LLVMPointerImpl receiver, String ident, @CachedLibrary(limit = "5") InteropLibrary interop) {
         LLVMInteropType type = receiver.getExportType();
-        if (type instanceof LLVMInteropType.Clazz) {
-            LLVMInteropType.Clazz clazz = (LLVMInteropType.Clazz) type;
-            return clazz.findMethod(ident) != null;
+        if (type instanceof LLVMInteropType.Clazz &&
+                        ((LLVMInteropType.Clazz) type).findMethod(ident) != null) {
+            return true;
+        }
+
+        try {
+            if (interop.isMemberReadable(receiver, ident)) {
+                Object member = interop.readMember(receiver, ident);
+                return interop.isExecutable(member);
+            }
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
         }
         return false;
+
     }
 
 <<<<<<< HEAD
