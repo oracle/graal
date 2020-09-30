@@ -448,8 +448,7 @@ public final class LLVMContext {
     }
 
     public void addLibsulongDataLayout(DataLayout datalayout) {
-        // Libsulong datalayout can only be set once. This should be called by
-        // Runner#parseDefaultLibraries.
+        // Libsulong datalayout can only be set once.
         if (!datalayoutInitialised) {
             this.libsulongDatalayout = datalayout;
             datalayoutInitialised = true;
@@ -699,7 +698,7 @@ public final class LLVMContext {
         }
     }
 
-    public TruffleFile getOrAddExternalLibrary(TruffleFile file) {
+    public TruffleFile getOrAddTruffleFile(TruffleFile file) {
         synchronized (truffleFilesLock) {
             int index = truffleFiles.indexOf(file);
             if (index >= 0) {

@@ -100,7 +100,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
-    private final EconomicMap<Source, CallTarget> libraryCache = EconomicMap.create();
+    private final EconomicMap<String, CallTarget> libraryCache = EconomicMap.create();
     private final Object libraryCacheLock = new Object();
     private final EconomicMap<String, Source> librarySources = EconomicMap.create();
 
@@ -270,6 +270,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     /**
      * If a library has already been parsed, the call target will be retrieved from the language
      * cache.
+     * 
      * @param request request for parsing
      * @return calltarget of the library
      */
@@ -277,12 +278,13 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     protected CallTarget parse(ParsingRequest request) {
         synchronized (libraryCacheLock) {
             Source source = request.getSource();
+            String path = source.getPath();
             CallTarget callTarget;
             if (source.isCached()) {
-                callTarget = libraryCache.get(source);
+                callTarget = libraryCache.get(path);
                 if (callTarget == null) {
                     callTarget = getCapability(Loader.class).load(getContext(), source, nextID);
-                    CallTarget prev = libraryCache.putIfAbsent(source, callTarget);
+                    CallTarget prev = libraryCache.putIfAbsent(path, callTarget);
                     // To ensure the call target in the cache is always returned in case of
                     // concurrency.
                     if (prev != null) {
@@ -292,6 +294,18 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                 return callTarget;
             }
             return getCapability(Loader.class).load(getContext(), source, nextID);
+        }
+    }
+
+    public boolean isLibraryCached(String path) {
+        synchronized (libraryCacheLock) {
+            return libraryCache.get(path) != null;
+        }
+    }
+
+    public CallTarget getCachedLibrary(String path) {
+        synchronized (libraryCacheLock) {
+            return libraryCache.get(path);
         }
     }
 

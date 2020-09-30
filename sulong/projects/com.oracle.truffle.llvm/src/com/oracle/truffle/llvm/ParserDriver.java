@@ -103,7 +103,7 @@ final class ParserDriver {
     private final AtomicInteger nextFreeBitcodeID;
     // Dependencies can either be Source or the call target if the library
     // has already been parsed.
-    private final ArrayList<Source> dependencies = new ArrayList<>();
+    private final ArrayList<Object> dependencies = new ArrayList<>();
 
     private ParserDriver(LLVMContext context, AtomicInteger moduleID) {
         this.context = context;
@@ -132,8 +132,7 @@ final class ParserDriver {
      * performs all necessary initialization when executed.
      *
      * @param source the {@link Source} of the file being parsed.
-     * @param bytes the {@link ByteSequence} of the source. //@param library the
-     *            {@link ExternalLibrary} of the source.
+     * @param bytes the {@link ByteSequence} of the source.
      * @return calltarget
      */
     private CallTarget parseWithDependencies(Source source, ByteSequence bytes) {
@@ -166,6 +165,9 @@ final class ParserDriver {
     @CompilerDirectives.TruffleBoundary
     private void addLibraryToNFI(String name, String libPath) {
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
+        if (libPath == null) {
+            throw new IllegalStateException("The library path is null for the NFI library.");
+        }
         if (nfiContextExtension != null) {
             if (nfiContextExtension.containNativeLibrary(name, libPath)) {
                 // return if the library is already in the nfi context extension.
@@ -196,9 +198,15 @@ final class ParserDriver {
         for (String sulongLibraryName : sulongLibraryNames) {
             // Don't add the library itself as one of it's own dependency.
             if (!currentLib.equals(sulongLibraryName)) {
-                Source source = createDependencySource(sulongLibraryName, sulongLibraryName, false, InternalLibraryLocator.INSTANCE);
-                if (source != null) {
-                    dependencies.add(source);
+                TruffleFile file = createTruffleFile(sulongLibraryName, null, InternalLibraryLocator.INSTANCE, "<internal library>");
+                // Look into the library cache in the language for the call target.
+                if (file != null) {
+                    CallTarget calls = language.getCachedLibrary(file.getPath());
+                    if (calls != null) {
+                        dependencies.add(calls);
+                    } else {
+                        dependencies.add(createDependencySource(sulongLibraryName, null, false, InternalLibraryLocator.INSTANCE, file));
+                    }
                 }
             }
         }
@@ -207,9 +215,17 @@ final class ParserDriver {
         List<String> externals = SulongEngineOption.getPolyglotOptionExternalLibraries(context.getEnv());
         for (String externalLibraryName : externals) {
             // Look into the library cache in the language for the call target.
-            Source source = createDependencySource(externalLibraryName, externalLibraryName, true, DefaultLibraryLocator.INSTANCE);
-            if (source != null) {
-                dependencies.add(source);
+            if (!currentLib.equals(externalLibraryName)) {
+                TruffleFile file = createTruffleFile(externalLibraryName, null, InternalLibraryLocator.INSTANCE, "<command-line library>");
+                // Look into the library cache in the language for the call target.
+                if (file != null) {
+                    CallTarget calls = language.getCachedLibrary(file.getPath());
+                    if (calls != null) {
+                        dependencies.add(calls);
+                    } else {
+                        dependencies.add(createDependencySource(externalLibraryName, null, false, InternalLibraryLocator.INSTANCE, file));
+                    }
+                }
             }
         }
     }
@@ -384,7 +400,8 @@ final class ParserDriver {
                 file = context.getEnv().getInternalTruffleFile(path.toUri());
             }
         }
-        file = context.getOrAddExternalLibrary(file);
+        // The truffle file is cached in the context.
+        file = context.getOrAddTruffleFile(file);
         return file;
     }
 
@@ -399,7 +416,7 @@ final class ParserDriver {
             // don't add the library itself as one of it's own dependency.
             if (!libraryName.equals(lib)) {
                 // only create a source if the library has not already been parsed.
-                Source source = createDependencySource(lib, lib, true, binaryParserResult.getLocator());
+                Source source = createDependencySource(lib, lib, true, binaryParserResult.getLocator(), null);
                 // A source is null if it's a native library, which will be added to the NFI
                 // context extension instead.
                 if (!dependencies.contains(source) && source != null) {
@@ -409,9 +426,13 @@ final class ParserDriver {
         }
     }
 
-    private Source createDependencySource(String libName, String libPath, boolean isNative, LibraryLocator libraryLocator) {
-        TruffleFile file = createTruffleFile(libName, null, libraryLocator, "<dependency library>");
-        if (file != null && !file.isRegularFile()) {
+    private Source createDependencySource(String libName, String libPath, boolean isNative, LibraryLocator libraryLocator, TruffleFile truffleFile) {
+        TruffleFile file = truffleFile;
+        if (file == null) {
+            file = createTruffleFile(libName, null, libraryLocator, "<dependency library>");
+        }
+        assert file != null;
+        if (!file.isRegularFile()) {
             if (!isNative) {
                 throw new LLVMParserException("'" + file.getName() + "' is not a file or does not exist.");
             } else {
@@ -467,9 +488,10 @@ final class ParserDriver {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         } else {
+            FrameDescriptor rootFrame = StackManager.createRootFrame();
             // check if the functions should be resolved eagerly or lazyly.
             boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING);
-            LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context, dependencies, source, language);
+            LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, rootFrame, lazyParsing, context, dependencies, source, language);
             return Truffle.getRuntime().createCallTarget(loadModules);
         }
     }

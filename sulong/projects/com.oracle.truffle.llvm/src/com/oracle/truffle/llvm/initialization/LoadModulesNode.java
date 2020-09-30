@@ -112,7 +112,7 @@ public final class LoadModulesNode extends LLVMRootNode {
 
     @Children DirectCallNode[] dependencies;
     final CallTarget[] callTargets;
-    final List<Source> dependenciesSource;
+    final List<Object> dependenciesSource;
     final LLVMParserResult parserResult;
     final LLVMLanguage language;
     private boolean hasInitialised;
@@ -133,9 +133,8 @@ public final class LoadModulesNode extends LLVMRootNode {
         }
     }
 
-
     private LoadModulesNode(String name, LLVMParserResult parserResult, LLVMContext context,
-                    FrameDescriptor rootFrame, boolean lazyParsing, List<Source> dependenciesSource, Source source, LLVMLanguage language) throws Type.TypeOverflowException {
+                            FrameDescriptor rootFrame, boolean lazyParsing, List<Object> dependenciesSource, Source source, LLVMLanguage language) throws Type.TypeOverflowException {
         super(language, rootFrame, parserResult.getRuntime().getNodeFactory().createStackAccess(rootFrame));
         this.mainFunctionCallTarget = null;
         this.sourceName = name;
@@ -171,10 +170,11 @@ public final class LoadModulesNode extends LLVMRootNode {
     }
 
     public static LoadModulesNode create(String name, LLVMParserResult parserResult, FrameDescriptor rootFrame,
-                    boolean lazyParsing, LLVMContext context, List<Source> dependencySources, Source source, LLVMLanguage language) {
+                    boolean lazyParsing, LLVMContext context, List<Object> dependencySources, Source source, LLVMLanguage language) {
         LoadModulesNode node = null;
         try {
-            return new LoadModulesNode(name, parserResult, context, new FrameDescriptor(), lazyParsing, dependencySources, source, language);
+            node = new LoadModulesNode(name, parserResult, context, rootFrame, lazyParsing, dependencySources, source, language);
+            return node;
         } catch (Type.TypeOverflowException e) {
             throw new LLVMUnsupportedException(null, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
         }
@@ -194,10 +194,18 @@ public final class LoadModulesNode extends LLVMRootNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 // Parse the dependencies of this library.
                 for (int i = 0; i < dependenciesSource.size(); i++) {
-                    CallTarget callTarget = context.getEnv().parseInternal(dependenciesSource.get(i));
-                    dependencies[i] = DirectCallNode.create(callTarget);
-                    // The call targets are needed for initialising the scope.
-                    callTargets[i] = callTarget;
+                    if (dependenciesSource.get(i) instanceof Source) {
+                        CallTarget callTarget = context.getEnv().parseInternal((Source) dependenciesSource.get(i));
+                        dependencies[i] = DirectCallNode.create(callTarget);
+                        // The call targets are needed for initialising the scope.
+                        callTargets[i] = callTarget;
+                    } else if (dependenciesSource.get(i) instanceof CallTarget) {
+                        dependencies[i] = DirectCallNode.create((CallTarget) dependenciesSource.get(i));
+                        // The call targets are needed for initialising the scope.
+                        callTargets[i] = (CallTarget) dependenciesSource.get(i);
+                    } else {
+                        throw new IllegalStateException("Unknown dependency.");
+                    }
                 }
                 // Set up the start and main functions, as well as the context initialise and dipose
                 // symbols.
