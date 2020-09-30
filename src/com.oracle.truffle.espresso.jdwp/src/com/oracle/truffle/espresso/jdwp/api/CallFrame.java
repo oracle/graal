@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -35,6 +34,8 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 
 import java.util.Iterator;
 
+// Remove in GR-26337
+@SuppressWarnings("deprecation")
 public final class CallFrame {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
@@ -50,7 +51,7 @@ public final class CallFrame {
     private final RootNode rootNode;
     private final TruffleInstrument.Env env;
     private final DebugStackFrame debugStackFrame;
-    private Scope scope;
+    private com.oracle.truffle.api.Scope scope;
 
     public CallFrame(long threadId, byte typeTag, long classId, MethodRef method, long methodId, long codeIndex, Frame frame, RootNode rootNode,
                     TruffleInstrument.Env env, DebugStackFrame debugStackFrame) {
@@ -106,7 +107,7 @@ public final class CallFrame {
     }
 
     public Object getThisValue() {
-        Scope theScope = getScope();
+        com.oracle.truffle.api.Scope theScope = getScope();
         try {
             return theScope != null ? INTEROP.readMember(theScope.getVariables(), "this") : null;
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
@@ -116,12 +117,12 @@ public final class CallFrame {
     }
 
     public Object getVariable(String identifier) throws InteropException {
-        Scope theScope = getScope();
+        com.oracle.truffle.api.Scope theScope = getScope();
         return theScope != null ? INTEROP.readMember(theScope.getVariables(), identifier) : null;
     }
 
     public void setVariable(Object value, String identifier) {
-        Scope theScope = getScope();
+        com.oracle.truffle.api.Scope theScope = getScope();
         if (theScope == null) {
             return;
         }
@@ -136,11 +137,11 @@ public final class CallFrame {
         return debugStackFrame;
     }
 
-    private Scope getScope() {
+    private com.oracle.truffle.api.Scope getScope() {
         if (scope != null) {
             return scope;
         }
-        Iterator<Scope> it = env.findLocalScopes(rootNode, getFrame()).iterator();
+        Iterator<com.oracle.truffle.api.Scope> it = env.findLocalScopes(rootNode, getFrame()).iterator();
         scope = it.hasNext() ? it.next() : null;
         return scope;
     }
