@@ -165,9 +165,6 @@ final class ParserDriver {
     @CompilerDirectives.TruffleBoundary
     private void addLibraryToNFI(String name, String libPath) {
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        if (libPath == null) {
-            throw new IllegalStateException("The library path is null for the NFI library.");
-        }
         if (nfiContextExtension != null) {
             if (nfiContextExtension.containNativeLibrary(name, libPath)) {
                 // return if the library is already in the nfi context extension.
@@ -223,7 +220,8 @@ final class ParserDriver {
                     if (calls != null) {
                         dependencies.add(calls);
                     } else {
-                        dependencies.add(createDependencySource(externalLibraryName, null, true, InternalLibraryLocator.INSTANCE, file));
+                        // for native libraries, the path is the same as the library's name. The NFI will figure out the path.
+                        dependencies.add(createDependencySource(externalLibraryName, externalLibraryName, true, InternalLibraryLocator.INSTANCE, file));
                     }
                 }
             }
