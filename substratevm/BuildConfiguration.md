@@ -134,7 +134,7 @@ The usual Java HotSpot command-line options for garbage collection apply to the 
 
 During the native image build, the representation of a whole program is created to
 figure out which classes and methods will be used at run time. It is a
-computationally intensive process. The defaults values for memory usage at image build time are:
+computationally intensive process. The default values for memory usage at image build time are:
 ```
 -Xss10M \
 -Xms1G \
