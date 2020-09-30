@@ -228,13 +228,11 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
     }
 
     private static class RunCode implements Runnable {
-        private final OptimizedCallTarget loopCallTarget;
         private final NodeToInvalidate nodeToInvalidate;
         private final Context context;
         private final Source code;
 
-        RunCode(OptimizedCallTarget loopCallTarget, Context context, Source code, NodeToInvalidate nodeToInvalidate) {
-            this.loopCallTarget = loopCallTarget;
+        RunCode(Context context, Source code, NodeToInvalidate nodeToInvalidate) {
             this.context = context;
             this.code = code;
             this.nodeToInvalidate = nodeToInvalidate;
@@ -258,7 +256,7 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testInvalidation() throws IOException, InterruptedException, ExecutionException {
+    public void testInvalidation() throws IOException, InterruptedException {
         Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
         CountDownLatch latch = new CountDownLatch(2);
         NodeToInvalidate nodeToInvalidate = new NodeToInvalidate(ThreadLocal.withInitial(() -> true), latch);
@@ -276,7 +274,7 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
             private final List<CallTarget> targets = new LinkedList<>(); // To prevent from GC
 
             @Override
-            protected synchronized CallTarget parse(ParsingRequest request) throws Exception {
+            protected synchronized CallTarget parse(ParsingRequest request) {
                 com.oracle.truffle.api.source.Source source = request.getSource();
                 if (callTarget[0] == null) {
                     callTarget[0] = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
@@ -316,9 +314,9 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
             Assert.assertTrue(loopCallTarget.isValid());
             ExecutorService executor = Executors.newFixedThreadPool(2);
             try {
-                future1 = executor.submit(new RunCode(loopCallTarget, context, source, null));
+                future1 = executor.submit(new RunCode(context, source, null));
                 nodeToInvalidate.latch.await();
-                future2 = executor.submit(new RunCode(loopCallTarget, context, source, nodeToInvalidate));
+                future2 = executor.submit(new RunCode(context, source, nodeToInvalidate));
                 future1.get();
                 future2.get();
                 Assert.fail();
