@@ -264,7 +264,6 @@ abstract class CommonPointerLibraries {
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
         }
         return false;
-
     }
 
 <<<<<<< HEAD
@@ -345,14 +344,6 @@ abstract class CommonPointerLibraries {
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException,
                     UnsupportedTypeException {
         return invoke.execute(receiver, receiver.getExportType(), member, arguments);
-    }
-
-    static Struct getExportStruct(LLVMPointerImpl receiver) {
-        if (receiver.getExportType() instanceof Struct) {
-            return (Struct) receiver.getExportType();
-        } else {
-            return null;
-        }
     }
 
     @ExportMessage
