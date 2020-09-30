@@ -40,7 +40,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
-import com.oracle.truffle.llvm.parser.StackManager;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
@@ -110,7 +109,7 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
     public static RootCallTarget createDestructor(LLVMParserResult parserResult, String moduleName, LLVMLanguage language) {
         LLVMStatementNode[] destructors = createStructor(DESTRUCTORS_VARNAME, parserResult, DESCENDING_PRIORITY);
         if (destructors.length > 0) {
-            FrameDescriptor frameDescriptor = StackManager.createRootFrame();
+            FrameDescriptor frameDescriptor = new FrameDescriptor();
             LLVMStatementRootNode root = new LLVMStatementRootNode(language, StaticInitsNodeGen.create(destructors, "fini", moduleName), frameDescriptor,
                             parserResult.getRuntime().getNodeFactory().createStackAccess(frameDescriptor));
             return Truffle.getRuntime().createCallTarget(root);

@@ -64,6 +64,7 @@ import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
+import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode.LLVMPointerDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -505,8 +506,10 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
                 case X86_64BitVarArgs.OVERFLOW_ARG_AREA:
                     // Assume that updating the overflowArea pointer means shifting the current
                     // argument, according to abi
-                    assert LLVMManagedPointer.isInstance(value);
-                    assert LLVMManagedPointer.cast(value).getObject() == vaList.overflowArgArea;
+                    if (!LLVMManagedPointer.isInstance(value) || LLVMManagedPointer.cast(value).getObject() != vaList.overflowArgArea) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw new LLVMMemoryException(null, "updates to VA_LIST overflowArea pointer can only shift the current argument");
+                    }
                     vaList.overflowArgArea.setOffset(LLVMManagedPointer.cast(value).getOffset());
                     break;
                 default:
@@ -921,8 +924,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
     private LLVMPointer allocateNativeAreas(VarargsAreaStackAllocationNode stackAllocationNode, LLVMStoreNode gpOffsetStore, LLVMStoreNode fpOffsetStore, LLVMStoreNode overflowArgAreaStore,
                     LLVMStoreNode regSaveAreaStore, VirtualFrame frame) {
-        LLVMPointer regSaveAreaNativePtr = stackAllocationNode.executeWithTarget(frame,
-                        X86_64BitVarArgs.FP_LIMIT);
+        LLVMPointer regSaveAreaNativePtr = stackAllocationNode.executeWithTarget(frame, X86_64BitVarArgs.FP_LIMIT);
         this.overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(frame, overflowArgArea.overflowAreaSize);
 
         Object p = nativized.increment(X86_64BitVarArgs.GP_OFFSET);

@@ -29,28 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-
-abstract class LLVMStackBuiltin extends LLVMBuiltin {
-
-    @CompilationFinal private LLVMStackAccess stackAccess;
-
-    protected LLVMStackAccess ensureStackAccess() {
-        if (stackAccess == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackAccess = ((LLVMRootNode) getRootNode()).getStackAccess();
-        }
-        return stackAccess;
-    }
-}
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMStackRestore extends LLVMStackBuiltin {

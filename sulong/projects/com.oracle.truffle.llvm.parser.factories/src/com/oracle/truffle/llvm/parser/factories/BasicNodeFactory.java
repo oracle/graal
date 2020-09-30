@@ -44,7 +44,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.asm.amd64.AsmFactory;
 import com.oracle.truffle.llvm.asm.amd64.AsmParseException;
 import com.oracle.truffle.llvm.asm.amd64.InlineAssemblyParser;
-import com.oracle.truffle.llvm.parser.StackManager;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
@@ -1169,7 +1168,7 @@ public class BasicNodeFactory implements NodeFactory {
     private LLVMInlineAssemblyRootNode getLazyUnsupportedInlineRootNode(String asmExpression, AsmParseException e) {
         LLVMInlineAssemblyRootNode assemblyRoot;
         String message = asmExpression + ": " + e.getMessage();
-        FrameDescriptor frameDescriptor = StackManager.createRootFrame();
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         assemblyRoot = new LLVMInlineAssemblyRootNode(context.getLanguage(), frameDescriptor, createStackAccess(frameDescriptor),
                         Collections.singletonList(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, message)), Collections.emptyList(), null);
         return assemblyRoot;
@@ -1939,6 +1938,6 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMStackAccess createStackAccess(FrameDescriptor frameDescriptor) {
-        return new LLVMStack.LLVMNativeStackAccess(frameDescriptor, context.getLanguage());
+        return new LLVMStack.LLVMNativeStackAccess(frameDescriptor, context.getLanguage().getLLVMMemory());
     }
 }

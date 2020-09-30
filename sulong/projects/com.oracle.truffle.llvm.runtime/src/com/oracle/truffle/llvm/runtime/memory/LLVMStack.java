@@ -42,11 +42,11 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.except.LLVMStackOverflowError;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -108,7 +108,7 @@ public final class LLVMStack {
     public static final class UniquesRegion {
 
         private long currentSlotOffset = 0;
-        private int alignment = Long.BYTES;
+        private int alignment = LLVMNode.ADDRESS_SIZE_IN_BYTES;
         private boolean finished;
 
         public long addSlot(long slotSize, int slotAlignment) {
@@ -143,7 +143,8 @@ public final class LLVMStack {
         long stackAllocation = memory.allocateMemory(location, stackSize).asNative();
         lowerBounds = stackAllocation;
         upperBounds = stackAllocation + stackSize;
-        stackPointer = upperBounds & -Long.BYTES; // enforce aligned initial stack pointer
+        stackPointer = upperBounds & -LLVMNode.ADDRESS_SIZE_IN_BYTES; // enforce aligned initial
+                                                                      // stack pointer
         assert stackPointer != 0;
     }
 
@@ -205,8 +206,8 @@ public final class LLVMStack {
         private final Assumption noBasePointerAssumption;
         @CompilationFinal private FrameSlot basePointerSlot;
 
-        public LLVMNativeStackAccess(FrameDescriptor frameDescriptor, LLVMLanguage language) {
-            this.memory = language.getLLVMMemory();
+        public LLVMNativeStackAccess(FrameDescriptor frameDescriptor, LLVMMemory memory) {
+            this.memory = memory;
             this.stackSlot = getStackSlot(frameDescriptor);
             this.basePointerSlot = getBasePointerSlot(frameDescriptor, false);
             this.noBasePointerAssumption = basePointerSlot == null ? frameDescriptor.getNotInFrameAssumption(BASE_POINTER_ID) : null;
@@ -216,17 +217,13 @@ public final class LLVMStack {
             // whenever we access the base pointer, we ensure that the stack was allocated
             if (!llvmStack.isAllocated()) {
                 CompilerDirectives.transferToInterpreter(); // happens at most once per thread
-                llvmStack.allocate(this, LLVMLanguage.getLanguage().getLLVMMemory());
+                llvmStack.allocate(this, memory);
             }
             if (basePointerSlot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 basePointerSlot = getBasePointerSlot(frame.getFrameDescriptor(), createSlot);
-                assert basePointerSlot != null : "base pointer slot should have been added";
-                if (createSlot) {
-                    noBasePointerAssumption.invalidate();
-                } else {
-                    assert noBasePointerAssumption == null || !noBasePointerAssumption.isValid();
-                }
+                assert basePointerSlot != null : "base pointer slot should exist at this point";
+                assert noBasePointerAssumption == null || !noBasePointerAssumption.isValid();
             }
             return basePointerSlot;
         }
@@ -320,8 +317,8 @@ public final class LLVMStack {
             initializeBasePointer(frame, llvmStack);
             long stackPointer = llvmStack.stackPointer;
             assert stackPointer != 0;
-            long alignedAllocation = getAlignedAllocation(stackPointer, size, Math.max(alignment, Long.BYTES));
-            assert (alignedAllocation & (Long.BYTES - 1)) == 0 : "misaligned stack";
+            long alignedAllocation = getAlignedAllocation(stackPointer, size, Math.max(alignment, LLVMNode.ADDRESS_SIZE_IN_BYTES));
+            assert (alignedAllocation & (LLVMNode.ADDRESS_SIZE_IN_BYTES - 1)) == 0 : "misaligned stack";
             llvmStack.stackPointer = alignedAllocation;
             return LLVMNativePointer.create(alignedAllocation);
         }

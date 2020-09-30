@@ -27,18 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser;
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 
-public final class StackManager {
+abstract class LLVMStackBuiltin extends LLVMBuiltin {
 
-    private StackManager() {
-        // no instances
-    }
+    @CompilationFinal private LLVMStackAccess stackAccess;
 
-    public static FrameDescriptor createRootFrame() {
-        FrameDescriptor rootFrame = new FrameDescriptor();
-        return rootFrame;
+    protected LLVMStackAccess ensureStackAccess() {
+        if (stackAccess == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            stackAccess = ((LLVMRootNode) getRootNode()).getStackAccess();
+        }
+        return stackAccess;
     }
 }
