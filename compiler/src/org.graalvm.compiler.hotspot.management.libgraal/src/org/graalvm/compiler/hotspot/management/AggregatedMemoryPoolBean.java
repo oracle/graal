@@ -34,6 +34,7 @@ import java.util.Map;
 import javax.management.AttributeNotFoundException;
 import javax.management.DynamicMBean;
 import javax.management.MBeanException;
+import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import javax.management.ReflectionException;
 import javax.management.openmbean.CompositeData;
@@ -46,15 +47,17 @@ import org.graalvm.nativeimage.Platforms;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class AggregatedMemoryPoolBean implements MemoryPoolMXBean {
 
+    private static final String OBJECT_NAME = "java.lang:type=MemoryPool,name=Libgraal";
+
     private final ObjectName objectName;
     private final String[] memoryManagerNames;
     private final String name;
     private final MemoryType type;
     private final Map<ObjectName, DynamicMBean> delegates;
 
-    AggregatedMemoryPoolBean(ObjectName aggregateBeanObjectName, DynamicMBean delegate, ObjectName delegateObjectName) {
+    AggregatedMemoryPoolBean(DynamicMBean delegate, ObjectName delegateObjectName) throws MalformedObjectNameException {
         this.delegates = Collections.synchronizedMap(new HashMap<>());
-        this.objectName = aggregateBeanObjectName;
+        this.objectName = new ObjectName(OBJECT_NAME);
         String typeName = safeReadAttribute(delegate, "Type", String.class);
         this.type = typeName != null ? MemoryType.valueOf(typeName) : MemoryType.NON_HEAP;
         String[] names = safeReadAttribute(delegate, "MemoryManagerNames", String[].class);
