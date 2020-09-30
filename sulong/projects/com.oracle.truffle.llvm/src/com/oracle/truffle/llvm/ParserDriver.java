@@ -220,7 +220,8 @@ final class ParserDriver {
                     if (calls != null) {
                         dependencies.add(calls);
                     } else {
-                        // for native libraries, the path is the same as the library's name. The NFI will figure out the path.
+                        // for native libraries, the path is the same as the library's name. The NFI
+                        // will figure out the path.
                         dependencies.add(createDependencySource(externalLibraryName, externalLibraryName, true, InternalLibraryLocator.INSTANCE, file));
                     }
                 }
