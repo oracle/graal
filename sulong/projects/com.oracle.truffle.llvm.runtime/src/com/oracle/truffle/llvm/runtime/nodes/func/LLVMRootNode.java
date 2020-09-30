@@ -27,30 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.nodes.func;
 
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 
-public abstract class LLVMGetStackPointerFromFrameNode extends LLVMExpressionNode {
+public abstract class LLVMRootNode extends RootNode {
 
-    public static LLVMGetStackPointerFromFrameNode create(FrameSlot frameSlot) {
-        return LLVMGetStackPointerFromFrameNodeGen.create(frameSlot);
+    protected final LLVMStackAccess stackAccess;
+
+    public LLVMRootNode(LLVMLanguage language, FrameDescriptor frameDescriptor, LLVMStackAccess stackAccess) {
+        super(language, frameDescriptor);
+        this.stackAccess = stackAccess;
     }
 
-    private final FrameSlot llvmStackSlot;
-
-    LLVMGetStackPointerFromFrameNode(FrameSlot llvmStackSlot) {
-        this.llvmStackSlot = llvmStackSlot;
+    public final LLVMStackAccess getStackAccess() {
+        return stackAccess;
     }
-
-    @Specialization
-    StackPointer getLLVMStack(VirtualFrame frame) {
-        return (StackPointer) FrameUtil.getObjectSafe(frame, llvmStackSlot);
-    }
-
 }

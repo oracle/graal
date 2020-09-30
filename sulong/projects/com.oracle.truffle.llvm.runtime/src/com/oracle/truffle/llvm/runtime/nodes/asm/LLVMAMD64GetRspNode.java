@@ -27,30 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.nodes.asm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMGetStackFromFrameNode extends LLVMExpressionNode {
+public abstract class LLVMAMD64GetRspNode extends LLVMExpressionNode {
 
-    @CompilationFinal private LLVMStackAccess stackAccess;
+    private final LLVMStackAccess stackAccess;
 
-    protected LLVMStackAccess ensureStackAccess() {
-        if (stackAccess == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackAccess = ((LLVMRootNode) getRootNode()).getStackAccess();
-        }
-        return stackAccess;
+    LLVMAMD64GetRspNode(LLVMStackAccess stackAccess) {
+        this.stackAccess = stackAccess;
     }
 
     @Specialization
-    Object getStack(VirtualFrame frame) {
-        return ensureStackAccess().executeGetStack(frame);
+    LLVMPointer getLLVMStack(VirtualFrame frame) {
+        return stackAccess.executeGet(frame);
     }
 }
