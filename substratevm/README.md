@@ -94,7 +94,8 @@ native-image [options] -jar jarfile [imagename] [options]
 
 The `native-image` command needs to provide the class path for all classes using
 the familiar option from the java launcher: `-cp` followed by a list of
-directories or JAR files, separated by `:`. The name of the class containing the
+directories or JAR files, separated by `:` on Linux and macOS platforms, or `;` on Windows.
+The name of the class containing the
 main method is the last argument, or you can use `-jar` and provide a JAR
 file that specifies the main method in its manifest.
 
