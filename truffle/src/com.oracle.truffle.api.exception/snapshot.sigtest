@@ -8,6 +8,7 @@ meth public boolean isCancelled()
 meth public boolean isExit()
 meth public boolean isIncompleteSource()
 meth public boolean isInternalError()
+meth public boolean isInterrupted()
 meth public boolean isSyntaxError()
 meth public com.oracle.truffle.api.source.SourceSection getSourceLocation()
 meth public int getExitStatus()
@@ -16,12 +17,16 @@ meth public java.lang.Object getExceptionObject()
 
 CLSS public abstract com.oracle.truffle.api.exception.AbstractTruffleException
 cons protected init()
+cons protected init(com.oracle.truffle.api.exception.AbstractTruffleException)
 cons protected init(com.oracle.truffle.api.nodes.Node)
 cons protected init(java.lang.String)
 cons protected init(java.lang.String,com.oracle.truffle.api.nodes.Node)
 cons protected init(java.lang.String,java.lang.Throwable,int,com.oracle.truffle.api.nodes.Node)
+fld public final static int UNLIMITED_STACK_TRACE = -1
 intf com.oracle.truffle.api.TruffleException
 intf com.oracle.truffle.api.interop.TruffleObject
+meth public boolean isInterrupted()
+ anno 0 java.lang.Deprecated()
 meth public final boolean isCancelled()
  anno 0 java.lang.Deprecated()
 meth public final boolean isExit()
@@ -45,7 +50,7 @@ meth public final java.lang.Throwable getCause()
 meth public final java.lang.Throwable initCause(java.lang.Throwable)
  anno 0 java.lang.Deprecated()
 supr java.lang.RuntimeException
-hfds internalCause,lazyStackTrace,location,stackTraceElementLimit
+hfds cause,lazyStackTrace,location,stackTraceElementLimit
 
 CLSS public abstract interface com.oracle.truffle.api.interop.TruffleObject
 

@@ -291,7 +291,7 @@ public abstract class Accessor {
 
         public abstract TruffleContext getTruffleContext(Object polyglotLanguageContext);
 
-        public abstract TruffleContext getCreatorTruffleContext(Object polyglotLanguageContext);
+        public abstract TruffleContext getCurrentCreatorTruffleContext();
 
         public abstract Object toGuestValue(Object obj, Object languageContext);
 

@@ -67,7 +67,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint.BreakpointConditionFailure;
 import com.oracle.truffle.api.debug.DebuggerNode.InputValuesProvider;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -1217,14 +1216,11 @@ public final class DebuggerSession implements Closeable {
         return newReturnValue;
     }
 
-    private static void performKill(Node location) {
+    private void performKill(Node location) {
         if (Boolean.TRUE.equals(inEvalInContext.get())) {
             throw new KillException(location);
         } else {
-            LanguageInfo langInfo = location.getRootNode().getLanguageInfo();
-            TruffleLanguage.Env env = Debugger.ACCESSOR.engineSupport().getEnvForInstrument(langInfo);
-            Object polyglotLanguageContext = Debugger.ACCESSOR.languageSupport().getPolyglotLanguageContext(env);
-            TruffleContext truffleContext = Debugger.ACCESSOR.engineSupport().getCreatorTruffleContext(polyglotLanguageContext);
+            TruffleContext truffleContext = debugger.getEnv().getEnteredContext();
             truffleContext.closeCancelled(location, KillException.MESSAGE);
         }
     }

@@ -62,6 +62,13 @@ public enum ExceptionType implements TruffleObject {
     EXIT,
 
     /**
+     * Indicates that the application thread was interrupted by an {@link InterruptedException}.
+     *
+     * @since 20.3
+     */
+    INTERRUPT,
+
+    /**
      * Indicates a guest language error.
      *
      * @since 20.3

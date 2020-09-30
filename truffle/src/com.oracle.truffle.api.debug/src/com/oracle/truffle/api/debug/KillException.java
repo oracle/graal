@@ -42,6 +42,10 @@ package com.oracle.truffle.api.debug;
 
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -53,6 +57,7 @@ import com.oracle.truffle.api.nodes.Node;
  */
 
 @SuppressWarnings("deprecation")
+@ExportLibrary(InteropLibrary.class)
 final class KillException extends AbstractTruffleException {
 
     private static final long serialVersionUID = -8638020836970813894L;
@@ -65,5 +70,11 @@ final class KillException extends AbstractTruffleException {
      */
     KillException(Node node) {
         super(MESSAGE, node);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    ExceptionType getExceptionType() {
+        return ExceptionType.INTERRUPT;
     }
 }

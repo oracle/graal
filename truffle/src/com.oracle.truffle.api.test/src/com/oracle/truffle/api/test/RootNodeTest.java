@@ -132,16 +132,30 @@ public class RootNodeTest {
         try {
             Truffle.getRuntime().createCallTarget(rootNode).call(marker);
         } catch (TestException e) {
-            MaterializedFrame frame = e.frame;
-            List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(e);
-            Assert.assertEquals(1, stackTrace.size());
-            Assert.assertNull(stackTrace.get(0).getLocation());
-            Assert.assertEquals(rootNode.getCallTarget(), stackTrace.get(0).getTarget());
-            Assert.assertNotNull(stackTrace.get(0).getFrame());
-            Assert.assertEquals(1, stackTrace.get(0).getFrame().getArguments().length);
-            Assert.assertEquals(marker, stackTrace.get(0).getFrame().getArguments()[0]);
-            Assert.assertEquals(marker, frame.getArguments()[0]);
+            asserCapturedFrames(rootNode, marker, e, e.frame);
         }
+    }
+
+    @Test
+    public void testCapturingFramesLegacyException() {
+        TestRootNode4 rootNode = new TestRootNode4(true);
+        Object marker = new Object();
+        try {
+            Truffle.getRuntime().createCallTarget(rootNode).call(marker);
+        } catch (LegacyTestException e) {
+            asserCapturedFrames(rootNode, marker, e, e.frame);
+        }
+    }
+
+    private static void asserCapturedFrames(RootNode rootNode, Object arg, Throwable e, MaterializedFrame frame) {
+        List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(e);
+        Assert.assertEquals(1, stackTrace.size());
+        Assert.assertNull(stackTrace.get(0).getLocation());
+        Assert.assertEquals(rootNode.getCallTarget(), stackTrace.get(0).getTarget());
+        Assert.assertNotNull(stackTrace.get(0).getFrame());
+        Assert.assertEquals(1, stackTrace.get(0).getFrame().getArguments().length);
+        Assert.assertEquals(arg, stackTrace.get(0).getFrame().getArguments()[0]);
+        Assert.assertEquals(arg, frame.getArguments()[0]);
     }
 
     class TestRootNode extends RootNode {
@@ -195,6 +209,39 @@ public class RootNodeTest {
         @Override
         public Object execute(VirtualFrame frame) {
             throw new TestException(frame);
+        }
+    }
+
+    @SuppressWarnings({"serial", "deprecation"})
+    class LegacyTestException extends RuntimeException implements com.oracle.truffle.api.TruffleException {
+        MaterializedFrame frame;
+
+        LegacyTestException(VirtualFrame frame) {
+            this.frame = frame.materialize();
+        }
+
+        @Override
+        public Node getLocation() {
+            return null;
+        }
+    }
+
+    class TestRootNode4 extends RootNode {
+        private boolean shouldCaptureFrames;
+
+        TestRootNode4(boolean shouldCaptureFrames) {
+            super(null);
+            this.shouldCaptureFrames = shouldCaptureFrames;
+        }
+
+        @Override
+        public boolean isCaptureFramesForTrace() {
+            return this.shouldCaptureFrames;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw new LegacyTestException(frame);
         }
     }
 }

@@ -109,6 +109,23 @@ import com.oracle.truffle.api.source.SourceSection;
  * }
  * </pre>
  *
+ * The following snippet shows a typical implementation of an interrupt exception.
+ *
+ * <pre>
+ * &#64;ExportLibrary(InteropLibrary.class)
+ * final class MyLanguageInterruptException extends AbstractTruffleException {
+ *
+ *     MyLanguageInterruptException(String message, Node location) {
+ *         super(message, location);
+ *     }
+ *
+ *     &#64;ExportMessage
+ *     ExceptionType getExceptionType() {
+ *         return ExceptionType.INTERRUPT;
+ *     }
+ * }
+ * </pre>
+ *
  * The following snippet shows a typical implementation of an soft exit exception.
  *
  * <pre>
@@ -139,10 +156,15 @@ import com.oracle.truffle.api.source.SourceSection;
 @SuppressWarnings({"serial", "deprecation"})
 public abstract class AbstractTruffleException extends RuntimeException implements TruffleObject, com.oracle.truffle.api.TruffleException {
 
+    /**
+     * The constant for an unlimited stack trace element limit.
+     * 
+     * @since 20.3
+     */
     public static final int UNLIMITED_STACK_TRACE = -1;
 
     private final int stackTraceElementLimit;
-    private final Throwable internalCause;
+    private final Throwable cause;
     private final Node location;
     private Throwable lazyStackTrace;
 
@@ -212,9 +234,9 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * @since 20.3
      */
     protected AbstractTruffleException(String message, Throwable internalCause, int stackTraceElementLimit, Node location) {
-        super(message != null ? message : internalCause != null ? internalCause.getMessage() : null, internalCause);
+        super(message, internalCause);
         this.stackTraceElementLimit = stackTraceElementLimit;
-        this.internalCause = internalCause;
+        this.cause = internalCause;
         this.location = location;
     }
 
@@ -372,6 +394,18 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     }
 
     /**
+     * Returns {@code true} if the exception indicates that the application thread was interrupted.
+     *
+     * @deprecated Use {@link InteropLibrary#getExceptionType(Object)}.
+     * @since 20.3
+     */
+    @Deprecated
+    @Override
+    public boolean isInterrupted() {
+        return getExceptionType() == ExceptionType.INTERRUPT;
+    }
+
+    /**
      * Setting a cause is not supported.
      *
      * @deprecated Pass in the cause using the constructors instead.
@@ -381,7 +415,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     @TruffleBoundary
     @Override
     @SuppressWarnings("sync-override")
-    public final Throwable initCause(Throwable cause) {
+    public final Throwable initCause(Throwable throwable) {
         throw new UnsupportedOperationException("Not supported. Pass in the cause using the constructors instead.");
     }
 
@@ -393,7 +427,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     @Override
     @SuppressWarnings("sync-override")
     public final Throwable getCause() {
-        return internalCause;
+        return cause;
     }
 
     Throwable getLazyStackTrace() {
@@ -410,18 +444,6 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
         } catch (UnsupportedMessageException um) {
             throw CompilerDirectives.shouldNotReachHere(um);
         }
-    }
-
-    /**
-     * Should we assert that internal exception is a TruffleException in the constructor? The
-     * chromeinspector and insight are creating Truffle exceptions with non TruffleException cause.
-     */
-    @SuppressWarnings("unused")
-    private static Throwable checkCause(Throwable t) {
-        if (t != null && !isTruffleException(t)) {
-            throw new IllegalArgumentException("The " + t + " must be TruffleException subclass.");
-        }
-        return t;
     }
 
     @SuppressWarnings("deprecation")

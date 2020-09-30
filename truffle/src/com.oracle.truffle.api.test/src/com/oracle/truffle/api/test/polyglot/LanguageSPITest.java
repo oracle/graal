@@ -113,7 +113,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -284,7 +283,13 @@ public class LanguageSPITest {
     }
 
     @SuppressWarnings("serial")
+    @ExportLibrary(InteropLibrary.class)
     static class Interrupted extends AbstractTruffleException {
+
+        @ExportMessage
+        ExceptionType getExceptionType() {
+            return ExceptionType.INTERRUPT;
+        }
     }
 
     @SuppressWarnings({"serial"})
@@ -359,6 +364,8 @@ public class LanguageSPITest {
                 if (!(cause instanceof PolyglotException)) {
                     throw new AssertionError(cause);
                 }
+                PolyglotException polyglotException = (PolyglotException) cause;
+                assertTrue(polyglotException.isInterrupted());
             }
             engine.close();
         } finally {
@@ -2003,19 +2010,8 @@ public class LanguageSPITest {
 
     }
 
-    static final Source TEST_SOURCE = Source.newBuilder("", "", "testLanguageErrorDuringInitialization").build();
-
-    @SuppressWarnings({"serial", "deprecation"})
-    static class TestError extends RuntimeException implements com.oracle.truffle.api.TruffleException {
-
-        public SourceSection getSourceLocation() {
-            return TEST_SOURCE.createSection(0, 0);
-        }
-
-        public Node getLocation() {
-            return null;
-        }
-
+    @SuppressWarnings("serial")
+    static class TestError extends RuntimeException {
     }
 
     @Test
@@ -2033,7 +2029,6 @@ public class LanguageSPITest {
             fail();
         } catch (PolyglotException e) {
             assertTrue(e.isGuestException());
-            assertEquals("testLanguageErrorDuringInitialization", e.getSourceLocation().getSource().getName());
         }
         context.close();
     }

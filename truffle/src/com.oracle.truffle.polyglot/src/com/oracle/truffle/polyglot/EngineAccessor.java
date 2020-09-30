@@ -336,9 +336,9 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public TruffleContext getCreatorTruffleContext(Object polyglotLanguageContext) {
-            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
-            return languageContext.context.creatorTruffleContext;
+        public TruffleContext getCurrentCreatorTruffleContext() {
+            PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
+            return context != null ? context.creatorTruffleContext : null;
         }
 
         @SuppressWarnings("unchecked")

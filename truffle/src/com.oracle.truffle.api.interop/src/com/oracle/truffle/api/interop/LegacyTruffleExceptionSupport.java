@@ -41,12 +41,13 @@
 package com.oracle.truffle.api.interop;
 
 import static com.oracle.truffle.api.interop.ExceptionType.EXIT;
+import static com.oracle.truffle.api.interop.ExceptionType.INTERRUPT;
+import static com.oracle.truffle.api.interop.ExceptionType.PARSE_ERROR;
+import static com.oracle.truffle.api.interop.ExceptionType.RUNTIME_ERROR;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.source.SourceSection;
-import static com.oracle.truffle.api.interop.ExceptionType.RUNTIME_ERROR;
-import static com.oracle.truffle.api.interop.ExceptionType.PARSE_ERROR;
 
 @SuppressWarnings("deprecation")
 final class LegacyTruffleExceptionSupport {
@@ -78,6 +79,8 @@ final class LegacyTruffleExceptionSupport {
         com.oracle.truffle.api.TruffleException truffleException = asTruffleException(receiver);
         if (truffleException.isExit()) {
             return EXIT;
+        } else if (truffleException.isInterrupted()) {
+            return INTERRUPT;
         } else if (truffleException.isSyntaxError()) {
             return PARSE_ERROR;
         } else {

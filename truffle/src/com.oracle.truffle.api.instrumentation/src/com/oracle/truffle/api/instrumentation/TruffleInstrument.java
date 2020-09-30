@@ -766,6 +766,15 @@ public abstract class TruffleInstrument {
             }
         }
 
+        /**
+         * Returns the entered {@link TruffleContext} or {@code null} when no context is entered.
+         *
+         * @since 20.3
+         */
+        public TruffleContext getEnteredContext() {
+            return InstrumentAccessor.ENGINE.getCurrentCreatorTruffleContext();
+        }
+
         private static class GuardedExecutableNode extends ExecutableNode {
 
             private final FrameDescriptor frameDescriptor;

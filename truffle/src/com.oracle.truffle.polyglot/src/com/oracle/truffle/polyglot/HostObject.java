@@ -1025,7 +1025,7 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     ExceptionType getExceptionType(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         if (isException()) {
-            return ExceptionType.RUNTIME_ERROR;
+            return obj instanceof InterruptedException ? ExceptionType.INTERRUPT : ExceptionType.RUNTIME_ERROR;
         }
         error.enter();
         throw UnsupportedMessageException.create();

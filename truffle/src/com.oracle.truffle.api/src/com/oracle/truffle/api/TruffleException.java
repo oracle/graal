@@ -168,6 +168,16 @@ public interface TruffleException {
     }
 
     /**
+     * Returns <code>true</code> if the application thread was interrupted by an
+     * {@link InterruptedException}.
+     *
+     * @since 20.3.0
+     */
+    default boolean isInterrupted() {
+        return false;
+    }
+
+    /**
      * Returns the number of guest language frames that should be collected for this exception.
      * Returns a negative integer by default for unlimited guest language frames. This is intended
      * to be used by guest languages to limit the number of guest language stack frames. Languages

@@ -41,7 +41,17 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 @SuppressWarnings("serial")
+@ExportLibrary(InteropLibrary.class)
 public class RegexInterruptedException extends AbstractTruffleException {
+
+    @ExportMessage
+    ExceptionType getExceptionType() {
+        return ExceptionType.INTERRUPT;
+    }
 }

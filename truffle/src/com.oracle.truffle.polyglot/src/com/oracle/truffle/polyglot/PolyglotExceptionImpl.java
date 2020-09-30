@@ -94,6 +94,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     private final boolean incompleteSource;
     private final boolean syntaxError;
     private final boolean resourceExhausted;
+    private final boolean interrupted;
     private final int exitStatus;
     private final Value guestObject;
     private final String message;
@@ -132,6 +133,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 this.exit = exceptionType == ExceptionType.EXIT;
                 this.exitStatus = this.exit ? interop.getExceptionExitStatus(exception) : 0;
                 this.incompleteSource = this.syntaxError ? interop.isExceptionIncompleteSource(exception) : false;
+                this.interrupted = exceptionType == ExceptionType.INTERRUPT;
 
                 if (interop.hasSourceLocation(exception)) {
                     this.sourceLocation = newSourceSection(interop.getSourceLocation(exception));
@@ -162,6 +164,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             this.incompleteSource = false;
             this.exit = isExit(exception);
             this.exitStatus = exit ? getExitStatus(exception) : 0;
+            this.interrupted = isInterrupted(exception);
             com.oracle.truffle.api.source.SourceSection locaction = getSourceLocation(exception);
             this.sourceLocation = locaction != null ? newSourceSection(locaction) : null;
             this.guestObject = null;
@@ -202,6 +205,15 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         // Legacy TruffleException
         if (e instanceof com.oracle.truffle.api.TruffleException) {
             return ((com.oracle.truffle.api.TruffleException) e).isCancelled();
+        }
+        return false;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean isInterrupted(Throwable e) {
+        // Legacy TruffleException
+        if (e instanceof com.oracle.truffle.api.TruffleException) {
+            return ((com.oracle.truffle.api.TruffleException) e).isInterrupted();
         }
         return false;
     }
@@ -278,6 +290,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     @Override
     public boolean isResourceExhausted() {
         return resourceExhausted;
+    }
+
+    @Override
+    public boolean isInterrupted() {
+        return interrupted;
     }
 
     @Override
