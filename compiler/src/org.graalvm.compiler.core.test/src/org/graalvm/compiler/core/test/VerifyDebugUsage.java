@@ -26,7 +26,6 @@ package org.graalvm.compiler.core.test;
 
 import static org.graalvm.compiler.debug.DebugContext.BASIC_LEVEL;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -37,17 +36,11 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeInputList;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
-import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.VerifyPhase;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -68,12 +61,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * {@link DebugContext#log(String)} , {@link DebugContext#dump(int, Object, String)},
  * {@link DebugContext#logAndIndent(String)} and {@link DebugContext#verify(Object, String)}.
  */
-public class VerifyDebugUsage extends VerifyPhase<CoreProviders> {
-
-    @Override
-    public boolean checkContract() {
-        return false;
-    }
+public class VerifyDebugUsage extends VerifyStringFormatterUsage {
 
     MetaAccessProvider metaAccess;
 
@@ -107,24 +95,6 @@ public class VerifyDebugUsage extends VerifyPhase<CoreProviders> {
                     verifyParameters(t, graph, t.arguments(), stringType, 1);
                 }
             }
-        }
-    }
-
-    protected void verifyParameters(MethodCallTargetNode callTarget, StructuredGraph callerGraph, NodeInputList<? extends ValueNode> args, ResolvedJavaType stringType, int startArgIdx) {
-        if (callTarget.targetMethod().isVarArgs() && args.get(args.count() - 1) instanceof NewArrayNode) {
-            // unpack the arguments to the var args
-            List<ValueNode> unpacked = new ArrayList<>(args.snapshot());
-            NewArrayNode varArgParameter = (NewArrayNode) unpacked.remove(unpacked.size() - 1);
-            int firstVarArg = unpacked.size();
-            for (Node usage : varArgParameter.usages()) {
-                if (usage instanceof StoreIndexedNode) {
-                    StoreIndexedNode si = (StoreIndexedNode) usage;
-                    unpacked.add(si.value());
-                }
-            }
-            verifyParameters(callerGraph, callTarget, unpacked, stringType, startArgIdx, firstVarArg);
-        } else {
-            verifyParameters(callerGraph, callTarget, args, stringType, startArgIdx, -1);
         }
     }
 
@@ -171,47 +141,14 @@ public class VerifyDebugUsage extends VerifyPhase<CoreProviders> {
                     "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder.verifySnippetEncodeDecode",
                     "org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree.dumpInfo"));
 
-    private void verifyParameters(StructuredGraph callerGraph, MethodCallTargetNode debugCallTarget, List<? extends ValueNode> args, ResolvedJavaType stringType, int startArgIdx,
-                    int varArgsIndex) {
-        ResolvedJavaMethod verifiedCallee = debugCallTarget.targetMethod();
-        Integer dumpLevel = null;
-        int argIdx = startArgIdx;
-        int varArgsElementIndex = 0;
-        boolean reportVarArgs = false;
-        for (int i = 0; i < args.size(); i++) {
-            ValueNode arg = args.get(i);
-            if (arg instanceof Invoke) {
-                reportVarArgs = varArgsIndex >= 0 && argIdx >= varArgsIndex;
-                Invoke invoke = (Invoke) arg;
-                CallTargetNode callTarget = invoke.callTarget();
-                if (callTarget instanceof MethodCallTargetNode) {
-                    ResolvedJavaMethod m = ((MethodCallTargetNode) callTarget).targetMethod();
-                    if (m.getName().equals("toString")) {
-                        int bci = invoke.bci();
-                        int nonVarArgIdx = reportVarArgs ? argIdx - varArgsElementIndex : argIdx;
-                        verifyStringConcat(callerGraph, verifiedCallee, bci, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1, m);
-                        verifyToStringCall(callerGraph, verifiedCallee, stringType, m, bci, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1);
-                    } else if (m.getName().equals("format")) {
-                        int bci = invoke.bci();
-                        int nonVarArgIdx = reportVarArgs ? argIdx - varArgsElementIndex : argIdx;
-                        verifyFormatCall(callerGraph, verifiedCallee, stringType, m, bci, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1);
+    @Override
+    protected void verifyParameters(StructuredGraph callerGraph, MethodCallTargetNode debugCallTarget, List<? extends ValueNode> args, ResolvedJavaType stringType, int startArgIdx, int varArgsIndex) {
+        super.verifyParameters(callerGraph, debugCallTarget, args, stringType, startArgIdx, varArgsIndex);
 
-                    }
-                }
-            }
-            if (i == 1) {
-                if (verifiedCallee.getName().equals("dump")) {
-                    dumpLevel = verifyDumpLevelParameter(callerGraph, debugCallTarget, verifiedCallee, arg);
-                }
-            } else if (i == 2) {
-                if (dumpLevel != null) {
-                    verifyDumpObjectParameter(callerGraph, debugCallTarget, arg, verifiedCallee, dumpLevel);
-                }
-            }
-            if (varArgsIndex >= 0 && i >= varArgsIndex) {
-                varArgsElementIndex++;
-            }
-            argIdx++;
+        ResolvedJavaMethod verifiedCallee = debugCallTarget.targetMethod();
+        if (verifiedCallee.getName().equals("dump")) {
+            int dumpLevel = verifyDumpLevelParameter(callerGraph, debugCallTarget, verifiedCallee, args.get(1));
+            verifyDumpObjectParameter(callerGraph, debugCallTarget, args.get(2), verifiedCallee, dumpLevel);
         }
     }
 
@@ -219,14 +156,14 @@ public class VerifyDebugUsage extends VerifyPhase<CoreProviders> {
      * The {@code level} arg for the {@code Debug.dump(...)} methods must be a reference to one of
      * the {@code Debug.*_LEVEL} constants.
      */
-    protected Integer verifyDumpLevelParameter(StructuredGraph callerGraph, MethodCallTargetNode debugCallTarget, ResolvedJavaMethod verifiedCallee, ValueNode arg)
+    protected int verifyDumpLevelParameter(StructuredGraph callerGraph, MethodCallTargetNode debugCallTarget, ResolvedJavaMethod verifiedCallee, ValueNode arg)
                     throws org.graalvm.compiler.phases.VerifyPhase.VerificationError {
         // The 'level' arg for the Debug.dump(...) methods must be a reference to one of
         // the Debug.*_LEVEL constants.
 
         Constant c = arg.asConstant();
         if (c != null) {
-            Integer dumpLevel = ((PrimitiveConstant) c).asInt();
+            int dumpLevel = ((PrimitiveConstant) c).asInt();
             if (!DebugLevels.contains(dumpLevel)) {
                 StackTraceElement e = callerGraph.method().asStackTraceElement(debugCallTarget.invoke().bci());
                 throw new VerificationError(
@@ -268,62 +205,6 @@ public class VerifyDebugUsage extends VerifyPhase<CoreProviders> {
                 throw new VerificationError(
                                 "In %s: call to %s with level == Debug.INFO_LEVEL not in %s.InfoLevelDumpWhitelist.%n", e, verifiedCallee.format("%H.%n(%p)"),
                                 getClass().getName());
-            }
-        }
-    }
-
-    /**
-     * Checks that a given call is not to {@link StringBuffer#toString()} or
-     * {@link StringBuilder#toString()}.
-     */
-    private static void verifyStringConcat(StructuredGraph callerGraph, ResolvedJavaMethod verifiedCallee, int bci, int argIdx, int varArgsElementIndex, ResolvedJavaMethod callee) {
-        if (callee.getDeclaringClass().getName().equals("Ljava/lang/StringBuilder;") || callee.getDeclaringClass().getName().equals("Ljava/lang/StringBuffer;")) {
-            StackTraceElement e = callerGraph.method().asStackTraceElement(bci);
-            if (varArgsElementIndex >= 0) {
-                throw new VerificationError(
-                                "In %s: element %d of parameter %d of call to %s appears to be a String concatenation expression.%n", e, varArgsElementIndex, argIdx,
-                                verifiedCallee.format("%H.%n(%p)"));
-            } else {
-                throw new VerificationError(
-                                "In %s: parameter %d of call to %s appears to be a String concatenation expression.", e, argIdx, verifiedCallee.format("%H.%n(%p)"));
-            }
-        }
-    }
-
-    /**
-     * Checks that a given call is not to {@link Object#toString()}.
-     */
-    private static void verifyToStringCall(StructuredGraph callerGraph, ResolvedJavaMethod verifiedCallee, ResolvedJavaType stringType, ResolvedJavaMethod callee, int bci, int argIdx,
-                    int varArgsElementIndex) {
-        if (callee.getSignature().getParameterCount(false) == 0 && callee.getSignature().getReturnType(callee.getDeclaringClass()).equals(stringType)) {
-            StackTraceElement e = callerGraph.method().asStackTraceElement(bci);
-            if (varArgsElementIndex >= 0) {
-                throw new VerificationError(
-                                "In %s: element %d of parameter %d of call to %s is a call to toString() which is redundant (the callee will do it) and forces unnecessary eager evaluation.",
-                                e, varArgsElementIndex, argIdx, verifiedCallee.format("%H.%n(%p)"));
-            } else {
-                throw new VerificationError("In %s: parameter %d of call to %s is a call to toString() which is redundant (the callee will do it) and forces unnecessary eager evaluation.", e, argIdx,
-                                verifiedCallee.format("%H.%n(%p)"));
-            }
-        }
-    }
-
-    /**
-     * Checks that a given call is not to {@link String#format(String, Object...)} or
-     * {@link String#format(java.util.Locale, String, Object...)}.
-     */
-    private static void verifyFormatCall(StructuredGraph callerGraph, ResolvedJavaMethod verifiedCallee, ResolvedJavaType stringType, ResolvedJavaMethod callee, int bci, int argIdx,
-                    int varArgsElementIndex) {
-        if (callee.getDeclaringClass().equals(stringType) && callee.getSignature().getReturnType(callee.getDeclaringClass()).equals(stringType)) {
-            StackTraceElement e = callerGraph.method().asStackTraceElement(bci);
-            if (varArgsElementIndex >= 0) {
-                throw new VerificationError(
-                                "In %s: element %d of parameter %d of call to %s is a call to String.format() which is redundant (%s does formatting) and forces unnecessary eager evaluation.",
-                                e, varArgsElementIndex, argIdx, verifiedCallee.format("%H.%n(%p)"), verifiedCallee.format("%h.%n"));
-            } else {
-                throw new VerificationError("In %s: parameter %d of call to %s is a call to String.format() which is redundant (%s does formatting) and forces unnecessary eager evaluation.", e,
-                                argIdx,
-                                verifiedCallee.format("%H.%n(%p)"), verifiedCallee.format("%h.%n"));
             }
         }
     }
