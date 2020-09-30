@@ -118,6 +118,9 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
                     scopeTested = true;
                     try {
                         tester.doTestScope(env, context.getInstrumentedNode(), frame);
+                        if (tester.isTestOnRoot()) {
+                            tester.doTestScope(env, context.getInstrumentedNode().getRootNode(), frame);
+                        }
                     } catch (Throwable t) {
                         failure = t;
                     }
@@ -147,6 +150,9 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
         }
 
         interface Tester {
+
+            boolean isTestOnRoot();
+
             void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception;
         }
     }
@@ -177,6 +183,11 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
     }
 
     private static class DefaultScopeTester implements TestScopeLegacyInstrument.Tester {
+
+        @Override
+        public boolean isTestOnRoot() {
+            return false;
+        }
 
         public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception {
             Iterable<com.oracle.truffle.api.Scope> lscopes = env.findLocalScopes(node, null); // lexical
@@ -430,7 +441,7 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
         }
 
         private boolean isAtRoot() {
-            return node instanceof CustomScopeLegacyLanguage.CustomRootBlockLegacyNode;
+            return node instanceof RootNode;
         }
 
         Node getNode() {
@@ -471,7 +482,8 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
 
         CustomScope findParent() {
             Node parent = node.getParent();
-            if (parent != null && !(parent instanceof RootNode)) {
+            if (parent != null) {
+                // The legacy bridge need to work with all nodes, including the RootNode.
                 return new CustomScope(parent, false);
             } else {
                 return null;
@@ -482,7 +494,26 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
     private static class CustomScopeTester implements TestScopeLegacyInstrument.Tester {
 
         @Override
+        public boolean isTestOnRoot() {
+            return true;
+        }
+
+        @Override
         public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) {
+            if (node instanceof RootNode) {
+                Iterable<com.oracle.truffle.api.Scope> lscopes = env.findLocalScopes(node, null);
+                Iterator<com.oracle.truffle.api.Scope> literator = lscopes.iterator();
+                assertTrue(literator.hasNext());
+                com.oracle.truffle.api.Scope lscope = literator.next();
+                try {
+                    assertEquals("V1", InteropLibrary.getUncached().readMember(lscope.getVariables(), "value"));
+                } catch (InteropException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+                assertFalse(literator.hasNext());
+                return;
+            }
+
             assertNull(CustomScope.LAST_INSTANCE);
             Iterable<com.oracle.truffle.api.Scope> lscopes = env.findLocalScopes(node, null);
             Iterator<com.oracle.truffle.api.Scope> literator = lscopes.iterator();
@@ -506,6 +537,11 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
 
             assertTrue(literator.hasNext());
             lscope = literator.next();
+            testScopeContent(lscope, null, false);
+
+            assertTrue(literator.hasNext());
+            lscope = literator.next();
+            testScopeContent(lscope, null, false);
 
             assertFalse(literator.hasNext());
             try {
@@ -561,6 +597,11 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
     }
 
     private static class CustomScopeLibraryTester implements TestScopeLegacyInstrument.Tester {
+
+        @Override
+        public boolean isTestOnRoot() {
+            return false;
+        }
 
         @Override
         public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) {

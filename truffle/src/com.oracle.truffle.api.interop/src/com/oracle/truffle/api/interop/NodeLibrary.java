@@ -282,9 +282,11 @@ public abstract class NodeLibrary extends Library {
     static class Asserts extends NodeLibrary {
 
         @Child private NodeLibrary delegate;
+        private final boolean isLegacyDelegate;
 
         Asserts(NodeLibrary delegate) {
             this.delegate = delegate;
+            isLegacyDelegate = delegate.getClass().getName().startsWith("com.oracle.truffle.api.interop.LegacyNodeExportsGen$NodeLibraryExports");
         }
 
         @Override
@@ -469,14 +471,14 @@ public abstract class NodeLibrary extends Library {
             return nodeLanguage;
         }
 
-        private static boolean validReceiver(Object nodeObject) {
+        private boolean validReceiver(Object nodeObject) {
             if (nodeObject == null) {
                 throw new NullPointerException("A non-null receiver is required.");
             }
             assert nodeObject instanceof Node : String.format("The node '%s' does not extend Node.", nodeObject);
             Node node = (Node) nodeObject;
             assert node.getRootNode() != null : String.format("The node '%s' does not have a RootNode.", node);
-            assert InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node) : String.format(
+            assert InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node) || isLegacyDelegate : String.format(
                             "The node '%s' is not instrumentable. Implement InstrumentableNode and return true from isInstrumentable()", node);
             return true;
         }
