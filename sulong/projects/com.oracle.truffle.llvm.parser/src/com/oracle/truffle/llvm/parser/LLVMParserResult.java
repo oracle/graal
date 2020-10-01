@@ -86,7 +86,7 @@ public final class LLVMParserResult {
 
     @Override
     public String toString() {
-        return "LLVMParserResult[" + runtime.getLibrary() + "]";
+        return "LLVMParserResult[" + runtime.getLibraryName() + "]";
     }
 
     public int getSymbolTableSize() {

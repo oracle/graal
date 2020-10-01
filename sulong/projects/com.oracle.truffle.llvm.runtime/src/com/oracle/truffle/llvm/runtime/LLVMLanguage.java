@@ -93,9 +93,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
-
-    // The bitcode file ID starts at 1, 0 is reserved for misc functions, such as toolchain paths.
-    private final AtomicInteger nextID = new AtomicInteger(1);
+    private final AtomicInteger nextID = new AtomicInteger(0);
 
     @CompilationFinal private Configuration activeConfiguration = null;
 
@@ -103,7 +101,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
     private final EconomicMap<String, CallTarget> libraryCache = EconomicMap.create();
-    private final EconomicMap<Source, ExternalLibrary> internalExternalLibraries = EconomicMap.create();
+    private final Object libraryCacheLock = new Object();
+    private final EconomicMap<String, Source> librarySources = EconomicMap.create();
 
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
@@ -199,16 +198,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         internalFileScopes.put(libraryName, scope);
     }
 
-    public ExternalLibrary getInternalExternalLibrary(Source source) {
-        return internalExternalLibraries.get(source);
+    public Source getLibrarySource(String path) {
+        return librarySources.get(path);
     }
 
-    public void addInternalExternalLibrary(Source source, ExternalLibrary externalLibrary) {
-        internalExternalLibraries.put(source, externalLibrary);
+    public void addLibrarySource(String path, Source source) {
+        librarySources.put(path, source);
     }
 
-    public boolean containsInternalExternalLibrary(Source source) {
-        return internalExternalLibraries.containsKey(source);
+    public boolean containsLibrarySource(String path) {
+        return librarySources.containsKey(path);
     }
 
     @Override
@@ -271,35 +270,43 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     /**
      * If a library has already been parsed, the call target will be retrieved from the language
      * cache.
-     *
+     * 
      * @param request request for parsing
      * @return calltarget of the library
      */
     @Override
     protected CallTarget parse(ParsingRequest request) {
-        Source source = request.getSource();
-        CallTarget callTarget;
-        if (source.getPath() != null) {
-            callTarget = libraryCache.get(source.getPath());
-            if (callTarget == null) {
-                callTarget = getCapability(Loader.class).load(getContext(), source, nextID);
-                CallTarget prev = libraryCache.putIfAbsent(source.getPath(), callTarget);
-                // To ensure the call target in the cache is always returned in case of concurrency.
-                if (prev != null) {
-                    callTarget = prev;
+        synchronized (libraryCacheLock) {
+            Source source = request.getSource();
+            String path = source.getPath();
+            CallTarget callTarget;
+            if (source.isCached()) {
+                callTarget = libraryCache.get(path);
+                if (callTarget == null) {
+                    callTarget = getCapability(Loader.class).load(getContext(), source, nextID);
+                    CallTarget prev = libraryCache.putIfAbsent(path, callTarget);
+                    // To ensure the call target in the cache is always returned in case of
+                    // concurrency.
+                    if (prev != null) {
+                        callTarget = prev;
+                    }
                 }
+                return callTarget;
             }
-            return callTarget;
+            return getCapability(Loader.class).load(getContext(), source, nextID);
         }
-        return getCapability(Loader.class).load(getContext(), source, nextID);
     }
 
     public boolean isLibraryCached(String path) {
-        return libraryCache.get(path) != null;
+        synchronized (libraryCacheLock) {
+            return libraryCache.get(path) != null;
+        }
     }
 
     public CallTarget getCachedLibrary(String path) {
-        return libraryCache.get(path);
+        synchronized (libraryCacheLock) {
+            return libraryCache.get(path);
+        }
     }
 
     @Override

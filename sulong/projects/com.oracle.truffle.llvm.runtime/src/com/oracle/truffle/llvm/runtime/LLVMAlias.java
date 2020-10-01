@@ -29,19 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
-
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 
 public class LLVMAlias extends LLVMSymbol {
 
     @CompilationFinal private LLVMSymbol target;
 
-    public LLVMAlias(ExternalLibrary library, String name, LLVMSymbol target, boolean exported) {
-        super(name, library, LLVMSymbol.INVALID_ID, LLVMSymbol.INVALID_ID, exported);
+    public LLVMAlias(String name, LLVMSymbol target, boolean exported) {
+        super(name, LLVMSymbol.INVALID_ID, LLVMSymbol.INVALID_ID, exported);
         setTarget(target);
     }
 
@@ -55,11 +54,6 @@ public class LLVMAlias extends LLVMSymbol {
             EconomicSet<LLVMAlias> visited = EconomicSet.create(Equivalence.IDENTITY);
             checkForCycle(this, visited);
         }
-    }
-
-    @Override
-    public boolean isDefined() {
-        return true;
     }
 
     @Override

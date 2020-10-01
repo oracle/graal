@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.util.List;
-
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -57,6 +55,8 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LocalVariableDebugInfo;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+
+import java.util.List;
 
 /**
  * This interface decouples the parser and the concrete implementation of the nodes by only making
@@ -158,7 +158,7 @@ public interface NodeFactory {
     RootNode createFunction(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] basicBlockNodes, UniquesRegion uniquesRegion, LLVMStatementNode[] copyArgumentsToFrame, FrameDescriptor frameDescriptor,
                     FrameSlot loopSuccessorSlot, LocalVariableDebugInfo debugInfo, String name, String originalName, int argumentCount, Source bcSource, LLVMSourceLocation location);
 
-    LLVMExpressionNode createInlineAssemblerExpression(ExternalLibrary library, String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type.TypeArrayBuilder argTypes, Type retType);
+    LLVMExpressionNode createInlineAssemblerExpression(String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type.TypeArrayBuilder argTypes, Type retType);
 
     LLVMExpressionNode createLandingPad(LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot, boolean cleanup, long[] clauseKinds, LLVMExpressionNode[] entries,
                     LLVMExpressionNode getStack);
