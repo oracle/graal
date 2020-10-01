@@ -228,7 +228,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         protected void setOutputKind(List<String> cmd) {
             switch (kind) {
                 case STATIC_EXECUTABLE:
-                    throw UserError.abort(OS.getCurrent().name() + " does not support building static executable images.");
+                    throw UserError.abort("%s does not support building static executable images.", OS.getCurrent().name());
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
                     if (Platform.includedIn(Platform.DARWIN.class)) {

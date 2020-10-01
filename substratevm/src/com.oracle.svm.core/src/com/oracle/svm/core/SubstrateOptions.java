@@ -444,7 +444,7 @@ public class SubstrateOptions {
             Path sourceRoot = Paths.get(DebugInfoSourceCacheRoot.getValue());
             return sourceRoot;
         } catch (InvalidPathException ipe) {
-            throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot " + DebugInfoSourceCacheRoot.getValue());
+            throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot %s", DebugInfoSourceCacheRoot.getValue());
         }
     }
 

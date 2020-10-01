@@ -67,7 +67,7 @@ public abstract class CCompilerInvoker {
         try {
             this.compilerInfo = getCCompilerInfo();
             if (this.compilerInfo == null) {
-                UserError.abort(String.format("Unable to detect supported %s native software development toolchain.", OS.getCurrent().name()));
+                UserError.abort("Unable to detect supported %s native software development toolchain.", OS.getCurrent().name());
             }
         } catch (UserError.UserException err) {
             throw addSkipCheckingInfo(err);
@@ -84,7 +84,7 @@ public abstract class CCompilerInvoker {
             case WINDOWS:
                 return new WindowsCCompilerInvoker(tempDirectory);
             default:
-                throw UserError.abort("No CCompilerInvoker for operating system " + hostOS.name());
+                throw UserError.abort("No CCompilerInvoker for operating system %s", hostOS.name());
         }
     }
 
@@ -177,8 +177,8 @@ public abstract class CCompilerInvoker {
         protected void verify() {
             if (JavaVersionUtil.JAVA_SPEC >= 11) {
                 if (compilerInfo.versionMajor < 19) {
-                    UserError.abort("Java " + JavaVersionUtil.JAVA_SPEC +
-                                    " native-image building on Windows requires Visual Studio 2015 version 14.0 or later (C/C++ Optimizing Compiler Version 19.* or later)");
+                    UserError.abort("Java %d native-image building on Windows requires Visual Studio 2015 version 14.0 or later (C/C++ Optimizing Compiler Version 19.* or later)",
+                                    JavaVersionUtil.JAVA_SPEC);
                 }
             } else {
                 VMError.guarantee(JavaVersionUtil.JAVA_SPEC == 8, "Native-image building is only supported for Java 8 and Java 11 or later");
@@ -187,8 +187,8 @@ public abstract class CCompilerInvoker {
                 }
             }
             if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
-                UserError.abort(String.format("Native-image building on Windows currently only supports target architecture: %s (%s unsupported)",
-                                AMD64.class.getSimpleName(), compilerInfo.targetArch));
+                UserError.abort("Native-image building on Windows currently only supports target architecture: %s (%s unsupported)",
+                                AMD64.class.getSimpleName(), compilerInfo.targetArch);
             }
         }
 
@@ -245,11 +245,11 @@ public abstract class CCompilerInvoker {
             Class<? extends Architecture> substrateTargetArch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch.getClass();
             Class<? extends Architecture> guessed = guessArchitecture(compilerInfo.targetArch);
             if (guessed == null) {
-                UserError.abort(String.format("Native toolchain (%s) has no matching native-image target architecture.", compilerInfo.targetArch));
+                UserError.abort("Native toolchain (%s) has no matching native-image target architecture.", compilerInfo.targetArch);
             }
             if (guessed != substrateTargetArch) {
-                UserError.abort(String.format("Native toolchain (%s) implies native-image target architecture %s but configured native-image target architecture is %s.",
-                                compilerInfo.targetArch, guessed, substrateTargetArch));
+                UserError.abort("Native toolchain (%s) implies native-image target architecture %s but configured native-image target architecture is %s.",
+                                compilerInfo.targetArch, guessed, substrateTargetArch);
             }
         }
 
@@ -290,8 +290,8 @@ public abstract class CCompilerInvoker {
         @Override
         protected void verify() {
             if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
-                UserError.abort(String.format("Native-image building on Darwin currently only supports target architecture: %s (%s unsupported)",
-                                AMD64.class.getSimpleName(), compilerInfo.targetArch));
+                UserError.abort("Native-image building on Darwin currently only supports target architecture: %s (%s unsupported)",
+                                AMD64.class.getSimpleName(), compilerInfo.targetArch);
             }
         }
 
@@ -366,7 +366,7 @@ public abstract class CCompilerInvoker {
         } catch (InterruptedException ex) {
             throw new InterruptImageBuilding("Interrupted during checking native-compiler " + compilerPath);
         } catch (IOException e) {
-            UserError.abort(e, "Collecting native-compiler info with '" + SubstrateUtil.getShellCommandString(compilerCommand, false) + "' failed");
+            UserError.abort(e, "Collecting native-compiler info with '%s' failed", SubstrateUtil.getShellCommandString(compilerCommand, false));
         } finally {
             if (compilerProcess != null) {
                 compilerProcess.destroy();
@@ -449,7 +449,7 @@ public abstract class CCompilerInvoker {
         } catch (InterruptedException ex) {
             throw new InterruptImageBuilding("Interrupted during C-ABI query code compilation of " + source);
         } catch (IOException ex) {
-            throw UserError.abort(ex, "Unable to compile C-ABI query code " + source + ". Make sure native software development toolchain is installed on your system.");
+            throw UserError.abort(ex, "Unable to compile C-ABI query code %s. Make sure native software development toolchain is installed on your system.", source);
         } finally {
             if (compilingProcess != null) {
                 compilingProcess.destroy();
@@ -489,7 +489,7 @@ public abstract class CCompilerInvoker {
             if (optCompilerPath.isPresent()) {
                 compilerPath = optCompilerPath.get();
             } else {
-                throw UserError.abort("Default native-compiler executable '" + executableName + "' not found via environment variable PATH");
+                throw UserError.abort("Default native-compiler executable '%s' not found via environment variable PATH", executableName);
             }
         }
         if (Files.isDirectory(compilerPath) || !Files.isExecutable(compilerPath)) {
@@ -499,7 +499,7 @@ public abstract class CCompilerInvoker {
             } else {
                 msgSubject = "Default native-compiler '" + compilerPath + "'";
             }
-            throw UserError.abort(msgSubject + " does not specify a path to an executable.");
+            throw UserError.abort("%s does not specify a path to an executable.", msgSubject);
         }
         return compilerPath;
     }

@@ -243,10 +243,8 @@ public class Inflation extends BigBang {
             callTreePrinter.buildCallTree();
             int numberOfTypes = callTreePrinter.classesSet(false).size();
             if (numberOfTypes > maxReachableTypes) {
-                throw UserError.abort("Reachable " + numberOfTypes + " types but only " + maxReachableTypes + " allowed (because the " + MaxReachableTypes.getName() +
-                                " option is set). To see all reachable types use " + PrintAnalysisCallTree.getName() + "; to change the maximum number of allowed types use " +
-                                MaxReachableTypes.getName() +
-                                ".");
+                throw UserError.abort("Reachable %d types but only %d allowed (because the %s option is set). To see all reachable types use %s; to change the maximum number of allowed types use %s.",
+                                numberOfTypes, maxReachableTypes, MaxReachableTypes.getName(), PrintAnalysisCallTree.getName(), MaxReachableTypes.getName());
             }
         }
     }

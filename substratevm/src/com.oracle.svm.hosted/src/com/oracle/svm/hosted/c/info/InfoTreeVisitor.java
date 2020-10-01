@@ -33,7 +33,7 @@ public abstract class InfoTreeVisitor {
             try {
                 child.accept(this);
             } catch (NumberFormatException e) {
-                throw UserError.abort("Missing CAP cache value for: " + child.getUniqueID());
+                throw UserError.abort("Missing CAP cache value for: %s", child.getUniqueID());
             }
         }
     }

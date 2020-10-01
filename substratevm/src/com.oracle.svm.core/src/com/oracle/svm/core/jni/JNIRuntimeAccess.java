@@ -65,7 +65,7 @@ public final class JNIRuntimeAccess {
 
     private static JNIRuntimeAccessibilitySupport getSupport() {
         if (!ImageSingletons.contains(JNIRuntimeAccessibilitySupport.class)) {
-            throw UserError.abort("Support for JNI is not enabled. The option " + SubstrateOptionsParser.HOSTED_OPTION_PREFIX + SubstrateOptions.JNI + " must be set.");
+            throw UserError.abort("Support for JNI is not enabled. The option %s must be set.", SubstrateOptionsParser.commandArgument(SubstrateOptions.JNI, "+"));
         }
         return ImageSingletons.lookup(JNIRuntimeAccessibilitySupport.class);
     }

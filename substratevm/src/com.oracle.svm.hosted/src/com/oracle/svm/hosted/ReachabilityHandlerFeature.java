@@ -89,7 +89,7 @@ public class ReachabilityHandlerFeature implements Feature {
             } else if (trigger instanceof Executable) {
                 triggerSet.add(metaAccess.lookupJavaMethod((Executable) trigger));
             } else {
-                throw UserError.abort("registerReachabilityHandler called with an element that is not a Class, Field, Method, or Constructor: " + trigger.getClass().getTypeName());
+                throw UserError.abort("registerReachabilityHandler called with an element that is not a Class, Field, Method, or Constructor: %s", trigger.getClass().getTypeName());
             }
         }
 

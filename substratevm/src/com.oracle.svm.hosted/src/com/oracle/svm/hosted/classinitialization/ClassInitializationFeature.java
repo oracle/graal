@@ -143,8 +143,7 @@ public class ClassInitializationFeature implements GraalFeature {
             for (String info : infos.split(",")) {
                 boolean noMatches = Arrays.stream(InitKind.values()).noneMatch(v -> info.endsWith(v.suffix()));
                 if (noMatches) {
-                    throw UserError.abort(
-                                    "Element in class initialization configuration must end in " + RUN_TIME.suffix() + ", " + RERUN.suffix() + ", or " + BUILD_TIME.suffix() + ". Found: " + info);
+                    throw UserError.abort("Element in class initialization configuration must end in %s, %s, or %s. Found: %s", RUN_TIME.suffix(), RERUN.suffix(), BUILD_TIME.suffix(), info);
                 }
 
                 Pair<String, InitKind> elementType = InitKind.strip(info);

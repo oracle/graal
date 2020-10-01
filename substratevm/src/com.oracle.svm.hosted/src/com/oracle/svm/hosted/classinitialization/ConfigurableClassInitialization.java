@@ -195,7 +195,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         if (allowErrors) {
             return InitKind.RUN_TIME;
         } else {
-            String msg = "Class initialization of " + clazz.getTypeName() + " failed. " + instructionsToInitializeAtRuntime(clazz);
+            String msg = String.format("Class initialization of %s failed. %s", clazz.getTypeName(), instructionsToInitializeAtRuntime(clazz));
             if (unsupportedFeatures != null) {
                 /*
                  * Report an unsupported feature during static analysis, so that we can collect
@@ -206,7 +206,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                 unsupportedFeatures.addMessage(clazz.getTypeName(), null, msg, null, t);
                 return InitKind.RUN_TIME;
             } else {
-                throw UserError.abort(t, msg);
+                throw UserError.abort(t, "%s", msg);
             }
         }
     }
@@ -265,8 +265,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         checkEagerInitialization(clazz);
 
         if (!UNSAFE.shouldBeInitialized(clazz)) {
-            throw UserError.abort("The class " + clazz.getTypeName() + " has already been initialized; it is too late to register " +
-                            clazz.getTypeName() + " for build-time initialization (" + reason + "). " +
+            throw UserError.abort("The class %1$s has already been initialized; it is too late to register %1$s for build-time initialization (%2$s). %3$s",
+                            clazz.getTypeName(), reason,
                             classInitializationErrorMessage(clazz, "Try avoiding this conflict by avoiding to initialize the class that caused initialization of " + clazz.getTypeName() +
                                             " or by not marking " + clazz.getTypeName() + " for build-time initialization."));
         }
@@ -278,9 +278,9 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
         InitKind previousKind = classInitKinds.put(clazz, InitKind.RUN_TIME);
         if (previousKind == InitKind.BUILD_TIME) {
-            throw UserError.abort("Class is already initialized, so it is too late to register delaying class initialization: " + clazz.getTypeName() + " for reason: " + reason);
+            throw UserError.abort("Class is already initialized, so it is too late to register delaying class initialization: %s for reason: %s", clazz.getTypeName(), reason);
         } else if (previousKind == InitKind.RERUN) {
-            throw UserError.abort("Class is registered both for delaying and rerunning the class initializer: " + clazz.getTypeName() + " for reason: " + reason);
+            throw UserError.abort("Class is registered both for delaying and rerunning the class initializer: %s for reason: %s", clazz.getTypeName(), reason);
         }
     }
 
@@ -382,7 +382,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         try {
             UNSAFE.ensureClassInitialized(clazz);
         } catch (Throwable ex) {
-            throw UserError.abort(ex, "Class initialization failed for " + clazz.getTypeName() + ". The class is requested for re-running (reason: " + reason + ")");
+            throw UserError.abort(ex, "Class initialization failed for %s. The class is requested for re-running (reason: %s)", clazz.getTypeName(), reason);
         }
 
         /*
@@ -395,10 +395,12 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         if (previousKind != null) {
             if (previousKind == InitKind.BUILD_TIME) {
                 throw UserError.abort("The information that the class should be initialized during image building has already been used, " +
-                                "so it is too late to register the class initializer of" + clazz.getTypeName() + " for re-running. The reason for re-run request is " + reason);
+                                "so it is too late to register the class initializer of %s for re-running. The reason for re-run request is %s",
+                                clazz.getTypeName(), reason);
             } else if (previousKind.isRunTime()) {
                 throw UserError.abort("Class or a superclass is already registered for delaying the class initializer, " +
-                                "so it is too late to register the class initializer of" + clazz.getTypeName() + " for re-running. The reason for re-run request is " + reason);
+                                "so it is too late to register the class initializer of %s for re-running. The reason for re-run request is %s",
+                                clazz.getTypeName(), reason);
             }
         }
     }
@@ -534,7 +536,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                 System.out.println("To see how the classes got initialized, use " + SubstrateOptionsParser.commandArgument(TraceClassInitialization, traceClassInitArguments));
             }
 
-            throw UserError.abort(detailedMessage.toString());
+            throw UserError.abort("%s", detailedMessage);
         }
         return true;
     }
@@ -542,10 +544,10 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     private static void checkEagerInitialization(Class<?> clazz) {
         if (clazz.isPrimitive() || clazz.isArray()) {
             throw UserError.abort("Primitive types and array classes are initialized eagerly because initialization is side-effect free. " +
-                            "It is not possible (and also not useful) to register them for run time initialization. Culprit: " + clazz.getTypeName());
+                            "It is not possible (and also not useful) to register them for run time initialization. Culprit: %s", clazz.getTypeName());
         }
         if (clazz.isAnnotation()) {
-            throw UserError.abort("Class initialization of annotation classes cannot be delayed to runtime. Culprit: " + clazz.getTypeName());
+            throw UserError.abort("Class initialization of annotation classes cannot be delayed to runtime. Culprit: %s", clazz.getTypeName());
         }
     }
 

@@ -155,14 +155,14 @@ public class ServiceLoaderFeature implements Feature {
         try {
             resourceURLs = access.getImageClassLoader().getClassLoader().getResources(serviceResourceLocation);
         } catch (IOException ex) {
-            throw UserError.abort(ex, "Error loading service implementation resources for service `" + serviceClassName + "`");
+            throw UserError.abort(ex, "Error loading service implementation resources for service `%s`", serviceClassName);
         }
         while (resourceURLs.hasMoreElements()) {
             URL resourceURL = resourceURLs.nextElement();
             try {
                 implementationClassNames.addAll(parseServiceResource(resourceURL));
             } catch (IOException ex) {
-                throw UserError.abort(ex, "Error loading service implementations for service `" + serviceClassName + "` from URL `" + resourceURL + "`");
+                throw UserError.abort(ex, "Error loading service implementations for service `%s` from URL `%s`", serviceClassName, resourceURL);
             }
         }
 
@@ -200,7 +200,7 @@ public class ServiceLoaderFeature implements Feature {
 
             Class<?> implementationClass = access.findClassByName(implementationClassName);
             if (implementationClass == null) {
-                throw UserError.abort("Could not find registered service implementation class `" + implementationClassName + "` for service `" + serviceClassName + "`");
+                throw UserError.abort("Could not find registered service implementation class `%s` for service `%s`", implementationClassName, serviceClassName);
             }
             try {
                 access.getMetaAccess().lookupJavaType(implementationClass);

@@ -505,7 +505,7 @@ public final class NativeImageHeap implements ImageHeap {
         }
         msg.append(System.lineSeparator()).append("  reachable through:").append(System.lineSeparator());
         fillReasonStack(msg, reason);
-        throw UserError.abort(msg.toString());
+        throw UserError.abort("%s", msg);
     }
 
     private static StringBuilder fillReasonStack(StringBuilder msg, Object reason) {

@@ -112,7 +112,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
                 try {
                     return v.toAbsolutePath().toUri().toURL();
                 } catch (MalformedURLException e) {
-                    throw UserError.abort("Invalid classpath element '" + v + "'. Make sure that all paths provided with '" + SubstrateOptions.IMAGE_CLASSPATH_PREFIX + "' are correct.");
+                    throw UserError.abort("Invalid classpath element '%s'. Make sure that all paths provided with '%s' are correct.", v, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
                 }
             }).toArray(URL[]::new);
         }
