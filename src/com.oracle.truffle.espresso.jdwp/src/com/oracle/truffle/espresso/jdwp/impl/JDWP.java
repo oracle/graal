@@ -1667,6 +1667,11 @@ final class JDWP {
                 }
 
                 Object callee = context.getIds().fromId((int) objectId);
+                if (callee == null) {
+                    // object was garbage collected
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
+                }
                 MethodRef method = verifyMethodRef(methodId, reply, context);
 
                 if (method == null) {
