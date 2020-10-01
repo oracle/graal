@@ -1230,7 +1230,7 @@ public final class StaticObject implements TruffleObject {
                 return zoneId.asTimeZone(error);
             } else if (instanceOf(this, meta.java_time_Instant) ||
                             instanceOf(this, meta.java_util_Date)) {
-                return UTC;
+                return ZoneId.of("UTC");
             }
         }
         error.enter();
@@ -1815,10 +1815,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     public void setCharField(Field field, char value) {
-        if (isForeignObject()) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
-        }
+        checkNotForeign();
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Char;
         if (field.isVolatile()) {
@@ -1830,18 +1827,12 @@ public final class StaticObject implements TruffleObject {
 
     @TruffleBoundary(allowInlining = true)
     public void setCharFieldVolatile(Field field, char value) {
-        if (isForeignObject()) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
-        }
+        checkNotForeign();
         UNSAFE.putCharVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
     }
 
     public void setShortField(Field field, short value) {
-        if (isForeignObject()) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
-        }
+        checkNotForeign();
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Short;
         if (field.isVolatile()) {
@@ -1945,10 +1936,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     public void setLongField(Field field, long value) {
-        if (isForeignObject()) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
-        }
+        checkNotForeign();
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind().needsTwoSlots();
         if (field.isVolatile()) {
