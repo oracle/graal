@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.exception;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -66,6 +67,7 @@ final class DefaultStackTraceElementObject implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     Object getExecutableName() {
         return rootNode.getName();
     }

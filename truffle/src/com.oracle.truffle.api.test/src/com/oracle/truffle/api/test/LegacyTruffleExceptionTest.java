@@ -100,7 +100,10 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
             }
         });
         verifyingHandler.expect(BlockNode.Kind.TRY);
-        assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class, (e) -> Assert.assertTrue(e.isCancelled()));
+        assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class, (e) -> {
+            Assert.assertTrue(e.isCancelled());
+            Assert.assertNotNull(e.getGuestObject());
+        });
     }
 
     @ExportLibrary(InteropLibrary.class)

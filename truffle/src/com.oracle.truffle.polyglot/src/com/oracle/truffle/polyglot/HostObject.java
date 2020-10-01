@@ -1048,11 +1048,13 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     boolean hasExceptionMessage() {
         return isException() && ((Throwable) obj).getMessage() != null;
     }
 
     @ExportMessage
+    @TruffleBoundary
     Object getExceptionMessage(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         String message = isException() ? ((Throwable) obj).getMessage() : null;
         if (message != null) {

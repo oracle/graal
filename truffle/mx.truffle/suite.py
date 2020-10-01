@@ -161,7 +161,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "sdk:GRAAL_SDK",
-        "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.instrumentation",
         "com.oracle.truffle.api.exception",
       ],

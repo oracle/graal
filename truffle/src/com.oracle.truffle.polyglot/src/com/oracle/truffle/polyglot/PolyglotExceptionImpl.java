@@ -167,7 +167,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             this.interrupted = isInterrupted(exception);
             com.oracle.truffle.api.source.SourceSection locaction = getSourceLocation(exception);
             this.sourceLocation = locaction != null ? newSourceSection(locaction) : null;
-            this.guestObject = null;
+            this.guestObject = getGuestObject(languageContext, exception);
         }
         if (isHostException()) {
             this.message = asHostException().getMessage();
@@ -246,6 +246,21 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         // Legacy TruffleException
         if (e instanceof com.oracle.truffle.api.TruffleException) {
             return ((com.oracle.truffle.api.TruffleException) e).getSourceLocation();
+        }
+        return null;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static Value getGuestObject(PolyglotLanguageContext languageContext, Throwable e) {
+        // Legacy TruffleException
+        if (e instanceof com.oracle.truffle.api.TruffleException) {
+            Object exceptionObject = ((com.oracle.truffle.api.TruffleException) e).getExceptionObject();
+            if (exceptionObject != null) {
+                if (exceptionObject instanceof Proxy) {
+                    exceptionObject = languageContext.toGuestValue(exceptionObject);
+                }
+                return languageContext.asValue(exceptionObject);
+            }
         }
         return null;
     }

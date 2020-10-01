@@ -153,11 +153,13 @@ final class ExceptionAccessor extends Accessor {
         }
 
         @Override
+        @TruffleBoundary
         public boolean hasExceptionMessage(Object receiver) {
             return ((AbstractTruffleException) receiver).getMessage() != null;
         }
 
         @Override
+        @TruffleBoundary
         public Object getExceptionMessage(Object receiver) {
             String message = ((AbstractTruffleException) receiver).getMessage();
             if (message == null) {

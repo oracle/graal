@@ -75,6 +75,7 @@ final class LegacyTruffleExceptionSupport {
         throw sthrow(RuntimeException.class, (Throwable) receiver);
     }
 
+    @TruffleBoundary
     static ExceptionType getExceptionType(Object receiver) {
         com.oracle.truffle.api.TruffleException truffleException = asTruffleException(receiver);
         if (truffleException.isExit()) {
@@ -88,10 +89,12 @@ final class LegacyTruffleExceptionSupport {
         }
     }
 
+    @TruffleBoundary
     static boolean isExceptionIncompleteSource(Object receiver) {
         return asTruffleException(receiver).isIncompleteSource();
     }
 
+    @TruffleBoundary
     static int getExceptionExitStatus(Object receiver) throws UnsupportedMessageException {
         com.oracle.truffle.api.TruffleException truffleException = asTruffleException(receiver);
         if (truffleException.isExit()) {
@@ -101,10 +104,12 @@ final class LegacyTruffleExceptionSupport {
         }
     }
 
+    @TruffleBoundary
     static boolean hasSourceLocation(Object receiver) {
         return asTruffleException(receiver).getSourceLocation() != null;
     }
 
+    @TruffleBoundary
     static SourceSection getSourceLocation(Object receiver) throws UnsupportedMessageException {
         SourceSection sourceLocation = asTruffleException(receiver).getSourceLocation();
         if (sourceLocation == null) {
@@ -138,10 +143,12 @@ final class LegacyTruffleExceptionSupport {
         return InteropAccessor.EXCEPTION.getExceptionSuppressed(receiver);
     }
 
+    @TruffleBoundary
     static boolean hasExceptionMessage(Object receiver) {
         return ((Throwable) receiver).getMessage() != null;
     }
 
+    @TruffleBoundary
     static Object getExceptionMessage(Object receiver) throws UnsupportedMessageException {
         String message = ((Throwable) receiver).getMessage();
         if (message == null) {

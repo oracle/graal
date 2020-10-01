@@ -1172,11 +1172,8 @@ public class Breakpoint {
 
     private static class BreakpointAfterNode extends AbstractBreakpointNode {
 
-        @Child private InteropLibrary interop;
-
         BreakpointAfterNode(Breakpoint breakpoint, EventContext context) {
             super(breakpoint, context);
-            interop = InteropLibrary.getFactory().createDispatched(5);
         }
 
         @Override
