@@ -215,7 +215,7 @@ public interface JDWPContext {
     /**
      * @return the Ids instance for maintaining guest language objects to unique ID.
      */
-    Ids<Object> getIds();
+    Ids getIds();
 
     /**
      * @param string guest language string object

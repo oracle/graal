@@ -68,13 +68,13 @@ public final class JDWPContextImpl implements JDWPContext {
     public static final String JAVA_LANG_STRING = "Ljava/lang/String;";
 
     private final EspressoContext context;
-    private final Ids<Object> ids;
+    private final Ids ids;
     private JDWPSetup setup;
     private VMListener eventListener = new EmptyListener();
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
-        this.ids = new Ids<>(StaticObject.NULL);
+        this.ids = new Ids(StaticObject.NULL);
         this.setup = new JDWPSetup();
     }
 
@@ -96,7 +96,7 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public Ids<Object> getIds() {
+    public Ids getIds() {
         return ids;
     }
 

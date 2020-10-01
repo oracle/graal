@@ -965,7 +965,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
 
-    public void redefine(ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
+    public void redefine(ParserMethod newMethod, ParserKlass newKlass, Ids ids) {
         // invalidate old version
         // install the new method version immediately
         LinkedMethod newLinkedMethod = new LinkedMethod(newMethod);
@@ -976,7 +976,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         ids.replaceObject(oldVersion, methodVersion);
     }
 
-    void onSubclassMethodChanged(Ids<Object> ids) {
+    void onSubclassMethodChanged(Ids ids) {
         MethodVersion oldVersion = methodVersion;
         CodeAttribute codeAttribute = oldVersion.getCodeAttribute();
         codeAttribute.onRedefine();

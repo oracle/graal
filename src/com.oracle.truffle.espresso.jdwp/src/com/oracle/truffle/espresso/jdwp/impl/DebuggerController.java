@@ -76,7 +76,7 @@ public final class DebuggerController implements ContextsListener {
     private JDWPOptions options;
     private DebuggerSession debuggerSession;
     private final JDWPInstrument instrument;
-    private Ids<Object> ids;
+    private Ids ids;
     private JDWPContext context;
     private final VirtualMachine vm;
     private Debugger debugger;
