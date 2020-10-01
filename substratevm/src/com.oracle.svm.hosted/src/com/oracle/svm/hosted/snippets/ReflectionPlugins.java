@@ -48,14 +48,15 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.hosted.substitute.DeletedElementException;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -321,24 +322,46 @@ public class ReflectionPlugins {
             return element;
         }
         if (analysis) {
-            if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
-                AnnotatedElement annotated = null;
-                if (element instanceof Executable) {
-                    annotated = context.getMetaAccess().lookupJavaMethod((Executable) element);
-                } else if (element instanceof Field) {
-                    annotated = context.getMetaAccess().lookupJavaField((Field) element);
-                }
-                if (annotated != null && annotated.isAnnotationPresent(Delete.class)) {
-                    /* Should not intrinsify. Will fail during the reflective lookup at runtime. */
-                    return null;
-                }
+            if (isDeleted(element, context.getMetaAccess())) {
+                /*
+                 * Should not intrinsify. Will fail during the reflective lookup at
+                 * runtime. @Delete-ed elements are ignored by the reflection plugins regardless of
+                 * the value of ReportUnsupportedElementsAtRuntime.
+                 */
+                return null;
             }
+
             /* We are during analysis, we should intrinsify and cache the intrinsified object. */
             ImageSingletons.lookup(ReflectionPluginRegistry.class).add(context.getMethod(), context.bci(), element);
             return element;
         }
         /* We are during compilation, we only intrinsify if intrinsified during analysis. */
         return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(context.getMethod(), context.bci());
+    }
+
+    private static <T> boolean isDeleted(T element, MetaAccessProvider metaAccess) {
+        AnnotatedElement annotated = null;
+        try {
+            if (element instanceof Executable) {
+                annotated = metaAccess.lookupJavaMethod((Executable) element);
+            } else if (element instanceof Field) {
+                annotated = metaAccess.lookupJavaField((Field) element);
+            }
+        } catch (DeletedElementException ex) {
+            /*
+             * If ReportUnsupportedElementsAtRuntime is *not* set looking up a @Delete-ed element
+             * will result in a DeletedElementException.
+             */
+            return true;
+        }
+        /*
+         * If ReportUnsupportedElementsAtRuntime is set looking up a @Delete-ed element will return
+         * a substitution method that has the @Delete annotation.
+         */
+        if (annotated != null && annotated.isAnnotationPresent(Delete.class)) {
+            return true;
+        }
+        return false;
     }
 
     private static void pushConstant(GraphBuilderContext b, ResolvedJavaMethod reflectionMethod, JavaConstant constant, String targetElement) {

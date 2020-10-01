@@ -351,6 +351,15 @@ final class Target_java_lang_ClassLoader {
     private static native void registerNatives();
 
     @Delete
+    private native Class<?> defineClass(String name, byte[] b, int off, int len);
+
+    @Delete
+    private native Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain);
+
+    @Delete
+    private native Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain);
+
+    @Delete
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private native Class<?> defineClass0(String name, byte[] b, int off, int len, ProtectionDomain pd);
 
