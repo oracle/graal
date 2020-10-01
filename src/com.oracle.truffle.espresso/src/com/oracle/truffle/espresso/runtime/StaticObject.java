@@ -91,8 +91,6 @@ import sun.misc.Unsafe;
 @ExportLibrary(InteropLibrary.class)
 public final class StaticObject implements TruffleObject {
 
-    private static final ZoneId UTC = ZoneId.of("UTC");
-
     private static final Unsafe UNSAFE = UnsafeAccess.get();
 
     public static final StaticObject[] EMPTY_ARRAY = new StaticObject[0];
@@ -1122,9 +1120,7 @@ public final class StaticObject implements TruffleObject {
                 assert instanceOf(localDate, meta.java_time_LocalDate);
                 return localDate.asDate(error);
             } else if (instanceOf(this, meta.java_time_Instant)) {
-                StaticObject zoneIdUTC = (StaticObject) meta.java_time_ZoneId_of.invokeDirect(/*
-                                                                                               * static
-                                                                                               */null, meta.toGuestString("UTC"));
+                StaticObject zoneIdUTC = (StaticObject) meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString("UTC"));
                 assert instanceOf(zoneIdUTC, meta.java_time_ZoneId);
                 StaticObject zonedDateTime = (StaticObject) meta.java_time_Instant_atZone.invokeDirect(this, zoneIdUTC);
                 assert instanceOf(zonedDateTime, meta.java_time_ZonedDateTime);
@@ -1180,9 +1176,7 @@ public final class StaticObject implements TruffleObject {
                 return localTime.asTime(error);
             } else if (instanceOf(this, meta.java_time_Instant)) {
                 // return ((Instant) obj).atZone(UTC).toLocalTime();
-                StaticObject zoneIdUTC = (StaticObject) meta.java_time_ZoneId_of.invokeDirect(/*
-                                                                                               * static
-                                                                                               */ null, meta.toGuestString("UTC"));
+                StaticObject zoneIdUTC = (StaticObject) meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString("UTC"));
                 assert instanceOf(zoneIdUTC, meta.java_time_ZoneId);
                 StaticObject zonedDateTime = (StaticObject) meta.java_time_Instant_atZone.invokeDirect(this, zoneIdUTC);
                 assert instanceOf(zonedDateTime, meta.java_time_ZonedDateTime);
