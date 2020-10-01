@@ -44,6 +44,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -101,6 +102,12 @@ public final class Target_java_lang_reflect_Executable {
     Annotation[][] sharedGetParameterAnnotations(Class<?>[] parameterTypes, byte[] annotations) {
         Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
         return ReflectionHelper.requireNonNull(holder.parameterAnnotations, "Parameter annotations must be computed during native image generation");
+    }
+
+    @Substitute
+    @SuppressWarnings({"unused", "hiding", "static-method"})
+    Annotation[][] parseParameterAnnotations(byte[] parameterAnnotations) {
+        throw VMError.unsupportedFeature("Parameter annotations parsing is not available at run time.");
     }
 
     @Substitute
