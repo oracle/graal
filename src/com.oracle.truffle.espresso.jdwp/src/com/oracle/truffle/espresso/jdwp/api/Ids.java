@@ -24,13 +24,14 @@ package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 
+import java.lang.ref.WeakReference;
 import java.util.Arrays;
 
 /**
  * Class that keeps an ID representation of all entities when communicating with a debugger through
- * JDWP. Each entity will be assigned a unique ID.
+ * JDWP. Each entity will be assigned a unique ID. Only weak references are kept for entities.
  */
-public final class Ids {
+public final class Ids<T> {
 
     private volatile long uniqueID = 1;
 
@@ -38,26 +39,27 @@ public final class Ids {
      * All entities stored while communicating with the debugger. The array will be expanded
      * whenever an ID for a new entity is requested.
      */
-    private Object[] objects;
+    private WeakReference<T>[] objects;
 
     /**
      * A special object representing the null value. This object must be passed on by the
      * implementing language.
      */
-    private final Object nullObject;
+    private final T nullObject;
 
-    public Ids(Object nullObject) {
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public Ids(T nullObject) {
         this.nullObject = nullObject;
-        objects = new Object[]{nullObject};
+        objects = new WeakReference[]{new WeakReference<>(nullObject)};
     }
 
     /**
      * Returns the unique ID representing the input object.
-     * 
+     *
      * @param object
      * @return the ID of the object
      */
-    public long getIdAsLong(Object object) {
+    public long getIdAsLong(T object) {
         if (object == null) {
             JDWPLogger.log("Null object when getting ID", JDWPLogger.LogLevel.IDS);
             return 0;
@@ -65,7 +67,7 @@ public final class Ids {
         // lookup in cache
         for (int i = 1; i < objects.length; i++) {
             // really slow lookup path
-            if (objects[i] == object) {
+            if (objects[i].get() == object) {
                 JDWPLogger.log("ID cache hit for object: %s with ID: %d", JDWPLogger.LogLevel.IDS, object, i);
                 return i;
             }
@@ -76,16 +78,17 @@ public final class Ids {
 
     /**
      * Returns the object that is stored under the input ID.
-     * 
+     *
      * @param id the ID assigned to a object by {@code getIdAsLong()}
      * @return the object stored under the ID
      */
-    public Object fromId(int id) {
+    public T fromId(int id) {
         if (id == 0) {
             JDWPLogger.log("Null object from ID: %d", JDWPLogger.LogLevel.IDS, id);
             return nullObject;
         }
-        Object o = objects[id];
+        WeakReference<T> ref = objects[id];
+        T o = ref.get();
         if (o == null) {
             JDWPLogger.log("object with ID: %d was garbage collected", JDWPLogger.LogLevel.IDS, id);
             return null;
@@ -99,20 +102,20 @@ public final class Ids {
      * Generate a unique ID for a given object. Expand the underlying array and insert the object at
      * the last index in the new array.
      */
-    private synchronized long generateUniqueId(Object object) {
+    private synchronized long generateUniqueId(T object) {
         long id = uniqueID++;
         assert objects.length == id;
 
-        Object[] expandedArray = Arrays.copyOf(objects, objects.length + 1);
-        expandedArray[objects.length] = object;
+        WeakReference<T>[] expandedArray = Arrays.copyOf(objects, objects.length + 1);
+        expandedArray[objects.length] = new WeakReference<>(object);
         objects = expandedArray;
         JDWPLogger.log("Generating new ID: %d for object: %s", JDWPLogger.LogLevel.IDS, id, object);
         return id;
     }
 
-    public void replaceObject(Object original, Object replacement) {
+    public void replaceObject(T original, T replacement) {
         int id = (int) getIdAsLong(original);
-        objects[id] = replacement;
+        objects[id] = new WeakReference<>(replacement);
         JDWPLogger.log("Replaced ID: %d", JDWPLogger.LogLevel.IDS, id);
     }
 }

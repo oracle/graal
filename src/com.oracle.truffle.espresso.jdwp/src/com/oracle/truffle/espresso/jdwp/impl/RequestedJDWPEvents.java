@@ -62,7 +62,7 @@ public final class RequestedJDWPEvents {
 
     private final VMEventListener eventListener;
     private final DebuggerController controller;
-    private final Ids ids;
+    private final Ids<Object> ids;
 
     RequestedJDWPEvents(SocketConnection connection, DebuggerController controller) {
         this.controller = controller;

@@ -48,7 +48,7 @@ import java.util.regex.Pattern;
 
 public final class VMEventListenerImpl implements VMEventListener {
 
-    private final Ids ids;
+    private final Ids<Object> ids;
     private final JDWPContext context;
     private final DebuggerController debuggerController;
     private final HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();

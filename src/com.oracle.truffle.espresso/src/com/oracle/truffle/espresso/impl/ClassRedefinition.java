@@ -143,7 +143,7 @@ public final class ClassRedefinition {
         return result;
     }
 
-    public static int redefineClass(ChangePacket packet, Ids ids, List<ObjectKlass> refreshSubClasses) {
+    public static int redefineClass(ChangePacket packet, Ids<Object> ids, List<ObjectKlass> refreshSubClasses) {
         try {
             switch (packet.classChange) {
                 case METHOD_BODY_CHANGE:
@@ -466,7 +466,7 @@ public final class ClassRedefinition {
         return false;
     }
 
-    private static int doRedefineClass(ChangePacket packet, Ids ids, List<ObjectKlass> refreshSubClasses) {
+    private static int doRedefineClass(ChangePacket packet, Ids<Object> ids, List<ObjectKlass> refreshSubClasses) {
         ObjectKlass oldKlass = (ObjectKlass) packet.info.getKlass();
         oldKlass.redefineClass(packet, refreshSubClasses, ids);
         return 0;
