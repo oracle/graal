@@ -39,26 +39,35 @@ import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.MultiGuardNode;
+import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.phases.Phase;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
 
 /**
- * This phase sets the {@linkplain AbstractBeginNode#setWithSpeculationFence() speculation fence}
+ * This phase sets the {@linkplain AbstractBeginNode#setHasSpeculationFence() speculation fence}
  * flag on {@linkplain AbstractBeginNode begin nodes} in order to mitigate speculative execution
  * attacks.
  */
 public class InsertGuardFencesPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
+        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, false, false);
         for (AbstractBeginNode beginNode : graph.getNodes(AbstractBeginNode.TYPE)) {
+            if (hasPotentialUnsafeAccess(cfg, beginNode)) {
+                graph.getDebug().log(DebugContext.VERBOSE_LEVEL, "Adding speculation fence at %s because of unguarded fixed access", beginNode);
+                beginNode.setHasSpeculationFence();
+                continue;
+            }
             if (hasGuardUsages(beginNode)) {
                 if (SpectrePHTBarriers.getValue(graph.getOptions()) == NonDeoptGuardTargets) {
                     if (isDeoptGuard(beginNode)) {
@@ -77,11 +86,25 @@ public class InsertGuardFencesPhase extends Phase {
                 } else {
                     graph.getDebug().log(DebugContext.VERBOSE_LEVEL, "Adding speculation fence at %s", beginNode);
                 }
-                beginNode.setWithSpeculationFence();
+                beginNode.setHasSpeculationFence();
             } else {
                 graph.getDebug().log(DebugContext.DETAILED_LEVEL, "No guards on %s", beginNode);
             }
         }
+    }
+
+    /**
+     * Determine if, after guard lowering during mid tier where regular reads are still floating, a
+     * fixed access node (read/write) without a guard is inside this block, if so this means the
+     * block has an unguarded memory access thus we need to emit a fence.
+     */
+    private static boolean hasPotentialUnsafeAccess(ControlFlowGraph cfg, AbstractBeginNode beginNode) {
+        for (FixedNode n : cfg.blockFor(beginNode).getNodes()) {
+            if (n instanceof FixedAccessNode && ((FixedAccessNode) n).getGuard() == null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isDeoptGuard(AbstractBeginNode beginNode) {
