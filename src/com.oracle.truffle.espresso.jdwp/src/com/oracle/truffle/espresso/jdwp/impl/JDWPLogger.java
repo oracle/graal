@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ public final class JDWPLogger {
         PACKET,
         IDS,
         STEPPING,
+        REDEFINE,
         NONE
     }
 
@@ -55,6 +56,8 @@ public final class JDWPLogger {
                 return LEVEL == LogLevel.STEPPING || LEVEL == LogLevel.ALL;
             case IDS:
                 return LEVEL == LogLevel.IDS || LEVEL == LogLevel.ALL;
+            case REDEFINE:
+                return LEVEL == LogLevel.REDEFINE || LEVEL == LogLevel.ALL;
             case ALL:
                 return LEVEL == LogLevel.ALL ||
                                 LEVEL == LogLevel.THREAD ||

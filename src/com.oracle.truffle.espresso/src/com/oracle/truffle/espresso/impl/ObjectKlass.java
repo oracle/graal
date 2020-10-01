@@ -61,6 +61,7 @@ import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
@@ -1078,6 +1079,7 @@ public final class ObjectKlass extends Klass {
             // find the old real method
             Method method = findMethod(changedMethod, oldVersion.declaredMethods);
             method.redefine(changedMethod, packet.parserKlass, ids);
+            JDWPLogger.log("Redefining method %s.%s", JDWPLogger.LogLevel.REDEFINE, method.getDeclaringKlass().getNameAsString(), method.getNameAsString());
         }
 
         if (change.getAddedAndRemovedMethods().size() > 0) {
@@ -1093,13 +1095,16 @@ public final class ObjectKlass extends Klass {
                     it.remove();
                     oldDeclaredMethod.removedByRedefinition();
                     oldDeclaredMethod.getMethodVersion().getAssumption().invalidate();
+                    JDWPLogger.log("Removed method %s.%s", JDWPLogger.LogLevel.REDEFINE, oldDeclaredMethod.getDeclaringKlass().getNameAsString(), oldDeclaredMethod.getNameAsString());
                 }
             }
 
             // added methods
             for (ParserMethod addedMethod : addedMethods) {
                 LinkedMethod linkedMethod = new LinkedMethod(addedMethod);
-                declaredMethods.addLast(new Method(this, linkedMethod, pool));
+                Method added = new Method(this, linkedMethod, pool);
+                JDWPLogger.log("Added method %s.%s", JDWPLogger.LogLevel.REDEFINE, added.getDeclaringKlass().getNameAsString(), added.getNameAsString());
+                declaredMethods.addLast(added);
             }
 
             newDeclaredMethods = declaredMethods.toArray(new Method[declaredMethods.size()]);

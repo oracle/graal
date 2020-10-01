@@ -57,6 +57,7 @@ import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
+import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
@@ -631,6 +632,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public int redefineClasses(RedefineInfo[] redefineInfos) {
         try {
+            JDWPLogger.log("Redefining %d classes", JDWPLogger.LogLevel.REDEFINE, redefineInfos.length);
             // list of sub classes that needs to refresh things like vtable
             List<ObjectKlass> refreshSubClasses = new ArrayList<>();
 
@@ -643,6 +645,7 @@ public final class JDWPContextImpl implements JDWPContext {
             // begin redefine transaction
             ClassRedefinition.begin();
             for (ChangePacket packet : changePackets) {
+                JDWPLogger.log("Redefining class %s", JDWPLogger.LogLevel.REDEFINE, packet.parserKlass.getName());
                 int result = ClassRedefinition.redefineClass(packet, getIds(), refreshSubClasses);
                 if (result != 0) {
                     return result;
@@ -651,6 +654,7 @@ public final class JDWPContextImpl implements JDWPContext {
             // refresh subclasses when needed
             Collections.sort(refreshSubClasses, new SubClassHierarchyComparator());
             for (ObjectKlass subKlass : refreshSubClasses) {
+                JDWPLogger.log("Updating sub class %s for redefined super class", JDWPLogger.LogLevel.REDEFINE, subKlass.getNameAsString());
                 subKlass.onSuperKlassUpdate();
             }
         } finally {

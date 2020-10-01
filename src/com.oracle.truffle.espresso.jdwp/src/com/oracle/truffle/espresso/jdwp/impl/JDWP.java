@@ -376,6 +376,7 @@ final class JDWP {
             static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                JDWPLogger.log("Request to redefine received", JDWPLogger.LogLevel.REDEFINE);
                 int classes = input.readInt();
                 RedefineInfo[] redefineInfos = new RedefineInfo[classes];
                 for (int i = 0; i < classes; i++) {
@@ -396,8 +397,10 @@ final class JDWP {
                 int errorCode = context.redefineClasses(redefineInfos);
                 if (errorCode != 0) {
                     reply.errorCode(errorCode);
+                    JDWPLogger.log("Redefine failed with error code: %d", JDWPLogger.LogLevel.REDEFINE, errorCode);
                     return new CommandResult(reply);
                 }
+                JDWPLogger.log("Redefine successful", JDWPLogger.LogLevel.REDEFINE);
                 return new CommandResult(reply);
             }
         }
