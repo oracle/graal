@@ -114,6 +114,10 @@ public class HostedField implements ReadableJavaField, OriginalFieldProvider, Sh
         return wrapped.isAccessed();
     }
 
+    public boolean isInImageHeap() {
+        return wrapped.isInImageHeap();
+    }
+
     @Override
     public boolean isWritten() {
         return wrapped.isWritten();

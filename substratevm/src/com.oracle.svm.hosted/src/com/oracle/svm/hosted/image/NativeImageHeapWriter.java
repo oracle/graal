@@ -339,7 +339,7 @@ public final class NativeImageHeapWriter {
              * Write the regular instance fields.
              */
             for (HostedField field : clazz.getInstanceFields(true)) {
-                if (!field.equals(hybridArrayField) && !field.equals(hybridBitsetField) && field.isAccessed()) {
+                if (!field.equals(hybridArrayField) && !field.equals(hybridBitsetField) && field.isInImageHeap()) {
                     assert field.getLocation() >= 0;
                     assert info.getIndexInBuffer(field.getLocation()) > maxBitIndex;
                     writeField(buffer, info, field, con, info);
