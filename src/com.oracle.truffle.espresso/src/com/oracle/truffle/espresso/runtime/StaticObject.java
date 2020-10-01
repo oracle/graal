@@ -34,6 +34,7 @@ import static com.oracle.truffle.espresso.runtime.InteropUtils.isNegativeZero;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -43,6 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -66,6 +68,8 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 import sun.misc.Unsafe;
@@ -303,10 +307,11 @@ public final class StaticObject implements TruffleObject {
         }
 
         Meta meta = klass.getMeta();
-/*
- * We might lose precision when we convert an int or a long to a float, however, we still perform
- * the conversion. This is consistent with Truffle interop, see GR-22718 for more details.
- */
+        /*
+         * We might lose precision when we convert an int or a long to a float, however, we still
+         * perform the conversion. This is consistent with Truffle interop, see GR-22718 for more
+         * details.
+         */
         if (klass == meta.java_lang_Integer) {
             int content = getIntField(meta.java_lang_Integer_value);
             float floatContent = content;
@@ -811,6 +816,29 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
+        @Specialization(guards = {"isStringArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
+        static void doString(StaticObject receiver, long index, Object value,
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            StaticObject stringValue;
+            try {
+                stringValue = receiver.getKlass().getMeta().toGuestString(interopLibrary.asString(value));
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            try {
+                receiver.<StaticObject[]> unwrap()[(int) index] = stringValue;
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
         @SuppressWarnings("unused")
         @Fallback
         static void doOther(StaticObject receiver, long index, Object value) throws UnsupportedMessageException {
@@ -848,6 +876,10 @@ public final class StaticObject implements TruffleObject {
 
     protected static boolean isDoubleArray(StaticObject object) {
         return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._double_array);
+    }
+
+    protected static boolean isStringArray(StaticObject object) {
+        return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta().java_lang_String.array());
     }
 
     protected static boolean isPrimitiveArray(StaticObject object) {
@@ -971,7 +1003,16 @@ public final class StaticObject implements TruffleObject {
                         && (CLASS_TO_STATIC.equals(member) || STATIC_TO_CLASS.equals(member));
     }
 
-    private static final KeysArray CLASS_MEMBERS = new KeysArray(new String[]{CLASS_TO_STATIC, STATIC_TO_CLASS});
+    private static final String[] CLASS_KEYS = {CLASS_TO_STATIC, STATIC_TO_CLASS};
+
+    private ObjectKlass getInteropKlass() {
+        if (getKlass().isArray()) {
+            return getKlass().getMeta().java_lang_Object;
+        } else {
+            assert !getKlass().isPrimitive() : "Static Object should not represent a primitive.";
+            return (ObjectKlass) getKlass();
+        }
+    }
 
     @ExportMessage
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
@@ -979,9 +1020,67 @@ public final class StaticObject implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
-        return (notNull(this) && getKlass() == getKlass().getMeta().java_lang_Class)
-                        ? CLASS_MEMBERS // .static and .class
-                        : KeysArray.EMPTY;
+        if (isNull(this)) {
+            return KeysArray.EMPTY;
+        }
+        ArrayList<String> members = new ArrayList<>();
+        if (getKlass() == getKlass().getMeta().java_lang_Class) {
+            // SVM does not like ArrayList.addAll(). Do manual copy.
+            for (String s : CLASS_KEYS) {
+                members.add(s);
+            }
+        }
+        ObjectKlass k = getInteropKlass();
+
+        for (Method m : k.getVTable()) {
+            if (LookupVirtualMethodNode.isCanditate(m)) {
+                // Note: If there are overloading, the same key may appear twice.
+                // TODO: Cache the keys array in the Klass.
+                members.add(m.getNameAsString());
+            }
+        }
+        // SVM does not like ArrayList.toArray(). Do manual copy.
+        String[] array = new String[members.size()];
+        int pos = 0;
+        for (String str : members) {
+            array[pos++] = str;
+        }
+        return new KeysArray(array);
+    }
+
+    @ExportMessage
+    boolean isMemberInvocable(String member) {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        if (isNull(this)) {
+            return false;
+        }
+        ObjectKlass k = getInteropKlass();
+
+        for (Method m : k.getVTable()) {
+            if (LookupVirtualMethodNode.isCanditate(m)) {
+                if (m.getNameAsString().equals(member)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @ExportMessage
+    Object invokeMember(String member,
+                    Object[] arguments,
+                    @Cached.Exclusive @Cached LookupVirtualMethodNode lookupMethod,
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke)
+                    throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
+        Method method = lookupMethod.execute(getKlass(), member, arguments.length);
+        if (method != null) {
+            assert !method.isStatic() && method.isPublic() && member.equals(method.getName().toString()) && method.getParameterCount() == arguments.length;
+            return invoke.execute(method, this, arguments);
+        }
+        throw UnknownIdentifierException.create(member);
     }
 
     // endregion Interop
@@ -1334,8 +1433,8 @@ public final class StaticObject implements TruffleObject {
     // Have a getter/Setter pair for each kind of primitive. Though a bit ugly, it avoids a switch
     // when kind is known beforehand.
 
-    private static long getPrimitiveFieldIndex(int index) {
-        return Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * (long) index;
+    private static long getPrimitiveFieldOffset(int index) {
+        return index;
     }
 
     public boolean getBooleanField(Field field) {
@@ -1348,7 +1447,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getByteFieldVolatile(field) != 0;
         } else {
-            return UNSAFE.getByte(primitiveFields, getPrimitiveFieldIndex(field.getIndex())) != 0;
+            return UNSAFE.getByte(primitiveFields, getPrimitiveFieldOffset(field.getIndex())) != 0;
         }
     }
 
@@ -1359,7 +1458,7 @@ public final class StaticObject implements TruffleObject {
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getByteVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+        return UNSAFE.getByteVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
     }
 
     public byte getByteField(Field field) {
@@ -1372,7 +1471,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getByteFieldVolatile(field);
         } else {
-            return UNSAFE.getByte(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+            return UNSAFE.getByte(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
         }
     }
 
@@ -1386,7 +1485,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getCharFieldVolatile(field);
         } else {
-            return UNSAFE.getChar(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+            return UNSAFE.getChar(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
         }
     }
 
@@ -1397,7 +1496,7 @@ public final class StaticObject implements TruffleObject {
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getCharVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+        return UNSAFE.getCharVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
     }
 
     public short getShortField(Field field) {
@@ -1410,7 +1509,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getShortFieldVolatile(field);
         } else {
-            return UNSAFE.getShort(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+            return UNSAFE.getShort(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
         }
     }
 
@@ -1421,7 +1520,7 @@ public final class StaticObject implements TruffleObject {
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getShortVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+        return UNSAFE.getShortVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
     }
 
     public int getIntField(Field field) {
@@ -1434,7 +1533,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getIntFieldVolatile(field);
         } else {
-            return UNSAFE.getInt(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+            return UNSAFE.getInt(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
         }
     }
 
@@ -1445,7 +1544,7 @@ public final class StaticObject implements TruffleObject {
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getIntVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+        return UNSAFE.getIntVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
     }
 
     public float getFloatField(Field field) {
@@ -1458,7 +1557,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getFloatFieldVolatile(field);
         } else {
-            return UNSAFE.getFloat(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+            return UNSAFE.getFloat(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
         }
     }
 
@@ -1469,7 +1568,7 @@ public final class StaticObject implements TruffleObject {
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getFloatVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+        return UNSAFE.getFloatVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
     }
 
     public double getDoubleField(Field field) {
@@ -1482,7 +1581,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getDoubleFieldVolatile(field);
         } else {
-            return UNSAFE.getDouble(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+            return UNSAFE.getDouble(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
         }
     }
 
@@ -1493,7 +1592,7 @@ public final class StaticObject implements TruffleObject {
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getDoubleVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+        return UNSAFE.getDoubleVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
     }
 
     // Field setters
@@ -1508,7 +1607,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setBooleanFieldVolatile(field, value);
         } else {
-            UNSAFE.putByte(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), (byte) (value ? 1 : 0));
+            UNSAFE.putByte(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), (byte) (value ? 1 : 0));
         }
     }
 
@@ -1531,7 +1630,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setByteFieldVolatile(field, value);
         } else {
-            UNSAFE.putByte(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+            UNSAFE.putByte(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
         }
     }
 
@@ -1541,7 +1640,7 @@ public final class StaticObject implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
-        UNSAFE.putByteVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+        UNSAFE.putByteVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
     }
 
     public void setCharField(Field field, char value) {
@@ -1554,7 +1653,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setCharFieldVolatile(field, value);
         } else {
-            UNSAFE.putChar(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+            UNSAFE.putChar(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
         }
     }
 
@@ -1564,7 +1663,7 @@ public final class StaticObject implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
-        UNSAFE.putCharVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+        UNSAFE.putCharVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
     }
 
     public void setShortField(Field field, short value) {
@@ -1577,7 +1676,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setShortFieldVolatile(field, value);
         } else {
-            UNSAFE.putShort(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+            UNSAFE.putShort(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
         }
     }
 
@@ -1587,7 +1686,7 @@ public final class StaticObject implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
-        UNSAFE.putShortVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+        UNSAFE.putShortVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
     }
 
     public void setIntField(Field field, int value) {
@@ -1600,7 +1699,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setIntFieldVolatile(field, value);
         } else {
-            UNSAFE.putInt(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+            UNSAFE.putInt(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
         }
     }
 
@@ -1610,7 +1709,7 @@ public final class StaticObject implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
-        UNSAFE.putIntVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+        UNSAFE.putIntVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
     }
 
     public void setFloatField(Field field, float value) {
@@ -1623,7 +1722,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setFloatFieldVolatile(field, value);
         } else {
-            UNSAFE.putFloat(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+            UNSAFE.putFloat(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
         }
     }
 
@@ -1634,7 +1733,7 @@ public final class StaticObject implements TruffleObject {
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        UNSAFE.putDoubleVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+        UNSAFE.putDoubleVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
     }
 
     public void setDoubleField(Field field, double value) {
@@ -1647,7 +1746,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setDoubleFieldVolatile(field, value);
         } else {
-            UNSAFE.putDouble(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+            UNSAFE.putDouble(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
         }
     }
 
@@ -1658,7 +1757,7 @@ public final class StaticObject implements TruffleObject {
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        UNSAFE.putFloatVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+        UNSAFE.putFloatVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
     }
 
     public boolean compareAndSwapIntField(Field field, int before, int after) {
@@ -1667,7 +1766,7 @@ public final class StaticObject implements TruffleObject {
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.compareAndSwapInt(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), before, after);
+        return UNSAFE.compareAndSwapInt(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), before, after);
     }
 
     // End subword field handling
@@ -1680,7 +1779,7 @@ public final class StaticObject implements TruffleObject {
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getLongVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+        return UNSAFE.getLongVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
     }
 
     public long getLongField(Field field) {
@@ -1693,7 +1792,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getLongFieldVolatile(field);
         } else {
-            return UNSAFE.getLong(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
+            return UNSAFE.getLong(primitiveFields, getPrimitiveFieldOffset(field.getIndex()));
         }
     }
 
@@ -1704,7 +1803,7 @@ public final class StaticObject implements TruffleObject {
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        UNSAFE.putLongVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+        UNSAFE.putLongVolatile(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
     }
 
     public void setLongField(Field field, long value) {
@@ -1717,7 +1816,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setLongFieldVolatile(field, value);
         } else {
-            UNSAFE.putLong(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
+            UNSAFE.putLong(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), value);
         }
     }
 
@@ -1727,7 +1826,7 @@ public final class StaticObject implements TruffleObject {
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.compareAndSwapLong(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), before, after);
+        return UNSAFE.compareAndSwapLong(primitiveFields, getPrimitiveFieldOffset(field.getIndex()), before, after);
     }
 
     // End big words field handling.

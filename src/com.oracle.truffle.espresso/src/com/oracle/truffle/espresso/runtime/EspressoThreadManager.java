@@ -32,6 +32,7 @@ import java.util.function.LongUnaryOperator;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
 class EspressoThreadManager implements ContextAccess {
@@ -51,7 +52,8 @@ class EspressoThreadManager implements ContextAccess {
 
     private final Set<StaticObject> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-    private final Object threadLock = new Object();
+    private final Object threadLock = new Object() {
+    };
 
     /**
      * Contains a mapping from host thread ID to guest thread object. The object at index 0 is an
@@ -139,8 +141,17 @@ class EspressoThreadManager implements ContextAccess {
         pushThread((int) host.getId(), guest);
     }
 
+    /**
+     * Once a thread terminates, remove it from the active set, and notify any thread waiting for VM
+     * teardown that it should check again for all non-daemon thread completion.
+     */
+    @SuppressFBWarnings(value = "NN", justification = "Removing a thread from the active set is the state change we need.")
     public void unregisterThread(StaticObject thread) {
         activeThreads.remove(thread);
+        Object sync = context.getShutdownSynchronizer();
+        synchronized (sync) {
+            sync.notifyAll();
+        }
     }
 
     /**

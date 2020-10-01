@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -34,34 +35,49 @@ public abstract class LookupDeclaredMethod extends Node {
 
     static final int LIMIT = 2;
 
-    public abstract Method execute(Klass klass, String methodName, boolean publicOnly, boolean isStatic, int arity);
+    public abstract Method execute(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity);
 
     @SuppressWarnings("unused")
     @Specialization(guards = {
                     "klass.equals(cachedKlass)",
-                    "methodName.equals(cachedMethodName)",
+                    "key.equals(cachedMethodName)",
                     "publicOnly == cachedPublicOnly",
                     "isStatic == cachedIsStatic",
                     "arity == cachedArity"}, limit = "LIMIT")
     Method doCached(Klass klass,
-                    String methodName,
+                    String key,
                     boolean publicOnly,
                     boolean isStatic,
                     int arity,
                     @Cached("klass") Klass cachedKlass,
-                    @Cached("methodName") String cachedMethodName,
+                    @Cached("key") String cachedMethodName,
                     @Cached("publicOnly") boolean cachedPublicOnly,
                     @Cached("isStatic") boolean cachedIsStatic,
                     @Cached("arity") int cachedArity,
-                    @Cached("doGeneric(klass, methodName, publicOnly, isStatic, arity)") Method method) {
+                    @Cached("doGeneric(klass, key, publicOnly, isStatic, arity)") Method method) {
         return method;
     }
 
     @Specialization(replaces = "doCached")
-    Method doGeneric(Klass klass, String methodName, boolean publicOnly, boolean isStatic, int arity) {
+    @TruffleBoundary
+    Method doGeneric(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) {
         Method result = null;
+        String methodName;
+        String signature = null;
+        int colonIndex = key.indexOf(':');
+        if (colonIndex >= 0) {
+            String[] split = key.split(":");
+            if (split.length != 2) {
+                return null;
+            }
+            methodName = split[0];
+            signature = split[1];
+        } else {
+            methodName = key;
+        }
         for (Method m : klass.getDeclaredMethods()) {
-            if (m.isPublic() == publicOnly && m.isStatic() == isStatic && m.getName().toString().equals(methodName)) {
+            if (m.isPublic() == publicOnly && m.isStatic() == isStatic && !m.isSignaturePolymorphicDeclared() &&
+                            m.getName().toString().equals(methodName) && (signature == null || m.getSignatureAsString().equals(signature))) {
                 if (m.getParameterCount() == arity) {
                     /* Multiple methods with the same name and arity, cannot disambiguate */
                     if (result != null) {

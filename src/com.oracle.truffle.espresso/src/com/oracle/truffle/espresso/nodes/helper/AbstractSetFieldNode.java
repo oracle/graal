@@ -351,7 +351,7 @@ abstract class ObjectSetFieldNode extends AbstractSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, int top, int statementIndex) {
-        StaticObject value = root.peekAndReleaseObject(frame, top - 1);
+        StaticObject value = root.popObject(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         root.notifyFieldModification(frame, statementIndex, field, receiver, value);
         executeSetField(receiver, value);

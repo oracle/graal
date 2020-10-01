@@ -53,7 +53,7 @@ public abstract class ReferenceArrayLoadNode extends QuickNode {
     @Override
     public final int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
-        StaticObject array = nullCheck(root.peekAndReleaseObject(frame, top - 2));
+        StaticObject array = nullCheck(root.popObject(frame, top - 2));
         int index = root.peekInt(frame, top - 1);
         root.putObject(frame, resultAt, executeLoad(array, index));
         return Bytecodes.stackEffectOf(Bytecodes.AALOAD);

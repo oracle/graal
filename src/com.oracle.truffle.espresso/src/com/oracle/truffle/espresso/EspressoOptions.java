@@ -289,5 +289,10 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> MultiThreaded = new OptionKey<>(true);
 
+    @Option(help = "Enables graceful teardown of the VM on exit. " +
+                    "Rather than abruptly terminating execution, gives all leftover non-daemon thread some leeway to finish executing in guest.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> SoftExit = new OptionKey<>(false);
+
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
 }

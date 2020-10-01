@@ -28,6 +28,7 @@ import java.io.OutputStream;
 import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -64,7 +65,6 @@ import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.EspressoReference;
-import com.oracle.truffle.espresso.substitutions.JavaVersionUtil;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
@@ -92,7 +92,7 @@ public final class EspressoContext {
     private final AtomicInteger loaderIdProvider = new AtomicInteger();
     private final int bootClassLoaderID = getNewLoaderId();
 
-    public long initVMDoneMs;
+    public long initDoneTimeNanos;
 
     private boolean mainThreadCreated;
     private JDWPContextImpl jdwpContext;
@@ -138,7 +138,6 @@ public final class EspressoContext {
     @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
-    private boolean isClosing = false;
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
@@ -233,6 +232,7 @@ public final class EspressoContext {
         this.jdwpContext = new JDWPContextImpl(this);
         this.eventListener = jdwpContext.jdwpInit(env, getMainThread());
         if (getEnv().getOptions().get(EspressoOptions.MultiThreaded)) {
+            hostToGuestReferenceDrainThread.setDaemon(true);
             hostToGuestReferenceDrainThread.start();
         }
     }
@@ -360,7 +360,7 @@ public final class EspressoContext {
 
     private void spawnVM() {
 
-        long ticks = System.currentTimeMillis();
+        long initStartTimeNanos = System.nanoTime();
 
         initVmProperties();
 
@@ -395,35 +395,39 @@ public final class EspressoContext {
 
         initializeKnownClass(Type.java_lang_ref_Finalizer);
 
+        boolean multiThreaded = getEnv().getOptions().get(EspressoOptions.MultiThreaded);
         if (getJavaVersion().java8OrEarlier()) {
             // Initialize reference queue
-            this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
-                @SuppressWarnings("rawtypes")
-                @Override
-                protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
-                    StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
-                    meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
-                    getVM().JVM_MonitorNotify(lock, profiler);
-
-                }
-            });
-            meta.java_lang_System_initializeSystemClass.invokeDirect(null);
-        }
-        if (getJavaVersion().java9OrLater()) {
-            // Initialize reference queue
-            this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
-                @SuppressWarnings("rawtypes")
-                @Override
-                protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
-                    synchronized (pendingLock) {
-                        StaticObject obj = referencePendingList;
-                        referencePendingList = head.getGuestReference();
+            if (multiThreaded) {
+                this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
+                    @SuppressWarnings("rawtypes")
+                    @Override
+                    protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
+                        StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
                         meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
                         getVM().JVM_MonitorNotify(lock, profiler);
-                        pendingLock.notifyAll();
+
                     }
-                }
-            });
+                });
+            }
+            meta.java_lang_System_initializeSystemClass.invokeDirect(null);
+        } else if (getJavaVersion().java9OrLater()) {
+            // Initialize reference queue
+            if (multiThreaded) {
+                this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
+                    @SuppressWarnings("rawtypes")
+                    @Override
+                    protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
+                        synchronized (pendingLock) {
+                            StaticObject obj = referencePendingList;
+                            referencePendingList = head.getGuestReference();
+                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
+                            getVM().JVM_MonitorNotify(lock, profiler);
+                            pendingLock.notifyAll();
+                        }
+                    }
+                });
+            }
             // Call guest initialization
             meta.java_lang_System_initPhase1.invokeDirect(null);
             int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, false);
@@ -466,8 +470,14 @@ public final class EspressoContext {
         // Create application (system) class loader.
         meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
 
-        getLogger().log(Level.FINE, "VM booted in {0} ms", System.currentTimeMillis() - ticks);
-        initVMDoneMs = System.currentTimeMillis();
+        initDoneTimeNanos = System.nanoTime();
+        long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
+        getLogger().log(Level.FINE, "VM booted in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
+
+        // Truffle considers a language to be multi-threaded if it creates at least one
+        // polyglot thread, even if the thread is never started.
+        EspressoError.guarantee(multiThreaded || hostToGuestReferenceDrainThread == null,
+                        "The reference drain thread cannot be created with --java.MultiThreaded=false");
     }
 
     private void casNextIfNullAndMaybeClear(@SuppressWarnings("rawtypes") EspressoReference wrapper) {
@@ -555,66 +565,11 @@ public final class EspressoContext {
         // TODO(Gregersen) - /browse/GR-20077
     }
 
-    private static final int MAX_KILL_SPINS = 20;
-
-    public void interruptActiveThreads() {
-        isClosing = true;
-        invalidateNoThreadStop("Killing the VM");
-        Thread initiatingThread = Thread.currentThread();
-        for (StaticObject guest : threadManager.activeThreads()) {
-            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
-            if (t != initiatingThread) {
-                try {
-                    if (t.isDaemon()) {
-                        Target_java_lang_Thread.killThread(guest);
-                    }
-                    Target_java_lang_Thread.interrupt0(guest);
-                    // Give time to gracefully exit.
-                    t.join(30);
-                    int loops = 0;
-                    while (t.isAlive() && ++loops < MAX_KILL_SPINS) {
-                        /*
-                         * Temporary fix for running JCK tests. Forcefully killing all threads at
-                         * context closing time allows to identify which failures are due to actual
-                         * timeouts or due to thread being unresponsive. Note that this still does
-                         * not wakes up thread blocked in native.
-                         * 
-                         * Currently, threads in native can not be killed in Espresso. This
-                         * translates into a polyglot-side java.lang.IllegalStateException: The
-                         * language did not complete all polyglot threads but should have.
-                         */
-                        // TODO: Gracefully exit and allow stopping threads in native.
-                        Target_java_lang_Thread.forceKillThread(guest);
-                        Target_java_lang_Thread.interrupt0(guest);
-                        t.join(10);
-                    }
-                } catch (InterruptedException e) {
-                    getLogger().warning("Thread interrupted while stopping thread in closing context.");
-                }
-            }
-        }
-
-        if (getEnv().getOptions().get(EspressoOptions.MultiThreaded)) {
-            hostToGuestReferenceDrainThread.interrupt();
-            try {
-                hostToGuestReferenceDrainThread.join();
-            } catch (InterruptedException e) {
-                // ignore
-            }
-        } else {
-            assert !hostToGuestReferenceDrainThread.isAlive();
-        }
-
-        initiatingThread.interrupt();
-    }
-
     private void initVmProperties() {
         final EspressoProperties.Builder builder = EspressoProperties.newPlatformBuilder();
-        // Only use host VM java.home matching Espresso version (8).
-        // Must explicitly pass '--java.JavaHome=/path/to/java8/home/jre' otherwise.
-        if (JavaVersionUtil.JAVA_SPEC == 8) {
-            builder.javaHome(Engine.findHome().resolve("jre"));
-        }
+        // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
+        // libraries bundled with GraalVM.
+        builder.javaHome(Engine.findHome());
         vmProperties = EspressoProperties.processOptions(getLanguage(), builder, getEnv().getOptions()).build();
         javaVersion = new JavaVersion(vmProperties.bootClassPathType().getJavaVersion());
     }
@@ -767,10 +722,6 @@ public final class EspressoContext {
         return !noSuspend.isValid();
     }
 
-    public boolean isClosing() {
-        return isClosing;
-    }
-
     // region Options
 
     // Checkstyle: stop field name check
@@ -815,4 +766,277 @@ public final class EspressoContext {
     public boolean canEnterOtherThread() {
         return contextReady;
     }
+
+    // region Shutdown
+
+    /**
+     * Controls behavior of context closing. Until an exit method has been called, context closing
+     * waits for all non-daemon threads to finish.
+     */
+    private volatile boolean isClosing = false;
+    private volatile int exitStatus = -1;
+
+    public boolean isClosing() {
+        return isClosing;
+    }
+
+    public int getExitStatus() {
+        assert isClosing();
+        if (isExitStatusUninit()) {
+            return 0;
+        }
+        return exitStatus;
+    }
+
+    private boolean isExitStatusUninit() {
+        return !isClosing;
+    }
+
+    private void beginClose(int code) {
+        assert Thread.holdsLock(getShutdownSynchronizer());
+        isClosing = true;
+        exitStatus = code;
+    }
+
+    /**
+     * On return of the main method, host main thread waits on this synchronizer. Once a thread
+     * terminates, or an exit method is called, it is notified
+     */
+    private final Object shutdownSynchronizer = new Object() {
+    };
+
+    public Object getShutdownSynchronizer() {
+        return shutdownSynchronizer;
+    }
+
+    /**
+     * Starts the teardown process of the VM if it was not already started.
+     * 
+     * Notify any thread waiting for teardown (through {@link #destroyVM()}) to immediately return
+     * and let us do the job.
+     */
+    @TruffleBoundary
+    public void doExit(int code) {
+        if (!isClosing()) {
+            Object sync = getShutdownSynchronizer();
+            synchronized (sync) {
+                if (isClosing()) {
+                    throw new EspressoExitException(getExitStatus());
+                }
+                beginClose(code);
+                // Wake up spinning main thread.
+                sync.notifyAll();
+            }
+            teardown();
+        }
+        // At this point, the exit code given should have been registered. If not, this means that
+        // another closing was started before us, and we should use the previous' exit code.
+        throw new EspressoExitException(getExitStatus());
+    }
+
+    /**
+     * Implements the {@code <DestroyJavaVM>} command of Espresso.
+     * <li>Waits for all other non-daemon thread to naturally terminate.
+     * <li>If all threads have terminated, and no other thread called an exit method, then:
+     * <li>This calls guest {@code java.lang.Shutdown#shutdown()}
+     * <li>Proceeds to teadown leftover daemon threads.
+     */
+    @TruffleBoundary
+    public void destroyVM() {
+        waitForClose();
+        try {
+            getMeta().java_lang_reflect_Shutdown_shutdown.invokeDirect(null);
+        } catch (EspressoException | EspressoExitException e) {
+            /* Suppress guest exception so as not to bypass teardown */
+        }
+        if (isClosing()) {
+            // Skip if Shutdown.shutdown called an exit method.
+            throw new EspressoExitException(getExitStatus());
+        }
+        Object s = getShutdownSynchronizer();
+        synchronized (s) {
+            if (isClosing()) {
+                // If a daemon thread called an exit in-between
+                throw new EspressoExitException(getExitStatus());
+            }
+            beginClose(0);
+        }
+        teardown();
+
+    }
+
+    private void waitForClose() throws EspressoExitException {
+        Object synchronizer = getShutdownSynchronizer();
+        Thread initiating = Thread.currentThread();
+        synchronized (synchronizer) {
+            while (true) {
+                if (isClosing()) {
+                    throw new EspressoExitException(getExitStatus());
+                }
+                if (hasActiveNonDaemon(initiating)) {
+                    try {
+                        synchronizer.wait();
+                    } catch (InterruptedException e) {
+                        /* loop back */
+                    }
+                } else {
+                    return;
+                }
+            }
+        }
+    }
+
+    private boolean hasActiveNonDaemon(Thread initiating) {
+        for (StaticObject guest : threadManager.activeThreads()) {
+            Thread host = Target_java_lang_Thread.getHostFromGuestThread(guest);
+            if (host != initiating && !host.isDaemon()) {
+                if (host.isAlive()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static final long MAX_KILL_PHASE_WAIT = 100;
+
+    public void teardown() {
+        assert isClosing();
+        invalidateNoThreadStop("Killing the VM");
+        Thread initiatingThread = Thread.currentThread();
+
+        // Phase 0: wait.
+        boolean nextPhase = !waitSpin(initiatingThread);
+
+        if (getEnv().getOptions().get(EspressoOptions.SoftExit)) {
+            if (nextPhase) {
+                // Phase 1: Interrupt threads, and stops daemons.
+                teardownPhase1(initiatingThread);
+                nextPhase = !waitSpin(initiatingThread);
+            }
+
+            if (nextPhase) {
+                // Phase 2: Stop all threads.
+                teardownPhase2(initiatingThread);
+                nextPhase = !waitSpin(initiatingThread);
+            }
+        }
+
+        if (nextPhase) {
+            // Phase 3: Force kill with host EspressoExitException. Obtains the exit code from the
+            // context.
+            teardownPhase3(initiatingThread);
+            nextPhase = !waitSpin(initiatingThread);
+        }
+
+        if (nextPhase) {
+            getLogger().severe("Could not gracefully stop executing threads in context closing.");
+            // Phase 4: Forcefully command the context to forget any leftover thread.
+            teardownPhase4(initiatingThread);
+        }
+
+        if (getEnv().getOptions().get(EspressoOptions.MultiThreaded)) {
+            hostToGuestReferenceDrainThread.interrupt();
+            try {
+                hostToGuestReferenceDrainThread.join();
+            } catch (InterruptedException e) {
+                // ignore
+            }
+        } else {
+            assert !hostToGuestReferenceDrainThread.isAlive();
+        }
+
+        throw new EspressoExitException(getExitStatus());
+    }
+
+    /**
+     * Triggers soft interruption of active threads. This sends an interrupt signal to all leftover
+     * threads, gving them a chance to gracefully exit.
+     */
+    private void teardownPhase1(Thread initiatingThread) {
+        for (StaticObject guest : threadManager.activeThreads()) {
+            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+            if (t.isAlive() && t != initiatingThread) {
+                if (t.isDaemon()) {
+                    Target_java_lang_Thread.killThread(guest);
+                }
+                Target_java_lang_Thread.interrupt0(guest);
+            }
+        }
+    }
+
+    /**
+     * Slightly harder interruption of leftover threads. Equivalent of guest Thread.stop(). Gives
+     * leftover threads a chance to terminate in guest code (running finaly blocks).
+     */
+    private void teardownPhase2(Thread initiatingThread) {
+        for (StaticObject guest : threadManager.activeThreads()) {
+            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+            if (t.isAlive() && t != initiatingThread) {
+                Target_java_lang_Thread.killThread(guest);
+                Target_java_lang_Thread.interrupt0(guest);
+            }
+        }
+    }
+
+    /**
+     * Threads still alive at this point gets sent an uncatchable host exception. This forces the
+     * thread to never execute guest code again. In particular, this means that no finally blocks
+     * will be executed. Still, monitors entered through the monitorenter bytecode will be unlocked.
+     */
+    private void teardownPhase3(Thread initiatingThread) {
+        for (StaticObject guest : threadManager.activeThreads()) {
+            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+            if (t.isAlive() && t != initiatingThread) {
+                /*
+                 * Currently, threads in native can not be killed in Espresso. This translates into
+                 * a polyglot-side java.lang.IllegalStateException: The language did not complete
+                 * all polyglot threads but should have.
+                 */
+                Target_java_lang_Thread.forceKillThread(guest);
+                Target_java_lang_Thread.interrupt0(guest);
+            }
+        }
+    }
+
+    /**
+     * All threads still alive by that point are considered rogue, and we have no control over them.
+     */
+    private void teardownPhase4(Thread initiatingThread) {
+        for (StaticObject guest : threadManager.activeThreads()) {
+            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+            if (t.isAlive() && t != initiatingThread) {
+                // TODO(garcia): Tell truffle to forget about this thread
+                // Or
+                // TODO(garcia): Gracefully exit and allow stopping threads in native.
+            }
+        }
+    }
+
+    /**
+     * Waits for some time for all executing threads to gracefully finish.
+     *
+     * @return true if all threads are completed, false otherwise.
+     */
+    private boolean waitSpin(Thread initiatingThread) {
+        long tick = System.currentTimeMillis();
+        spinLoop: //
+        while (true) {
+            long time = System.currentTimeMillis() - tick;
+            if (time > MAX_KILL_PHASE_WAIT) {
+                return false;
+            }
+            for (StaticObject guest : threadManager.activeThreads()) {
+                Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+                if (t != initiatingThread) {
+                    if (t.isAlive()) {
+                        continue spinLoop;
+                    }
+                }
+            }
+            return true;
+        }
+    }
+
+    // endregion Shutdown
 }

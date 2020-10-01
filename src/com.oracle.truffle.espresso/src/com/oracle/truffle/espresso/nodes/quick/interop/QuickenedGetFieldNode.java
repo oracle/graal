@@ -46,7 +46,7 @@ public final class QuickenedGetFieldNode extends QuickNode {
     @Override
     public int execute(final VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
-        StaticObject receiver = nullCheck(root.peekAndReleaseObject(frame, top - 1));
+        StaticObject receiver = nullCheck(root.popObject(frame, top - 1));
         return getFieldNode.getField(frame, root, receiver, top - 1, statementIndex) - 1; // -receiver
     }
 

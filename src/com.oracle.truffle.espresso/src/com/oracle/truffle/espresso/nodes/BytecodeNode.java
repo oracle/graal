@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.STRICT;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AASTORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ACONST_NULL;
@@ -261,6 +262,7 @@ import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.bytecode.MapperBCI;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
@@ -292,6 +294,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.InstanceOfNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.ArrayLengthNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.interop.ByteArrayLoadNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.interop.ByteArrayStoreNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.interop.CharArrayLoadNodeGen;
@@ -304,9 +307,8 @@ import com.oracle.truffle.espresso.nodes.quick.interop.IntArrayLoadNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.interop.IntArrayStoreNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.interop.LongArrayLoadNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.interop.LongArrayStoreNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.QuickenedPutFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.QuickenedGetFieldNode;
-import com.oracle.truffle.espresso.nodes.quick.interop.ArrayLengthNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.interop.QuickenedPutFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayLoadNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayStoreNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayLoadNodeGen;
@@ -482,18 +484,14 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     /**
-     * Read and clear the operand stack slot.
+     * Reads and clear the operand stack slot.
      */
-    public StaticObject peekAndReleaseObject(VirtualFrame frame, int slot) {
+    public StaticObject popObject(VirtualFrame frame, int slot) {
         Object result = FrameUtil.getObjectSafe(frame, stackSlots[slot]);
         // nulls-out the slot, use peekObject to read only
         putObject(frame, slot, null);
         assert result instanceof StaticObject;
         return (StaticObject) result;
-    }
-
-    private void releaseObject(VirtualFrame frame, int slot) {
-        putObject(frame, slot, null);
     }
 
     // Boxed value.
@@ -516,7 +514,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     /**
      * Read and clear the operand stack slot.
      */
-    private Object peekAndReleaseReturnAddressOrObject(VirtualFrame frame, int slot) {
+    private Object popReturnAddressOrObject(VirtualFrame frame, int slot) {
         Object result = FrameUtil.getObjectSafe(frame, stackSlots[slot]);
         putObjectOrReturnAddress(frame, slot, null);
         assert result instanceof StaticObject || result instanceof ReturnAddress;
@@ -710,113 +708,18 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case ALOAD_2: // fall through
                     case ALOAD_3: putObject(frame, top, getLocalObject(frame, curOpcode - ALOAD_0)); break;
 
-                    case IALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putInt(frame, top - 2, getInterpreterToVM().getArrayInt(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putInt(frame, top - 2, getInterpreterToVM().getArrayInt(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Int);
-                            }
-                        }
-                        break;
-                    case LALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putLong(frame, top - 2, getInterpreterToVM().getArrayLong(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putLong(frame, top - 2, getInterpreterToVM().getArrayLong(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Long);
-                            }
-                        }
-                        break;
-                    case FALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Float);
-                            }
-                        }
-                        break;
-                    case DALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Double);
-                            }
-                        }
-                        break;
+                    case IALOAD: // fall through
+                    case LALOAD: // fall through
+                    case FALOAD: // fall through
+                    case DALOAD: // fall through
+                    case BALOAD: // fall through
+                    case CALOAD: // fall through
+                    case SALOAD: arrayLoad(frame, top, curBCI, curOpcode); break;
                     case AALOAD:
-                        if (noForeignObjects.isValid()) {
-                            StaticObject arrayElement = getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)));
-                            putObject(frame, top - 2, arrayElement);
-                            if (arrayElement.isForeignObject()) {
-                                CompilerDirectives.transferToInterpreterAndInvalidate();
-                                noForeignObjects.invalidate();
-                            }
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putObject(frame, top - 2, getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Object);
-                            }
-                        }
-                        break;
-                    case BALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putInt(frame, top - 2, getInterpreterToVM().getArrayByte(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putInt(frame, top - 2, getInterpreterToVM().getArrayByte(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Byte);
-                            }
-                        }
-                        break;
-                    case CALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putInt(frame, top - 2, getInterpreterToVM().getArrayChar(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putInt(frame, top - 2, getInterpreterToVM().getArrayChar(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Char);
-                            }
-                        }
-                        break;
-                    case SALOAD:
-                        if (noForeignObjects.isValid()) {
-                            putInt(frame, top - 2, getInterpreterToVM().getArrayShort(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 2));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 2);
-                                putInt(frame, top - 2, getInterpreterToVM().getArrayShort(peekInt(frame, top - 1), array));
-                            } else {
-                                quickenArrayLoad(frame, top, curBCI, JavaKind.Short);
-                            }
+                        arrayLoad(frame, top, curBCI, curOpcode);
+                        if (noForeignObjects.isValid() && peekObject(frame, top - 2).isForeignObject()) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            noForeignObjects.invalidate();
                         }
                         break;
 
@@ -824,7 +727,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case LSTORE: setLocalLong(frame, bs.readLocalIndex(curBCI), peekLong(frame, top - 1)); break;
                     case FSTORE: setLocalFloat(frame, bs.readLocalIndex(curBCI), peekFloat(frame, top - 1)); break;
                     case DSTORE: setLocalDouble(frame, bs.readLocalIndex(curBCI), peekDouble(frame, top - 1)); break;
-                    case ASTORE: setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), peekAndReleaseReturnAddressOrObject(frame, top - 1)); break;
+                    case ASTORE: setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), popReturnAddressOrObject(frame, top - 1)); break;
 
                     case ISTORE_0: // fall through
                     case ISTORE_1: // fall through
@@ -845,112 +748,16 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case ASTORE_0: // fall through
                     case ASTORE_1: // fall through
                     case ASTORE_2: // fall through
-                    case ASTORE_3: setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, peekAndReleaseReturnAddressOrObject(frame, top - 1)); break;
+                    case ASTORE_3: setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, popReturnAddressOrObject(frame, top - 1)); break;
 
-                    case IASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayInt(peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 3));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 3);
-                                getInterpreterToVM().setArrayInt(peekInt(frame, top - 1), peekInt(frame, top - 2), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Int);
-                            }
-                        }
-                        break;
-                    case LASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayLong(peekLong(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekAndReleaseObject(frame, top - 4)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 4));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 4);
-                                getInterpreterToVM().setArrayLong(peekLong(frame, top - 1), peekInt(frame, top - 3), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Long);
-                            }
-                        }
-                        break;
-                    case FASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayFloat(peekFloat(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 3));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 3);
-                                getInterpreterToVM().setArrayFloat(peekFloat(frame, top - 1), peekInt(frame, top - 2), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Float);
-                            }
-                        }
-                        break;
-                    case DASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayDouble(peekDouble(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekAndReleaseObject(frame, top - 4)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 4));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 4);
-                                getInterpreterToVM().setArrayDouble(peekDouble(frame, top - 1), peekInt(frame, top - 3), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Double);
-                            }
-                        }
-                        break;
-                    case AASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayObject(peekAndReleaseObject(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 3));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 3);
-                                getInterpreterToVM().setArrayObject(peekObject(frame, top - 1), peekInt(frame, top - 2), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Object);
-                            }
-                        }
-                        break;
-                    case BASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayByte((byte) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 3));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 3);
-                                getInterpreterToVM().setArrayByte((byte) peekInt(frame, top - 1), peekInt(frame, top - 2), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Byte);
-                            }
-                        }
-                        break;
-                    case CASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayChar((char) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 3));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 3);
-                                getInterpreterToVM().setArrayChar((char) peekInt(frame, top - 1), peekInt(frame, top - 2), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Char);
-                            }
-                        }
-                        break;
-                    case SASTORE:
-                        if (noForeignObjects.isValid()) {
-                            getInterpreterToVM().setArrayShort((short) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3)));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 3));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 3);
-                                getInterpreterToVM().setArrayShort((short) peekInt(frame, top - 1), peekInt(frame, top - 2), array);
-                            } else {
-                                quickenArrayStore(frame, top, curBCI, JavaKind.Short);
-                            }
-                        }
-                        break;
+                    case IASTORE: // fall through
+                    case LASTORE: // fall through
+                    case FASTORE: // fall through
+                    case DASTORE: // fall through
+                    case AASTORE: // fall through
+                    case BASTORE: // fall through
+                    case CASTORE: // fall through
+                    case SASTORE: arrayStore(frame, top, curBCI, curOpcode); break;
 
                     case POP2:
                         putObject(frame, top - 1, null);
@@ -961,13 +768,13 @@ public final class BytecodeNode extends EspressoMethodNode {
                         break;
 
                     // TODO(peterssen): Stack shuffling is expensive.
-                    case DUP: dup1(frame, top); break;
-                    case DUP_X1: dupx1(frame, top); break;
-                    case DUP_X2: dupx2(frame, top); break;
-                    case DUP2: dup2(frame, top); break;
-                    case DUP2_X1: dup2x1(frame, top); break;
-                    case DUP2_X2: dup2x2(frame, top); break;
-                    case SWAP: swapSingle(frame, top); break;
+                    case DUP     : dup1(frame, top);       break;
+                    case DUP_X1  : dupx1(frame, top);      break;
+                    case DUP_X2  : dupx2(frame, top);      break;
+                    case DUP2    : dup2(frame, top);       break;
+                    case DUP2_X1 : dup2x1(frame, top);     break;
+                    case DUP2_X2 : dup2x2(frame, top);     break;
+                    case SWAP    : swapSingle(frame, top); break;
 
                     case IADD: putInt(frame, top - 2, peekInt(frame, top - 1) + peekInt(frame, top - 2)); break;
                     case LADD: putLong(frame, top - 4, peekLong(frame, top - 1) + peekLong(frame, top - 3)); break;
@@ -1037,7 +844,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case I2C: putInt(frame, top - 1, (char) peekInt(frame, top - 1)); break;
                     case I2S: putInt(frame, top - 1, (short) peekInt(frame, top - 1)); break;
 
-                    case LCMP: putInt(frame, top - 4, compareLong(peekLong(frame, top - 1), peekLong(frame, top - 3))); break;
+                    case LCMP : putInt(frame, top - 4, compareLong(peekLong(frame, top - 1), peekLong(frame, top - 3))); break;
                     case FCMPL: putInt(frame, top - 2, compareFloatLess(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
                     case FCMPG: putInt(frame, top - 2, compareFloatGreater(peekFloat(frame, top - 1), peekFloat(frame, top - 2))); break;
                     case DCMPL: putInt(frame, top - 4, compareDoubleLess(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
@@ -1225,13 +1032,13 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case FRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(peekFloat(frame, top - 1)));
                     case DRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(peekDouble(frame, top - 1)));
                     case ARETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(peekObject(frame, top - 1)));
-                    case RETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturn());
+                    case RETURN : return notifyReturn(frame, statementIndex, exitMethodAndReturn());
 
                     // TODO(peterssen): Order shuffled.
-                    case GETSTATIC: // fall through
-                    case GETFIELD: top += getField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curBCI, curOpcode, statementIndex); break;
-                    case PUTSTATIC: // fall through
-                    case PUTFIELD: top += putField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curBCI, curOpcode, statementIndex); break;
+                    case GETSTATIC : // fall through
+                    case GETFIELD  : top += getField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curBCI, curOpcode, statementIndex); break;
+                    case PUTSTATIC : // fall through
+                    case PUTFIELD  : top += putField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curBCI, curOpcode, statementIndex); break;
 
                     case INVOKEVIRTUAL: // fall through
                     case INVOKESPECIAL: // fall through
@@ -1239,29 +1046,17 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                     case INVOKEINTERFACE: top += quickenInvoke(frame, top, curBCI, curOpcode, statementIndex); break;
 
-                    case NEW: putObject(frame, top, InterpreterToVM.newObject(resolveType(curOpcode, bs.readCPI(curBCI)), true)); break;
-                    case NEWARRAY: putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1), getMeta())); break;
-                    case ANEWARRAY: putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), peekInt(frame, top - 1))); break;
-                    case ARRAYLENGTH:
-                        if (noForeignObjects.isValid()) {
-                            putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(peekAndReleaseObject(frame, top - 1))));
-                        } else {
-                            StaticObject array = nullCheck(peekObject(frame, top - 1));
-                            if (array.isEspressoObject()) {
-                                releaseObject(frame, top - 1);
-                                putInt(frame, top - 1, InterpreterToVM.arrayLength(array));
-                            } else {
-                                quickenArrayLength(frame, top, curBCI);
-                            }
-                        }
-                        break;
-                    case ATHROW: throw Meta.throwException(nullCheck(peekAndReleaseObject(frame, top - 1)));
+                    case NEW         : putObject(frame, top, InterpreterToVM.newObject(resolveType(curOpcode, bs.readCPI(curBCI)), true)); break;
+                    case NEWARRAY    : putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1), getMeta())); break;
+                    case ANEWARRAY   : putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), peekInt(frame, top - 1))); break;
+                    case ARRAYLENGTH : arrayLength(frame, top, curBCI); break;
+                    case ATHROW      : throw Meta.throwException(nullCheck(popObject(frame, top - 1)));
 
-                    case CHECKCAST: top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
-                    case INSTANCEOF: top += quickenInstanceOf(frame, top, curBCI, curOpcode); break;
+                    case CHECKCAST   : top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
+                    case INSTANCEOF  : top += quickenInstanceOf(frame, top, curBCI, curOpcode); break;
 
-                    case MONITORENTER: getRoot().monitorEnter(frame, nullCheck(peekAndReleaseObject(frame, top - 1))); break;
-                    case MONITOREXIT: getRoot().monitorExit(frame, nullCheck(peekAndReleaseObject(frame, top - 1))); break;
+                    case MONITORENTER: getRoot().monitorEnter(frame, nullCheck(popObject(frame, top - 1))); break;
+                    case MONITOREXIT : getRoot().monitorExit(frame, nullCheck(popObject(frame, top - 1))); break;
 
                     case WIDE:
                         CompilerDirectives.transferToInterpreter();
@@ -1472,17 +1267,133 @@ public final class BytecodeNode extends EspressoMethodNode {
             case IF_ICMPGE : return peekInt(frame, top - 1) <= peekInt(frame, top - 2);
             case IF_ICMPGT : return peekInt(frame, top - 1)  < peekInt(frame, top - 2);
             case IF_ICMPLE : return peekInt(frame, top - 1) >= peekInt(frame, top - 2);
-            case IF_ACMPEQ : return peekAndReleaseObject(frame, top - 1) == peekAndReleaseObject(frame, top - 2);
-            case IF_ACMPNE : return peekAndReleaseObject(frame, top - 1) != peekAndReleaseObject(frame, top - 2);
+            case IF_ACMPEQ : return popObject(frame, top - 1) == popObject(frame, top - 2);
+            case IF_ACMPNE : return popObject(frame, top - 1) != popObject(frame, top - 2);
             case GOTO      : // fall though
             case GOTO_W    : return true; // unconditional
-            case IFNULL    : return StaticObject.isNull(peekAndReleaseObject(frame, top - 1));
-            case IFNONNULL : return StaticObject.notNull(peekAndReleaseObject(frame, top - 1));
+            case IFNULL    : return StaticObject.isNull(popObject(frame, top - 1));
+            case IFNONNULL : return StaticObject.notNull(popObject(frame, top - 1));
             default        :
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere("non-branching bytecode");
         }
         // @formatter:on
+    }
+
+    private static JavaKind arrayAccessKind(int opcode) {
+        assert (IALOAD <= opcode && opcode <= SALOAD) || (IASTORE <= opcode && opcode <= SASTORE);
+        switch (opcode) {
+            case IALOAD: // fall through
+            case IASTORE:
+                return JavaKind.Int;
+            case LALOAD: // fall through
+            case LASTORE:
+                return JavaKind.Long;
+            case FALOAD: // fall through
+            case FASTORE:
+                return JavaKind.Float;
+            case DALOAD: // fall through
+            case DASTORE:
+                return JavaKind.Double;
+            case AALOAD: // fall through
+            case AASTORE:
+                return JavaKind.Object;
+            case BALOAD: // fall through
+            case BASTORE:
+                return JavaKind.Byte; // or Boolean
+            case CALOAD: // fall through
+            case CASTORE:
+                return JavaKind.Char;
+            case SALOAD: // fall through
+            case SASTORE:
+                return JavaKind.Short;
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    private void arrayLength(VirtualFrame frame, int top, int curBCI) {
+        StaticObject array = nullCheck(popObject(frame, top - 1));
+        if (noForeignObjects.isValid() || array.isEspressoObject()) {
+            putInt(frame, top - 1, InterpreterToVM.arrayLength(array));
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // The array was released, it must be restored for the quickening.
+            putObject(frame, top - 1, array);
+            quickenArrayLength(frame, top, curBCI);
+        }
+    }
+
+    private void arrayLoad(VirtualFrame frame, int top, int curBCI, int loadOpcode) {
+        assert IALOAD <= loadOpcode && loadOpcode <= SALOAD;
+        JavaKind kind = arrayAccessKind(loadOpcode);
+        CompilerAsserts.partialEvaluationConstant(kind);
+        int index = peekInt(frame, top - 1);
+        StaticObject array = nullCheck(popObject(frame, top - 2));
+        if (noForeignObjects.isValid() || array.isEspressoObject()) {
+            // @formatter:off
+            switch (kind) {
+                case Byte:    putInt(frame, top - 2, getInterpreterToVM().getArrayByte(index, array));      break;
+                case Short:   putInt(frame, top - 2, getInterpreterToVM().getArrayShort(index, array));     break;
+                case Char:    putInt(frame, top - 2, getInterpreterToVM().getArrayChar(index, array));      break;
+                case Int:     putInt(frame, top - 2, getInterpreterToVM().getArrayInt(index, array));       break;
+                case Float:   putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(index, array));   break;
+                case Long:    putLong(frame, top - 2, getInterpreterToVM().getArrayLong(index, array));     break;
+                case Double:  putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(index, array)); break;
+                case Object:  putObject(frame, top - 2, getInterpreterToVM().getArrayObject(index, array)); break;
+                default:
+                    CompilerDirectives.transferToInterpreter();
+                    throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // The array was released, it must be restored for the quickening.
+            putObject(frame, top - 2, array);
+            quickenArrayLoad(frame, top, curBCI, kind);
+        }
+    }
+
+    private void arrayStore(VirtualFrame frame, int top, int curBCI, int storeOpcode) {
+        assert IASTORE <= storeOpcode && storeOpcode <= SASTORE;
+        JavaKind kind = arrayAccessKind(storeOpcode);
+        CompilerAsserts.partialEvaluationConstant(kind);
+        int index;
+        StaticObject array;
+        if (kind.needsTwoSlots()) {
+            index = peekInt(frame, top - 3);
+            array = nullCheck(popObject(frame, top - 4));
+        } else {
+            index = peekInt(frame, top - 2);
+            array = nullCheck(popObject(frame, top - 3));
+        }
+        if (noForeignObjects.isValid() || array.isEspressoObject()) {
+            // @formatter:off
+            switch (kind) {
+                case Byte:    getInterpreterToVM().setArrayByte((byte) peekInt(frame, top - 1), index, array);   break;
+                case Short:   getInterpreterToVM().setArrayShort((short) peekInt(frame, top - 1), index, array); break;
+                case Char:    getInterpreterToVM().setArrayChar((char) peekInt(frame, top - 1), index, array);   break;
+                case Int:     getInterpreterToVM().setArrayInt(peekInt(frame, top - 1), index, array);           break;
+                case Float:   getInterpreterToVM().setArrayFloat(peekFloat(frame, top - 1), index, array);       break;
+                case Long:    getInterpreterToVM().setArrayLong(peekLong(frame, top - 1), index, array);         break;
+                case Double:  getInterpreterToVM().setArrayDouble(peekDouble(frame, top - 1), index, array);     break;
+                case Object:  getInterpreterToVM().setArrayObject(peekObject(frame, top - 1), index, array);     break;
+                default:
+                    CompilerDirectives.transferToInterpreter();
+                    throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // The array was released, it must be restored for the quickening.
+            if (kind.needsTwoSlots()) {
+                putObject(frame, top - 4, array);
+            } else {
+                putObject(frame, top - 3, array);
+            }
+            quickenArrayStore(frame, top, curBCI, kind);
+        }
     }
 
     private int checkBackEdge(int curBCI, int targetBCI, int top, int opcode) {
@@ -2277,40 +2188,59 @@ public final class BytecodeNode extends EspressoMethodNode {
      */
     private int putField(final VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
+        CompilerAsserts.partialEvaluationConstant(field);
 
-        if (opcode == PUTFIELD) {
-            // Otherwise, if the resolved field is a static field, putfield throws an
-            // IncompatibleClassChangeError.
-            if (field.isStatic()) {
+        /*
+         * PUTFIELD: Otherwise, if the resolved field is a static field, putfield throws an
+         * IncompatibleClassChangeError.
+         *
+         * PUTSTATIC: Otherwise, if the resolved field is not a static (class) field or an interface
+         * field, putstatic throws an IncompatibleClassChangeError.
+         */
+        if (field.isStatic() != (opcode == PUTSTATIC)) {
+            CompilerDirectives.transferToInterpreter();
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError,
+                            String.format("Expected %s field %s.%s",
+                                            (opcode == PUTSTATIC) ? "static" : "non-static",
+                                            field.getDeclaringKlass().getNameAsString(),
+                                            field.getNameAsString()));
+        }
+
+        /*
+         * PUTFIELD: Otherwise, if the field is final, it must be declared in the current class, and
+         * the instruction must occur in an instance initialization method (<init>) of the current
+         * class. Otherwise, an IllegalAccessError is thrown.
+         * 
+         * PUTSTATIC: Otherwise, if the field is final, it must be declared in the current class,
+         * and the instruction must occur in the <clinit> method of the current class. Otherwise, an
+         * IllegalAccessError is thrown.
+         */
+        if (field.isFinalFlagSet()) {
+            if (field.getDeclaringKlass() != getMethod().getDeclaringKlass()) {
                 CompilerDirectives.transferToInterpreter();
-                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalAccessError,
+                                String.format("Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
+                                                (opcode == PUTSTATIC) ? "static" : "non-static",
+                                                field.getDeclaringKlass().getNameAsString(),
+                                                field.getNameAsString(),
+                                                getMethod().getDeclaringKlass().getNameAsString()));
             }
-            // Otherwise, if the field is final, it must be declared in the current class, and
-            // the instruction must occur in an instance initialization method (<init>) of the
-            // current class. Otherwise, an IllegalAccessError is thrown.
-            if (field.isFinalFlagSet()) {
-                if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass()) ||
-                                (getJavaVersion().java9OrLater() && !getMethod().isConstructor())) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw Meta.throwException(getMeta().java_lang_IllegalAccessError);
-                }
-            }
-        } else if (opcode == PUTSTATIC) {
-            // Otherwise, if the resolved field is not a static (class) field or an interface
-            // field, putstatic throws an IncompatibleClassChange
-            if (!field.isStatic()) {
+
+            boolean enforceInitializerCheck = (getContext().SpecCompliancyMode == STRICT) ||
+                            // HotSpot enforces this only for >= Java 9 (v53) .class files.
+                            field.getDeclaringKlass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
+
+            if (enforceInitializerCheck &&
+                            ((opcode == PUTFIELD && !getMethod().isConstructor()) ||
+                                            (opcode == PUTSTATIC && !getMethod().isClassInitializer()))) {
                 CompilerDirectives.transferToInterpreter();
-                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
-            }
-            // Otherwise, if the field is final, it must be declared in the current class, and the
-            // instruction must occur in the <clinit> method of the current class. Otherwise, an
-            // IllegalAccessError is thrown.
-            if (field.isFinalFlagSet()) {
-                if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass()) ||
-                                (getJavaVersion().java9OrLater() && !getMethod().isClassInitializer())) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw Meta.throwException(getMeta().java_lang_IllegalAccessError);
-                }
+                throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalAccessError,
+                                String.format("Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
+                                                (opcode == PUTSTATIC) ? "static" : "non-static",
+                                                field.getDeclaringKlass().getNameAsString(),
+                                                field.getNameAsString(),
+                                                getMethod().getNameAsString(),
+                                                (opcode == PUTSTATIC) ? "<clinit>" : "<init>"));
             }
         }
 
@@ -2320,13 +2250,13 @@ public final class BytecodeNode extends EspressoMethodNode {
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         // Do not release the object, it might be read again in PutFieldNode
-                        : nullCheck(peekObject(frame, slot));
+                        : nullCheck(popObject(frame, slot));
 
         if (!noForeignObjects.isValid() && opcode == PUTFIELD) {
             if (receiver.isForeignObject()) {
+                // Restore the receiver for quickening.
+                putObject(frame, slot, receiver);
                 return quickenPutField(frame, top, curBCI, opcode, statementIndex, field);
-            } else {
-                releaseObject(frame, slot);
             }
         }
 
@@ -2388,7 +2318,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 InterpreterToVM.setFieldLong(longValue, receiver, field);
                 break;
             case Object:
-                StaticObject value = peekAndReleaseObject(frame, top - 1);
+                StaticObject value = popObject(frame, top - 1);
                 if (instrumentation != null) {
                     instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, value);
                 }
@@ -2416,20 +2346,20 @@ public final class BytecodeNode extends EspressoMethodNode {
         assert opcode == GETFIELD || opcode == GETSTATIC;
         CompilerAsserts.partialEvaluationConstant(field);
 
-        if (opcode == GETFIELD) {
-            // Otherwise, if the resolved field is a static field, getfield throws an
-            // IncompatibleClassChangeError.
-            if (field.isStatic()) {
-                CompilerDirectives.transferToInterpreter();
-                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
-            }
-        } else if (opcode == GETSTATIC) {
-            // Otherwise, if the resolved field is not a static (class) field or an interface
-            // field, getstatic throws an IncompatibleClassChangeError.
-            if (!field.isStatic()) {
-                CompilerDirectives.transferToInterpreter();
-                throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
-            }
+        /*
+         * GETFIELD: Otherwise, if the resolved field is a static field, getfield throws an
+         * IncompatibleClassChangeError.
+         * 
+         * GETSTATIC: Otherwise, if the resolved field is not a static (class) field or an interface
+         * field, getstatic throws an IncompatibleClassChangeError.
+         */
+        if (field.isStatic() != (opcode == GETSTATIC)) {
+            CompilerDirectives.transferToInterpreter();
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IncompatibleClassChangeError,
+                            String.format("Expected %s field %s.%s",
+                                            (opcode == GETSTATIC) ? "static" : "non-static",
+                                            field.getDeclaringKlass().getNameAsString(),
+                                            field.getNameAsString()));
         }
 
         assert field.isStatic() == (opcode == GETSTATIC);
@@ -2442,9 +2372,9 @@ public final class BytecodeNode extends EspressoMethodNode {
 
         if (!noForeignObjects.isValid() && opcode == GETFIELD) {
             if (receiver.isForeignObject()) {
+                // Restore the receiver for quickening.
+                putObject(frame, slot, receiver);
                 return quickenGetField(frame, top, curBCI, opcode, statementIndex, field);
-            } else {
-                releaseObject(frame, slot);
             }
         }
 
@@ -2507,7 +2437,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 case Float   : args[i + extraParam] = peekFloat(frame, argAt);       break;
                 case Long    : args[i + extraParam] = peekLong(frame, argAt);        break;
                 case Double  : args[i + extraParam] = peekDouble(frame, argAt);      break;
-                case Object  : args[i + extraParam] = peekAndReleaseObject(frame, argAt); break;
+                case Object  : args[i + extraParam] = popObject(frame, argAt); break;
                 default      :
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere();
@@ -2516,7 +2446,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             argAt -= kind.getSlotCount();
         }
         if (hasReceiver) {
-            args[0] = peekAndReleaseObject(frame, argAt);
+            args[0] = popObject(frame, argAt);
         }
         return args;
     }
@@ -2541,7 +2471,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 case Float   : args[i + start] = peekFloat(frame, argAt);  break;
                 case Long    : args[i + start] = peekLong(frame, argAt);   break;
                 case Double  : args[i + start] = peekDouble(frame, argAt); break;
-                case Object  : args[i + start] = peekAndReleaseObject(frame, argAt); break;
+                case Object  : args[i + start] = popObject(frame, argAt); break;
                 default      :
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere();

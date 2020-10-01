@@ -49,7 +49,7 @@ public abstract class ArrayLengthNode extends QuickNode {
     @Override
     public final int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
-        StaticObject array = root.peekAndReleaseObject(frame, top - 1);
+        StaticObject array = root.popObject(frame, top - 1);
         root.putInt(frame, top - 1, executeGetLength(array));
         return 0;
     }

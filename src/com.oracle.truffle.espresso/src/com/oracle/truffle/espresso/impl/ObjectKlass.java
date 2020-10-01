@@ -272,7 +272,9 @@ public final class ObjectKlass extends Klass {
     private void actualInit() {
         checkErroneousInitialization();
         synchronized (this) {
-            if (!(isInitializedOrPrepared())) { // Check under lock
+            // Double-check under lock
+            checkErroneousInitialization();
+            if (!(isInitializedOrPrepared())) {
                 try {
                     /*
                      * Spec fragment: Then, initialize each final static field of C with the
@@ -582,7 +584,8 @@ public final class ObjectKlass extends Klass {
         throw EspressoError.shouldNotReachHere();
     }
 
-    Method[] getVTable() {
+    // Exposed to LookupVirtualMethodNode
+    public Method[] getVTable() {
         assert !isInterface();
         return getRedefineCache().vtable;
     }
@@ -677,7 +680,6 @@ public final class ObjectKlass extends Klass {
                  * Methods in superInterf.getInterfaceMethodsTable() are all non-static non-private
                  * methods declared in superInterf.
                  */
-
                 if (name == superM.getName() && signature == superM.getRawSignature()) {
                     if (resolved == null) {
                         resolved = superM;

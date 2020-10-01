@@ -70,7 +70,7 @@ public class InlinedGetterNode extends QuickNode {
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(root.peekAndReleaseObject(frame, top - 1));
+                        : nullCheck(root.popObject(frame, top - 1));
         return (getResultAt() - top) + getFieldNode.getField(frame, root, receiver, getResultAt(), statementIndex);
     }
 

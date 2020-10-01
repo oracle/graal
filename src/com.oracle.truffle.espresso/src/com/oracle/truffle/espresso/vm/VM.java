@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
@@ -119,7 +120,6 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -492,14 +492,12 @@ public final class VM extends NativeEnv implements ContextAccess {
                             doubleArray[i] = (double) toEspressoNode.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, doubleArray);
-                    // formatter: off
                     case Object:
                     case Void:
                     case ReturnAddress:
                     case Illegal:
                         CompilerDirectives.transferToInterpreter();
                         throw EspressoError.shouldNotReachHere("Unexpected primitive kind: " + componentType.getJavaKind());
-                    // formatter: on
                 }
 
             } catch (UnsupportedTypeException e) {
@@ -1096,17 +1094,15 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
-    @TruffleBoundary
-    public static void JVM_Halt(int code) {
-        throw new EspressoExitException(code);
+    public void JVM_Halt(int code) {
+        getContext().doExit(code);
     }
 
     @VmImpl
-    @TruffleBoundary
-    public static void JVM_Exit(int code) {
+    public void JVM_Exit(int code) {
+        getContext().doExit(code);
         // System.exit(code);
         // Unlike Halt, runs finalizers
-        throw new EspressoExitException(code);
     }
 
     @VmImpl
@@ -1143,11 +1139,16 @@ public final class VM extends NativeEnv implements ContextAccess {
             setNumberedProperty(setProperty, properties, "jdk.module.addmods", options.get(EspressoOptions.AddModules));
         }
 
+        // Applications expect different formats e.g. 1.8 vs. 11
+        String specVersion = getJavaVersion().java8OrEarlier()
+                        ? "1." + getJavaVersion()
+                        : getJavaVersion().toString();
+
         // Set VM information.
-        setProperty.invokeWithConversions(properties, "java.vm.specification.version", EspressoLanguage.VM_SPECIFICATION_VERSION);
+        setProperty.invokeWithConversions(properties, "java.vm.specification.version", specVersion);
         setProperty.invokeWithConversions(properties, "java.vm.specification.name", EspressoLanguage.VM_SPECIFICATION_NAME);
         setProperty.invokeWithConversions(properties, "java.vm.specification.vendor", EspressoLanguage.VM_SPECIFICATION_VENDOR);
-        setProperty.invokeWithConversions(properties, "java.vm.version", EspressoLanguage.VM_VERSION);
+        setProperty.invokeWithConversions(properties, "java.vm.version", specVersion + "-" + EspressoLanguage.VM_VERSION);
         setProperty.invokeWithConversions(properties, "java.vm.name", EspressoLanguage.VM_NAME);
         setProperty.invokeWithConversions(properties, "java.vm.vendor", EspressoLanguage.VM_VENDOR);
         setProperty.invokeWithConversions(properties, "java.vm.info", EspressoLanguage.VM_INFO);
@@ -1589,7 +1590,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public static @Host(Object.class) StaticObject JVM_LatestUserDefinedLoader(@InjectMeta Meta meta) {
+    public @Host(Object.class) StaticObject JVM_LatestUserDefinedLoader(@InjectMeta Meta meta) {
         StaticObject result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
             public StaticObject visitFrame(FrameInstance frameInstance) {
                 Method m = getMethodFromFrame(frameInstance);
@@ -1602,8 +1603,14 @@ public final class VM extends NativeEnv implements ContextAccess {
 
                     StaticObject loader = holder.getDefiningClassLoader();
                     // if (loader != NULL && !SystemDictionary::is_ext_class_loader(loader))
-                    if (StaticObject.notNull(loader) && !Type.sun_misc_Launcher$ExtClassLoader.equals(loader.getKlass().getType())) {
-                        return loader;
+                    if (getJavaVersion().java8OrEarlier()) {
+                        if (StaticObject.notNull(loader) && !Type.sun_misc_Launcher$ExtClassLoader.equals(loader.getKlass().getType())) {
+                            return loader;
+                        }
+                    } else {
+                        if (StaticObject.notNull(loader) && !Type.jdk_internal_loader_ClassLoaders$PlatformClassLoader.equals(loader.getKlass().getType())) {
+                            return loader;
+                        }
                     }
                 }
                 return null;
@@ -2416,13 +2423,14 @@ public final class VM extends NativeEnv implements ContextAccess {
                     /* jmmLongAttribute */ int att) {
         switch (att) {
             case JMM_JVM_INIT_DONE_TIME_MS:
-                return getContext().initVMDoneMs;
+                return TimeUnit.NANOSECONDS.toMillis(getContext().initDoneTimeNanos);
             case JMM_CLASS_LOADED_COUNT:
                 return getRegistries().getLoadedClassesCount();
             case JMM_CLASS_UNLOADED_COUNT:
                 return 0L;
             case JMM_JVM_UPTIME_MS:
-                return System.currentTimeMillis() - getContext().initVMDoneMs;
+                long elapsedNanos = System.nanoTime() - getContext().initDoneTimeNanos;
+                return TimeUnit.NANOSECONDS.toMillis(elapsedNanos);
             case JMM_OS_PROCESS_ID:
                 String processName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
                 String[] parts = processName.split("@");
@@ -2573,7 +2581,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // endregion Management
 
-    // startregion Modules
+    // region Modules
 
     @VmImpl
     @JniImpl

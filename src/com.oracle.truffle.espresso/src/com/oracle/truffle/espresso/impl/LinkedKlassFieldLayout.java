@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -29,10 +32,30 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
-import java.util.ArrayList;
-import java.util.List;
+import sun.misc.Unsafe;
 
 final class LinkedKlassFieldLayout {
+    /**
+     * If the object model does not start on a long-aligned offset. To manage, we will align our
+     * indexes to the actual relative address to the start of the object. Note that we still make a
+     * pretty strong assumption here: All arrays are allocated at an address aligned with a *long*
+     */
+    private static final int ALIGNMENT_CORRECTION;
+    private static final int BASE;
+
+    static {
+        assert Unsafe.ARRAY_BYTE_INDEX_SCALE == 1;
+
+        BASE = Unsafe.ARRAY_BYTE_BASE_OFFSET;
+
+        int misalignment = Unsafe.ARRAY_BYTE_BASE_OFFSET % Unsafe.ARRAY_LONG_INDEX_SCALE;
+        if (misalignment == 0) {
+            ALIGNMENT_CORRECTION = 0;
+        } else {
+            ALIGNMENT_CORRECTION = Unsafe.ARRAY_LONG_INDEX_SCALE - misalignment;
+        }
+    }
+
     private static final int N_PRIMITIVES = 8;
     private static final JavaKind[] order = {JavaKind.Long, JavaKind.Double, JavaKind.Int, JavaKind.Float, JavaKind.Short, JavaKind.Char, JavaKind.Byte, JavaKind.Boolean};
 
@@ -64,6 +87,74 @@ final class LinkedKlassFieldLayout {
         this.staticObjectFields = staticObjectFields;
     }
 
+    /**
+     * <p>
+     * Creates a layout for the primitive fields of a given class, and assigns to each field the raw
+     * offset in the byte array that represents the data. The layout tries to be as compact as
+     * possible. The rules for determining the layout are as follow:
+     * 
+     * <li>The Top klass (j.l.Object) will have its field offset corresponding the point where the
+     * data in the byte array begins (the first offset after the array header)</li>
+     * <li>If this offset is not long-aligned, then start further so that this new offset is aligned
+     * to a long. Register that there is some space between the start of the raw data and the first
+     * field offset (perhaps a byte could be squeezed in).</li>
+     * <li>Other klasses will inherit their super klass' layout, and start appending their own
+     * declared field at the first offset aligned with the biggest primitive a given class has.</li>
+     * <li>If there are known holes in the parents layout, the klass will attempt to squeeze its own
+     * fields in these holes.</li>
+     * </p>
+     * <p>
+     * For example, suppose we have the following hierarchy, and that the first offset of the data
+     * in a byte array is at 14:
+     * </p>
+     * 
+     * <pre>
+     * class A {
+     *     long l;
+     *     int i;
+     * }
+     * 
+     * class B extends A {
+     *     double d;
+     * }
+     * 
+     * class C extends B {
+     *     float f;
+     *     short s;
+     * }
+     * </pre>
+     * 
+     * Then, the resulting layout for A would be:
+     * 
+     * <pre>
+     * - 0-13: header
+     * - 14-15: unused  -> Padding for aligned long
+     * - 16-23: l
+     * - 24-27: i
+     * </pre>
+     * 
+     * the resulting layout for B would be:
+     * 
+     * <pre>
+     * - 0-13: header   }
+     * - 14-15: unused  }   Same as
+     * - 16-23: l       }      A
+     * - 24-27: i       }
+     * - 28-31: unused  -> Padding for aligned double
+     * - 32-39: d
+     * </pre>
+     * 
+     * the resulting layout for C would be:
+     * 
+     * <pre>
+     * - 0-13: header   
+     * - 14-15: s       ->   hole filled
+     * - 16-23: l       
+     * - 24-27: i       
+     * - 28-31: f       ->   hole filled
+     * - 32-39: d
+     * </pre>
+     */
     static LinkedKlassFieldLayout create(ParserKlass parserKlass, LinkedKlass superKlass) {
         FieldCounter fieldCounter = new FieldCounter(parserKlass);
 
@@ -89,9 +180,15 @@ final class LinkedKlassFieldLayout {
             nextObjectFieldIndex = superKlass.getObjectFieldsCount();
             nextStaticObjectFieldIndex = superKlass.getStaticObjectFieldsCount();
         } else {
-            superTotalInstanceByteCount = 0;
-            superTotalStaticByteCount = 0;
-            leftoverHoles = new int[0][];
+            // Align the starting offset to a long.
+            superTotalInstanceByteCount = BASE + ALIGNMENT_CORRECTION;
+            superTotalStaticByteCount = BASE + ALIGNMENT_CORRECTION;
+            // Register a hole if we had to realign.
+            if (ALIGNMENT_CORRECTION > 0) {
+                leftoverHoles = new int[][]{{BASE, BASE + ALIGNMENT_CORRECTION}};
+            } else {
+                leftoverHoles = new int[0][];
+            }
             nextFieldTableSlot = 0;
             nextObjectFieldIndex = 0;
             nextStaticObjectFieldIndex = 0;

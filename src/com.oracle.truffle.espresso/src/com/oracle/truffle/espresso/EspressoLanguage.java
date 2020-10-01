@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso;
 
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptors;
@@ -36,6 +37,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -53,9 +55,11 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.EspressoStatementNode;
+import com.oracle.truffle.espresso.nodes.interop.DestroyVMNode;
 import com.oracle.truffle.espresso.nodes.interop.LoadKlassNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
@@ -64,13 +68,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final String ID = "java";
     public static final String NAME = "Java";
-    public static final String VERSION = "1.8";
+    public static final String VERSION = "1.8|11";
 
     // Espresso VM info
-    public static final String VM_SPECIFICATION_VERSION = "1.8";
     public static final String VM_SPECIFICATION_NAME = "Java Virtual Machine Specification";
     public static final String VM_SPECIFICATION_VENDOR = "Oracle Corporation";
-    public static final String VM_VERSION = "1.8.0_241";
+    public static final String VM_VERSION = /* 1.8|11 */ "espresso-20.3-b01";
     public static final String VM_VENDOR = "Oracle Corporation";
     public static final String VM_NAME = "Espresso 64-Bit VM";
     public static final String VM_INFO = "mixed mode";
@@ -84,7 +87,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private final Types types;
     private final Signatures signatures;
 
-    private long startupClock = 0;
+    private long startupClockNanos = 0;
 
     public EspressoLanguage() {
         // Initialize statically defined symbols and substitutions.
@@ -196,24 +199,26 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
-        startupClock = System.currentTimeMillis();
+        startupClockNanos = System.nanoTime();
         context.initializeContext();
     }
 
     @Override
     protected void finalizeContext(EspressoContext context) {
-        long totalTime = System.currentTimeMillis() - startupClock;
-        if (totalTime > 10000) {
-            context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} s", (totalTime / 1000));
+        long elapsedTimeNanos = System.nanoTime() - startupClockNanos;
+        long seconds = TimeUnit.NANOSECONDS.toSeconds(elapsedTimeNanos);
+        if (seconds > 10) {
+            context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} s", seconds);
         } else {
-            context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} ms", totalTime);
+            context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedTimeNanos));
         }
 
         context.prepareDispose();
-
-        // Shutdown.shutdown creates a Cleaner thread. At this point, Polyglot doesn't allow new
-        // threads. We must perform shutdown before then, after main has finished.
-        context.interruptActiveThreads();
+        try {
+            context.doExit(0);
+        } catch (EspressoExitException e) {
+            // Expected. Suppress. We do not want to throw during context closing.
+        }
     }
 
     @Override
@@ -227,7 +232,13 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         assert context.isInitialized();
         context.begin();
         String className = request.getSource().getCharacters().toString();
-        return Truffle.getRuntime().createCallTarget(new LoadKlassNode(this, className));
+        RootNode node;
+        if (DestroyVMNode.EVAL_NAME.equals(className)) {
+            node = new DestroyVMNode(this);
+        } else {
+            node = new LoadKlassNode(this, className);
+        }
+        return Truffle.getRuntime().createCallTarget(node);
     }
 
     public Utf8ConstantTable getUtf8ConstantTable() {

@@ -121,9 +121,12 @@ public final class ClassfileParser {
     public static final int JAVA_12_VERSION = 56;
     public static final int JAVA_13_VERSION = 57;
     public static final int JAVA_14_VERSION = 58;
+    public static final int JAVA_15_VERSION = 59;
+    public static final int JAVA_16_VERSION = 60;
+    public static final int JAVA_17_VERSION = 61;
 
     @SuppressWarnings("unused") private static final int MAJOR_VERSION_JAVA_MIN = 0;
-    @SuppressWarnings("unused") private static final int MAJOR_VERSION_JAVA_MAX = JAVA_14_VERSION;
+    @SuppressWarnings("unused") private static final int MAJOR_VERSION_JAVA_MAX = JAVA_17_VERSION;
 
     public static final int STRICTER_ACCESS_CTRL_CHECK_VERSION = JAVA_1_5_VERSION;
     public static final int STACKMAP_ATTRIBUTE_MAJOR_VERSION = JAVA_6_VERSION;
@@ -245,9 +248,9 @@ public final class ClassfileParser {
      * @param major the major version number
      * @param minor the minor version number
      */
-    private static void verifyVersion(int major, int minor) {
+    private void verifyVersion(int major, int minor) {
         if (major < JAVA_MIN_SUPPORTED_VERSION ||
-                        major > JAVA_MAX_SUPPORTED_VERSION ||
+                        major > context.getJavaVersion().classFileVersion() ||
                         major != JAVA_1_1_VERSION && minor != 0 ||
                         (major == JAVA_MAX_SUPPORTED_VERSION) && (minor > JAVA_MAX_SUPPORTED_MINOR_VERSION)) {
             throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
@@ -580,7 +583,7 @@ public final class ClassfileParser {
                 methodFlags = ACC_STATIC;
             } else if ((methodFlags & ACC_STATIC) == ACC_STATIC) {
                 methodFlags &= (ACC_STRICT | ACC_STATIC);
-            } else {
+            } else if (context.getJavaVersion().java9OrLater()) {
                 throw ConstantPool.classFormatError("Method <clinit> is not static.");
             }
             // extraFlags = INITIALIZER | methodFlags;
@@ -1002,7 +1005,7 @@ public final class ClassfileParser {
             final int outerClassIndex = innerClassInfo.outerClassIndex;
             innerClassInfos[i] = innerClassInfo;
 
-            if (majorVersion >= JAVA_7_VERSION) {
+            if (context.getJavaVersion().java9OrLater() && majorVersion >= JAVA_7_VERSION) {
                 if (innerClassInfo.innerNameIndex == 0 && outerClassIndex != 0) {
                     throw ConstantPool.classFormatError("InnerClassesAttribute: the value of the outer_class_info_index item must be zero if the value of the inner_name_index item is zero.");
                 }
@@ -1046,6 +1049,7 @@ public final class ClassfileParser {
             }
         }
         return new InnerClassesAttribute(name, innerClassInfos);
+
     }
 
     private NestHostAttribute parseNestHostAttribute(Symbol<Name> attributeName) {
