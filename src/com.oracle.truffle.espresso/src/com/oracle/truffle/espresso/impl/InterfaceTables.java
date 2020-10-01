@@ -31,7 +31,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
@@ -242,7 +241,7 @@ final class InterfaceTables {
                 Method im = interfMethods[i];
                 Symbol<Name> mname = im.getName();
                 Symbol<Signature> sig = im.getRawSignature();
-                res[i] = lookupLocation(im, mname, sig, interf.getDefiningClassLoader());
+                res[i] = lookupLocation(im, mname, sig);
             }
             tmpTables.add(res);
             tmpKlassTable.add(interf);
@@ -334,7 +333,7 @@ final class InterfaceTables {
 
     // lookup helpers
 
-    private Entry lookupLocation(Method im, Symbol<Name> mname, Symbol<Signature> sig, StaticObject classLoader) {
+    private Entry lookupLocation(Method im, Symbol<Name> mname, Symbol<Signature> sig) {
         Method m = null;
         int index = -1;
         // Look at VTable first. Even if this klass declares the method, it will be put in the same
@@ -347,7 +346,7 @@ final class InterfaceTables {
             assert index == m.getVTableIndex();
             return new Entry(Location.SUPERVTABLE, index);
         }
-        index = getMethodTableIndex(thisKlass.getDeclaredMethods(), im, mname, sig);
+        index = getMethodTableIndex(declaredMethods, im, mname, sig);
         if (index != -1) {
             return new Entry(Location.DECLARED, index);
         }
