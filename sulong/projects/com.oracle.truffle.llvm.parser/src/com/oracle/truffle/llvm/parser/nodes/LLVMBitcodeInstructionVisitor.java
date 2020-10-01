@@ -161,8 +161,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private boolean optimizeFrameSlots;
 
     public LLVMBitcodeInstructionVisitor(FrameDescriptor frame, LLVMStack.UniquesRegion uniquesRegion, List<LLVMPhiManager.Phi> blockPhis, int argCount, LLVMSymbolReadResolver symbols,
-                                         LLVMContext context, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, HashSet<Integer> neededForDebug, DataLayout dataLayout,
-                                         NodeFactory nodeFactory) {
+                    LLVMContext context, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, HashSet<Integer> neededForDebug, DataLayout dataLayout,
+                    NodeFactory nodeFactory) {
         this.context = context;
         this.neededForDebug = neededForDebug;
         this.nodeFactory = nodeFactory;
