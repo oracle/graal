@@ -249,10 +249,14 @@ final class Target_java_lang_Runtime {
     public void runFinalization() {
     }
 
-    @NeverInline("Workaround for GR-26489")
     @Substitute
     @Platforms(InternalPlatform.PLATFORM_JNI.class)
     private int availableProcessors() {
+        int optionValue = SubstrateOptions.ActiveProcessorCount.getValue();
+        if (optionValue > 0) {
+            return optionValue;
+        }
+
         if (SubstrateOptions.MultiThreaded.getValue()) {
             return Containers.activeProcessorCount();
         } else {
