@@ -66,7 +66,9 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -84,6 +86,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -142,7 +145,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Throwable exception);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native int runtimeCallInitializeIsolate(@ConstantNodeParameter ForeignCallDescriptor descriptor);
+    public static native int runtimeCallInitializeIsolate(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCallTearDownIsolate(@ConstantNodeParameter ForeignCallDescriptor descriptor);
@@ -181,7 +184,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             Safepoint.transitionNativeToJava();
         }
 
-        result = runtimeCallInitializeIsolate(INITIALIZE_ISOLATE);
+        result = runtimeCallInitializeIsolate(INITIALIZE_ISOLATE, parameters);
         return result;
     }
 
@@ -239,7 +242,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static int initializeIsolate() {
+    private static int initializeIsolate(CEntryPointCreateIsolateParameters parameters) {
         boolean firstIsolate = false;
 
         final long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();
@@ -256,6 +259,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 if (state == FirstIsolateInitStates.FAILED) {
                     return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
                 }
+            }
+        }
+
+        if (parameters.isNonNull() && parameters.version() >= 3 && parameters.getArgv().isNonNull()) {
+            String[] args = SubstrateUtil.getArgs(parameters.getArgc(), parameters.getArgv());
+            args = RuntimeOptionParser.parseAndConsumeAllOptions(args);
+            if (ImageSingletons.contains(JavaMainSupport.class)) {
+                ImageSingletons.lookup(JavaMainSupport.class).mainArgs = args;
             }
         }
 
