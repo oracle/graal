@@ -40,7 +40,7 @@
  *
  * <h3>Example</h3>
  *
- * @snippet tests/com.oracle.truffle.llvm.tests.interop.native/interop/polyglotToolchain.c toolchain.h usage example
+ * @snippet tests/com.oracle.truffle.llvm.tests.interop.native/interop/polyglotToolchain.c toolchain-api.h usage example
  *
  * @see <a href="https://github.com/oracle/graal/blob/master/sulong/projects/com.oracle.truffle.llvm.api/src/com/oracle/truffle/llvm/api/Toolchain.java">Toolchain.java</a>
  *
