@@ -459,10 +459,10 @@ suite = {
           "file:patches/*",
         ],
         "./patches/graalvm-llvm-runtime/" : [
-          "file:../sulong/patches/*",
+          "file:llvm-patches/sulong/*",
         ],
         "./patches/native-image/" : [
-          "file:../substratevm/patches/*"
+          "file:llvm-patches/substratevm/*"
         ],
       },
       "platformDependent" : True,
