@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
@@ -43,7 +42,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class VMEventListenerImpl implements VMEventListener {
@@ -256,9 +254,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         for (ClassPrepareRequest cpr : allClassPrepareRequests) {
             Pattern[] patterns = cpr.getPatterns();
             for (Pattern pattern : patterns) {
-                Matcher matcher = pattern.matcher(dotName);
-
-                if (matcher.matches()) {
+                if ("".equals(pattern.pattern()) || pattern.matcher(dotName).matches()) {
                     toSend.add(cpr);
                     byte cprPolicy = cpr.getSuspendPolicy();
                     if (cprPolicy == SuspendStrategy.ALL) {
@@ -281,7 +277,7 @@ public final class VMEventListenerImpl implements VMEventListener {
                 stream.writeByte(TypeTag.CLASS);
                 stream.writeLong(ids.getIdAsLong(klass));
                 stream.writeString(klass.getTypeAsString());
-                stream.writeInt(ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED);
+                stream.writeInt(klass.getStatus());
             }
             if (suspendPolicy != SuspendStrategy.NONE) {
                 // the current thread has just prepared the class

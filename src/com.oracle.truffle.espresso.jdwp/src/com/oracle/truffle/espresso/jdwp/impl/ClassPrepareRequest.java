@@ -33,7 +33,7 @@ public final class ClassPrepareRequest {
     }
 
     public Pattern[] getPatterns() {
-        if (filter.getIncludePatterns() == null) {
+        if (filter.getIncludePatterns().length == 0) {
             return new Pattern[]{Pattern.compile("")};
         }
         return filter.getIncludePatterns();
