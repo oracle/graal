@@ -654,9 +654,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * Determines if this call target has machine code that might still have live activations
      * attached to it.
      */
-    public boolean isAlive() {
-        return isValid();
-    }
+    public abstract boolean isAlive();
 
     /**
      * Determines if this call target has valid machine code attached to it, and that this code was

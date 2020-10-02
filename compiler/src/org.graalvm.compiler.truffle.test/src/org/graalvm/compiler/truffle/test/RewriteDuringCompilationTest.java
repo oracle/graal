@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,7 @@
 package org.graalvm.compiler.truffle.test;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
@@ -40,6 +36,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
@@ -48,7 +46,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
@@ -212,27 +209,28 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
     private void testCompilation(BaseNode testedCode, LoopNode loopNode, DetectInvalidCodeNode nodeToRewrite, int rewriteCount, int maxDelayBeforeRewrite)
                     throws IOException, InterruptedException, ExecutionException {
         setupEnv(Context.create(), new ProxyLanguage() {
-            private final List<CallTarget> targets = new LinkedList<>(); // To prevent from GC
+            private CallTarget target;
 
             @Override
-            protected CallTarget parse(ParsingRequest request) throws Exception {
+            protected synchronized CallTarget parse(ParsingRequest request) throws Exception {
                 com.oracle.truffle.api.source.Source source = request.getSource();
-                CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                if (target == null) {
+                    target = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
 
-                    @Node.Child private volatile BaseNode child = testedCode;
+                        @Node.Child private volatile BaseNode child = testedCode;
 
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        return child.execute(frame);
-                    }
+                        @Override
+                        public Object execute(VirtualFrame frame) {
+                            return child.execute(frame);
+                        }
 
-                    @Override
-                    public SourceSection getSourceSection() {
-                        return source.createSection(1);
-                    }
+                        @Override
+                        public SourceSection getSourceSection() {
+                            return source.createSection(1);
+                        }
 
-                });
-                targets.add(target);
+                    });
+                }
                 return target;
             }
         });
@@ -251,9 +249,11 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
                         nodeRewritingLatch.await();
                     } catch (InterruptedException ie) {
                     }
-                    Object loopNodeCallTarget = getLoopNodeCallTarget(loopNode);
-                    if (loopNodeCallTarget != null) {
-                        callTargetsToCheck.add(loopNodeCallTarget);
+                    if (loopNode != null) {
+                        Object loopNodeCallTarget = ((OptimizedOSRLoopNode) loopNode).getCompiledOSRLoop();
+                        if (loopNodeCallTarget != null) {
+                            callTargetsToCheck.add(loopNodeCallTarget);
+                        }
                     }
                     DetectInvalidCodeNode previousNode = nodeToRewriteReference.get();
                     DetectInvalidCodeNode newNode = new DetectInvalidCodeNode();
@@ -281,34 +281,7 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
             executor.awaitTermination(100, TimeUnit.SECONDS);
         }
         for (Object callTarget : callTargetsToCheck) {
-            Assert.assertFalse("Obsolete loop call target is still valid", isLoopNodeCallTargetValid(callTarget));
+            Assert.assertFalse("Obsolete loop call target is still valid", ((OptimizedCallTarget) callTarget).isValid());
         }
-    }
-
-    private static Object getLoopNodeCallTarget(LoopNode loopNode) {
-        Object toRet = null;
-        if (loopNode instanceof ReplaceObserver) {
-            try {
-                Field callTargetField = loopNode.getClass().getSuperclass().getDeclaredField("compiledOSRLoop");
-                callTargetField.setAccessible(true);
-                toRet = callTargetField.get(loopNode);
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                throw new AssertionError("Unable to obtain OSR call target of a loop node!", e);
-            }
-        }
-        return toRet;
-    }
-
-    private static boolean isLoopNodeCallTargetValid(Object callTarget) {
-        boolean toRet = false;
-        if (callTarget != null) {
-            try {
-                Method isValidMethod = callTarget.getClass().getMethod("isValid");
-                toRet = (Boolean) isValidMethod.invoke(callTarget);
-            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-                throw new AssertionError("Unable to call isValid on OSR call target of a loop node!", e);
-            }
-        }
-        return toRet;
     }
 }
