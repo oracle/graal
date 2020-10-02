@@ -1,12 +1,21 @@
 # Version 20.3.0
 
+New features:
+
+* Introduced [handles API](projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/handles.h)
+  for storing managed pointers in native memory.
+
 Changes:
+
+* Moved `polyglot.h` to `graalvm/llvm/polyglot.h` and `llvm/api/toolchain.h` to `graalvm/llvm/toolchain-api.h`.
+  The old header locations are deprecated, and will be removed in a future release.
+
+* Renamed `libpolyglot-mock.so` to `libgraalvm-llvm.so`.
+  The old name is deprecated and will be removed in a future release.
 
 * Use the version of the LLVM toolchain as the LLVM language version (see `lli --version`).
 
 # Version 20.2.0
-
-Changes:
 
 New features:
 
