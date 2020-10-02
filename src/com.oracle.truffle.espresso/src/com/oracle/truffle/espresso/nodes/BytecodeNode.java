@@ -1366,14 +1366,14 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
             // @formatter:off
             switch (kind) {
-                case Byte:    putInt(frame, top - 2, getInterpreterToVM().getArrayByte(index, array));      break;
-                case Short:   putInt(frame, top - 2, getInterpreterToVM().getArrayShort(index, array));     break;
-                case Char:    putInt(frame, top - 2, getInterpreterToVM().getArrayChar(index, array));      break;
-                case Int:     putInt(frame, top - 2, getInterpreterToVM().getArrayInt(index, array));       break;
-                case Float:   putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(index, array));   break;
-                case Long:    putLong(frame, top - 2, getInterpreterToVM().getArrayLong(index, array));     break;
-                case Double:  putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(index, array)); break;
-                case Object:  putObject(frame, top - 2, getInterpreterToVM().getArrayObject(index, array)); break;
+                case Byte:    putInt(frame, top - 2, getInterpreterToVM().getArrayByte(index, array, implicitExceptionProfile));      break;
+                case Short:   putInt(frame, top - 2, getInterpreterToVM().getArrayShort(index, array, implicitExceptionProfile));     break;
+                case Char:    putInt(frame, top - 2, getInterpreterToVM().getArrayChar(index, array, implicitExceptionProfile));      break;
+                case Int:     putInt(frame, top - 2, getInterpreterToVM().getArrayInt(index, array, implicitExceptionProfile));       break;
+                case Float:   putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(index, array, implicitExceptionProfile));   break;
+                case Long:    putLong(frame, top - 2, getInterpreterToVM().getArrayLong(index, array, implicitExceptionProfile));     break;
+                case Double:  putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(index, array, implicitExceptionProfile)); break;
+                case Object:  putObject(frame, top - 2, getInterpreterToVM().getArrayObject(index, array, implicitExceptionProfile)); break;
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere();
@@ -1399,14 +1399,14 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
             // @formatter:off
             switch (kind) {
-                case Byte:    getInterpreterToVM().setArrayByte((byte) popInt(frame, top - 1), index, array);   break;
-                case Short:   getInterpreterToVM().setArrayShort((short) popInt(frame, top - 1), index, array); break;
-                case Char:    getInterpreterToVM().setArrayChar((char) popInt(frame, top - 1), index, array);   break;
-                case Int:     getInterpreterToVM().setArrayInt(popInt(frame, top - 1), index, array);           break;
-                case Float:   getInterpreterToVM().setArrayFloat(popFloat(frame, top - 1), index, array);       break;
-                case Long:    getInterpreterToVM().setArrayLong(popLong(frame, top - 1), index, array);         break;
-                case Double:  getInterpreterToVM().setArrayDouble(popDouble(frame, top - 1), index, array);     break;
-                case Object:  getInterpreterToVM().setArrayObject(popObject(frame, top - 1), index, array);     break;
+                case Byte:    getInterpreterToVM().setArrayByte((byte) popInt(frame, top - 1), index, array, implicitExceptionProfile);   break;
+                case Short:   getInterpreterToVM().setArrayShort((short) popInt(frame, top - 1), index, array, implicitExceptionProfile); break;
+                case Char:    getInterpreterToVM().setArrayChar((char) popInt(frame, top - 1), index, array, implicitExceptionProfile);   break;
+                case Int:     getInterpreterToVM().setArrayInt(popInt(frame, top - 1), index, array, implicitExceptionProfile);           break;
+                case Float:   getInterpreterToVM().setArrayFloat(popFloat(frame, top - 1), index, array, implicitExceptionProfile);       break;
+                case Long:    getInterpreterToVM().setArrayLong(popLong(frame, top - 1), index, array, implicitExceptionProfile);         break;
+                case Double:  getInterpreterToVM().setArrayDouble(popDouble(frame, top - 1), index, array, implicitExceptionProfile);     break;
+                case Object:  getInterpreterToVM().setArrayObject(popObject(frame, top - 1), index, array, implicitExceptionProfile);     break;
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere();
