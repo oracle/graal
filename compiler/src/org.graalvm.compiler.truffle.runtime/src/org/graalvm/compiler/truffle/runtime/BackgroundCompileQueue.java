@@ -259,7 +259,7 @@ public class BackgroundCompileQueue {
             if (tierCompare != 0) {
                 return tierCompare;
             }
-            int valueCompare = Long.compare(priority.value, that.priority.value);
+            int valueCompare = -1 * Long.compare(priority.value, that.priority.value);
             if (valueCompare != 0) {
                 return valueCompare;
             }
