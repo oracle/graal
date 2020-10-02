@@ -71,18 +71,18 @@ public class ArrayCompareToNode extends FixedWithNextNode implements LIRLowerabl
     protected final JavaKind kind2;
 
     /** One array to be tested for equality. */
-    @Input ValueNode array1;
+    @Input protected ValueNode array1;
 
     /** The other array to be tested for equality. */
-    @Input ValueNode array2;
+    @Input protected ValueNode array2;
 
     /** Length of one array. */
-    @Input ValueNode length1;
+    @Input protected ValueNode length1;
 
     /** Length of the other array. */
-    @Input ValueNode length2;
+    @Input protected ValueNode length2;
 
-    @OptionalInput(Memory) MemoryKill lastLocationAccess;
+    @OptionalInput(Memory) protected MemoryKill lastLocationAccess;
 
     public ArrayCompareToNode(ValueNode array1, ValueNode array2, ValueNode length1, ValueNode length2, @ConstantNodeParameter JavaKind kind1, @ConstantNodeParameter JavaKind kind2) {
         this(TYPE, array1, array2, length1, length2, kind1, kind2);

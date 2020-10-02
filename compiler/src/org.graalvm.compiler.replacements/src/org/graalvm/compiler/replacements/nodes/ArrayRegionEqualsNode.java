@@ -59,19 +59,19 @@ public class ArrayRegionEqualsNode extends FixedWithNextNode implements LIRLower
     public static final NodeClass<ArrayRegionEqualsNode> TYPE = NodeClass.create(ArrayRegionEqualsNode.class);
 
     /** {@link JavaKind} of the arrays to compare. */
-    private final JavaKind kind1;
-    private final JavaKind kind2;
+    protected final JavaKind kind1;
+    protected final JavaKind kind2;
 
     /** Pointer to first array region to be tested for equality. */
-    @Input private ValueNode array1;
+    @Input protected ValueNode array1;
 
     /** Pointer to second array region to be tested for equality. */
-    @Input private ValueNode array2;
+    @Input protected ValueNode array2;
 
     /** Length of the array region. */
-    @Input private ValueNode length;
+    @Input protected ValueNode length;
 
-    @OptionalInput(Memory) private MemoryKill lastLocationAccess;
+    @OptionalInput(Memory) protected MemoryKill lastLocationAccess;
 
     public ArrayRegionEqualsNode(ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind1, @ConstantNodeParameter JavaKind kind2) {
         this(TYPE, array1, array2, length, kind1, kind2);

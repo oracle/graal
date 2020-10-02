@@ -79,13 +79,13 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
     protected final JavaKind kind;
 
     /** One array to be tested for equality. */
-    @Input ValueNode array1;
+    @Input protected ValueNode array1;
 
     /** The other array to be tested for equality. */
-    @Input ValueNode array2;
+    @Input protected ValueNode array2;
 
     /** Length of both arrays. */
-    @Input ValueNode length;
+    @Input protected ValueNode length;
 
     @OptionalInput(Memory) MemoryKill lastLocationAccess;
 

@@ -51,14 +51,14 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
 
     public static final NodeClass<AMD64ArrayIndexOfNode> TYPE = NodeClass.create(AMD64ArrayIndexOfNode.class);
 
-    private final JavaKind arrayKind;
-    private final JavaKind valueKind;
-    private final boolean findTwoConsecutive;
+    protected final JavaKind arrayKind;
+    protected final JavaKind valueKind;
+    protected final boolean findTwoConsecutive;
 
-    @Input private ValueNode arrayPointer;
-    @Input private ValueNode arrayLength;
-    @Input private ValueNode fromIndex;
-    @Input private NodeInputList<ValueNode> searchValues;
+    @Input protected ValueNode arrayPointer;
+    @Input protected ValueNode arrayLength;
+    @Input protected ValueNode fromIndex;
+    @Input protected NodeInputList<ValueNode> searchValues;
 
     @OptionalInput(InputType.Memory) private MemoryKill lastLocationAccess;
 
