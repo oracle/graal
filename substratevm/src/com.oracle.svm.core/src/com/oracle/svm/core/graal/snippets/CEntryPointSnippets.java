@@ -262,6 +262,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
         }
 
+        if (UseDedicatedVMOperationThread.getValue()) {
+            VMOperationControl.startVMOperationThread();
+        }
+
         if (parameters.isNonNull() && parameters.version() >= 3 && parameters.getArgv().isNonNull()) {
             String[] args = SubstrateUtil.getArgs(parameters.getArgc(), parameters.getArgv());
             args = RuntimeOptionParser.parseAndConsumeAllOptions(args);
@@ -282,9 +286,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         assert !isolateInitialized;
         isolateInitialized = true;
 
-        if (UseDedicatedVMOperationThread.getValue()) {
-            VMOperationControl.startVMOperationThread();
-        }
         RuntimeSupport.executeInitializationHooks();
         return CEntryPointErrors.NO_ERROR;
     }

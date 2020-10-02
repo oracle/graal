@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMOperation;
@@ -133,7 +134,7 @@ public class PhysicalMemory {
     }
 
     private static boolean isInitializationDisallowed() {
-        return Heap.getHeap().isAllocationDisallowed() || VMOperation.isInProgress() || !JavaThreads.currentJavaThreadInitialized();
+        return Heap.getHeap().isAllocationDisallowed() || VMOperation.isInProgress() || !JavaThreads.currentJavaThreadInitialized() || !CEntryPointSnippets.isIsolateInitialized();
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Only called if allocation is allowed.")
