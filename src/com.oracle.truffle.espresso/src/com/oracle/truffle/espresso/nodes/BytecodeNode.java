@@ -888,7 +888,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case I2C: putInt(frame, top - 1, (char) popInt(frame, top - 1)); break;
                     case I2S: putInt(frame, top - 1, (short) popInt(frame, top - 1)); break;
 
-                    case LCMP: putInt(frame, top - 4, compareLong(popLong(frame, top - 1), popLong(frame, top - 3))); break;
+                    case LCMP : putInt(frame, top - 4, compareLong(popLong(frame, top - 1), popLong(frame, top - 3))); break;
                     case FCMPL: putInt(frame, top - 2, compareFloatLess(popFloat(frame, top - 1), popFloat(frame, top - 2))); break;
                     case FCMPG: putInt(frame, top - 2, compareFloatGreater(popFloat(frame, top - 1), popFloat(frame, top - 2))); break;
                     case DCMPL: putInt(frame, top - 4, compareDoubleLess(popDouble(frame, top - 1), popDouble(frame, top - 3))); break;
@@ -1076,7 +1076,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case FRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popFloat(frame, top - 1)));
                     case DRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popDouble(frame, top - 1)));
                     case ARETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popObject(frame, top - 1)));
-                    case RETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturn());
+                    case RETURN : return notifyReturn(frame, statementIndex, exitMethodAndReturn());
 
                     // TODO(peterssen): Order shuffled.
                     case GETSTATIC : // fall through
@@ -1090,12 +1090,11 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                     case INVOKEINTERFACE: top += quickenInvoke(frame, top, curBCI, curOpcode, statementIndex); break;
 
-                    case NEW: putObject(frame, top, InterpreterToVM.newObject(resolveType(curOpcode, bs.readCPI(curBCI)), true)); break;
-                    case NEWARRAY: putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), popInt(frame, top - 1), getMeta())); break;
-                    case ANEWARRAY: putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), popInt(frame, top - 1))); break;
-                    case ARRAYLENGTH: arrayLength(frame, top, curBCI); break;
-
-                    case ATHROW: throw Meta.throwException(nullCheck(popObject(frame, top - 1)));
+                    case NEW         : putObject(frame, top, InterpreterToVM.newObject(resolveType(curOpcode, bs.readCPI(curBCI)), true)); break;
+                    case NEWARRAY    : putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), popInt(frame, top - 1), getMeta())); break;
+                    case ANEWARRAY   : putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), popInt(frame, top - 1))); break;
+                    case ARRAYLENGTH : arrayLength(frame, top, curBCI); break;
+                    case ATHROW      : throw Meta.throwException(nullCheck(popObject(frame, top - 1)));
 
                     case CHECKCAST   : top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
                     case INSTANCEOF  : top += quickenInstanceOf(frame, top, curBCI, curOpcode); break;
@@ -1106,15 +1105,16 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case WIDE:
                         CompilerDirectives.transferToInterpreter();
                         throw EspressoError.shouldNotReachHere("BytecodeStream.currentBC() should never return this bytecode.");
+
                     case MULTIANEWARRAY: top += allocateMultiArray(frame, top, resolveType(curOpcode, bs.readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
 
                     case BREAKPOINT:
                         CompilerDirectives.transferToInterpreter();
                         throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
 
-                    case INVOKEDYNAMIC: top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
-                    case QUICK: top += nodes[bs.readCPI(curBCI)].execute(frame); break;
-                    case SLIM_QUICK: top += sparseNodes[curBCI].execute(frame); break;
+                    case INVOKEDYNAMIC : top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
+                    case QUICK         : top += nodes[bs.readCPI(curBCI)].execute(frame); break;
+                    case SLIM_QUICK    : top += sparseNodes[curBCI].execute(frame); break;
 
                     default:
                         CompilerDirectives.transferToInterpreter();

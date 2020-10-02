@@ -2062,7 +2062,8 @@ public final class StaticObject implements TruffleObject {
         checkNotForeign();
         assert isArray();
         if (index >= 0 && index < length()) {
-            // TODO(peterssen): Use different profiles for index-out-of-bounds and array-store exceptions.
+            // TODO(peterssen): Use different profiles for index-out-of-bounds and array-store
+            // exceptions.
             UNSAFE.putObject(fields, getObjectFieldIndex(index), arrayStoreExCheck(value, ((ArrayKlass) klass).getComponentType(), meta, exceptionProfile));
         } else {
             exceptionProfile.enter();
