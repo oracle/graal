@@ -159,16 +159,16 @@ public class ArrayCompareToNode extends FixedWithNextNode implements LIRLowerabl
                 return;
             }
         }
+        generateArrayCompareTo(gen);
+    }
+
+    protected void generateArrayCompareTo(NodeLIRBuilderTool gen) {
         MetaAccessProvider metaAccess = gen.getLIRGeneratorTool().getMetaAccess();
-        int array1BaseOffset = getArrayBaseOffset(metaAccess, array1, kind1);
-        int array2BaseOffset = getArrayBaseOffset(metaAccess, array2, kind2);
+        int array1BaseOffset = metaAccess.getArrayBaseOffset(kind1);
+        int array2BaseOffset = metaAccess.getArrayBaseOffset(kind2);
         Value result = gen.getLIRGeneratorTool().emitArrayCompareTo(kind1, kind2, array1BaseOffset, array2BaseOffset, gen.operand(array1), gen.operand(array2), gen.operand(length1),
                         gen.operand(length2));
         gen.setResult(this, result);
-    }
-
-    protected int getArrayBaseOffset(MetaAccessProvider metaAccessProvider, @SuppressWarnings("unused") ValueNode array, JavaKind kind) {
-        return metaAccessProvider.getArrayBaseOffset(kind);
     }
 
     @Override

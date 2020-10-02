@@ -57,7 +57,6 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.Value;
 
 // JaCoCo Exclude
@@ -258,15 +257,15 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
                 return;
             }
         }
-        int array1BaseOffset = getArrayBaseOffset(gen.getLIRGeneratorTool().getMetaAccess(), array1);
-        int array2BaseOffset = getArrayBaseOffset(gen.getLIRGeneratorTool().getMetaAccess(), array2);
+        generateArrayEquals(gen);
+    }
+
+    protected void generateArrayEquals(NodeLIRBuilderTool gen) {
+        int array1BaseOffset = gen.getLIRGeneratorTool().getMetaAccess().getArrayBaseOffset(kind);
+        int array2BaseOffset = gen.getLIRGeneratorTool().getMetaAccess().getArrayBaseOffset(kind);
         Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, array1BaseOffset, array2BaseOffset, gen.operand(array1), gen.operand(array2),
                         gen.operand(length), false);
         gen.setResult(this, result);
-    }
-
-    protected int getArrayBaseOffset(MetaAccessProvider metaAccessProvider, @SuppressWarnings("unused") ValueNode array) {
-        return metaAccessProvider.getArrayBaseOffset(kind);
     }
 
     @Override
