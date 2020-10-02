@@ -811,7 +811,7 @@ public class LLVMInteropTest {
     }
 
     @Test
-    public void test062() {
+    public void test062() { // truffle.h version of testCreateTwoHandles
         try (Runner runner = new Runner("interop062.c")) {
             Object a = new Object();
             runner.export(a, "object");
@@ -820,7 +820,16 @@ public class LLVMInteropTest {
     }
 
     @Test
-    public void test063() {
+    public void testCreateTwoHandles() {
+        try (Runner runner = new Runner("createTwoHandles.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test
+    public void test063() { // truffle.h version of testCreateResolveHandle
         try (Runner runner = new Runner("interop063.c")) {
             Object a = new Object();
             runner.export(a, "object");
@@ -829,7 +838,16 @@ public class LLVMInteropTest {
     }
 
     @Test
-    public void test064() {
+    public void testCreateResolveHandle() {
+        try (Runner runner = new Runner("createResolveHandle.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test
+    public void test064() { // truffle.h version of testCreateReleaseHandle
         try (Runner runner = new Runner("interop064.c")) {
             Object a = new Object();
             runner.export(a, "object");
@@ -837,8 +855,17 @@ public class LLVMInteropTest {
         }
     }
 
+    @Test
+    public void testCreateReleaseHandle() {
+        try (Runner runner = new Runner("createReleaseHandle.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
     @Test(expected = PolyglotException.class)
-    public void test065() {
+    public void test065() { // truffle.h version of testDoubleReleaseHandle
         try (Runner runner = new Runner("interop065.c")) {
             Object a = new Object();
             runner.export(a, "object");
@@ -847,7 +874,16 @@ public class LLVMInteropTest {
     }
 
     @Test(expected = PolyglotException.class)
-    public void test066() throws Throwable {
+    public void testDoubleReleaseHandle() {
+        try (Runner runner = new Runner("doubleReleaseHandle.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test(expected = PolyglotException.class)
+    public void test066() throws Throwable { // truffle.h version of testAccessReleasedHandle
         try (Runner runner = new Runner("interop066.c")) {
             Object a = new Object();
             runner.export(a, "object");
@@ -855,9 +891,27 @@ public class LLVMInteropTest {
         }
     }
 
+    @Test(expected = PolyglotException.class)
+    public void testAccessReleasedHandle() throws Throwable {
+        try (Runner runner = new Runner("accessReleasedHandle.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
     @Test
-    public void test067() {
+    public void test067() { // truffle.h version of testResolveHandle
         try (Runner runner = new Runner("interop067.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test
+    public void testResolveHandle() {
+        try (Runner runner = new Runner("resolveHandle.c")) {
             Object a = new Object();
             runner.export(a, "object");
             Assert.assertEquals(0, runner.run());
@@ -1061,8 +1115,26 @@ public class LLVMInteropTest {
     }
 
     @Test
+    public void testIsHandleOld() {
+        try (Runner runner = new Runner("isHandleOld.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test
     public void testIsHandle() {
         try (Runner runner = new Runner("isHandle.c")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test
+    public void testReleaseHandleOld() {
+        try (Runner runner = new Runner("releaseHandleOld.c")) {
             Object a = new Object();
             runner.export(a, "object");
             Assert.assertEquals(0, runner.run());
@@ -1212,6 +1284,24 @@ public class LLVMInteropTest {
             Value testHandleFromNativeCallback = runner.findGlobalSymbol("testHandleFromNativeCallback");
             Value ret = testHandleFromNativeCallback.execute(ProxyObject.fromMap(makeObjectA()));
             Assert.assertEquals(42, ret.asInt());
+        }
+    }
+
+    @Test
+    public void testAutoDerefHandleOld() {
+        try (Runner runner = new Runner("autoDerefHandleOld.c")) {
+            runner.run();
+            Value testHandleFromNativeCallback = runner.findGlobalSymbol("testAutoDerefHandle");
+            ProxyExecutable proxyExecutable = new ProxyExecutable() {
+                @Override
+                public Object execute(Value... t) {
+                    return 13;
+                }
+            };
+
+            Object intArray = runner.context.asValue(new int[]{7});
+            Value ret = testHandleFromNativeCallback.execute(proxyExecutable, intArray);
+            Assert.assertEquals(33, ret.asInt());
         }
     }
 

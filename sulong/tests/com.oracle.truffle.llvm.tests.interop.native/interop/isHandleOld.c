@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,30 +28,35 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <graalvm/llvm/polyglot.h>
-#include <graalvm/llvm/handles.h>
-#include <stdlib.h>
-
-typedef int (*f_int)();
-
-int32_t testAutoDerefHandle(void *managed0, void *managed1) {
-    void *handle0 = create_deref_handle(managed0);
-    void *handle1 = create_deref_handle(managed1);
-    void *handle2 = NULL;
-
-    int32_t val0 = ((f_int) handle0)();
-    int32_t val1 = ((int32_t *) handle1)[0];
-
-    release_handle(handle0);
-    handle2 = create_deref_handle(managed0);
-
-    int32_t val2 = ((f_int) handle2)();
-
-    release_handle(handle1);
-    release_handle(handle2);
-
-    return val0 + val1 + val2;
-}
+#include <truffle.h>
 
 int main() {
+    void *p = polyglot_import("object");
+    void *p1 = truffle_handle_for_managed(p);
+    void *p2 = truffle_deref_handle_for_managed(p);
+    long l_p1 = (long) p1;
+    long l_p2 = (long) p2;
+    void *n = calloc(sizeof(char), 2);
+
+    if (!truffle_is_handle_to_managed(p1)) {
+        return 1;
+    }
+    if (!truffle_is_handle_to_managed(l_p1)) {
+        return 2;
+    }
+    if (!truffle_is_handle_to_managed(p2)) {
+        return 3;
+    }
+    if (!truffle_is_handle_to_managed(l_p2)) {
+        return 4;
+    }
+    if (truffle_is_handle_to_managed(p)) {
+        return 5;
+    }
+    if (truffle_is_handle_to_managed(n)) {
+        return 6;
+    }
+    free(n);
+
     return 0;
 }

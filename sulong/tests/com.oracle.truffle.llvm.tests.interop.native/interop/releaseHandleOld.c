@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,30 +28,47 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <graalvm/llvm/polyglot.h>
-#include <graalvm/llvm/handles.h>
-#include <stdlib.h>
-
-typedef int (*f_int)();
-
-int32_t testAutoDerefHandle(void *managed0, void *managed1) {
-    void *handle0 = create_deref_handle(managed0);
-    void *handle1 = create_deref_handle(managed1);
-    void *handle2 = NULL;
-
-    int32_t val0 = ((f_int) handle0)();
-    int32_t val1 = ((int32_t *) handle1)[0];
-
-    release_handle(handle0);
-    handle2 = create_deref_handle(managed0);
-
-    int32_t val2 = ((f_int) handle2)();
-
-    release_handle(handle1);
-    release_handle(handle2);
-
-    return val0 + val1 + val2;
-}
+#include <truffle.h>
 
 int main() {
+    void *object = polyglot_import("object");
+    void *handle1 = truffle_handle_for_managed(object);
+    void *handle2 = truffle_handle_for_managed(object);
+    void *handle3 = truffle_deref_handle_for_managed(object);
+
+    if (!truffle_is_handle_to_managed(handle1)) {
+        return 1;
+    }
+    if (!truffle_is_handle_to_managed(handle2)) {
+        return 2;
+    }
+    if (!truffle_is_handle_to_managed(handle3)) {
+        return 3;
+    }
+
+    truffle_release_handle(handle2);
+
+    if (!truffle_is_handle_to_managed(handle1)) {
+        return 4;
+    }
+    if (!truffle_is_handle_to_managed(handle3)) {
+        return 5;
+    }
+
+    truffle_release_handle(handle1);
+
+    // normal and deref handles are different spaces, so
+    // releasing the last "normal" handle will invalidate
+    // will invalidate it even if a deref one exists
+    if (truffle_is_handle_to_managed(handle1)) {
+        return 6;
+    }
+
+    truffle_release_handle(handle3);
+
+    if (truffle_is_handle_to_managed(handle3)) {
+        return 7;
+    }
+
     return 0;
 }

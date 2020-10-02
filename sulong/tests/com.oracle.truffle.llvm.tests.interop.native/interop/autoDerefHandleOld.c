@@ -28,26 +28,25 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <graalvm/llvm/polyglot.h>
-#include <graalvm/llvm/handles.h>
-#include <stdlib.h>
+#include <truffle.h>
 
 typedef int (*f_int)();
 
 int32_t testAutoDerefHandle(void *managed0, void *managed1) {
-    void *handle0 = create_deref_handle(managed0);
-    void *handle1 = create_deref_handle(managed1);
+    void *handle0 = truffle_deref_handle_for_managed(managed0);
+    void *handle1 = truffle_deref_handle_for_managed(managed1);
     void *handle2 = NULL;
 
     int32_t val0 = ((f_int) handle0)();
     int32_t val1 = ((int32_t *) handle1)[0];
 
-    release_handle(handle0);
-    handle2 = create_deref_handle(managed0);
+    truffle_release_handle(handle0);
+    handle2 = truffle_deref_handle_for_managed(managed0);
 
     int32_t val2 = ((f_int) handle2)();
 
-    release_handle(handle1);
-    release_handle(handle2);
+    truffle_release_handle(handle1);
+    truffle_release_handle(handle2);
 
     return val0 + val1 + val2;
 }

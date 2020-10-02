@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,29 +29,15 @@
  */
 #include <graalvm/llvm/polyglot.h>
 #include <graalvm/llvm/handles.h>
-#include <stdlib.h>
-
-typedef int (*f_int)();
-
-int32_t testAutoDerefHandle(void *managed0, void *managed1) {
-    void *handle0 = create_deref_handle(managed0);
-    void *handle1 = create_deref_handle(managed1);
-    void *handle2 = NULL;
-
-    int32_t val0 = ((f_int) handle0)();
-    int32_t val1 = ((int32_t *) handle1)[0];
-
-    release_handle(handle0);
-    handle2 = create_deref_handle(managed0);
-
-    int32_t val2 = ((f_int) handle2)();
-
-    release_handle(handle1);
-    release_handle(handle2);
-
-    return val0 + val1 + val2;
-}
 
 int main() {
+    void *p = polyglot_import("object");
+
+    void *p1 = create_handle(p);
+    void *p2 = create_handle(p);
+
+    if (p1 != p2) {
+        return 1;
+    }
     return 0;
 }
