@@ -41,6 +41,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -113,67 +114,106 @@ public final class InterpreterToVM implements ContextAccess {
     // region Get (array) operations
 
     public int getArrayInt(int index, @Host(int[].class) StaticObject array) {
+        return getArrayInt(index, array, BranchProfile.getUncached());
+    }
+
+    public int getArrayInt(int index, @Host(int[].class) StaticObject array, BranchProfile exceptionProfile) {
         try {
             return (array.<int[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
+            exceptionProfile.enter();
             Meta meta = getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
     public StaticObject getArrayObject(int index, @Host(Object[].class) StaticObject array) {
+        return getArrayObject(index, array, BranchProfile.getUncached());
+    }
+
+    public StaticObject getArrayObject(int index, @Host(Object[].class) StaticObject array, BranchProfile exceptionProfile) {
         try {
             return (array.<StaticObject[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
+            exceptionProfile.enter();
             Meta meta = getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
     public long getArrayLong(int index, @Host(long[].class) StaticObject array) {
+        return getArrayLong(index, array, BranchProfile.getUncached());
+    }
+
+    public long getArrayLong(int index, @Host(long[].class) StaticObject array, BranchProfile exceptionProfile) {
         try {
             return (array.<long[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
+            exceptionProfile.enter();
             Meta meta = getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
     public float getArrayFloat(int index, @Host(float[].class) StaticObject array) {
+        return getArrayFloat(index, array, BranchProfile.getUncached());
+    }
+
+    public float getArrayFloat(int index, @Host(float[].class) StaticObject array, BranchProfile exceptionProfile) {
         try {
             return (array.<float[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
+            exceptionProfile.enter();
             Meta meta = getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
     public double getArrayDouble(int index, @Host(double[].class) StaticObject array) {
+        return getArrayDouble(index, array, BranchProfile.getUncached());
+    }
+
+    public double getArrayDouble(int index, @Host(double[].class) StaticObject array, BranchProfile exceptionProfile) {
         try {
             return (array.<double[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
+            exceptionProfile.enter();
             Meta meta = getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
+    public byte getArrayByte(int index, @Host(byte[].class /* or boolean[] */) StaticObject array, BranchProfile exceptionProfile) {
+        return array.getArrayByte(index, getMeta(), exceptionProfile);
+    }
+
     public byte getArrayByte(int index, @Host(byte[].class /* or boolean[] */) StaticObject array) {
-        return array.getArrayByte(index, getMeta());
+        return getArrayByte(index, array, BranchProfile.getUncached());
     }
 
     public char getArrayChar(int index, @Host(char[].class) StaticObject array) {
+        return getArrayChar(index, array, BranchProfile.getUncached());
+    }
+
+    public char getArrayChar(int index, @Host(char[].class) StaticObject array, BranchProfile exceptionProfile) {
         try {
             return (array.<char[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
+            exceptionProfile.enter();
             Meta meta = getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
     public short getArrayShort(int index, @Host(short[].class) StaticObject array) {
+        return getArrayShort(index, array, BranchProfile.getUncached());
+    }
+
+    public short getArrayShort(int index, @Host(short[].class) StaticObject array, BranchProfile exceptionProfile) {
         try {
             return (array.<short[]> unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
+            exceptionProfile.enter();
             Meta meta = getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
@@ -184,69 +224,107 @@ public final class InterpreterToVM implements ContextAccess {
     // region Set (array) operations
 
     public void setArrayInt(int value, int index, @Host(int[].class) StaticObject array) {
+        setArrayInt(value, index, array, BranchProfile.getUncached());
+    }
+
+    public void setArrayInt(int value, int index, @Host(int[].class) StaticObject array, BranchProfile exceptionProfile) {
         try {
             (array.<int[]> unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
+            exceptionProfile.enter();
             Meta meta = getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
     public void setArrayLong(long value, int index, @Host(long[].class) StaticObject array) {
+        setArrayLong(value, index, array, BranchProfile.getUncached());
+    }
+
+    public void setArrayLong(long value, int index, @Host(long[].class) StaticObject array, BranchProfile exceptionProfile) {
         try {
             (array.<long[]> unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
+            exceptionProfile.enter();
             Meta meta = getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
     public void setArrayFloat(float value, int index, @Host(float[].class) StaticObject array) {
+        setArrayFloat(value, index, array, BranchProfile.getUncached());
+    }
+
+    public void setArrayFloat(float value, int index, @Host(float[].class) StaticObject array, BranchProfile exceptionProfile) {
         try {
             (array.<float[]> unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
+            exceptionProfile.enter();
             Meta meta = getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
     public void setArrayDouble(double value, int index, @Host(double[].class) StaticObject array) {
+        setArrayDouble(value, index, array, BranchProfile.getUncached());
+    }
+
+    public void setArrayDouble(double value, int index, @Host(double[].class) StaticObject array, BranchProfile exceptionProfile) {
         try {
             (array.<double[]> unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
+            exceptionProfile.enter();
             Meta meta = getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
-    public void setArrayByte(byte value, int index, @Host(byte[].class /* or boolean[] */) StaticObject arr) {
-        if (getJavaVersion().java9OrLater() && arr.getKlass() == getMeta()._boolean_array) {
-            arr.setArrayByte((byte) (value & 1), index, getMeta());
+    public void setArrayByte(byte value, int index, @Host(byte[].class /* or boolean[] */) StaticObject array) {
+        setArrayByte(value, index, array, BranchProfile.getUncached());
+    }
+
+    public void setArrayByte(byte value, int index, @Host(byte[].class /* or boolean[] */) StaticObject array, BranchProfile exceptionProfile) {
+        if (getJavaVersion().java9OrLater() && array.getKlass() == getMeta()._boolean_array) {
+            array.setArrayByte((byte) (value & 1), index, getMeta(), exceptionProfile);
         } else {
-            arr.setArrayByte(value, index, getMeta());
+            array.setArrayByte(value, index, getMeta(), exceptionProfile);
         }
     }
 
     public void setArrayChar(char value, int index, @Host(char[].class) StaticObject array) {
+        setArrayChar(value, index, array, BranchProfile.getUncached());
+    }
+
+    public void setArrayChar(char value, int index, @Host(char[].class) StaticObject array, BranchProfile exceptionProfile) {
         try {
             (array.<char[]> unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
+            exceptionProfile.enter();
             Meta meta = getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
     public void setArrayShort(short value, int index, @Host(short[].class) StaticObject array) {
+        setArrayShort(value, index, array, BranchProfile.getUncached());
+    }
+
+    public void setArrayShort(short value, int index, @Host(short[].class) StaticObject array, BranchProfile exceptionProfile) {
         try {
             (array.<short[]> unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
+            exceptionProfile.enter();
             Meta meta = getMeta();
             throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
     public void setArrayObject(StaticObject value, int index, StaticObject wrapper) {
-        wrapper.putObject(value, index, getMeta());
+        wrapper.putObject(value, index, getMeta(), BranchProfile.getUncached());
+    }
+
+    public void setArrayObject(StaticObject value, int index, StaticObject wrapper, BranchProfile exceptionProfile) {
+        wrapper.putObject(value, index, getMeta(), exceptionProfile);
     }
 
     // endregion
