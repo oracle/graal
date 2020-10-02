@@ -2058,21 +2058,23 @@ public final class StaticObject implements TruffleObject {
     /**
      * Workaround to avoid casting to Object[] in InterpreterToVM (non-leaf type check).
      */
-    public void putObject(StaticObject value, int index, Meta meta, BranchProfile exceptionCheck) {
+    public void putObject(StaticObject value, int index, Meta meta, BranchProfile exceptionProfile) {
         checkNotForeign();
         assert isArray();
         if (index >= 0 && index < length()) {
-            UNSAFE.putObject(fields, getObjectFieldIndex(index), arrayStoreExCheck(value, ((ArrayKlass) klass).getComponentType(), meta));
+            // TODO(peterssen): Use different profiles for index-out-of-bounds and array-store exceptions.
+            UNSAFE.putObject(fields, getObjectFieldIndex(index), arrayStoreExCheck(value, ((ArrayKlass) klass).getComponentType(), meta, exceptionProfile));
         } else {
-            exceptionCheck.enter();
+            exceptionProfile.enter();
             throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
-    private static Object arrayStoreExCheck(StaticObject value, Klass componentType, Meta meta) {
+    private static Object arrayStoreExCheck(StaticObject value, Klass componentType, Meta meta, BranchProfile exceptionProfile) {
         if (StaticObject.isNull(value) || instanceOf(value, componentType)) {
             return value;
         } else {
+            exceptionProfile.enter();
             throw Meta.throwException(meta.java_lang_ArrayStoreException);
         }
     }
