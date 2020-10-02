@@ -194,7 +194,8 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
 
     private void launchImpl(List<String> argumentsList) {
         if (isAOT()) {
-            maybeNativeExec(argumentsList, true, Collections.emptyMap());
+            List<String> originalArgs = Collections.unmodifiableList(new ArrayList<>(argumentsList));
+            maybeNativeExec(originalArgs, argumentsList, true);
         }
 
         final Deque<String> arguments = new ArrayDeque<>(argumentsList);

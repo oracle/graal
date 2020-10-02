@@ -477,7 +477,7 @@ public abstract class Launcher {
     /**
      * Determines if the tool supports polyglot. Returns true, if {@code --polyglot} option is valid
      * for this tool and polyglot launcher works for it. The default implementation returns false
-     * just when {@link #isStandalone()} is true.
+     * only when {@link #isStandalone()} is true.
      * 
      * @return {@code true}, if polyglot is relevant in this launcher.
      * @since 20.0
@@ -735,7 +735,7 @@ public abstract class Launcher {
         // Parse the arguments, now that we know whether experimental options are allowed
         for (String arg : unrecognizedArgs) {
             if (!parseCommonOption(defaultOptionPrefix, polyglotOptions, experimentalOptions, arg)) {
-                parseJVMOptionOrFail(defaultOptionPrefix, polyglotOptions, experimentalOptions, arg);
+                parsePolyglotOption(defaultOptionPrefix, polyglotOptions, experimentalOptions, arg);
             }
         }
     }
@@ -784,11 +784,11 @@ public abstract class Launcher {
     }
 
     /**
-     * Last-resort parsing. If the option is not VM/JVM one, the execution will fail. For parameter
-     * description see
+     * Parses polyglot options and already-processed --jvm/--native/--vm.* options. For any other
+     * argument, it will abort(). For parameter description see
      * {@link #parseCommonOption(java.lang.String, java.util.Map, boolean, java.lang.String)}.
      */
-    private void parseJVMOptionOrFail(String defaultOptionPrefix, Map<String, String> polyglotOptions, boolean experimentalOptions, String arg) {
+    void parsePolyglotOption(String defaultOptionPrefix, Map<String, String> polyglotOptions, boolean experimentalOptions, String arg) {
         if (arg.equals("--jvm")) {
             if (isAOT()) {
                 throw abort("should not reach here: jvm option failed to switch to JVM");
@@ -800,6 +800,13 @@ public abstract class Launcher {
             }
             return;
         } else if (arg.startsWith("--vm.") && arg.length() > "--vm.".length()) {
+            /*
+             * Ignore those, they should already be applied by now. They can come from 2 source:
+             * from the Bash/Batch launchers, but those launchers remove all such arguments. Or from
+             * a native launcher which switched from native to jvm, in which case we reuse all
+             * original arguments for correctness and already applied the --vm options by passing
+             * them to the JVM directly.
+             */
             return;
         }
         // getLanguageId() or null?
@@ -1033,15 +1040,6 @@ public abstract class Launcher {
         }
     }
 
-    private static void serializePolyglotOptions(Map<String, String> polyglotOptions, List<String> args) {
-        if (polyglotOptions == null) {
-            return;
-        }
-        for (Entry<String, String> entry : polyglotOptions.entrySet()) {
-            args.add("--" + entry.getKey() + '=' + entry.getValue());
-        }
-    }
-
     /**
      * Prints a single line to the output stream, terminated with newline.
      * 
@@ -1093,46 +1091,35 @@ public abstract class Launcher {
 
     /**
      * Possibly re-executes the launcher when JVM or polyglot mode is requested; call only if
-     * {@link #isAOT()} is true.
+     * {@link #isAOT()} is true. If the result is to run native, then it applies VM options on the
+     * current process.
      * 
-     * The method parses VM arguments, if JVM mode is requested, it execs a Java process configured
-     * with supported JVM parameters and system properties over this process - in this case, the
-     * method does not return (except errors).
-     * 
-     * @param args
-     * @param isPolyglot
-     * @param polyglotOptions
+     * The method parses the {@code unrecognizedArgs} for --jvm/--native/--polyglot flags and --vm.*
+     * options. If JVM mode is requested, it execs a Java process configured with supported JVM
+     * parameters and system properties over this process - in this case, the method does not return
+     * (except errors).
+     *
+     * @param originalArgs the original arguments from main(), unmodified.
+     * @param unrecognizedArgs a subset of {@code originalArgs} that was not recognized by
+     *            {@link AbstractLanguageLauncher#preprocessArguments(List, Map)}.
+     * @param isPolyglotLauncher whether this is the {@link PolyglotLauncher} (bin/polyglot)
      * @since 20.0
      */
-    protected final void maybeNativeExec(List<String> args, boolean isPolyglot, Map<String, String> polyglotOptions) {
+    protected final void maybeNativeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher) {
         if (!IS_AOT) {
             return;
         }
-        maybeExec(args, isPolyglot, polyglotOptions, getDefaultVMType());
+        maybeExec(originalArgs, unrecognizedArgs, isPolyglotLauncher, getDefaultVMType());
     }
 
-    void maybeExec(List<String> args, boolean isPolyglot, Map<String, String> polyglotOptions, VMType defaultVmType) {
+    void maybeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher, VMType defaultVmType) {
         assert isAOT();
         VMType vmType = null;
         boolean polyglot = false;
         List<String> jvmArgs = new ArrayList<>();
-        List<String> remainingArgs = new ArrayList<>(args.size());
+        List<String> applicationArgs = new ArrayList<>(originalArgs);
 
-        // move jvm polyglot options to jvmArgs
-        Iterator<Entry<String, String>> polyglotOptionsIterator = polyglotOptions.entrySet().iterator();
-        while (polyglotOptionsIterator.hasNext()) {
-            Map.Entry<String, String> entry = polyglotOptionsIterator.next();
-            if (entry.getKey().startsWith("jvm.")) {
-                jvmArgs.add('-' + entry.getKey().substring(4));
-                if (entry.getValue() != null && !entry.getValue().isEmpty()) {
-                    jvmArgs.add(entry.getValue());
-                }
-                vmType = VMType.JVM;
-                polyglotOptionsIterator.remove();
-            }
-        }
-
-        Iterator<String> iterator = args.iterator();
+        Iterator<String> iterator = unrecognizedArgs.iterator();
         List<String> vmOptions = new ArrayList<>();
         while (iterator.hasNext()) {
             String arg = iterator.next();
@@ -1169,8 +1156,6 @@ public abstract class Launcher {
                 iterator.remove();
             } else if (arg.equals("--polyglot")) {
                 polyglot = true;
-            } else {
-                remainingArgs.add(arg);
             }
         }
         boolean isDefaultVMType = false;
@@ -1184,11 +1169,11 @@ public abstract class Launcher {
                 jvmArgs.add('-' + vmOption);
             }
 
-            if (!isPolyglot && polyglot) {
-                remainingArgs.add(0, "--polyglot");
+            if (!isPolyglotLauncher && polyglot) {
+                applicationArgs.add(0, "--polyglot");
             }
             assert !isStandalone();
-            executeJVM(nativeAccess == null ? System.getProperty("java.class.path") : nativeAccess.getClasspath(jvmArgs), jvmArgs, remainingArgs, polyglotOptions);
+            executeJVM(nativeAccess == null ? System.getProperty("java.class.path") : nativeAccess.getClasspath(jvmArgs), jvmArgs, applicationArgs);
         } else {
             assert vmType == VMType.Native;
 
@@ -1201,12 +1186,12 @@ public abstract class Launcher {
              */
             VMRuntime.initialize();
 
-            if (!isPolyglot && polyglot) {
+            if (!isPolyglotLauncher && polyglot) {
                 assert jvmArgs.isEmpty();
                 if (isStandalone()) {
                     throw abort("--polyglot option is only supported when this launcher is part of a GraalVM.");
                 }
-                executePolyglot(remainingArgs, polyglotOptions, !isDefaultVMType);
+                executePolyglot(applicationArgs, !isDefaultVMType);
             }
         }
     }
@@ -1215,24 +1200,22 @@ public abstract class Launcher {
      * Called if a JVM has to be started instead of AOT binary. The method is only called in AOT
      * mode. Subclasses may override to apply different options or launch mechanism
      *
+     * @param classpath class path to be used with the JVM
      * @param jvmArgs arguments for the VM
      * @param remainingArgs main arguments
-     * @param polyglotOptions additional polyglot-related options
-     * @param classpath class path to be used with the JVM
      */
-    protected void executeJVM(String classpath, List<String> jvmArgs, List<String> remainingArgs, Map<String, String> polyglotOptions) {
-        nativeAccess.execJVM(classpath, jvmArgs, remainingArgs, polyglotOptions);
+    protected void executeJVM(String classpath, List<String> jvmArgs, List<String> remainingArgs) {
+        nativeAccess.execJVM(classpath, jvmArgs, remainingArgs);
     }
 
     /**
-     * Called to execute polyglot binary with the supplied options. Subclasses may eventually
-     * override and implement in a different way.
+     * Called to execute the bin/polyglot launcher with the supplied options. Subclasses may
+     * eventually override and implement in a different way.
      *
      * @param mainArgs program arguments
-     * @param polyglotOptions polyglot options
      */
-    protected void executePolyglot(List<String> mainArgs, Map<String, String> polyglotOptions, boolean forceNative) {
-        nativeAccess.executePolyglot(mainArgs, polyglotOptions, forceNative);
+    protected void executePolyglot(List<String> mainArgs, boolean forceNative) {
+        nativeAccess.executePolyglot(mainArgs, forceNative);
     }
 
     class Native {
@@ -1455,22 +1438,21 @@ public abstract class Launcher {
             }
         }
 
-        private void executePolyglot(List<String> args, Map<String, String> polyglotOptions, boolean forceNative) {
-            List<String> command = new ArrayList<>(args.size() + (polyglotOptions == null ? 0 : polyglotOptions.size()) + 3);
+        private void executePolyglot(List<String> args, boolean forceNative) {
+            List<String> command = new ArrayList<>(args.size() + 3);
             Path executable = getGraalVMBinaryPath("polyglot");
             if (forceNative) {
                 command.add("--native");
             }
             command.add("--use-launcher");
             command.add(getMainClass());
-            serializePolyglotOptions(polyglotOptions, command);
             command.addAll(args);
             exec(executable, command);
         }
 
-        private void execJVM(String classpath, List<String> jvmArgs, List<String> args, Map<String, String> polyglotOptions) {
+        private void execJVM(String classpath, List<String> jvmArgs, List<String> args) {
             // TODO use String[] for command to avoid a copy later
-            List<String> command = new ArrayList<>(jvmArgs.size() + args.size() + (polyglotOptions == null ? 0 : polyglotOptions.size()) + 4);
+            List<String> command = new ArrayList<>(jvmArgs.size() + args.size() + 4);
             Path executable = getGraalVMBinaryPath("java");
             if (classpath != null) {
                 command.add("-classpath");
@@ -1478,7 +1460,6 @@ public abstract class Launcher {
             }
             command.addAll(jvmArgs);
             command.add(getMainClass());
-            serializePolyglotOptions(polyglotOptions, command);
             command.addAll(args);
             exec(executable, command);
         }
