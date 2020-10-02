@@ -38,8 +38,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -53,12 +51,6 @@ import com.oracle.svm.core.util.VMError;
  * complicated nested structure is created that is not supported yet.
  */
 public final class PinnedBuffer implements AutoCloseable {
-
-    @TargetClass(className = "java.nio.Buffer")
-    static final class Target_java_nio_Buffer {
-        @Alias long address;
-    }
-
     private final Buffer buffer;
     private final PinnedObject arrayPin;
     private final int shift;
