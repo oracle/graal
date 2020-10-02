@@ -255,6 +255,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
@@ -375,10 +376,10 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private final Assumption noForeignObjects;
 
-    // Cheap profile for implicit exceptions e.g. null checks, division by 0.
+    // Profile for implicit exceptions e.g. null checks, division by 0, index out of bounds.
     // All implicit exception paths in the method will be compiled if at least one implicit
     // exception is thrown.
-    @CompilationFinal private boolean implicitExceptionSeen;
+    private final BranchProfile implicitExceptionProfile;
 
     @TruffleBoundary
     public BytecodeNode(MethodVersion method, FrameDescriptor frameDescriptor, FrameSlot bciSlot) {
@@ -395,7 +396,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         // TODO(peterssen): Allocate new assumption iff there's a bytecode that can produce foreign
         // objects.
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
-        this.implicitExceptionSeen = false;
+        this.implicitExceptionProfile = BranchProfile.create();
     }
 
     public BytecodeNode(BytecodeNode copy) {
@@ -2169,16 +2170,9 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     // region Misc. checks
 
-    private void enterImplicitException() {
-        if (!implicitExceptionSeen) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            implicitExceptionSeen = true;
-        }
-    }
-
     private StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {
-            enterImplicitException();
+            implicitExceptionProfile.enter();
             throw getMeta().throwNullPointerException();
         }
         return value;
@@ -2188,7 +2182,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (value != 0) {
             return value;
         }
-        enterImplicitException();
+        implicitExceptionProfile.enter();
         throw Meta.throwExceptionWithMessage(getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
@@ -2196,7 +2190,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (value != 0L) {
             return value;
         }
-        enterImplicitException();
+        implicitExceptionProfile.enter();
         throw Meta.throwExceptionWithMessage(getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
