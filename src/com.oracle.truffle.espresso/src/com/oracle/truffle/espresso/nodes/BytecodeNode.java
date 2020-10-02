@@ -1351,6 +1351,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // The array was released, it must be restored for the quickening.
             putObject(frame, top - 1, array);
+            // The stack effect difference vs. original bytecode is always 0.
             quickenArrayLength(frame, top, curBCI);
         }
     }
@@ -1380,9 +1381,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // The array was released, it must be restored for the quickening.
-            putObject(frame, top - 2, array);
             putInt(frame, top - 1, index);
-            quickenArrayLoad(frame, top, curBCI, kind);
+            putObject(frame, top - 2, array);
+            // The stack effect difference vs. original bytecode is always 0.
+            quickenArrayLoad(frame, top, curBCI, loadOpcode, kind);
         }
     }
 
@@ -1390,15 +1392,9 @@ public final class BytecodeNode extends EspressoMethodNode {
         assert IASTORE <= storeOpcode && storeOpcode <= SASTORE;
         JavaKind kind = arrayAccessKind(storeOpcode);
         CompilerAsserts.partialEvaluationConstant(kind);
-        int index;
-        StaticObject array;
-        if (kind.needsTwoSlots()) {
-            index = popInt(frame, top - 3);
-            array = nullCheck(popObject(frame, top - 4));
-        } else {
-            index = popInt(frame, top - 2);
-            array = nullCheck(popObject(frame, top - 3));
-        }
+        int offset = kind.needsTwoSlots() ? 2 : 1;
+        int index = popInt(frame, top - 1 - offset);
+        StaticObject array = nullCheck(popObject(frame, top - 2 - offset));
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
             // @formatter:off
             switch (kind) {
@@ -1418,14 +1414,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // The array was released, it must be restored for the quickening.
-            if (kind.needsTwoSlots()) {
-                putObject(frame, top - 4, array);
-                putInt(frame, top - 3, index);
-            } else {
-                putObject(frame, top - 3, array);
-                putInt(frame, top - 2, index);
-            }
-            quickenArrayStore(frame, top, curBCI, kind);
+            putInt(frame, top - 1 - offset, index);
+            putObject(frame, top - 2 - offset, array);
+            // The stack effect difference vs. original bytecode is always 0.
+            quickenArrayStore(frame, top, curBCI, storeOpcode, kind);
         }
     }
 
@@ -1790,7 +1782,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         return putField.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
-    private void quickenArrayLength(final VirtualFrame frame, int top, int curBCI) {
+    private int quickenArrayLength(final VirtualFrame frame, int top, int curBCI) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode arrayLengthNode;
         synchronized (this) {
@@ -1800,10 +1792,10 @@ public final class BytecodeNode extends EspressoMethodNode {
                 arrayLengthNode = injectQuick(curBCI, ArrayLengthNodeGen.create(top, curBCI), SLIM_QUICK);
             }
         }
-        arrayLengthNode.execute(frame);
+        return arrayLengthNode.execute(frame) - Bytecodes.stackEffectOf(ARRAYLENGTH);
     }
 
-    private void quickenArrayLoad(final VirtualFrame frame, int top, int curBCI, JavaKind componentKind) {
+    private int quickenArrayLoad(final VirtualFrame frame, int top, int curBCI, int loadOpcode, JavaKind componentKind) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode arrayLoadNode;
         synchronized (this) {
@@ -1831,10 +1823,10 @@ public final class BytecodeNode extends EspressoMethodNode {
                 arrayLoadNode = injectQuick(curBCI, arrayLoadNode, SLIM_QUICK);
             }
         }
-        arrayLoadNode.execute(frame);
+        return arrayLoadNode.execute(frame) - Bytecodes.stackEffectOf(loadOpcode);
     }
 
-    private void quickenArrayStore(final VirtualFrame frame, int top, int curBCI, JavaKind componentKind) {
+    private int quickenArrayStore(final VirtualFrame frame, int top, int curBCI, int storeOpcode, JavaKind componentKind) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         QuickNode arrayStoreNode;
         synchronized (this) {
@@ -1862,7 +1854,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 arrayStoreNode = injectQuick(curBCI, arrayStoreNode, SLIM_QUICK);
             }
         }
-        arrayStoreNode.execute(frame);
+        return arrayStoreNode.execute(frame) - Bytecodes.stackEffectOf(storeOpcode);
     }
 
     // endregion quickenForeign
