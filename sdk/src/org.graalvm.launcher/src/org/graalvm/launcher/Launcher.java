@@ -789,12 +789,12 @@ public abstract class Launcher {
      * {@link #parseCommonOption(java.lang.String, java.util.Map, boolean, java.lang.String)}.
      */
     private void parseJVMOptionOrFail(String defaultOptionPrefix, Map<String, String> polyglotOptions, boolean experimentalOptions, String arg) {
-        if ((arg.startsWith("--jvm.") && arg.length() > "--jvm.".length()) || arg.equals("--jvm")) {
+        if (arg.equals("--jvm")) {
             if (isAOT()) {
                 throw abort("should not reach here: jvm option failed to switch to JVM");
             }
             return;
-        } else if ((arg.startsWith("--native.") && arg.length() > "--native.".length()) || arg.equals("--native")) {
+        } else if (arg.equals("--native")) {
             if (!isAOT()) {
                 throw abort("native options are not supported on the JVM");
             }
@@ -1132,77 +1132,26 @@ public abstract class Launcher {
             }
         }
 
-        boolean jvmDotWarned = false;
-
         Iterator<String> iterator = args.iterator();
         List<String> vmOptions = new ArrayList<>();
         while (iterator.hasNext()) {
             String arg = iterator.next();
-            if ((arg.startsWith("--jvm.") && arg.length() > "--jvm.".length()) || arg.equals("--jvm")) {
+            if (arg.equals("--jvm")) {
                 if (vmType == VMType.Native) {
                     throw abort("'--jvm' and '--native' options can not be used together.");
                 }
                 if (isStandalone()) {
-                    if (arg.equals("--jvm")) {
-                        throw abort("'--jvm' is only supported when this launcher is part of a GraalVM.");
-                    } else {
-                        throw abort("'--jvm.*' options are deprecated and only supported when this launcher is part of a GraalVM.");
-                    }
+                    throw abort("'--jvm' is only supported when this launcher is part of a GraalVM.");
                 }
                 vmType = VMType.JVM;
-                if (arg.equals("--jvm.help")) {
-                    if (defaultVmType == VMType.JVM) {
-                        warn("'--jvm.help' is deprecated, use '--help:vm' instead.");
-                    } else {
-                        warn("'--jvm.help' is deprecated, use '--jvm --help:vm' instead.");
-                    }
-                    remainingArgs.add("--help:vm");
-                } else if (arg.startsWith("--jvm.")) {
-                    if (!jvmDotWarned) {
-                        warn("'--jvm.*' options are deprecated, use '--vm.*' instead.");
-                        jvmDotWarned = true;
-                    }
-                    String jvmArg = arg.substring("--jvm.".length());
-                    if (jvmArg.equals("classpath")) {
-                        throw abort("'--jvm.classpath' argument must be of the form '--jvm.classpath=<classpath>', not two separate arguments");
-                    }
-                    if (jvmArg.equals("cp")) {
-                        throw abort("'--jvm.cp' argument must be of the form '--jvm.cp=<classpath>', not two separate arguments");
-                    }
-                    if (jvmArg.startsWith("classpath=") || jvmArg.startsWith("cp=")) {
-                        int eqIndex = jvmArg.indexOf('=');
-                        jvmArgs.add('-' + jvmArg.substring(0, eqIndex));
-                        jvmArgs.add(jvmArg.substring(eqIndex + 1));
-                    } else {
-                        jvmArgs.add('-' + jvmArg);
-                    }
-                }
                 iterator.remove();
-            } else if ((arg.startsWith("--native.") && arg.length() > "--native.".length()) || arg.equals("--native")) {
+            } else if (arg.equals("--native")) {
                 if (vmType == VMType.JVM) {
                     throw abort("'--jvm' and '--native' options can not be used together.");
                 }
                 vmType = VMType.Native;
-                if (arg.equals("--native.help")) {
-                    if (defaultVmType == VMType.Native) {
-                        warn("'--native.help' is deprecated, use '--help:vm' instead.");
-                    } else {
-                        warn("'--native.help' is deprecated, use '--native --help:vm' instead.");
-                    }
-                    remainingArgs.add("--help:vm");
-                } else if (arg.startsWith("--native.")) {
-                    if (!jvmDotWarned) {
-                        warn("'--native.*' options are deprecated, use '--vm.*' instead.");
-                        jvmDotWarned = true;
-                    }
-                    vmOptions.add(arg.substring("--native.".length()));
-                }
                 iterator.remove();
             } else if (arg.startsWith("--vm.") && arg.length() > "--vm.".length()) {
-                if (arg.equals("--vm.help")) {
-                    warn("'--vm.help' is deprecated, use '--help:vm' instead.");
-                    remainingArgs.add("--help:vm");
-                }
                 String vmArg = arg.substring("--vm.".length());
                 if (vmArg.equals("classpath")) {
                     throw abort("'--vm.classpath' argument must be of the form '--vm.classpath=<classpath>', not two separate arguments");
