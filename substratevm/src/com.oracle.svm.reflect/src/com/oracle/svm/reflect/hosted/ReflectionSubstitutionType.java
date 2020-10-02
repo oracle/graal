@@ -645,6 +645,12 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
             ValueNode argumentArray = graphKit.loadLocal(1, JavaKind.Object);
             fillArgsArray(graphKit, argumentArray, 1, args, argTypes);
 
+            createJavaCall(graphKit, cons, ret, args);
+
+            return graphKit.finalizeGraph();
+        }
+
+        protected void createJavaCall(HostedGraphKit graphKit, ResolvedJavaMethod cons, ValueNode ret, ValueNode[] args) {
             graphKit.createJavaCallWithException(InvokeKind.Special, cons, args);
 
             graphKit.noExceptionPart();
@@ -654,8 +660,6 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
             graphKit.throwInvocationTargetException(graphKit.exceptionObject());
 
             graphKit.endInvokeWithException();
-
-            return graphKit.finalizeGraph();
         }
 
         protected ValueNode createNewInstanceNode(ResolvedJavaType type) {
