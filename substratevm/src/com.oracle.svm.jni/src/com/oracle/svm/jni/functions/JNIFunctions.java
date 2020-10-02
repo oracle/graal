@@ -26,7 +26,6 @@ package com.oracle.svm.jni.functions;
 
 // Checkstyle: allow reflection
 
-import java.io.CharConversionException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -317,7 +316,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class)
     @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle FindClass(JNIEnvironment env, CCharPointer cname) {
-        String name = CTypeConversion.toJavaString(cname);
+        String name = Utf8.utf8ToString(cname);
         if (!name.startsWith("[")) {
             name = "L" + name + ";";
         }
@@ -342,8 +341,8 @@ final class JNIFunctions {
         Pointer p = (Pointer) methods;
         for (int i = 0; i < nmethods; i++) {
             JNINativeMethod entry = (JNINativeMethod) p;
-            String name = CTypeConversion.toJavaString(entry.name());
-            String signature = CTypeConversion.toJavaString(entry.signature());
+            String name = Utf8.utf8ToString(entry.name());
+            String signature = Utf8.utf8ToString(entry.signature());
             CFunctionPointer fnPtr = entry.fnPtr();
 
             String declaringClass = MetaUtil.toInternalName(clazz.getName());
@@ -456,15 +455,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class)
     @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle NewStringUTF(JNIEnvironment env, CCharPointer bytes) {
-        String str = null;
-        if (bytes.isNonNull()) {
-            ByteBuffer buffer = CTypeConversion.asByteBuffer(bytes, Integer.MAX_VALUE);
-            try {
-                str = Utf8.utf8ToString(true, buffer);
-            } catch (CharConversionException ignore) {
-            }
-        }
-        return JNIObjectHandles.createLocal(str);
+        return JNIObjectHandles.createLocal(Utf8.utf8ToString(bytes));
     }
 
     /*
@@ -1083,8 +1074,8 @@ final class JNIFunctions {
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
             DynamicHub.fromClass(clazz).ensureInitialized();
 
-            String name = CTypeConversion.toJavaString(cname);
-            String signature = CTypeConversion.toJavaString(csig);
+            String name = Utf8.utf8ToString(cname);
+            String signature = Utf8.utf8ToString(csig);
             return getMethodID(clazz, name, signature, isStatic);
         }
 
@@ -1109,7 +1100,7 @@ final class JNIFunctions {
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
             DynamicHub.fromClass(clazz).ensureInitialized();
 
-            String name = CTypeConversion.toJavaString(cname);
+            String name = Utf8.utf8ToString(cname);
             JNIFieldId fieldID = JNIReflectionDictionary.singleton().getFieldID(clazz, name, isStatic);
             if (fieldID.isNull()) {
                 throw new NoSuchFieldError(clazz.getName() + '.' + name);

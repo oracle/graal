@@ -24,13 +24,10 @@
  */
 package com.oracle.svm.core;
 
-import java.io.CharConversionException;
-
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -62,14 +59,13 @@ public final class VM {
     private static final int versionValueHash = versionValue.hashCode();
 
     public static String getVersion() {
-        try {
-            CCharPointer versionInfoBytes = VERSION_INFO.get();
-            String version = Utf8.utf8ToString(true, CTypeConversion.asByteBuffer(versionInfoBytes, Math.toIntExact(SubstrateUtil.strlen(versionInfoBytes).rawValue())));
-            VMError.guarantee(version.hashCode() == versionValueHash,
-                            "HashCode mismatch for " + VERSION_INFO_SYMBOL_NAME + ": actual " + version.hashCode() + " (expected " + versionValueHash + ")");
-            return SubstrateUtil.split(version, valueSeparator)[1];
-        } catch (CharConversionException ignore) {
-            throw VMError.shouldNotReachHere("Invalid version info in " + VERSION_INFO_SYMBOL_NAME);
+        CCharPointer versionInfoBytes = VERSION_INFO.get();
+        String version = Utf8.utf8ToString(versionInfoBytes);
+        if (version == null || version.hashCode() != versionValueHash) {
+            VMError.shouldNotReachHere("HashCode mismatch for " + VERSION_INFO_SYMBOL_NAME +
+                            ": actual " + (version == null ? "null" : String.valueOf(version.hashCode())) +
+                            " (expected " + versionValueHash + ")");
         }
+        return SubstrateUtil.split(version, valueSeparator)[1];
     }
 }
