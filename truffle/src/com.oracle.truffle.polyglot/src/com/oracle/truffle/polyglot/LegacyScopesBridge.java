@@ -264,19 +264,19 @@ final class LegacyScopesBridge {
                     return scope.getArguments() != null;
                 }
             }
-            return false;
-        } else {
-            return true;
         }
+        return true;
     }
 
     static Object legacyScopes2ScopeObject(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes, Class<? extends TruffleLanguage<?>> language) {
         assert legacyScopes.hasNext();
         CompilerAsserts.neverPartOfCompilation();
+        ArrayList<com.oracle.truffle.api.Scope> scopesList = new ArrayList<>(5);
         if (node instanceof InstrumentableNode && ((InstrumentableNode) node).hasTag(StandardTags.RootTag.class)) {
             // Provide the arguments
             while (legacyScopes.hasNext()) {
                 com.oracle.truffle.api.Scope scope = legacyScopes.next();
+                scopesList.add(scope);
                 if (scope.getNode() == null || scope.getNode() instanceof RootNode) {
                     Object argumentsObj = scope.getArguments();
                     if (argumentsObj == null) {
@@ -285,11 +285,10 @@ final class LegacyScopesBridge {
                     return new MergedScopes(new com.oracle.truffle.api.Scope[]{scope}, new Object[]{argumentsObj}, language);
                 }
             }
-            return null;
-        }
-        ArrayList<com.oracle.truffle.api.Scope> scopesList = new ArrayList<>(5);
-        while (legacyScopes.hasNext()) {
-            scopesList.add(legacyScopes.next());
+        } else {
+            while (legacyScopes.hasNext()) {
+                scopesList.add(legacyScopes.next());
+            }
         }
         com.oracle.truffle.api.Scope[] scopes = scopesList.toArray(new com.oracle.truffle.api.Scope[scopesList.size()]);
         Object[] variables = new Object[scopes.length];

@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -135,6 +136,34 @@ public class ScopeLegacyTest extends AbstractParametrizedLibraryTest {
         scope = interop.getScopeParent(scope);
         checkScope(scope, "V3", "3a", 30, "3b", 31);
         assertFalse(interop.hasScopeParent(scope));
+    }
+
+    @Test
+    public void testArgsAndVarsAtRoot() throws Exception {
+        setupScopes(com.oracle.truffle.api.Scope.newBuilder("V1", createVariables("1v", 1)).build());
+        Node location = new ScopedViewLegacyTest.TestInstrumentableNode(StandardTags.RootTag.class);
+        ScopedViewLegacyTest.TestRootNode root = createRoot(language);
+        root.setChild(location);
+        NodeLibrary nodeLibrary = createLibrary(NodeLibrary.class, location);
+        // No arguments
+        assertFalse(nodeLibrary.hasScope(location, null));
+
+        setupScopes(com.oracle.truffle.api.Scope.newBuilder("V1", createVariables("1v", 1)).arguments(createVariables("1a", 10, "1b", 11)).build());
+        location = new ScopedViewLegacyTest.TestInstrumentableNode(StandardTags.RootTag.class);
+        root = createRoot(language);
+        root.setChild(location);
+        Object scope = nodeLibrary.getScope(location, null, true);
+        // Just arguments
+        checkScope(scope, "V1", "1a", 10, "1b", 11);
+
+        // Variables when with a non-root node
+        setupScopes(com.oracle.truffle.api.Scope.newBuilder("V1", createVariables("1v", 1)).arguments(createVariables("1a", 10, "1b", 11)).node(new Node() {
+        }).build());
+        location = new ScopedViewLegacyTest.TestInstrumentableNode(StandardTags.RootTag.class);
+        root = createRoot(language);
+        root.setChild(location);
+        scope = nodeLibrary.getScope(location, null, true);
+        checkScope(scope, "V1", "1v", 1);
     }
 
     private void setupScopes(com.oracle.truffle.api.Scope... scopes) {

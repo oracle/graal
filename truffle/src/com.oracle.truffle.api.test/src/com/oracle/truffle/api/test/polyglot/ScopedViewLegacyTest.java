@@ -58,6 +58,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -99,12 +100,29 @@ public class ScopedViewLegacyTest extends AbstractParametrizedLibraryTest {
 
     static class TestInstrumentableNode extends Node implements InstrumentableNode {
 
+        private final Class<? extends Tag> tag;
+
+        TestInstrumentableNode() {
+            this.tag = null;
+        }
+
+        TestInstrumentableNode(Class<? extends Tag> tag) {
+            this.tag = tag;
+        }
+
+        @Override
         public boolean isInstrumentable() {
             return true;
         }
 
+        @Override
         public WrapperNode createWrapper(ProbeNode probe) {
             return null;
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> t) {
+            return t == this.tag;
         }
 
     }
