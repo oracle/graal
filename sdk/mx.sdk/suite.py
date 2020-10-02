@@ -456,7 +456,7 @@ suite = {
           "file:3rd_party_license_llvm-toolchain.txt",
         ],
         "./patches/" : [
-          "file:patches/*",
+          "file:llvm-patches/*",
         ],
         "./patches/graalvm-llvm-runtime/" : [
           "file:llvm-patches/sulong/*",
