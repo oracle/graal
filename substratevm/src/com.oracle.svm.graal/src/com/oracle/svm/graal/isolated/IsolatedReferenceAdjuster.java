@@ -99,7 +99,8 @@ final class IsolatedReferenceAdjuster implements ReferenceAdjuster {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <T> NonmovableObjectArray<T> copyOfObjectArray(T[] source) {
-        NonmovableObjectArray<T> copy = NonmovableArrays.createObjectArray(source.length);
+        @SuppressWarnings("unchecked")
+        NonmovableObjectArray<T> copy = NonmovableArrays.createObjectArray((Class<T[]>) source.getClass(), source.length);
         for (int i = 0; i < source.length; i++) {
             setObjectInArray(copy, i, source[i]);
         }
