@@ -106,6 +106,7 @@ class NativeImageVM(GraalVm):
             self.extra_profile_run_args = []
             self.extra_agent_profile_run_args = []
             self.benchmark_name = None
+            self.benchmark_suite_name = None
             self.benchmark_output_dir = None
             self.config_dir = None
             self.profile_dir = None
@@ -153,6 +154,9 @@ class NativeImageVM(GraalVm):
                     # not for end-users
                     if trimmed_arg.startswith('benchmark-name='):
                         self.benchmark_name = trimmed_arg[len('benchmark-name='):]
+                        found = True
+                    if trimmed_arg.startswith('benchmark-suite-name='):
+                        self.benchmark_suite_name = trimmed_arg[len('benchmark-suite-name='):]
                         found = True
                     if not found:
                         mx.abort("Invalid benchmark argument: " + arg)
@@ -368,11 +372,12 @@ class NativeImageVM(GraalVm):
     def rules(self, output, benchmarks, bmSuiteArgs):
         return [
             mx_benchmark.StdOutRule(
-                r"The executed image size for benchmark (?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
+                r"The executed image size for benchmark (?P<bench_suite>[a-zA-Z0-9_\-]+):(?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
                 {
+                    "bench-suite": ("<bench_suite>", str),
                     "benchmark": ("<benchmark>", str),
                     "vm": "svm",
-                    "metric.name": "aot-image-size",
+                    "metric.name": "binary-size",
                     "metric.value": ("<value>", int),
                     "metric.unit": "B",
                     "metric.type": "numeric",
@@ -506,8 +511,9 @@ class NativeImageVM(GraalVm):
                 with stages.set_command(image_run_cmd) as s:
                     s.execute_command(True)
                     if s.exit_code == 0:
+                        # The image size for benchmarks is tracked by printing on stdout and matching the rule.
                         image_size = os.stat(image_path).st_size
-                        out('The executed image size for benchmark ' + config.benchmark_name + ' is ' + str(image_size) + ' B')
+                        out('The executed image size for benchmark ' + config.benchmark_suite_name + ':' + config.benchmark_name + ' is ' + str(image_size) + ' B')
 
     def create_log_files(self, config, executable_name, stage):
         stdout_path = os.path.abspath(
