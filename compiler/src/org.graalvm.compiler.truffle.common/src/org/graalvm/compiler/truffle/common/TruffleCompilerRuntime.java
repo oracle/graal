@@ -363,7 +363,7 @@ public interface TruffleCompilerRuntime {
                 if (value == null) {
                     continue;
                 }
-                sb.append('|');
+                sb.append("|");
                 sb.append(property);
 
                 String valueString;
@@ -376,7 +376,7 @@ public interface TruffleCompilerRuntime {
                 }
 
                 int length = Math.max(1, propertyWidth - property.length());
-                sb.append(String.format(" %" + length + "s ", valueString));
+                sb.append(String.format(" %" + length + "s", valueString));
             }
         }
         return sb.toString();
