@@ -985,8 +985,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     void onSubclassMethodChanged(Ids<Object> ids) {
         MethodVersion oldVersion = methodVersion;
         CodeAttribute codeAttribute = oldVersion.getCodeAttribute();
-        codeAttribute.onRedefine();
-        methodVersion = new MethodVersion(oldVersion.pool, oldVersion.linkedMethod, codeAttribute);
+        // create a copy of the code attribute using the original
+        // code of the old version. An obsolete method could be
+        // running quickened bytecode and we can't safely patch
+        // the bytecodes back to the original.
+        CodeAttribute newCodeAttribute = new CodeAttribute(codeAttribute);
+        methodVersion = new MethodVersion(oldVersion.pool, oldVersion.linkedMethod, newCodeAttribute);
         oldVersion.getAssumption().invalidate();
         ids.replaceObject(oldVersion, methodVersion);
     }

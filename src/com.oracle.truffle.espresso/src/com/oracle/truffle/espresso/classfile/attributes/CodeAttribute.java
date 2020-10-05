@@ -69,6 +69,11 @@ public final class CodeAttribute extends Attribute {
         this.majorVersion = majorVersion;
     }
 
+    public CodeAttribute(CodeAttribute copy) {
+        this(copy.getName(), copy.getMaxStack(), copy.getMaxLocals(), Arrays.copyOf(copy.getOriginalCode(), copy.getOriginalCode().length), copy.getExceptionHandlers(), copy.attributes,
+                        copy.getMajorVersion());
+    }
+
     public int getMaxStack() {
         return maxStack;
     }
@@ -159,10 +164,5 @@ public final class CodeAttribute extends Attribute {
         } catch (Throwable e) {
             throw EspressoError.unexpected("Throw during printing. Aborting...", e);
         }
-    }
-
-    public void onRedefine() {
-        // make sure to reset patched bytecode for the code array
-        System.arraycopy(originalCode, 0, code, 0, originalCode.length);
     }
 }
