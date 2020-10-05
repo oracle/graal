@@ -8,6 +8,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * In host interop, `null` now adheres to Java semantics:
 	* (Host interop's) `null` has no meta-object (e.g. `Value.getMetaObject()` returns `null`)
 	* `Value.isMetaInstance(Object)` behaves like `instanceof` with respect to `null` (e.g. `null` is **NOT** an instance of any meta-object)
+* Removed handling of `--jvm.*` and `--native.*` launcher options, which were deprecated since 1.0.0 RC14.
 
 ## Version 20.2.0
 * Added `-Dpolyglot.engine.AllowExperimentalOptions=true` to allow experimental options for all polyglot engines of a host VM. This system property is intended to be used for testing only and should not be enabled in production environments.
@@ -25,7 +26,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * Added `bailout` into performance warning kinds used by `TracePerformanceWarnings`, `PerformanceWarningsAreFatal` and `CompilationExceptionsAreFatal` options.
 * Added [OptionDescriptor.getDeprecationMessage](https://www.graalvm.org/sdk/javadoc/org/graalvm/options/OptionDescriptor.html#getDeprecationMessage--) returning the option deprecation reason. Added [OptionDescriptor.Builder.deprecationMessage()](https://www.graalvm.org/sdk/javadoc/org/graalvm/options/OptionDescriptor.Builder.html#deprecationMessage-java.lang.String-) to set the option deprecation reason.
 * Added `Value.isMetaObject()`, `Value.getMetaQualifiedName()`, `Value.getMetaSimpleName()` and `Value.isMetaInstance(Object)` to allow language agnostic access to meta-objects like classes or types.  
-* The result of `Value.getMetaObject()` will now return always [meta-objects](Value.isMetaObject). It is recommended but not required to change uses of meta-objects to use `Value.getMetaQualifiedName()` instead of `Value.toString()` to return a type name. 
+* The result of `Value.getMetaObject()` will now return always [meta-objects](Value.isMetaObject). It is recommended but not required to change uses of meta-objects to use `Value.getMetaQualifiedName()` instead of `Value.toString()` to return a type name.
 * Added [Context.Builder.hostClassLoader](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#hostClassLoader-java.lang.ClassLoader-) to allow an embedder to specify a context ClassLoader for code execution.
 
 
@@ -50,7 +51,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 
 ## Version 19.2.0
 * Added support for date, time, timezone and duration values in polyglot
-	* Added methods to identify polyglot date, time, timezone and duration values in `Value`. See `Value.isDate`, `Value.isTime`, `Value.isTimeZone`, `Value.isDuration`. 
+	* Added methods to identify polyglot date, time, timezone and duration values in `Value`. See `Value.isDate`, `Value.isTime`, `Value.isTimeZone`, `Value.isDuration`.
 	* Polyglot languages now interpret the `java.time` host values of type `LocalDate`, `LocalTime`, `LocalDateTime`, `ZonedDateTime`, `Instant`, `ZoneId` and `Duration`. They are mapped to the appropriate guest language types.
 	* Added `ProxyDate`, `ProxyTime`, `ProxyTimeZone`, `ProxyInstant` and `ProxyDuration` to proxy date time and duration related guest values.
 * Added `Context.Builder.timeZone(ZoneId)` to configure the default timezone of polyglot contexts.
