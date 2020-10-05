@@ -1074,8 +1074,9 @@ public final class BytecodeNode extends EspressoMethodNode {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             BytecodeStream original = new BytecodeStream(getMethodVersion().getCodeAttribute().getOriginalCode());
                             char cpi = original.readCPI(curBCI);
-                            Method resolutionSeed = resolveMethod(quickNode.getOpcode(), cpi, true);
-                            QuickNode invoke = insert(dispatchQuickened(top, curBCI, cpi, quickNode.getOpcode(), statementIndex, resolutionSeed, getContext().InlineFieldAccessors));
+                            int nodeOpcode = quickNode.getOpcode();
+                            Method resolutionSeed = resolveMethod(nodeOpcode, cpi, true);
+                            QuickNode invoke = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors));
                             nodes[bs.readCPI(curBCI)] = invoke;
                             top += invoke.execute(frame);
                         } else {
