@@ -544,7 +544,12 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
             // enter the thread info already
             prev = (PolyglotContextImpl) singleContextState.contextThreadLocal.setReturnParent(this);
-            threadInfo.enter(engine, this);
+            try {
+                threadInfo.enter(engine, this);
+            } catch (Throwable t) {
+                PolyglotContextImpl.getSingleContextState().getContextThreadLocal().set(prev);
+                throw t;
+            }
 
             if (transitionToMultiThreading) {
                 // we need to verify that all languages give access
