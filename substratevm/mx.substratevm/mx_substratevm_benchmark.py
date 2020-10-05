@@ -90,7 +90,10 @@ _RENAISSANCE_EXTRA_VM_ARGS = {
     'movie-lens'        : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.hadoop.metrics2.MetricsSystem$Callback',
                            '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime', '-Dnative-image.benchmark.extra-image-build-argument=-H:IncludeResourceBundles=sun.security.util.Resources'],
     'page-rank'         : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.hadoop.metrics2.MetricsSystem$Callback',
-                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime']
+                           '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'],
+
+    # Initialization at build time is necessary for aot inliner optimizations (GR-26370).
+    'scrabble'          : ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=--initialize-at-build-time=org.renaissance.jdk.streams.JavaScrabble']
 }
 
 _renaissance_config = {
