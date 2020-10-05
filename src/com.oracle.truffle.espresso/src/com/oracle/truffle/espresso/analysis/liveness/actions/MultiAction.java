@@ -23,20 +23,54 @@
 
 package com.oracle.truffle.espresso.analysis.liveness.actions;
 
+import java.util.ArrayList;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
 public class MultiAction extends LocalVariableAction {
-    @CompilerDirectives.CompilationFinal(dimensions = 1) LocalVariableAction actions[];
+    private static final LocalVariableAction[] EMPTY_ACTIONS = new LocalVariableAction[0];
+
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private final LocalVariableAction actions[];
+
+    public MultiAction(LocalVariableAction[] actions) {
+        this.actions = actions;
+    }
 
     @Override
     @ExplodeLoop
     public void execute(VirtualFrame frame, BytecodeNode node) {
         for (LocalVariableAction action : actions) {
             action.execute(frame, node);
+        }
+    }
+
+    public static class TempMultiAction extends LocalVariableAction {
+        private final ArrayList<LocalVariableAction> actions;
+
+        @Override
+        public void execute(VirtualFrame frame, BytecodeNode node) {
+            throw EspressoError.shouldNotReachHere();
+        }
+
+        public void add(LocalVariableAction action) {
+            actions.add(action);
+        }
+
+        public TempMultiAction() {
+            this.actions = new ArrayList<>();
+        }
+
+        public TempMultiAction(ArrayList<LocalVariableAction> actions) {
+            this.actions = actions;
+        }
+
+        public MultiAction freeze() {
+            return new MultiAction(actions.toArray(EMPTY_ACTIONS));
         }
     }
 }

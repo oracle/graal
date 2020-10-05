@@ -75,7 +75,7 @@ public class History implements Iterable<Record> {
 
         @Override
         public boolean hasNext() {
-            return pos > 0;
+            return pos >= 0;
         }
 
         @Override

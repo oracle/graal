@@ -47,6 +47,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.FSTORE_0;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.FSTORE_1;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.FSTORE_2;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.FSTORE_3;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.IINC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_0;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_1;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_2;
@@ -83,10 +84,11 @@ public class LoadStoreFinder extends BlockIteratorClosure {
         int bci = b.start();
         while (bci <= b.end()) {
             int opcode = bs.currentBC(bci);
-            if (isLoad(opcode)) {
+            if (opcode == IINC) {
+                history.add(new Record(bci, findLocalIndex(bs, bci, opcode), TYPE.IINC));
+            } else if (isLoad(opcode)) {
                 history.add(new Record(bci, findLocalIndex(bs, bci, opcode), TYPE.LOAD));
-            }
-            if (isStore(opcode)) {
+            } else if (isStore(opcode)) {
                 history.add(new Record(bci, findLocalIndex(bs, bci, opcode), TYPE.STORE));
             }
             bci = bs.nextBCI(bci);
@@ -162,7 +164,8 @@ public class LoadStoreFinder extends BlockIteratorClosure {
 
     enum TYPE {
         LOAD,
-        STORE
+        STORE,
+        IINC,
     }
 
 }

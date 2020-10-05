@@ -28,6 +28,8 @@ public interface LinkedBlock extends Block {
 
     int[] successorsID();
 
+    int[] predecessorsID();
+
     boolean isLeaf();
 
     default boolean hasExceptionHandler() {
@@ -35,6 +37,6 @@ public interface LinkedBlock extends Block {
     }
 
     default int[] getExceptionHandlers() {
-        return EspressoBlock.EMPTY_SUCCESSORS;
+        return EspressoBlock.EMPTY_ID_ARRAY;
     }
 }

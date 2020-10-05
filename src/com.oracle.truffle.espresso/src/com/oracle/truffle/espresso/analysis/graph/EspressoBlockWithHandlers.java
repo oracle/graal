@@ -30,8 +30,8 @@ public class EspressoBlockWithHandlers extends EspressoBlock implements Exceptio
     // Contains the handlers index in method.getExceptionHandlers.
     private int[] handlers;
 
-    public EspressoBlockWithHandlers(EspressoExecutionGraph graph, int id, int start, int end, int[] successors, int[] handlers) {
-        super(graph, id, start, end, successors);
+    public EspressoBlockWithHandlers(EspressoExecutionGraph graph, int id, int start, int end, int[] successors, int[] handlers, int[] predecessors) {
+        super(graph, id, start, end, successors, predecessors);
         this.handlers = handlers;
     }
 

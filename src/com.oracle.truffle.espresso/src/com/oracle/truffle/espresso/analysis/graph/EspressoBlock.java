@@ -26,24 +26,26 @@ package com.oracle.truffle.espresso.analysis.graph;
 import java.util.Arrays;
 
 public class EspressoBlock implements LinkedBlock {
-    public static final int[] EMPTY_SUCCESSORS = new int[0];
+    public static final int[] EMPTY_ID_ARRAY = new int[0];
 
     private final EspressoExecutionGraph graph;
     private final int id;
     private final int start;
     private final int end;
     private final int[] successors;
+    private final int[] predecessors;
 
     public EspressoExecutionGraph graph() {
         return graph;
     }
 
-    public EspressoBlock(EspressoExecutionGraph graph, int id, int start, int end, int[] successors) {
+    public EspressoBlock(EspressoExecutionGraph graph, int id, int start, int end, int[] successors, int[] predecessors) {
         this.graph = graph;
         this.id = id;
         this.start = start;
         this.end = end;
         this.successors = successors;
+        this.predecessors = predecessors;
     }
 
     @Override
@@ -69,6 +71,11 @@ public class EspressoBlock implements LinkedBlock {
     @Override
     public int[] successorsID() {
         return successors;
+    }
+
+    @Override
+    public int[] predecessorsID() {
+        return predecessors;
     }
 
     @Override

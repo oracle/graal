@@ -38,9 +38,9 @@ import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 
-public final class BlockBuilder {
+public final class GraphBuilder {
     public static Graph<? extends LinkedBlock> build(Method method) {
-        return new BlockBuilder(method).build();
+        return new GraphBuilder(method).build();
     }
 
     private static final long BLOCK_START = 1L << 63;
@@ -69,7 +69,7 @@ public final class BlockBuilder {
 
     private int nBlocks;
 
-    private BlockBuilder(Method method) {
+    private GraphBuilder(Method method) {
         this.method = method;
         this.bs = new BytecodeStream(method.getCode());
         this.status = new long[bs.endBCI()];
@@ -85,6 +85,8 @@ public final class BlockBuilder {
         spawnBlocks();
         // Register handlers.
         registerHandlers();
+        // Register predecessors.
+        registerPredecessors();
         // spawn the espresso graph.
         return promote();
     }
@@ -172,6 +174,17 @@ public final class BlockBuilder {
                 currentBlock++;
             }
             pos++;
+        }
+    }
+
+    /**
+     * Assigns to each temporary block its predecessors.
+     */
+    private void registerPredecessors() {
+        for (int id = 0; id < temporaryBlocks.length; id++) {
+            for (int successor : temporaryBlocks[id].successors) {
+                temporaryBlocks[successor].registerPredecessor(id);
+            }
         }
     }
 
@@ -322,6 +335,7 @@ public final class BlockBuilder {
         private final int[] successors;
 
         private final ArrayList<Integer> handlers = new ArrayList<>();
+        private final ArrayList<Integer> predecessors = new ArrayList<>();
 
         TemporaryBlock(int id, int start, int end, int[] successors) {
             this.id = id;
@@ -353,17 +367,21 @@ public final class BlockBuilder {
             handlers.add(handlerPos);
         }
 
-        EspressoBlock promote(BlockBuilder builder, EspressoExecutionGraph graph) {
-            if (successors.length == 0 && handlers.isEmpty()) {
-                return new EspressoBlock(graph, id, start, end, EspressoBlock.EMPTY_SUCCESSORS);
-            }
-            if (handlers.isEmpty()) {
-                return new EspressoBlock(graph, id, start, end, successors);
-            }
-            return new EspressoBlockWithHandlers(graph, id, start, end, mergeHandlers(builder), toIntArray(handlers));
+        void registerPredecessor(int predecessor) {
+            predecessors.add(predecessor);
         }
 
-        private int[] mergeHandlers(BlockBuilder builder) {
+        EspressoBlock promote(GraphBuilder builder, EspressoExecutionGraph graph) {
+            if (successors.length == 0 && handlers.isEmpty()) {
+                return new EspressoBlock(graph, id, start, end, EspressoBlock.EMPTY_ID_ARRAY, toIntArray(predecessors));
+            }
+            if (handlers.isEmpty()) {
+                return new EspressoBlock(graph, id, start, end, successors, toIntArray(predecessors));
+            }
+            return new EspressoBlockWithHandlers(graph, id, start, end, mergeHandlers(builder), toIntArray(handlers), toIntArray(predecessors));
+        }
+
+        private int[] mergeHandlers(GraphBuilder builder) {
             int[] entireSuccessors = new int[successors.length + handlers.size()];
             System.arraycopy(successors, 0, entireSuccessors, 0, successors.length);
             for (int i = 0; i < handlers.size(); i++) {

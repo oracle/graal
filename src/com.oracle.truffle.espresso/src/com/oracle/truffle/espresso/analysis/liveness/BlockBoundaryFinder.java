@@ -102,8 +102,13 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
         BitSet entryLiveSet = new BitSet(maxLocals);
         for (Record record : blockHistory[blockID]) {
             if (!treated.get(record.local)) {
-                if (record.type == LoadStoreFinder.TYPE.LOAD) {
-                    entryLiveSet.set(record.local);
+                switch (record.type) {
+                    case LOAD: // Fallthrough
+                    case IINC:
+                        entryLiveSet.set(record.local);
+                        break;
+                    case STORE:
+                        break;
                 }
                 treated.set(record.local);
             }
@@ -197,6 +202,7 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
     }
 
     private BitSet mergeSuccessors(BitSet[] lives) {
+        // TODO: use BitSet.or
         BitSet merges = new BitSet(maxLocals);
         for (BitSet live : lives) {
             for (int i = 0; i < maxLocals; i++) {

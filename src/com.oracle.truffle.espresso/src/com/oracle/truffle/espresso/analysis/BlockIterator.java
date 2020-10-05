@@ -54,7 +54,7 @@ public class BlockIterator implements AnalysisProcessor {
     protected BlockIterator(Method m, Graph<? extends LinkedBlock> graph, BlockIteratorClosure closure) {
         assert m.getCodeAttribute() != null;
         this.bs = new BytecodeStream(m.getCode());
-        this.graph = graph == null ? BlockBuilder.build(m) : graph;
+        this.graph = graph == null ? GraphBuilder.build(m) : graph;
         this.enqueued = new BitSet(graph.totalBlocks());
         this.done = new BitSet(graph.totalBlocks());
         this.closure = closure;
