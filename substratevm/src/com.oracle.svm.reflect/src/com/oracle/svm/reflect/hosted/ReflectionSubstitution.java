@@ -187,8 +187,8 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
      * {@code MethodAccessor} or {@code ConstructorAccessor}.
      */
     synchronized Class<?> getProxyClass(Member member) {
-        Class<?> ret = proxyMap.get(member);
-        if (ret == null) {
+        Class<?> proxyClass = proxyMap.get(member);
+        if (proxyClass == null) {
             /* the unique ID is added for unit tests that don't change the class loader */
             ClassLoader loader = imageClassLoader.getClassLoader();
             String name = getStableProxyName(member) + PROXY_NAME_SEPARATOR + proxyNr.incrementAndGet();
@@ -205,19 +205,19 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
                 proxyBC = generateProxyClass14(name, ifaces, loader);
             }
             try {
-                ret = (Class<?>) defineClass.invoke(loader, name, proxyBC, 0, proxyBC.length);
-                resolveClass.invoke(loader, ret);
-                proxyMap.put(member, ret);
+                proxyClass = (Class<?>) defineClass.invoke(loader, name, proxyBC, 0, proxyBC.length);
+                resolveClass.invoke(loader, proxyClass);
+                proxyMap.put(member, proxyClass);
 
-                ResolvedJavaType type = metaAccess.lookupJavaType(ret);
+                ResolvedJavaType type = metaAccess.lookupJavaType(proxyClass);
                 typeToMember.put(type, member);
             } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
         }
         /* Always initialize proxy classes. */
-        classInitializationSupport.forceInitializeHosted(ret, "all proxy classes are initialized", false);
-        return ret;
+        classInitializationSupport.forceInitializeHosted(proxyClass, "all proxy classes are initialized", false);
+        return proxyClass;
     }
 
     private boolean isReflectionProxy(ResolvedJavaType type) {
@@ -264,12 +264,12 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         }
     }
 
-    private synchronized ReflectionSubstitutionType getSubstitution(ResolvedJavaType original) {
-        ReflectionSubstitutionType subst = getSubstitutionType(original);
+    private synchronized ReflectionSubstitutionType getSubstitution(ResolvedJavaType proxyClass) {
+        ReflectionSubstitutionType subst = getSubstitutionType(proxyClass);
         if (subst == null) {
-            Member member = typeToMember.get(original);
-            subst = ImageSingletons.lookup(ReflectionSubstitutionType.Factory.class).create(original, member);
-            addSubstitutionType(original, subst);
+            Member member = typeToMember.get(proxyClass);
+            subst = ImageSingletons.lookup(ReflectionSubstitutionType.Factory.class).create(proxyClass, member);
+            addSubstitutionType(proxyClass, subst);
         }
         return subst;
     }
