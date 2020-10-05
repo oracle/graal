@@ -922,7 +922,7 @@ public class SubstrateGraphBuilderPlugins {
                     } else {
                         throw VMError.shouldNotReachHere("Unexpected class object: " + clazzOrHub);
                     }
-                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(!desiredAssertionStatus));
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(desiredAssertionStatus));
                     return true;
                 }
                 return false;
