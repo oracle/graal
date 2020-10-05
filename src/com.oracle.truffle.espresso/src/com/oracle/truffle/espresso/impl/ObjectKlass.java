@@ -120,9 +120,8 @@ public final class ObjectKlass extends Klass {
     private final StaticObject definingClassLoader;
 
     @CompilationFinal volatile RedefinitionCache redefineCache;
-    private Field redefinitionCountField;
 
-    // used for class redefintion whenrefreshing vtables etc.
+    // used for class redefintion when refreshing vtables etc.
     private final ArrayList<ObjectKlass> subTypes = new ArrayList<>(8);
 
     public static final int LOADED = 0;
@@ -1146,17 +1145,8 @@ public final class ObjectKlass extends Klass {
 
     private void flushReflectionCaches() {
         // increment the redefine count on the class instance to flush reflection caches
-        if (redefinitionCountField == null) {
-            for (Field f : mirror().getKlass().getDeclaredFields()) {
-                // TODO(Gregersen) - is the field name the same on all JDKs?
-                if ("classRedefinedCount".equals(f.getNameAsString())) {
-                    redefinitionCountField = f;
-                    break;
-                }
-            }
-        }
-        int value = InterpreterToVM.getFieldInt(mirror(), redefinitionCountField);
-        InterpreterToVM.setFieldInt(++value, mirror(), redefinitionCountField);
+        int value = InterpreterToVM.getFieldInt(mirror(), getMeta().java_lang_Class_classRedefinedCount);
+        InterpreterToVM.setFieldInt(++value, mirror(), getMeta().java_lang_Class_classRedefinedCount);
     }
 
     private static Method findMethod(ParserMethod changedMethod, Method[] declaredMethods) {

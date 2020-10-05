@@ -410,6 +410,8 @@ public final class Meta implements ContextAccess {
         java_lang_AssertionStatusDirectives_packageEnabled = java_lang_AssertionStatusDirectives.lookupField(Name.packageEnabled, Type._boolean_array);
         java_lang_AssertionStatusDirectives_deflt = java_lang_AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
 
+        java_lang_Class_classRedefinedCount = java_lang_Class.lookupField(Name.classRedefinedCount, Type._int);
+
         // Classes and Members that differ from Java 8 to 11
 
         java_lang_Class_classLoader = java_lang_Class.lookupField(Name.classLoader, Type.java_lang_ClassLoader);
@@ -550,6 +552,7 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_Class_getName;
     public final Method java_lang_Class_forName_String;
     public final Method java_lang_Class_forName_String_boolean_ClassLoader;
+    public final Field java_lang_Class_classRedefinedCount;
 
     // Primitives.
     public final PrimitiveKlass _boolean;

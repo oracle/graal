@@ -206,6 +206,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> forName = StaticSymbols.putName("forName");
         public static final Symbol<Name> module = StaticSymbols.putName("module");
         public static final Symbol<Name> classLoader = StaticSymbols.putName("classLoader");
+        public static final Symbol<Name> classRedefinedCount = StaticSymbols.putName("classRedefinedCount");
 
         // j.l.ClassLoader
         public static final Symbol<Name> addClass = StaticSymbols.putName("addClass");
