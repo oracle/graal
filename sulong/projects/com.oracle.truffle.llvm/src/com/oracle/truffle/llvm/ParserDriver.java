@@ -405,8 +405,6 @@ final class ParserDriver {
                 file = context.getEnv().getInternalTruffleFile(path.toUri());
             }
         }
-        // The truffle file is cached in the context.
-        file = context.getOrAddTruffleFile(file);
         return file;
     }
 
