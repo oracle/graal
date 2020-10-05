@@ -93,7 +93,7 @@ _RENAISSANCE_EXTRA_VM_ARGS = {
                            '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'],
 
     # Initialization at build time is necessary for aot inliner optimizations (GR-26370).
-    'scrabble'          : ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=--initialize-at-build-time=org.renaissance.jdk.streams.JavaScrabble']
+    'scrabble'          : ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.renaissance.jdk.streams.JavaScrabble']
 }
 
 _renaissance_config = {
