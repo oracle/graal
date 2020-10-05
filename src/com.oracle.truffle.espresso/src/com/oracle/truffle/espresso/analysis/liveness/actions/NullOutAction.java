@@ -21,11 +21,21 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.analysis.liveness;
+package com.oracle.truffle.espresso.analysis.liveness.actions;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
-public abstract class LocalVariableAction {
-    public abstract void execute(VirtualFrame frame, BytecodeNode node);
+public class NullOutAction extends LocalVariableAction {
+    private final int local;
+
+    public NullOutAction(int local) {
+        this.local = local;
+    }
+
+    @Override
+    public void execute(VirtualFrame frame, BytecodeNode node) {
+        node.nullOutLocalObject(frame, local);
+    }
 }

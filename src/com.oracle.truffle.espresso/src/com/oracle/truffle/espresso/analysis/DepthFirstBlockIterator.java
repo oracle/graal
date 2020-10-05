@@ -60,7 +60,10 @@ public class DepthFirstBlockIterator extends BlockIterator {
             successors[b.id()] = iterator;
         }
         assert iterator.hasNext();
-        push(graph.get(iterator.next()));
+        while (iterator.hasNext() && !push(graph.get(iterator.next()))) {
+            // nothing
+        }
+
     }
 
     private static class IntArrayIterator {

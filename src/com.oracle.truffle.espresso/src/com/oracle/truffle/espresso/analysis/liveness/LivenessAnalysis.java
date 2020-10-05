@@ -23,20 +23,62 @@
 
 package com.oracle.truffle.espresso.analysis.liveness;
 
+import java.util.BitSet;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.analysis.BlockBuilder;
 import com.oracle.truffle.espresso.analysis.BlockIterator;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
+import com.oracle.truffle.espresso.analysis.WorkingQueue;
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
 public class LivenessAnalysis {
+    @CompilerDirectives.CompilationFinal(dimensions = 1) LocalVariableAction[] result;
+
+    public void performLivenessAnalysisAction(VirtualFrame frame, int bci, BytecodeNode node) {
+        result[bci].execute(frame, node);
+    }
+
     public static LivenessAnalysis analyze(Method method) {
         Graph<? extends LinkedBlock> graph = BlockBuilder.build(method);
         LoadStoreFinder loadStoreClosure = new LoadStoreFinder(graph);
         BlockIterator.analyze(method, graph, loadStoreClosure);
         BlockBoundaryFinder blockBoundaryFinder = new BlockBoundaryFinder(method, loadStoreClosure.result());
         DepthFirstBlockIterator.analyze(method, graph, blockBoundaryFinder);
-        return null;
+        return new LivenessAnalysis(blockBoundaryFinder.result(), graph, method);
+    }
+
+    private LivenessAnalysis(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
+        this.result = buildResultFrom(result, graph, method);
+    }
+
+    private static LocalVariableAction[] buildResultFrom(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
+        LocalVariableAction[] actions = new LocalVariableAction[method.getCode().length];
+        WorkingQueue<LinkedBlock> queue = new WorkingQueue<>();
+        BitSet enqueued = new BitSet(graph.totalBlocks());
+
+        queue.push(graph.entryBlock());
+        enqueued.set(graph.entryBlock().id());
+
+        while (!queue.isEmpty()) {
+            LinkedBlock current = queue.pop();
+
+            processBlock(actions, result, current);
+
+            for (int succ : current.successorsID()) {
+                if (!enqueued.get(succ)) {
+                    queue.push(graph.get(succ));
+                }
+            }
+        }
+        return actions;
+    }
+
+    private static void processBlock(LocalVariableAction[] actions, BlockBoundaryResult helper, LinkedBlock current) {
+
     }
 }

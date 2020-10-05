@@ -21,11 +21,22 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.analysis.liveness;
+package com.oracle.truffle.espresso.analysis.liveness.actions;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
-public abstract class LocalVariableAction {
-    public abstract void execute(VirtualFrame frame, BytecodeNode node);
+public class MultiAction extends LocalVariableAction {
+    @CompilerDirectives.CompilationFinal(dimensions = 1) LocalVariableAction actions[];
+
+    @Override
+    @ExplodeLoop
+    public void execute(VirtualFrame frame, BytecodeNode node) {
+        for (LocalVariableAction action : actions) {
+            action.execute(frame, node);
+        }
+    }
 }

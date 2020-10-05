@@ -23,9 +23,12 @@
 
 package com.oracle.truffle.espresso.analysis.liveness;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import java.util.BitSet;
 
-public abstract class LocalVariableAction {
-    public abstract void execute(VirtualFrame frame, BytecodeNode node);
+public interface BlockBoundaryResult {
+    BitSet entryFor(int blockID);
+
+    History historyFor(int blockID);
+
+    BitSet endFor(int blockID);
 }

@@ -23,6 +23,46 @@
 
 package com.oracle.truffle.espresso.analysis.liveness;
 
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_0;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_1;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_2;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_3;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ASTORE_0;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ASTORE_1;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ASTORE_2;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ASTORE_3;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.DLOAD_0;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.DLOAD_1;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.DLOAD_2;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.DLOAD_3;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.DSTORE_0;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.DSTORE_1;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.DSTORE_2;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.DSTORE_3;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.FLOAD_0;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.FLOAD_1;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.FLOAD_2;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.FLOAD_3;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.FSTORE_0;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.FSTORE_1;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.FSTORE_2;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.FSTORE_3;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_0;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_1;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_2;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_3;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ISTORE_0;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ISTORE_1;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ISTORE_2;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ISTORE_3;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.LLOAD_0;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.LLOAD_1;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.LLOAD_2;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.LLOAD_3;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.LSTORE_0;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.LSTORE_1;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.LSTORE_2;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.LSTORE_3;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.isLoad;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.isStore;
 
@@ -44,15 +84,72 @@ public class LoadStoreFinder extends BlockIteratorClosure {
         while (bci <= b.end()) {
             int opcode = bs.currentBC(bci);
             if (isLoad(opcode)) {
-                history.add(new Record(bci, bs.readLocalIndex(bci), TYPE.LOAD));
+                history.add(new Record(bci, findLocalIndex(bs, bci, opcode), TYPE.LOAD));
             }
             if (isStore(opcode)) {
-                history.add(new Record(bci, bs.readLocalIndex(bci), TYPE.STORE));
+                history.add(new Record(bci, findLocalIndex(bs, bci, opcode), TYPE.STORE));
             }
             bci = bs.nextBCI(bci);
         }
         blockHistory[b.id()] = history;
         return BlockIterator.BlockProcessResult.DONE;
+    }
+
+    private int findLocalIndex(BytecodeStream bs, int bci, int opcode) {
+        switch (opcode) {
+            case ILOAD_0: // fall through
+            case ILOAD_1: // fall through
+            case ILOAD_2: // fall through
+            case ILOAD_3:
+                return opcode - ILOAD_0;
+            case LLOAD_0: // fall through
+            case LLOAD_1: // fall through
+            case LLOAD_2: // fall through
+            case LLOAD_3:
+                return opcode - LLOAD_0;
+            case FLOAD_0: // fall through
+            case FLOAD_1: // fall through
+            case FLOAD_2: // fall through
+            case FLOAD_3:
+                return opcode - FLOAD_0;
+            case DLOAD_0: // fall through
+            case DLOAD_1: // fall through
+            case DLOAD_2: // fall through
+            case DLOAD_3:
+                return opcode - DLOAD_0;
+            case ALOAD_0: // fall through
+            case ALOAD_1: // fall through
+            case ALOAD_2: // fall through
+            case ALOAD_3:
+                return opcode - ALOAD_0;
+            case ISTORE_0: // fall through
+            case ISTORE_1: // fall through
+            case ISTORE_2: // fall through
+            case ISTORE_3:
+                return opcode - ISTORE_0;
+            case LSTORE_0: // fall through
+            case LSTORE_1: // fall through
+            case LSTORE_2: // fall through
+            case LSTORE_3:
+                return opcode - LSTORE_0;
+            case FSTORE_0: // fall through
+            case FSTORE_1: // fall through
+            case FSTORE_2: // fall through
+            case FSTORE_3:
+                return opcode - FSTORE_0;
+            case DSTORE_0: // fall through
+            case DSTORE_1: // fall through
+            case DSTORE_2: // fall through
+            case DSTORE_3:
+                return opcode - DSTORE_0;
+            case ASTORE_0: // fall through
+            case ASTORE_1: // fall through
+            case ASTORE_2: // fall through
+            case ASTORE_3:
+                return opcode - ASTORE_0;
+            default:
+                return bs.readLocalIndex(bci);
+        }
     }
 
     public LoadStoreFinder(Graph<? extends LinkedBlock> graph) {

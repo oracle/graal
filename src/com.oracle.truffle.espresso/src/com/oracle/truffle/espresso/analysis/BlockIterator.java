@@ -83,6 +83,7 @@ public class BlockIterator implements AnalysisProcessor {
         if (isEnqueued(block) || isDone(block)) {
             return false;
         }
+        enqueued.set(block.id());
         queue.push(block);
         return true;
     }

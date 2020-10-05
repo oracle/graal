@@ -34,7 +34,7 @@ import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.impl.Method;
 
-public class BlockBoundaryFinder extends BlockIteratorClosure {
+public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBoundaryResult {
     private final int maxLocals;
 
     private final List<List<LinkedBlock>>[] loops;
@@ -65,6 +65,25 @@ public class BlockBoundaryFinder extends BlockIteratorClosure {
             return BlockIterator.BlockProcessResult.DONE;
         }
         return BlockIterator.BlockProcessResult.SKIP;
+    }
+
+    @Override
+    public BitSet entryFor(int blockID) {
+        return blockEntryLiveSet[blockID];
+    }
+
+    @Override
+    public History historyFor(int blockID) {
+        return blockHistory[blockID];
+    }
+
+    @Override
+    public BitSet endFor(int blockID) {
+        return blockEndLiveSet[blockID];
+    }
+
+    public BlockBoundaryResult result() {
+        return this;
     }
 
     private void identifyLoops(LinkedBlock b, AnalysisProcessor processor) {
@@ -112,6 +131,7 @@ public class BlockBoundaryFinder extends BlockIteratorClosure {
                     propagateLoop(endState, toPropagate, block, processor);
                 }
             }
+            loops[b.id()] = null;
         }
     }
 
@@ -133,7 +153,7 @@ public class BlockBoundaryFinder extends BlockIteratorClosure {
 
     private boolean isSuperSet(BitSet state1, BitSet state2) {
         for (int i = 0; i < maxLocals; i++) {
-            if (state1.get(i) && !state2.get(i)) {
+            if (state2.get(i) && !state1.get(i)) {
                 return false;
             }
         }
