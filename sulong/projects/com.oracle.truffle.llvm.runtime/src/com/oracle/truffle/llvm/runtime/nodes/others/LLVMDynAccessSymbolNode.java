@@ -30,9 +30,9 @@
 
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
+@GenerateUncached
 public abstract class LLVMDynAccessSymbolNode extends LLVMNode {
 
     public LLVMDynAccessSymbolNode() {
@@ -52,7 +53,6 @@ public abstract class LLVMDynAccessSymbolNode extends LLVMNode {
     @Specialization
     LLVMPointer doAccess(LLVMSymbol symbol,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        CompilerAsserts.partialEvaluationConstant(symbol);
         if (symbol.hasValidIndexAndID()) {
             int bitcodeID = symbol.getBitcodeID(false);
             if (context.symbolTableExists(bitcodeID)) {

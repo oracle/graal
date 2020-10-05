@@ -183,7 +183,7 @@ abstract class CommonPointerLibraries {
         @Specialization(replaces = "doCached")
         static Object doResolve(LLVMPointerImpl receiver, String member, Object[] arguments,
                         @CachedContext(LLVMLanguage.class) LLVMContext context, @CachedLibrary(limit = "5") InteropLibrary interop,
-                        @Cached(value = "create()", allowUncached = true) LLVMDynAccessSymbolNode dynAccessSymbolNode)
+                        @Cached LLVMDynAccessSymbolNode dynAccessSymbolNode)
                         throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException {
             Object[] newArguments = addSelfObject(receiver, arguments);
             LLVMInteropType.Clazz newClazz = asClazz(receiver);
