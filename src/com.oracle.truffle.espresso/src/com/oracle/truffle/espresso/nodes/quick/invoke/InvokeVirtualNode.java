@@ -79,9 +79,6 @@ public abstract class InvokeVirtualNode extends QuickNode {
         // Good thing is, miranda methods are taken care of at vtable creation !
         Klass receiverKlass = receiver.getKlass();
         int vtableIndex = resolutionSeed.getVTableIndex();
-        if (resolutionSeed.getNameAsString().equals("test")) {
-            System.out.println("method lookup for test method with vtable index: " + vtableIndex);
-        }
         if (receiverKlass.isArray()) {
             return receiverKlass.getSuperKlass().vtableLookup(vtableIndex).getMethodVersion();
         }
