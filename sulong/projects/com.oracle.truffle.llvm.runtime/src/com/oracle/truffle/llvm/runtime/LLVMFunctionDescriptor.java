@@ -104,7 +104,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
             LLVMInteropType interopType = context.getInteropType(sourceType);
             LLVMInteropType extractedType = ((Function) interopType).getParameter(0);
             if (extractedType instanceof Value) {
-                Structured structured = ((Value) extractedType).getBaseType();
+                Structured structured = ((Value) extractedType).baseType;
                 LLVMForeignCallNode foreignCall = LLVMForeignConstructorCallNode.create(
                                 context.getLanguage(), this, interopType, sourceType, structured);
                 foreignConstructorCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
