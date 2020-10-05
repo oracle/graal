@@ -117,19 +117,19 @@ public final class EspressoContext {
     // Checkstyle: stop field name check
 
     // Performance control
-    final boolean InlineFieldAccessors;
-    final boolean InlineMethodHandle;
-    final boolean SplitMethodHandles;
+    public final boolean InlineFieldAccessors;
+    public final boolean InlineMethodHandle;
+    public final boolean SplitMethodHandles;
 
     // Behavior control
-    final boolean EnableManagement;
-    final boolean MultiThreaded;
-    final boolean SoftExit;
-    final EspressoOptions.VerifyMode Verify;
-    final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
+    public final boolean EnableManagement;
+    public final boolean MultiThreaded;
+    public final boolean SoftExit;
+    public final EspressoOptions.VerifyMode Verify;
+    public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
 
     // Debug option
-    final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
+    public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
 
     // Checkstyle: resume field name check
     // endregion Options
