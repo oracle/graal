@@ -504,7 +504,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return createArrayAddress(graph, array, base, elementKind, index);
     }
 
-    protected AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, int arrayBaseOffset, JavaKind elementKind, ValueNode index) {
+    public AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, int arrayBaseOffset, JavaKind elementKind, ValueNode index) {
         ValueNode wordIndex;
         if (target.wordSize > 4) {
             wordIndex = graph.unique(new SignExtendNode(index, target.wordSize * 8));
