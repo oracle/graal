@@ -65,7 +65,6 @@ import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
-import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = com.oracle.truffle.llvm.spi.ReferenceLibrary.class, receiverType = LLVMPointerImpl.class)
@@ -164,7 +163,6 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static class InvokeMember {
-        @SuppressWarnings("unused")
         @Specialization(guards = {"asClazz(receiver)==clazz", "member.equals(methodName)", "argCount==arguments.length"})
         static Object doCached(LLVMPointerImpl receiver, String member, Object[] arguments,
                         @CachedContext(LLVMLanguage.class) LLVMContext context, @CachedLibrary(limit = "5") InteropLibrary interop,
@@ -179,7 +177,6 @@ abstract class CommonPointerLibraries {
             return interop.execute(accessSymbolNode.execute(), newArguments);
         }
 
-        @SuppressWarnings("unused")
         @Specialization(replaces = "doCached")
         static Object doResolve(LLVMPointerImpl receiver, String member, Object[] arguments,
                         @CachedContext(LLVMLanguage.class) LLVMContext context, @CachedLibrary(limit = "5") InteropLibrary interop,
@@ -226,7 +223,6 @@ abstract class CommonPointerLibraries {
     }
 
     @ExportMessage
-    @SuppressWarnings("unused")
     static boolean isMemberInsertable(LLVMPointerImpl receiver, String ident) {
         return false;
     }
