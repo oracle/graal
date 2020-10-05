@@ -452,6 +452,22 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
+    public Value emitMathMax(Value a, Value b) {
+        assert a.getPlatformKind() == b.getPlatformKind();
+        assert a.getPlatformKind() == AArch64Kind.DOUBLE ||
+                        a.getPlatformKind() == AArch64Kind.SINGLE;
+        return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.FMAX, true, a, b);
+    }
+
+    @Override
+    public Value emitMathMin(Value a, Value b) {
+        assert a.getPlatformKind() == b.getPlatformKind();
+        assert a.getPlatformKind() == AArch64Kind.DOUBLE ||
+                        a.getPlatformKind() == AArch64Kind.SINGLE;
+        return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.FMIN, true, a, b);
+    }
+
+    @Override
     public Value emitMathSqrt(Value input) {
         assert input.getPlatformKind() == AArch64Kind.DOUBLE ||
                         input.getPlatformKind() == AArch64Kind.SINGLE;

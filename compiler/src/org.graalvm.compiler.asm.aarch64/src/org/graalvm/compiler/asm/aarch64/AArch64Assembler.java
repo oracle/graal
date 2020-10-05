@@ -71,6 +71,8 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVT
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTZS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FDIV;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMADD;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMAX;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMIN;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMOV;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMSUB;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMUL;
@@ -2790,6 +2792,30 @@ public abstract class AArch64Assembler extends Assembler {
         assert src1.getRegisterCategory().equals(SIMD);
         assert src2.getRegisterCategory().equals(SIMD);
         emitInt(type.encoding | instr.encoding | Fp2SourceOp | rd(dst) | rs1(src1) | rs2(src2));
+    }
+
+    /**
+     * dst = src1 > src2 ? src1 : src2.
+     *
+     * @param size register size.
+     * @param dst floating point register. May not be null.
+     * @param src1 floating point register. May not be null.
+     * @param src2 floating point register. May not be null.
+     */
+    public void fmax(int size, Register dst, Register src1, Register src2) {
+        fpDataProcessing2Source(FMAX, dst, src1, src2, floatFromSize(size));
+    }
+
+    /**
+     * dst = src1 < src2 ? src1 : src2.
+     *
+     * @param size register size.
+     * @param dst floating point register. May not be null.
+     * @param src1 floating point register. May not be null.
+     * @param src2 floating point register. May not be null.
+     */
+    public void fmin(int size, Register dst, Register src1, Register src2) {
+        fpDataProcessing2Source(FMIN, dst, src1, src2, floatFromSize(size));
     }
 
     /* Floating-point Multiply-Add (5.7.9) */
