@@ -127,6 +127,17 @@
 				"command": "extension.graalvm.installRubyLanguageServer",
 				"title": "Install Ruby Language Server",
 				"category": "GraalVM"
+			},
+			{
+				"command": "extension.graalvm.setupProxy",
+				"icon": "$(wrench)",
+				"title": "Setup Proxy"
+			},
+			{
+				"command": "extension.graalvm.removeInstallation",
+				"title": "Remove GraalVM Installation",
+				"icon": "$(trash)",
+				"category": "GraalVM"
 			}
 		],
 		"viewsContainers": {
@@ -181,7 +192,7 @@
 			"view/item/context": [
 				{
 					"command": "extension.graalvm.selectGraalVMHome",
-					"when": "view == graalvm-installations && viewItem == graalvmInstallation",
+					"when": "view == graalvm-installations && viewItem == graalvmInstallation || viewItem == graalvmInstallationOut",
 					"group": "inline"
 				},
 				{
@@ -192,6 +203,16 @@
 				{
 					"command": "extension.graalvm.uninstallGraalVMComponent",
 					"when": "view == graalvm-installations && viewItem == graalvmComponentInstalled",
+					"group": "inline"
+				},
+				{
+					"command": "extension.graalvm.setupProxy",
+					"when": "view == graalvm-installations && viewItem == graalvmConnectionError",
+					"group": "inline"
+				},
+				{
+					"command": "extension.graalvm.removeInstallation",
+					"when": "view == graalvm-installations && viewItem == graalvmInstallation",
 					"group": "inline"
 				}
 			]

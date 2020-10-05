@@ -5,13 +5,11 @@
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
  */
 
-import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as utils from './utils';
 
 export function pythonConfig(graalVMHome: string): boolean {
-    const executable: string = path.join(graalVMHome, 'bin', 'graalpython');
-    if (fs.existsSync(executable)) {
+    const executable = utils.findExecutable('graalpython', graalVMHome);
+    if (executable) {
         setConfig('pythonPath', executable);
         return true;
     }
@@ -19,7 +17,7 @@ export function pythonConfig(graalVMHome: string): boolean {
 }
 
 function setConfig(section: string, path:string) {
-	const config = vscode.workspace.getConfiguration('python');
+	const config = utils.getConf('python');
 	const term = config.inspect(section);
 	if (term) {
 		config.update(section, path, true);

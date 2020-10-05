@@ -24,11 +24,11 @@ export function registerLanguageServer(server: (() => Thenable<string>)): void {
 }
 
 export function startLanguageServer(graalVMHome: string) {
-	const inProcessServer = vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean;
+	const inProcessServer = utils.getGVMConfig().get('languageServer.inProcessServer') as boolean;
 	if (!inProcessServer || delegateLanguageServers.size > 0) {
 		const re = utils.findExecutable(POLYGLOT, graalVMHome);
 		if (re) {
-			let serverWorkDir: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.currentWorkDir') as string;
+			let serverWorkDir: string | undefined = utils.getGVMConfig().get('languageServer.currentWorkDir') as string;
 			if (!serverWorkDir) {
 				serverWorkDir = vscode.workspace.rootPath;
 			}
@@ -110,7 +110,7 @@ export function stopLanguageServer(): Thenable<void> {
 
 export async function lspArgs(): Promise<string[]> {
 	const port = utils.random(3000, 50000);
-    let delegateServers: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.delegateServers') as string;
+    let delegateServers: string | undefined = utils.getGVMConfig().get('languageServer.delegateServers') as string;
 	const s = Array.from(delegateLanguageServers).map(server => server());
 	const r = await hasRSource();
     return Promise.all(s).then((servers) => {
