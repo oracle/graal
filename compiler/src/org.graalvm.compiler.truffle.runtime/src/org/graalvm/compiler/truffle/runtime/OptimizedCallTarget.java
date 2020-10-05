@@ -664,9 +664,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public abstract long getCodeAddress();
 
     /**
-     * Determines if this call target has valid machine code attached to it.
+     * Determines if this call target has valid machine code that can be entered attached to it.
      */
     public abstract boolean isValid();
+
+    /**
+     * Determines if this call target has machine code that might still have live activations
+     * attached to it.
+     */
+    public abstract boolean isAlive();
 
     /**
      * Determines if this call target has valid machine code attached to it, and that this code was
@@ -684,7 +690,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      */
     public final void invalidate(Object source, CharSequence reason) {
         cachedNonTrivialNodeCount = -1;
-        if (isValid()) {
+        if (isAlive()) {
             invalidateCode();
             runtime().getListener().onCompilationInvalidated(this, source, reason);
         }

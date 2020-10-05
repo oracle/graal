@@ -25,20 +25,17 @@
 package org.graalvm.compiler.truffle.test;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -50,7 +47,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -60,31 +56,50 @@ import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
-public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
+public class CodeInvalidationTest extends AbstractPolyglotTest {
+
+    private static final String NODE_REPLACE_SUCCESSFUL = "Node replace successful!";
+
     abstract static class BaseNode extends Node {
         abstract Object execute(VirtualFrame frame);
     }
 
-    static final class DetectInvalidCodeNode extends BaseNode {
-        private volatile boolean valid = true;
-        private boolean invalidTwice = false;
+    static final class NodeToInvalidate extends BaseNode {
+        private final ThreadLocal<Boolean> valid;
+        private final CountDownLatch latch;
+        private final ThreadLocal<Boolean> latchCountedDown = ThreadLocal.withInitial(() -> false);
+
+        NodeToInvalidate(ThreadLocal<Boolean> valid, CountDownLatch latch) {
+            this.valid = valid;
+            this.latch = latch;
+        }
 
         @Override
         public Object execute(@SuppressWarnings("unused") VirtualFrame frame) {
-            if (!valid) {
-                /*
-                 * In the interpreter, setting valid to false might happen just before the if
-                 * statement, yielding false test failures, and so we fail only if the invalid node
-                 * is executed twice.
-                 */
-                if (invalidTwice) {
+            if (CompilerDirectives.inCompiledCode()) {
+                if (!isValid()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw new AssertionError("Obsolete code got executed!");
-                } else {
-                    invalidTwice = true;
+                    throw new AssertionError("Code invalidated!");
                 }
             }
             return false;
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        boolean isValid() {
+            if (!latchCountedDown.get()) {
+                latch.countDown();
+                latchCountedDown.set(true);
+            }
+            return valid.get();
+        }
+    }
+
+    static final class AlwaysThrowNode extends BaseNode {
+        @Override
+        public Object execute(@SuppressWarnings("unused") VirtualFrame frame) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new RuntimeException(NODE_REPLACE_SUCCESSFUL);
         }
     }
 
@@ -129,14 +144,13 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            frame.setObject(getResult(), InstrumentationTestLanguage.Null.INSTANCE);
+            frame.setObject(getResult(), false);
             frame.setInt(getLoopIndex(), 0);
             loop.execute(frame);
             try {
                 return frame.getObject(loopResultSlot);
             } catch (FrameSlotTypeException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(e);
+                throw CompilerDirectives.shouldNotReachHere();
             }
         }
 
@@ -190,29 +204,53 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
         }
     }
 
-    @Test
-    public void testRootCompilation() throws IOException, InterruptedException, ExecutionException {
-        DetectInvalidCodeNode detectInvalidCodeNode = new DetectInvalidCodeNode();
-        testCompilation(detectInvalidCodeNode, null, detectInvalidCodeNode, 1000, 20);
+    private static class RunCode implements Runnable {
+        private final NodeToInvalidate nodeToInvalidate;
+        private final Context context;
+        private final Source code;
+
+        RunCode(Context context, Source code, NodeToInvalidate nodeToInvalidate) {
+            this.context = context;
+            this.code = code;
+            this.nodeToInvalidate = nodeToInvalidate;
+        }
+
+        @Override
+        public void run() {
+            try {
+                if (nodeToInvalidate != null) {
+                    nodeToInvalidate.valid.set(false);
+                }
+                context.eval(code);
+            } catch (PolyglotException e) {
+                if ("java.lang.AssertionError: Code invalidated!".equals(e.getMessage())) {
+                    nodeToInvalidate.replace(new AlwaysThrowNode());
+                } else {
+                    throw e;
+                }
+            }
+        }
     }
 
     @Test
-    public void testLoopCompilation() throws IOException, InterruptedException, ExecutionException {
+    public void testInvalidation() throws IOException, InterruptedException {
         Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
-        DetectInvalidCodeNode detectInvalidCodeNode = new DetectInvalidCodeNode();
-        WhileLoopNode testedCode = new WhileLoopNode(10000000, detectInvalidCodeNode);
-        testCompilation(testedCode, testedCode.loop, detectInvalidCodeNode, 1000, 40);
-    }
+        CountDownLatch latch = new CountDownLatch(2);
+        NodeToInvalidate nodeToInvalidate = new NodeToInvalidate(ThreadLocal.withInitial(() -> true), latch);
+        WhileLoopNode testedCode = new WhileLoopNode(1000000000, nodeToInvalidate);
+        LoopNode loopNode = testedCode.loop;
 
-    private volatile boolean rewriting = false;
-
-    private void testCompilation(BaseNode testedCode, LoopNode loopNode, DetectInvalidCodeNode nodeToRewrite, int rewriteCount, int maxDelayBeforeRewrite)
-                    throws IOException, InterruptedException, ExecutionException {
         setupEnv(Context.create(), new ProxyLanguage() {
+            /**
+             * Makes sure we use the same call target for the single source that we use. Otherwise
+             * storing the frame slots in member fields of WhileLoopNode wouldn't work as the
+             * WhileLoopNode is pre-created before the parsing, and so it can be used only in one
+             * call target (root node).
+             */
             private CallTarget target;
 
             @Override
-            protected synchronized CallTarget parse(ParsingRequest request) throws Exception {
+            protected synchronized CallTarget parse(ParsingRequest request) {
                 com.oracle.truffle.api.source.Source source = request.getSource();
                 if (target == null) {
                     target = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
@@ -233,55 +271,35 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
                 }
                 return target;
             }
+
+            @Override
+            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                return true;
+            }
         });
 
-        AtomicReference<DetectInvalidCodeNode> nodeToRewriteReference = new AtomicReference<>(nodeToRewrite);
-        Random rnd = new Random();
-        CountDownLatch nodeRewritingLatch = new CountDownLatch(1);
-        List<Object> callTargetsToCheck = new ArrayList<>();
-        rewriting = true;
-        ExecutorService executor = Executors.newFixedThreadPool(1);
-        Future<?> future = executor.submit(() -> {
-            try {
-                for (int i = 1; i <= rewriteCount && rewriting; i++) {
-                    try {
-                        Thread.sleep(rnd.nextInt(maxDelayBeforeRewrite));
-                        nodeRewritingLatch.await();
-                    } catch (InterruptedException ie) {
-                    }
-                    if (loopNode != null) {
-                        Object loopNodeCallTarget = ((OptimizedOSRLoopNode) loopNode).getCompiledOSRLoop();
-                        if (loopNodeCallTarget != null) {
-                            callTargetsToCheck.add(loopNodeCallTarget);
-                        }
-                    }
-                    DetectInvalidCodeNode previousNode = nodeToRewriteReference.get();
-                    DetectInvalidCodeNode newNode = new DetectInvalidCodeNode();
-                    nodeToRewriteReference.set(newNode);
-                    previousNode.replace(newNode);
-                    previousNode.valid = false;
-                }
-            } finally {
-                rewriting = false;
-            }
-        });
         Source source = Source.newBuilder(ProxyLanguage.ID, "", "DummySource").build();
+        // First execution should compile the loop.
+        context.eval(source);
+        Future<?> future1;
+        Future<?> future2;
+        OptimizedCallTarget loopCallTarget = ((OptimizedOSRLoopNode) loopNode).getCompiledOSRLoop();
+        Assert.assertNotNull(loopCallTarget);
+        Assert.assertTrue(loopCallTarget.isValid());
+        ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
-            for (;;) {
-                context.eval(source);
-                nodeRewritingLatch.countDown();
-                if (!rewriting) {
-                    break;
-                }
-            }
+            future1 = executor.submit(new RunCode(context, source, null));
+            nodeToInvalidate.latch.await();
+            future2 = executor.submit(new RunCode(context, source, nodeToInvalidate));
+            future1.get();
+            future2.get();
+            Assert.fail();
+        } catch (ExecutionException e) {
+            Assert.assertTrue(e.getCause() instanceof PolyglotException);
+            Assert.assertEquals("java.lang.RuntimeException: " + NODE_REPLACE_SUCCESSFUL, e.getCause().getMessage());
         } finally {
-            rewriting = false;
-            future.get();
             executor.shutdownNow();
             executor.awaitTermination(100, TimeUnit.SECONDS);
-        }
-        for (Object callTarget : callTargetsToCheck) {
-            Assert.assertFalse("Obsolete loop call target is still valid", ((OptimizedCallTarget) callTarget).isValid());
         }
     }
 }

@@ -94,6 +94,15 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
         return address != 0;
     }
 
+    /**
+     * When SVM invalidates code, it immediately deoptimizes all frames. So isValid and isAlive are
+     * the same.
+     */
+    @Override
+    public boolean isAlive() {
+        return address != 0;
+    }
+
     @Override
     public boolean isValidLastTier() {
         long address0 = getAddress();
