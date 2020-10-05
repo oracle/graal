@@ -86,6 +86,7 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotSentinelConstant;
 import jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -408,11 +409,19 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                         masm.mov(scratch, pendingImplicitException.state.deoptReasonAndAction.asInt());
                         masm.str(dwordSizeInBits, scratch, pendingDeoptimization);
 
-                        // Store speculation into thread local storage.
-                        int qwordSizeInBits = AArch64Kind.QWORD.getSizeInBytes() * Byte.SIZE;
-                        AArch64Address pendingSpeculation = AArch64Address.createImmediateAddress(qwordSizeInBits, IMMEDIATE_UNSIGNED_SCALED, thread, config.pendingFailedSpeculationOffset);
-                        masm.mov(scratch, pendingImplicitException.state.deoptSpeculation.asLong());
-                        masm.str(qwordSizeInBits, scratch, pendingSpeculation);
+                        // Store speculation into thread local storage
+                        JavaConstant deoptSpeculation = pendingImplicitException.state.deoptSpeculation;
+                        if (deoptSpeculation.getJavaKind() == JavaKind.Long) {
+                            int qwordSizeInBits = AArch64Kind.QWORD.getSizeInBytes() * Byte.SIZE;
+                            AArch64Address pendingSpeculation = AArch64Address.createImmediateAddress(qwordSizeInBits, IMMEDIATE_UNSIGNED_SCALED, thread, config.pendingFailedSpeculationOffset);
+                            masm.mov(scratch, pendingImplicitException.state.deoptSpeculation.asLong());
+                            masm.str(qwordSizeInBits, scratch, pendingSpeculation);
+                        } else {
+                            assert deoptSpeculation.getJavaKind() == JavaKind.Int;
+                            AArch64Address pendingSpeculation = AArch64Address.createImmediateAddress(dwordSizeInBits, IMMEDIATE_UNSIGNED_SCALED, thread, config.pendingFailedSpeculationOffset);
+                            masm.mov(scratch, pendingImplicitException.state.deoptSpeculation.asInt());
+                            masm.str(dwordSizeInBits, scratch, pendingSpeculation);
+                        }
 
                         ForeignCallLinkage uncommonTrapBlob = foreignCalls.lookupForeignCall(DEOPT_BLOB_UNCOMMON_TRAP);
                         Register helper = AArch64Call.isNearCall(uncommonTrapBlob) ? null : scratch;
