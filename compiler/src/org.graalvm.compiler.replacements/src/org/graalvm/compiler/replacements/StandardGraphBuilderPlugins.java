@@ -24,10 +24,6 @@
  */
 package org.graalvm.compiler.replacements;
 
-import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_READ;
-import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_WRITE;
-import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_READ;
-import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
 import static jdk.vm.ci.code.MemoryBarriers.LOAD_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
@@ -45,6 +41,7 @@ import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -387,7 +384,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    public static void registerUnsafeAtomicsPlugins(Registration r, boolean isSunMiscUnsafe, boolean explicitUnsafeNullChecks, String casPrefix, String[] barrierTypes, JavaKind[] supportedJavaKinds) {
+    public static void registerUnsafeAtomicsPlugins(Registration r, boolean isSunMiscUnsafe, boolean explicitUnsafeNullChecks, String casPrefix, String[] memoryOrders, JavaKind[] supportedJavaKinds) {
         for (JavaKind kind : supportedJavaKinds) {
             Class<?> javaClass = getJavaClass(kind);
             String kindName = getKindName(isSunMiscUnsafe, kind);
@@ -397,10 +394,10 @@ public class StandardGraphBuilderPlugins {
                 isLogic = false;
                 returnKind = kind.isNumericInteger() ? kind.getStackKind() : kind;
             }
-            for (String barrierType : barrierTypes) {
-                MemoryBarriersKind barrierKind = barrierType.equals("") ? MemoryBarriersKind.RELEASE_ACQUIRE : MemoryBarriersKind.valueOf(barrierType.toUpperCase());
-                r.register5(casPrefix + kindName + barrierType, Receiver.class, Object.class, long.class, javaClass, javaClass,
-                                new UnsafeCompareAndSwapPlugin(returnKind, kind, barrierKind, isLogic, explicitUnsafeNullChecks));
+            for (String memoryOrderString : memoryOrders) {
+                MemoryOrderMode memoryOrder = memoryOrderString.equals("") ? MemoryOrderMode.RELEASE_ACQUIRE : MemoryOrderMode.valueOf(memoryOrderString.toUpperCase());
+                r.register5(casPrefix + kindName + memoryOrderString, Receiver.class, Object.class, long.class, javaClass, javaClass,
+                                new UnsafeCompareAndSwapPlugin(returnKind, kind, memoryOrder, isLogic, explicitUnsafeNullChecks));
             }
         }
     }
@@ -423,20 +420,20 @@ public class StandardGraphBuilderPlugins {
                 r.register3(getName, Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, explicitUnsafeNullChecks));
                 r.register4(putName, Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, explicitUnsafeNullChecks));
                 // Volatile object-based accesses
-                r.register3(getName + "Volatile", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, MemoryBarriersKind.VOLATILE, explicitUnsafeNullChecks));
-                r.register4(putName + "Volatile", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, MemoryBarriersKind.VOLATILE, explicitUnsafeNullChecks));
+                r.register3(getName + "Volatile", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, MemoryOrderMode.VOLATILE, explicitUnsafeNullChecks));
+                r.register4(putName + "Volatile", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, MemoryOrderMode.VOLATILE, explicitUnsafeNullChecks));
                 // Ordered object-based accesses
                 if (sunMiscUnsafe) {
                     if (kind == JavaKind.Int || kind == JavaKind.Long || kind == JavaKind.Object) {
                         r.register4("putOrdered" + kindName, Receiver.class, Object.class, long.class, javaClass,
-                                        new UnsafePutPlugin(kind, MemoryBarriersKind.RELEASE_ACQUIRE, explicitUnsafeNullChecks));
+                                        new UnsafePutPlugin(kind, MemoryOrderMode.RELEASE_ACQUIRE, explicitUnsafeNullChecks));
                     }
                 } else {
                     r.register4("put" + kindName + "Release", Receiver.class, Object.class, long.class, javaClass,
-                                    new UnsafePutPlugin(kind, MemoryBarriersKind.RELEASE_ACQUIRE, explicitUnsafeNullChecks));
-                    r.register3("get" + kindName + "Acquire", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, MemoryBarriersKind.RELEASE_ACQUIRE, explicitUnsafeNullChecks));
-                    r.register4("put" + kindName + "Opaque", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, MemoryBarriersKind.OPAQUE, explicitUnsafeNullChecks));
-                    r.register3("get" + kindName + "Opaque", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, MemoryBarriersKind.OPAQUE, explicitUnsafeNullChecks));
+                                    new UnsafePutPlugin(kind, MemoryOrderMode.RELEASE_ACQUIRE, explicitUnsafeNullChecks));
+                    r.register3("get" + kindName + "Acquire", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, MemoryOrderMode.RELEASE_ACQUIRE, explicitUnsafeNullChecks));
+                    r.register4("put" + kindName + "Opaque", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, MemoryOrderMode.OPAQUE, explicitUnsafeNullChecks));
+                    r.register3("get" + kindName + "Opaque", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, MemoryOrderMode.OPAQUE, explicitUnsafeNullChecks));
                 }
                 if (kind != JavaKind.Boolean && kind != JavaKind.Object) {
                     // Raw accesses to memory addresses
@@ -974,42 +971,6 @@ public class StandardGraphBuilderPlugins {
     }
 
     /**
-     * The new memory order modes (JDK9+) are defined with cumulative effect, from weakest to
-     * strongest: Plain, Opaque, Release/Acquire, and Volatile. The existing Plain and Volatile
-     * modes are defined compatibly with their pre-JDK 9 forms. Any guaranteed property of a weaker
-     * mode, plus more, holds for a stronger mode. (Conversely, implementations are allowed to use a
-     * stronger mode than requested for any access.) In JDK 9, these are provided without a full
-     * formal specification.
-     */
-    enum MemoryBarriersKind {
-        PLAIN(0, 0, 0, 0, false),
-        /**
-         * Opaque accesses are wrapped by dummy membars to avoid floating/hoisting, this is stronger
-         * than required since Opaque mode does not directly impose any ordering constraints with
-         * respect to other variables beyond Plain mode.
-         */
-        OPAQUE(0, 0, 0, 0, true),
-        ACQUIRE(0, LOAD_LOAD | LOAD_STORE, 0, 0, true),
-        RELEASE(0, 0, LOAD_STORE | STORE_STORE, 0, true),
-        RELEASE_ACQUIRE(0, LOAD_LOAD | LOAD_STORE, LOAD_STORE | STORE_STORE, 0, true),
-        VOLATILE(JMM_PRE_VOLATILE_READ, JMM_POST_VOLATILE_READ, JMM_PRE_VOLATILE_WRITE, JMM_POST_VOLATILE_WRITE, true);
-
-        public final boolean emitBarriers;
-        public final int preReadBarriers;
-        public final int postReadBarriers;
-        public final int preWriteBarriers;
-        public final int postWriteBarriers;
-
-        MemoryBarriersKind(int preReadBarriers, int postReadBarriers, int preWriteBarriers, int postWriteBarriers, boolean emitBarriers) {
-            this.emitBarriers = emitBarriers;
-            this.preReadBarriers = preReadBarriers;
-            this.postReadBarriers = postReadBarriers;
-            this.preWriteBarriers = preWriteBarriers;
-            this.postWriteBarriers = postWriteBarriers;
-        }
-    }
-
-    /**
      * Unsafe access relative to null object is an access to off-heap memory. As linear pointer
      * compression uses non-zero null, here null object must be replaced with zero constant.
      */
@@ -1096,15 +1057,15 @@ public class StandardGraphBuilderPlugins {
     }
 
     public static class UnsafeGetPlugin extends UnsafeAccessPlugin {
-        private final MemoryBarriersKind memoryBarriersKind;
+        private final MemoryOrderMode memoryOrder;
 
         public UnsafeGetPlugin(JavaKind returnKind, boolean explicitUnsafeNullChecks) {
-            this(returnKind, MemoryBarriersKind.PLAIN, explicitUnsafeNullChecks);
+            this(returnKind, MemoryOrderMode.PLAIN, explicitUnsafeNullChecks);
         }
 
-        public UnsafeGetPlugin(JavaKind kind, MemoryBarriersKind memoryBarriersKind, boolean explicitUnsafeNullChecks) {
+        public UnsafeGetPlugin(JavaKind kind, MemoryOrderMode memoryOrder, boolean explicitUnsafeNullChecks) {
             super(kind, explicitUnsafeNullChecks);
-            this.memoryBarriersKind = memoryBarriersKind;
+            this.memoryOrder = memoryOrder;
         }
 
         @Override
@@ -1120,16 +1081,16 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset) {
             // Opaque mode does not directly impose any ordering constraints with respect to other
             // variables beyond Plain mode.
-            if (memoryBarriersKind == MemoryBarriersKind.OPAQUE && StampTool.isPointerAlwaysNull(object)) {
+            if (memoryOrder == MemoryOrderMode.OPAQUE && StampTool.isPointerAlwaysNull(object)) {
                 // OFF_HEAP_LOCATION accesses are not floatable => no membars needed for opaque.
                 return apply(b, targetMethod, unsafe, offset);
             }
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            boolean isVolatile = memoryBarriersKind == MemoryBarriersKind.VOLATILE;
-            boolean emitBarriers = memoryBarriersKind.emitBarriers && !isVolatile;
+            boolean isVolatile = memoryOrder == MemoryOrderMode.VOLATILE;
+            boolean emitBarriers = memoryOrder.emitBarriers && !isVolatile;
             if (emitBarriers) {
-                b.add(new MembarNode(memoryBarriersKind.preReadBarriers));
+                b.add(new MembarNode(memoryOrder.preReadBarriers));
             }
             // Raw accesses can be turned into floatable field accesses, the membars preserve the
             // access mode. In the case of opaque access, and only for opaque, the location of the
@@ -1142,27 +1103,27 @@ public class StandardGraphBuilderPlugins {
             }
             createUnsafeAccess(object, b, unsafeNodeConstructor);
             if (emitBarriers) {
-                b.add(new MembarNode(memoryBarriersKind.postReadBarriers));
+                b.add(new MembarNode(memoryOrder.postReadBarriers));
             }
             return true;
         }
     }
 
     public static class UnsafePutPlugin extends UnsafeAccessPlugin {
-        private final MemoryBarriersKind memoryBarriersKind;
+        private final MemoryOrderMode memoryOrder;
 
         public UnsafePutPlugin(JavaKind kind, boolean explicitUnsafeNullChecks) {
-            this(kind, MemoryBarriersKind.PLAIN, explicitUnsafeNullChecks);
+            this(kind, MemoryOrderMode.PLAIN, explicitUnsafeNullChecks);
         }
 
-        private UnsafePutPlugin(JavaKind kind, MemoryBarriersKind memoryBarriersKind, boolean explicitUnsafeNullChecks) {
+        private UnsafePutPlugin(JavaKind kind, MemoryOrderMode memoryOrder, boolean explicitUnsafeNullChecks) {
             super(kind, explicitUnsafeNullChecks);
-            this.memoryBarriersKind = memoryBarriersKind;
+            this.memoryOrder = memoryOrder;
         }
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode address, ValueNode value) {
-            assert !memoryBarriersKind.emitBarriers : "Barriers for address based Unsafe put is not supported.";
+            assert !memoryOrder.emitBarriers : "Barriers for address based Unsafe put is not supported.";
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             b.add(new UnsafeMemoryStoreNode(address, value, unsafeAccessKind, OFF_HEAP_LOCATION));
@@ -1174,16 +1135,16 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
             // Opaque mode does not directly impose any ordering constraints with respect to other
             // variables beyond Plain mode.
-            if (memoryBarriersKind == MemoryBarriersKind.OPAQUE && StampTool.isPointerAlwaysNull(object)) {
+            if (memoryOrder == MemoryOrderMode.OPAQUE && StampTool.isPointerAlwaysNull(object)) {
                 // OFF_HEAP_LOCATION accesses are not floatable => no membars needed for opaque.
                 return apply(b, targetMethod, unsafe, offset, value);
             }
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            boolean isVolatile = memoryBarriersKind == MemoryBarriersKind.VOLATILE;
-            boolean emitBarriers = memoryBarriersKind.emitBarriers && !isVolatile;
+            boolean isVolatile = memoryOrder == MemoryOrderMode.VOLATILE;
+            boolean emitBarriers = memoryOrder.emitBarriers && !isVolatile;
             if (emitBarriers) {
-                b.add(new MembarNode(memoryBarriersKind.preWriteBarriers));
+                b.add(new MembarNode(memoryOrder.preWriteBarriers));
             }
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
             // Raw accesses can be turned into floatable field accesses, the membars preserve the
@@ -1191,20 +1152,20 @@ public class StandardGraphBuilderPlugins {
             // wrapping membars can be refined to the field location.
             createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc, true, isVolatile));
             if (emitBarriers) {
-                b.add(new MembarNode(memoryBarriersKind.postWriteBarriers));
+                b.add(new MembarNode(memoryOrder.postWriteBarriers));
             }
             return true;
         }
     }
 
     public static class UnsafeCompareAndSwapPlugin extends UnsafeAccessPlugin {
-        private final MemoryBarriersKind memoryBarriersKind;
+        private final MemoryOrderMode memoryOrder;
         private final JavaKind accessKind;
         private final boolean isLogic;
 
-        public UnsafeCompareAndSwapPlugin(JavaKind returnKind, JavaKind accessKind, MemoryBarriersKind memoryBarriersKind, boolean isLogic, boolean explicitUnsafeNullChecks) {
+        public UnsafeCompareAndSwapPlugin(JavaKind returnKind, JavaKind accessKind, MemoryOrderMode memoryOrder, boolean isLogic, boolean explicitUnsafeNullChecks) {
             super(returnKind, explicitUnsafeNullChecks);
-            this.memoryBarriersKind = memoryBarriersKind;
+            this.memoryOrder = memoryOrder;
             this.accessKind = accessKind;
             this.isLogic = isLogic;
         }
@@ -1213,17 +1174,10 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue) {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            if (memoryBarriersKind == MemoryBarriersKind.RELEASE) {
-                b.add(new MembarNode(memoryBarriersKind.preWriteBarriers));
-            }
-            int memoryBarrier = memoryBarriersKind.preWriteBarriers | memoryBarriersKind.postReadBarriers;
             if (isLogic) {
-                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndSwapNode(obj, offset, expected, newValue, accessKind, loc, memoryBarrier));
+                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndSwapNode(obj, offset, expected, newValue, accessKind, loc, memoryOrder));
             } else {
-                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndExchangeNode(obj, offset, expected, newValue, accessKind, loc, memoryBarrier));
-            }
-            if (memoryBarriersKind == MemoryBarriersKind.ACQUIRE) {
-                b.add(new MembarNode(memoryBarriersKind.postReadBarriers));
+                createUnsafeAccess(object, b, (obj, loc) -> new UnsafeCompareAndExchangeNode(obj, offset, expected, newValue, accessKind, loc, memoryOrder));
             }
             return true;
         }

@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -52,11 +53,11 @@ public final class LogicCompareAndSwapNode extends AbstractCompareAndSwapNode {
     public static final NodeClass<LogicCompareAndSwapNode> TYPE = NodeClass.create(LogicCompareAndSwapNode.class);
 
     public LogicCompareAndSwapNode(ValueNode address, ValueNode expectedValue, ValueNode newValue, LocationIdentity location) {
-        this((AddressNode) address, location, expectedValue, newValue, BarrierType.NONE, DEFAULT_MEMORY_BARRIER);
+        this((AddressNode) address, location, expectedValue, newValue, BarrierType.NONE, MemoryOrderMode.VOLATILE);
     }
 
-    public LogicCompareAndSwapNode(AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType, int memoryBarrier) {
-        super(TYPE, address, location, expectedValue, newValue, barrierType, StampFactory.forInteger(JavaKind.Int, 0, 1), memoryBarrier);
+    public LogicCompareAndSwapNode(AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType, MemoryOrderMode memoryOrder) {
+        super(TYPE, address, location, expectedValue, newValue, barrierType, StampFactory.forInteger(JavaKind.Int, 0, 1), memoryOrder);
     }
 
     @Override
@@ -68,7 +69,7 @@ public final class LogicCompareAndSwapNode extends AbstractCompareAndSwapNode {
         Value trueResult = tool.emitConstant(resultKind, JavaConstant.TRUE);
         Value falseResult = tool.emitConstant(resultKind, JavaConstant.FALSE);
         Value result = tool.emitLogicCompareAndSwap(tool.getLIRKind(getAccessStamp(NodeView.DEFAULT)), gen.operand(getAddress()), gen.operand(getExpectedValue()), gen.operand(getNewValue()),
-                        trueResult, falseResult, memoryBarrier);
+                        trueResult, falseResult, memoryOrder);
 
         gen.setResult(this, result);
     }

@@ -175,7 +175,7 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
                 SPARCAddressValue address = (SPARCAddressValue) operand(cas.getAddress());
                 Condition condition = successIsTrue ? Condition.EQ : Condition.NE;
 
-                Value result = getLIRGeneratorTool().emitValueCompareAndSwap(kind, address, expectedValue, newValue, cas.getMemoryBarrier());
+                Value result = getLIRGeneratorTool().emitValueCompareAndSwap(kind, address, expectedValue, newValue, cas.getMemoryOrder());
                 getLIRGeneratorTool().emitCompareBranch(kind.getPlatformKind(), result, expectedValue, condition, false, trueLabel, falseLabel, trueLabelProbability);
                 return null;
             };

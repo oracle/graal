@@ -35,6 +35,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -152,8 +153,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, int memoryBarrier) {
-        emitCompareAndSwap(accessKind, address, expectedValue, newValue, memoryBarrier);
+    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
+        emitCompareAndSwap(accessKind, address, expectedValue, newValue, memoryOrder);
         assert trueValue.getValueKind().equals(falseValue.getValueKind());
         assert isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0);
         Variable result = newVariable(trueValue.getValueKind());
@@ -162,14 +163,14 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, int memoryBarrier) {
-        return emitCompareAndSwap(accessKind, address, expectedValue, newValue, memoryBarrier);
+    public Variable emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
+        return emitCompareAndSwap(accessKind, address, expectedValue, newValue, memoryOrder);
     }
 
-    private Variable emitCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, int memoryBarrier) {
+    private Variable emitCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
         Variable result = newVariable(expectedValue.getValueKind());
         Variable scratch = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new CompareAndSwapOp((AArch64Kind) accessKind.getPlatformKind(), result, loadReg(expectedValue), loadReg(newValue), asAllocatable(address), scratch, memoryBarrier));
+        append(new CompareAndSwapOp((AArch64Kind) accessKind.getPlatformKind(), result, loadReg(expectedValue), loadReg(newValue), asAllocatable(address), scratch, memoryOrder));
         return result;
     }
 

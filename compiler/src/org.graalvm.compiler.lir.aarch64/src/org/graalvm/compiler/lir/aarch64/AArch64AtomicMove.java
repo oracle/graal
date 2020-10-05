@@ -35,6 +35,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.Opcode;
@@ -60,7 +61,7 @@ public class AArch64AtomicMove {
         public static final LIRInstructionClass<CompareAndSwapOp> TYPE = LIRInstructionClass.create(CompareAndSwapOp.class);
 
         private final AArch64Kind accessKind;
-        private final int memoryBarrier;
+        private final MemoryOrderMode memoryOrder;
 
         @Def protected AllocatableValue resultValue;
         @Alive protected Value expectedValue;
@@ -69,7 +70,7 @@ public class AArch64AtomicMove {
         @Temp protected AllocatableValue scratchValue;
 
         public CompareAndSwapOp(AArch64Kind accessKind, AllocatableValue result, Value expectedValue, AllocatableValue newValue, AllocatableValue addressValue, AllocatableValue scratch,
-                        int memoryBarrier) {
+                                MemoryOrderMode memoryOrder) {
             super(TYPE);
             this.accessKind = accessKind;
             this.resultValue = result;
@@ -77,7 +78,7 @@ public class AArch64AtomicMove {
             this.newValue = newValue;
             this.addressValue = addressValue;
             this.scratchValue = scratch;
-            this.memoryBarrier = memoryBarrier;
+            this.memoryOrder = memoryOrder;
         }
 
         @Override
@@ -90,17 +91,11 @@ public class AArch64AtomicMove {
             Register newVal = asRegister(newValue);
             Register expected = asRegister(expectedValue);
 
-            // For the atomics with "acquire/release" suffixes, the corresponding memory barrier has
-            // been inserted after/before the CAS respectively. Thus, the CAS operation here does
-            // not need the "acquire" semantics. Contrarily, the strong variants, i.e., atomics
-            // without "acquire/release" suffixes, are not surrounded by memory barriers. Thus, the
-            // CAS operation needs to use the variant of instruction that has the "acquire" effect.
-            boolean acquire = memoryBarrier >= (LOAD_LOAD | LOAD_STORE | STORE_STORE);
-
-            // The exclusive store is always using the "release" semantic. That is required to
-            // ensure visibility to other threads of the exclusive write (assuming it succeeds)
-            // before that of any subsequent writes.
-            boolean release = true;
+            /**
+             * Determining whether acquire and/or release semantics are needed.
+             */
+            boolean acquire = (memoryOrder.postReadBarriers & (LOAD_LOAD | LOAD_STORE)) != 0;
+            boolean release = (memoryOrder.preWriteBarriers & (LOAD_STORE | STORE_STORE)) != 0;
 
             if (AArch64LIRFlagsVersioned.useLSE(masm.target.arch)) {
                 masm.mov(Math.max(size, 32), result, expected);
