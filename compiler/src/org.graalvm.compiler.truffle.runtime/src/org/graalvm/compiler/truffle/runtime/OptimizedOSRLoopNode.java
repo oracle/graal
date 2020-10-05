@@ -131,15 +131,18 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         } else if (GraalCompilerDirectives.inFirstTier()) {
             int iterationsCompleted = 0;
             Object status;
-            while (repeatableNode.shouldContinue((status = repeatableNode.executeRepeatingWithValue(frame)))) {
-                iterationsCompleted++;
-                if (CompilerDirectives.inInterpreter()) {
-                    // compiled method got invalidated. We might need OSR again.
-                    return execute(frame);
+            try {
+                while (repeatableNode.shouldContinue((status = repeatableNode.executeRepeatingWithValue(frame)))) {
+                    iterationsCompleted++;
+                    if (CompilerDirectives.inInterpreter()) {
+                        // compiled method got invalidated. We might need OSR again.
+                        return execute(frame);
+                    }
                 }
-            }
-            if (firstTierBackedgeCounts && iterationsCompleted > 1) {
-                reportParentLoopCount(iterationsCompleted);
+            } finally {
+                if (firstTierBackedgeCounts && iterationsCompleted > 1) {
+                    reportParentLoopCount(iterationsCompleted);
+                }
             }
             return status;
         } else {
