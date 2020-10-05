@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
+import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.util.Comparator;
 import java.util.function.IntFunction;
@@ -37,6 +38,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -48,6 +50,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -76,6 +79,7 @@ import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.VM;
 import com.oracle.truffle.object.DebugCounter;
 
 @ExportLibrary(InteropLibrary.class)
@@ -365,6 +369,57 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             throw UnsupportedMessageException.create();
         }
     }
+
+    // region ### Meta-objects
+
+    @ExportMessage
+    boolean isMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    public Object getMetaQualifiedName() {
+        assert isMetaObject();
+        return getMeta().java_lang_Class_getTypeName.invokeDirect(mirror());
+    }
+
+    @ExportMessage
+    Object getMetaSimpleName() {
+        assert isMetaObject();
+        return getMeta().java_lang_Class_getSimpleName.invokeDirect(mirror());
+    }
+
+    @ExportMessage
+    boolean isMetaInstance(Object instance) {
+        return instance instanceof StaticObject && instanceOf((StaticObject) instance, this);
+    }
+
+    // endregion ### Meta-objects
+
+    // region ### Identity/hashCode
+
+    @ExportMessage
+    static final class IsIdenticalOrUndefined {
+        @Specialization
+        static TriState doKlass(Klass receiver, Klass other) {
+            return receiver == other ? TriState.TRUE : TriState.FALSE;
+        }
+
+        @Fallback
+        static TriState doOther(@SuppressWarnings("unused") Klass receiver, @SuppressWarnings("unused") Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    int identityHashCode() {
+        // In unit tests, Truffle performs additional sanity checks, this assert causes stack
+        // overflow.
+        // assert InteropLibrary.getUncached().hasIdentity(this);
+        return VM.JVM_IHashCode(mirror());
+    }
+
+    // endregion ### Identity/hashCode
 
     // endregion Interop
 
@@ -700,6 +755,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         }
         if (this.isArray() && other.isArray()) {
             return ((ArrayKlass) this).arrayTypeChecks((ArrayKlass) other);
+        }
+        if (!this.isArray() && this.isFinalFlagSet()) {
+            return this == other;
         }
         if (isInterface()) {
             return checkInterfaceSubclassing(other);
