@@ -62,8 +62,10 @@ import java.time.zone.ZoneRules;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
@@ -75,6 +77,7 @@ import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -132,8 +135,14 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #hasArrayElements(Object) array elements}
  * <li>{@link #hasLanguage(Object) language}
  * <li>{@link #hasMetaObject(Object) associated metaobject}
+ * <li>{@link #hasDeclaringMetaObject(Object) declaring meta object}
  * <li>{@link #hasSourceLocation(Object) source location}
  * <li>{@link #hasIdentity(Object) identity}
+ * <li>{@link #hasScopeParent(Object) scope parent}
+ * <li>{@link #hasExecutableName(Object) executable name}
+ * <li>{@link #hasExceptionMessage(Object) exception message}
+ * <li>{@link #hasExceptionCause(Object) exception cause}
+ * <li>{@link #hasExceptionStackTrace(Object) exception stack trace}
  * <ul>
  * <p>
  * <h3>Naive and aware dates and times</h3>
@@ -264,7 +273,8 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns executable name of the receiver. Throws {@code UnsupportedMessageException} when the
-     * receiver is has no {@link #hasExecutableName(Object) executable name}.
+     * receiver is has no {@link #hasExecutableName(Object) executable name}. The return value is an
+     * interop value that is guaranteed to return <code>true</code> for {@link #isString(Object)}.
      *
      * @see #hasExecutableName(Object)
      * @since 20.3
@@ -276,8 +286,9 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns {@code true} if the receiver has a declaring meta object. The declaring meta object
-     * is the meta object of the executable owner. Invoking this message does not cause any
-     * observable side-effects. Returns {@code false} by default.
+     * is the meta object of the executable or meta object that declares the receiver value.
+     * Invoking this message does not cause any observable side-effects. Returns {@code false} by
+     * default.
      *
      * @see #getDeclaringMetaObject(Object)
      * @since 20.3
@@ -288,9 +299,11 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns declaring meta object. The declaring meta object is the meta object of the executable
-     * owner. Throws {@code UnsupportedMessageException} when the receiver is has no
-     * {@link #hasDeclaringMetaObject(Object) declaring meta object}.
+     * Returns declaring meta object. The declaring meta object is the meta object of declaring
+     * executable or meta object. Throws {@code UnsupportedMessageException} when the receiver is
+     * has no {@link #hasDeclaringMetaObject(Object) declaring meta object}. The return value is an
+     * interop value that is guaranteed to return <code>true</code> for
+     * {@link #isMetaObject(Object)}.
      *
      * @see #hasDeclaringMetaObject(Object)
      * @since 20.3
@@ -1330,9 +1343,10 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns {@code true} if receiver value represents an incomplete source exception. Throws
      * {@code UnsupportedMessageException} when the receiver is not an {@link #isException(Object)
-     * exception}.
+     * exception} or the exception is not a {@link ExceptionType#PARSE_ERROR}.
      *
      * @see #isException(Object)
+     * @see #getExceptionType(Object)
      * @since 20.3
      */
     public boolean isExceptionIncompleteSource(Object receiver) throws UnsupportedMessageException {
@@ -1349,7 +1363,9 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns exception exit status of the receiver. Throws {@code UnsupportedMessageException}
      * when the receiver is not an {@link #isException(Object) exception} of the
-     * {@link ExceptionType#EXIT exit type}.
+     * {@link ExceptionType#EXIT exit type}. A return value zero indicates that the execution of the
+     * application was successful, a non-zero value that it it failed. The individual interpretation
+     * of non-zero values is depends on the application.
      *
      * @see #isException(Object)
      * @see #getExceptionType(Object)
@@ -1390,7 +1406,10 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns the internal cause of the receiver. Throws {@code UnsupportedMessageException} when
-     * the receiver is not an {@link #isException(Object) exception} or has no internal cause.
+     * the receiver is not an {@link #isException(Object) exception} or has no internal cause. The
+     * return value of this message is guaranteed to return <code>true</code> for
+     * {@link #isException(Object)}.
+     *
      *
      * @see #isException(Object)
      * @see #hasExceptionCause(Object)
@@ -1473,6 +1492,8 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns exception message of the receiver. Throws {@code UnsupportedMessageException} when
      * the receiver is not an {@link #isException(Object) exception} or has no exception message.
+     * The return value of this message is guaranteed to return <code>true</code> for
+     * {@link #isString(Object)}.
      *
      * @see #isException(Object)
      * @see #hasExceptionMessage(Object)
@@ -1511,12 +1532,18 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns exception stack trace of the receiver. Returns an {@link #hasArrayElements(Object)
-     * array} of objects with {@link #hasExecutableName(Object) executable name} and potentially
-     * {@link #hasDeclaringMetaObject(Object) declaring meta object} and
-     * {@link #hasSourceLocation(Object) source location} of the caller. Throws
+     * Returns the exception stack trace of the receiver that is of type exception. Returns an
+     * {@link #hasArrayElements(Object) array} of objects with {@link #hasExecutableName(Object)
+     * executable name} and potentially {@link #hasDeclaringMetaObject(Object) declaring meta
+     * object} and {@link #hasSourceLocation(Object) source location} of the caller. Throws
      * {@code UnsupportedMessageException} when the receiver is not an {@link #isException(Object)
-     * exception} or has no stack trace.
+     * exception} or has no stack trace. Invoking this message or accessing the stack trace elements
+     * array must not cause any observable side-effects.
+     * <p>
+     * The default implementation of {@link #getExceptionStackTrace(Object)} calls
+     * {@link TruffleStackTrace#getStackTrace(Throwable)} on the underlying exception object and
+     * {@link TruffleStackTraceElement#getGuestObject()} to access an interop capable object of the
+     * underlying stack trace element.
      *
      * @see #isException(Object)
      * @see #hasExceptionStackTrace(Object)

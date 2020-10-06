@@ -120,6 +120,12 @@ public final class TruffleStackTraceElement {
      * Returns an interop object representing this {@linkplain TruffleStackTraceElement} supporting
      * the {@code hasExecutableName} and potentially {@code hasDeclaringMetaObject} and
      * {@code hasSourceLocation} messages.
+     * <p>
+     * This method must only be called on an interpreter thread with a valid
+     * {@link TruffleContext#isEntered() entered} {@link TruffleContext context}. The current
+     * entered context can be accessed through the language or instrument environment.
+     * <p>
+     * Languages
      *
      * @since 20.3
      */
