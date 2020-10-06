@@ -34,6 +34,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -108,7 +109,9 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         throw VMError.shouldNotReachHere();
     }
 
-    /** Track classes in the `reflect` package across JDK versions. */
+    /**
+     * Track classes in the {@code reflect} package across JDK versions.
+     */
     private static Class<?> packageJdkInternalReflectClassForName(String className) {
         final String packageName = (JavaVersionUtil.JAVA_SPEC <= 8 ? "sun.reflect." : "jdk.internal.reflect.");
         try {
@@ -122,6 +125,17 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
 
     private static Method generateProxyMethod;
 
+    /**
+     * Generates bytecode for a dynamic proxy class that implements the given interfaces, for JDK 13
+     * or earlier.
+     *
+     * @param name name of the proxy class to generate
+     * @param interfaces interfaces that the proxy class should implement
+     * @return bytecode of the generated class
+     * @see <a href=
+     *      "https://docs.oracle.com/javase/8/docs/technotes/guides/reflection/proxy.html">Dynamic
+     *      Proxy class documentation</a>
+     */
     private static byte[] generateProxyClass(final String name, Class<?>[] interfaces) {
         /* { Allow reflection in hosted code. Checkstyle: stop. */
         try {
@@ -135,9 +149,25 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         }
     }
 
+    /**
+     * Generates bytecode for a dynamic proxy class that implements the given interfaces, for JDK 14
+     * or later.
+     *
+     * @param name name of the proxy class to generate
+     * @param interfaces interfaces that the proxy class should implement
+     * @return bytecode of the generated class
+     * @see <a href=
+     *      "https://docs.oracle.com/javase/8/docs/technotes/guides/reflection/proxy.html">Dynamic
+     *      Proxy class documentation</a>
+     */
     private static byte[] generateProxyClass14(final String name, Class<?>[] interfaces, ClassLoader loader) {
         assert JavaVersionUtil.JAVA_SPEC >= 14;
-        /* { Allow reflection in hosted code. Checkstyle: stop. */
+        /*
+         * We use reflection to invoke ProxyGenerator.generateProxyClass in a cross-compatible way
+         * across JDK versions.
+         *
+         * { Allow reflection in hosted code. Checkstyle: stop.
+         */
         try {
             if (generateProxyMethod == null) {
                 generateProxyMethod = ReflectionUtil.lookupMethod(Class.forName("java.lang.reflect.ProxyGenerator"), "generateProxyClass", ClassLoader.class, String.class, List.class, int.class);
@@ -150,6 +180,12 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         /* } Allow reflection in hosted code. Checkstyle: resume. */
     }
 
+    /**
+     * Gets or creates a proxy class for accessing a given {@link Member} reflectively.
+     * <p>
+     * The proxy class extends {@link Proxy} and implements either {@code FieldAccessor},
+     * {@code MethodAccessor} or {@code ConstructorAccessor}.
+     */
     synchronized Class<?> getProxyClass(Member member) {
         Class<?> ret = proxyMap.get(member);
         if (ret == null) {
