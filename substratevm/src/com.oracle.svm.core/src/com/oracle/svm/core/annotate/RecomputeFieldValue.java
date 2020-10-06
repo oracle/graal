@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * intercepted and recomputed.
  * <p>
  * This annotation must be used on a field also annotated with {@link Alias} to specify the field
- * whose value need to be changed.
+ * whose value needs to be changed.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
@@ -64,8 +64,9 @@ public @interface RecomputeFieldValue {
          */
         FromAlias,
         /**
-         * The int or long field is set to the offset of the field named {@link #name} of the class
-         * {@link #declClass}, as it would be computed by {@link sun.misc.Unsafe#objectFieldOffset}.
+         * The int or long field is set to the offset of the field named {@link #name()} of the
+         * class {@link #declClass}, as it would be computed by
+         * {@link sun.misc.Unsafe#objectFieldOffset}.
          */
         FieldOffset,
         /**

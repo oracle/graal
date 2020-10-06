@@ -51,6 +51,7 @@ import com.oracle.svm.hosted.annotation.CustomSubstitution;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.reflect.helpers.InvokeSpecialReflectionProxy;
 import com.oracle.svm.reflect.helpers.ReflectionProxy;
+import com.oracle.svm.reflect.helpers.ReflectionProxyHelper;
 import com.oracle.svm.reflect.hosted.ReflectionSubstitutionType.ReflectionSubstitutionMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -59,7 +60,21 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Processor for a set of {@link ReflectionSubstitutionType}.
+ * Maintains a mapping between reflection-accessible {@link Member}s and {@link Proxy} classes used
+ * to access the member reflectively. Also holds a mapping between {@link Proxy} classes and
+ * {@link ReflectionSubstitutionType}s that are used as substitutions for the proxy classes at image
+ * build time.
+ * <p>
+ * The proxy classes are generated dynamically at build time, in the hosted environment. There is
+ * one proxy class per reflection-accessible {@link Member} (but there may be multiple instances of
+ * each proxy class). Instances of the proxy classes are used for the accessor fields of
+ * {@link Member} instances in Native Image (see {@link AccessorComputer}). The proxy instances
+ * dispatch calls to a placeholder invocation handler that only implements {@code toString()} (see
+ * {@link ReflectionProxyHelper#setDefaultInvocationHandler}).
+ * <p>
+ * At image build time, the proxy instances are substituted with {@link ReflectionSubstitutionType}s
+ * that either implement {@code FieldAccessor}, {@code ConstructorAccessor} or
+ * {@code MethodAccessor} (depending on the type of {@link Member}).
  */
 final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitutionType> {
 
@@ -77,7 +92,16 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
     private final ResolvedJavaType reflectionProxy;
     private final ResolvedJavaType javaLangReflectProxy;
 
+    /**
+     * Maps each {@link Member} accessible by reflection to the dynamic proxy class that should be
+     * used to access it reflectively.
+     */
     private final HashMap<Member, Class<?>> proxyMap = new HashMap<>();
+
+    /**
+     * Maps the type of each generated dynamic proxy class to the {@link Member} that it accesses
+     * reflectively.
+     */
     private final HashMap<ResolvedJavaType, Member> typeToMember = new HashMap<>();
 
     private static final AtomicInteger proxyNr = new AtomicInteger(0);
@@ -94,6 +118,10 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         imageClassLoader = classLoader;
     }
 
+    /**
+     * Gets a unique, stable, fully qualified name for the {@link Proxy} class used to access a
+     * given member.
+     */
     static String getStableProxyName(Member member) {
         return "com.oracle.svm.reflect." + SubstrateUtil.uniqueShortName(member);
     }

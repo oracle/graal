@@ -40,6 +40,12 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import sun.misc.Unsafe;
 
+/**
+ * Computes new values for the accessor fields of {@link Member} subclasses, to be used instead of
+ * the value from the host VM. The new values are the ones that will be in the Native Image heap.
+ *
+ * @see RecomputeFieldValue
+ */
 public final class AccessorComputer implements RecomputeFieldValue.CustomFieldValueComputer {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
