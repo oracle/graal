@@ -50,16 +50,13 @@ public abstract class ImplicitNullCheckNode extends DeoptimizingFixedWithNextNod
         return deoptReasonAndAction;
     }
 
-    public void setDeoptReasonAndAction(JavaConstant deoptReasonAndAction) {
-        this.deoptReasonAndAction = deoptReasonAndAction;
-    }
-
     public JavaConstant getDeoptSpeculation() {
         return deoptSpeculation;
     }
 
-    public void setDeoptSpeculation(JavaConstant deoptSpeculation) {
+    public void setImplicitDeoptimization(JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
+        assert deoptReasonAndAction != null && deoptSpeculation != null;
+        this.deoptReasonAndAction = deoptReasonAndAction;
         this.deoptSpeculation = deoptSpeculation;
     }
-
 }

@@ -51,6 +51,7 @@ public final class NullCheckNode extends ImplicitNullCheckNode implements LIRLow
     public NullCheckNode(ValueNode object, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
         super(TYPE, StampFactory.forVoid());
         this.object = object;
+        assert (deoptReasonAndAction == null) == (deoptSpeculation == null);
         this.deoptReasonAndAction = deoptReasonAndAction;
         this.deoptSpeculation = deoptSpeculation;
     }
