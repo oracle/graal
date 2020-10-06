@@ -313,9 +313,10 @@ public final class PolyglotException extends RuntimeException {
     }
 
     /**
-     * Returns <code>true</code> if the application thread was interrupted by an
-     * {@link InterruptedException}.
-     * 
+     * Returns <code>true</code> if the current application thread was interrupted by an
+     * {@link InterruptedException}. {@link InterruptedException} from the host return
+     * <code>true</code> for interrupted.
+     *
      * @since 20.3
      */
     public boolean isInterrupted() {
