@@ -149,7 +149,9 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMStackRestoreNod
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMStackSaveNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMTrapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmetic;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmetic.LLVMSimpleArithmeticPrimitive;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.GCCArithmeticNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMSimpleArithmeticPrimitiveNodeGen;;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowAndCarryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI16NodeGen;
@@ -1458,6 +1460,26 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.copysign.f80":
                     return LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen.create(args[1], args[2]);
 
+                case "llvm.uadd.sat.i8":
+                case "llvm.uadd.sat.i16":
+                case "llvm.uadd.sat.i32":
+                case "llvm.uadd.sat.i64":
+                    return LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.UNSIGNED_ADD_SAT, args[1], args[2]);
+                case "llvm.usub.sat.i8":
+                case "llvm.usub.sat.i16":
+                case "llvm.usub.sat.i32":
+                case "llvm.usub.sat.i64":
+                    return LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.UNSIGNED_SUB_SAT, args[1], args[2]);
+                case "llvm.sadd.sat.i8":
+                case "llvm.sadd.sat.i16":
+                case "llvm.sadd.sat.i32":
+                case "llvm.sadd.sat.i64":
+                    return LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.SIGNED_ADD_SAT, args[1], args[2]);
+                case "llvm.ssub.sat.i8":
+                case "llvm.ssub.sat.i16":
+                case "llvm.ssub.sat.i32":
+                case "llvm.ssub.sat.i64":
+                    return LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.SIGNED_SUB_SAT, args[1], args[2]);
                 case "llvm.uadd.with.overflow.i8":
                 case "llvm.uadd.with.overflow.i16":
                 case "llvm.uadd.with.overflow.i32":
