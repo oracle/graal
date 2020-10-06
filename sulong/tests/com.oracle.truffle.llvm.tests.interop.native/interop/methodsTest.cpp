@@ -32,98 +32,99 @@
 #include <math.h>
 
 class Point {
-    protected: 
-	int x;
-	int y;
-    public: 
-	Point();
-	int getX();
-	int getY();
-	void setX(int val);
-	void setY(int val);
-	double squaredEuclideanDistance(Point* other);
+protected:
+    int x;
+    int y;
+
+public:
+    Point();
+    int getX();
+    int getY();
+    void setX(int val);
+    void setY(int val);
+    double squaredEuclideanDistance(Point *other);
 };
 
 POLYGLOT_DECLARE_TYPE(Point)
 
 class XtendPoint : public Point {
-    private:
-	int z;
-    public:
-	XtendPoint();
-	int getZ();
-	void setZ(int val);
-	int getZ(int constant);
-	int getX();		
+private:
+    int z;
+
+public:
+    XtendPoint();
+    int getZ();
+    void setZ(int val);
+    int getZ(int constant);
+    int getX();
 };
 
 POLYGLOT_DECLARE_TYPE(XtendPoint)
 
-
 //class methods
 
 Point::Point() {
-	x=0;
-	y=0;
+    x = 0;
+    y = 0;
 }
 
 int Point::getX() {
-	return x;
+    return x;
 }
 
 int Point::getY() {
-	return y;
+    return y;
 }
 
 void Point::setX(int val) {
-	x=val;
+    x = val;
 }
 
 void Point::setY(int val) {
-	y=val;
+    y = val;
 }
 
-double Point::squaredEuclideanDistance(Point* other) {
-	double dX = (double)(x - other->x);
-	double dY = (double)(y - other->y);
-	return dX*dX+dY*dY;
+double Point::squaredEuclideanDistance(Point *other) {
+    double dX = (double) (x - other->x);
+    double dY = (double) (y - other->y);
+    return dX * dX + dY * dY;
 }
 
 XtendPoint::XtendPoint() {
-	z=0;
+    z = 0;
 }
 
 int XtendPoint::getZ() {
-	return z;
+    return z;
 }
 
 void XtendPoint::setZ(int dZ) {
-	z=dZ;
+    z = dZ;
 }
 
 int XtendPoint::getZ(int constantOffset) {
-	return z+constantOffset;
+    return z + constantOffset;
 }
 
 int XtendPoint::getX() {
-	return x*2;
+    return x * 2;
 }
 
 //functions
 void *allocNativePoint() {
-    Point *ret = (Point*) malloc(sizeof(*ret));
+    Point *ret = (Point *) malloc(sizeof(*ret));
     return polyglot_from_Point(ret);
 }
 
 void *allocNativeXtendPoint() {
-    XtendPoint *ret = (XtendPoint*) malloc(sizeof(*ret));
+    XtendPoint *ret = (XtendPoint *) malloc(sizeof(*ret));
     return polyglot_from_XtendPoint(ret);
 }
 
 void swap(Point *p, Point *q) {
-	Point tmp = *q;
-	*q = *p;
-	*p = tmp;
+    Point tmp = *q;
+    *q = *p;
+    *p = tmp;
 }
 
 void freeNativePoint(Point *p) {
@@ -133,5 +134,3 @@ void freeNativePoint(Point *p) {
 void freeNativeXtendPoint(XtendPoint *p) {
     free(p);
 }
-
-
