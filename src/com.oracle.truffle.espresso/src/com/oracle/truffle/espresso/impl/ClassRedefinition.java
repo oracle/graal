@@ -433,8 +433,8 @@ public final class ClassRedefinition {
 
     private static boolean isSameMethod(ParserMethod oldMethod, ParserMethod newMethod) {
         return oldMethod.getName().equals(newMethod.getName()) &&
-                oldMethod.getSignature().equals(newMethod.getSignature()) &&
-                oldMethod.getFlags() == newMethod.getFlags();
+                        oldMethod.getSignature().equals(newMethod.getSignature()) &&
+                        oldMethod.getFlags() == newMethod.getFlags();
     }
 
     private static boolean isUnchangedField(ParserField oldField, ParserField newField) {

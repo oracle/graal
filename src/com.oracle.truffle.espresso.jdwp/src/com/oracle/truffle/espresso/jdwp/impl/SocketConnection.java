@@ -81,7 +81,7 @@ public final class SocketConnection implements Runnable {
             } catch (IOException ex) {
                 throw new RuntimeException("Failed sending packet to debugger instance", ex);
             } catch (ConnectionClosedException e) {
-               Thread.currentThread().interrupt();
+                Thread.currentThread().interrupt();
             }
         }
     }
