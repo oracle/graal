@@ -74,6 +74,7 @@ import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.java.ValidateNewInstanceClassNode;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
@@ -577,7 +578,8 @@ public class SubstrateGraphBuilderPlugins {
                  */
                 ValueNode clazzNonNull = b.nullCheckedValue(clazz, DeoptimizationAction.None);
                 b.add(new EnsureClassInitializedNode(clazzNonNull));
-                b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzNonNull, true));
+                ValueNode clazzLegal = b.add(new ValidateNewInstanceClassNode(clazzNonNull));
+                b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true));
                 return true;
             }
         });

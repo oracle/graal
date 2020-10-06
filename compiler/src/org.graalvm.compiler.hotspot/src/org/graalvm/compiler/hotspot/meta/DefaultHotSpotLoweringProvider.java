@@ -153,6 +153,7 @@ import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
+import org.graalvm.compiler.nodes.java.ValidateNewInstanceClassNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
@@ -325,15 +326,17 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                     getAllocationSnippets().lower((NewInstanceNode) n, tool);
                 }
             } else if (n instanceof DynamicNewInstanceNode) {
-                DynamicNewInstanceNode newInstanceNode = (DynamicNewInstanceNode) n;
-                if (newInstanceNode.getClassClass() == null) {
+                if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
+                    getAllocationSnippets().lower((DynamicNewInstanceNode) n, tool);
+                }
+            } else if (n instanceof ValidateNewInstanceClassNode) {
+                ValidateNewInstanceClassNode validateNewInstance = (ValidateNewInstanceClassNode) n;
+                if (validateNewInstance.getClassClass() == null) {
                     JavaConstant classClassMirror = constantReflection.asJavaClass(metaAccess.lookupJavaType(Class.class));
                     ConstantNode classClass = ConstantNode.forConstant(classClassMirror, tool.getMetaAccess(), graph);
-                    newInstanceNode.setClassClass(classClass);
+                    validateNewInstance.setClassClass(classClass);
                 }
-                if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
-                    getAllocationSnippets().lower(newInstanceNode, tool);
-                }
+                getAllocationSnippets().lower(validateNewInstance, tool);
             } else if (n instanceof NewArrayNode) {
                 if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                     getAllocationSnippets().lower((NewArrayNode) n, tool);
