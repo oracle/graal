@@ -26,9 +26,9 @@ package com.oracle.truffle.espresso.analysis;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
+import com.oracle.truffle.espresso.analysis.graph.Block;
 
-public class WorkingQueue<T extends LinkedBlock> {
+public class WorkingQueue<T extends Block> {
     private Element<T> first;
 
     public static class Element<U> {

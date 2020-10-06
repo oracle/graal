@@ -33,4 +33,8 @@ public class Record {
         this.local = local;
         this.type = type;
     }
+
+    public Record second() {
+        return new Record(bci, local + 1, type);
+    }
 }

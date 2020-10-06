@@ -64,6 +64,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.LSTORE_0;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.LSTORE_1;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.LSTORE_2;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.LSTORE_3;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.RET;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.isLoad;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.isStore;
 
@@ -73,6 +74,7 @@ import com.oracle.truffle.espresso.analysis.BlockIteratorClosure;
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.bytecode.Bytecodes;
 
 public class LoadStoreFinder extends BlockIteratorClosure {
 
@@ -84,12 +86,22 @@ public class LoadStoreFinder extends BlockIteratorClosure {
         int bci = b.start();
         while (bci <= b.end()) {
             int opcode = bs.currentBC(bci);
+            Record record = null;
+            boolean needsTwoLocals = false;
             if (opcode == IINC) {
-                history.add(new Record(bci, findLocalIndex(bs, bci, opcode), TYPE.IINC));
-            } else if (isLoad(opcode)) {
-                history.add(new Record(bci, findLocalIndex(bs, bci, opcode), TYPE.LOAD));
+                record = new Record(bci, findLocalIndex(bs, bci, opcode), TYPE.IINC);
+            } else if (isLoad(opcode) || opcode == RET) {
+                record = new Record(bci, findLocalIndex(bs, bci, opcode), TYPE.LOAD);
+                needsTwoLocals = Bytecodes.stackEffectOf(opcode) == 2;
             } else if (isStore(opcode)) {
-                history.add(new Record(bci, findLocalIndex(bs, bci, opcode), TYPE.STORE));
+                record = new Record(bci, findLocalIndex(bs, bci, opcode), TYPE.STORE);
+                needsTwoLocals = Bytecodes.stackEffectOf(opcode) == -2;
+            }
+            if (record != null) {
+                history.add(record);
+                if (needsTwoLocals) {
+                    history.add(record.second());
+                }
             }
             bci = bs.nextBCI(bci);
         }

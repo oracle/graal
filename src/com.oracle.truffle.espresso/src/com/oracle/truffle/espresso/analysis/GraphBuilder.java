@@ -23,7 +23,12 @@
 
 package com.oracle.truffle.espresso.analysis;
 
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.JSR;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.JSR_W;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.RET;
+
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 
 import com.oracle.truffle.espresso.analysis.graph.Block;
@@ -49,6 +54,8 @@ public final class GraphBuilder {
     private static final long HAS_TARGET = 1L << 60;
     private static final long HAS_BLOCK = 1L << 59;
     private static final long IS_CONTROL_SINK = 1L << 58;
+    private static final long IS_JSR = 1L << 57;
+    private static final long IS_RET = 1L << 56;
 
     private static final int BLOCK_ID_SHIFT = 16;
     private static final long BLOCK_ID_MASK = 0xFFFFL << BLOCK_ID_SHIFT;
@@ -64,6 +71,9 @@ public final class GraphBuilder {
     private final ExceptionHandler[] handlers;
 
     private final List<int[]> switchTable = new ArrayList<>();
+    private final List<JsrMarker> jsrTable = new ArrayList<>();
+    private final List<Integer> returnTable = new ArrayList<>();
+
     private int[] handlerToBlock;
     private TemporaryBlock[] temporaryBlocks;
 
@@ -85,6 +95,8 @@ public final class GraphBuilder {
         spawnBlocks();
         // Register handlers.
         registerHandlers();
+        // Register all blocks that can succeed a RET.
+        registerJsrRet();
         // Register predecessors.
         registerPredecessors();
         // spawn the espresso graph.
@@ -133,14 +145,19 @@ public final class GraphBuilder {
         int id = 0;
         int start = 0;
         int[] successors = null;
+        boolean isRet = false;
         for (int bci = 0; bci < status.length; bci++) {
             if (bci != 0 && isStatus(bci, BLOCK_START)) {
                 assert temp[id] == null;
                 assert id == readBlockID(start);
-                temp[id] = new TemporaryBlock(id, start, bci - 1, successors);
+                temp[id] = createTempBlock(id, start, successors, isRet, bci);
                 start = bci;
                 id++;
                 successors = null;
+                isRet = false;
+            }
+            if (isStatus(bci, IS_RET)) {
+                isRet = true;
             }
             if (isStatus(bci, HAS_TARGET)) {
                 assert successors == null;
@@ -151,7 +168,7 @@ public final class GraphBuilder {
                 successors = EMPTY_SUCCESSORS;
             }
         }
-        temp[id] = new TemporaryBlock(id, start, status.length - 1, successors);
+        temp[id] = createTempBlock(id, start, successors, isRet, status.length);
 
         temporaryBlocks = temp;
         int[] handlerBlocks = new int[handlers.length];
@@ -160,6 +177,10 @@ public final class GraphBuilder {
             handlerBlocks[pos] = readBlockID(handler.getHandlerBCI());
         }
         handlerToBlock = handlerBlocks;
+    }
+
+    private TemporaryBlock createTempBlock(int id, int start, int[] successors, boolean isRet, int bci) {
+        return new TemporaryBlock(id, start, bci - 1, successors, isRet);
     }
 
     /**
@@ -182,8 +203,24 @@ public final class GraphBuilder {
      */
     private void registerPredecessors() {
         for (int id = 0; id < temporaryBlocks.length; id++) {
-            for (int successor : temporaryBlocks[id].successors) {
+            TemporaryBlock b = temporaryBlocks[id];
+            for (int successor : b.successors(this)) {
                 temporaryBlocks[successor].registerPredecessor(id);
+            }
+
+        }
+    }
+
+    /**
+     * Registers to the builder all possible return addresses. As a first approximation, we will
+     * consider that all RET can return to all JSR.
+     */
+    private void registerJsrRet() {
+        if (!jsrTable.isEmpty()) {
+            for (JsrMarker marker : jsrTable) {
+                int id = readBlockID(marker.returnAddress);
+                assert !returnTable.contains(id);
+                returnTable.add(id);
             }
         }
     }
@@ -228,10 +265,15 @@ public final class GraphBuilder {
             markSink(bci);
         } else if (Bytecodes.isBranch(opcode)) {
             markBranch(bci);
+            if (isJSR(opcode)) {
+                markJsr(bci);
+            }
         } else if (isSwitch(opcode)) {
             markSwitch(bci, opcode);
         } else if (Bytecodes.isStop(opcode)) {
             markGoto(bci);
+        } else if (isRet(opcode)) {
+            markRet(bci);
         }
     }
 
@@ -271,6 +313,17 @@ public final class GraphBuilder {
         targets.add(defaultTarget);
         mark(defaultTarget, BLOCK_START);
         switchTable.add(toIntArray(targets));
+    }
+
+    private void markJsr(int bci) {
+        int target = bs.readBranchDest(bci);
+        mark(bci, IS_JSR);
+        int returnAddress = bs.nextBCI(bci);
+        jsrTable.add(new JsrMarker(target, returnAddress));
+    }
+
+    private void markRet(int bci) {
+        mark(bci, IS_RET);
     }
 
     private void markGoto(int bci) {
@@ -328,16 +381,40 @@ public final class GraphBuilder {
         return opcode == Bytecodes.LOOKUPSWITCH || opcode == Bytecodes.TABLESWITCH;
     }
 
+    private static boolean isJSR(int opcode) {
+        return opcode == JSR || opcode == JSR_W;
+    }
+
+    private static boolean isRet(int opcode) {
+        return opcode == RET;
+    }
+
+    private static final class JsrMarker {
+        private final int target;
+        private final int returnAddress;
+
+        public JsrMarker(int target, int returnAddress) {
+            this.target = target;
+            this.returnAddress = returnAddress;
+        }
+    }
+
     private static final class TemporaryBlock implements Block {
         private final int id;
         private final int start;
         private final int end;
         private final int[] successors;
+        private final boolean isRet;
 
+        // Additional successors
         private final ArrayList<Integer> handlers = new ArrayList<>();
+
+        // Predecessor handling
         private final ArrayList<Integer> predecessors = new ArrayList<>();
 
-        TemporaryBlock(int id, int start, int end, int[] successors) {
+        private int[] fullyLinkedSuccessors = null;
+
+        TemporaryBlock(int id, int start, int end, int[] successors, boolean isRet) {
             this.id = id;
             this.start = start;
             this.end = end;
@@ -346,6 +423,7 @@ public final class GraphBuilder {
             } else {
                 this.successors = new int[]{id + 1};
             }
+            this.isRet = isRet;
         }
 
         @Override
@@ -372,22 +450,53 @@ public final class GraphBuilder {
         }
 
         EspressoBlock promote(GraphBuilder builder, EspressoExecutionGraph graph) {
-            if (successors.length == 0 && handlers.isEmpty()) {
+            if (successors.length == 0 && handlers.isEmpty() && !isRet) {
                 return new EspressoBlock(graph, id, start, end, EspressoBlock.EMPTY_ID_ARRAY, toIntArray(predecessors));
             }
             if (handlers.isEmpty()) {
-                return new EspressoBlock(graph, id, start, end, successors, toIntArray(predecessors));
+                return new EspressoBlock(graph, id, start, end, successors(builder), toIntArray(predecessors));
             }
-            return new EspressoBlockWithHandlers(graph, id, start, end, mergeHandlers(builder), toIntArray(handlers), toIntArray(predecessors));
+            return new EspressoBlockWithHandlers(graph, id, start, end, successors(builder), toIntArray(handlers), toIntArray(predecessors));
         }
 
-        private int[] mergeHandlers(GraphBuilder builder) {
-            int[] entireSuccessors = new int[successors.length + handlers.size()];
-            System.arraycopy(successors, 0, entireSuccessors, 0, successors.length);
-            for (int i = 0; i < handlers.size(); i++) {
-                entireSuccessors[successors.length + i] = builder.handlerToBlock[handlers.get(i)];
+        private int[] successors(GraphBuilder builder) {
+            if (fullyLinkedSuccessors == null) {
+                if (successors.length == 0 && handlers.isEmpty() && !isRet) {
+                    fullyLinkedSuccessors = EspressoBlock.EMPTY_ID_ARRAY;
+                } else if (!isRet && handlers.isEmpty()) {
+                    fullyLinkedSuccessors = successors;
+                } else if (!isRet && !handlers.isEmpty()) {
+                    fullyLinkedSuccessors = merge(builder.nBlocks, successors, handlers);
+                } else if (isRet && handlers.isEmpty()) {
+                    fullyLinkedSuccessors = merge(builder.nBlocks, successors, builder.returnTable);
+                } else {
+                    fullyLinkedSuccessors = merge(builder.nBlocks, successors, handlers, builder.returnTable);
+                }
             }
-            return entireSuccessors;
+            return fullyLinkedSuccessors;
+        }
+
+        private static int[] merge(int totalBlocks, int[] successors, List<Integer>... others) {
+            int size = successors.length;
+            for (List<Integer> list : others) {
+                size += list.size();
+            }
+            int[] fullyLinkedSuccessors = new int[size];
+            BitSet present = new BitSet(totalBlocks);
+            for (int i = 0; i < successors.length; i++) {
+                int id = successors[i];
+                present.set(id);
+                fullyLinkedSuccessors[i] = id;
+            }
+            int pos = successors.length;
+            for (List<Integer> list : others) {
+                for (int i : list) {
+                    if (!present.get(i)) {
+                        fullyLinkedSuccessors[pos++] = i;
+                    }
+                }
+            }
+            return fullyLinkedSuccessors;
         }
     }
 }
