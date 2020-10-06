@@ -3746,24 +3746,26 @@ class InteropLibrarySnippets {
         void executeVoid(VirtualFrame frame) {
             Throwable exception = null;
             try {
+                block.executeVoid(frame);
+            } catch (Throwable ex) {
+                exception = executeCatchBlock(frame, ex, catchBlock);
+            }
+            // Java finally blocks that execute nodes are not allowed for
+            // compilation as code in finally blocks is duplicated
+            // by the Java bytecode compiler. This can lead to
+            // exponential code growth in worst cases.
+            if (finallyBlock != null) {
+                finallyBlock.executeVoid(frame);
+            }
+            if (exception != null) {
+                if (exception instanceof ControlFlowException) {
+                    throw (ControlFlowException) exception;
+                }
                 try {
-                    block.executeVoid(frame);
-                } catch (Throwable ex) {
-                    exception = executeCatchBlock(frame, ex, catchBlock);
-                }
-                // Java finally blocks that execute nodes are not allowed for
-                // compilation as they might duplicate the finally block code
-                if (finallyBlock != null) {
-                    finallyBlock.executeVoid(frame);
-                }
-                if (exception != null) {
-                    if (exception instanceof ControlFlowException) {
-                        throw (ControlFlowException) exception;
-                    }
                     throw exceptions.throwException(exception);
+                } catch (UnsupportedMessageException ie) {
+                    throw CompilerDirectives.shouldNotReachHere(ie);
                 }
-            } catch (UnsupportedMessageException ie) {
-                throw CompilerDirectives.shouldNotReachHere(ie);
             }
         }
 
@@ -3771,9 +3773,9 @@ class InteropLibrarySnippets {
         private <T extends Throwable> Throwable executeCatchBlock(
                         VirtualFrame frame,
                         Throwable ex,
-                        BlockNode catchBlk) throws T, UnsupportedMessageException {
+                        BlockNode catchBlk) throws T {
             if (ex instanceof ControlFlowException) {
-                // only needed if the language uses control flow exceptions
+                // run finally blocks for control flow
                 return ex;
             }
             exceptionProfile.enter();
@@ -3786,7 +3788,7 @@ class InteropLibrarySnippets {
                         return executeCatchBlock(frame, catchEx, null);
                     }
                 } else {
-                    // run finally block
+                    // run finally blocks for any interop exception
                     return ex;
                 }
             } else {
