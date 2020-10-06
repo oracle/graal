@@ -72,9 +72,7 @@ public abstract class LLVMInteropNonvirtualCallNode extends LLVMNode {
     @SuppressWarnings("unused")
     @Specialization
     Object doResolve(LLVMPointer receiver, LLVMInteropType.Clazz type, String methodName, Method method, Object[] arguments, @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @CachedLibrary(limit = "5") InteropLibrary interop, @Cached(value = "arguments.length", allowUncached = true) int argCount,
-                    @Cached(value = "getLLVMFunction(context, method, type)", allowUncached = true) LLVMFunction llvmFunction,
-                    @Cached(value = "create(llvmFunction)", allowUncached = true) LLVMAccessSymbolNode accessSymbolNode)
+                    @CachedLibrary(limit = "5") InteropLibrary interop, @Cached(value = "arguments.length", allowUncached = true) int argCount)
                     throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         Method newMethod = type.findMethodByArgumentsWithSelf(methodName, arguments);
         LLVMFunction newLLVMFunction = getLLVMFunction(context, newMethod, type);
