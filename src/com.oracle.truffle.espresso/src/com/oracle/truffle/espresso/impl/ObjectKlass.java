@@ -178,7 +178,7 @@ public final class ObjectKlass extends Klass {
         this.runtimeVisibleAnnotations = linkedKlass.getAttribute(Name.RuntimeVisibleAnnotations);
         // Package initialization must be done before vtable creation, as there are same package
         // checks.
-        initPackage(classLoader);
+        initPackage();
 
         Method[][] itable = null;
         Method[] vtable;
@@ -190,7 +190,7 @@ public final class ObjectKlass extends Klass {
             vtable = icr.methodtable;
             iKlassTable = icr.klassTable;
         } else {
-            InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, superKlass, superInterfaces, methods);
+            InterfaceTables.CreationResult methodCR = InterfaceTables.create(superKlass, superInterfaces, methods);
             iKlassTable = methodCR.klassTable;
             mirandaMethods = methodCR.mirandas;
             vtable = VirtualTable.create(superKlass, methods, this, mirandaMethods, pool.getClassLoader(), false);
@@ -939,7 +939,7 @@ public final class ObjectKlass extends Klass {
         return result;
     }
 
-    private void initPackage(StaticObject definingClassLoader) {
+    private void initPackage() {
         if (!Names.isUnnamedPackage(getRuntimePackage())) {
             ClassRegistry registry = getRegistries().getClassRegistry(definingClassLoader);
             packageEntry = registry.packages().lookup(getRuntimePackage());
@@ -1057,8 +1057,8 @@ public final class ObjectKlass extends Klass {
         ParserKlass parserKlass = packet.parserKlass;
         DetectedChange change = packet.detectedChange;
         RedefinitionCache oldVersion = redefineCache;
-        StaticObject definingClassLoader = oldVersion.pool.getClassLoader();
-        RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), parserKlass.getConstantPool(), definingClassLoader);
+        StaticObject classLoader = oldVersion.pool.getClassLoader();
+        RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), parserKlass.getConstantPool(), classLoader);
         ObjectKlass[] superInterfaces = getSuperInterfaces();
         LinkedKlass[] interfaces = new LinkedKlass[superInterfaces.length];
         for (int i = 0; i < superInterfaces.length; i++) {
@@ -1113,7 +1113,7 @@ public final class ObjectKlass extends Klass {
                 vtable = icr.methodtable;
                 iKlassTable = icr.klassTable;
             } else {
-                InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, getSuperKlass(), superInterfaces, newDeclaredMethods);
+                InterfaceTables.CreationResult methodCR = InterfaceTables.create(getSuperKlass(), superInterfaces, newDeclaredMethods);
                 iKlassTable = methodCR.klassTable;
                 mirandaMethods = methodCR.mirandas;
                 vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, pool.getClassLoader(), true);
@@ -1190,7 +1190,7 @@ public final class ObjectKlass extends Klass {
             vtable = icr.methodtable;
             iKlassTable = icr.klassTable;
         } else {
-            InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, getSuperKlass(), getSuperInterfaces(), newDeclaredMethods);
+            InterfaceTables.CreationResult methodCR = InterfaceTables.create(getSuperKlass(), getSuperInterfaces(), newDeclaredMethods);
             iKlassTable = methodCR.klassTable;
             mirandaMethods = methodCR.mirandas;
             vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, oldVersion.pool.getClassLoader(), true);
@@ -1216,7 +1216,7 @@ public final class ObjectKlass extends Klass {
         return result;
     }
 
-    private boolean isVirtual(ParserMethod m) {
+    private static boolean isVirtual(ParserMethod m) {
         return !Modifier.isStatic(m.getFlags()) && !Modifier.isPrivate(m.getFlags()) && !Name._init_.equals(m.getName());
     }
 

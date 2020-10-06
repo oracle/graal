@@ -58,7 +58,6 @@ final class InterfaceTables {
     private static final Entry[][] EMPTY_ENTRY_DUAL_ARRAY = new Entry[0][];
     private static final Method[][] EMPTY_METHOD_DUAL_ARRAY = new Method[0][];
 
-    private final ObjectKlass thisKlass;
     private final ObjectKlass superKlass;
     private final ObjectKlass[] superInterfaces;
     private final Method[] declaredMethods;
@@ -123,8 +122,7 @@ final class InterfaceTables {
         }
     }
 
-    private InterfaceTables(ObjectKlass thisKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, Method[] declaredMethods) {
-        this.thisKlass = thisKlass;
+    private InterfaceTables(ObjectKlass superKlass, ObjectKlass[] superInterfaces, Method[] declaredMethods) {
         this.superKlass = superKlass;
         this.superInterfaces = superInterfaces;
         this.declaredMethods = declaredMethods;
@@ -174,8 +172,7 @@ final class InterfaceTables {
     /**
      * Performs the first step of itable creation.
      *
-     * @param thisKlass the Klass for which the table is constructed
-     * @param superKlass the super class of thisKlass
+     * @param superKlass the super class of this Klass
      * @param superInterfaces the superInterfaces of thisKlass
      * @return a 3-uple containing: <p>
      *      - An intermediate helper for the itable.
@@ -185,8 +182,8 @@ final class InterfaceTables {
      */
     // checkstyle: resume
     // @formatter:on
-    public static CreationResult create(ObjectKlass thisKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, Method[] declaredMethods) {
-        return new InterfaceTables(thisKlass, superKlass, superInterfaces, declaredMethods).create();
+    public static CreationResult create(ObjectKlass superKlass, ObjectKlass[] superInterfaces, Method[] declaredMethods) {
+        return new InterfaceTables(superKlass, superInterfaces, declaredMethods).create();
     }
 
     /**
