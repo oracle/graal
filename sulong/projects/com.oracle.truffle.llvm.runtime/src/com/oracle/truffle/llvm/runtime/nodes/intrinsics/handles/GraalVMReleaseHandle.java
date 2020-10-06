@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -38,6 +36,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
@@ -47,7 +46,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 public abstract class GraalVMReleaseHandle extends LLVMIntrinsic {
 
     @Specialization
-    @TruffleBoundary
     protected Object doIntrinsic(LLVMNativePointer handle,
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @CachedLanguage LLVMLanguage language) {
@@ -61,8 +59,7 @@ public abstract class GraalVMReleaseHandle extends LLVMIntrinsic {
     }
 
     @Fallback
-    protected Object doFail(Object handle) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw new UnsupportedOperationException(handle + " not supported.");
+    protected Object doFail(@SuppressWarnings("unused") Object handle) {
+        throw new LLVMMemoryException(this, "Cannot release invalid handle.");
     }
 }

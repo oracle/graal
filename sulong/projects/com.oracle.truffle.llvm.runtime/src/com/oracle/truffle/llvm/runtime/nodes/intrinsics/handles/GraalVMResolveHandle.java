@@ -34,9 +34,11 @@ import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -51,12 +53,18 @@ public abstract class GraalVMResolveHandle extends LLVMIntrinsic {
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached LLVMToNativeNode forceAddressNode,
                     @CachedLanguage LLVMLanguage language,
-                    @Cached ConditionProfile isDerefProfile) {
+                    @Cached ConditionProfile isDerefProfile,
+                    @Cached BranchProfile invalidHandle) {
         long address = forceAddressNode.executeWithTarget(rawHandle).asNative();
-        if (!language.getNoDerefHandleAssumption().isValid() && isDerefProfile.profile(LLVMNativeMemory.isDerefHandleMemory(address))) {
-            return context.getDerefHandleContainer().getValue(this, address).copy();
-        } else {
-            return context.getHandleContainer().getValue(this, address).copy();
+        try {
+            if (!language.getNoDerefHandleAssumption().isValid() && isDerefProfile.profile(LLVMNativeMemory.isDerefHandleMemory(address))) {
+                return context.getDerefHandleContainer().getValue(this, address).copy();
+            } else {
+                return context.getHandleContainer().getValue(this, address).copy();
+            }
+        } catch (ArrayIndexOutOfBoundsException | NullPointerException ex) {
+            invalidHandle.enter();
+            throw new LLVMMemoryException(this, "Can't resolve invalid handle: %s", rawHandle);
         }
     }
 }

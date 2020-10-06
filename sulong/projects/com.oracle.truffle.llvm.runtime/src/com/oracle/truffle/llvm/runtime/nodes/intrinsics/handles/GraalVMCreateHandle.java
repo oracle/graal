@@ -29,13 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -44,15 +43,20 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class GraalVMCreateHandle extends LLVMIntrinsic {
 
-    @Specialization
+    @Specialization(guards = "value.getOffset() == 0")
     protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        if (value.getOffset() == 0) {
-            LLVMNativePointer handle = context.getHandleContainer().allocate(this, value.getObject());
-            return handle;
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(this, "Cannot get a handle to pointer into the middle of foreign object.");
-        }
+        LLVMNativePointer handle = context.getHandleContainer().allocate(this, value.getObject());
+        return handle;
+    }
+
+    @Specialization(guards = "value.getOffset() != 0")
+    protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value) {
+        throw new LLVMMemoryException(this, "Cannot get a handle to pointer into the middle of foreign object (offset = %d).", value.getOffset());
+    }
+
+    @Specialization
+    protected LLVMNativePointer doError(LLVMNativePointer p) {
+        throw new LLVMMemoryException(this, "Can't create handle from native pointer %s.", p);
     }
 }

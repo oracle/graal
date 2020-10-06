@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -50,5 +51,10 @@ public abstract class GraalVMCreateDerefHandle extends LLVMIntrinsic {
             return handle.increment(value.getOffset());
         }
         return handle;
+    }
+
+    @Specialization
+    protected LLVMNativePointer doError(LLVMNativePointer p) {
+        throw new LLVMPolyglotException(this, "Can't create handle from native pointer %s.", p);
     }
 }
