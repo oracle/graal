@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.VMError;
 
 class RuntimeAssertionsOptionTransformer implements Function<Object, Object> {
@@ -98,9 +97,6 @@ public final class RuntimeAssertionsSupport {
         @Option(help = "Enable or disable Java assert statements at run time") //
         public static final HostedOptionKey<String[]> RuntimeAssertions = new HostedOptionKey<>(new String[0]);
 
-        @Option(help = "Only use Java assert statements for classes that are matching the comma-separated list of package prefixes.") //
-        public static final HostedOptionKey<String[]> RuntimeAssertionsFilter = new HostedOptionKey<>(null);
-
         @APIOption(name = {"-esa", "-enablesystemassertions"}, customHelp = "also -enablesystemassertions. Enables assertions in all system classes.") //
         @APIOption(name = {"-dsa", "-disablesystemassertions"}, kind = APIOption.APIOptionKind.Negated, customHelp = "also -disablesystemassertions. Disables assertions in all system classes.") //
         @Option(help = "Enable or disable Java system assertions at run time") //
@@ -124,11 +120,6 @@ public final class RuntimeAssertionsSupport {
         packageAssertionStatus = new HashMap<>();
         classAssertionStatus = new HashMap<>();
         boolean tmpDefaultAssertionStatus = false;
-
-        /* Support for SubstrateVM RuntimeAssertionsFilter legacy option */
-        for (String arg : OptionUtils.flatten(",", Options.RuntimeAssertionsFilter.getValue())) {
-            packageAssertionStatus.put(arg, true);
-        }
 
         for (String option : runtimeAssertionsOptions) {
             VMError.guarantee(!option.isEmpty(), EMPTY_OPTION_VALUE_MSG);
