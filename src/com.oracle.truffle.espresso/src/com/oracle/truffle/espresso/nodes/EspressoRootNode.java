@@ -369,7 +369,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             if (synchronizedMethodMonitor == null) {
                 return monitors;
             } else {
-                StaticObject[] result = new StaticObject[monitors.length];
+                StaticObject[] result = new StaticObject[monitors.length + 1];
                 result[0] = synchronizedMethodMonitor;
                 System.arraycopy(monitors, 0, result, 1, monitors.length);
                 return result;
