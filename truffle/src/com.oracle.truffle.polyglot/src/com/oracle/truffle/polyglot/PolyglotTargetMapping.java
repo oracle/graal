@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,19 +43,42 @@ package com.oracle.truffle.polyglot;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-final class PolyglotTargetMapping {
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
+
+final class PolyglotTargetMapping implements Comparable<PolyglotTargetMapping> {
 
     final Class<Object> sourceType;
     final Class<Object> targetType;
     final Predicate<Object> accepts;
     final Function<Object, Object> converter;
+    final int hostPriority;
 
     @SuppressWarnings("unchecked")
-    <S, T> PolyglotTargetMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> accepts, Function<S, T> converter) {
+    <S, T> PolyglotTargetMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> accepts, Function<S, T> converter, TargetMappingPrecedence precedence) {
         this.sourceType = (Class<Object>) sourceType;
         this.targetType = (Class<Object>) targetType;
         this.accepts = (Predicate<Object>) accepts;
         this.converter = (Function<Object, Object>) converter;
+        this.hostPriority = toHostPriority(precedence);
+    }
+
+    private static int toHostPriority(TargetMappingPrecedence p) {
+        switch (p) {
+            case HIGHEST:
+                return ToHostNode.HIGHEST;
+            case HIGH:
+                return ToHostNode.STRICT;
+            case LOW:
+                return ToHostNode.LOOSE;
+            case LOWEST:
+                return ToHostNode.LOWEST;
+            default:
+                throw new AssertionError("invalid precedence");
+        }
+    }
+
+    public int compareTo(PolyglotTargetMapping o) {
+        return Integer.compare(hostPriority, o.hostPriority);
     }
 
 }

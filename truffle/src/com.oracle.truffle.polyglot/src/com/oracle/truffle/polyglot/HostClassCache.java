@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -138,8 +139,11 @@ final class HostClassCache {
             }
             list.add(map);
         }
+
         for (Entry<Class<?>, Object> object : localMappings.entrySet()) {
-            object.setValue(((List<?>) object.getValue()).toArray(EMPTY_MAPPINGS));
+            List<PolyglotTargetMapping> classMappings = ((List<PolyglotTargetMapping>) object.getValue());
+            Collections.sort(classMappings);
+            object.setValue(classMappings.toArray(EMPTY_MAPPINGS));
         }
         return localMappings;
     }
