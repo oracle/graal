@@ -221,10 +221,10 @@ public final class StandardTags {
      * Marks program locations to be considered as try blocks, that are followed by catch. To
      * determine which exceptions are caught by {@link InstrumentableNode} tagged with this tag, the
      * node might provide a {@link InstrumentableNode#getNodeObject() node object} that has
-     * <code>catches</code> function, which takes a
-     * {@link com.oracle.truffle.api.TruffleException#getExceptionObject()} and returns a boolean
-     * return value indicating whether the try block catches the exception, or not. When this block
-     * catches all exceptions, no special node object or catches function needs to be provided.
+     * <code>catches</code> function, which takes a an interop value that returns <code>true</code>
+     * for {@link InteropLibrary#isException(Object)} and returns a boolean value indicating whether
+     * the try block catches the exception, or not. When this block catches all exceptions, no
+     * special node object or catches function needs to be provided.
      *
      * @since 19.0
      */
