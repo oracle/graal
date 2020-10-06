@@ -68,6 +68,12 @@ public class SLParseError extends AbstractTruffleException {
         this.length = length;
     }
 
+    /**
+     * Note that any subclass of {@link AbstractTruffleException} must always return
+     * <code>true</code> for {@link InteropLibrary#isException(Object)}. That is why it is correct
+     * to export {@link #getExceptionType()} without implementing
+     * {@link InteropLibrary#isException(Object)}.
+     */
     @ExportMessage
     ExceptionType getExceptionType() {
         return ExceptionType.PARSE_ERROR;
