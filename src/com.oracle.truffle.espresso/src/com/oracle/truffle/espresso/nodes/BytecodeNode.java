@@ -1075,7 +1075,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                             BytecodeStream original = new BytecodeStream(getMethodVersion().getCodeAttribute().getOriginalCode());
                             char cpi = original.readCPI(curBCI);
                             int nodeOpcode = quickNode.getOpcode();
-                            Method resolutionSeed = resolveMethod(nodeOpcode, cpi, true);
+                            Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
                             QuickNode invoke = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors));
                             nodes[bs.readCPI(curBCI)] = invoke;
                             top += invoke.execute(frame);
@@ -1984,13 +1984,15 @@ public final class BytecodeNode extends EspressoMethodNode {
         return getConstantPool().resolvedKlassAt(getMethod().getDeclaringKlass(), cpi);
     }
 
-    private Method resolveMethod(int opcode, char cpi) {
-        return resolveMethod(opcode, cpi, false);
+    public Method resolveMethod(int opcode, char cpi) {
+        assert Bytecodes.isInvoke(opcode);
+        return getConstantPool().resolvedMethodAt(getMethod().getDeclaringKlass(), cpi);
     }
 
-    private Method resolveMethod(int opcode, char cpi, boolean noCache) {
+    private Method resolveMethodNoCache(int opcode, char cpi) {
+        CompilerAsserts.neverPartOfCompilation();
         assert Bytecodes.isInvoke(opcode);
-        return getConstantPool().resolvedMethodAt(getMethod().getDeclaringKlass(), cpi, noCache);
+        return getConstantPool().resolvedMethodAtNoCache(getMethod().getDeclaringKlass(), cpi);
     }
 
     private Field resolveField(int opcode, char cpi) {
