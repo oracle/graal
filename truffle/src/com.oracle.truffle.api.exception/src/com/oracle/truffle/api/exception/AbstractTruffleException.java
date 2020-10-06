@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.exception;
 
+import org.graalvm.polyglot.PolyglotException;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTrace;
@@ -227,16 +229,21 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * Creates a new AbstractTruffleException.
      *
      * @param message the exception message or {@code null}
-     * @param internalCause a Truffle exception causing this exception or {@code null}
+     * @param cause an internal or {@link AbstractTruffleException} causing this exception or
+     *            {@code null}. If internal errors are passed as cause, they are not accessible by
+     *            other languages or the embedder. In other words,
+     *            {@link InteropLibrary#getExceptionCause(Object)} or
+     *            {@link PolyglotException#getCause()} will return <code>null</code> for internal
+     *            errors.
      * @param stackTraceElementLimit a stack trace limit. Use {@link #UNLIMITED_STACK_TRACE} for
      *            unlimited stack trace length.
      *
      * @since 20.3
      */
-    protected AbstractTruffleException(String message, Throwable internalCause, int stackTraceElementLimit, Node location) {
-        super(message, internalCause);
+    protected AbstractTruffleException(String message, Throwable cause, int stackTraceElementLimit, Node location) {
+        super(message, cause);
         this.stackTraceElementLimit = stackTraceElementLimit;
-        this.cause = internalCause;
+        this.cause = cause;
         this.location = location;
     }
 
