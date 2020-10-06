@@ -83,6 +83,7 @@ interface QuickPickParameters<T extends vscode.QuickPickItem> {
 	items: T[];
 	activeItem?: T;
 	placeholder: string;
+	postProcess?: (value: T) => Promise<void>;
 	buttons?: vscode.QuickInputButton[];
 	shouldResume: () => Thenable<boolean>;
 }
@@ -93,7 +94,7 @@ interface InputBoxParameters {
 	totalSteps: number;
 	value: string;
 	prompt: string;
-	validate: (value: string) => Promise<string | undefined>;
+	validate?: (value: string) => Promise<string | undefined>;
 	buttons?: vscode.QuickInputButton[];
 	shouldResume: () => Thenable<boolean>;
 }
@@ -136,7 +137,7 @@ export class MultiStepInput {
 		}
 	}
 
-	async showQuickPick<T extends vscode.QuickPickItem, P extends QuickPickParameters<T>>({ title, step, totalSteps, items, activeItem, placeholder, buttons, shouldResume }: P) {
+	async showQuickPick<T extends vscode.QuickPickItem, P extends QuickPickParameters<T>>({ title, step, totalSteps, items, activeItem, placeholder, postProcess, buttons, shouldResume }: P) {
 		const disposables: vscode.Disposable[] = [];
 		try {
 			return await new Promise<T | (P extends { buttons: (infer I)[] } ? I : never)>((resolve, reject) => {
@@ -153,6 +154,7 @@ export class MultiStepInput {
 					...(this.steps.length > 1 ? [vscode.QuickInputButtons.Back] : []),
 					...(buttons || [])
 				];
+				input.ignoreFocusOut = true;
 				disposables.push(
 					input.onDidTriggerButton(item => {
 						if (item === vscode.QuickInputButtons.Back) {
@@ -161,7 +163,17 @@ export class MultiStepInput {
 							resolve(<any>item);
 						}
 					}),
-					input.onDidChangeSelection(items => resolve(items[0])),
+					input.onDidAccept(async () => {
+						const item = input.selectedItems[0];
+						if (postProcess) {
+							input.enabled = false;
+							input.busy = true;
+							await postProcess(item);
+							input.enabled = true;
+							input.busy = false;
+						}
+						resolve(item);
+					}),
 					input.onDidHide(() => {
 						(async () => {
 							reject(shouldResume && await shouldResume() ? InputFlowAction.resume : InputFlowAction.cancel);
@@ -194,7 +206,7 @@ export class MultiStepInput {
 					...(this.steps.length > 1 ? [vscode.QuickInputButtons.Back] : []),
 					...(buttons || [])
 				];
-				let validating = validate('');
+				input.ignoreFocusOut = true;
 				disposables.push(
 					input.onDidTriggerButton(item => {
 						if (item === vscode.QuickInputButtons.Back) {
@@ -207,19 +219,17 @@ export class MultiStepInput {
 						const value = input.value;
 						input.enabled = false;
 						input.busy = true;
-						if (!(await validate(value))) {
+						if (validate) {
+							input.validationMessage = await validate(value);
+						}
+						if (!input.validationMessage) {
 							resolve(value);
 						}
 						input.enabled = true;
 						input.busy = false;
 					}),
-					input.onDidChangeValue(async text => {
-						const current = validate(text);
-						validating = current;
-						const validationMessage = await current;
-						if (current === validating) {
-							input.validationMessage = validationMessage;
-						}
+					input.onDidChangeValue(async () => {
+						input.validationMessage = undefined;
 					}),
 					input.onDidHide(() => {
 						(async () => {
