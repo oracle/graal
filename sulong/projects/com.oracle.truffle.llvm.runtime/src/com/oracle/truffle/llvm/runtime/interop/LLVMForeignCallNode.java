@@ -237,16 +237,6 @@ public abstract class LLVMForeignCallNode extends RootNode {
 
     protected abstract Object doCall(VirtualFrame frame, LLVMStack stack) throws ArityException, TypeOverflowException;
 
-    private static LLVMInteropType.Structured getReturnBaseType(LLVMInteropType functionType) {
-        if (functionType instanceof LLVMInteropType.Function) {
-            LLVMInteropType returnType = ((LLVMInteropType.Function) functionType).getReturnType();
-            if (returnType instanceof LLVMInteropType.Value) {
-                return ((LLVMInteropType.Value) returnType).baseType;
-            }
-        }
-        return null;
-    }
-
     static CallTarget getCallTarget(LLVMFunctionDescriptor descriptor) {
         LLVMFunctionCode functionCode = descriptor.getFunctionCode();
         if (functionCode.isLLVMIRFunction()) {
