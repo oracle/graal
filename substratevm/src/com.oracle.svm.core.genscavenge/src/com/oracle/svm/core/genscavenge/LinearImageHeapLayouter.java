@@ -25,7 +25,6 @@
 package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.image.AbstractImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 

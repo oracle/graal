@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -33,7 +34,7 @@ import java.util.Queue;
 import java.util.TreeMap;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.image.AbstractImageHeapLayouter.AbstractImageHeapPartition;
+import com.oracle.svm.core.genscavenge.AbstractImageHeapLayouter.AbstractImageHeapPartition;
 import com.oracle.svm.core.image.ImageHeapObject;
 
 /**
@@ -119,7 +120,7 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
 
     private static NavigableMap<Long, Queue<ImageHeapObject>> createSortedObjectsMap(List<ImageHeapObject> objects) {
         ImageHeapObject[] sorted = objects.toArray(new ImageHeapObject[0]);
-        Arrays.sort(sorted, new ImageHeapObject.SizeComparator());
+        Arrays.sort(sorted, new SizeComparator());
 
         NavigableMap<Long, Queue<ImageHeapObject>> map = new TreeMap<>();
         Queue<ImageHeapObject> currentQueue = null;
@@ -141,7 +142,6 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
         if (firstObject == null) {
             firstObject = info.getObject();
         }
-        assert info.getPartition() == this;
         long offsetInPartition = allocationOffset - startOffset;
         assert ConfigurationValues.getObjectLayout().isAligned(offsetInPartition) : "start: " + offsetInPartition + " must be aligned.";
         info.setOffsetInPartition(offsetInPartition);
@@ -162,5 +162,12 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
     @Override
     public long getSize() {
         return getEndOffset() - getStartOffset();
+    }
+
+    private static class SizeComparator implements Comparator<ImageHeapObject> {
+        @Override
+        public int compare(ImageHeapObject o1, ImageHeapObject o2) {
+            return Long.signum(o1.getSize() - o2.getSize());
+        }
     }
 }

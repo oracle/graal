@@ -25,7 +25,7 @@
 package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.image.AbstractImageHeapLayouter.AbstractImageHeapPartition;
+import com.oracle.svm.core.genscavenge.AbstractImageHeapLayouter.AbstractImageHeapPartition;
 import com.oracle.svm.core.image.ImageHeapObject;
 
 /**
@@ -53,7 +53,6 @@ public class LinearImageHeapPartition extends AbstractImageHeapPartition {
     }
 
     private void allocate(ImageHeapObject info, LinearImageHeapAllocator allocator) {
-        assert info.getPartition() == this;
         if (firstObject == null) {
             firstObject = info.getObject();
         }

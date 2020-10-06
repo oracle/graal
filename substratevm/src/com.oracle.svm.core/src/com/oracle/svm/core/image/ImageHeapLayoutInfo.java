@@ -25,24 +25,24 @@
 package com.oracle.svm.core.image;
 
 public class ImageHeapLayoutInfo {
-    private final long writableOffsetInSection;
+    private final long writableOffset;
     private final long writableSize;
 
-    private final long readOnlyRelocatableOffsetInSection;
+    private final long readOnlyRelocatableOffset;
     private final long readOnlyRelocatableSize;
 
     private final long imageHeapSize;
 
-    public ImageHeapLayoutInfo(long writableOffsetInSection, long writableSize, long readOnlyRelocatableOffsetInSection, long readOnlyRelocatableSize, long imageHeapSize) {
-        this.writableOffsetInSection = writableOffsetInSection;
+    public ImageHeapLayoutInfo(long writableOffset, long writableSize, long readOnlyRelocatableOffset, long readOnlyRelocatableSize, long imageHeapSize) {
+        this.writableOffset = writableOffset;
         this.writableSize = writableSize;
-        this.readOnlyRelocatableOffsetInSection = readOnlyRelocatableOffsetInSection;
+        this.readOnlyRelocatableOffset = readOnlyRelocatableOffset;
         this.readOnlyRelocatableSize = readOnlyRelocatableSize;
         this.imageHeapSize = imageHeapSize;
     }
 
     public long getWritableOffset() {
-        return writableOffsetInSection;
+        return writableOffset;
     }
 
     public long getWritableSize() {
@@ -50,7 +50,7 @@ public class ImageHeapLayoutInfo {
     }
 
     public long getReadOnlyRelocatableOffset() {
-        return readOnlyRelocatableOffsetInSection;
+        return readOnlyRelocatableOffset;
     }
 
     public long getReadOnlyRelocatableSize() {
@@ -58,7 +58,7 @@ public class ImageHeapLayoutInfo {
     }
 
     public boolean isReadOnlyRelocatable(int offset) {
-        return offset >= readOnlyRelocatableOffsetInSection && offset < readOnlyRelocatableOffsetInSection + readOnlyRelocatableSize;
+        return offset >= readOnlyRelocatableOffset && offset < readOnlyRelocatableOffset + readOnlyRelocatableSize;
     }
 
     public long getImageHeapSize() {
