@@ -158,7 +158,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
 
     /**
      * The constant for an unlimited stack trace element limit.
-     * 
+     *
      * @since 20.3
      */
     public static final int UNLIMITED_STACK_TRACE = -1;

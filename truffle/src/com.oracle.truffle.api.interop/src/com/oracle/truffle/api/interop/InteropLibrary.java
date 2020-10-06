@@ -1275,9 +1275,13 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Throws the receiver object as an exception of the source language, as if it was thrown by the
-     * source language itself. Allows rethrowing exceptions caught by another language.
+     * source language itself. Allows rethrowing exceptions caught by another language. If this
+     * method is implemented then also {@link #isException(Object)} must be implemented.
      * <p>
-     * If this method is implemented then also {@link #isException(Object)} must be implemented.
+     * Any interop value can be an exception value and export {@link #throwException(Object)}. The
+     * exception thrown by this message must extend
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException}. In future versions this
+     * contract will be enforced using an assertion.
      * <p>
      * For a sample {@code TryCatchNode} implementation see {@link #isException(Object)
      * isException}.
