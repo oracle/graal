@@ -60,6 +60,7 @@ import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -165,6 +166,7 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import org.graalvm.compiler.replacements.nodes.LoadSnippetVarargParameterNode;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
@@ -285,7 +287,7 @@ public class SnippetTemplate {
         }
     }
 
-    protected static class EagerSnippetInfo extends SnippetInfo {
+    public static class EagerSnippetInfo extends SnippetInfo {
         protected final SnippetParameterInfo snippetParameterInfo;
 
         protected EagerSnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver, SnippetParameterInfo snippetParameterInfo) {
@@ -346,6 +348,9 @@ public class SnippetTemplate {
 
         public Arguments addConst(String name, Object value) {
             assert value != null;
+            if (value instanceof CStringConstant) {
+                return addConst(name, value, StampFactory.pointer());
+            }
             return addConst(name, value, null);
         }
 
@@ -568,6 +573,7 @@ public class SnippetTemplate {
 
         protected final OptionValues options;
         protected final Providers providers;
+        protected final MetaAccessProvider metaAccess;
         protected final SnippetReflectionProvider snippetReflection;
         protected final Iterable<DebugHandlersFactory> factories;
         protected final TargetDescription target;
@@ -576,6 +582,7 @@ public class SnippetTemplate {
         protected AbstractTemplates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
             this.options = options;
             this.providers = providers;
+            this.metaAccess = providers.getMetaAccess();
             this.snippetReflection = snippetReflection;
             this.target = target;
             this.factories = factories;
@@ -587,11 +594,11 @@ public class SnippetTemplate {
             }
         }
 
-        public Providers getProviders() {
-            return providers;
+        public MetaAccessProvider getMetaAccess() {
+            return metaAccess;
         }
 
-        public static Method findMethod(Class<? extends Snippets> declaringClass, String methodName, Method except) {
+        public static Method findMethod(Class<?> declaringClass, String methodName, Method except) {
             for (Method m : declaringClass.getDeclaredMethods()) {
                 if (m.getName().equals(methodName) && !m.equals(except)) {
                     return m;
@@ -631,7 +638,7 @@ public class SnippetTemplate {
         protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, ResolvedJavaMethod original, Object receiver,
                         LocationIdentity... initialPrivateLocations) {
             assert methodName != null;
-            ResolvedJavaMethod javaMethod = findMethod(providers.getMetaAccess(), declaringClass, methodName);
+            ResolvedJavaMethod javaMethod = findMethod(getMetaAccess(), declaringClass, methodName);
             assert javaMethod != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + " named " + methodName;
             providers.getReplacements().registerSnippet(javaMethod, original, receiver, GraalOptions.TrackNodeSourcePosition.getValue(options), options);
             LocationIdentity[] privateLocations = GraalOptions.SnippetCounters.getValue(options) ? SnippetCounterNode.addSnippetCounters(initialPrivateLocations) : initialPrivateLocations;
@@ -762,7 +769,13 @@ public class SnippetTemplate {
                                 constantNode = ConstantNode.forConstant(stamp, (Constant) arg, metaAccess, snippetCopy);
                             }
                         } else {
+// if (UseEncodedGraphs.getValue(options) && kind == JavaKind.Object) {
+// JavaConstant constant = new SnippetObjectConstant(arg);
+// constantNode = ConstantNode.forConstant(constant, SnippetMetaAccessProvider.singleton(),
+// snippetCopy);
+// } else {
                             constantNode = ConstantNode.forConstant(snippetReflection.forBoxed(kind, arg), metaAccess, snippetCopy);
+                            // }
                         }
                         nodeReplacements.put(parameter, constantNode);
                     } else if (args.info.isVarargsParameter(i)) {
@@ -1131,7 +1144,12 @@ public class SnippetTemplate {
                     } else {
                         canonicalizer = CanonicalizerPhase.create();
                     }
-                    LoopTransformations.fullUnroll(loop, providers, canonicalizer);
+                    try {
+                        LoopTransformations.fullUnroll(loop, providers, canonicalizer);
+                    } catch (RetryableBailoutException e) {
+                        // This is a hard error in this context
+                        throw new GraalError(e, snippetCopy.toString());
+                    }
                     CanonicalizerPhase.create().applyIncremental(snippetCopy, providers, mark, false);
                     loop.deleteUnusedNodes();
                 }
@@ -1165,7 +1183,7 @@ public class SnippetTemplate {
     private static boolean checkConstantArgument(MetaAccessProvider metaAccess, final ResolvedJavaMethod method, Signature signature, int paramIndex, String name, Object arg, JavaKind kind) {
         ResolvedJavaType type = signature.getParameterType(paramIndex, method.getDeclaringClass()).resolve(method.getDeclaringClass());
         if (metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(type)) {
-            assert arg instanceof JavaConstant : method + ": word constant parameters must be passed boxed in a Constant value: " + arg;
+            assert arg instanceof Constant || arg instanceof ConstantNode : method + ": word constant parameters must be passed boxed in a Constant value: " + arg;
             return true;
         }
         if (kind != JavaKind.Object) {
@@ -2075,12 +2093,13 @@ public class SnippetTemplate {
         for (int i = offset; i < args.info.getParameterCount(); i++) {
             if (args.info.isConstantParameter(i)) {
                 JavaKind kind = signature.getParameterKind(i - offset);
-                assert checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
+                // avoid assert until signature works better
+                assert IS_IN_NATIVE_IMAGE || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
 
             } else if (args.info.isVarargsParameter(i)) {
                 assert args.values[i] instanceof Varargs;
                 Varargs varargs = (Varargs) args.values[i];
-                assert checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
+                assert IS_IN_NATIVE_IMAGE || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
             }
         }
         return true;
