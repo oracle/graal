@@ -28,8 +28,26 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added the [RootNode.isTrivial](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#isTrivial) method, for specifying root nodes that are always more efficient to inline than not to.
 * Added [ByteArraySupport](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/memory/ByteArraySupport.html): a helper class providing safe multi-byte primitive type accesses from byte arrays.
 * Added a new base class for Truffle exceptions, see [AbstractTruffleException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/exception/AbstractTruffleException.html). The original `TruffleException` has been deprecated. Added new interop messages for exception handling replacing the deprecated `TruffleException` methods.
+* Added a new base class for Truffle exceptions, see [AbstractTruffleException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/exception/AbstractTruffleException.html). The original `TruffleException` has been deprecated.
+* Added new messages to `InteropLibrary` related to exception handling:
+    * Added `getExceptionType(Object)` that allows to specify the type of an exception, e.g. PARSE_ERROR. 
+    * Added `isExceptionIncompleteSource(Object)` allows to specify whether the parse error contained unclosed brackets.
+    * Added `getExceptionExitStatus(Object)` allows to specify the exit status of an exception of type EXIT.
+    * Added `hasExceptionCause(Object)` and `getExceptionCause(Object)` to return the cause of this error
+    * Added `hasExceptionStackTrace(Object)` and `getExceptionStackTrace(Object)` to return the guest stack this of this error. 
+    * Added `hasExceptionMessage(Object)` and `getExceptionMessage(Object)` to provide an error message of the error.
+    * Added `hasExecutableName(Object)` and `getExecutableName(Object)` to provide a method name similar to what was provided in `RootNode.getName()` but for executable objects.
+    * Added `hasDeclaringMetaObject(Object)` and `getDeclaringMetaObject(Object)` to provide the meta object of the function. 
+* Language implementations are recommended to perform the following steps to upgrade their exception implementation:
+    * Convert non-internal guest language exceptions to `AbstractTruffleException`, internal errors should be refactored to no longer implement `TruffleException`.
+    * Export new interop messages directly on the `AbstractTruffleException` subclass if necessary. Consider exporting `getExceptionType(Object)`, `getExceptionExitStatus(Object)` and `isExceptionIncompleteSource(Object)`. For other interop messages the default implementation should be sufficient for most use-cases. Consider using `@ExportLibrary(delegateTo=...)` to forward to a guest object stored inside of the exception.
+    * Rewrite interop capable guest language try-catch nodes to the new interop pattern for handling exceptions. See `InteropLibrary#isException(Object)` for more information. 
+    * Implement the new method `RootNode.translateStackTraceElement` which allows guest languages to transform stack trace elements to accessible guest objects for other languages.
+    * Consider making executable interop objects of the guest language implement `InteropLibrary.hasExecutableName(Object)` and `InteropLibrary.hasDeclaringMetaObject(Object)`.
+    * Make exception printing in the guest language use `InteropLibrary.getExceptionMessage(Object)`, `InteropLibrary.getExceptionCause(Object)` and `InteropLibrary.getExceptionStackTrace(Object)` for foreign exceptions to print them in the style of the language.
+    * Make all exports of `InteropLibrary.throwException(Object)` throw an instance of `AbstractTruffleException`. This contract will be enforced in future versions when `TruffleException` was removed.
 * Added [TruffleInstrument.Env.getEnteredContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#getEnteredContext--) returning the entered `TruffleContext`.
-* All exports of `InteropLibrary.throwException(Object)` are expected to throw an instance of `AbstractTruffleException` from now on. This contract will be enforced in future versions when `TruffleException` was removed.
+
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.
