@@ -3154,6 +3154,135 @@ public abstract class TruffleLanguage<C> {
             }
         }
 
+        /**
+         * Creates a Java host adapter class. Returns a host symbol that can be instantiated with a
+         * guest object to create an instance of the provided host types that delegates non-final
+         * method invocations to the guest object provided to the instantiate message.
+         *
+         * A host class is generated as follows:
+         * <p>
+         * For every protected or public constructor in the extended class, the adapter class will
+         * have one public constructor (visibility of protected constructors in the extended class
+         * is promoted to public).
+         * <p>
+         * For every super constructor, a constructor taking a trailing {@link Value} argument
+         * preceded by original constructor's arguments is generated. When such a constructor is
+         * invoked, the passed {@link Value}'s member functions are used to implement and/or
+         * override methods on the original class, dispatched by name. A single invokable member
+         * will act as the implementation for all overloaded methods of the same name. When methods
+         * on an adapter instance are invoked, the functions are invoked having the {@link Value}
+         * passed in the instance constructor as their receiver. Subsequent changes to the members
+         * of that {@link Value} (reassignment or removal of its functions) are reflected in the
+         * adapter instance; the method implementations are not bound to functions at constructor
+         * invocation time.
+         * <p>
+         * The generated host class extends all non-final public or protected methods, and forwards
+         * their invocations to the guest object provided to the constructor. If the guest object
+         * does not contain an invokable member with that name, the super/default method is invoked
+         * instead. If the super method is abstract, an {@link AbstractMethodError} is thrown.
+         * <p>
+         * If the original types collectively have only one abstract method, or have several of
+         * them, but all share the same name, the constructor(s) will check if the {@link Value} is
+         * executable, and if so, will use the passed function as the implementation for all
+         * abstract methods. For consistency, any concrete methods sharing the single abstract
+         * method name will also be overridden by the function.
+         * <p>
+         * For non-void methods, all the conversions supported by {@link Value#as} will be in effect
+         * to coerce the guest methods' return value to the expected Java return type.
+         *
+         * @param types the types to extend. Must be non-null and contain at least one extensible
+         *            superclass or interface, and at most one superclass. All types must be public,
+         *            accessible, and allow implementation.
+         * @return a host symbol that can be instantiated to create instances of a host class that
+         *         extends all the provided host types.
+         * @throws IllegalArgumentException if the types are not extensible or more than one
+         *             superclass is given.
+         * @throws SecurityException if host access does not allow creating adapter classes for
+         *             these types.
+         * @throws UnsupportedOperationException if creating adapter classes is not supported on
+         *             this runtime at all, which is currently the case for native images.
+         * @throws NullPointerException if {@code types} is null
+         *
+         * @see #createHostAdapterClass(Class[], Object)
+         * @since 20.3.0
+         */
+        @TruffleBoundary
+        public Object createHostAdapterClass(Class<?>[] types) {
+            return createHostAdapterClass(types, null);
+        }
+
+        /**
+         * Creates a Java host adapter class. Returns a host symbol that can be instantiated with a
+         * guest object to create an instance of the provided host types that delegates non-final
+         * method invocations to the guest object provided to the instantiate message.
+         *
+         * A host class is generated as follows:
+         * <p>
+         * For every protected or public constructor in the extended class, the adapter class will
+         * have one public constructor (visibility of protected constructors in the extended class
+         * is promoted to public).
+         * <p>
+         * For every super constructor, a constructor taking a trailing {@link Value} argument
+         * preceded by original constructor's arguments is generated. When such a constructor is
+         * invoked, the passed {@link Value}'s member functions are used to implement and/or
+         * override methods on the original class, dispatched by name. A single invokable member
+         * will act as the implementation for all overloaded methods of the same name. When methods
+         * on an adapter instance are invoked, the functions are invoked having the {@link Value}
+         * passed in the instance constructor as their receiver. Subsequent changes to the members
+         * of that {@link Value} (reassignment or removal of its functions) are reflected in the
+         * adapter instance; the method implementations are not bound to functions at constructor
+         * invocation time.
+         * <p>
+         * The generated host class extends all non-final public or protected methods, and forwards
+         * their invocations to the guest object provided to the constructor. If the guest object
+         * does not contain an invokable member with that name, the super/default method is invoked
+         * instead. If the super method is abstract, an {@link AbstractMethodError} is thrown.
+         * <p>
+         * If the original types collectively have only one abstract method, or have several of
+         * them, but all share the same name, the constructor(s) will check if the {@link Value} is
+         * executable, and if so, will use the passed function as the implementation for all
+         * abstract methods. For consistency, any concrete methods sharing the single abstract
+         * method name will also be overridden by the function.
+         * <p>
+         * For non-void methods, all the conversions supported by {@link Value#as} will be in effect
+         * to coerce the guest methods' return value to the expected Java return type.
+         *
+         * @param types the types to extend. Must be non-null and contain at least one extensible
+         *            superclass or interface, and at most one superclass. All types must be public,
+         *            accessible, and allow implementation.
+         * @param classOverrides an optional class-level overrides guest object. If not null, the
+         *            object is bound to the class, not to any instance. Consequently, the generated
+         *            constructors are changed to not take an object; all instances will share the
+         *            same overrides object. Note that since a new class has to be generated for
+         *            every overrides object instance and cannot be shared, use of this feature is
+         *            discouraged; it is provided only for compatibility reasons.
+         * @return a host symbol that can be instantiated to create instances of a host class that
+         *         extends all the provided host types.
+         * @throws IllegalArgumentException if the types are not extensible or more than one
+         *             superclass is given.
+         * @throws SecurityException if host access does not allow creating adapter classes for
+         *             these types.
+         * @throws UnsupportedOperationException if creating adapter classes is not supported on
+         *             this runtime at all, which is currently the case for native images.
+         * @throws NullPointerException if {@code types} is null
+         *
+         * @see #createHostAdapterClass(Class[])
+         * @since 20.3.0
+         */
+        @TruffleBoundary
+        public Object createHostAdapterClass(Class<?>[] types, Object classOverrides) {
+            checkDisposed();
+            try {
+                Objects.requireNonNull(types);
+                if (types.length == 0) {
+                    throw new IllegalArgumentException("Expected at least one type.");
+                }
+                return LanguageAccessor.engineAccess().createHostAdapterClass(polyglotLanguageContext, types, classOverrides);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
         @SuppressWarnings("rawtypes")
         @TruffleBoundary
         <E extends TruffleLanguage> E getLanguage(Class<E> languageClass) {

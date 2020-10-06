@@ -53,8 +53,11 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
+
+import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -68,26 +71,44 @@ final class HostClassDesc {
     }
 
     private final Class<?> type;
-    private volatile Object members;
+    private final HostClassCache cache;
+    private volatile Members members;
     private volatile JNIMembers jniMembers;
+    private volatile AdapterResult adapter;
     private final boolean allowsImplementation;
+    private final boolean allowedTargetType;
 
     HostClassDesc(HostClassCache cache, Class<?> type) {
-        this.members = cache;
         this.type = type;
-        if (type.isInterface()) {
-            this.allowsImplementation = cache.allowsImplementation(type);
-        } else {
-            this.allowsImplementation = false;
-        }
+        this.cache = cache;
+        this.allowsImplementation = HostInteropReflect.isExtensibleType(type) && cache.allowsImplementation(type);
+        this.allowedTargetType = allowsImplementation && HostInteropReflect.isAbstractType(type) && hasDefaultConstructor(type);
     }
 
     public boolean isAllowsImplementation() {
         return allowsImplementation;
     }
 
+    public boolean isAllowedTargetType() {
+        return allowedTargetType;
+    }
+
     public Class<?> getType() {
         return type;
+    }
+
+    private static boolean hasDefaultConstructor(Class<?> type) {
+        assert !type.isPrimitive();
+        if (type.isInterface()) {
+            return true;
+        } else {
+            for (Constructor<?> ctor : type.getConstructors()) {
+                if (ctor.getParameterCount() == 0) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     private static class Members {
@@ -387,17 +408,17 @@ final class HostClassDesc {
     }
 
     private Members getMembers() {
-        Object m = members;
-        if (!(m instanceof Members)) {
+        Members m = members;
+        if (m == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
                 m = members;
-                if (!(m instanceof Members)) {
-                    members = m = new Members((HostClassCache) m, type);
+                if (m == null) {
+                    members = m = new Members(cache, type);
                 }
             }
         }
-        return (Members) m;
+        return m;
     }
 
     private JNIMembers getJNIMembers() {
@@ -498,9 +519,95 @@ final class HostClassDesc {
         return getMembers().functionalMethod;
     }
 
+    public AdapterResult getAdapter() {
+        AdapterResult a = adapter;
+        if (a == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                a = adapter;
+                if (a == null) {
+                    adapter = a = makeAdapter();
+                }
+            }
+        }
+        return a;
+    }
+
     @Override
     public String toString() {
         return "JavaClass[" + type.getCanonicalName() + "]";
+    }
+
+    private AdapterResult makeAdapter() {
+        Class<?> adapterClass;
+        try {
+            adapterClass = HostAdapterFactory.getAdapterClassFor(cache, type);
+        } catch (PolyglotEngineException ex) {
+            return new AdapterResult(ex);
+        } catch (IllegalArgumentException ex) {
+            return new AdapterResult(PolyglotEngineException.illegalArgument(ex));
+        }
+
+        assert isAllowsImplementation();
+        HostClassDesc classDesc = cache.forClass(adapterClass);
+        HostMethodDesc constructor = classDesc.lookupConstructor();
+        HostMethodDesc.SingleMethod valueConstructor = null;
+        if (constructor != null) {
+            for (HostMethodDesc.SingleMethod overload : constructor.getOverloads()) {
+                if (overload.getParameterCount() == 1 && overload.getParameterTypes()[0] == Value.class) {
+                    valueConstructor = overload;
+                    break;
+                }
+            }
+            return new AdapterResult(adapterClass, constructor, valueConstructor);
+        } else {
+            return new AdapterResult(PolyglotEngineException.illegalArgument("No accessible constructor: " + type.getCanonicalName()));
+        }
+    }
+
+    static final class AdapterResult {
+        private final Class<?> adapterClass;
+        private final HostMethodDesc constructor;
+        private final HostMethodDesc.SingleMethod valueConstructor;
+        private final PolyglotEngineException exception;
+
+        AdapterResult(Class<?> adapterClass, HostMethodDesc constructor, HostMethodDesc.SingleMethod valueConstructor) {
+            this.adapterClass = Objects.requireNonNull(adapterClass);
+            this.constructor = constructor;
+            this.valueConstructor = valueConstructor;
+            this.exception = null;
+        }
+
+        AdapterResult(PolyglotEngineException exception) {
+            this.adapterClass = null;
+            this.constructor = null;
+            this.valueConstructor = null;
+            this.exception = exception;
+        }
+
+        Class<?> getAdapterClass() {
+            return adapterClass;
+        }
+
+        HostMethodDesc getConstructor() {
+            return constructor;
+        }
+
+        HostMethodDesc.SingleMethod getValueConstructor() {
+            return valueConstructor;
+        }
+
+        boolean isSuccess() {
+            return constructor != null;
+        }
+
+        boolean isAutoConvertible() {
+            return valueConstructor != null;
+        }
+
+        PolyglotEngineException throwException() {
+            throw exception;
+        }
     }
 
 }

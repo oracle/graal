@@ -51,6 +51,7 @@ import java.lang.reflect.Type;
 import java.util.Objects;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -71,12 +72,14 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.polyglot.HostClassDesc.AdapterResult;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 
 final class HostInteropReflect {
     static final Object[] EMPTY = {};
     static final String STATIC_TO_CLASS = "class";
     static final String CLASS_TO_STATIC = "static";
+    static final String ADAPTER_SUPER_MEMBER = "super";
 
     private HostInteropReflect() {
     }
@@ -247,13 +250,47 @@ final class HostInteropReflect {
         return HostObject.forObject(obj, languageContext);
     }
 
+    @TruffleBoundary
     static Object newProxyInstance(Class<?> clazz, Object obj, PolyglotLanguageContext languageContext) throws IllegalArgumentException {
         return Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new ObjectProxyHandler(obj, languageContext, clazz));
+    }
+
+    @TruffleBoundary
+    static Object newAdapterInstance(Class<?> clazz, Object obj, PolyglotLanguageContext languageContext) throws IllegalArgumentException {
+        if (TruffleOptions.AOT) {
+            throw PolyglotEngineException.unsupported("Unsupported target type.");
+        }
+
+        Value delegate = languageContext.asValue(obj);
+        HostClassDesc classDesc = HostClassDesc.forClass(languageContext.getEngine(), clazz);
+        AdapterResult adapter = classDesc.getAdapter();
+        if (!adapter.isAutoConvertible()) {
+            throw PolyglotEngineException.illegalArgument("Cannot convert to " + clazz);
+        }
+        HostMethodDesc.SingleMethod adapterConstructor = adapter.getValueConstructor();
+        Object[] arguments = new Object[]{delegate};
+        try {
+            return ((HostObject) HostExecuteNodeGen.getUncached().execute(adapterConstructor, null, arguments, languageContext)).obj;
+        } catch (UnsupportedTypeException e) {
+            throw HostInteropErrors.invalidExecuteArgumentType(languageContext, null, e.getSuppliedValues());
+        } catch (ArityException e) {
+            throw HostInteropErrors.invalidExecuteArity(languageContext, null, arguments, e.getExpectedArity(), e.getActualArity());
+        }
     }
 
     static boolean isStaticTypeOrInterface(Class<?> t) {
         // anonymous classes are private, they should be eliminated elsewhere
         return Modifier.isPublic(t.getModifiers()) && (t.isInterface() || t.isEnum() || Modifier.isStatic(t.getModifiers()));
+    }
+
+    static boolean isAbstractType(Class<?> targetType) {
+        return targetType.isInterface() ||
+                        (!TruffleOptions.AOT && (Modifier.isAbstract(targetType.getModifiers()) && !targetType.isArray() && !targetType.isPrimitive() && !Number.class.isAssignableFrom(targetType)));
+    }
+
+    static boolean isExtensibleType(Class<?> targetType) {
+        return targetType.isInterface() ||
+                        (!TruffleOptions.AOT && (!Modifier.isFinal(targetType.getModifiers()) && !targetType.isArray() && !targetType.isPrimitive() && !Number.class.isAssignableFrom(targetType)));
     }
 
     @CompilerDirectives.TruffleBoundary
