@@ -53,18 +53,18 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        access.registerReachabilityHandler(this::registerColorProfileResources, clazz(access, "java.awt.color.ICC_Profile"));
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            access.registerReachabilityHandler(this::registerColorProfileResources, clazz(access, "java.awt.color.ICC_Profile"));
 
-        /* These classes contain standard color profile caches which may not be loaded yet */
-        rerunClassInit(access, "java.awt.color.ColorSpace");
-        rerunClassInit(access, "java.awt.color.ICC_Profile");
+            /* These classes contain standard color profile caches which may not be loaded yet */
+            rerunClassInit(access, "java.awt.color.ColorSpace");
+            rerunClassInit(access, "java.awt.color.ICC_Profile");
+        }
     }
 
     public void registerColorProfileResources(@SuppressWarnings("unused") DuringAnalysisAccess access) {
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-            resourcesRegistry.addResources("sun.java2d.cmm.profiles.*");
-        }
+        ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
+        resourcesRegistry.addResources("sun.java2d.cmm.profiles.*");
     }
 
 }
