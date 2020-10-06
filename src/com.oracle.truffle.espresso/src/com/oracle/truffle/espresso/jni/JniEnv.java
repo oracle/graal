@@ -1216,7 +1216,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         return shortOrDefault(result);
     }
 
-
     @JniImpl
     public int CallStaticIntMethodVarargs(@Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
@@ -1252,7 +1251,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
         return longOrDefault(result);
     }
-
 
     @JniImpl
     public void CallStaticVoidMethodVarargs(@Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
