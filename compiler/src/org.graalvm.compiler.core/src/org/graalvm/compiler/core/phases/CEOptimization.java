@@ -33,6 +33,7 @@ import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
+import org.graalvm.compiler.nodes.memory.MemoryMap;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -47,44 +48,45 @@ import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import org.graalvm.word.LocationIdentity;
 
 /**
- * This class summarizes the most important platform-independent optimizations in the GraalVM CE
- * compiler. It contains documentation summaries for the different optimizations and links to their
- * sources and the options to enabled them. JavaDoc of optimization phases typically contains
- * detailed examples and motivation.
+ * This class enumerates the most important platform-independent optimizations in the GraalVM CE
+ * compiler. It contains summaries of the optimizations with links to their sources and the options
+ * to enable them. The linked sources typically contain detailed examples and motivation for the
+ * optimizations.
  */
 @SuppressWarnings("unused")
-public enum CEOptimizations {
+public enum CEOptimization {
 
     /**
      * {@link CanonicalizerPhase} is a compound optimization phase grouping together several
-     * independent optimizations that are mostly "local" to a node and its direct surroundings.
+     * independent optimizations that are mostly "local" to a node and its directly connected nodes.
      * Optimizations include constant folding, strength reduction, algebraic simplifications and so
      * on.
+     *
+     * This phase is unconditionally enabled.
      *
      * @see org.graalvm.compiler.graph.spi.Canonicalizable#canonical(CanonicalizerTool)
      * @see org.graalvm.compiler.graph.Node#simplify(SimplifierTool)
      * @see org.graalvm.compiler.graph.Node.ValueNumberable
      *
-     *      The canonicalizer is unconditionally enabled for all compilations with Graal.
      */
     Canonicalization(null, CanonicalizerPhase.class),
 
     /**
      * {@link InliningPhase} is Graal CE's implementation of a traditional inlining algorithm.
      *
-     * Inlining in GraalVM CE can be enabled/disabled with the option
-     * {@link HighTier.Options#Inline}.
+     * This phase is enabled by default and can be disabled with {@link HighTier.Options#Inline}.
      */
     Inlining(HighTier.Options.Inline, InliningPhase.class),
 
     /**
-     * {@link DeadCodeEliminationPhase} tries to remove unused, so called "dead" code from a program
-     * during compilation. Program code is considered dead if it is proven to be never executed at
-     * runtime. This often arises as the result of preceding optimizations.
+     * {@link DeadCodeEliminationPhase} tries to remove unused (i.e., "dead") code from a program.
+     * Program code is considered dead if it is proven to be never executed at runtime. This often
+     * arises as the result of preceding optimizations.
      *
-     * Dead Code elimination is unconditionally enabled for all compilations with Graal.
+     * This phase is unconditionally enabled.
      */
     DeadCodeElimination(null, DeadCodeEliminationPhase.class),
 
@@ -96,12 +98,12 @@ public enum CEOptimizations {
      * if (...) deoptimize
      * </pre>
      *
-     * It rewrites such a pattern to a single IR <em>guard</em> node that can be optimized more
-     * easily than fixed control flow. This can improve program performance since guards can move
-     * more freely around in the program and be scheduled at points which have a lower execution
-     * probability resulting in less instructions being executed at runtime.
+     * It rewrites such a pattern to a single IR <em>guard</em> node that can be optimized better
+     * than fixed control flow. This can improve program performance since guards can move freely
+     * around in the program and be scheduled at points which have a lower execution probability
+     * resulting in less instructions being executed at runtime.
      *
-     * DeoptimzeToGuard can be enabled/disabled with the option
+     * This phase is enabled by default and can be disabled with
      * {@link GraalOptions#OptConvertDeoptsToGuards}.
      */
     DeoptimizeToGuard(GraalOptions.OptConvertDeoptsToGuards, ConvertDeoptimizeToGuardPhase.class),
@@ -109,10 +111,10 @@ public enum CEOptimizations {
     /**
      * {@link ConditionalEliminationPhase} is a control-flow sensitive implementation of a
      * conditional elimination algorithm. It combines flow-sensitive type and value information and
-     * proves that conditional operations are always {@code true} or {@code false} and removes them,
-     * and any related branches for a program.
+     * removes conditional operations for which the associated condition can be proven {@code true}
+     * or {@code false}.
      *
-     * Conditional elimination in Graal can be enabled/disabled with the option
+     * This phase is enabled by default and can be disabled with
      * {@link GraalOptions#ConditionalElimination}.
      */
     ConditionalElimination(GraalOptions.ConditionalElimination, ConditionalEliminationPhase.class),
@@ -126,43 +128,45 @@ public enum CEOptimizations {
      * final position of a node in the generated program is solely dependent on its input (data
      * dependencies) and usages.
      *
-     * Scheduling in Graal is required for correct code generation and thus unconditionally enabled
-     * during compilation.
+     * This phase is unconditionally enabled (it's required for correct code generation).
      */
     InstructionScheduling(null, SchedulePhase.class),
 
     /**
      * {@link FloatingReadPhase} rewrites fixed memory read nodes to floating read nodes that can
-     * move more freely (see {@link #InstructionScheduling}). It builds the memory graph for the
-     * Graal IR which allows better optimization of memory related instructions.
+     * move more freely (see {@link #InstructionScheduling}). It builds a {@linkplain MemoryMap
+     * memory graph} which allows better optimization of memory related instructions.
      *
-     * Floating reads in Graal can be enabled/disabled with the option
+     * This phase is enabled by default and can be disabled with
      * {@link GraalOptions#OptFloatingReads}.
      */
     FloatingReads(GraalOptions.OptFloatingReads, FloatingReadPhase.class),
 
     /**
-     * {@link EarlyReadEliminationPhase} tries to remove redundant memory access operations, i.e.
-     * Java field reads can be redundant if a previous instruction already reads the same memory
-     * location. The algorithm behind the optimization is control-flow sensitive.
+     * {@link EarlyReadEliminationPhase} tries to remove redundant memory access operations (e.g.,
+     * successive reads of the same Java field are redundant). Its uses a control-flow sensitive
+     * analysis.
      *
-     * Read elimination in Graal can be enabled/disabled with the option
+     * This phase is enabled by default and can be disabled with
      * {@link GraalOptions#OptReadElimination}.
      */
     ReadElimination(GraalOptions.OptReadElimination, EarlyReadEliminationPhase.class),
 
     /**
-     * {@link PartialEscapePhase} is a control flow sensitive escape analysis algorithm that allows
-     * the compiler to perform escape analysis and scalar replacement on individual branches. This
-     * optimization has a non-trivial impact on compilation time and so might be worth disabling for
-     * workloads that do not perform much allocation.
+     * {@link PartialEscapePhase} is a control flow sensitive algorithm that can replace object and
+     * array allocation with use of stack slots and registers in the hot parts of a graph. Unlike
+     * non-partial escape analysis, it can perform this transformation by allowing an object
+     * allocation to be deferred to cold paths that exit the compilation unit.
+     *
+     * This optimization has a non-trivial impact on compilation time and so might be worth
+     * disabling for workloads that do not perform much allocation.
      *
      * Object allocations are expensive thus partial escape analysis can greatly improve performance
-     * of an application by reducing the number of allocations which in return can reduce GC
-     * pressure.
+     * of an application by reducing the number of allocations. This reduces interaction with the
+     * memory manager on the allocation path and also reduces work done during garbage collection.
      *
-     * Partial escape analysis can be enabled/disabled with the option
-     * {@linkplain GraalOptions#PartialEscapeAnalysis}.
+     * This phase is enabled by default and can be disabled with
+     * {@link GraalOptions#PartialEscapeAnalysis}.
      */
     PartialEscapeAnanylsis(GraalOptions.PartialEscapeAnalysis, PartialEscapePhase.class),
 
@@ -174,24 +178,22 @@ public enum CEOptimizations {
      * adjacent synchronized regions into larger ones by removing enters that are directly followed
      * by exits on the same locked object. It thus removes redundant unlock-lock operations.
      *
-     * Lock elimination in Graal is unconditionally enabled for all compilations.
+     * This phase is unconditionally enabled.
      */
     LockElimination(null, LockEliminationPhase.class),
 
     /**
      * {@link LoopSafepointEliminationPhase} tries to reduce the number of safepoint checks in the
      * generated machine code. Safepoints in Java are program locations where mutator threads
-     * (application threads) are at a well defined point with their interaction to the Java heap.
-     * This means at a safepoint the GC can safely manipulate the Java heap. Typical safepoint
-     * operations are garbage collections, class redefinition, lock unbiasing, and monitor
-     * deflation. As the safepoint protocol is collaborative, it forces the code generated by the
-     * JIT compilers to periodically poll the safepoint state (the interpreter polls it after every
-     * interpreted bytecode).
+     * (application threads) are at a well defined point with respect to the Java heap. This means
+     * at a safepoint the GC can safely manipulate the Java heap. Typical safepoint operations are
+     * garbage collections, class redefinition, lock unbiasing, and monitor deflation. As the
+     * safepoint protocol is a cooperative mechanism, it requires code generated by the compiler to
+     * periodically poll (i.e., read) a well known memory location. These polls can incur
+     * performance overheads in very tight loops. Thus, Graal removes safepoint polls in loops
+     * heuristically to improve performance.
      *
-     * Safepoint polls are memory reads that can incur performance overheads in very tight loops.
-     * Thus, Graal removes safepoint operations inside loops heuristically to improve performance.
-     *
-     * Safepoint eliminiation is unconditionally enabled for all compilations.
+     * This phase is unconditionally enabled.
      */
     SafepointElimination(null, LoopSafepointEliminationPhase.class),
 
@@ -199,7 +201,7 @@ public enum CEOptimizations {
      * {@link ReassociationPhase} implements expression reassociation. It re-orders operations and
      * their operands to create more potential for constant folding and loop invariant code motion.
      *
-     * Reassociation can be enabled/disabled with the option
+     * This phase is enabled by default and can be disabled with
      * {@link GraalOptions#ReassociateExpressions}.
      */
     ExpressionReassociation(GraalOptions.ReassociateExpressions, ReassociationPhase.class),
@@ -209,7 +211,7 @@ public enum CEOptimizations {
      * preserve in the generated machine code for deoptimization purposes. This optimization can
      * reduce the size of the generated machine code at runtime.
      *
-     * Deoptimization grouping can be enabled/disabled with the option
+     * This phase is enabled by default and can be disabled with
      * {@link GraalOptions#OptDeoptimizationGrouping}.
      */
     DeoptimizationGrouping(GraalOptions.OptDeoptimizationGrouping, DeoptimizationGroupingPhase.class),
@@ -217,38 +219,42 @@ public enum CEOptimizations {
     /**
      * {@link UseTrappingNullChecksPhase} exploits modern processors abilities to throw signals for
      * invalid memory accesses to remove explicit null check operations and replace them with
-     * implicit checks. This optimization removes explicit null checks and replaces them with
-     * regular memory access. If the accessed memory location is null and accessed by the generated
-     * code, hardware memory protection will throw a SIGSEGV error that is caught by the VM and
-     * mapped back to the program location of the implicit null check and a regular
-     * {@link NullPointerException} is thrown. This optimization can improve the performance of
-     * generated code as often no explicit null check operations are necessary.
+     * implicit checks. This optimization removes explicit null checks. If a null memory location is
+     * accessed by the generated code, hardware memory protection will raise a SIGSEGV signal. The
+     * VM catches this signal, maps it to the program location of an implicit null check and throws
+     * a regular {@link NullPointerException} at that location. This optimization can improve the
+     * performance of generated code by removing an explicit null check before memory reads.
      *
-     * Trapping null checks are unconditionally enabled for all compilations.
+     * This phase is unconditionally enabled.
      */
     TrappingNullChecks(null, UseTrappingNullChecksPhase.class),
 
     /**
-     * {@link LoopFullUnrollPhase} is a special form of loop unrolling that processes loops with
-     * constant loop trip counts. It tries to unwrap the body of a loop multiple times to reduce the
-     * loop control and jump overhead. Constant trip count loops are unrolled exhaustively (for
-     * small constants) to remove the loop completely. This can improve the performance of the
-     * generated code since larger basic blocks for optimization are created and all loop-iteration
-     * jumps are removed.
+     * {@link LoopFullUnrollPhase} is a special form of loop unrolling that processes loops with a
+     * constant number of iterations. Based on heuristics which include but are not exclusively
+     * based on the number of iterations, this phase will either completely unroll a loop or not
+     * transform it at all. That is, it is an "all or nothing" phase.
      *
-     * Full unrolling can be enabled/disabled with the option {@link GraalOptions#FullUnroll}.
+     * Unrolling a loop can improve performance by removing the loop control and jump overhead. It
+     * also produces larger basic blocks and thus more scope for other optimizations to apply. Full
+     * loop unrolling will generally increase code size which can decrease performance. For this
+     * reason, the decision of whether or not it is applied for a given loop takes into account
+     * factors beyond the constant iteration count such as current code size.
+     *
+     * This phase is enabled by default and can be disabled with {@link GraalOptions#FullUnroll}.
      */
     FullLoopUnrolling(GraalOptions.FullUnroll, LoopFullUnrollPhase.class),
 
     /**
-     * {@link LoopPeelingPhase} is an optimization that cuts off interesting first or last
-     * iterations of a loop. This process of cutting off a loop iteration is called "peeling" off an
-     * iteration. This can improve performance of the generated code since the body of the remaining
-     * loop can often be optimized after a peel operation.
+     * {@link LoopPeelingPhase} is an optimization that moves first or last loop iterations outside
+     * the loop. This process of moving loop iterations is called "peeling". This can improve
+     * performance of the generated code when the peeled iterations have complex logic that is
+     * absent from the unpeeled iterations.
      *
-     * Loop peeling can be enabled/disabled with the option {@link GraalOptions#LoopPeeling}.
+     * This phase is enabled by default and can be disabled with {@link GraalOptions#LoopPeeling}.
+     *
+     * @see "https://en.wikipedia.org/wiki/Loop_splitting#Loop_peeling"
      */
-
     LoopPeeling(GraalOptions.LoopPeeling, LoopPeelingPhase.class),
 
     /**
@@ -256,27 +262,28 @@ public enum CEOptimizations {
      * loop invariant control flow (conditions) inside a loop's body. It "unswitches" a loop, ie.
      * pulls the invariant condition outside and duplicates a loop for the respective branches of
      * the invariant condition. This can improve performance since less instructions are evaluated
-     * inside a the loop's body.
+     * inside the loop's body.
      *
-     * Loop unswitchting can be enabled/disabled with the option {@link GraalOptions#LoopUnswitch}.
+     * This phase is enabled by default and can be disabled with {@link GraalOptions#LoopUnswitch}.
+     *
+     * @see "https://en.wikipedia.org/wiki/Loop_unswitching"
      */
-    LoopUnswitchting(GraalOptions.LoopUnswitch, LoopUnswitchingPhase.class),
+    LoopUnswitching(GraalOptions.LoopUnswitch, LoopUnswitchingPhase.class),
 
     /**
      * {@link LoopPartialUnrollPhase} is a compiler optimization unrolling the body of a loop
      * multiple times to improve instruction-level parallelism, reduce the loop control overhead and
      * enable other optimizations.
      *
-     * Partial unrolling can be enabled/disabled with the option {@link GraalOptions#PartialUnroll}.
+     * This phase is enabled by default and can be disabled with {@link GraalOptions#PartialUnroll}.
      */
     PartialLoopUnrolling(GraalOptions.PartialUnroll, LoopPartialUnrollPhase.class);
 
     private final OptionKey<?> option;
     private final Class<? extends BasePhase<?>> optimization;
 
-    CEOptimizations(OptionKey<?> option, Class<? extends BasePhase<?>> optimization) {
+    CEOptimization(OptionKey<?> option, Class<? extends BasePhase<?>> optimization) {
         this.option = option;
         this.optimization = optimization;
     }
-
 }
