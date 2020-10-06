@@ -222,10 +222,10 @@
 					"source.js",
 					"source.r",
 					"source.ruby",
-					"source.pyhon",
+					"source.python",
 					"source.sl"
 				],
-				"scopeName": "js.inline.polyglot-langauges",
+				"scopeName": "js.inline.polyglot-languages",
 				"embeddedLanguages": {
 					"meta.embedded.inline.python": "python",
 					"meta.embedded.inline.r": "r",
@@ -240,9 +240,9 @@
 					"source.js",
 					"source.r",
 					"source.ruby",
-					"source.pyhon"
+					"source.python"
 				],
-				"scopeName": "sl.inline.polyglot-langauges",
+				"scopeName": "sl.inline.polyglot-languages",
 				"embeddedLanguages": {
 					"meta.embedded.inline.js": "js",
 					"meta.embedded.inline.python": "python",
@@ -259,7 +259,7 @@
 					"source.ruby",
 					"source.sl"
 				],
-				"scopeName": "python-inline.polyglot-langauges",
+				"scopeName": "python-inline.polyglot-languages",
 				"embeddedLanguages": {
 					"meta.embedded.inline.js": "javascript",
 					"meta.embedded.inline.r": "r",
@@ -276,7 +276,7 @@
 					"source.python",
 					"source.sl"
 				],
-				"scopeName": "r-inline.polyglot-langauges",
+				"scopeName": "r-inline.polyglot-languages",
 				"embeddedLanguages": {
 					"meta.embedded.inline.js": "javascript",
 					"meta.embedded.inline.python": "python",
@@ -293,7 +293,7 @@
 					"source.python",
 					"source.sl"
 				],
-				"scopeName": "ruby-inline.polyglot-langauges",
+				"scopeName": "ruby-inline.polyglot-languages",
 				"embeddedLanguages": {
 					"meta.embedded.inline.js": "javascript",
 					"meta.embedded.inline.python": "python",

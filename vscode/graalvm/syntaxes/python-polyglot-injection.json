@@ -1,6 +1,6 @@
 {
     "injectionSelector": "L:source.python -comment -(string - meta.embedded), L:source.js meta.embedded.inline.python, L:source.r meta.embedded.inline.python, L:source.ruby meta.embedded.inline.python, L:source.sl meta.embedded.inline.python",
-    "scopeName": "python-inline.polyglot-langauges",
+    "scopeName": "python-inline.polyglot-languages",
     "patterns": [
         {
             "begin": "polyglot\\s*(\\.)\\s*((eval)\\s*(\\())",
