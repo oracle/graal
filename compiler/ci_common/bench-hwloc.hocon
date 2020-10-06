@@ -40,6 +40,19 @@ export.node1: [export, "MACHINE_NODE=1", "BENCH_RESULTS_FILE_PATH=node1-${BASE_B
 export.serial.node0: [export, "MACHINE_NODE=0", "BENCH_RESULTS_FILE_PATH=serial-node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
 export.serial.node1: [export, "MACHINE_NODE=1", "BENCH_RESULTS_FILE_PATH=serial-node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
 
+
+bench-awfy-hwloc: ${bench-awfy} ${hwloc.bench-common} {
+  setup: ${bench-awfy.setup} ${hwloc.bench-common.setup}
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-awfy} ${bench-arguments} ${hwloc.cmd.suffix}
+    ${export.node1}
+    ${hwloc.node} ${bench-jvmci.mx-awfy} ${bench-arguments} ${hwloc.cmd.suffix}
+    [wait]
+  ]
+}
+
 bench-dacapo-hwloc: ${bench-dacapo} ${hwloc.bench-common} {
   setup: ${bench-dacapo.setup} ${hwloc.bench-common.setup}
   run: [

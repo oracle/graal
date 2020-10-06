@@ -1,10 +1,12 @@
 builds += [
   # JDK 8
   ${x52.c2} ${bench-micros-graal-dist}              ${oraclejdk8} { targets: [bench, weekly], name: "bench-jmh-micros-graal-dist-linux-x52-c2" }
+  ${x52.c2} ${bench-awfy-hwloc}                     ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-awfy-linux-x52-c2" }
   ${x52.c2} ${bench-renaissance-0-10-0}             ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-renaissance-0-10-0-linux-x52-c2" }
 
   # JDK 11
   ${x52.c2} ${bench-micros-graal-dist}              ${labsjdk11} { targets: [bench, weekly], name: "bench-jmh-micros-graal-dist-11-linux-x52-c2" }
+  ${x52.c2} ${bench-awfy-hwloc}                     ${labsjdk11} { targets: [bench, weekly], name: "bench-compiler-awfy-11-linux-x52-c2" }
   ${x52.c2} ${bench-renaissance-0-10-0}             ${labsjdk11} { targets: [bench, weekly], name: "bench-compiler-renaissance-0-10-0-linux-11-x52-c2" }
 
   ## Multiple forks for stable numbers ##
