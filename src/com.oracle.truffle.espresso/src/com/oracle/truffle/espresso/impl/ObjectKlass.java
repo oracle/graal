@@ -534,7 +534,7 @@ public final class ObjectKlass extends Klass {
         if (nestMembers == null) {
             return false;
         }
-        if (!this.sameRuntimePackage(null, k)) {
+        if (!this.sameRuntimePackage(getDefiningClassLoader(), k)) {
             return false;
         }
         RuntimeConstantPool pool = getConstantPool();
