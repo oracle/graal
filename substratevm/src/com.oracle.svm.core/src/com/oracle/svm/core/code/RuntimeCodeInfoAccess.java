@@ -152,7 +152,7 @@ public final class RuntimeCodeInfoAccess {
 
     public static CodeInfo allocateMethodInfo() {
         CodeInfoImpl info = UnmanagedMemory.calloc(SizeOf.unsigned(CodeInfoImpl.class));
-        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(CodeInfoImpl.OBJFIELDS_COUNT);
+        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(Object[].class, CodeInfoImpl.OBJFIELDS_COUNT);
         info.setObjectFields(objectFields);
 
         // Make the object visible to the GC (before writing any heap data into the object).

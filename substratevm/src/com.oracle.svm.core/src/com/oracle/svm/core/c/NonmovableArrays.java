@@ -213,8 +213,10 @@ public final class NonmovableArrays {
      * that of a Java array, it is not a Java object and must never be referenced as an object.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T> NonmovableObjectArray<T> createObjectArray(int length) {
-        return createArray(length, Object[].class);
+    public static <T> NonmovableObjectArray<T> createObjectArray(Class<T[]> arrayType, int length) {
+        assert (SubstrateUtil.HOSTED ? (arrayType.isArray() && !arrayType.getComponentType().isPrimitive())
+                        : LayoutEncoding.isObjectArray(SubstrateUtil.cast(arrayType, DynamicHub.class).getLayoutEncoding())) : "must be an object array type";
+        return createArray(length, arrayType);
     }
 
     /** @see java.util.Arrays#copyOf */
