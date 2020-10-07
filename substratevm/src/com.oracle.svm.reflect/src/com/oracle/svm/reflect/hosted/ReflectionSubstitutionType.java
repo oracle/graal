@@ -118,9 +118,14 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
     protected ReflectionSubstitutionType(ResolvedJavaType original, Member member) {
         super(original);
         stableName = "L" + getStableProxyName(member).replace(".", "/") + ";";
+        inspectMemberBeforeSubstitutionCreation(member);
         for (ResolvedJavaMethod method : original.getDeclaredMethods()) {
             createAndAddSubstitutionMethod(method, member);
         }
+    }
+
+    protected void inspectMemberBeforeSubstitutionCreation(@SuppressWarnings("unused") Member member) {
+        /* Do nothing. */
     }
 
     protected void createAndAddSubstitutionMethod(ResolvedJavaMethod method, Member member) {
