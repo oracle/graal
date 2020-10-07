@@ -587,7 +587,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "mx:JUNIT_TOOL",
-                "sdk:GRAAL_SDK",
+                "SVM",
             ],
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
@@ -1321,7 +1321,7 @@ suite = {
           ],
           "distDependencies": [
             "mx:JUNIT_TOOL",
-            "sdk:GRAAL_SDK",
+            "SVM",
             "SVM_CONFIGURE",
           ],
           "testDistribution" : True,
