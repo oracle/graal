@@ -624,9 +624,7 @@ public final class ObjectKlass extends Klass {
         for (int i = 0; i < getVTable().length; i++) {
             Method m = getVTable()[i];
             if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
-                if (m.isProtected() || m.isPublic()) {
-                    return i;
-                } else if (sameRuntimePackage(subClass)) {
+                if (m.isProtected() || m.isPublic() || sameRuntimePackage(subClass)) {
                     return i;
                 }
             }
@@ -637,11 +635,7 @@ public final class ObjectKlass extends Klass {
     List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result) {
         for (Method m : getVTable()) {
             if (!m.isStatic() && !m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
-                if (this == subKlass) {
-                    result.add(m);
-                } else if (m.isProtected() || m.isPublic()) {
-                    result.add(m);
-                } else if (m.getDeclaringKlass().sameRuntimePackage(subKlass)) {
+                if (m.isProtected() || m.isPublic() || m.getDeclaringKlass().sameRuntimePackage(subKlass)) {
                     result.add(m);
                 }
             }
