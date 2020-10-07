@@ -53,6 +53,7 @@ public class LinearImageHeapPartition extends AbstractImageHeapPartition {
     }
 
     private void allocate(ImageHeapObject info, LinearImageHeapAllocator allocator) {
+        assert info.getPartition() == this;
         if (firstObject == null) {
             firstObject = info.getObject();
         }

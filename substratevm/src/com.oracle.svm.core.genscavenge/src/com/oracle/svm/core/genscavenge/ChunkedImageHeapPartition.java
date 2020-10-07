@@ -142,6 +142,7 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
         if (firstObject == null) {
             firstObject = info.getObject();
         }
+        assert info.getPartition() == this;
         long offsetInPartition = allocationOffset - startOffset;
         assert ConfigurationValues.getObjectLayout().isAligned(offsetInPartition) : "start: " + offsetInPartition + " must be aligned.";
         info.setOffsetInPartition(offsetInPartition);
