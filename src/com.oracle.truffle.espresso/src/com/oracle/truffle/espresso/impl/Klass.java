@@ -480,7 +480,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * <li>C is not public, and C and D are members of the same run-time package.
      * </ul>
      */
-    public static boolean checkAccess(StaticObject classLoader, Klass klass, Klass accessingKlass) {
+    public static boolean checkAccess(Klass klass, Klass accessingKlass) {
         if (accessingKlass == null) {
             return true;
         }
@@ -492,7 +492,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         }
         EspressoContext context = accessingKlass.getContext();
         if (context.getJavaVersion().modulesEnabled()) {
-            if (klass.sameRuntimePackage(classLoader, accessingKlass)) {
+            if (klass.sameRuntimePackage(accessingKlass)) {
                 return true;
             }
             if (klass.isPublic()) {
@@ -501,7 +501,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                 }
             }
         } else {
-            if (klass.isPublic() || klass.sameRuntimePackage(classLoader, accessingKlass)) {
+            if (klass.isPublic() || klass.sameRuntimePackage(accessingKlass)) {
                 return true;
             }
         }
@@ -1223,8 +1223,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return name;
     }
 
-    public boolean sameRuntimePackage(StaticObject classLoader, Klass other) {
-        if (classLoader != other.getDefiningClassLoader()) {
+    public boolean sameRuntimePackage(Klass other) {
+        if (getDefiningClassLoader() != other.getDefiningClassLoader()) {
             return false;
         }
         if (getJavaVersion().modulesEnabled()) {

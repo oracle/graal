@@ -117,7 +117,7 @@ public interface MemberRefConstant extends PoolConstant {
      * <li>R is private and is declared in D.
      * </ul>
      */
-    static boolean checkAccess(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member, StaticObject classLoader) {
+    static boolean checkAccess(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member) {
         if (member.isPublic()) {
             return true;
         }
@@ -139,7 +139,7 @@ public interface MemberRefConstant extends PoolConstant {
             }
         }
         if (member.isProtected() || member.isPackagePrivate()) {
-            if (accessingKlass.sameRuntimePackage(classLoader, memberKlass)) {
+            if (accessingKlass.sameRuntimePackage(memberKlass)) {
                 return true;
             }
         }
@@ -152,7 +152,7 @@ public interface MemberRefConstant extends PoolConstant {
         }
 
         if (accessingKlass.getHostClass() != null) {
-            return checkAccess(accessingKlass.getHostClass(), resolvedKlass, member, classLoader);
+            return checkAccess(accessingKlass.getHostClass(), resolvedKlass, member);
         }
         return false;
     }

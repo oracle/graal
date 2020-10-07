@@ -117,8 +117,6 @@ public final class ObjectKlass extends Klass {
 
     @CompilationFinal private int computedModifiers = -1;
 
-    private final StaticObject definingClassLoader;
-
     @CompilationFinal volatile RedefinitionCache redefineCache;
 
     // used for class redefintion when refreshing vtables etc.
@@ -129,6 +127,8 @@ public final class ObjectKlass extends Klass {
     public static final int PREPARED = 2;
     public static final int INITIALIZED = 3;
     public static final int ERRONEOUS = 99;
+
+    private final StaticObject definingClassLoader;
 
     public Attribute getAttribute(Symbol<Name> name) {
         return getLinkedKlass().getAttribute(name);
@@ -145,7 +145,6 @@ public final class ObjectKlass extends Klass {
         // TODO(peterssen): Make writable copy.
         RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), linkedKlass.getConstantPool(), classLoader);
         definingClassLoader = pool.getClassLoader();
-
         Field[] skFieldTable = superKlass != null ? superKlass.getFieldTable() : new Field[0];
         LinkedField[] lkInstanceFields = linkedKlass.getInstanceFields();
         LinkedField[] lkStaticFields = linkedKlass.getStaticFields();
@@ -178,7 +177,7 @@ public final class ObjectKlass extends Klass {
         this.runtimeVisibleAnnotations = linkedKlass.getAttribute(Name.RuntimeVisibleAnnotations);
         // Package initialization must be done before vtable creation, as there are same package
         // checks.
-        initPackage();
+        initPackage(classLoader);
 
         Method[][] itable = null;
         Method[] vtable;
@@ -193,7 +192,7 @@ public final class ObjectKlass extends Klass {
             InterfaceTables.CreationResult methodCR = InterfaceTables.create(superKlass, superInterfaces, methods);
             iKlassTable = methodCR.klassTable;
             mirandaMethods = methodCR.mirandas;
-            vtable = VirtualTable.create(superKlass, methods, this, mirandaMethods, pool.getClassLoader(), false);
+            vtable = VirtualTable.create(superKlass, methods, this, mirandaMethods, false);
             itable = InterfaceTables.fixTables(vtable, mirandaMethods, methods, methodCR.tables, iKlassTable);
         }
         if (superKlass != null) {
@@ -534,7 +533,7 @@ public final class ObjectKlass extends Klass {
         if (nestMembers == null) {
             return false;
         }
-        if (!this.sameRuntimePackage(getDefiningClassLoader(), k)) {
+        if (!this.sameRuntimePackage(k)) {
             return false;
         }
         RuntimeConstantPool pool = getConstantPool();
@@ -617,13 +616,13 @@ public final class ObjectKlass extends Klass {
         return getRedefineCache().iKlassTable;
     }
 
-    int lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature, Klass subClass, StaticObject classLoader) {
+    int lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature, Klass subClass) {
         for (int i = 0; i < getVTable().length; i++) {
             Method m = getVTable()[i];
             if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic()) {
                     return i;
-                } else if (sameRuntimePackage(classLoader, subClass)) {
+                } else if (sameRuntimePackage(subClass)) {
                     return i;
                 }
             }
@@ -631,14 +630,14 @@ public final class ObjectKlass extends Klass {
         return -1;
     }
 
-    List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result, StaticObject classLoader) {
+    List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result) {
         for (Method m : getVTable()) {
             if (!m.isStatic() && !m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 if (this == subKlass) {
                     result.add(m);
                 } else if (m.isProtected() || m.isPublic()) {
                     result.add(m);
-                } else if (m.getDeclaringKlass().sameRuntimePackage(classLoader, subKlass)) {
+                } else if (m.getDeclaringKlass().sameRuntimePackage(subKlass)) {
                     result.add(m);
                 }
             }
@@ -939,9 +938,9 @@ public final class ObjectKlass extends Klass {
         return result;
     }
 
-    private void initPackage() {
+    private void initPackage(@Host(ClassLoader.class) StaticObject classLoader) {
         if (!Names.isUnnamedPackage(getRuntimePackage())) {
-            ClassRegistry registry = getRegistries().getClassRegistry(definingClassLoader);
+            ClassRegistry registry = getRegistries().getClassRegistry(classLoader);
             packageEntry = registry.packages().lookup(getRuntimePackage());
             // If the package name is not found in the loader's package
             // entry table, it is an indication that the package has not
@@ -1116,7 +1115,7 @@ public final class ObjectKlass extends Klass {
                 InterfaceTables.CreationResult methodCR = InterfaceTables.create(getSuperKlass(), superInterfaces, newDeclaredMethods);
                 iKlassTable = methodCR.klassTable;
                 mirandaMethods = methodCR.mirandas;
-                vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, pool.getClassLoader(), true);
+                vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, true);
                 itable = InterfaceTables.fixTables(vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
             }
             // in case of an added/removed virtual method, we must also update the tables
@@ -1167,7 +1166,7 @@ public final class ObjectKlass extends Klass {
 
             while (superKlass != null) {
                 // look for the method
-                int vtableIndex = superKlass.lookupVirtualMethod(name, signature, superKlass, superKlass.getDefiningClassLoader());
+                int vtableIndex = superKlass.lookupVirtualMethod(name, signature, superKlass);
                 if (vtableIndex != -1) {
                     superKlass.getVTable()[vtableIndex].onSubclassMethodChanged(ids);
                 }
@@ -1193,7 +1192,7 @@ public final class ObjectKlass extends Klass {
             InterfaceTables.CreationResult methodCR = InterfaceTables.create(getSuperKlass(), getSuperInterfaces(), newDeclaredMethods);
             iKlassTable = methodCR.klassTable;
             mirandaMethods = methodCR.mirandas;
-            vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, oldVersion.pool.getClassLoader(), true);
+            vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, true);
             itable = InterfaceTables.fixTables(vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
         }
 

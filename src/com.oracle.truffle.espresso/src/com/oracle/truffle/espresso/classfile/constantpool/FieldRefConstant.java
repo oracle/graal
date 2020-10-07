@@ -128,7 +128,7 @@ public interface FieldRefConstant extends MemberRefConstant {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, meta.toGuestString(name));
             }
 
-            if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, field, pool.getClassLoader())) {
+            if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, field)) {
                 Meta meta = pool.getContext().getMeta();
                 meta.getContext().getLogger().log(Level.WARNING,
                                 EspressoOptions.INCEPTION_NAME + " Field access check of: " + field.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
