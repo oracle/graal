@@ -38,7 +38,6 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
-import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
@@ -73,9 +72,9 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
     }
 
     @Override
-    protected void setExceptionState(ExceptionObjectNode exceptionObject) {
+    protected void setExceptionState(StateSplit exceptionObject) {
         List<ValueNode> values = new ArrayList<>(Arrays.asList(arguments));
-        values.add(exceptionObject);
+        values.add(exceptionObject.asNode());
         int stackSize = 1;
 
         FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, values, arguments.length, stackSize, true, false, null, null));
@@ -122,5 +121,15 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
     @Override
     public boolean canDeferPlugin(GeneratedInvocationPlugin plugin) {
         return plugin.isGeneratedFromFoldOrNodeIntrinsic();
+    }
+
+    @Override
+    public boolean needsExplicitException() {
+        /*
+         * For AOT compilation, all exception edges need to be explicit. Currently, during runtime
+         * JIT compilation, no graphs for intrinsics are used, so we do not need to distinguish
+         * here.
+         */
+        return true;
     }
 }

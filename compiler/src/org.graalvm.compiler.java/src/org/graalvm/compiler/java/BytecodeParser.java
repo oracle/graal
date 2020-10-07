@@ -442,7 +442,6 @@ import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.site.InfopointReason;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -1567,24 +1566,14 @@ public class BytecodeParser implements GraphBuilderContext {
         return emitBytecodeExceptionCheck(condition, false, BytecodeExceptionKind.DIVISION_BY_ZERO);
     }
 
+    @Override
     public AbstractBeginNode emitBytecodeExceptionCheck(LogicNode condition, boolean passingOnTrue, BytecodeExceptionKind exceptionKind, ValueNode... arguments) {
-        if (passingOnTrue ? condition.isTautology() : condition.isContradiction()) {
-            return null;
+        AbstractBeginNode result = GraphBuilderContext.super.emitBytecodeExceptionCheck(condition, passingOnTrue, exceptionKind, arguments);
+
+        if (result != null) {
+            EXPLICIT_EXCEPTIONS.increment(debug);
         }
-
-        BytecodeExceptionNode exception = graph.add(new BytecodeExceptionNode(getMetaAccess(), exceptionKind, arguments));
-        AbstractBeginNode passingSuccessor = graph.add(new BeginNode());
-
-        FixedNode trueSuccessor = passingOnTrue ? passingSuccessor : exception;
-        FixedNode falseSuccessor = passingOnTrue ? exception : passingSuccessor;
-        append(new IfNode(condition, trueSuccessor, falseSuccessor, passingOnTrue ? LUDICROUSLY_FAST_PATH_PROBABILITY : LUDICROUSLY_SLOW_PATH_PROBABILITY));
-        lastInstr = passingSuccessor;
-
-        exception.setStateAfter(createBytecodeExceptionFrameState(bci(), exception));
-        exception.setNext(handleException(exception, bci(), false));
-        EXPLICIT_EXCEPTIONS.increment(debug);
-
-        return passingSuccessor;
+        return result;
     }
 
     protected ValueNode genArrayLength(ValueNode x) {
@@ -4483,10 +4472,8 @@ public class BytecodeParser implements GraphBuilderContext {
             } else {
                 GuardingNode guard;
                 if (needsExplicitClassCastException(object)) {
-                    Constant hub = getConstantReflection().asObjectHub(resolvedType);
-                    Stamp hubStamp = getStampProvider().createHubStamp(StampFactory.object(TypeReference.createExactTrusted(resolvedType)));
-                    ConstantNode hubConstant = ConstantNode.forConstant(hubStamp, hub, getMetaAccess(), graph);
-                    guard = emitBytecodeExceptionCheck(condition, true, BytecodeExceptionKind.CLASS_CAST, object, hubConstant);
+                    ConstantNode clazz = ConstantNode.forConstant(getConstantReflection().asJavaClass(resolvedType), getMetaAccess(), graph);
+                    guard = emitBytecodeExceptionCheck(condition, true, BytecodeExceptionKind.CLASS_CAST, object, clazz);
                 } else {
                     guard = append(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
                 }
@@ -4834,8 +4821,8 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     @Override
-    public AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionKind exceptionKind) {
-        BytecodeExceptionNode exceptionNode = graph.add(new BytecodeExceptionNode(getMetaAccess(), exceptionKind));
+    public AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionKind exceptionKind, ValueNode... exceptionArguments) {
+        BytecodeExceptionNode exceptionNode = graph.add(new BytecodeExceptionNode(getMetaAccess(), exceptionKind, exceptionArguments));
         exceptionNode.setStateAfter(createBytecodeExceptionFrameState(bci(), exceptionNode));
         AbstractBeginNode exceptionDispatch = handleException(exceptionNode, bci(), false);
         exceptionNode.setNext(exceptionDispatch);
