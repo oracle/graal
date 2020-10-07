@@ -62,15 +62,15 @@ public final class CodeAttribute extends Attribute {
         super(name, null);
         this.maxStack = maxStack;
         this.maxLocals = maxLocals;
-        this.code = code;
-        this.originalCode = Arrays.copyOf(code, code.length);
+        this.originalCode = code;
+        this.code = Arrays.copyOf(code, code.length);
         this.exceptionHandlerEntries = exceptionHandlerEntries;
         this.attributes = attributes;
         this.majorVersion = majorVersion;
     }
 
     public CodeAttribute(CodeAttribute copy) {
-        this(copy.getName(), copy.getMaxStack(), copy.getMaxLocals(), Arrays.copyOf(copy.getOriginalCode(), copy.getOriginalCode().length), copy.getExceptionHandlers(), copy.attributes,
+        this(copy.getName(), copy.getMaxStack(), copy.getMaxLocals(), copy.getOriginalCode(), copy.getExceptionHandlers(), copy.attributes,
                         copy.getMajorVersion());
     }
 
