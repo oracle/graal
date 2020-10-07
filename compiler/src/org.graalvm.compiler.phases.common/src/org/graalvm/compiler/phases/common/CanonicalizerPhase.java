@@ -367,11 +367,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     COUNTER_CANONICALIZATION_CONSIDERED_NODES.increment(debug);
                     Node canonical = node;
                     try (AutoCloseable verify = getCanonicalizeableContractAssertion(node)) {
-                        if (canonical == node) {
-                            canonical = ((Canonicalizable) node).canonical(tool);
-                            if (canonical == node && nodeClass.isCommutative()) {
-                                canonical = ((BinaryCommutative<?>) node).maybeCommuteInputs();
-                            }
+                        canonical = ((Canonicalizable) node).canonical(tool);
+                        if (canonical == node && nodeClass.isCommutative()) {
+                            canonical = ((BinaryCommutative<?>) node).maybeCommuteInputs();
                         }
                     } catch (Throwable e) {
                         throw new GraalGraphError(e).addContext(node);
