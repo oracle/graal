@@ -455,7 +455,18 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              */
             long line = primaryRange.getLine();
             if (line < 0 && primaryEntry.getSubranges().size() > 0) {
-                line = primaryEntry.getSubranges().get(0).getLine();
+                final Range subRange = primaryEntry.getSubranges().get(0);
+                line = subRange.getLine();
+                /*
+                 * If line gets successfully retrieved from subrange get file index from there since
+                 * the line might be from a different file for inlined methods
+                 */
+                if (line > 0) {
+                    FileEntry subFileEntry = subRange.getFileEntry();
+                    if (subFileEntry != null) {
+                        fileIdx = classEntry.localFilesIdx(subFileEntry);
+                    }
+                }
             }
             if (line < 0) {
                 line = 0;
