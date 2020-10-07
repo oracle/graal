@@ -30,7 +30,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Member;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Interface denoting a field or method entry in a constant pool.

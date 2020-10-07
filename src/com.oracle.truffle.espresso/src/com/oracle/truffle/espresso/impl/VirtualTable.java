@@ -27,7 +27,6 @@ import java.util.Arrays;
 
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Helper for creating virtual tables in ObjectKlass.

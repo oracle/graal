@@ -29,6 +29,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
 
 import java.io.PrintStream;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -120,7 +121,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal volatile RedefinitionCache redefineCache;
 
     // used for class redefintion when refreshing vtables etc.
-    private final ArrayList<ObjectKlass> subTypes = new ArrayList<>(8);
+    private final ArrayList<WeakReference<ObjectKlass>> subTypes = new ArrayList<>(8);
 
     public static final int LOADED = 0;
     public static final int LINKED = 1;
@@ -207,7 +208,7 @@ public final class ObjectKlass extends Klass {
     }
 
     private void addSubType(ObjectKlass objectKlass) {
-        subTypes.add(objectKlass);
+        subTypes.add(new WeakReference<>(objectKlass));
     }
 
     private boolean verifyTables() {
@@ -1208,9 +1209,12 @@ public final class ObjectKlass extends Klass {
 
     private List<ObjectKlass> getSubTypes() {
         List<ObjectKlass> result = new ArrayList<>();
-        result.addAll(subTypes);
-        for (ObjectKlass subType : subTypes) {
-            result.addAll(subType.getSubTypes());
+        for (WeakReference<ObjectKlass> subType : subTypes) {
+            ObjectKlass sub = subType.get();
+            if (sub != null) {
+                result.add(sub);
+                result.addAll(sub.getSubTypes());
+            }
         }
         return result;
     }
