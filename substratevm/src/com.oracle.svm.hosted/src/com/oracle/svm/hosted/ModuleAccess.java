@@ -38,6 +38,7 @@ class ModuleAccess {
         // Noop
     }
 
+    @SuppressWarnings("unused")
     public static Map<String, List<String>> lookupServiceProviders(Feature.BeforeAnalysisAccess access) {
         return Collections.emptyMap();
     }
