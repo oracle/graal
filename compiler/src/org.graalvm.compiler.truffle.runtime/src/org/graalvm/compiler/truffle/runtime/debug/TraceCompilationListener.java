@@ -155,7 +155,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                         (timeCompilationFinished - compilation.timePartialEvaluationFinished) / 1e6));
         properties.put("Tier", target.isValidLastTier() ? "2" : "1");
         properties.put("Calls", String.format("%3dI/%3dD", inlinedCalls, dispatchedCalls));
-        properties.put("GraalNodes", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
+        properties.put("IR", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
         properties.put("CodeSize", result.getTargetCodeSize());
         if (target.getCodeAddress() != 0) {
             properties.put("Addr", "0x" + Long.toHexString(target.getCodeAddress()));
