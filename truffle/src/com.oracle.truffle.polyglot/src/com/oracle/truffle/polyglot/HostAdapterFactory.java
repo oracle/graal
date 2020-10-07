@@ -115,6 +115,18 @@ final class HostAdapterFactory {
     }
 
     @TruffleBoundary
+    static Object getSuperAdapter(HostObject adapter) {
+        assert isAdapterInstance(adapter.obj);
+        return new HostAdapterSuperMembers(adapter);
+    }
+
+    @TruffleBoundary
+    static String getSuperMethodName(String methodName) {
+        assert !methodName.startsWith(HostAdapterBytecodeGenerator.SUPER_PREFIX);
+        return HostAdapterBytecodeGenerator.SUPER_PREFIX.concat(methodName);
+    }
+
+    @TruffleBoundary
     static boolean isAdapterInstance(Object adapter) {
         return adapter.getClass().getClassLoader() instanceof HostAdapterClassLoader.CLImpl;
     }

@@ -270,6 +270,8 @@ final class HostObject implements TruffleObject {
             }
         } else if (isClass() && HostInteropReflect.CLASS_TO_STATIC.equals(name)) {
             return HostObject.forStaticClass(asClass(), languageContext);
+        } else if (HostInteropReflect.ADAPTER_SUPER_MEMBER.equals(name) && HostAdapterFactory.isAdapterInstance(this.obj)) {
+            return HostAdapterFactory.getSuperAdapter(this);
         }
         error.enter();
         throw UnknownIdentifierException.create(name);
