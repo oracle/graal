@@ -41,7 +41,6 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public class LLVMForeignConstructorCallNode extends LLVMForeignCallNode {
-    private final Type clazzType;
     private final LanguageReference<LLVMLanguage> languageReference;
 
     public static LLVMForeignConstructorCallNode create(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType,
@@ -55,13 +54,12 @@ public class LLVMForeignConstructorCallNode extends LLVMForeignCallNode {
                     LLVMInteropType.Structured structuredType, Type escapeType) {
         super(language, function, interopType, sourceType, structuredType, escapeType);
         this.languageReference = lookupLanguageReference(LLVMLanguage.class);
-        this.clazzType = escapeType;
     }
 
     @Override
     protected Object doCall(VirtualFrame frame, LLVMStack stack) throws ArityException, TypeOverflowException {
         Object[] rawArguments = frame.getArguments();
-        rawArguments[0] = languageReference.get().getLLVMMemory().allocateMemory(this, clazzType.getBitSize());
+        rawArguments[0] = languageReference.get().getLLVMMemory().allocateMemory(this, returnBaseType.getSize());
         if (packArguments.toLLVM.length != rawArguments.length) {
             // arguments also contain 'self' object, thus -1 for argCount
             throw ArityException.create(packArguments.toLLVM.length - 1, rawArguments.length - 1);
