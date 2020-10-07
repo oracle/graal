@@ -87,7 +87,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     protected ValueNode[] arguments;
     protected ValueNode returnValue;
 
-    private boolean unwindCreated;
+    private int numUnwinds = 0;
 
     private FrameState createStateAfterStartOfReplacementGraph(ResolvedJavaMethod original, GraphBuilderConfiguration graphBuilderConfig) {
         FrameStateBuilder startFrameState = new FrameStateBuilder(this, code, graph, graphBuilderConfig.retainLocalVariables());
@@ -178,10 +178,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
                 setExceptionState(exceptionSuccessor);
                 exceptionSuccessor.setNext(graph.add(new UnwindNode(exceptionSuccessor)));
 
-                if (unwindCreated) {
-                    throw GraalError.shouldNotReachHere("Intrinsic graph can only have one node with an exception edge");
-                }
-                unwindCreated = true;
+                numUnwinds++;
 
                 withExceptionNode.setNext(normalSuccessor);
                 withExceptionNode.setExceptionEdge(exceptionSuccessor);
@@ -199,6 +196,17 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
      * @param exceptionObject The node that needs an exception state.
      */
     protected void setExceptionState(ExceptionObjectNode exceptionObject) {
+        throw GraalError.shouldNotReachHere("unsupported by this IntrinsicGraphBuilder");
+    }
+
+    /**
+     * If the graph contains multiple unwind nodes, then this method merges them into a single
+     * unwind node containing a merged ExceptionNode. This is needed because an IntrinsicGraph can
+     * only contain at most a single UnwindNode.
+     *
+     * Currently unimplemented here, but implemented in subclasses that need it.
+     */
+    protected void mergeUnwinds() {
         throw GraalError.shouldNotReachHere("unsupported by this IntrinsicGraphBuilder");
     }
 
@@ -340,6 +348,9 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
                 assert (returnValue != null) == (method.getSignature().getReturnKind() != JavaKind.Void) : method;
                 assert lastInstr != null : "ReturnNode must be linked into control flow";
                 append(new ReturnNode(returnValue));
+                if (numUnwinds > 1) {
+                    mergeUnwinds();
+                }
                 return graph;
             }
             return null;

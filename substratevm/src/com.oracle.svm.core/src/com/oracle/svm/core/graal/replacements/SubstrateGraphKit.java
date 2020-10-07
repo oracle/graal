@@ -283,7 +283,7 @@ public class SubstrateGraphKit extends GraphKit {
 
         if (unwinds.size() > 1) {
             MergeNode unwindMergeNode = add(new MergeNode());
-            ValueNode exceptionValue = InliningUtil.mergeValueProducers(unwindMergeNode, unwinds, null, UnwindNode::exception);
+            ValueNode exceptionValue = InliningUtil.mergeUnwindExceptions(unwindMergeNode, unwinds);
             UnwindNode unwindReplacement = add(new UnwindNode(exceptionValue));
             unwindMergeNode.setNext(unwindReplacement);
 
