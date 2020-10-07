@@ -421,7 +421,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean canOverride(Method other) {
-        if (other.isPrivate() || other.isStatic()) {
+        if (other.isPrivate() || other.isStatic() || isPrivate() || isStatic()) {
             return false;
         }
         if (other.isPublic() || other.isProtected()) {
