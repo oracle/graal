@@ -84,8 +84,22 @@ public class JNIFunctionTablesFeature implements Feature {
     private final EnumSet<JavaKind> jniKinds = EnumSet.of(JavaKind.Object, JavaKind.Boolean, JavaKind.Byte, JavaKind.Char,
                     JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Void);
 
+    /**
+     * Metadata about the table pointed to by the {@code JNIEnv*} C pointer.
+     * 
+     * @see <a href=
+     *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#interface_function_table">Documentation
+     *      for the Interface Function Table</a>
+     */
     private StructInfo functionTableMetadata;
 
+    /**
+     * Metadata about the table pointed to by the {@code JavaVM*} C pointer.
+     * 
+     * @see <a href=
+     *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/invocation.html#invocation_api_functions">Documentation
+     *      for the Invocation API Function Table</a>
+     */
     private StructInfo invokeInterfaceMetadata;
 
     private ResolvedJavaMethod[] generatedMethods;
@@ -245,6 +259,14 @@ public class JNIFunctionTablesFeature implements Feature {
         }
     }
 
+    /**
+     * Finds the field holding a pointer to a given method in a functions table.
+     * 
+     * @param info the functions table to search in
+     * @param name name of the method to search for
+     * @return information about the field holding a pointer to the method named {@code name} in
+     *         {@code info}
+     */
     private static StructFieldInfo findFieldFor(StructInfo info, String name) {
         for (ElementInfo element : info.getChildren()) {
             if (element instanceof StructFieldInfo) {
