@@ -126,7 +126,7 @@ public abstract class Launcher {
 
     /**
      * Accumulates help categories and their relevant options.
-     * 
+     *
      * @see #printOtherHelpCategory
      */
     private List<String> kindAndCategory = new ArrayList<>();
@@ -148,7 +148,7 @@ public abstract class Launcher {
 
     /**
      * Provides the name of the log file, if specified on the command line.
-     * 
+     *
      * @return log file Path. {@code null} if unspecified.
      * @since 20.0
      */
@@ -158,7 +158,7 @@ public abstract class Launcher {
 
     /**
      * Uses the defined output to print messages.
-     * 
+     *
      * @param ps printStream to use as out
      * @since 20.0
      */
@@ -168,7 +168,7 @@ public abstract class Launcher {
 
     /**
      * Uses the defined output to print error messages.
-     * 
+     *
      * @param ps printStream to use as err
      * @since 20.0
      */
@@ -205,7 +205,7 @@ public abstract class Launcher {
     /**
      * Exception which shall abort the launcher execution. Thrown by this class in the case of
      * malformed arguments or unknown options, or deliberate exit.
-     * 
+     *
      * @since 20.0
      */
     protected static final class AbortException extends RuntimeException {
@@ -432,7 +432,7 @@ public abstract class Launcher {
     /**
      * Sets the indentation for option descriptions. Sets number of spaces in the first column
      * reserved for option names. Defaults to {@link #LAUNCHER_OPTIONS_INDENT}.
-     * 
+     *
      * @param indent the new indent.
      * @since 20.0
      */
@@ -466,7 +466,7 @@ public abstract class Launcher {
 
     /**
      * Finds the a descriptor for the option.
-     * 
+     *
      * @param group option group
      * @param key the option name (including the group)
      * @return descriptor or {@code null}.
@@ -478,7 +478,7 @@ public abstract class Launcher {
      * Determines if the tool supports polyglot. Returns true, if {@code --polyglot} option is valid
      * for this tool and polyglot launcher works for it. The default implementation returns false
      * only when {@link #isStandalone()} is true.
-     * 
+     *
      * @return {@code true}, if polyglot is relevant in this launcher.
      * @since 20.0
      */
@@ -489,7 +489,7 @@ public abstract class Launcher {
     /**
      * Should print tool-specific help. Regular languages print info on the installed tools and
      * languages. The default implementation prints nothing.
-     * 
+     *
      * @param helpCategory category of options to print
      * @since 20.0
      */
@@ -594,7 +594,7 @@ public abstract class Launcher {
      * Runs launcher's action as version print or help. Returns {@code true}, if the execution
      * should terminate, e.g. after printing help. {@link #parseCommonOption} should be called for
      * commandline argument(s) prior to this method to set up flags to display help etc.
-     * 
+     *
      * @return {@code true} when execution should be terminated.
      * @since 20.0
      */
@@ -620,7 +620,7 @@ public abstract class Launcher {
     /**
      * Prints default help text. Prints options, starting with tool specific options. Launcher
      * implementations can override to provide launcher-specific intro / summary.
-     * 
+     *
      * @param printCategory options category to print.
      * @since 20.0
      */
@@ -636,10 +636,10 @@ public abstract class Launcher {
             launcherOption("--polyglot", "Run with all other guest languages accessible.");
         }
         if (!SHELL_SCRIPT_LAUNCHER) {
-            launcherOption("--native", "Run using the native launcher with limited Java access" + (defaultVMType == VMType.Native ? " (default)" : "") + ".");
+            launcherOption("--native", "Run using the native launcher with limited access to Java libraries" + (defaultVMType == VMType.Native ? " (default)" : "") + ".");
         }
         if (!isStandalone()) {
-            launcherOption("--jvm", "Run on the Java Virtual Machine with Java access" + (defaultVMType == VMType.JVM ? " (default)" : "") + ".");
+            launcherOption("--jvm", "Run on the Java Virtual Machine with access to Java libraries" + (defaultVMType == VMType.JVM ? " (default)" : "") + ".");
         }
         // @formatter:off
         launcherOption("--vm.[option]",                 "Pass options to the host VM. To see available options, use '--help:vm'.");
@@ -652,7 +652,7 @@ public abstract class Launcher {
 
     /**
      * Instructs that information about other help categories should be printed.
-     * 
+     *
      * @param kind category kind name
      * @param option the option to print the category
      * @since 20.0
@@ -711,7 +711,7 @@ public abstract class Launcher {
     /**
      * Parses otherwise unrecognized options. Terminates the application if an option is not among
      * the generic launcher / VM ones.
-     * 
+     *
      * @param defaultOptionPrefix (language) prefix for the options
      * @param polyglotOptions options being built for the polyglot launcher
      * @param unrecognizedArgs arguments (options) to evaluate
@@ -745,7 +745,7 @@ public abstract class Launcher {
      * commandline, not recognized by the application. The method may contribute to the
      * `polyglotOptions` (in/out parameter, modifiable) to alter polyglot behaviour. If the option
      * is recognized, the method must return {@code true}.
-     * 
+     *
      * @param defaultOptionPrefix default prefix for the option names, derived from the launching
      *            application.
      * @param polyglotOptions options for polyglot engine
@@ -932,7 +932,7 @@ public abstract class Launcher {
      * Prints a line for a launcher option. Uses indentation set by {@link #setOptionIndent} to
      * align option's description. If option name is too long, description is printed on the next
      * line, indented.
-     * 
+     *
      * @param option option name, including dash(es)
      * @param description description
      * @since 20.0
@@ -1042,7 +1042,7 @@ public abstract class Launcher {
 
     /**
      * Prints a single line to the output stream, terminated with newline.
-     * 
+     *
      * @param l line text.
      * @since 20.0
      */
@@ -1053,7 +1053,7 @@ public abstract class Launcher {
     /**
      * Prints sequence of lines to the output stream. Each argument will be printed as a whole line,
      * terminated by a newline.
-     * 
+     *
      * @param lines lines
      * @since 20.0
      */
@@ -1065,14 +1065,16 @@ public abstract class Launcher {
 
     private void printJvmHelp() {
         println("JVM options:");
-        launcherOption("--vm.classpath=<...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's classpath");
+        String classpathHelp = "Manage the classpath for Java libraries that you can access from guest languages ('" + File.pathSeparator + "' separated list)";
+        launcherOption("--vm.classpath=<path>[" + File.pathSeparator + "path...]", classpathHelp);
+        launcherOption("--vm.cp=<path>[" + File.pathSeparator + "path...]", classpathHelp);
         launcherOption("--vm.D<name>=<value>", "Set a system property");
         launcherOption("--vm.esa", "Enable system assertions");
         launcherOption("--vm.ea[:<packagename>...|:<classname>]", "Enable assertions with specified granularity");
         launcherOption("--vm.agentlib:<libname>[=<options>]", "Load native agent library <libname>");
         launcherOption("--vm.agentpath:<pathname>[=<options>]", "Load native agent library by full pathname");
         launcherOption("--vm.javaagent:<jarpath>[=<options>]", "Load Java programming language agent");
-        launcherOption("--vm.Xbootclasspath/a:<...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's boot classpath");
+        launcherOption("--vm.Xbootclasspath/a:<path>[" + File.pathSeparator + "path...]", "Append classpath entries to the JVM's boot classpath ('" + File.pathSeparator + "' separated list)");
         launcherOption("--vm.Xmx<size>", "Set maximum Java heap size");
         launcherOption("--vm.Xms<size>", "Set initial Java heap size");
         launcherOption("--vm.Xss<size>", "Set java thread stack size");
@@ -1099,7 +1101,7 @@ public abstract class Launcher {
      * Possibly re-executes the launcher when JVM or polyglot mode is requested; call only if
      * {@link #isAOT()} is true. If the result is to run native, then it applies VM options on the
      * current process.
-     * 
+     *
      * The method parses the {@code unrecognizedArgs} for --jvm/--native/--polyglot flags and --vm.*
      * options. If JVM mode is requested, it execs a Java process configured with supported JVM
      * parameters and system properties over this process - in this case, the method does not return
@@ -1588,7 +1590,7 @@ public abstract class Launcher {
      * Creates a new log file. The method uses a supplemental lock file to determine the file is
      * still opened for output; in that case, it creates a different file, named `path'1, `path`2,
      * ... until it finds a free name. Files not locked (actively written to) are overwritten.
-     * 
+     *
      * @param path the desired output for log
      * @return the OutputStream for logging
      * @throws IOException in case of I/O error opening the file
