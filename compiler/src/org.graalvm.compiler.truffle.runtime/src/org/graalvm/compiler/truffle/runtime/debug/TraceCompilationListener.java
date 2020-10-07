@@ -59,7 +59,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     private static Map<String, Object> defaultProperties(OptimizedCallTarget target) {
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.putAll(target.getDebugProperties());
-        properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
+        properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
         return properties;
     }
 
@@ -162,7 +162,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         } else {
             properties.put("Addr", "N/A");
         }
-        properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
+        properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
 
         runtime.logEvent(target, 0, "opt done", properties);
 
