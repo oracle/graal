@@ -45,6 +45,10 @@ class ModuleAccess {
         hub.setModule(module);
     }
 
+    /**
+     * @param access currently used to access the application module path
+     * @return map of all services and their providers registered using modules
+     */
     public static Map<String, List<String>> lookupServiceProviders(Feature.BeforeAnalysisAccess access) {
         return loadAllModules(access)
                         .flatMap(module -> module.provides().stream())
@@ -55,6 +59,11 @@ class ModuleAccess {
                         }));
     }
 
+    /**
+     * Combines boot layer modules and application modules.
+     * 
+     * @return stream of all module descriptors that were discovered
+     */
     private static Stream<ModuleDescriptor> loadAllModules(Feature.BeforeAnalysisAccess access) {
         List<Path> applicationModulePath = access.getApplicationModulePath();
         ModuleFinder finder = ModuleFinder.of(applicationModulePath.toArray(new Path[0]));
