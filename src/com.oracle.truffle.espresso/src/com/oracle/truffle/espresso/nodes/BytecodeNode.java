@@ -257,6 +257,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
@@ -387,6 +388,8 @@ public final class BytecodeNode extends EspressoMethodNode {
     // exception is thrown.
     @CompilationFinal private boolean implicitExceptionProfile;
 
+    private final LivenessAnalysis livenessAnalysis;
+
     @TruffleBoundary
     public BytecodeNode(MethodVersion method, FrameDescriptor frameDescriptor, FrameSlot bciSlot) {
         super(method);
@@ -403,6 +406,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         // objects.
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
+        this.livenessAnalysis = LivenessAnalysis.analyze(method.getMethod());
     }
 
     public BytecodeNode(BytecodeNode copy) {
@@ -700,6 +704,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                     setBCI(frame, curBCI);
                 }
 
+                preBCI(frame, curBCI);
+
                 if (instrument != null) {
                     instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
                     statementIndex = nextStatementIndex;
@@ -741,32 +747,42 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case LDC_W: // fall through
                     case LDC2_W: putPoolConstant(frame, top, bs.readCPI(curBCI), curOpcode); break;
 
-                    case ILOAD: putInt(frame, top, getLocalInt(frame, bs.readLocalIndex(curBCI))); break;
-                    case LLOAD: putLong(frame, top, getLocalLong(frame, bs.readLocalIndex(curBCI))); break;
-                    case FLOAD: putFloat(frame, top, getLocalFloat(frame, bs.readLocalIndex(curBCI))); break;
-                    case DLOAD: putDouble(frame, top, getLocalDouble(frame, bs.readLocalIndex(curBCI))); break;
-                    case ALOAD: putObject(frame, top, getLocalObject(frame, bs.readLocalIndex(curBCI))); break;
+                    case ILOAD: putInt(frame, top, getLocalInt(frame, bs.readLocalIndex(curBCI)));
+                        postLocalAccess(frame, curBCI); break;
+                    case LLOAD: putLong(frame, top, getLocalLong(frame, bs.readLocalIndex(curBCI)));
+                        postLocalAccess(frame, curBCI); break;
+                    case FLOAD: putFloat(frame, top, getLocalFloat(frame, bs.readLocalIndex(curBCI)));
+                        postLocalAccess(frame, curBCI); break;
+                    case DLOAD: putDouble(frame, top, getLocalDouble(frame, bs.readLocalIndex(curBCI)));
+                        postLocalAccess(frame, curBCI); break;
+                    case ALOAD: putObject(frame, top, getLocalObject(frame, bs.readLocalIndex(curBCI)));
+                        postLocalAccess(frame, curBCI); break;
 
                     case ILOAD_0: // fall through
                     case ILOAD_1: // fall through
                     case ILOAD_2: // fall through
-                    case ILOAD_3: putInt(frame, top, getLocalInt(frame, curOpcode - ILOAD_0)); break;
+                    case ILOAD_3: putInt(frame, top, getLocalInt(frame, curOpcode - ILOAD_0));
+                        postLocalAccess(frame, curBCI); break;
                     case LLOAD_0: // fall through
                     case LLOAD_1: // fall through
                     case LLOAD_2: // fall through
-                    case LLOAD_3: putLong(frame, top, getLocalLong(frame, curOpcode - LLOAD_0)); break;
+                    case LLOAD_3: putLong(frame, top, getLocalLong(frame, curOpcode - LLOAD_0));
+                        postLocalAccess(frame, curBCI); break;
                     case FLOAD_0: // fall through
                     case FLOAD_1: // fall through
                     case FLOAD_2: // fall through
-                    case FLOAD_3: putFloat(frame, top, getLocalFloat(frame, curOpcode - FLOAD_0)); break;
+                    case FLOAD_3: putFloat(frame, top, getLocalFloat(frame, curOpcode - FLOAD_0));
+                        postLocalAccess(frame, curBCI); break;
                     case DLOAD_0: // fall through
                     case DLOAD_1: // fall through
                     case DLOAD_2: // fall through
-                    case DLOAD_3: putDouble(frame, top, getLocalDouble(frame, curOpcode - DLOAD_0)); break;
+                    case DLOAD_3: putDouble(frame, top, getLocalDouble(frame, curOpcode - DLOAD_0));
+                        postLocalAccess(frame, curBCI); break;
                     case ALOAD_0: // fall through
                     case ALOAD_1: // fall through
                     case ALOAD_2: // fall through
-                    case ALOAD_3: putObject(frame, top, getLocalObject(frame, curOpcode - ALOAD_0)); break;
+                    case ALOAD_3: putObject(frame, top, getLocalObject(frame, curOpcode - ALOAD_0));
+                        postLocalAccess(frame, curBCI); break;
 
                     case IALOAD: // fall through
                     case LALOAD: // fall through
@@ -783,32 +799,42 @@ public final class BytecodeNode extends EspressoMethodNode {
                         }
                         break;
 
-                    case ISTORE: setLocalInt(frame, bs.readLocalIndex(curBCI), popInt(frame, top - 1)); break;
-                    case LSTORE: setLocalLong(frame, bs.readLocalIndex(curBCI), popLong(frame, top - 1)); break;
-                    case FSTORE: setLocalFloat(frame, bs.readLocalIndex(curBCI), popFloat(frame, top - 1)); break;
-                    case DSTORE: setLocalDouble(frame, bs.readLocalIndex(curBCI), popDouble(frame, top - 1)); break;
-                    case ASTORE: setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), popReturnAddressOrObject(frame, top - 1)); break;
+                    case ISTORE: setLocalInt(frame, bs.readLocalIndex(curBCI), popInt(frame, top - 1));
+                        postLocalAccess(frame, curBCI); break;
+                    case LSTORE: setLocalLong(frame, bs.readLocalIndex(curBCI), popLong(frame, top - 1));
+                        postLocalAccess(frame, curBCI); break;
+                    case FSTORE: setLocalFloat(frame, bs.readLocalIndex(curBCI), popFloat(frame, top - 1));
+                        postLocalAccess(frame, curBCI); break;
+                    case DSTORE: setLocalDouble(frame, bs.readLocalIndex(curBCI), popDouble(frame, top - 1));
+                        postLocalAccess(frame, curBCI); break;
+                    case ASTORE: setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), popReturnAddressOrObject(frame, top - 1));
+                        postLocalAccess(frame, curBCI); break;
 
                     case ISTORE_0: // fall through
                     case ISTORE_1: // fall through
                     case ISTORE_2: // fall through
-                    case ISTORE_3: setLocalInt(frame, curOpcode - ISTORE_0, popInt(frame, top - 1)); break;
+                    case ISTORE_3: setLocalInt(frame, curOpcode - ISTORE_0, popInt(frame, top - 1));
+                        postLocalAccess(frame, curBCI); break;
                     case LSTORE_0: // fall through
                     case LSTORE_1: // fall through
                     case LSTORE_2: // fall through
-                    case LSTORE_3: setLocalLong(frame, curOpcode - LSTORE_0, popLong(frame, top - 1)); break;
+                    case LSTORE_3: setLocalLong(frame, curOpcode - LSTORE_0, popLong(frame, top - 1));
+                        postLocalAccess(frame, curBCI); break;
                     case FSTORE_0: // fall through
                     case FSTORE_1: // fall through
                     case FSTORE_2: // fall through
-                    case FSTORE_3: setLocalFloat(frame, curOpcode - FSTORE_0, popFloat(frame, top - 1)); break;
+                    case FSTORE_3: setLocalFloat(frame, curOpcode - FSTORE_0, popFloat(frame, top - 1));
+                        postLocalAccess(frame, curBCI); break;
                     case DSTORE_0: // fall through
                     case DSTORE_1: // fall through
                     case DSTORE_2: // fall through
-                    case DSTORE_3: setLocalDouble(frame, curOpcode - DSTORE_0, popDouble(frame, top - 1)); break;
+                    case DSTORE_3: setLocalDouble(frame, curOpcode - DSTORE_0, popDouble(frame, top - 1));
+                        postLocalAccess(frame, curBCI); break;
                     case ASTORE_0: // fall through
                     case ASTORE_1: // fall through
                     case ASTORE_2: // fall through
-                    case ASTORE_3: setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, popReturnAddressOrObject(frame, top - 1)); break;
+                    case ASTORE_3: setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, popReturnAddressOrObject(frame, top - 1));
+                        postLocalAccess(frame, curBCI); break;
 
                     case IASTORE: // fall through
                     case LASTORE: // fall through
@@ -882,7 +908,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case IXOR: putInt(frame, top - 2, popInt(frame, top - 1) ^ popInt(frame, top - 2)); break;
                     case LXOR: putLong(frame, top - 4, popLong(frame, top - 1) ^ popLong(frame, top - 3)); break;
 
-                    case IINC: setLocalInt(frame, bs.readLocalIndex(curBCI), getLocalInt(frame, bs.readLocalIndex(curBCI)) + bs.readIncrement(curBCI)); break;
+                    case IINC: setLocalInt(frame, bs.readLocalIndex(curBCI), getLocalInt(frame, bs.readLocalIndex(curBCI)) + bs.readIncrement(curBCI));
+                        postLocalAccess(frame, curBCI); break;
 
                     case I2L: putLong(frame, top - 1, popInt(frame, top - 1)); break;
                     case I2F: putFloat(frame, top - 1, popInt(frame, top - 1)); break;
@@ -961,6 +988,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     }
                     case RET: {
                         int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex(curBCI));
+                        postLocalAccess(frame, curBCI);
                         if (jsrBci == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             jsrBci = new int[bs.endBCI()][];
@@ -1276,6 +1304,14 @@ public final class BytecodeNode extends EspressoMethodNode {
             }
             curBCI = targetBCI;
         }
+    }
+
+    private void preBCI(VirtualFrame frame, int curBCI) {
+        livenessAnalysis.performPreBCI(frame, curBCI, this);
+    }
+
+    private void postLocalAccess(VirtualFrame frame, int curBCI) {
+        livenessAnalysis.performPostBCI(frame, curBCI, this);
     }
 
     private EspressoRootNode getRoot() {

@@ -39,10 +39,20 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
 public class LivenessAnalysis {
-    @CompilerDirectives.CompilationFinal(dimensions = 1) LocalVariableAction[] result;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) BCILocalActionRecord[] result;
 
-    public void performLivenessAnalysisAction(VirtualFrame frame, int bci, BytecodeNode node) {
-        result[bci].execute(frame, node);
+    public void performPreBCI(VirtualFrame frame, int bci, BytecodeNode node) {
+        if (result[bci] == null) {
+            return;
+        }
+        result[bci].pre(frame, node);
+    }
+
+    public void performPostBCI(VirtualFrame frame, int bci, BytecodeNode node) {
+        if (result[bci] == null) {
+            return;
+        }
+        result[bci].post(frame, node);
     }
 
     public static LivenessAnalysis analyze(Method method) {
@@ -58,21 +68,21 @@ public class LivenessAnalysis {
         this.result = buildResultFrom(result, graph, method);
     }
 
-    private static LocalVariableAction[] buildResultFrom(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
-        LocalVariableAction[] actions = new LocalVariableAction[method.getCode().length];
+    private static BCILocalActionRecord[] buildResultFrom(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
+        BCILocalActionRecord[] actions = new BCILocalActionRecord[method.getCode().length];
         for (int id = 0; id < graph.totalBlocks(); id++) {
             processBlock(actions, result, id, graph, method);
         }
         for (int i = 0; i < actions.length; i++) {
-            LocalVariableAction action = actions[i];
-            if (action instanceof MultiAction.TempMultiAction) {
-                actions[i] = ((MultiAction.TempMultiAction) action).freeze();
+            BCILocalActionRecord action = actions[i];
+            if (action != null && action.hasMulti()) {
+                action.freeze();
             }
         }
         return actions;
     }
 
-    private static void processBlock(LocalVariableAction[] actions, BlockBoundaryResult helper, int blockID, Graph<? extends LinkedBlock> graph, Method m) {
+    private static void processBlock(BCILocalActionRecord[] actions, BlockBoundaryResult helper, int blockID, Graph<? extends LinkedBlock> graph, Method m) {
         LinkedBlock current = graph.get(blockID);
         BitSet mergedEntryState = new BitSet(m.getMaxLocals());
         if (current == graph.entryBlock()) {
@@ -104,7 +114,7 @@ public class LivenessAnalysis {
             } else {
                 startAction = new MultiAction.TempMultiAction(startActions);
             }
-            recordAction(actions, current.start(), startAction);
+            recordAction(actions, current.start(), startAction, true);
         }
 
         BitSet endState = (BitSet) helper.endFor(blockID).clone();
@@ -114,14 +124,14 @@ public class LivenessAnalysis {
                 case IINC:
                     if (!endState.get(r.local)) {
                         // last load for this value
-                        recordAction(actions, r.bci, new NullOutAction(r.local));
+                        recordAction(actions, r.bci, new NullOutAction(r.local), false);
                         endState.set(r.local);
                     }
                     break;
                 case STORE:
                     if (!endState.get(r.local)) {
                         // last load for this value
-                        recordAction(actions, r.bci, new NullOutAction(r.local));
+                        recordAction(actions, r.bci, new NullOutAction(r.local), false);
                     }
                     endState.clear(r.local);
                     break;
@@ -129,16 +139,12 @@ public class LivenessAnalysis {
         }
     }
 
-    private static void recordAction(LocalVariableAction[] actions, int bci, LocalVariableAction action) {
-        LocalVariableAction current = actions[bci];
+    private static void recordAction(BCILocalActionRecord[] actions, int bci, LocalVariableAction action, boolean preAction) {
+        BCILocalActionRecord current = actions[bci];
         if (current == null) {
-            actions[bci] = action;
-        } else if (current instanceof MultiAction.TempMultiAction) {
-            ((MultiAction.TempMultiAction) current).add(action);
-        } else {
-            MultiAction.TempMultiAction multi = new MultiAction.TempMultiAction();
-            multi.add(current);
-            multi.add(action);
+            current = new BCILocalActionRecord();
+            actions[bci] = current;
         }
+        current.register(action, preAction);
     }
 }

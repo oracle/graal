@@ -306,6 +306,8 @@ public final class BytecodeStream {
                         str.append('\t').append(helper.keyAt(this, bci, i)).append(": ").append(helper.targetAt(this, bci, i));
                     }
                     str.append("\tdefault: ").append(helper.defaultTarget(this, bci));
+                } else if (opcode == Bytecodes.IINC) {
+                    str.append(" ").append(readLocalIndex(bci)).append(" ").append(readIncrement(bci));
                 } else {
                     // {bci}: {opcode} {corresponding value}
                     if (nextBCI - bci == 2) {

@@ -133,14 +133,15 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
                     if (isSuperSet(endState, toPropagate)) {
                         break;
                     }
-                    propagateLoop(endState, toPropagate, block, processor);
+                    BitSet entryState = getEntryLiveSet(block.id(), processor);
+                    propagateLoop(endState, entryState, toPropagate, block, processor);
                 }
             }
             loops[b.id()] = null;
         }
     }
 
-    private void propagateLoop(BitSet endState, BitSet toPropagate, LinkedBlock current, AnalysisProcessor processor) {
+    private void propagateLoop(BitSet endState, BitSet entryState, BitSet toPropagate, LinkedBlock current, AnalysisProcessor processor) {
         for (int i = 0; i < maxLocals; i++) {
             if (toPropagate.get(i))
                 if (endState.get(i)) {
@@ -152,6 +153,11 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
         for (Record record : blockHistory[current.id()].reverse()) {
             if (toPropagate.get(record.local)) {
                 toPropagate.clear(record.local);
+            }
+        }
+        for (int i = 0; i < maxLocals; i++) {
+            if (toPropagate.get(i)) {
+                entryState.set(i);
             }
         }
     }

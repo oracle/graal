@@ -38,4 +38,9 @@ public class NullOutAction extends LocalVariableAction {
     public void execute(VirtualFrame frame, BytecodeNode node) {
         node.nullOutLocalObject(frame, local);
     }
+
+    @Override
+    public String toString() {
+        return local + "";
+    }
 }

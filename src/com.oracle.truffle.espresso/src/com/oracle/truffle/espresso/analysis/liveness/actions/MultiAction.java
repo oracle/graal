@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.analysis.liveness.actions;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -47,6 +48,11 @@ public class MultiAction extends LocalVariableAction {
         for (LocalVariableAction action : actions) {
             action.execute(frame, node);
         }
+    }
+
+    @Override
+    public String toString() {
+        return Arrays.deepToString(actions);
     }
 
     public static class TempMultiAction extends LocalVariableAction {

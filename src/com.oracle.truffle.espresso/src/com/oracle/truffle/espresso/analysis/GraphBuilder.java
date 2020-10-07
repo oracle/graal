@@ -174,7 +174,7 @@ public final class GraphBuilder {
         int[] handlerBlocks = new int[handlers.length];
         int pos = 0;
         for (ExceptionHandler handler : handlers) {
-            handlerBlocks[pos] = readBlockID(handler.getHandlerBCI());
+            handlerBlocks[pos++] = readBlockID(handler.getHandlerBCI());
         }
         handlerToBlock = handlerBlocks;
     }
@@ -190,10 +190,10 @@ public final class GraphBuilder {
         int pos = 0;
         for (ExceptionHandler handler : handlers) {
             int currentBlock = readBlockID(handler.getStartBCI());
-            while (currentBlock < nBlocks && temporaryBlocks[currentBlock].end <= handler.getEndBCI()) {
-                temporaryBlocks[currentBlock].registerHandler(pos);
+            do {
+                temporaryBlocks[currentBlock].registerHandler(pos, this);
                 currentBlock++;
-            }
+            } while (currentBlock >= nBlocks || temporaryBlocks[currentBlock].end() <= handler.getEndBCI());
             pos++;
         }
     }
@@ -408,6 +408,7 @@ public final class GraphBuilder {
 
         // Additional successors
         private final ArrayList<Integer> handlers = new ArrayList<>();
+        private final ArrayList<Integer> handlerBlocks = new ArrayList<>();
 
         // Predecessor handling
         private final ArrayList<Integer> predecessors = new ArrayList<>();
@@ -441,8 +442,9 @@ public final class GraphBuilder {
             return id;
         }
 
-        void registerHandler(int handlerPos) {
+        void registerHandler(int handlerPos, GraphBuilder builder) {
             handlers.add(handlerPos);
+            handlerBlocks.add(builder.handlerToBlock[handlerPos]);
         }
 
         void registerPredecessor(int predecessor) {
@@ -466,37 +468,32 @@ public final class GraphBuilder {
                 } else if (!isRet && handlers.isEmpty()) {
                     fullyLinkedSuccessors = successors;
                 } else if (!isRet && !handlers.isEmpty()) {
-                    fullyLinkedSuccessors = merge(builder.nBlocks, successors, handlers);
+                    fullyLinkedSuccessors = merge(builder.nBlocks, successors, handlerBlocks);
                 } else if (isRet && handlers.isEmpty()) {
                     fullyLinkedSuccessors = merge(builder.nBlocks, successors, builder.returnTable);
                 } else {
-                    fullyLinkedSuccessors = merge(builder.nBlocks, successors, handlers, builder.returnTable);
+                    fullyLinkedSuccessors = merge(builder.nBlocks, successors, handlerBlocks, builder.returnTable);
                 }
             }
             return fullyLinkedSuccessors;
         }
 
         private static int[] merge(int totalBlocks, int[] successors, List<Integer>... others) {
-            int size = successors.length;
-            for (List<Integer> list : others) {
-                size += list.size();
-            }
-            int[] fullyLinkedSuccessors = new int[size];
+            ArrayList<Integer> fullyLinkedSuccessors = new ArrayList<>();
             BitSet present = new BitSet(totalBlocks);
             for (int i = 0; i < successors.length; i++) {
                 int id = successors[i];
                 present.set(id);
-                fullyLinkedSuccessors[i] = id;
+                fullyLinkedSuccessors.add(id);
             }
-            int pos = successors.length;
             for (List<Integer> list : others) {
                 for (int i : list) {
                     if (!present.get(i)) {
-                        fullyLinkedSuccessors[pos++] = i;
+                        fullyLinkedSuccessors.add(i);
                     }
                 }
             }
-            return fullyLinkedSuccessors;
+            return toIntArray(fullyLinkedSuccessors);
         }
     }
 }
