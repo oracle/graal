@@ -379,7 +379,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     // Profile for implicit exceptions e.g. null checks, division by 0, index out of bounds.
     // All implicit exception paths in the method will be compiled if at least one implicit
     // exception is thrown.
-    private final BranchProfile implicitExceptionProfile;
+    @CompilationFinal private boolean implicitExceptionProfile;
 
     @TruffleBoundary
     public BytecodeNode(MethodVersion method, FrameDescriptor frameDescriptor, FrameSlot bciSlot) {
@@ -396,7 +396,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         // TODO(peterssen): Allocate new assumption iff there's a bytecode that can produce foreign
         // objects.
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
-        this.implicitExceptionProfile = BranchProfile.create();
+        this.implicitExceptionProfile = false;
     }
 
     public BytecodeNode(BytecodeNode copy) {
@@ -1366,14 +1366,14 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
             // @formatter:off
             switch (kind) {
-                case Byte:    putInt(frame, top - 2, getInterpreterToVM().getArrayByte(index, array, implicitExceptionProfile));      break;
-                case Short:   putInt(frame, top - 2, getInterpreterToVM().getArrayShort(index, array, implicitExceptionProfile));     break;
-                case Char:    putInt(frame, top - 2, getInterpreterToVM().getArrayChar(index, array, implicitExceptionProfile));      break;
-                case Int:     putInt(frame, top - 2, getInterpreterToVM().getArrayInt(index, array, implicitExceptionProfile));       break;
-                case Float:   putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(index, array, implicitExceptionProfile));   break;
-                case Long:    putLong(frame, top - 2, getInterpreterToVM().getArrayLong(index, array, implicitExceptionProfile));     break;
-                case Double:  putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(index, array, implicitExceptionProfile)); break;
-                case Object:  putObject(frame, top - 2, getInterpreterToVM().getArrayObject(index, array, implicitExceptionProfile)); break;
+                case Byte:    putInt(frame, top - 2, getInterpreterToVM().getArrayByte(index, array));      break;
+                case Short:   putInt(frame, top - 2, getInterpreterToVM().getArrayShort(index, array));     break;
+                case Char:    putInt(frame, top - 2, getInterpreterToVM().getArrayChar(index, array));      break;
+                case Int:     putInt(frame, top - 2, getInterpreterToVM().getArrayInt(index, array));       break;
+                case Float:   putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(index, array));   break;
+                case Long:    putLong(frame, top - 2, getInterpreterToVM().getArrayLong(index, array));     break;
+                case Double:  putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(index, array)); break;
+                case Object:  putObject(frame, top - 2, getInterpreterToVM().getArrayObject(index, array)); break;
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere();
@@ -1399,14 +1399,14 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
             // @formatter:off
             switch (kind) {
-                case Byte:    getInterpreterToVM().setArrayByte((byte) popInt(frame, top - 1), index, array, implicitExceptionProfile);   break;
-                case Short:   getInterpreterToVM().setArrayShort((short) popInt(frame, top - 1), index, array, implicitExceptionProfile); break;
-                case Char:    getInterpreterToVM().setArrayChar((char) popInt(frame, top - 1), index, array, implicitExceptionProfile);   break;
-                case Int:     getInterpreterToVM().setArrayInt(popInt(frame, top - 1), index, array, implicitExceptionProfile);           break;
-                case Float:   getInterpreterToVM().setArrayFloat(popFloat(frame, top - 1), index, array, implicitExceptionProfile);       break;
-                case Long:    getInterpreterToVM().setArrayLong(popLong(frame, top - 1), index, array, implicitExceptionProfile);         break;
-                case Double:  getInterpreterToVM().setArrayDouble(popDouble(frame, top - 1), index, array, implicitExceptionProfile);     break;
-                case Object:  getInterpreterToVM().setArrayObject(popObject(frame, top - 1), index, array, implicitExceptionProfile);     break;
+                case Byte:    getInterpreterToVM().setArrayByte((byte) popInt(frame, top - 1), index, array);   break;
+                case Short:   getInterpreterToVM().setArrayShort((short) popInt(frame, top - 1), index, array); break;
+                case Char:    getInterpreterToVM().setArrayChar((char) popInt(frame, top - 1), index, array);   break;
+                case Int:     getInterpreterToVM().setArrayInt(popInt(frame, top - 1), index, array);           break;
+                case Float:   getInterpreterToVM().setArrayFloat(popFloat(frame, top - 1), index, array);       break;
+                case Long:    getInterpreterToVM().setArrayLong(popLong(frame, top - 1), index, array);         break;
+                case Double:  getInterpreterToVM().setArrayDouble(popDouble(frame, top - 1), index, array);     break;
+                case Object:  getInterpreterToVM().setArrayObject(popObject(frame, top - 1), index, array);     break;
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere();
@@ -2172,17 +2172,24 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {
-            implicitExceptionProfile.enter();
+            enterImplicitExceptionProfile();
             throw getMeta().throwNullPointerException();
         }
         return value;
+    }
+
+    public final void enterImplicitExceptionProfile() {
+        if (!implicitExceptionProfile) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            implicitExceptionProfile = true;
+        }
     }
 
     private int checkNonZero(int value) {
         if (value != 0) {
             return value;
         }
-        implicitExceptionProfile.enter();
+        enterImplicitExceptionProfile();
         throw Meta.throwExceptionWithMessage(getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
@@ -2190,7 +2197,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (value != 0L) {
             return value;
         }
-        implicitExceptionProfile.enter();
+        enterImplicitExceptionProfile();
         throw Meta.throwExceptionWithMessage(getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
