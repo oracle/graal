@@ -607,13 +607,31 @@ public final class ObjectKlass extends Klass {
         return iKlassTable;
     }
 
-    List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result) {
+    List<Method> lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method> result) {
+        Symbol<Name> name = current.getName();
+        Symbol<Signature> signature = current.getRawSignature();
         for (Method m : vtable) {
             if (!m.isStatic() && !m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic()) {
                     result.add(m);
-                } else if (m.getDeclaringKlass().sameRuntimePackage(subKlass)) {
-                    result.add(m);
+                } else {
+                    if (m.getDeclaringKlass().sameRuntimePackage(subKlass)) {
+                        result.add(m);
+                    } else {
+                        ObjectKlass currentKlass = this.getSuperKlass();
+                        int index = m.getVTableIndex();
+                        while (currentKlass != null) {
+                            if (index >= currentKlass.vtable.length) {
+                                break;
+                            }
+                            Method toExamine = currentKlass.vtable[index];
+                            if (current.canOverride(toExamine)) {
+                                result.add(toExamine);
+                                break;
+                            }
+                            currentKlass = currentKlass.getSuperKlass();
+                        }
+                    }
                 }
             }
         }
