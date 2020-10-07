@@ -149,12 +149,12 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         int dispatchedCalls = calls - inlinedCalls;
         Map<String, Object> properties = new LinkedHashMap<>();
         GraalTruffleRuntimeListener.addASTSizeProperty(target, properties);
-        properties.put("Time", String.format("%5.0f(%4.0f+%-4.0f)ms", //
+        properties.put("Time", String.format("%4.0f(%4.0f+%-4.0f)ms", //
                         (timeCompilationFinished - compilation.timeCompilationStarted) / 1e6, //
                         (compilation.timePartialEvaluationFinished - compilation.timeCompilationStarted) / 1e6, //
                         (timeCompilationFinished - compilation.timePartialEvaluationFinished) / 1e6));
         properties.put("Tier", target.isValidLastTier() ? "2" : "1");
-        properties.put("Calls", String.format("I %4d/D %4d", inlinedCalls, dispatchedCalls));
+        properties.put("Calls", String.format("%3dI/%3dD", inlinedCalls, dispatchedCalls));
         properties.put("GraalNodes", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
         properties.put("CodeSize", result.getTargetCodeSize());
         if (target.getCodeAddress() != 0) {
