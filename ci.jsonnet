@@ -252,21 +252,21 @@ local awfy = 'awfy:*';
     jdk8_bench_linux              + espresso_interpreter_benchmark('native-ee', awfy)                     + {name: 'espresso-bench-native-ee-awfy_interpreter-jdk8-linux-amd64'},
 
     // Scala DaCapo warmup benchmarks (post-merge)
-    jdk8_bench_linux              + espresso_benchmark('jvm-ce', scala_dacapo_jvm_fast(warmup=true))      + {name: 'espresso-bench-jvm-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
-    jdk8_bench_linux              + espresso_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=true))      + {name: 'espresso-bench-jvm-ee-scala_dacapo_warmup-jdk8-linux-amd64'},
-    jdk8_bench_linux              + espresso_benchmark('native-ce', scala_dacapo_jvm_fast(warmup=true))   + {name: 'espresso-bench-native-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
+    #jdk8_bench_linux              + espresso_benchmark('jvm-ce', scala_dacapo_jvm_fast(warmup=true))      + {name: 'espresso-bench-jvm-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
+    #jdk8_bench_linux              + espresso_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=true))      + {name: 'espresso-bench-jvm-ee-scala_dacapo_warmup-jdk8-linux-amd64'},    
+    #jdk8_bench_linux              + espresso_benchmark('native-ce', scala_dacapo_jvm_fast(warmup=true))   + {name: 'espresso-bench-native-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
     jdk8_bench_linux              + espresso_benchmark('native-ee', scala_dacapo_jvm_fast(warmup=true))   + {name: 'espresso-bench-native-ee-scala_dacapo_warmup-jdk8-linux-amd64'},
 
     // Scala DaCapo warmup benchmarks --engine.MultiTier (post-merge)
-    jdk8_bench_linux              + espresso_multi_tier_benchmark('jvm-ce', scala_dacapo_jvm_fast(warmup=true))      + {name: 'espresso-bench-jvm-ce-scala_dacapo_warmup_multi_tier-jdk8-linux-amd64'},
-    jdk8_bench_linux              + espresso_multi_tier_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=true))      + {name: 'espresso-bench-jvm-ee-scala_dacapo_warmup_multi_tier-jdk8-linux-amd64'},
-    jdk8_bench_linux              + espresso_multi_tier_benchmark('native-ce', scala_dacapo_jvm_fast(warmup=true))   + {name: 'espresso-bench-native-ce-scala_dacapo_warmup_multi_tier-jdk8-linux-amd64'},
+    #jdk8_bench_linux              + espresso_multi_tier_benchmark('jvm-ce', scala_dacapo_jvm_fast(warmup=true))      + {name: 'espresso-bench-jvm-ce-scala_dacapo_warmup_multi_tier-jdk8-linux-amd64'},
+    #jdk8_bench_linux              + espresso_multi_tier_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=true))      + {name: 'espresso-bench-jvm-ee-scala_dacapo_warmup_multi_tier-jdk8-linux-amd64'},
+    #jdk8_bench_linux              + espresso_multi_tier_benchmark('native-ce', scala_dacapo_jvm_fast(warmup=true))   + {name: 'espresso-bench-native-ce-scala_dacapo_warmup_multi_tier-jdk8-linux-amd64'},
     jdk8_bench_linux              + espresso_multi_tier_benchmark('native-ee', scala_dacapo_jvm_fast(warmup=true))   + {name: 'espresso-bench-native-ee-scala_dacapo_warmup_multi_tier-jdk8-linux-amd64'},
 
     // Scala DaCapo peak perf. benchmarks (post-merge)
-    jdk8_bench_linux              + espresso_benchmark('jvm-ce', scala_dacapo_jvm_fast(warmup=false))     + {name: 'espresso-bench-jvm-ce-scala_dacapo-jdk8-linux-amd64'},
-    jdk8_bench_linux              + espresso_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=false))     + {name: 'espresso-bench-jvm-ee-scala_dacapo-jdk8-linux-amd64'},
-    jdk8_bench_linux              + espresso_benchmark('native-ce', scala_dacapo_jvm_fast(warmup=false))  + {name: 'espresso-bench-native-ce-scala_dacapo-jdk8-linux-amd64'},
+    #jdk8_bench_linux              + espresso_benchmark('jvm-ce', scala_dacapo_jvm_fast(warmup=false))     + {name: 'espresso-bench-jvm-ce-scala_dacapo-jdk8-linux-amd64'},
+    #jdk8_bench_linux              + espresso_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=false))     + {name: 'espresso-bench-jvm-ee-scala_dacapo-jdk8-linux-amd64'},
+    #jdk8_bench_linux              + espresso_benchmark('native-ce', scala_dacapo_jvm_fast(warmup=false))  + {name: 'espresso-bench-native-ce-scala_dacapo-jdk8-linux-amd64'},
     jdk8_bench_linux              + espresso_benchmark('native-ee', scala_dacapo_jvm_fast(warmup=false))  + {name: 'espresso-bench-native-ee-scala_dacapo-jdk8-linux-amd64'},
 
     // On-demand
