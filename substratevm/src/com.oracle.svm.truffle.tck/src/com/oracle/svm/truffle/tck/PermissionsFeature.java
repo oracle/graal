@@ -61,6 +61,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
@@ -78,7 +79,6 @@ import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.polyglot.io.FileSystem;
 
 /**
  * A Truffle TCK {@code Feature} detecting privileged calls done by Truffle language. The
@@ -158,7 +158,7 @@ public class PermissionsFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
-            UserError.abort(getClass().getSimpleName() + " requires -H:-FoldSecurityManagerGetter option.");
+            UserError.abort("%s requires -H:-FoldSecurityManagerGetter option.", getClass().getSimpleName());
         }
         String reportFile = Options.TruffleTCKPermissionsReportFile.getValue();
         if (reportFile == null) {
@@ -178,7 +178,7 @@ public class PermissionsFeature implements Feature {
                 Files.newOutputStream(reportFilePath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             }
         } catch (IOException ioe) {
-            throw UserError.abort("Cannot delete existing report file " + reportFilePath + ".");
+            throw UserError.abort("Cannot delete existing report file %s.", reportFilePath);
         }
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
         DebugContext debugContext = accessImpl.getDebugContext();

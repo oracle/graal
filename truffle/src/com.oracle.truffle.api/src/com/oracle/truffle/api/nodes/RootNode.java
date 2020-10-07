@@ -127,7 +127,7 @@ public abstract class RootNode extends ExecutableNode {
 
     private static final AtomicReferenceFieldUpdater<RootNode, ReentrantLock> LOCK_UPDATER = AtomicReferenceFieldUpdater.newUpdater(RootNode.class, ReentrantLock.class, "lock");
 
-    private volatile RootCallTarget callTarget;
+    @CompilationFinal private volatile RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
     private volatile ReentrantLock lock;
 
@@ -372,6 +372,27 @@ public abstract class RootNode extends ExecutableNode {
      */
     protected boolean isInstrumentable() {
         return true;
+    }
+
+    /**
+     * Is this root node to be considered trivial by the runtime.
+     *
+     * A trivial root node is defined as a root node that:
+     * <ol>
+     * <li>Never increases code size when inlined, i.e. is always less complex then the call.</li>
+     * <li>Never performs guest language calls.</li>
+     * <li>Never contains loops.</li>
+     * <li>Is small (for a language-specific definition of small).</li>
+     * </ol>
+     *
+     * An good example of trivial root nodes would be getters and setters in java.
+     *
+     * @since 20.3.0
+     * @return <code>true </code>if this root node should be considered trivial by the runtime.
+     *         <code>false</code> otherwise.
+     */
+    protected boolean isTrivial() {
+        return false;
     }
 
     /**

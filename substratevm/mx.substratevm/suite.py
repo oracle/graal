@@ -854,6 +854,24 @@ suite = {
             "spotbugs": "false",
         },
 
+        "com.oracle.svm.diagnosticsagent": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources"
+            ],
+            "dependencies": [
+                "JVMTI_AGENT_BASE",
+            ],
+            "checkstyle": "com.oracle.svm.driver",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+        },
+
         "com.oracle.svm.truffle.tck" : {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1061,6 +1079,18 @@ suite = {
                 "SVM_CONFIGURE",
             ],
             # vm: included as binary, tool descriptor intentionally not copied
+        },
+
+        "SVM_DIAGNOSTICS_AGENT": {
+            "subDir": "src",
+            "description" : "Native-image diagnostics agent",
+            "dependencies": [
+                "com.oracle.svm.diagnosticsagent",
+            ],
+            "distDependencies": [
+                "JVMTI_AGENT_BASE",
+                "LIBRARY_SUPPORT",
+            ],
         },
 
         "SVM_CONFIGURE": {

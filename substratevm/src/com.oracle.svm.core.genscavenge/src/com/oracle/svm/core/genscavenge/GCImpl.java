@@ -48,6 +48,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -70,6 +72,7 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceHandler;
+import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -237,8 +240,8 @@ public final class GCImpl implements GC {
     private void printGCBefore(String cause) {
         Log verboseGCLog = Log.log();
         HeapImpl heap = HeapImpl.getHeapImpl();
-        sizeBefore = ((SubstrateOptions.PrintGC.getValue() || HeapOptions.PrintHeapShape.getValue()) ? heap.getUsedChunkBytes() : WordFactory.zero());
-        if (SubstrateOptions.VerboseGC.getValue() && getCollectionEpoch().equal(1)) {
+        sizeBefore = ((SubstrateGCOptions.PrintGC.getValue() || HeapOptions.PrintHeapShape.getValue()) ? heap.getUsedChunkBytes() : WordFactory.zero());
+        if (SubstrateGCOptions.VerboseGC.getValue() && getCollectionEpoch().equal(1)) {
             verboseGCLog.string("[Heap policy parameters: ").newline();
             verboseGCLog.string("  YoungGenerationSize: ").unsigned(HeapPolicy.getMaximumYoungGenerationSize()).newline();
             verboseGCLog.string("      MaximumHeapSize: ").unsigned(HeapPolicy.getMaximumHeapSize()).newline();
@@ -249,7 +252,7 @@ public final class GCImpl implements GC {
                 HeapImpl.getHeapImpl().logImageHeapPartitionBoundaries(verboseGCLog).newline();
             }
         }
-        if (SubstrateOptions.VerboseGC.getValue()) {
+        if (SubstrateGCOptions.VerboseGC.getValue()) {
             verboseGCLog.string("[");
             verboseGCLog.string("[");
             long startTime = System.nanoTime();
@@ -269,8 +272,8 @@ public final class GCImpl implements GC {
     private void printGCAfter(String cause) {
         Log verboseGCLog = Log.log();
         HeapImpl heap = HeapImpl.getHeapImpl();
-        if (SubstrateOptions.PrintGC.getValue() || SubstrateOptions.VerboseGC.getValue()) {
-            if (SubstrateOptions.PrintGC.getValue()) {
+        if (SubstrateGCOptions.PrintGC.getValue() || SubstrateGCOptions.VerboseGC.getValue()) {
+            if (SubstrateGCOptions.PrintGC.getValue()) {
                 Log printGCLog = Log.log();
                 UnsignedWord sizeAfter = heap.getUsedChunkBytes();
                 printGCLog.string("[");
@@ -286,7 +289,7 @@ public final class GCImpl implements GC {
                 printGCLog.rational(timers.collection.getMeasuredNanos(), TimeUtils.nanosPerSecond, 7).string(" secs");
                 printGCLog.string("]").newline();
             }
-            if (SubstrateOptions.VerboseGC.getValue()) {
+            if (SubstrateGCOptions.VerboseGC.getValue()) {
                 verboseGCLog.string(" [");
                 long finishNanos = timers.collection.getFinish();
                 if (HeapOptions.PrintGCTimeStamps.getValue()) {
@@ -391,7 +394,7 @@ public final class GCImpl implements GC {
 
     @Fold
     static boolean runtimeAssertions() {
-        return SubstrateOptions.getRuntimeAssertionsForClass(GCImpl.class.getName());
+        return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(GCImpl.class);
     }
 
     @Fold
@@ -429,6 +432,18 @@ public final class GCImpl implements GC {
                     cheneyScanFromRoots();
                 }
             }
+
+            if (DeoptimizationSupport.enabled()) {
+                try (Timer drt = timers.cleanCodeCache.open()) {
+                    /*
+                     * Cleaning the code cache may invalidate code, which is a rather complex
+                     * operation. To avoid side-effects between the code cache cleaning and the GC
+                     * core, it is crucial that all the GC core work finished before.
+                     */
+                    cleanRuntimeCodeCache();
+                }
+            }
+
             trace.string("  Discovered references: ");
             try (Timer drt = timers.referenceObjects.open()) {
                 Reference<?> newlyPendingList = ReferenceObjectProcessing.processRememberedReferences();
@@ -506,9 +521,6 @@ public final class GCImpl implements GC {
 
                 /* Visit all objects that became reachable because of the compiled code. */
                 scanGreyObjects(false);
-
-                /* Clean the code cache, now that all live objects were visited. */
-                cleanRuntimeCodeCache();
             }
 
             greyToBlackObjectVisitor.reset();
@@ -577,9 +589,6 @@ public final class GCImpl implements GC {
 
                 /* Visit all objects that became reachable because of the compiled code. */
                 scanGreyObjects(true);
-
-                /* Clean the code cache, now that all live objects were visited. */
-                cleanRuntimeCodeCache();
             }
 
             greyToBlackObjectVisitor.reset();
@@ -679,7 +688,7 @@ public final class GCImpl implements GC {
                 CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
                 assert Deoptimizer.checkDeoptimized(sp) == null : "We are at a safepoint, so no deoptimization can have happened even though looking up the code info is not uninterruptible";
 
-                NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getReferenceMapEncoding(codeInfo);
+                NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
                 long referenceMapIndex = queryResult.getReferenceMapIndex();
                 if (referenceMapIndex == CodeInfoQueryResult.NO_REFERENCE_MAP) {
                     throw CodeInfoTable.reportNoReferenceMap(sp, ip, codeInfo);
@@ -921,7 +930,7 @@ public final class GCImpl implements GC {
         try (Timer timer = refsTimer.open()) {
             ReferenceHandler.maybeProcessCurrentlyPending();
         }
-        if (SubstrateOptions.VerboseGC.getValue() && HeapOptions.PrintGCTimes.getValue()) {
+        if (SubstrateGCOptions.VerboseGC.getValue() && HeapOptions.PrintGCTimes.getValue()) {
             Timers.logOneTimer(Log.log(), "[GC epilogue reference processing: ", refsTimer);
             Log.log().string("]");
         }

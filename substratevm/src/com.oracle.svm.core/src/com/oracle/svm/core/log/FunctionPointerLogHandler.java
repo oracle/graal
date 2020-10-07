@@ -27,6 +27,7 @@ package com.oracle.svm.core.log;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -36,7 +37,7 @@ import org.graalvm.word.UnsignedWord;
  * A {@link LogHandler} that can use provided function pointers for each operation. If a function
  * pointer is missing, it forwards the operation to the delegate set in the constructor.
  */
-public class FunctionPointerLogHandler implements LogHandler {
+public class FunctionPointerLogHandler implements LogHandlerExtension {
 
     private final LogHandler delegate;
 
@@ -67,6 +68,14 @@ public class FunctionPointerLogHandler implements LogHandler {
     }
 
     @Override
+    public boolean fatalContext(CodePointer callerIP, String msg, Throwable ex) {
+        if (delegate instanceof LogHandlerExtension) {
+            return ((LogHandlerExtension) delegate).fatalContext(callerIP, msg, ex);
+        }
+        return true;
+    }
+
+    @Override
     public void fatalError() {
         if (fatalErrorFunctionPointer.isNonNull()) {
             fatalErrorFunctionPointer.invoke();
@@ -87,6 +96,11 @@ public class FunctionPointerLogHandler implements LogHandler {
     interface VoidFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         void invoke();
+    }
+
+    interface FatalContextFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        boolean invoke(CodePointer callerIP, String msg, Throwable ex);
     }
 
     /**

@@ -167,13 +167,42 @@ suite = {
             "javaCompliance" : "8+",
             "workingSets" : "Tools",
         },
+        "com.oracle.truffle.tools.dap" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "truffle:TRUFFLE_API",
+                "TruffleJSON",
+            ],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+              "com.oracle.truffle.tools.dap.instrument to org.graalvm.truffle"
+            ],
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance" : "8+",
+            "workingSets" : "Tools",
+        },
+        "com.oracle.truffle.tools.dap.test" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "com.oracle.truffle.tools.dap",
+                "truffle:TRUFFLE_TEST",
+                "mx:JUNIT"
+            ],
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance" : "8+",
+            "workingSets" : "Tools",
+        },
         "com.oracle.truffle.tools.warmup" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
                 "TruffleJSON",
-                ],
+            ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
               # "com.oracle.truffle.tools.warmup.impl to org.graalvm.truffle",
@@ -274,31 +303,31 @@ suite = {
             "dependencies" : ["SLF4J_API"]
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-830.tar.gz"],
-            "sha1" : "dbf7cdee54f2797776b93bfaebd4f107ad8755f8",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-871.tar.gz"],
+            "sha1" : "d334b6149f8080f4e3a42baa0fe2e93c479c0536",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-830-linux-amd64.tar.gz"],
-                        "sha1" : "40d39ad1b1853fbe9bc452cd586de206411e0594",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-871-linux-amd64.tar.gz"],
+                        "sha1" : "5befdcb1f42b083b2350735fd62517862f93ffed",
                     },
                     "aarch64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-830-linux-aarch64.tar.gz"],
-                        "sha1" : "5de19e2d908b193dc023bc9da7062c0e2963de85",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-871-linux-aarch64.tar.gz"],
+                        "sha1" : "547f90164f135e80b748655240d658a6c4b15727",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-830-macosx-x86_64.tar.gz"],
-                        "sha1" : "9d0daca5bb63a9da535bd2081c3344b5084f2f02",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-871-macosx-x86_64.tar.gz"],
+                        "sha1" : "4eee8208e884eba8631d482ed31e05c1b9c96925",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-830-windows-amd64.tar.gz"],
-                        "sha1" : "ac526df68ef683c8794e021cf32d3ead42fdc87a",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-871-windows-amd64.tar.gz"],
+                        "sha1" : "6abe5f8cf9ab5d2d64ec5f89f04257b671ae50e5",
                     }
                 },
             }
@@ -473,6 +502,47 @@ suite = {
             "description" : "Truffle Code coverage support distribution for the GraalVM",
             "layout" : {
                 "native-image.properties" : "file:mx.tools/tools-coverage.properties",
+            },
+        },
+        "DAP": {
+            "subDir": "src",
+            # This distribution defines a module.
+            "moduleInfo" : {
+                "name" : "com.oracle.truffle.tools.dap",
+                "requiresConcealed" : {
+                    "org.graalvm.truffle" : [
+                        "com.oracle.truffle.api.instrumentation"
+                    ],
+                },
+            },
+            "dependencies": [
+                "com.oracle.truffle.tools.dap",
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : {
+              "artifactId" : "dap",
+            },
+            "description" : "Truffle Debug Protocol Server implementation.",
+        },
+        "DAP_TEST": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.tools.dap.test",
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_TEST",
+                "DAP",
+            ],
+            "description" : "Tests for the Truffle Debug Protocol Server.",
+            "maven" : False,
+         },
+        "DAP_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Truffle Debug Protocol Server distribution for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-dap.properties",
             },
         },
         "TRUFFLE_WARMUP_ESTIMATOR": {

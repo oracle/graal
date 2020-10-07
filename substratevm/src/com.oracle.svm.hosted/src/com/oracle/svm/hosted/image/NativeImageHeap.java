@@ -425,7 +425,7 @@ public final class NativeImageHeap implements ImageHeap {
                 // Recursively add all the fields of the object.
                 final boolean fieldsAreImmutable = object instanceof String;
                 for (HostedField field : clazz.getInstanceFields(true)) {
-                    if (field.isAccessed() && !field.equals(hybridArrayField) && !field.equals(hybridBitsetField)) {
+                    if (field.isInImageHeap() && !field.equals(hybridArrayField) && !field.equals(hybridBitsetField)) {
                         boolean fieldRelocatable = false;
                         if (field.getJavaKind() == JavaKind.Object) {
                             assert field.hasLocation();
@@ -505,7 +505,7 @@ public final class NativeImageHeap implements ImageHeap {
         }
         msg.append(System.lineSeparator()).append("  reachable through:").append(System.lineSeparator());
         fillReasonStack(msg, reason);
-        throw UserError.abort(msg.toString());
+        throw UserError.abort("%s", msg);
     }
 
     private static StringBuilder fillReasonStack(StringBuilder msg, Object reason) {

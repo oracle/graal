@@ -868,7 +868,7 @@ public class StandardGraphBuilderPlugins {
         r.register2("isAssignableFrom", Receiver.class, Class.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode otherType) {
-                ClassIsAssignableFromNode condition = b.append(new ClassIsAssignableFromNode(type.get(), otherType));
+                ClassIsAssignableFromNode condition = b.append(new ClassIsAssignableFromNode(type.get(), b.nullCheckedValue(otherType)));
                 b.push(JavaKind.Boolean, b.append(new ConditionalNode(condition).canonical(null)));
                 return true;
             }
@@ -1273,6 +1273,19 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
+                return true;
+            }
+        });
+
+        r.register0("inIntrinsic", new InvocationPlugin() {
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(b.parsingIntrinsic()));
                 return true;
             }
         });

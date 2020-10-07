@@ -193,11 +193,13 @@ public final class FirstObjectTable {
 
     private static void setTableForObjectUnchecked(Pointer table, Pointer memory, Pointer start, Pointer end) {
         assert memory.belowOrEqual(start);
-        assert start.belowThan(end);
-        UnsignedWord startOffset = start.subtract(memory);
-        /* The argument "end" is just past the real end of the object, so back it up one byte. */
-        UnsignedWord endOffset = end.subtract(1).subtract(memory);
-        setTableForObjectAtLocation(table, startOffset, endOffset);
+        setTableForObjectAtOffsetUnchecked(table, start.subtract(memory), end.subtract(memory));
+    }
+
+    static void setTableForObjectAtOffsetUnchecked(Pointer table, UnsignedWord startOffset, UnsignedWord endOffset) {
+        assert startOffset.belowThan(endOffset);
+        UnsignedWord actualEndOffset = endOffset.subtract(1); // methods wants offset of last byte
+        setTableForObjectAtLocation(table, startOffset, actualEndOffset);
     }
 
     private static void setTableForObjectAtLocation(Pointer table, UnsignedWord startOffset, UnsignedWord endOffset) {

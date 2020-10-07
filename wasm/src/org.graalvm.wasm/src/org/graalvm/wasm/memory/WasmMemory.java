@@ -79,6 +79,9 @@ public abstract class WasmMemory implements TruffleObject {
         return grow(extraPageCount);
     }
 
+    /**
+     * The max size of the memory, measured in number of pages.
+     */
     public abstract long maxPageSize();
 
     public Long maxByteSize() {

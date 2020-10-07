@@ -10,15 +10,12 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 import { OutputEvent } from 'vscode-debugadapter';
 
 import * as path from 'path';
-import * as fs from 'fs';
 import * as cp from 'child_process';
 import * as os from 'os';
 
 import { ILaunchRequestArguments, IAttachRequestArguments } from './graalVMDebugInterfaces';
-import * as utils from './utils';
 
 export class GraalVMDebugAdapter extends ChromeDebugAdapter {
-    private static NODE = 'node';
     private static TIMEOUT = 5000;
 
     private _childProcessId: number = 0;
@@ -44,78 +41,9 @@ export class GraalVMDebugAdapter extends ChromeDebugAdapter {
 
         await super.launch(args);
 
-        const port = args.port || utils.random(3000, 50000);
-
-        let runtimeExecutable = args.runtimeExecutable;
-        if (runtimeExecutable) {
-            if (path.isAbsolute(runtimeExecutable)) {
-                if (!fs.existsSync(runtimeExecutable)) {
-                    return this.getNotExistErrorResponse('runtimeExecutable', runtimeExecutable);
-                }
-            } else {
-                const re = utils.findExecutable(runtimeExecutable, args.graalVMHome);
-                if (!re) {
-                    return this.getRuntimeNotFoundErrorResponse(runtimeExecutable);
-                }
-                runtimeExecutable = re;
-            }
-        } else {
-            const re = utils.findExecutable(GraalVMDebugAdapter.NODE, args.graalVMHome);
-            if (!re) {
-                return this.getRuntimeNotFoundErrorResponse(GraalVMDebugAdapter.NODE);
-            }
-            runtimeExecutable = re;
-        }
-
-        let programPath = args.program;
-        if (programPath) {
-            if (!path.isAbsolute(programPath)) {
-                return this.getRelativePathErrorResponse('program', programPath);
-            }
-            if (!fs.existsSync(programPath)) {
-                if (fs.existsSync(programPath + '.js')) {
-                    programPath += '.js';
-                } else {
-                    return this.getNotExistErrorResponse('program', programPath);
-                }
-            }
-            programPath = path.normalize(programPath);
-        }
-
-        let program: string | undefined;
-        let cwd = args.cwd;
-        if (cwd) {
-            if (!path.isAbsolute(cwd)) {
-                return this.getRelativePathErrorResponse('cwd', cwd);
-            }
-            if (!fs.existsSync(cwd)) {
-                return this.getNotExistErrorResponse('cwd', cwd);
-            }
-            if (programPath) {
-                program = await utils.isSymlinked(cwd) ? programPath : path.relative(cwd, programPath);
-            }
-        } else if (programPath) {
-            cwd = path.dirname(programPath);
-            program = await utils.isSymlinked(cwd) ? programPath : path.basename(programPath);
-        }
-
-        const runtimeArgs = args.runtimeArgs || [];
-        const programArgs = args.args || [];
-
-        let launchArgs = [];
-        if (!args.noDebug) {
-            if (path.basename(runtimeExecutable) === GraalVMDebugAdapter.NODE) {
-                launchArgs.push(`--inspect-brk=${port}`);
-            } else {
-                launchArgs.push(`--inspect=${port}`);
-            }
-        }
-
-        if (runtimeArgs.find(arg => arg.startsWith('--lsp'))) {
+        if (args.graalVMLaunchInfo.args.find(arg => arg.startsWith('--lsp'))) {
             this._killChildProcess = false;
         }
-
-        launchArgs = runtimeArgs.concat(launchArgs, program ? [program] : [], programArgs);
 
         this._captureStdOutput = args.outputCapture === 'std';
 
@@ -123,15 +51,15 @@ export class GraalVMDebugAdapter extends ChromeDebugAdapter {
             const termArgs: DebugProtocol.RunInTerminalRequestArguments = {
                 kind: args.console === 'integratedTerminal' ? 'integrated' : 'external',
                 title: 'GraalVM Debug Console',
-                cwd,
-                args: [runtimeExecutable].concat(launchArgs || [])
+                cwd: args.graalVMLaunchInfo.cwd,
+                args: [args.graalVMLaunchInfo.exec].concat(args.graalVMLaunchInfo.args || [])
             };
             await this.launchInTerminal(termArgs);
             if (args.noDebug) {
                 this.terminateSession('cannot track process');
             }
         } else if (!args.console || args.console === 'internalConsole') {
-            await this.launchInInternalConsole(runtimeExecutable, launchArgs, cwd);
+            await this.launchInInternalConsole(args.graalVMLaunchInfo.exec, args.graalVMLaunchInfo.args, args.graalVMLaunchInfo.cwd);
         } else {
             throw new ErrorWithMessage({
                 id: 2028,
@@ -145,7 +73,7 @@ export class GraalVMDebugAdapter extends ChromeDebugAdapter {
         }
 
         if (!args.noDebug) {
-            await this.doAttach(port, undefined, args.address, args.timeout, undefined, args.extraCRDPChannelPort);
+            await this.doAttach(args.graalVMLaunchInfo.port, undefined, args.address, args.timeout, undefined, args.extraCRDPChannelPort);
             this._session.sendEvent(new OutputEvent('Debugger attached.\n', 'stderr'));
         }
     }
@@ -280,30 +208,6 @@ export class GraalVMDebugAdapter extends ChromeDebugAdapter {
             cli += ' ';
         }
         logger.warn(cli);
-    }
-
-    private getRuntimeNotFoundErrorResponse(runtime: string): Promise<void> {
-        return Promise.reject(new ErrorWithMessage(<DebugProtocol.Message>{
-            id: 2001,
-            format: "Cannot find runtime '{_runtime}' within your GraalVM installation. Make sure to have GraalVM '{_runtime}' installed.",
-            variables: { _runtime: runtime }
-        }));
-    }
-
-    private getNotExistErrorResponse(attribute: string, path: string): Promise<void> {
-        return Promise.reject(new ErrorWithMessage(<DebugProtocol.Message>{
-            id: 2007,
-            format: "Attribute '{attribute}' does not exist ('{path}').",
-            variables: { attribute, path }
-        }));
-    }
-
-    private getRelativePathErrorResponse(attribute: string, path: string): Promise<void> {
-        return Promise.reject(new ErrorWithMessage(<DebugProtocol.Message>{
-            id: 2008,
-            format: "Attribute '{attribute}' is not absolute ('{path}'); consider adding '{workspaceFolder}' as a prefix to make it absolute.",
-            variables: { attribute, path, workspaceFolder: '${workspaceFolder}/' }
-        }));
     }
 }
 

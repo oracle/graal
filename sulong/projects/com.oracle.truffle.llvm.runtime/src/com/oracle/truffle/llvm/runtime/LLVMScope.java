@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -150,10 +151,18 @@ public class LLVMScope implements TruffleObject {
     }
 
     @TruffleBoundary
+    public void addMissingLinkageName(LLVMScope other) {
+        for (Entry<String, String> entry : other.linkageNames.entrySet()) {
+            linkageNames.putIfAbsent(entry.getKey(), entry.getValue());
+        }
+    }
+
+    @TruffleBoundary
     public void addMissingEntries(LLVMScope other) {
         for (Entry<String, LLVMSymbol> entry : other.symbols.entrySet()) {
             symbols.putIfAbsent(entry.getKey(), entry.getValue());
         }
+
         for (Entry<String, String> entry : other.linkageNames.entrySet()) {
             linkageNames.putIfAbsent(entry.getKey(), entry.getValue());
         }
@@ -185,7 +194,8 @@ public class LLVMScope implements TruffleObject {
         }
     }
 
-    private void remove(String name) {
+    @TruffleBoundary
+    public void remove(String name) {
         assert symbols.containsKey(name);
         LLVMSymbol removedSymbol = symbols.remove(name);
 
@@ -193,6 +203,26 @@ public class LLVMScope implements TruffleObject {
             boolean contained = functionKeys.remove(name);
             assert contained;
         }
+    }
+
+    @ExportMessage
+    final boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    final Class<? extends TruffleLanguage<?>> getLanguage() {
+        return LLVMLanguage.class;
+    }
+
+    @ExportMessage
+    final boolean isScope() {
+        return true;
+    }
+
+    @ExportMessage
+    public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "llvm-global";
     }
 
     @ExportMessage

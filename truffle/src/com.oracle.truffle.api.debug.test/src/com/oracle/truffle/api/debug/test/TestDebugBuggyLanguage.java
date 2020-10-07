@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.api.debug.test;
 
+import java.util.function.BiFunction;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -56,8 +59,10 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -95,9 +100,21 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class TestDebugBuggyLanguage extends ProxyLanguage {
 
+    protected BiFunction<Node, Frame, Object> scopeProvider() {
+        return null;
+    }
+
+    protected final Object getDefaultScope(Node node, Frame frame, boolean enterNode) {
+        try {
+            return NodeLibrary.getUncached().getScope(((TestRootNode) node.getRootNode()).getDefaultScopeNode(), frame, enterNode);
+        } catch (UnsupportedMessageException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
+    }
+
     @Override
     protected final CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-        return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, request.getSource()));
+        return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, request.getSource(), scopeProvider()));
     }
 
     @SuppressWarnings("static-method")
@@ -121,13 +138,22 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
     private static final class TestRootNode extends RootNode {
 
         @Node.Child private TestStatementNode statement;
+        @Node.Child private TestStatementNode defaultScopeNode;
         private final SourceSection statementSection;
 
-        TestRootNode(TruffleLanguage<?> language, com.oracle.truffle.api.source.Source source) {
+        TestRootNode(TruffleLanguage<?> language, com.oracle.truffle.api.source.Source source, BiFunction<Node, Frame, Object> scopeProvider) {
             super(language);
             statementSection = source.createSection(1);
-            statement = new TestStatementNode(statementSection);
+            statement = scopeProvider != null ? new TestStatementScopedNode(statementSection, scopeProvider) : new TestStatementNode(statementSection);
+            defaultScopeNode = new TestStatementNode(statementSection);
             insert(statement);
+        }
+
+        Node getDefaultScopeNode() {
+            if (defaultScopeNode instanceof InstrumentableNode.WrapperNode) {
+                return ((InstrumentableNode.WrapperNode) defaultScopeNode).getDelegateNode();
+            }
+            return defaultScopeNode;
         }
 
         @Override
@@ -210,6 +236,31 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
             return StandardTags.StatementTag.class.equals(tag);
         }
 
+    }
+
+    @ExportLibrary(NodeLibrary.class)
+    static class TestStatementScopedNode extends TestStatementNode {
+
+        private final BiFunction<Node, Frame, Object> scopeProvider;
+
+        TestStatementScopedNode(SourceSection sourceSection, BiFunction<Node, Frame, Object> scopeProvider) {
+            super(sourceSection);
+            this.scopeProvider = scopeProvider;
+        }
+
+        @ExportMessage
+        boolean hasScope(@SuppressWarnings("unused") Frame frame) {
+            return scopeProvider != null;
+        }
+
+        @ExportMessage
+        final Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) throws UnsupportedMessageException {
+            if (scopeProvider != null) {
+                return scopeProvider.apply(this, frame);
+            } else {
+                throw UnsupportedMessageException.create();
+            }
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)

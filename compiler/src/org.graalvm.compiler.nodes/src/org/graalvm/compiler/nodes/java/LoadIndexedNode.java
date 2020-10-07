@@ -179,7 +179,7 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
         }
     }
 
-    private static ValueNode tryConstantFold(ValueNode array, ValueNode index, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+    public static ValueNode tryConstantFold(ValueNode array, ValueNode index, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         if (array.isConstant() && !array.isNullConstant() && index.isConstant()) {
             JavaConstant arrayConstant = array.asJavaConstant();
             if (arrayConstant != null) {

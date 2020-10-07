@@ -99,7 +99,7 @@ class JavaThreadsFeature implements Feature {
     private <K, V> boolean registerReachableObject(Map<K, V> map, K object, V value) {
         boolean result = map.putIfAbsent(object, value) == null;
         if (sealed && result) {
-            throw UserError.abort(object.getClass().getSimpleName() + " is reachable in the image heap but was not seen during the points-to analysis: " + object);
+            throw UserError.abort("%s is reachable in the image heap but was not seen during the points-to analysis: %s", object.getClass().getSimpleName(), object);
         }
         return result;
     }

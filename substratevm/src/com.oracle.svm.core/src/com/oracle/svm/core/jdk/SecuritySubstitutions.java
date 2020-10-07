@@ -42,6 +42,7 @@ import java.security.ProtectionDomain;
 import java.security.Provider;
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
@@ -329,6 +330,24 @@ final class Target_javax_crypto_JceSecurity {
     @Alias @InjectAccessors(JceSecurityAccessor.class) //
     static SecureRandom RANDOM;
 
+    /*
+     * The JceSecurity.verificationResults cache is initialized by the SecurityServicesFeature at
+     * build time, for all registered providers. The cache is used by JceSecurity.canUseProvider()
+     * at runtime to check whether a provider is properly signed and can be used by JCE. It does
+     * that via jar verification which we cannot support.
+     */
+
+    // Checkstyle: stop
+    @Alias //
+    private static Object PROVIDER_VERIFIED;
+    // Checkstyle: resume
+
+    // Map<Provider,?> of the providers we already have verified
+    // value == PROVIDER_VERIFIED is successfully verified
+    // value is failure cause Exception in error case
+    @Alias //
+    private static Map<Provider, Object> verificationResults;
+
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     static void verifyProviderJar(URL var0) {
@@ -342,9 +361,33 @@ final class Target_javax_crypto_JceSecurity {
     }
 
     @Substitute
-    static URL getCodeBase(final Class<?> var0) {
-        throw JceSecurityUtil.shouldNotReach("javax.crypto.JceSecurity.getCodeBase(Class)");
+    static URL getCodeBase(final Class<?> clazz) {
+        throw VMError.unsupportedFeature("Trying to access the code base of " + clazz + ". ");
     }
+
+    @Substitute
+    static Exception getVerificationResult(Provider p) {
+        /* Start code block copied from original method. */
+        Object o = verificationResults.get(p);
+        if (o == PROVIDER_VERIFIED) {
+            return null;
+        } else if (o != null) {
+            return (Exception) o;
+        }
+        /* End code block copied from original method. */
+        /*
+         * If the verification result is not found in the verificationResults map JDK proceeds to
+         * verify it. That requires accesing the code base which we don't support. The substitution
+         * for getCodeBase() would be enough to take care of this too, but substituting
+         * getVerificationResult() allows for a better error message.
+         */
+        throw VMError.unsupportedFeature("Trying to verify a provider that was not registered at build time: " + p + ". " +
+                        "All providers must be registered and verified in the Native Image builder. " +
+                        "Only the SUN provider is registered and verified by default. " +
+                        "All other built-in providers are processed when all security services are enabled using the " + JceSecurityUtil.enableAllSecurityServices + " option. " +
+                        "Third party providers must be configured in the Native Image builder VM. ");
+    }
+
 }
 
 class JceSecurityAccessor {
@@ -376,13 +419,14 @@ class JceSecurityAccessor {
 }
 
 final class JceSecurityUtil {
-    private static final String enableAllSecurityServices = SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableAllSecurityServices, "+");
+    static final String enableAllSecurityServices = SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableAllSecurityServices, "+");
 
     static RuntimeException shouldNotReach(String method) {
         throw VMError.shouldNotReachHere(method + " is reached at runtime. " +
                         "This should not happen. The contents of JceSecurity.verificationResults " +
-                        "are computed and cached at image build time. Try enabling all security services with " + enableAllSecurityServices + ".");
+                        "are computed and cached at image build time.");
     }
+
 }
 
 /**

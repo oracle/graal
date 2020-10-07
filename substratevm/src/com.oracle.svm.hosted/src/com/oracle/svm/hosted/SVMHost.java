@@ -42,6 +42,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -71,6 +72,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.UnknownClass;
 import com.oracle.svm.core.annotate.UnknownObjectField;
@@ -106,6 +108,7 @@ public final class SVMHost implements HostVM {
     private final Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes;
 
     private final OptionValues options;
+    private final ForkJoinPool executor;
     private final ClassLoader classLoader;
     private final ClassInitializationSupport classInitializationSupport;
     private final HostedStringDeduplication stringTable;
@@ -128,10 +131,13 @@ public final class SVMHost implements HostVM {
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
     private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
+    private static final Method isRecordMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isRecord") : null;
     private static final Method getNestHostMethod = JavaVersionUtil.JAVA_SPEC >= 11 ? ReflectionUtil.lookupMethod(Class.class, "getNestHost") : null;
 
-    public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport, UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
+    public SVMHost(OptionValues options, ForkJoinPool executor, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
         this.options = options;
+        this.executor = executor;
         this.classLoader = classLoader;
         this.classInitializationSupport = classInitializationSupport;
         this.stringTable = HostedStringDeduplication.singleton();
@@ -190,6 +196,11 @@ public final class SVMHost implements HostVM {
     }
 
     @Override
+    public ForkJoinPool executor() {
+        return executor;
+    }
+
+    @Override
     public Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
         return new AnalysisGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, providers.getWordTypes());
     }
@@ -233,14 +244,24 @@ public final class SVMHost implements HostVM {
 
     @Override
     public void registerType(AnalysisType analysisType) {
-        classInitializationSupport.maybeInitializeHosted(analysisType);
 
         DynamicHub hub = createHub(analysisType);
+        /* Register the hub->type and type->hub mappings. */
         Object existing = typeToHub.put(analysisType, hub);
         assert existing == null;
         existing = hubToType.put(hub, analysisType);
         assert existing == null;
 
+    }
+
+    @Override
+    public void initializeType(AnalysisType analysisType) {
+        if (!analysisType.isReachable()) {
+            throw VMError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + analysisType);
+        }
+
+        /* Decide when the type should be initialized. */
+        classInitializationSupport.maybeInitializeHosted(analysisType);
         /* Compute the automatic substitutions. */
         automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()), options);
     }
@@ -274,6 +295,7 @@ public final class SVMHost implements HostVM {
         } else {
             throw VMError.shouldNotReachHere("Found unsupported type: " + type);
         }
+        /* Ensure that the hub is registered in both typeToHub and hubToType. */
         return typeToHub.get(aType);
     }
 
@@ -313,9 +335,11 @@ public final class SVMHost implements HostVM {
          * JDK 15 added support for Hidden Classes. Record if this javaClass is hidden.
          */
         boolean isHidden = false;
+        boolean isRecord = false;
         if (JavaVersionUtil.JAVA_SPEC >= 15) {
             try {
                 isHidden = (boolean) isHiddenMethod.invoke(javaClass);
+                isRecord = (boolean) isRecordMethod.invoke(javaClass);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw VMError.shouldNotReachHere(e);
             }
@@ -330,8 +354,10 @@ public final class SVMHost implements HostVM {
             }
         }
 
+        boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
+
         final DynamicHub dynamicHub = new DynamicHub(className, computeHubType(type), computeReferenceType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
-                        modifiers, hubClassLoader, isHidden, nestHost);
+                        modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         }
@@ -378,7 +404,7 @@ public final class SVMHost implements HostVM {
 
     void notifyClassReachabilityListener(AnalysisUniverse universe, DuringAnalysisAccess access) {
         for (AnalysisType type : universe.getTypes()) {
-            if ((type.isInTypeCheck() || type.isInstantiated()) && !type.getReachabilityListenerNotified()) {
+            if ((type.isReachable() || type.isInstantiated()) && !type.getReachabilityListenerNotified()) {
                 type.setReachabilityListenerNotified(true);
 
                 for (BiConsumer<DuringAnalysisAccess, Class<?>> listener : classReachabilityListeners) {

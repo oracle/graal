@@ -34,15 +34,16 @@ import com.oracle.truffle.llvm.tests.interop.values.DoubleArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.LongArrayObject;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
@@ -71,7 +72,7 @@ public final class ManagedMemsetTest extends ManagedMemAccessTestBase {
     }
 
     @Test
-    public void memmove(@Inject(DoMemsetNode.class) CallTarget doMemmove) {
+    public void memset(@Inject(DoMemsetNode.class) CallTarget doMemset) {
         Object dstType = getTypeID(dstTestType);
 
         final int arrayLength = 8;
@@ -91,7 +92,7 @@ public final class ManagedMemsetTest extends ManagedMemAccessTestBase {
             dstObject = new LongArrayObject(dstType, dst);
         }
 
-        doMemmove.call(dstObject, value, size);
+        doMemset.call(dstObject, value, size);
 
         byte[] dstBytes = serialize(dstTestType, dstArray);
 

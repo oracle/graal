@@ -34,6 +34,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 @TargetClass(java.util.SplittableRandom.class)
 final class Target_java_util_SplittableRandom {
 
+    /**
+     * The seed generator for default constructors is initialized at run time, on first access, to
+     * prevent baking in an initial seed from the build system.
+     */
     @Alias @InjectAccessors(SplittableRandomAccessors.class)//
     private static AtomicLong defaultGen;
 
@@ -41,69 +45,22 @@ final class Target_java_util_SplittableRandom {
     static native long mix64(long z);
 }
 
-public class SplittableRandomAccessors {
+public class SplittableRandomAccessors extends RandomAccessors {
 
-    /*
-     * We run this code deliberately during image generation, so that the SecureRandom code is only
-     * reachable and included in the image when requested by the application.
-     */
-    private static final boolean SECURE_SEED = java.security.AccessController.doPrivileged(
-                    new java.security.PrivilegedAction<Boolean>() {
-                        @Override
-                        public Boolean run() {
-                            return Boolean.getBoolean("java.util.secureRandomSeed");
-                        }
-                    });
-
-    private static volatile AtomicLong defaultGen;
+    private static final SplittableRandomAccessors SINGLETON = new SplittableRandomAccessors();
 
     /** The get-accessor for SplittableRandom.defaultGen. */
     public static AtomicLong getDefaultGen() {
-        AtomicLong result = defaultGen;
-        if (result == null) {
-            result = initialize();
-        }
-        return result;
+        return SINGLETON.getOrInitializeSeeder();
     }
 
-    private static class Lock {
+    /** The setter is necessary if SplittableRandom is initilized at run time. */
+    public static void setDefaultGen(AtomicLong value) {
+        SINGLETON.seeder = value;
     }
 
-    private static final Lock lock = new Lock();
-
-    // Checkstyle: allow synchronization
-    private static AtomicLong initialize() {
-        /**
-         * Lock on an instance instead of a java.lang.Class object because SVM currently uses a
-         * secondary storage map for locking on classes, which in this particular case can lead to
-         * recursive locking problems when this code is called from the constructor of
-         * JavaVMOperation.
-         */
-        synchronized (lock) {
-            AtomicLong result = defaultGen;
-            if (result != null) {
-                return result;
-            }
-
-            /*
-             * The code below to compute the seed is taken from the original
-             * SplittableRandom.initialSeed() implementation.
-             */
-            long seed;
-            if (SECURE_SEED) {
-                byte[] seedBytes = java.security.SecureRandom.getSeed(8);
-                seed = seedBytes[0] & 0xffL;
-                for (int i = 1; i < 8; ++i) {
-                    seed = (seed << 8) | (seedBytes[i] & 0xffL);
-                }
-            } else {
-                seed = Target_java_util_SplittableRandom.mix64(System.currentTimeMillis()) ^ Target_java_util_SplittableRandom.mix64(System.nanoTime());
-            }
-
-            result = new AtomicLong(seed);
-            defaultGen = result;
-            return result;
-        }
+    @Override
+    long mix64(long l) {
+        return Target_java_util_SplittableRandom.mix64(l);
     }
-    // Checkstyle: disallow synchronization
 }

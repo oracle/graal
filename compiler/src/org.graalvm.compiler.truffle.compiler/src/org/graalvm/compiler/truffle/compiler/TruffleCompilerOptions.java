@@ -79,7 +79,6 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Split
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingDumpDecisions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingGrowthLimit;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxCalleeSize;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxNumberOfSplitNodes;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxPropagationDepth;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingTraceEvents;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceAssumptions;
@@ -428,7 +427,6 @@ public final class TruffleCompilerOptions {
             result.put(Splitting, identity(SharedTruffleCompilerOptions.TruffleSplitting));
             result.put(SplittingMaxCalleeSize, identity(SharedTruffleCompilerOptions.TruffleSplittingMaxCalleeSize));
             result.put(SplittingGrowthLimit, identity(SharedTruffleCompilerOptions.TruffleSplittingGrowthLimit));
-            result.put(SplittingMaxNumberOfSplitNodes, identity(SharedTruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes));
             result.put(SplittingMaxPropagationDepth, identity(SharedTruffleCompilerOptions.TruffleSplittingMaxPropagationDepth));
             result.put(TraceSplittingSummary, identity(SharedTruffleCompilerOptions.TruffleTraceSplittingSummary));
             result.put(SplittingTraceEvents, identity(SharedTruffleCompilerOptions.TruffleSplittingTraceEvents));

@@ -43,6 +43,7 @@ package com.oracle.truffle.polyglot;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -53,6 +54,9 @@ import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
+import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
+import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
+import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 import com.oracle.truffle.polyglot.PolyglotValue.InteropCodeCache;
 
 final class PolyglotLanguageInstance implements VMObject {
@@ -77,6 +81,12 @@ final class PolyglotLanguageInstance implements VMObject {
      * Direct context lookups in the current language.
      */
     private final ContextReference<Object> directContextSupplier;
+
+    // effectively final
+    List<LanguageContextLocal<?>> contextLocals;
+    List<LanguageContextThreadLocal<?>> contextThreadLocals;
+    LocalLocation[] contextLocalLocations;
+    LocalLocation[] contextThreadLocalLocations;
 
     @SuppressWarnings("unchecked")
     PolyglotLanguageInstance(PolyglotLanguage language) {

@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.UnresolvedFunction;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
@@ -43,15 +42,21 @@ public final class LLVMFunction extends LLVMSymbol {
     private final FunctionType type;
     private final Function function;
     public static final LLVMFunction[] EMPTY = {};
+    private final String path;
 
-    public static LLVMFunction create(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex, boolean exported) {
-        return new LLVMFunction(name, library, function, type, bitcodeID, symbolIndex, exported);
+    public static LLVMFunction create(String name, Function function, FunctionType type, int bitcodeID, int symbolIndex, boolean exported, String path) {
+        return new LLVMFunction(name, function, type, bitcodeID, symbolIndex, exported, path);
     }
 
-    public LLVMFunction(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex, boolean exported) {
-        super(name, library, bitcodeID, symbolIndex, exported);
+    public LLVMFunction(String name, Function function, FunctionType type, int bitcodeID, int symbolIndex, boolean exported, String path) {
+        super(name, bitcodeID, symbolIndex, exported);
         this.type = type;
         this.function = function;
+        this.path = path;
+    }
+
+    public String getStringPath() {
+        return path;
     }
 
     public FunctionType getType() {
@@ -60,11 +65,6 @@ public final class LLVMFunction extends LLVMSymbol {
 
     public Function getFunction() {
         return function;
-    }
-
-    @Override
-    public boolean isDefined() {
-        return !(getFunction() instanceof UnresolvedFunction);
     }
 
     @Override

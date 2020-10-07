@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 import java.util.Collection;
 import java.util.List;
 
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.CompareOperator;
@@ -43,20 +42,20 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
-@SuppressWarnings("static-method")
+@SuppressWarnings({"static-method", "deprecation"})
 public final class DebugExprNodeFactory {
 
-    private Collection<Scope> scopes;
-    private Collection<Scope> globalScopes;
+    private Collection<com.oracle.truffle.api.Scope> scopes;
+    private Object globalScope;
 
-    private DebugExprNodeFactory(Collection<Scope> scopes, Collection<Scope> globalScopes) {
+    private DebugExprNodeFactory(Collection<com.oracle.truffle.api.Scope> scopes, Object globalScope) {
         // this.nodeFactory = nodeFactory;
         this.scopes = scopes;
-        this.globalScopes = globalScopes;
+        this.globalScope = globalScope;
     }
 
-    public static DebugExprNodeFactory create(Collection<Scope> scopes, Collection<Scope> globalScopes) {
-        return new DebugExprNodeFactory(scopes, globalScopes);
+    public static DebugExprNodeFactory create(Collection<com.oracle.truffle.api.Scope> scopes, Object globalScope) {
+        return new DebugExprNodeFactory(scopes, globalScope);
     }
 
     private static void checkError(DebugExpressionPair p, String operationDescription) {
@@ -284,7 +283,7 @@ public final class DebugExprNodeFactory {
         checkError(functionPair, "call(...)");
         if (functionPair.getNode() instanceof DebugExprVarNode) {
             DebugExprVarNode varNode = (DebugExprVarNode) functionPair.getNode();
-            DebugExprFunctionCallNode node = varNode.createFunctionCall(arguments, globalScopes);
+            DebugExprFunctionCallNode node = varNode.createFunctionCall(arguments, globalScope);
             DebugExprType type = node.getType();
             return DebugExpressionPair.create(node, type);
         }

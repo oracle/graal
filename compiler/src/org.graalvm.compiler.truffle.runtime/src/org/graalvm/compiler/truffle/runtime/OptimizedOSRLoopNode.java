@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.Objects;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
 
@@ -175,7 +174,6 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         }
     }
 
-    @TruffleBoundary
     private void reportParentLoopCount(int iterations) {
         Node parent = getParent();
         if (parent != null) {

@@ -109,11 +109,13 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             timer.scheduleAtFixedRate(timerTask, 0, 1000);
         }
         int exitStatus;
+        ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            ImageClassLoader nativeImageClassLoaderSupport = installNativeImageClassLoader(classPath, new String[0]);
-            exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[0]), nativeImageClassLoaderSupport);
+            ImageClassLoader imageClassLoader = installNativeImageClassLoader(classPath, new String[0]);
+            exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[0]), imageClassLoader);
         } finally {
-            unhookCustomClassLoaders();
+            uninstallNativeImageClassLoader();
+            Thread.currentThread().setContextClassLoader(applicationClassLoader);
             if (timerTask != null) {
                 timerTask.cancel();
             }
@@ -121,12 +123,10 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         System.exit(exitStatus);
     }
 
-    private static void unhookCustomClassLoaders() {
+    public static void uninstallNativeImageClassLoader() {
         ClassLoader loader = ClassLoader.getSystemClassLoader();
         if (loader instanceof NativeImageSystemClassLoader) {
-            NativeImageSystemClassLoader customSystemClassLoader = (NativeImageSystemClassLoader) ClassLoader.getSystemClassLoader();
-            customSystemClassLoader.setNativeImageClassLoader(null);
-            Thread.currentThread().setContextClassLoader(customSystemClassLoader.defaultSystemClassLoader);
+            ((NativeImageSystemClassLoader) loader).setNativeImageClassLoader(null);
         }
     }
 
@@ -183,7 +183,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             String imageClasspath = arguments.remove(cpArgIndex);
             return imageClasspath.split(File.pathSeparator, Integer.MAX_VALUE);
         } catch (IndexOutOfBoundsException e) {
-            throw UserError.abort("Missing path entries for" + msgTail);
+            throw UserError.abort("Missing path entries for %s", msgTail);
         }
     }
 
@@ -191,7 +191,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         int cpIndex = arguments.indexOf(SubstrateOptions.WATCHPID_PREFIX);
         if (cpIndex >= 0) {
             if (cpIndex + 1 >= arguments.size()) {
-                throw UserError.abort("ProcessID must be provided after the '" + SubstrateOptions.WATCHPID_PREFIX + "' argument.\n");
+                throw UserError.abort("ProcessID must be provided after the '%s' argument.", SubstrateOptions.WATCHPID_PREFIX);
             }
             arguments.remove(cpIndex);
             String pidStr = arguments.get(cpIndex);
@@ -238,7 +238,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             HostedOptionParser optionParser = new HostedOptionParser(classLoader);
             String[] remainingArgs = optionParser.parse(arguments);
             if (remainingArgs.length > 0) {
-                throw UserError.abort("Unknown options: " + Arrays.toString(remainingArgs));
+                throw UserError.abort("Unknown options: %s", Arrays.toString(remainingArgs));
             }
 
             /*
@@ -250,8 +250,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
 
             String imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);
             if (imageName.length() == 0) {
-                throw UserError.abort("No output file name specified. " +
-                                "Use '" + SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, "<output-file>") + "'.");
+                throw UserError.abort("No output file name specified. Use '%s'.", SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, "<output-file>"));
             }
 
             totalTimer.setPrefix(imageName);
@@ -268,8 +267,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             boolean isStaticExecutable = SubstrateOptions.StaticExecutable.getValue(parsedHostedOptions);
             boolean isSharedLibrary = SubstrateOptions.SharedLibrary.getValue(parsedHostedOptions);
             if (isStaticExecutable && isSharedLibrary) {
-                throw UserError.abort("Cannot pass both option: " +
-                                SubstrateOptionsParser.commandArgument(SubstrateOptions.SharedLibrary, "+") + " and " +
+                throw UserError.abort("Cannot pass both option: %s and %s", SubstrateOptionsParser.commandArgument(SubstrateOptions.SharedLibrary, "+"),
                                 SubstrateOptionsParser.commandArgument(SubstrateOptions.StaticExecutable, "+"));
             } else if (isSharedLibrary) {
                 imageKind = NativeImageKind.SHARED_LIBRARY;
@@ -281,8 +279,8 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
 
             String className = SubstrateOptions.Class.getValue(parsedHostedOptions);
             if (imageKind.isExecutable && className.isEmpty()) {
-                throw UserError.abort("Must specify main entry point class when building " + imageKind + " native image. " +
-                                "Use '" + SubstrateOptionsParser.commandArgument(SubstrateOptions.Class, "<fully-qualified-class-name>") + "'.");
+                throw UserError.abort("Must specify main entry point class when building %s native image. Use '%s'.", imageKind,
+                                SubstrateOptionsParser.commandArgument(SubstrateOptions.Class, "<fully-qualified-class-name>"));
             }
 
             if (!className.isEmpty()) {
@@ -292,12 +290,12 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                     Object jpmsModule = null;
                     mainClass = classLoader.loadClassFromModule(jpmsModule, className);
                 } catch (ClassNotFoundException ex) {
-                    throw UserError.abort("Main entry point class '" + className + "' not found.");
+                    throw UserError.abort("Main entry point class '%s' not found.", className);
                 }
                 String mainEntryPointName = SubstrateOptions.Method.getValue(parsedHostedOptions);
                 if (mainEntryPointName.isEmpty()) {
-                    throw UserError.abort("Must specify main entry point method when building " + imageKind + " native image. " +
-                                    "Use '" + SubstrateOptionsParser.commandArgument(SubstrateOptions.Method, "<method-name>") + "'.");
+                    throw UserError.abort("Must specify main entry point method when building %s native image. Use '%s'.", imageKind,
+                                    SubstrateOptionsParser.commandArgument(SubstrateOptions.Method, "<method-name>"));
                 }
                 try {
                     /* First look for an main method with the C-level signature for arguments. */
@@ -312,30 +310,30 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                         javaMainMethod = ReflectionUtil.lookupMethod(mainClass, mainEntryPointName, String[].class);
                     } catch (ReflectionUtilError ex) {
                         throw UserError.abort(ex.getCause(),
-                                        String.format("Method '%s.%s' is declared as the main entry point but it can not be found. " +
+                                        "Method '%s.%s' is declared as the main entry point but it can not be found. " +
                                                         "Make sure that class '%s' is on the classpath and that method '%s(String[])' exists in that class.",
-                                                        mainClass.getName(),
-                                                        mainEntryPointName,
-                                                        mainClass.getName(),
-                                                        mainEntryPointName));
+                                        mainClass.getName(),
+                                        mainEntryPointName,
+                                        mainClass.getName(),
+                                        mainEntryPointName);
                     }
 
                     if (javaMainMethod.getReturnType() != void.class) {
-                        throw UserError.abort("Java main method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])' does not have the return type 'void'.");
+                        throw UserError.abort("Java main method '%s.%s(String[])' does not have the return type 'void'.", mainClass.getName(), mainEntryPointName);
                     }
                     final int mainMethodModifiers = javaMainMethod.getModifiers();
                     if (!Modifier.isStatic(mainMethodModifiers)) {
-                        throw UserError.abort("Java main method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])' is not static.");
+                        throw UserError.abort("Java main method '%s.%s(String[])' is not static.", mainClass.getName(), mainEntryPointName);
                     }
                     if (!Modifier.isPublic(mainMethodModifiers)) {
-                        throw UserError.abort("Java main method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])' is not public.");
+                        throw UserError.abort("Java main method '%s.%s(String[])' is not public.", mainClass.getName(), mainEntryPointName);
                     }
                     javaMainSupport = new JavaMainSupport(javaMainMethod);
                     mainEntryPoint = JavaMainWrapper.class.getDeclaredMethod("run", int.class, CCharPointerPointer.class);
                 }
                 CEntryPoint annotation = mainEntryPoint.getAnnotation(CEntryPoint.class);
                 if (annotation == null) {
-                    throw UserError.abort("Entry point must have the '@" + CEntryPoint.class.getSimpleName() + "' annotation");
+                    throw UserError.abort("Entry point must have the '@%s' annotation", CEntryPoint.class.getSimpleName());
                 }
 
                 Class<?>[] pt = mainEntryPoint.getParameterTypes();

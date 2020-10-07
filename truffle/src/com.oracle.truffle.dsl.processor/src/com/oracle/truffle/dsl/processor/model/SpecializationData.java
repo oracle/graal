@@ -89,9 +89,10 @@ public final class SpecializationData extends TemplateMethod {
     private DSLExpression limitExpression;
     private SpecializationData uncachedSpecialization;
     private final boolean reportPolymorphism;
+    private final boolean reportMegamorphism;
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions, boolean hasUnexpectedResultRewrite,
-                    boolean reportPolymorphism) {
+                    boolean reportPolymorphism, boolean reportMegamorphism) {
         super(template);
         this.node = node;
         this.kind = kind;
@@ -99,10 +100,11 @@ public final class SpecializationData extends TemplateMethod {
         this.hasUnexpectedResultRewrite = hasUnexpectedResultRewrite;
         this.index = template.getNaturalOrder();
         this.reportPolymorphism = reportPolymorphism;
+        this.reportMegamorphism = reportMegamorphism;
     }
 
     public SpecializationData copy() {
-        SpecializationData copy = new SpecializationData(node, this, kind, new ArrayList<>(exceptions), hasUnexpectedResultRewrite, reportPolymorphism);
+        SpecializationData copy = new SpecializationData(node, this, kind, new ArrayList<>(exceptions), hasUnexpectedResultRewrite, reportPolymorphism, reportMegamorphism);
         copy.guards.addAll(guards);
         copy.caches = new ArrayList<>(caches);
         copy.assumptionExpressions = new ArrayList<>(assumptionExpressions);
@@ -159,6 +161,10 @@ public final class SpecializationData extends TemplateMethod {
 
     public boolean isReportPolymorphism() {
         return reportPolymorphism;
+    }
+
+    public boolean isReportMegamorphism() {
+        return reportMegamorphism;
     }
 
     public boolean isReachesFallback() {
@@ -303,7 +309,7 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind) {
-        this(node, template, kind, new ArrayList<SpecializationThrowsData>(), false, true);
+        this(node, template, kind, new ArrayList<SpecializationThrowsData>(), false, true, false);
     }
 
     public Set<SpecializationData> getReplaces() {

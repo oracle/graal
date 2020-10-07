@@ -56,6 +56,7 @@ from mx_javamodules import as_java_module
 from mx_updategraalinopenjdk import updategraalinopenjdk
 from mx_renamegraalpackages import renamegraalpackages
 from mx_sdk_vm import jlink_new_jdk
+import mx_sdk_vm_impl
 
 import mx_jaotc
 
@@ -148,7 +149,8 @@ def _check_jvmci_version(jdk):
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
 
-mx_gate.add_jacoco_includes(['org.graalvm.compiler.*'])
+mx_gate.add_jacoco_includes(['org.graalvm.*'])
+mx_gate.add_jacoco_excludes(['com.oracle.truffle.*'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
 
 def _get_XX_option_value(vmargs, name, default):
@@ -888,6 +890,14 @@ class StdoutUnstripping:
 
 _graaljdk_override = None
 
+def _graaljdk_home(base_name):
+    graaljdks = [d for d in mx.sorted_dists() if isinstance(d, mx_sdk_vm_impl.GraalVmLayoutDistribution) and d.base_name == base_name]
+    if not graaljdks:
+        raise mx.abort("Cannot find GraalJDK images with base name '{}'".format(base_name))
+    if len(graaljdks) > 1:
+        raise mx.abort("Found multiple GraalJDKs with the same base name '{}'".format(base_name))
+    return join(graaljdks[0].output, graaljdks[0].jdk_base)
+
 def get_graaljdk():
     if _graaljdk_override is None:
         graaljdk_dir, _ = _update_graaljdk(jdk)
@@ -1015,6 +1025,12 @@ class GraalJDKFactory(mx.JDKFactory):
 def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
     """run a Java program by executing the java executable in a JVMCI JDK"""
     return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
+
+def run_vm_with_jvmci_compiler(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
+    """run a Java program by executing the java executable in a JVMCI JDK,
+    with the JVMCI compiler selected by default"""
+    jvmci_args = ['-XX:+UseJVMCICompiler'] + args
+    return run_vm(jvmci_args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout, debugLevel=debugLevel, vmbuild=vmbuild)
 
 class GraalArchiveParticipant:
     providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/providers/(.+)')
@@ -1430,24 +1446,50 @@ def _jvmci_jars():
     ] + (['compiler:JAOTC'] if not isJDK8 and _is_jaotc_supported() else [])
 
 # The community compiler component
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJvmciComponent(
-    suite=_suite,
-    name='GraalVM compiler',
-    short_name='cmp',
-    dir_name='graal',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['Truffle'],
-    jar_distributions=[  # Dev jars (annotation processors)
-        'compiler:GRAAL_PROCESSOR',
-    ],
-    jvmci_jars=_jvmci_jars(),
-    graal_compiler='graal',
-))
+cmp_ce_components = [
+    mx_sdk_vm.GraalVmJvmciComponent(
+        suite=_suite,
+        name='GraalVM compiler',
+        short_name='cmp',
+        dir_name='graal',
+        license_files=[],
+        third_party_license_files=[],
+        dependencies=['Truffle'],
+        jar_distributions=[  # Dev jars (annotation processors)
+            'compiler:GRAAL_PROCESSOR',
+        ],
+        jvmci_jars=_jvmci_jars(),
+        graal_compiler='graal',
+    ),
+    mx_sdk_vm.GraalVmComponent(
+        suite=_suite,
+        name='Disassembler',
+        short_name='dis',
+        dir_name='graal',
+        license_files=[],
+        third_party_license_files=[],
+        support_libraries_distributions=['compiler:HSDIS'],
+    )
+]
+
+for cmp_ce_component in cmp_ce_components:
+    mx_sdk_vm.register_graalvm_component(cmp_ce_component)
+
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    graal_jdk_dist = mx_sdk_vm_impl.GraalVmLayoutDistribution(base_name="GraalJDK_CE", components=cmp_ce_components)
+    graal_jdk_dist.description = "GraalJDK CE distribution"
+    graal_jdk_dist.maven = {'groupId': 'org.graalvm', 'tag': 'graaljdk'}
+    register_distribution(graal_jdk_dist)
+
+def print_graaljdk_home(args):
+    parser = ArgumentParser(description='Print the GraalJDK home directory')
+    parser.add_argument('--edition', choices=['ce', 'ee'], default='ce', help='GraalJDK CE or EE')
+    args = parser.parse_args(args)
+    print(_graaljdk_home('GraalJDK_{}'.format(args.edition.upper())))
 
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
-    'vm': [run_vm, '[-options] class [args...]'],
+    'vm': [run_vm_with_jvmci_compiler, '[-options] class [args...]'],
     'jaotc': [mx_jaotc.run_jaotc, '[-options] class [args...]'],
     'jaotc-test': [mx_jaotc.jaotc_test, ''],
     'collate-metrics': [collate_metrics, 'filename'],
@@ -1459,12 +1501,14 @@ mx.update_commands(_suite, {
     'renamegraalpackages' : [renamegraalpackages, '[options]'],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk_cli, '[options]'],
+    'graaljdk-home': [print_graaljdk_home, '[options]'],
 })
 
 def mx_post_parse_cmd_line(opts):
     mx.addJDKFactory(_JVMCI_JDK_TAG, jdk.javaCompliance, GraalJDKFactory())
     mx.add_ide_envvar('JVMCI_VERSION_CHECK')
     for dist in _suite.dists:
-        dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
+        if hasattr(dist, 'set_archiveparticipant'):
+            dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
     global _vm_prefix
     _vm_prefix = opts.vm_prefix

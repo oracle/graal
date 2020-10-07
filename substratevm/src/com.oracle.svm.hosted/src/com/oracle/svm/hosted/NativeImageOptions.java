@@ -86,9 +86,6 @@ public class NativeImageOptions {
     @Option(help = "Directory for temporary files generated during native image generation. If this option is specified, the temporary files are not deleted so that you can inspect them after native image generation")//
     public static final HostedOptionKey<String> TempDirectory = new HostedOptionKey<>("");
 
-    @Option(help = "Test Mach-O debuginfo generation")//
-    public static final HostedOptionKey<Boolean> MachODebugInfoTesting = new HostedOptionKey<>(false);
-
     @Option(help = "Suppress console error output for unittests")//
     public static final HostedOptionKey<Boolean> SuppressStderr = new HostedOptionKey<>(false);
 
@@ -142,7 +139,7 @@ public class NativeImageOptions {
         try {
             return CStandards.valueOf(CStandard.getValue());
         } catch (IllegalArgumentException e) {
-            throw UserError.abort("C standard " + CStandard.getValue() + " is not supported. Supported standards are: " + Arrays.toString(CStandards.values()));
+            throw UserError.abort("C standard %s is not supported. Supported standards are: %s", CStandard.getValue(), Arrays.toString(CStandards.values()));
         }
     }
 

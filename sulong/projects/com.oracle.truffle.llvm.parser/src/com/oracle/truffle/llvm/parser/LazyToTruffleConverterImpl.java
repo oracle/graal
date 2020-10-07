@@ -29,20 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.io.PrintWriter;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-
-import org.graalvm.options.OptionValues;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -84,7 +70,6 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -99,6 +84,19 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
+import org.graalvm.options.OptionValues;
+
+import java.io.PrintWriter;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 
 public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
@@ -160,18 +158,15 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         // prepare the phis
         final Map<InstructionBlock, List<Phi>> phis = LLVMPhiManager.getPhis(method);
 
-        // setup the uniquesRegion
-        UniquesRegion uniquesRegion = new UniquesRegion();
-        GetStackSpaceFactory getStackSpaceFactory = GetStackSpaceFactory.createGetUniqueStackSpaceFactory(uniquesRegion);
-
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(phis, method, runtime.getContext().lifetimeAnalysisStream());
 
         // setup the frameDescriptor
         FrameDescriptor frame = new FrameDescriptor();
+        UniquesRegion uniquesRegion = new UniquesRegion();
+        GetStackSpaceFactory getStackSpaceFactory = GetStackSpaceFactory.createGetUniqueStackSpaceFactory(uniquesRegion, frame);
         LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, frame, getStackSpaceFactory, dataLayout, options.get(SulongEngineOption.LL_DEBUG));
 
         frame.addFrameSlot(LLVMUserException.FRAME_SLOT_ID, null, FrameSlotKind.Object);
-        frame.addFrameSlot(LLVMStack.FRAME_ID, PointerType.VOID, FrameSlotKind.Object);
 
         for (FunctionParameter parameter : method.getParameters()) {
             symbols.findOrAddFrameSlot(frame, parameter);
@@ -186,7 +181,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         for (InstructionBlock block : method.getBlocks()) {
             List<Phi> blockPhis = phis.get(block);
             ArrayList<LLVMLivenessAnalysis.NullerInformation> blockNullerInfos = liveness.getNullableWithinBlock()[block.getBlockIndex()];
-            LLVMBitcodeInstructionVisitor visitor = new LLVMBitcodeInstructionVisitor(frame, uniquesRegion, blockPhis, method.getParameters().size(), symbols, context, runtime.getLibrary(),
+            LLVMBitcodeInstructionVisitor visitor = new LLVMBitcodeInstructionVisitor(frame, uniquesRegion, blockPhis, method.getParameters().size(), symbols, context,
                             blockNullerInfos, neededForDebug, dataLayout, nodeFactory);
 
             if (initDebugValues) {
@@ -227,10 +222,8 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         LLVMSourceLocation location = method.getLexicalScope();
         LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame(frame, symbols).toArray(LLVMStatementNode.NO_STATEMENTS);
-        LLVMExpressionNode body = nodeFactory.createFunctionBlockNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), blockNodes, uniquesRegion.build(), copyArgumentsToFrameArray, location,
-                        frame, loopSuccessorSlot, info);
-
-        RootNode rootNode = nodeFactory.createFunctionStartNode(body, frame, method.getName(), method.getSourceName(), method.getParameters().size(), source, location);
+        RootNode rootNode = nodeFactory.createFunction(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), blockNodes, uniquesRegion, copyArgumentsToFrameArray, frame, loopSuccessorSlot, info,
+                        method.getName(), method.getSourceName(), method.getParameters().size(), source, location);
         method.onAfterParse();
 
         if (printAST) {

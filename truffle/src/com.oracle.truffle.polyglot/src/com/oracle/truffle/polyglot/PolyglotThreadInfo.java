@@ -40,11 +40,9 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadMXBean;
 import java.util.LinkedList;
-import java.util.concurrent.TimeUnit;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
 import com.oracle.truffle.api.utilities.TruffleWeakReference;
@@ -57,96 +55,71 @@ final class PolyglotThreadInfo {
     private final PolyglotContextImpl context;
     private final TruffleWeakReference<Thread> thread;
 
-    private int enteredCount;
+    /*
+     * Only modify if Thread.currentThread() == thread.get().
+     */
+    private volatile int enteredCount;
     final LinkedList<Object> explicitContextStack = new LinkedList<>();
     volatile boolean cancelled;
-    private volatile long lastEntered;
-    private volatile long timeExecuted;
-    private boolean deprioritized;
     private Object originalContextClassLoader = NULL_CLASS_LOADER;
     private ClassLoaderEntry prevContextClassLoader;
     private SpecializationStatisticsEntry executionStatisticsEntry;
 
-    private static volatile ThreadMXBean threadBean;
+    private volatile Object[] contextThreadLocals;
 
     PolyglotThreadInfo(PolyglotContextImpl context, Thread thread) {
         this.context = context;
         this.thread = new TruffleWeakReference<>(thread);
-        this.deprioritized = false;
     }
 
     Thread getThread() {
         return thread.get();
     }
 
+    public Object[] getContextThreadLocals() {
+        assert Thread.holdsLock(context);
+        return contextThreadLocals;
+    }
+
+    public void setContextThreadLocals(Object[] contextThreadLocals) {
+        assert Thread.holdsLock(context);
+        this.contextThreadLocals = contextThreadLocals;
+    }
+
     boolean isCurrent() {
         return getThread() == Thread.currentThread();
     }
 
-    void enter(PolyglotEngineImpl engine) {
+    /*
+     * Volatile increment is safe if only one thread does it.
+     */
+    @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
+    void enter(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
         assert Thread.currentThread() == getThread();
-        if (!engine.noPriorityChangeNeeded.isValid() && !deprioritized) {
-            lowerPriority();
-            deprioritized = true;
-        }
-        int count = ++enteredCount;
-        if (!engine.noThreadTimingNeeded.isValid() && count == 1) {
-            lastEntered = getTime();
+        enteredCount++;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, profiledContext.closed)) {
+            /*
+             * This event should be very rare. The context was closed between the volatile read of
+             * the cached thread info read and the entered count increment. Maybe we should change
+             * this to an assumption check to speed it up.
+             */
+            CompilerDirectives.transferToInterpreter();
+            enteredCount--;
+            profiledContext.checkClosed();
+            assert false : "checkClosed must throw";
         }
         if (!engine.customHostClassLoader.isValid()) {
             setContextClassLoader();
         }
+        try {
+            EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
+        } catch (Throwable t) {
+            enteredCount--;
+            throw t;
+        }
         if (engine.specializationStatistics != null) {
             engine.specializationStatistics.enter();
         }
-    }
-
-    @TruffleBoundary
-    private void lowerPriority() {
-        getThread().setPriority(Thread.MIN_PRIORITY);
-    }
-
-    @TruffleBoundary
-    private void raisePriority() {
-        // this will be ineffective unless the JVM runs with corresponding system privileges
-        getThread().setPriority(Thread.NORM_PRIORITY);
-    }
-
-    void resetTiming() {
-        if (enteredCount > 0) {
-            lastEntered = getTime();
-        }
-        this.timeExecuted = 0;
-    }
-
-    long getTimeExecuted() {
-        long totalTime = timeExecuted;
-        long last = this.lastEntered;
-        if (last > 0) {
-            totalTime += getTime() - last;
-        }
-        return totalTime;
-    }
-
-    @TruffleBoundary
-    private long getTime() {
-        Thread t = getThread();
-        if (t == null) {
-            return timeExecuted;
-        }
-        ThreadMXBean bean = threadBean;
-        if (bean == null) {
-            /*
-             * getThreadMXBean is synchronized so better cache in a local volatile field to avoid
-             * contention.
-             */
-            threadBean = bean = ManagementFactory.getThreadMXBean();
-        }
-        long time = bean.getThreadCpuTime(t.getId());
-        if (time == -1) {
-            return TimeUnit.MILLISECONDS.convert(System.currentTimeMillis(), TimeUnit.NANOSECONDS);
-        }
-        return time;
     }
 
     boolean isPolyglotThread(PolyglotContextImpl c) {
@@ -156,24 +129,25 @@ final class PolyglotThreadInfo {
         return false;
     }
 
-    void leave(PolyglotEngineImpl engine) {
+    /*
+     * Volatile decrement is safe if only one thread does it.
+     */
+    @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
+    void leave(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
         assert Thread.currentThread() == getThread();
-        int count = --enteredCount;
-        if (!engine.customHostClassLoader.isValid()) {
-            restoreContextClassLoader();
-        }
-        if (!engine.noThreadTimingNeeded.isValid() && count == 0) {
-            long last = this.lastEntered;
-            this.lastEntered = 0;
-            this.timeExecuted += getTime() - last;
-        }
-        if (!engine.noPriorityChangeNeeded.isValid() && deprioritized && count == 0) {
-            raisePriority();
-            deprioritized = false;
-        }
-
-        if (engine.specializationStatistics != null) {
-            leaveStatistics(engine.specializationStatistics);
+        /*
+         * Notify might be false if the context was closed already on a second thread.
+         */
+        try {
+            EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
+        } finally {
+            enteredCount--;
+            if (!engine.customHostClassLoader.isValid()) {
+                restoreContextClassLoader();
+            }
+            if (engine.specializationStatistics != null) {
+                leaveStatistics(engine.specializationStatistics);
+            }
         }
 
     }
@@ -198,12 +172,15 @@ final class PolyglotThreadInfo {
     }
 
     boolean isLastActive() {
-        assert Thread.currentThread() == getThread();
         return getThread() != null && enteredCount == 1 && !cancelled;
     }
 
-    boolean isActive() {
+    boolean isActiveNotCancelled() {
         return getThread() != null && enteredCount > 0 && !cancelled;
+    }
+
+    boolean isActive() {
+        return getThread() != null && enteredCount > 0;
     }
 
     @Override

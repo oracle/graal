@@ -55,7 +55,6 @@ import java.util.Set;
 import java.util.StringJoiner;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Platform;
@@ -64,7 +63,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.util.DirectAnnotationAccess;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -172,6 +171,16 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      * Is this a Hidden Class (Since JDK 15).
      */
     private boolean isHidden;
+
+    /**
+     * Is this a Record Class (Since JDK 15).
+     */
+    private boolean isRecord;
+
+    /**
+     * Holds assertionStatus determined by {@link RuntimeAssertionsSupport}.
+     */
+    private final boolean assertionStatus;
 
     /**
      * The {@link Modifier modifiers} of this class.
@@ -340,7 +349,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, HubType hubType, ReferenceType referenceType, boolean isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName,
-                    int modifiers, ClassLoader classLoader, boolean isHidden, Class<?> nestHost) {
+                    int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus) {
         this.name = name;
         this.hubType = hubType.getValue();
         this.referenceType = referenceType.getValue();
@@ -352,7 +361,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.modifiers = modifiers;
         this.classLoader = classLoader;
         this.isHidden = isHidden;
+        this.isRecord = isRecord;
         this.nestHost = nestHost;
+        this.assertionStatus = assertionStatus;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -622,28 +633,17 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private boolean isInstance(@SuppressWarnings("unused") Object obj) {
-        throw VMError.shouldNotReachHere("Substituted in SubstrateGraphBuilderPlugins.");
+        throw VMError.shouldNotReachHere("Intrinsified in StandardGraphBuilderPlugins.");
     }
 
     @Substitute
     private Object cast(@SuppressWarnings("unused") Object obj) {
-        throw VMError.shouldNotReachHere("Substituted in SubstrateGraphBuilderPlugins.");
+        throw VMError.shouldNotReachHere("Intrinsified in StandardGraphBuilderPlugins.");
     }
 
     @Substitute
-    @TargetElement(name = "isAssignableFrom")
-    private boolean isAssignableFromClass(Class<?> cls) {
-        return isAssignableFromHub(fromClass(cls));
-    }
-
-    public boolean isAssignableFromHub(DynamicHub hub) {
-        int checkTypeID = hub.getTypeID();
-        for (int i = 0; i < assignableFromMatches.length; i += 2) {
-            if (UnsignedMath.belowThan(checkTypeID - assignableFromMatches[i], assignableFromMatches[i + 1])) {
-                return true;
-            }
-        }
-        return false;
+    private boolean isAssignableFrom(@SuppressWarnings("unused") Class<?> cls) {
+        throw VMError.shouldNotReachHere("Intrinsified in StandardGraphBuilderPlugins.");
     }
 
     @Substitute
@@ -773,6 +773,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @TargetElement(onlyWith = JDK15OrLater.class)
     public boolean isHidden() {
         return isHidden;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    public boolean isRecord() {
+        return isRecord;
     }
 
     @Substitute
@@ -1276,7 +1282,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public boolean desiredAssertionStatus() {
-        return SubstrateOptions.getRuntimeAssertionsForClass(getName());
+        return assertionStatus;
     }
 
     @Substitute //

@@ -93,8 +93,8 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> LoopPeeling = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> ReassociateInvariants = new OptionKey<>(true);
+    @Option(help = "Re-associate loop invariants and constants.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> ReassociateExpressions = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> FullUnroll = new OptionKey<>(true);

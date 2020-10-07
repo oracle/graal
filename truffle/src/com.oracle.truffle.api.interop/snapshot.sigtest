@@ -38,6 +38,7 @@ meth public boolean hasMemberReadSideEffects(java.lang.Object,java.lang.String)
 meth public boolean hasMemberWriteSideEffects(java.lang.Object,java.lang.String)
 meth public boolean hasMembers(java.lang.Object)
 meth public boolean hasMetaObject(java.lang.Object)
+meth public boolean hasScopeParent(java.lang.Object)
 meth public boolean hasSourceLocation(java.lang.Object)
 meth public boolean isArrayElementInsertable(java.lang.Object,long)
 meth public boolean isArrayElementModifiable(java.lang.Object,long)
@@ -61,6 +62,7 @@ meth public boolean isMetaObject(java.lang.Object)
 meth public boolean isNull(java.lang.Object)
 meth public boolean isNumber(java.lang.Object)
 meth public boolean isPointer(java.lang.Object)
+meth public boolean isScope(java.lang.Object)
 meth public boolean isString(java.lang.Object)
 meth public boolean isTime(java.lang.Object)
 meth public boolean isTimeZone(java.lang.Object)
@@ -83,6 +85,7 @@ meth public java.lang.Object getMembers(java.lang.Object,boolean) throws com.ora
 meth public java.lang.Object getMetaObject(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getMetaQualifiedName(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getMetaSimpleName(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getScopeParent(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object readArrayElement(java.lang.Object,long) throws com.oracle.truffle.api.interop.InvalidArrayIndexException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object readMember(java.lang.Object,java.lang.String) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object toDisplayString(java.lang.Object,boolean)
@@ -117,6 +120,22 @@ meth public static com.oracle.truffle.api.interop.InvalidArrayIndexException cre
 supr com.oracle.truffle.api.interop.InteropException
 hfds invalidIndex,serialVersionUID
 
+CLSS public abstract com.oracle.truffle.api.interop.NodeLibrary
+cons protected init()
+meth public boolean hasReceiverMember(java.lang.Object,com.oracle.truffle.api.frame.Frame)
+meth public boolean hasRootInstance(java.lang.Object,com.oracle.truffle.api.frame.Frame)
+meth public boolean hasScope(java.lang.Object,com.oracle.truffle.api.frame.Frame)
+meth public java.lang.Object getReceiverMember(java.lang.Object,com.oracle.truffle.api.frame.Frame) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getRootInstance(java.lang.Object,com.oracle.truffle.api.frame.Frame) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getScope(java.lang.Object,com.oracle.truffle.api.frame.Frame,boolean) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getView(java.lang.Object,com.oracle.truffle.api.frame.Frame,java.lang.Object)
+meth public static com.oracle.truffle.api.interop.NodeLibrary getUncached()
+meth public static com.oracle.truffle.api.interop.NodeLibrary getUncached(java.lang.Object)
+meth public static com.oracle.truffle.api.library.LibraryFactory<com.oracle.truffle.api.interop.NodeLibrary> getFactory()
+supr com.oracle.truffle.api.library.Library
+hfds FACTORY
+hcls Asserts
+
 CLSS public abstract interface com.oracle.truffle.api.interop.TruffleObject
 
 CLSS public final com.oracle.truffle.api.interop.UnknownIdentifierException
@@ -132,7 +151,7 @@ meth public java.lang.String getMessage()
 meth public static com.oracle.truffle.api.interop.UnsupportedMessageException create()
 meth public static com.oracle.truffle.api.interop.UnsupportedMessageException create(java.lang.Throwable)
 supr com.oracle.truffle.api.interop.InteropException
-hfds SINGLETON,serialVersionUID
+hfds serialVersionUID
 
 CLSS public final com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public java.lang.Object[] getSuppliedValues()

@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.exception;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -52,11 +53,13 @@ public class WasmExit extends ThreadDeath implements TruffleException {
     private final Node location;
     private final int exitCode;
 
+    @TruffleBoundary
     public WasmExit(Node location, int exitCode) {
         this.location = location;
         this.exitCode = exitCode;
     }
 
+    @TruffleBoundary
     @Override
     public String getMessage() {
         return "Program exited with status code " + exitCode + ".";

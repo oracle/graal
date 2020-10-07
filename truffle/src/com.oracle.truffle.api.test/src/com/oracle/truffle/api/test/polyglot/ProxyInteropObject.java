@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -49,6 +50,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Helper class for tests to simplify the declaration of interop objects.
@@ -134,6 +136,48 @@ public abstract class ProxyInteropObject implements TruffleObject {
 
     @ExportMessage
     protected boolean asBoolean() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Is true automatically when {@link #isScope()} is true. When true, it implies
+     * {@link ProxyLanguage} language.
+     */
+    @ExportMessage
+    protected boolean hasLanguage() {
+        return isScope(); // A scope must have a language associated
+    }
+
+    /**
+     * The default implementation returns {@link ProxyLanguage} class when {@link #hasLanguage()} is
+     * true.
+     */
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    protected Class<? extends TruffleLanguage<?>> getLanguage() throws UnsupportedMessageException {
+        if (hasLanguage()) {
+            return ProxyLanguage.class;
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    /**
+     * When true, {@link #getMembers(boolean) members} must be provided and it implies
+     * {@link ProxyLanguage} language.
+     */
+    @ExportMessage
+    protected boolean isScope() {
+        return false;
+    }
+
+    @ExportMessage
+    protected boolean hasScopeParent() {
+        return false;
+    }
+
+    @ExportMessage
+    protected Object getScopeParent() throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
@@ -282,6 +326,55 @@ public abstract class ProxyInteropObject implements TruffleObject {
         return false;
     }
 
+    @ExportMessage
+    protected boolean hasSourceLocation() {
+        return false;
+    }
+
+    @ExportMessage
+    protected SourceSection getSourceLocation() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    protected boolean hasMetaObject() {
+        return false;
+    }
+
+    @ExportMessage
+    protected Object getMetaObject() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    protected boolean isMetaObject() {
+        return false;
+    }
+
+    @ExportMessage
+    protected boolean isMetaInstance(Object instance) {
+        return false;
+    }
+
+    @ExportMessage
+    protected String getMetaSimpleName() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    protected String getMetaQualifiedName() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    protected Object toDisplayString(boolean allowSideEffects) {
+        if (allowSideEffects) {
+            return ProxyLanguage.getCurrentLanguage().toString(ProxyLanguage.getCurrentContext(), this);
+        } else {
+            return getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(this));
+        }
+    }
+
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     public static class InteropWrapper extends ProxyInteropObject {
@@ -370,6 +463,21 @@ public abstract class ProxyInteropObject implements TruffleObject {
         @Override
         protected boolean asBoolean() throws UnsupportedMessageException {
             return INTEROP.asBoolean(delegate);
+        }
+
+        @Override
+        protected boolean isScope() {
+            return INTEROP.isScope(delegate);
+        }
+
+        @Override
+        protected boolean hasScopeParent() {
+            return INTEROP.hasScopeParent(delegate);
+        }
+
+        @Override
+        protected Object getScopeParent() throws UnsupportedMessageException {
+            return INTEROP.getScopeParent(delegate);
         }
 
         @Override
@@ -515,6 +623,21 @@ public abstract class ProxyInteropObject implements TruffleObject {
         @Override
         protected boolean isPointer() {
             return INTEROP.isPointer(delegate);
+        }
+
+        @Override
+        protected boolean hasSourceLocation() {
+            return INTEROP.hasSourceLocation(delegate);
+        }
+
+        @Override
+        protected SourceSection getSourceLocation() throws UnsupportedMessageException {
+            return INTEROP.getSourceLocation(delegate);
+        }
+
+        @Override
+        protected Object toDisplayString(boolean allowSideEffects) {
+            return INTEROP.toDisplayString(delegate, allowSideEffects);
         }
 
     }

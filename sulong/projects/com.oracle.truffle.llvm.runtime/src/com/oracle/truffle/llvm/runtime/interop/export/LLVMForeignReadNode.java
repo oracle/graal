@@ -54,12 +54,12 @@ public abstract class LLVMForeignReadNode extends LLVMNode {
         return ptr;
     }
 
-    @Specialization(guards = "type.getKind() == cachedKind", limit = "VALUE_KIND_COUNT")
+    @Specialization(guards = "type.kind == cachedKind", limit = "VALUE_KIND_COUNT")
     static Object doValue(LLVMPointer ptr, LLVMInteropType.Value type,
-                    @Cached(value = "type.getKind()", allowUncached = true) @SuppressWarnings(value = "unused") LLVMInteropType.ValueKind cachedKind,
+                    @Cached(value = "type.kind", allowUncached = true) @SuppressWarnings(value = "unused") LLVMInteropType.ValueKind cachedKind,
                     @Cached(parameters = "cachedKind") LLVMLoadNode load,
                     @Cached(parameters = "cachedKind.foreignToLLVMType") LLVMDataEscapeNode dataEscape) {
         Object ret = load.executeWithTarget(ptr);
-        return dataEscape.executeWithType(ret, type.getBaseType());
+        return dataEscape.executeWithType(ret, type.baseType);
     }
 }

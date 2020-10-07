@@ -39,26 +39,23 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.c.function.CEntryPointActions;
+import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointSetup.EnterCreateIsolatePrologue;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.Counter;
 
@@ -66,8 +63,11 @@ import jdk.vm.ci.code.Architecture;
 
 @InternalVMMethod
 public class JavaMainWrapper {
-    /* C runtime argument count and argument vector */
-    public static final CGlobalData<CArguments> ARGUMENTS = CGlobalDataFactory.createBytes(() -> SizeOf.get(CArguments.class));
+    /*
+     * Parameters used to create the main isolate, including C runtime argument count and argument
+     * vector
+     */
+    public static final CGlobalData<CEntryPointCreateIsolateParameters> MAIN_ISOLATE_PARAMETERS = CGlobalDataFactory.createBytes(() -> SizeOf.get(CEntryPointCreateIsolateParameters.class));
 
     static {
         /* WordFactory.boxFactory is initialized by the static initializer of Word. */
@@ -75,12 +75,12 @@ public class JavaMainWrapper {
     }
     private static UnsignedWord argvLength = WordFactory.zero();
 
-    private static String[] mainArgs;
-
     public static class JavaMainSupport {
 
         final MethodHandle javaMainHandle;
         final String javaMainClassName;
+
+        public String[] mainArgs;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public JavaMainSupport(Method javaMainMethod) throws IllegalAccessException {
@@ -102,7 +102,7 @@ public class JavaMainWrapper {
         }
 
         public List<String> getInputArguments() {
-            CArguments args = ARGUMENTS.get();
+            CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
             if (args.getArgv().isNonNull() && args.getArgc() > 0) {
                 String[] unmodifiedArgs = SubstrateUtil.getArgs(args.getArgc(), args.getArgv());
                 List<String> inputArgs = new ArrayList<>(Arrays.asList(unmodifiedArgs));
@@ -121,14 +121,10 @@ public class JavaMainWrapper {
      * {@link org.graalvm.nativeimage.hosted.Feature.AfterRegistrationAccess}).
      */
     @AlwaysInline(value = "Single callee from the main entry point.")
-    public static int runCore(int paramArgc, CCharPointerPointer paramArgv) {
+    public static int runCore() {
         Architecture imageArchitecture = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
         CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
         cpuFeatureAccess.verifyHostSupportsArchitecture(imageArchitecture);
-
-        String[] args = SubstrateUtil.getArgs(paramArgc, paramArgv);
-        args = RuntimeOptionParser.parseAndConsumeAllOptions(args);
-        mainArgs = args;
 
         int exitCode;
         try {
@@ -146,7 +142,8 @@ public class JavaMainWrapper {
              * preserves exceptions, while invoking the main method via reflection would wrap
              * exceptions in a InvocationTargetException.
              */
-            ImageSingletons.lookup(JavaMainSupport.class).javaMainHandle.invokeExact(args);
+            JavaMainSupport mainSupport = ImageSingletons.lookup(JavaMainSupport.class);
+            mainSupport.javaMainHandle.invokeExact(mainSupport.mainArgs);
 
             /* The application terminated normally. */
             exitCode = 0;
@@ -180,15 +177,16 @@ public class JavaMainWrapper {
 
     @CEntryPoint
     @CEntryPointOptions(prologue = EnterCreateIsolateWithCArgumentsPrologue.class, include = CEntryPointOptions.NotIncludedAutomatically.class)
-    public static int run(int paramArgc, CCharPointerPointer paramArgv) {
-        return runCore(paramArgc, paramArgv);
+    @SuppressWarnings("unused")
+    public static int run(int argc, CCharPointerPointer argv) {
+        return runCore();
     }
 
     private static boolean isArgumentBlockSupported() {
         if (!Platform.includedIn(Platform.LINUX.class) && !Platform.includedIn(Platform.DARWIN.class)) {
             return false;
         }
-        CArguments args = ARGUMENTS.get();
+        CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
         if (args.getArgv().isNull() || args.getArgc() <= 0) {
             return false;
         }
@@ -214,7 +212,7 @@ public class JavaMainWrapper {
             return -1;
         }
 
-        CArguments args = ARGUMENTS.get();
+        CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
         CCharPointer firstArgPos = args.getArgv().read(0);
         if (argvLength.equal(WordFactory.zero())) {
             // Get char* to last program argument
@@ -244,7 +242,7 @@ public class JavaMainWrapper {
             }
             arg0truncation = arg0Length.aboveThan(origLength);
 
-            CCharPointer firstArgPos = ARGUMENTS.get().getArgv().read(0);
+            CCharPointer firstArgPos = MAIN_ISOLATE_PARAMETERS.get().getArgv().read(0);
             // Copy the new arg0 to the original argv[0] position
             MemoryUtil.copyConjointMemoryAtomic(WordFactory.pointer(arg0Pointer.rawValue()), WordFactory.pointer(firstArgPos.rawValue()), newArgLength);
             // Zero-out the remaining space
@@ -259,31 +257,24 @@ public class JavaMainWrapper {
         if (!isArgumentBlockSupported()) {
             throw new UnsupportedOperationException("Argument vector support not available");
         }
-        return CTypeConversion.toJavaString(ARGUMENTS.get().getArgv().read(0));
+        return CTypeConversion.toJavaString(MAIN_ISOLATE_PARAMETERS.get().getArgv().read(0));
     }
 
     private static class EnterCreateIsolateWithCArgumentsPrologue {
+        private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
+                        "Failed to create the main Isolate.");
+
         @SuppressWarnings("unused")
         public static void enter(int paramArgc, CCharPointerPointer paramArgv) {
-            CArguments args = ARGUMENTS.get();
+            CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
+            args.setVersion(3);
             args.setArgc(paramArgc);
             args.setArgv(paramArgv);
-            EnterCreateIsolatePrologue.enter();
+
+            int code = CEntryPointActions.enterCreateIsolate(args);
+            if (code != 0) {
+                CEntryPointActions.failFatally(code, errorMessage.get());
+            }
         }
-    }
-
-    @RawStructure
-    public interface CArguments extends PointerBase {
-        @RawField
-        int getArgc();
-
-        @RawField
-        void setArgc(int value);
-
-        @RawField
-        CCharPointerPointer getArgv();
-
-        @RawField
-        void setArgv(CCharPointerPointer value);
     }
 }

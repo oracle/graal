@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,8 +43,6 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdlib.h>
-
-void truffle_load_library(const char *string);
 
 // Managed operations
 void *truffle_virtual_malloc(size_t size);

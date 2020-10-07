@@ -43,7 +43,7 @@ public class PosixDirectives implements CContext.Directives {
                     "<pthread.h>",
                     "<pwd.h>",
                     "<signal.h>",
-                    "<sys/errno.h>",
+                    "<errno.h>",
                     "<sys/mman.h>",
                     "<sys/resource.h>",
                     "<sys/stat.h>",

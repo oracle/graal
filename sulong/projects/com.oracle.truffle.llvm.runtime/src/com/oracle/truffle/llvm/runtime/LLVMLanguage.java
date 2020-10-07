@@ -29,12 +29,16 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.options.OptionDescriptors;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
@@ -55,16 +59,12 @@ import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprExecutableNode;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
-import org.graalvm.options.OptionDescriptors;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE}, //
@@ -93,13 +93,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
-
-    // The bitcode file ID starts at 1, 0 is reserved for misc functions, such as toolchain paths.
-    private final AtomicInteger nextID = new AtomicInteger(1);
+    private final AtomicInteger nextID = new AtomicInteger(0);
 
     @CompilationFinal private Configuration activeConfiguration = null;
 
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
+
+    private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
+    private final EconomicMap<String, CallTarget> libraryCache = EconomicMap.create();
+    private final Object libraryCacheLock = new Object();
+    private final EconomicMap<String, Source> librarySources = EconomicMap.create();
 
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
@@ -187,6 +190,26 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return cachedLLVMMemory;
     }
 
+    public LLVMScope getInternalFileScopes(String libraryName) {
+        return internalFileScopes.get(libraryName);
+    }
+
+    public void addInternalFileScope(String libraryName, LLVMScope scope) {
+        internalFileScopes.put(libraryName, scope);
+    }
+
+    public Source getLibrarySource(String path) {
+        return librarySources.get(path);
+    }
+
+    public void addLibrarySource(String path, Source source) {
+        librarySources.put(path, source);
+    }
+
+    public boolean containsLibrarySource(String path) {
+        return librarySources.containsKey(path);
+    }
+
     @Override
     protected LLVMContext createContext(Env env) {
         if (activeConfiguration == null) {
@@ -203,9 +226,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) {
-        Collection<Scope> globalScopes = findTopScopes(getCurrentContext(LLVMLanguage.class));
-        final com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser d = new com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser(request, globalScopes,
-                        getCurrentContext(LLVMLanguage.class));
+        Object globalScope = getScope(getCurrentContext(LLVMLanguage.class));
+        final DebugExprParser d = new DebugExprParser(request, globalScope, getCurrentContext(LLVMLanguage.class));
         try {
             return new DebugExprExecutableNode(d.parse());
         } catch (DebugExprException | LLVMParserException e) {
@@ -245,16 +267,51 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return nextID;
     }
 
+    /**
+     * If a library has already been parsed, the call target will be retrieved from the language
+     * cache.
+     * 
+     * @param request request for parsing
+     * @return calltarget of the library
+     */
     @Override
     protected CallTarget parse(ParsingRequest request) {
-        Source source = request.getSource();
-        return getCapability(Loader.class).load(getContext(), source, nextID);
+        synchronized (libraryCacheLock) {
+            Source source = request.getSource();
+            String path = source.getPath();
+            CallTarget callTarget;
+            if (source.isCached()) {
+                callTarget = libraryCache.get(path);
+                if (callTarget == null) {
+                    callTarget = getCapability(Loader.class).load(getContext(), source, nextID);
+                    CallTarget prev = libraryCache.putIfAbsent(path, callTarget);
+                    // To ensure the call target in the cache is always returned in case of
+                    // concurrency.
+                    if (prev != null) {
+                        callTarget = prev;
+                    }
+                }
+                return callTarget;
+            }
+            return getCapability(Loader.class).load(getContext(), source, nextID);
+        }
+    }
+
+    public boolean isLibraryCached(String path) {
+        synchronized (libraryCacheLock) {
+            return libraryCache.get(path) != null;
+        }
+    }
+
+    public CallTarget getCachedLibrary(String path) {
+        synchronized (libraryCacheLock) {
+            return libraryCache.get(path);
+        }
     }
 
     @Override
-    protected Collection<Scope> findTopScopes(LLVMContext context) {
-        Scope scope = Scope.newBuilder("llvm-global", context.getGlobalScope()).build();
-        return Collections.singleton(scope);
+    protected Object getScope(LLVMContext context) {
+        return context.getGlobalScope();
     }
 
     @Override
@@ -276,7 +333,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     @Override
-    protected Iterable<Scope> findLocalScopes(LLVMContext context, Node node, Frame frame) {
+    @SuppressWarnings("deprecation")
+    protected Iterable<com.oracle.truffle.api.Scope> findLocalScopes(LLVMContext context, Node node, Frame frame) {
         if (context.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
             return LLVMDebuggerScopeFactory.createIRLevelScope(node, frame, context);
         } else {

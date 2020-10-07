@@ -32,6 +32,8 @@ import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToL
 import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.PollRegistrations;
 import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id.SetAttributes;
 
+import java.lang.reflect.Array;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +49,8 @@ import javax.management.MBeanParameterInfo;
 import javax.management.ReflectionException;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
 import org.graalvm.compiler.hotspot.management.JMXToLibGraalCalls;
 import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal;
 import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal.Id;
@@ -65,6 +69,21 @@ import org.graalvm.word.WordFactory;
  * Entry points in libgraal for calls from HotSpot.
  */
 final class JMXToLibGraalEntryPoints {
+
+    private static final Map<Class<?>, OpenType<?>> PRIMITIVE_TO_OPENTYPE;
+    static {
+        PRIMITIVE_TO_OPENTYPE = new HashMap<>();
+        PRIMITIVE_TO_OPENTYPE.put(Void.class, SimpleType.VOID);
+        PRIMITIVE_TO_OPENTYPE.put(Boolean.class, SimpleType.BOOLEAN);
+        PRIMITIVE_TO_OPENTYPE.put(Byte.class, SimpleType.BYTE);
+        PRIMITIVE_TO_OPENTYPE.put(Character.class, SimpleType.CHARACTER);
+        PRIMITIVE_TO_OPENTYPE.put(Short.class, SimpleType.SHORT);
+        PRIMITIVE_TO_OPENTYPE.put(Integer.class, SimpleType.INTEGER);
+        PRIMITIVE_TO_OPENTYPE.put(Float.class, SimpleType.FLOAT);
+        PRIMITIVE_TO_OPENTYPE.put(Long.class, SimpleType.LONG);
+        PRIMITIVE_TO_OPENTYPE.put(Double.class, SimpleType.DOUBLE);
+        PRIMITIVE_TO_OPENTYPE.put(String.class, SimpleType.STRING);
+    }
 
     private JMXToLibGraalEntryPoints() {
     }
@@ -319,6 +338,8 @@ final class JMXToLibGraalEntryPoints {
             return;
         } else if (value instanceof CompositeData) {
             putCompositeData(into, name, (CompositeData) value);
+        } else if (value.getClass().isArray()) {
+            putArray(into, name, (Object[]) value);
         } else {
             into.put(name, value);
         }
@@ -336,6 +357,31 @@ final class JMXToLibGraalEntryPoints {
             String name = prefix + '.' + key;
             putAttribute(into, name, value);
         }
+    }
+
+    /**
+     * Serialization of an array into a map.
+     */
+    private static void putArray(Map<String, Object> into, String scope, Object[] data) {
+        String prefix = scope + ".array";
+        OpenType<?> type = findOpenType(data);
+        into.put(prefix, type.getTypeName());
+        for (int i = 0; i < data.length; i++) {
+            Object value = Array.get(data, i);
+            String name = prefix + '.' + i;
+            putAttribute(into, name, value);
+        }
+    }
+
+    private static OpenType<?> findOpenType(Object[] data) {
+        Class<?> componentType = data.getClass().getComponentType();
+        OpenType<?> res = PRIMITIVE_TO_OPENTYPE.get(componentType);
+        // It's enough to support only arrays of simple open types.
+        // There is no use case for CompositeTypes yet.
+        if (res == null) {
+            throw new IllegalArgumentException("Unsupported type: " + componentType);
+        }
+        return res;
     }
 
     static {

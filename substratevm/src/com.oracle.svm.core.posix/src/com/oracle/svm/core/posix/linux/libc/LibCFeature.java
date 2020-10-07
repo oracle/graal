@@ -64,7 +64,7 @@ public class LibCFeature implements Feature {
                 libc = new BionicLibC();
                 break;
             default:
-                throw UserError.abort("Unknown libc " + targetLibC + " selected. Please use one of the available libc implementations.");
+                throw UserError.abort("Unknown libc %s selected. Please use one of the available libc implementations.", targetLibC);
         }
         ImageSingletons.add(LibCBase.class, libc);
     }

@@ -414,7 +414,7 @@ public class FrameInfoEncoder {
         /* Install a non-null value to support recursive VirtualObjects. */
         data.virtualObjects[id] = MARKER;
 
-        List<ValueInfo> valueList = new ArrayList<>(virtualObject.getValues().length + 4);
+        ArrayList<ValueInfo> valueList = new ArrayList<>(virtualObject.getValues().length + 4);
         SharedType type = (SharedType) virtualObject.getType();
         /* The first element is the hub of the virtual object. */
         valueList.add(makeValueInfo(data, JavaKind.Object, SubstrateObjectConstant.forObject(type.getHub()), isDeoptEntry));
@@ -446,7 +446,7 @@ public class FrameInfoEncoder {
                     length++;
                 }
 
-                assert objectLayout.getArrayElementOffset(kind, length) == objectLayout.getArrayBaseOffset(kind) + computeOffset(valueList.subList(2, valueList.size()));
+                assert objectLayout.getArrayElementOffset(kind, length) == objectLayout.getArrayBaseOffset(kind) + computeOffset(valueList, 2);
             }
 
             assert valueList.get(1) == null;
@@ -500,7 +500,7 @@ public class FrameInfoEncoder {
                         curOffset += 1;
                     }
                     assert curOffset == field.getLocation();
-                    assert curOffset == computeOffset(valueList);
+                    assert curOffset - objectLayout.getFirstFieldOffset() == computeOffset(valueList, 1);
 
                     valueList.add(makeValueInfo(data, kind, value, isDeoptEntry));
                     curOffset += objectLayout.sizeInBytes(kind);
@@ -512,10 +512,10 @@ public class FrameInfoEncoder {
         ImageSingletons.lookup(Counters.class).virtualObjectsCount.inc();
     }
 
-    private static int computeOffset(List<ValueInfo> valueInfos) {
+    private static int computeOffset(ArrayList<ValueInfo> valueInfos, int startIndex) {
         int result = 0;
-        for (ValueInfo valueInfo : valueInfos) {
-            result += ConfigurationValues.getObjectLayout().sizeInBytes(valueInfo.kind);
+        for (int i = startIndex; i < valueInfos.size(); i++) {
+            result += ConfigurationValues.getObjectLayout().sizeInBytes(valueInfos.get(i).kind);
         }
         return result;
     }

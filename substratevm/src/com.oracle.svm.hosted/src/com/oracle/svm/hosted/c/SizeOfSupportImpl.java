@@ -50,11 +50,11 @@ public final class SizeOfSupportImpl implements SizeOfSupport {
         ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
         ElementInfo typeInfo = nativeLibraries.findElementInfo(type);
         if (typeInfo instanceof StructInfo && ((StructInfo) typeInfo).isIncomplete()) {
-            throw UserError.abort("Class parameter " + type.toJavaName(true) + " of call to " + SizeOf.class.getSimpleName() + " is an incomplete structure, so no size is available");
+            throw UserError.abort("Class parameter %s of call to %s is an incomplete structure, so no size is available", type.toJavaName(true), SizeOf.class.getSimpleName());
         } else if (typeInfo instanceof SizableInfo) {
             return ((SizableInfo) typeInfo).getSizeInfo().getProperty();
         } else {
-            throw UserError.abort("Class parameter " + type.toJavaName(true) + " of call to " + SizeOf.class.getSimpleName() + " is not an annotated C interface type");
+            throw UserError.abort("Class parameter %s of call to %s is not an annotated C interface type", type.toJavaName(true), SizeOf.class.getSimpleName());
         }
     }
 }

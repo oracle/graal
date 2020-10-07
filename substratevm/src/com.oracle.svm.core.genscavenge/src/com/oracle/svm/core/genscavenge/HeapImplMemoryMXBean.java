@@ -42,7 +42,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 
@@ -98,12 +98,12 @@ public final class HeapImplMemoryMXBean implements MemoryMXBean, NotificationEmi
 
     @Override
     public boolean isVerbose() {
-        return SubstrateOptions.PrintGC.getValue();
+        return SubstrateGCOptions.PrintGC.getValue();
     }
 
     @Override
     public void setVerbose(boolean value) {
-        RuntimeOptionValues.singleton().update(SubstrateOptions.PrintGC, value);
+        RuntimeOptionValues.singleton().update(SubstrateGCOptions.PrintGC, value);
     }
 
     @Override

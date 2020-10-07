@@ -60,6 +60,7 @@ import org.graalvm.compiler.core.GraalServiceThread;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.EncodedSnippets;
@@ -84,14 +85,19 @@ import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerBase;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
+import org.graalvm.libgraal.jni.JNI;
+import org.graalvm.libgraal.jni.JNIExceptionWrapper;
+import org.graalvm.libgraal.jni.JNIUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
@@ -104,7 +110,7 @@ import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.OS;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -140,12 +146,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
-import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.serviceprovider.IsolateUtil;
-import org.graalvm.libgraal.jni.JNI;
-import org.graalvm.libgraal.jni.JNIExceptionWrapper;
-import org.graalvm.libgraal.jni.JNIUtil;
-import org.graalvm.nativeimage.StackValue;
 
 public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
 
@@ -241,7 +241,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             Path binJava = Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
             Path javaExe = javaHomePath.resolve(binJava);
             if (!Files.isExecutable(javaExe)) {
-                throw UserError.abort("Java launcher " + javaExe + " does not exist or is not executable");
+                throw UserError.abort("Java launcher %s does not exist or is not executable", javaExe);
             }
             configFilePath = Paths.get("libgraal_jniconfig.txt");
 
@@ -253,7 +253,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             try {
                 p = pb.start();
             } catch (IOException e) {
-                throw UserError.abort(String.format("Could not run command: %s%n%s", quotedCommand, e));
+                throw UserError.abort("Could not run command: %s%n%s", quotedCommand, e);
             }
 
             String nl = System.getProperty("line.separator");
@@ -264,16 +264,16 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             try {
                 exitValue = p.waitFor();
             } catch (InterruptedException e) {
-                throw UserError.abort(String.format("Interrupted waiting for command: %s%n%s", quotedCommand, out));
+                throw UserError.abort("Interrupted waiting for command: %s%n%s", quotedCommand, out);
             }
             if (exitValue != 0) {
-                throw UserError.abort(String.format("Command finished with exit value %d: %s%n%s", exitValue, quotedCommand, out));
+                throw UserError.abort("Command finished with exit value %d: %s%n%s", exitValue, quotedCommand, out);
             }
             try {
                 lines = Files.readAllLines(configFilePath);
             } catch (IOException e) {
                 configFilePath = null;
-                throw UserError.abort(String.format("Reading JNI config in %s dumped by command: %s%n%s", configFilePath, quotedCommand, out));
+                throw UserError.abort("Reading JNI config in %s dumped by command: %s%n%s", configFilePath, quotedCommand, out);
             }
         }
 
@@ -308,8 +308,8 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             configFilePath = null; // prevent deletion
             String errorMessage = String.format(format, args);
             String errorLine = lines.get(lineNo - 1);
-            throw UserError.abort(String.format("Line %d of %s: %s%n%s%n%s generated by command: %s",
-                            lineNo, path.toAbsolutePath(), errorMessage, errorLine, path, quotedCommand));
+            throw UserError.abort("Line %d of %s: %s%n%s%n%s generated by command: %s",
+                            lineNo, path.toAbsolutePath(), errorMessage, errorLine, path, quotedCommand);
 
         }
     }
@@ -472,12 +472,12 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         }
 
         hotSpotSubstrateReplacements.encode(impl.getBigBang().getOptions());
-        if (!SubstrateOptions.getRuntimeAssertionsForClass(SnippetParameterInfo.class.getName())) {
+        if (!RuntimeAssertionsSupport.singleton().desiredAssertionStatus(SnippetParameterInfo.class)) {
             // Clear that saved names if assertions aren't enabled
             hotSpotSubstrateReplacements.clearSnippetParameterNames();
         }
         // Mark all the Node classes as allocated so they are available during graph decoding.
-        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets(impl.getBigBang().getOptions());
+        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets();
         for (NodeClass<?> nodeClass : encodedSnippets.getSnippetNodeClasses()) {
             impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsInHeap();
         }
@@ -502,8 +502,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
 
     @Override
     public void afterCompilation(AfterCompilationAccess access) {
-        FeatureImpl.AfterCompilationAccessImpl accessImpl = (FeatureImpl.AfterCompilationAccessImpl) access;
-        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets(accessImpl.getUniverse().getBigBang().getOptions());
+        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets();
         encodedSnippets.visitImmutable(access::registerAsImmutable);
     }
 
@@ -534,7 +533,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             }
         }
         if (!disallowedTypes.isEmpty()) {
-            throw UserError.abort("Following non allowed Truffle types are reachable on heap: " + String.join(", ", disallowedTypes));
+            throw UserError.abort("Following non allowed Truffle types are reachable on heap: %s", String.join(", ", disallowedTypes));
         }
     }
 

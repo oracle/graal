@@ -38,8 +38,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMUniquesRegionAllocNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
@@ -52,16 +51,17 @@ public abstract class LLVMFunctionRootNode extends LLVMExpressionNode {
     @Children private final LLVMStatementNode[] copyArgumentsToFrame;
     @Child private LLVMUniquesRegionAllocNode uniquesRegionAllocNode;
     @Child private LLVMExpressionNode rootBody;
-    private final FrameSlot stackSlot;
 
     @CompilationFinal(dimensions = 1) private final FrameSlot[] frameSlotsToInitialize;
+    private final LLVMStackAccess stackAccess;
 
-    public LLVMFunctionRootNode(LLVMUniquesRegionAllocNode uniquesRegionAllocNode, LLVMStatementNode[] copyArgumentsToFrame, LLVMDispatchBasicBlockNode rootBody, FrameDescriptor frameDescriptor) {
+    public LLVMFunctionRootNode(LLVMUniquesRegionAllocNode uniquesRegionAllocNode, LLVMStackAccess stackAccess, LLVMStatementNode[] copyArgumentsToFrame, LLVMDispatchBasicBlockNode rootBody,
+                    FrameDescriptor frameDescriptor) {
         this.uniquesRegionAllocNode = uniquesRegionAllocNode;
+        this.stackAccess = stackAccess;
         this.copyArgumentsToFrame = copyArgumentsToFrame;
         this.rootBody = rootBody;
         this.frameSlotsToInitialize = frameDescriptor.getSlots().toArray(NO_SLOTS);
-        this.stackSlot = frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID);
     }
 
     @ExplodeLoop
@@ -74,13 +74,17 @@ public abstract class LLVMFunctionRootNode extends LLVMExpressionNode {
     @Specialization
     public Object doRun(VirtualFrame frame) {
         nullStack(frame);
-        LLVMStack llvmStack = (LLVMStack) frame.getArguments()[0];
-        try (StackPointer stackPointer = llvmStack.newFrame()) {
-            frame.setObject(stackSlot, stackPointer);
+
+        stackAccess.executeEnter(frame);
+        try {
             copyArgumentsToFrame(frame);
-            uniquesRegionAllocNode.execute(frame);
+            if (uniquesRegionAllocNode != null) {
+                uniquesRegionAllocNode.execute(frame);
+            }
 
             return rootBody.executeGeneric(frame);
+        } finally {
+            stackAccess.executeExit(frame);
         }
     }
 

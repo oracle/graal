@@ -289,7 +289,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
         boolean triviallyStaticallyBound = targetMethod.canBeStaticallyBound();
         if (triviallyStaticallyBound) {
             /*
-             * The check bellow is "size <= 1" and not "size == 1" because a method can be reported
+             * The check below is "size <= 1" and not "size == 1" because a method can be reported
              * as trivially statically bound by the host VM but unreachable in the analysis.
              */
             assert getCallees().size() <= 1 : "Statically bound result mismatch between analysis and host VM.";

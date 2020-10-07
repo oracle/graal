@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,26 +33,20 @@ import static org.graalvm.compiler.options.OptionType.User;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.XOptions;
@@ -148,61 +142,8 @@ public class SubstrateOptions {
     @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
 
-    @APIOption(name = "-ea", customHelp = "enable assertions in the generated image")//
-    @APIOption(name = "-da", kind = APIOption.APIOptionKind.Negated, customHelp = "disable assertions in the generated image")//
-    @Option(help = "Enable or disable Java assert statements at run time", type = OptionType.User)//
-    public static final HostedOptionKey<Boolean> RuntimeAssertions = new HostedOptionKey<>(false);
-
-    public static boolean getRuntimeAssertionsForClass(String name) {
-        return RuntimeAssertions.getValue() && getRuntimeAssertionsFilter().test(name);
-    }
-
-    @Fold
-    static Predicate<String> getRuntimeAssertionsFilter() {
-        return makeFilter(RuntimeAssertionsFilter.getValue());
-    }
-
     @Option(help = "Use a card remembered set heap for GC")//
     public static final HostedOptionKey<Boolean> UseCardRememberedSetHeap = new HostedOptionKey<>(true);
-
-    @Option(help = "Print summary GC information after each collection")//
-    public static final RuntimeOptionKey<Boolean> PrintGC = new RuntimeOptionKey<>(false);
-
-    @Option(help = "Print more information about the heap before and after each collection")//
-    public static final RuntimeOptionKey<Boolean> VerboseGC = new RuntimeOptionKey<>(false);
-
-    @Option(help = "Verify the heap before and after each collection.")//
-    public static final HostedOptionKey<Boolean> VerifyHeap = new HostedOptionKey<>(false);
-
-    @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MinHeapSize = new RuntimeOptionKey<Long>(0L) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
-            if (!SubstrateUtil.HOSTED) {
-                XOptions.getXms().setValue(newValue);
-            }
-        }
-    };
-
-    @Option(help = "The maximum heap size at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MaxHeapSize = new RuntimeOptionKey<Long>(0L) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
-            if (!SubstrateUtil.HOSTED) {
-                XOptions.getXmx().setValue(newValue);
-            }
-        }
-    };
-
-    @Option(help = "The maximum size of the young generation at run-time, in bytes", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MaxNewSize = new RuntimeOptionKey<Long>(0L) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
-            if (!SubstrateUtil.HOSTED) {
-                XOptions.getXmn().setValue(newValue);
-            }
-        }
-    };
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<Long>(0L) {
@@ -251,8 +192,16 @@ public class SubstrateOptions {
     @Option(help = "Trace VMOperation execution.")//
     public static final HostedOptionKey<Boolean> TraceVMOperations = new HostedOptionKey<>(false);
 
-    @Option(help = "Instrument code to trace and report class initialization.")//
-    public static final HostedOptionKey<Boolean> TraceClassInitialization = new HostedOptionKey<>(false);
+    @APIOption(name = "trace-class-initialization")//
+    @Option(help = "Comma-separated list of fully-qualified class names that class initialization is traced for.")//
+    public static final HostedOptionKey<String> TraceClassInitialization = new HostedOptionKey<>("");
+
+    @APIOption(name = "trace-object-instantiation")//
+    @Option(help = "Comma-separated list of fully-qualified class names that object instantiation is traced for.")//
+    public static final HostedOptionKey<String> TraceObjectInstantiation = new HostedOptionKey<>("");
+
+    @Option(help = "Trace all native tool invocations as part of image building", type = User)//
+    public static final HostedOptionKey<Boolean> TraceNativeToolUsage = new HostedOptionKey<>(false);
 
     @Option(help = "Prefix that is added to the names of entry point methods.")//
     public static final HostedOptionKey<String> EntryPointNamePrefix = new HostedOptionKey<>("");
@@ -300,13 +249,16 @@ public class SubstrateOptions {
     @Option(help = "Export Invocation API symbols.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> JNIExportSymbols = new HostedOptionKey<>(true);
 
+    @Option(help = "Alignment of AOT and JIT compiled code in bytes. For example, Intel advises to align code to at least 128 bytes for best cache performance.")//
+    public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(128);
+
     /*
      * Object and array allocation options.
      */
-    @Option(help = "Number of cache lines to load after the array allocation using prefetch instructions generated in JIT compiled code.")//
+    @Option(help = "Number of cache lines to load after the array allocation using prefetch instructions.")//
     public static final HostedOptionKey<Integer> AllocatePrefetchLines = new HostedOptionKey<>(3);
 
-    @Option(help = "Number of cache lines to load after the object address using prefetch instructions generated in JIT compiled code.")//
+    @Option(help = "Number of cache lines to load after the object address using prefetch instructions.")//
     public static final HostedOptionKey<Integer> AllocateInstancePrefetchLines = new HostedOptionKey<>(1);
 
     @Option(help = "Generated code style for prefetch instructions: for 0 or less no prefetch instructions are generated and for 1 or more prefetch instructions are introduced after each allocation.")//
@@ -353,9 +305,6 @@ public class SubstrateOptions {
     @Option(help = "Parse and consume standard options and system properties from the command line arguments when the VM is created.")//
     public static final HostedOptionKey<Boolean> ParseRuntimeOptions = new HostedOptionKey<>(true);
 
-    @Option(help = "Only use Java assert statements for classes that are matching the comma-separated list of package prefixes.")//
-    public static final HostedOptionKey<String[]> RuntimeAssertionsFilter = new HostedOptionKey<>(null);
-
     @Option(help = "Perform method inlining in the AOT compiled native image")//
     public static final HostedOptionKey<Boolean> AOTInline = new HostedOptionKey<>(true);
 
@@ -380,7 +329,7 @@ public class SubstrateOptions {
     @Option(help = "Use callee saved registers to reduce spilling for low-frequency calls to stubs (if callee saved registers are supported by the architecture)")//
     public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
 
-    @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, InTypeCheck).", type = OptionType.Debug)//
+    @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, Reachable).", type = OptionType.Debug)//
     public static final HostedOptionKey<String[]> ReportAnalysisForbiddenType = new HostedOptionKey<>(new String[0]);
 
     @Option(help = "Backend used by the compiler", type = OptionType.User)//
@@ -415,26 +364,13 @@ public class SubstrateOptions {
     @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static Predicate<String> makeFilter(String[] definedFilters) {
-        if (definedFilters != null) {
-            List<String> wildCardList = OptionUtils.flatten(",", definedFilters);
-            return javaName -> {
-                for (String wildCard : wildCardList) {
-                    if (javaName.startsWith(wildCard)) {
-                        return true;
-                    }
-                }
-                return false;
-            };
-        }
-        return javaName -> true;
-    }
-
     @Option(help = "Use linker option to prevent unreferenced symbols in image.")//
     public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(false);
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
+
+    @Option(help = "Common prefix used by method symbols in image.")//
+    public static final HostedOptionKey<String> ImageSymbolsPrefix = new HostedOptionKey<>("");
 
     @Option(help = "Fold SecurityManager getter.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> FoldSecurityManagerGetter = new HostedOptionKey<>(true);
@@ -445,6 +381,9 @@ public class SubstrateOptions {
     @APIOption(name = "native-compiler-options")//
     @Option(help = "Provide custom C compiler option used for query code compilation.", type = OptionType.User)//
     public static final HostedOptionKey<String[]> CCompilerOption = new HostedOptionKey<>(new String[0]);
+
+    @Option(help = "Use strict checks when performing query code compilation.", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> StrictQueryCodeCompilation = new HostedOptionKey<>(true);
 
     @APIOption(name = "native-image-info")//
     @Option(help = "Show native-toolchain information and image-build settings", type = User)//
@@ -472,7 +411,7 @@ public class SubstrateOptions {
      */
     @Fold
     public static int codeAlignment() {
-        return GraalOptions.LoopHeaderAlignment.getValue(HostedOptionValues.singleton());
+        return CodeAlignment.getValue();
     }
 
     @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
@@ -505,7 +444,7 @@ public class SubstrateOptions {
             Path sourceRoot = Paths.get(DebugInfoSourceCacheRoot.getValue());
             return sourceRoot;
         } catch (InvalidPathException ipe) {
-            throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot " + DebugInfoSourceCacheRoot.getValue());
+            throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot %s", DebugInfoSourceCacheRoot.getValue());
         }
     }
 

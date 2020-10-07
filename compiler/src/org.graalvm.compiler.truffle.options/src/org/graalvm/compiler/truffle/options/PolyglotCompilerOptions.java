@@ -70,7 +70,8 @@ public final class PolyglotCompilerOptions {
     public enum PerformanceWarningKind {
         VIRTUAL_RUNTIME_CALL("call", "Enables virtual call warnings"),
         VIRTUAL_INSTANCEOF("instanceof", "Enables virtual instanceof warnings"),
-        VIRTUAL_STORE("store", "Enables virtual store warnings");
+        VIRTUAL_STORE("store", "Enables virtual store warnings"),
+        TRIVIAL_FAIL("trivial", "Enables trivial fail warnings");
 
         private static final EconomicMap<String, PerformanceWarningKind> kindByName;
         static {
@@ -278,8 +279,8 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Whether to use multiple Truffle compilation tiers by default.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> MultiTier = new OptionKey<>(false);
 
-    @Option(help = "Whether to use inlining for the first tier compilations.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> FirstTierInlining = new OptionKey<>(false);
+    @Option(help = "Explicitly pick a first tier inlining policy by name (None, TrivialOnly). If empty (default) the lowest priority policy (TrivialOnly) is chosen.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<String> FirstTierInliningPolicy = new OptionKey<>("");
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
             category = OptionCategory.EXPERT)
@@ -402,9 +403,6 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Disable call target splitting if the number of nodes created by splitting exceeds this factor times node count", category = OptionCategory.INTERNAL)
     public static final OptionKey<Double> SplittingGrowthLimit = new OptionKey<>(1.5);
 
-    @Option(help = "Disable call target splitting if number of nodes created by splitting exceeds this limit", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> SplittingMaxNumberOfSplitNodes = new OptionKey<>(500_000);
-
     @Option(help = "Propagate info about a polymorphic specialize through maximum this many call targets", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> SplittingMaxPropagationDepth = new OptionKey<>(5);
 
@@ -496,7 +494,7 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceInliningDetails = new OptionKey<>(false);
 
-    @Option(help = "Explicitly pick a inlining policy by name. Highest priority chosen by default.", category = OptionCategory.EXPERT)
+    @Option(help = "Explicitly pick a inlining policy by name. If empty (default) the highest priority chosen by default.", category = OptionCategory.INTERNAL)
     public static final OptionKey<String> InliningPolicy = new OptionKey<>("");
 
     @Option(help = "The base expansion budget for language-agnostic inlining.", category = OptionCategory.EXPERT)

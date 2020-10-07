@@ -53,6 +53,10 @@ public final class LibGraalIsolate {
         this.address = address;
     }
 
+    public long getId() {
+        return id;
+    }
+
     /**
      * Gets the isolate associated with the current thread. The current thread must be in an
      * {@linkplain LibGraalScope opened} scope.

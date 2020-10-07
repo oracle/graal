@@ -287,7 +287,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                 if (!isVoidReturn && functionType != null) {
                     LLVMInteropType retType = functionType.getReturnType();
                     if (retType instanceof LLVMInteropType.Value) {
-                        return toLLVMNode.executeWithType(ret, ((LLVMInteropType.Value) retType).getBaseType());
+                        return toLLVMNode.executeWithType(ret, ((LLVMInteropType.Value) retType).baseType);
                     } else {
                         CompilerDirectives.transferToInterpreter();
                         throw new LLVMPolyglotException(this, "Can not call polyglot function with structured return type.");
@@ -323,7 +323,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                 for (; i < functionType.getNumberOfParameters(); i++) {
                     LLVMInteropType argType = functionType.getParameter(i);
                     if (argType instanceof LLVMInteropType.Value) {
-                        LLVMInteropType.Structured baseType = ((LLVMInteropType.Value) argType).getBaseType();
+                        LLVMInteropType.Structured baseType = ((LLVMInteropType.Value) argType).baseType;
                         args[i] = dataEscapeNodes[i].executeWithType(arguments[i + LLVMCallNode.USER_ARGUMENT_OFFSET], baseType);
                     } else {
                         CompilerDirectives.transferToInterpreter();

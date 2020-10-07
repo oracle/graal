@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,16 +35,16 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 
-public final class LLVMFunctionStartNode extends RootNode implements LLVMHasDatalayoutNode {
+public final class LLVMFunctionStartNode extends LLVMRootNode implements LLVMHasDatalayoutNode {
 
     @Child private LLVMExpressionNode node;
     private final String name;
@@ -55,9 +55,10 @@ public final class LLVMFunctionStartNode extends RootNode implements LLVMHasData
 
     private final DataLayout dataLayout;
 
-    public LLVMFunctionStartNode(LLVMLanguage language, LLVMExpressionNode node, FrameDescriptor frameDescriptor, String name, int explicitArgumentsCount, String originalName, Source bcSource,
+    public LLVMFunctionStartNode(LLVMLanguage language, LLVMStackAccess stackAccess, LLVMExpressionNode node, FrameDescriptor frameDescriptor, String name, int explicitArgumentsCount,
+                    String originalName, Source bcSource,
                     LLVMSourceLocation location, DataLayout dataLayout) {
-        super(language, frameDescriptor);
+        super(language, frameDescriptor, stackAccess);
         this.dataLayout = dataLayout;
         this.explicitArgumentsCount = explicitArgumentsCount;
         this.node = node;

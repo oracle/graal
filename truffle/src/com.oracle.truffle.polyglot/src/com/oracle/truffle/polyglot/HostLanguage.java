@@ -45,7 +45,6 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -55,7 +54,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
@@ -87,7 +85,7 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
 
         @CompilationFinal volatile PolyglotLanguageContext internalContext;
         final Map<String, Class<?>> classCache = new HashMap<>();
-        private volatile Iterable<Scope> topScopes;
+        private final Object topScope = new TopScopeObject(this);
         private volatile HostClassLoader classloader;
         private final HostLanguage language;
 
@@ -271,18 +269,8 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
     }
 
     @Override
-    protected Iterable<Scope> findTopScopes(HostContext context) {
-        Iterable<Scope> topScopes = context.topScopes;
-        if (topScopes == null) {
-            synchronized (context) {
-                topScopes = context.topScopes;
-                if (topScopes == null) {
-                    topScopes = Collections.singleton(Scope.newBuilder("Hosting top scope", new TopScopeObject(context)).build());
-                    context.topScopes = topScopes;
-                }
-            }
-        }
-        return topScopes;
+    protected Object getScope(HostContext context) {
+        return context.topScope;
     }
 
     @Override
@@ -297,6 +285,24 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
 
         private TopScopeObject(HostContext context) {
             this.context = context;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return HostLanguage.class;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isScope() {
+            return true;
         }
 
         @SuppressWarnings("static-method")
@@ -323,6 +329,11 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
             return HostObject.forStaticClass(context.findClass(member), context.internalContext);
         }
 
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return "Static Scope";
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)

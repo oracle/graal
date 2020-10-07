@@ -80,7 +80,7 @@ class PosixSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean
 
     @Override
     public long getOpenFileDescriptorCount() {
-        int maxFileDescriptor = Unistd.getdtablesize();
+        int maxFileDescriptor = (int) Unistd.sysconf(Unistd._SC_OPEN_MAX());
         long count = 0;
         for (int i = 0; i <= maxFileDescriptor; i++) {
             if (fstat(i) == 0 || CErrorNumber.getCErrorNumber() != Errno.EBADF()) {

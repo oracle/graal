@@ -52,8 +52,7 @@ public final class SubstrateWordTypes extends WordTypes {
     public ResolvedJavaMethod getWordOperation(ResolvedJavaMethod targetMethod, ResolvedJavaType callingContextType) {
         ResolvedJavaMethod wordOperation = super.getWordOperation(targetMethod, callingContextType);
         if (wordOperation == null) {
-            UserError.abort("Could not determine the implementation of word operation " + targetMethod.format("%H.%n(%p)" +
-                            ". Check the use of annotations in your Java/C interface type declarations."));
+            UserError.abort("Could not determine the implementation of word operation %s. Check the use of annotations in your Java/C interface type declarations.", targetMethod);
         }
         return wordOperation;
     }

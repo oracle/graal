@@ -388,7 +388,7 @@ import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadArrayComponentHubNode;
@@ -435,6 +435,7 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.util.ValueMergeUtil;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BailoutException;
@@ -460,6 +461,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
 
 /**
@@ -916,6 +918,7 @@ public class BytecodeParser implements GraphBuilderContext {
         this.graphBuilderConfig = graphBuilderInstance.graphBuilderConfig;
         this.optimisticOpts = graphBuilderInstance.optimisticOpts;
         this.providers = graphBuilderInstance.providers;
+        assert code.getCode() != null : method;
         this.stream = new BytecodeStream(code.getCode());
         this.profilingInfo = graph.useProfilingInfo() ? code.getProfilingInfo() : null;
         this.constantPool = code.getConstantPool();
@@ -1939,10 +1942,9 @@ public class BytecodeParser implements GraphBuilderContext {
         Invoke invoke = createNonInlinedInvoke(edgeAction, invokeBci, args, targetMethod, invokeKind, resultType, returnType, profile);
         graph.getInliningLog().addDecision(invoke, false, "GraphBuilderPhase", null, null, "bytecode parser did not replace invoke");
         if (partialIntrinsicExit) {
-            // This invoke must never be later inlined as it might select the intrinsic graph.
-            // Until there is a mechanism to guarantee that any late inlining will not select
-            // the intrinsic graph, prevent this invoke from being inlined.
-            invoke.setUseForInlining(false);
+            // This invoke must never be later inlined as an intrinsic so restrict this call site to
+            // normal invoke handling.
+            invoke.setInlineControl(Invoke.InlineControl.BytecodesOnly);
         }
         return invoke;
     }
@@ -2304,7 +2306,8 @@ public class BytecodeParser implements GraphBuilderContext {
             receiver.get();
         }
 
-        InvokeWithExceptionNode withException = null;
+        WithExceptionNode withException = null;
+        boolean insertExceptionEdge = false;
         FixedWithNextNode replacee = lastInstr;
         try (DebugContext.Scope a = debug.scope("instantiate", substituteGraph)) {
             // Inline the snippet nodes, replacing parameters with the given args in the process
@@ -2334,38 +2337,32 @@ public class BytecodeParser implements GraphBuilderContext {
                         if (invoke.bci() == BytecodeFrame.UNKNOWN_BCI) {
                             invoke.setBci(bci());
                         }
-                        if (node instanceof InvokeWithExceptionNode) {
-                            // The graphs for MethodSubsitutions are produced assuming that
-                            // exceptions
-                            // must be dispatched. If the calling context doesn't want exception
-                            // then
-                            // convert back into a normal InvokeNode.
-                            assert withException == null : "only one invoke expected";
-                            withException = (InvokeWithExceptionNode) node;
-                            BytecodeParser intrinsicCallSiteParser = getNonIntrinsicAncestor();
-                            if (intrinsicCallSiteParser != null && intrinsicCallSiteParser.getActionForInvokeExceptionEdge(null) == ExceptionEdgeAction.OMIT) {
-                                InvokeNode newInvoke = graph.add(new InvokeNode(withException));
-                                newInvoke.setStateDuring(withException.stateDuring());
-                                newInvoke.setStateAfter(withException.stateAfter());
-                                withException.killExceptionEdge();
-                                AbstractBeginNode next = withException.killKillingBegin();
-                                FixedWithNextNode pred = (FixedWithNextNode) withException.predecessor();
-                                pred.setNext(newInvoke);
-                                withException.setNext(null);
-                                newInvoke.setNext(next);
-                                withException.replaceAndDelete(newInvoke);
-                            } else {
-                                // Disconnnect exception edge
-                                withException.killExceptionEdge();
-                            }
-                        }
-                    } else if (node instanceof ForeignCallNode) {
-                        ForeignCallNode call = (ForeignCallNode) node;
+                    } else if (node instanceof ForeignCall) {
+                        ForeignCall call = (ForeignCall) node;
                         if (call.bci() == BytecodeFrame.UNKNOWN_BCI) {
                             call.setBci(bci());
                             if (call.stateAfter() != null && call.stateAfter().bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
                                 call.setStateAfter(inlineScope.stateBefore);
                             }
+                        }
+                    }
+
+                    if (node instanceof WithExceptionNode) {
+                        /**
+                         * The graphs for MethodSubstitutions are produced assuming that exceptions
+                         * must be dispatched. If the calling context doesn't want exception then
+                         * convert back into a non throwing node
+                         */
+                        assert withException == null : "at most one exception edge expected";
+                        withException = (WithExceptionNode) node;
+                        BytecodeParser intrinsicCallSiteParser = getNonIntrinsicAncestor();
+                        if (intrinsicCallSiteParser != null && intrinsicCallSiteParser.getActionForInvokeExceptionEdge(null) == ExceptionEdgeAction.OMIT) {
+                            // Exception edge should be removed
+                            withException.replaceWithNonThrowing();
+                        } else {
+                            // Disconnnect exception edge
+                            insertExceptionEdge = true;
+                            withException.killExceptionEdge();
                         }
                     }
                 }
@@ -2385,7 +2382,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 // Exiting this scope causes processing of the placeholder frame states.
             }
 
-            if (withException != null && withException.isAlive()) {
+            if (insertExceptionEdge) {
                 // Connect exception edge into main graph
                 AbstractBeginNode exceptionEdge = handleException(null, bci(), false);
                 withException.setExceptionEdge(exceptionEdge);
@@ -4422,6 +4419,30 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
+    private static final SpeculationReasonGroup FALLBACK_TYPECHECK = new SpeculationReasonGroup("FallbackTypeCheck", ResolvedJavaMethod.class, int.class);
+
+    public static final CounterKey fallBackSpeculationTaken = DebugContext.counter("BytecodeParser_FallBackSpeculation_Taken");
+    public static final CounterKey fallBackSpeculationNotTaken = DebugContext.counter("BytecodeParser_FallBackSpeculation_NotTaken");
+
+    /**
+     * Returns a speculation object if it's possible to speculate on a type check at the current
+     * bytecode location.
+     */
+    private SpeculationLog.Speculation mayUseTypeProfile() {
+        SpeculationLog speculationLog = graph.getSpeculationLog();
+        SpeculationLog.Speculation speculation = null;
+        if (speculationLog != null) {
+            SpeculationLog.SpeculationReason speculationReason = FALLBACK_TYPECHECK.createSpeculationReason(getMethod(), bci());
+            if (speculationLog.maySpeculate(speculationReason)) {
+                speculation = speculationLog.speculate(speculationReason);
+                fallBackSpeculationTaken.increment(debug);
+            } else {
+                fallBackSpeculationNotTaken.increment(debug);
+            }
+        }
+        return speculation;
+    }
+
     protected void genCheckCast(ResolvedJavaType resolvedType, ValueNode objectIn) {
         ValueNode object = objectIn;
         TypeReference checkedType = TypeReference.createTrusted(graph.getAssumptions(), resolvedType);
@@ -4436,15 +4457,19 @@ public class BytecodeParser implements GraphBuilderContext {
         ValueNode castNode = null;
         if (profile != null) {
             if (profile.getNullSeen().isFalse()) {
-                object = nullCheckedValue(object);
-                ResolvedJavaType singleType = profile.asSingleType();
-                if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
-                    LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, profile));
-                    if (typeCheck.isTautology()) {
-                        castNode = object;
-                    } else {
-                        FixedGuardNode fixedGuard = append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, false));
-                        castNode = append(PiNode.create(object, StampFactory.objectNonNull(TypeReference.createExactTrusted(singleType)), fixedGuard));
+                SpeculationLog.Speculation speculation = mayUseTypeProfile();
+                if (speculation != null) {
+                    object = nullCheckedValue(object);
+                    ResolvedJavaType singleType = profile.asSingleType();
+                    if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
+                        LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, profile));
+                        if (typeCheck.isTautology()) {
+                            castNode = object;
+                        } else {
+                            FixedGuardNode fixedGuard = append(
+                                            new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, speculation, false));
+                            castNode = append(PiNode.create(object, StampFactory.objectNonNull(TypeReference.createExactTrusted(singleType)), fixedGuard));
+                        }
                     }
                 }
             }
@@ -4496,18 +4521,26 @@ public class BytecodeParser implements GraphBuilderContext {
                 return;
             }
         }
-
         LogicNode instanceOfNode = null;
         if (profile != null) {
             if (profile.getNullSeen().isFalse()) {
                 object = nullCheckedValue(object);
+                boolean createGuard = true;
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null) {
                     LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, profile));
                     if (!typeCheck.isTautology()) {
-                        append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
+                        SpeculationLog.Speculation speculation = mayUseTypeProfile();
+                        if (speculation == null) {
+                            createGuard = false;
+                        }
+                        if (createGuard) {
+                            append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, speculation, false));
+                        }
                     }
-                    instanceOfNode = LogicConstantNode.forBoolean(checkedType.getType().isAssignableFrom(singleType));
+                    if (createGuard) {
+                        instanceOfNode = LogicConstantNode.forBoolean(checkedType.getType().isAssignableFrom(singleType));
+                    }
                 }
             }
         }

@@ -450,20 +450,15 @@ public final class VMOperationControl {
 
         void enqueueAndWait(VMOperation operation, NativeVMOperationData data) {
             assert UseDedicatedVMOperationThread.getValue();
-            ThreadingSupportImpl.pauseRecurringCallback("Recurring callbacks must not interrupt this code (via an exception) as we guarantee that queued VM operations are executed.");
+            lock();
             try {
-                lock();
-                try {
-                    enqueue(operation, data);
-                    operationQueued.broadcast();
-                    while (!operation.isFinished(data)) {
-                        operationFinished.block();
-                    }
-                } finally {
-                    unlock();
+                enqueue(operation, data);
+                operationQueued.broadcast();
+                while (!operation.isFinished(data)) {
+                    operationFinished.block();
                 }
             } finally {
-                ThreadingSupportImpl.resumeRecurringCallback();
+                unlock();
             }
         }
 
@@ -480,18 +475,13 @@ public final class VMOperationControl {
         }
 
         void enqueueAndExecute(VMOperation operation, NativeVMOperationData data) {
-            ThreadingSupportImpl.pauseRecurringCallback("Recurring callbacks must not be triggered while executing a VM operation.");
+            lock();
             try {
-                lock();
-                try {
-                    enqueue(operation, data);
-                    executeAllQueuedVMOperations();
-                } finally {
-                    assert isEmpty() : "all queued VM operations must have been processed";
-                    unlock();
-                }
+                enqueue(operation, data);
+                executeAllQueuedVMOperations();
             } finally {
-                ThreadingSupportImpl.resumeRecurringCallback();
+                assert isEmpty() : "all queued VM operations must have been processed";
+                unlock();
             }
         }
 

@@ -139,14 +139,15 @@ def checkLinks(javadocDir):
         mx.abort('There are wrong references in Javadoc')
 
 def lsp_types_gen(args):
+    """generate Language Server Protocol types"""
     generators_dir = join(_suite.dir, 'generators')
     out = join(_suite.get_output_root(), 'lsp-types')
     if exists(out):
         mx.rmtree(out)
     mx.run(['npm', 'install'], nonZeroIsFatal=True, cwd=generators_dir)
     mx.run(['npm', 'run', 'compile'], nonZeroIsFatal=True, cwd=generators_dir)
-    repository = open(join(generators_dir, 'resources', 'REPOSITORY'), 'r').read()
-    branch = open(join(generators_dir, 'resources', 'VERSION'), 'r').read()
+    repository = open(join(generators_dir, 'resources', 'LSP_REPOSITORY'), 'r').read()
+    branch = open(join(generators_dir, 'resources', 'LSP_VERSION'), 'r').read()
     tmpdir = tempfile.mkdtemp()
     catfile = open(join(tmpdir, 'lsp.ts'), 'w')
     mx.run(['git', 'clone', '-b', branch, repository, 'lib'], nonZeroIsFatal=True, cwd=tmpdir)
@@ -157,11 +158,35 @@ def lsp_types_gen(args):
         with open(file_name, 'r') as input_file:
             shutil.copyfileobj(input_file, catfile)
         catfile.flush()
-    pkg = open(join(generators_dir, 'resources', 'PACKAGE'), 'r').read()
-    mx.run(['node', 'out/generator.js', '--source', catfile.name, '--target', out, '--suffixNested', '--pkg', pkg, '--license', 'resources/license.txt'], nonZeroIsFatal=True, cwd=generators_dir)
+    pkg = open(join(generators_dir, 'resources', 'LSP_PACKAGE'), 'r').read()
+    mx.run(['node', 'out/generator.js', '--source', catfile.name, '--target', out, '--suffixNested', '--pkg', pkg, '--license', 'resources/LSP_license.txt'], nonZeroIsFatal=True, cwd=generators_dir)
     mx.rmtree(tmpdir)
-    mx.run(['patch', '-p1', '-s', '-i', join(generators_dir, 'resources', 'patch.diff')], nonZeroIsFatal=True, cwd=out)
+    mx.run(['patch', '-p1', '-s', '-i', join(generators_dir, 'resources', 'LSP_patch.diff')], nonZeroIsFatal=True, cwd=out)
     mx.log('LSP types generated to: ' + out)
+
+def dap_types_gen(args):
+    """generate Debug Adapter Protocol types"""
+    generators_dir = join(_suite.dir, 'generators')
+    out = join(_suite.get_output_root(), 'dap-types')
+    if exists(out):
+        mx.rmtree(out)
+    mx.run(['npm', 'install'], nonZeroIsFatal=True, cwd=generators_dir)
+    mx.run(['npm', 'run', 'compile'], nonZeroIsFatal=True, cwd=generators_dir)
+    repository = open(join(generators_dir, 'resources', 'DAP_REPOSITORY'), 'r').read()
+    tmpdir = tempfile.mkdtemp()
+    catfile = open(join(tmpdir, 'dap.ts'), 'wt')
+    mx.run(['git', 'clone', repository, 'lib'], nonZeroIsFatal=True, cwd=tmpdir)
+    spec_files = glob.glob(join(tmpdir, 'lib/protocol/src/*.ts'))
+    for file_name in spec_files:
+        with open(file_name, 'rt') as input_file:
+            for line in input_file:
+                catfile.write(line.replace('// type:', 'type:').replace('// command:', 'command:').replace('// event:', 'event:'))
+        catfile.flush()
+    pkg = open(join(generators_dir, 'resources', 'DAP_PACKAGE'), 'r').read()
+    mx.run(['node', 'out/generator.js', '--source', catfile.name, '--target', out, '--prefixNested', '--pkg', pkg, '--license', 'resources/DAP_license.txt'], nonZeroIsFatal=True, cwd=generators_dir)
+    mx.rmtree(tmpdir)
+    mx.run(['patch', '-p1', '-s', '-i', join(generators_dir, 'resources', 'DAP_patch.diff')], nonZeroIsFatal=True, cwd=out)
+    mx.log('DAP types generated to: ' + out)
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
@@ -196,6 +221,19 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     third_party_license_files=[],
     truffle_jars=['tools:LSP_API', 'tools:LSP'],
     support_distributions=['tools:LSP_GRAALVM_SUPPORT'],
+    include_by_default=True,
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
+    suite=_suite,
+    name='GraalVM Debug Protocol Server',
+    short_name='dap',
+    dir_name='dap',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
+    truffle_jars=['tools:DAP'],
+    support_distributions=['tools:DAP_GRAALVM_SUPPORT'],
     include_by_default=True,
 ))
 
@@ -275,4 +313,5 @@ mx.update_commands(_suite, {
     'javadoc' : [javadoc, ''],
     'gate' : [mx_gate.gate, ''],
     'lsp-types-gen' : [lsp_types_gen, ''],
+    'dap-types-gen' : [dap_types_gen, ''],
 })

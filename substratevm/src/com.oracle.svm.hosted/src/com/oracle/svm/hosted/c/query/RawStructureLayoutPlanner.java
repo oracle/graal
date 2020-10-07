@@ -77,7 +77,7 @@ public final class RawStructureLayoutPlanner extends NativeInfoTreeVisitor {
         ResolvedJavaType type = info.getAnnotatedElement();
         for (ResolvedJavaType t : type.getInterfaces()) {
             if (!nativeLibs.isPointerBase(t)) {
-                throw UserError.abort("Type " + type + " must not implement " + t);
+                throw UserError.abort("Type %s must not implement %s", type, t);
             }
 
             if (t.equals(nativeLibs.getPointerBaseType())) {
@@ -186,16 +186,14 @@ public final class RawStructureLayoutPlanner extends NativeInfoTreeVisitor {
             try {
                 sizeProvider = ReflectionUtil.newInstance(sizeProviderClass);
             } catch (ReflectionUtilError ex) {
-                throw UserError.abort(
-                                ex.getCause(),
-                                "The size provider of @" + RawStructure.class.getSimpleName() + " " + info.getAnnotatedElement().toJavaName(true) +
-                                                " cannot be instantiated via no-argument constructor");
+                throw UserError.abort(ex.getCause(), "The size provider of @%s %s cannot be instantiated via no-argument constructor",
+                                RawStructure.class.getSimpleName(), info.getAnnotatedElement().toJavaName(true));
             }
 
             totalSize = sizeProvider.applyAsInt(currentOffset);
             if (totalSize < currentOffset) {
-                throw UserError.abort("The size provider of @" + RawStructure.class.getSimpleName() + " " + info.getAnnotatedElement().toJavaName(true) + " computed size " + totalSize +
-                                " which is smaller than the minimum size of " + currentOffset);
+                throw UserError.abort("The size provider of @%s %s computed size %d which is smaller than the minimum size of %d",
+                                RawStructure.class.getSimpleName(), info.getAnnotatedElement().toJavaName(true), totalSize, currentOffset);
             }
         }
 

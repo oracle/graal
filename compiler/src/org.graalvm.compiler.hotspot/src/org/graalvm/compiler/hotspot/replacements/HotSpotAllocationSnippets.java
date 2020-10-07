@@ -78,6 +78,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
 import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -109,6 +110,7 @@ import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
+import org.graalvm.compiler.nodes.java.ValidateNewInstanceClassNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
@@ -188,21 +190,12 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Snippet
-    public Object allocateInstanceDynamic(Class<?> type,
-                    Class<?> classClass,
+    public Object allocateInstanceDynamic(@NonNullParameter Class<?> type,
                     @ConstantParameter boolean fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData) {
-        if (probability(DEOPT_PROBABILITY, type == null)) {
-            DeoptimizeNode.deopt(None, RuntimeConstraint);
-        }
-        Class<?> nonNullType = PiNode.piCastNonNullClass(type, SnippetAnchorNode.anchor());
 
-        if (probability(DEOPT_PROBABILITY, DynamicNewInstanceNode.throwsInstantiationException(type, classClass))) {
-            DeoptimizeNode.deopt(None, RuntimeConstraint);
-        }
-
-        KlassPointer hub = ClassGetHubNode.readClass(nonNullType);
+        KlassPointer hub = ClassGetHubNode.readClass(type);
         if (probability(FAST_PATH_PROBABILITY, !hub.isNull())) {
             KlassPointer nonNullHub = ClassGetHubNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
 
@@ -228,6 +221,19 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             }
         }
         return PiNode.piCastToSnippetReplaceeStamp(dynamicNewInstanceStub(type));
+    }
+
+    @Snippet
+    private static Class<?> validateNewInstanceClass(Class<?> type, Class<?> classClass) {
+        if (probability(DEOPT_PROBABILITY, type == null)) {
+            DeoptimizeNode.deopt(None, RuntimeConstraint);
+        }
+        Class<?> nonNullType = PiNode.piCastNonNullClass(type, SnippetAnchorNode.anchor());
+        if (probability(DEOPT_PROBABILITY,
+                        DynamicNewInstanceNode.throwsInstantiationException(nonNullType, classClass))) {
+            DeoptimizeNode.deopt(None, RuntimeConstraint);
+        }
+        return nonNullType;
     }
 
     @Snippet
@@ -474,7 +480,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray) {
+    public final void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray) {
         KlassPointer klassPtr = KlassPointer.fromWord(hub);
         Word markWord = prototypeMarkWord;
         if (!isArray && HotSpotReplacementsUtil.useBiasedLocking(INJECTED_VMCONFIG)) {
@@ -490,7 +496,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final int arrayLengthOffset() {
+    public final int arrayLengthOffset() {
         return HotSpotReplacementsUtil.arrayLengthOffset(INJECTED_VMCONFIG);
     }
 
@@ -500,7 +506,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final boolean useTLAB() {
+    public final boolean useTLAB() {
         return HotSpotReplacementsUtil.useTLAB(INJECTED_VMCONFIG);
     }
 
@@ -516,7 +522,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final Word getTLABInfo() {
+    public final Word getTLABInfo() {
         return getThread();
     }
 
@@ -525,17 +531,17 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final Word readTlabEnd(Word thread) {
+    public final Word readTlabEnd(Word thread) {
         return HotSpotReplacementsUtil.readTlabEnd(thread);
     }
 
     @Override
-    protected final Word readTlabTop(Word thread) {
+    public final Word readTlabTop(Word thread) {
         return HotSpotReplacementsUtil.readTlabTop(thread);
     }
 
     @Override
-    protected final void writeTlabTop(Word thread, Word newTop) {
+    public final void writeTlabTop(Word thread, Word newTop) {
         HotSpotReplacementsUtil.writeTlabTop(thread, newTop);
     }
 
@@ -608,18 +614,18 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         private final SnippetInfo allocatePrimitiveArrayPIC;
         private final SnippetInfo allocateArrayDynamic;
         private final SnippetInfo allocateInstanceDynamic;
+        private final SnippetInfo validateNewInstanceClass;
         private final SnippetInfo newmultiarray;
         private final SnippetInfo newmultiarrayPIC;
         private final SnippetInfo verifyHeap;
         private final SnippetInfo threadBeingInitializedCheck;
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory groupFactory, HotSpotProviders providers, TargetDescription target,
+        public Templates(HotSpotAllocationSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory groupFactory, HotSpotProviders providers,
+                        TargetDescription target,
                         GraalHotSpotVMConfig config) {
             super(options, factories, providers, providers.getSnippetReflection(), target);
             this.config = config;
             snippetCounters = new AllocationSnippetCounters(groupFactory);
-
-            HotSpotAllocationSnippets receiver = new HotSpotAllocationSnippets(config, providers.getRegisters());
 
             allocateInstance = snippet(HotSpotAllocationSnippets.class, "allocateInstance", null, receiver, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION,
                             PROTOTYPE_MARK_WORD_LOCATION);
@@ -632,6 +638,8 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             allocateArrayDynamic = snippet(HotSpotAllocationSnippets.class, "allocateArrayDynamic", null, receiver, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
                             TLAB_END_LOCATION);
             allocateInstanceDynamic = snippet(HotSpotAllocationSnippets.class, "allocateInstanceDynamic", null, receiver, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
+                            TLAB_END_LOCATION, PROTOTYPE_MARK_WORD_LOCATION, CLASS_INIT_STATE_LOCATION);
+            validateNewInstanceClass = snippet(HotSpotAllocationSnippets.class, "validateNewInstanceClass", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
                             TLAB_END_LOCATION, PROTOTYPE_MARK_WORD_LOCATION, CLASS_INIT_STATE_LOCATION);
             newmultiarray = snippet(HotSpotAllocationSnippets.class, "newmultiarray", null, receiver, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
             newmultiarrayPIC = snippet(HotSpotAllocationSnippets.class, "newmultiarrayPIC", null, receiver, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
@@ -742,16 +750,22 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
         public void lower(DynamicNewInstanceNode node, LoweringTool tool) {
             OptionValues localOptions = node.graph().getOptions();
-            ValueNode classClass = node.getClassClass();
-            assert classClass != null;
 
             Arguments args = new Arguments(allocateInstanceDynamic, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("type", node.getInstanceType());
-            args.add("classClass", classClass);
             args.addConst("fillContents", node.fillContents());
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
             args.addConst("profilingData", getProfilingData(localOptions, "", null));
 
+            template(node, args).instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
+        }
+
+        public void lower(ValidateNewInstanceClassNode node, LoweringTool tool) {
+            StructuredGraph graph = node.graph();
+
+            Arguments args = new Arguments(validateNewInstanceClass, graph.getGuardsStage(), tool.getLoweringStage());
+            args.add("type", node.getInstanceType());
+            args.add("classClass", node.getClassClass());
             template(node, args).instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
 

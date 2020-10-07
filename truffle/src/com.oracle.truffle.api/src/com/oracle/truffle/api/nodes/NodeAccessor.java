@@ -144,6 +144,11 @@ final class NodeAccessor extends Accessor {
             child.setParent(parent);
         }
 
+        @Override
+        public boolean isTrivial(RootNode rootNode) {
+            return rootNode.isTrivial();
+        }
+
     }
 
 }

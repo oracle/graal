@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -161,9 +160,8 @@ public final class StandardTags {
      * <p>
      * Use case descriptions:
      * <ul>
-     * <li><b>Profiler:</b> Marks body of every root that should be profiled and where
-     * {@link Scope#getArguments() arguments} and {@link Scope#getReceiver() receiver object} are
-     * initialized and ready to be retrieved.</li>
+     * <li><b>Profiler:</b> Marks body of every root that should be profiled and where local
+     * variables are initialized and ready to be retrieved.</li>
      * </ul>
      *
      * The RootBodyTag uses the {@link Tag.Identifier identifier} <code>"ROOT_BODY"</code>. A node

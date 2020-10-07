@@ -114,10 +114,12 @@ meth public com.oracle.truffle.api.debug.DebugValue getReceiver()
 meth public com.oracle.truffle.api.debug.DebugValue getRootInstance()
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
 meth public java.lang.Iterable<com.oracle.truffle.api.debug.DebugValue> getArguments()
+ anno 0 java.lang.Deprecated()
 meth public java.lang.Iterable<com.oracle.truffle.api.debug.DebugValue> getDeclaredValues()
 meth public java.lang.String getName()
 supr java.lang.Object
-hfds event,frame,iterator,language,parent,root,scope,session,variables
+hfds INTEROP,NODE,event,frame,language,node,parent,root,scope,session,variables
+hcls SubtractedKeys,SubtractedVariables
 
 CLSS public final com.oracle.truffle.api.debug.DebugStackFrame
 meth public boolean equals(java.lang.Object)

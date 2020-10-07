@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -50,6 +51,7 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.graal.nodes.KillMemoryNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
@@ -64,6 +66,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
@@ -310,7 +313,7 @@ public final class Safepoint {
      * value.</li>
      * </ul>
      */
-    static final FastThreadLocalInt safepointRequested = FastThreadLocalFactory.createInt();
+    static final FastThreadLocalInt safepointRequested = FastThreadLocalFactory.createInt().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
     /** The value to reset a thread's {@link #safepointRequested} value to after a safepoint. */
     static final int THREAD_REQUEST_RESET = Integer.MAX_VALUE;
@@ -399,19 +402,28 @@ public final class Safepoint {
      */
     public static void transitionNativeToJava() {
         // Transition from C to Java, checking for safepoint.
+        StatusSupport.assertStatusNativeOrSafepoint();
         int newStatus = StatusSupport.STATUS_IN_JAVA;
-        boolean needSlowPath = ThreadingSupportImpl.needsNativeToJavaSlowpath() || !StatusSupport.compareAndSetNativeToNewStatus(newStatus);
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, ThreadingSupportImpl.needsNativeToJavaSlowpath()) ||
+                        BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, !StatusSupport.compareAndSetNativeToNewStatus(newStatus))) {
             callSlowPathNativeToNewStatus(Safepoint.ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus);
         }
+
+        /*
+         * Kill all memory locations to ensure that no floating reads are scheduled before the
+         * thread is properly transitioned into the Java state.
+         */
+        KillMemoryNode.killMemory(LocationIdentity.ANY_LOCATION);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean tryFastTransitionNativeToVM() {
+        StatusSupport.assertStatusNativeOrSafepoint();
         return StatusSupport.compareAndSetNativeToNewStatus(StatusSupport.STATUS_IN_VM);
     }
 
     public static void slowTransitionNativeToVM() {
+        StatusSupport.assertStatusNativeOrSafepoint();
         int newStatus = StatusSupport.STATUS_IN_VM;
         boolean needSlowPath = !StatusSupport.compareAndSetNativeToNewStatus(newStatus);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
@@ -423,6 +435,7 @@ public final class Safepoint {
     public static void transitionVMToJava() {
         // We can directly change the thread status as no other thread will touch the status field
         // as long as we are in VM status.
+        StatusSupport.assertStatusVM();
         StatusSupport.setStatusJavaUnguarded();
         boolean needSlowPath = ThreadingSupportImpl.needsNativeToJavaSlowpath();
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
@@ -434,6 +447,7 @@ public final class Safepoint {
     public static void transitionJavaToVM() {
         // We can directly change the thread state without a safepoint check as the safepoint
         // mechanism does not touch the thread if the status is VM.
+        StatusSupport.assertStatusJava();
         StatusSupport.setStatusVM();
     }
 
@@ -441,6 +455,7 @@ public final class Safepoint {
     public static void transitionVMToNative() {
         // We can directly change the thread state without a safepoint check as the safepoint
         // mechanism does not touch the thread if the status is VM.
+        StatusSupport.assertStatusVM();
         StatusSupport.setStatusNative();
     }
 
@@ -510,6 +525,7 @@ public final class Safepoint {
         }
 
         private volatile int safepointState;
+        private volatile UnsignedWord safepointId;
 
         /** The thread requesting a safepoint. */
         private volatile IsolateThread requestingThread;
@@ -546,6 +562,7 @@ public final class Safepoint {
             waitForSafepoints(reason);
             Statistics.setFrozenNanos();
             safepointState = AT_SAFEPOINT;
+            safepointId = safepointId.add(1);
             return lock;
         }
 
@@ -792,6 +809,11 @@ public final class Safepoint {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected boolean isFrozen() {
             return safepointState == AT_SAFEPOINT;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected UnsignedWord getSafepointId() {
+            return safepointId;
         }
 
         /** A sample method to execute in a VMOperation. */

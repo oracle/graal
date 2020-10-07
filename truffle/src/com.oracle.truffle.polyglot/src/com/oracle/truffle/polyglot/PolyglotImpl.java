@@ -44,7 +44,6 @@ import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -59,6 +58,7 @@ import java.util.logging.Handler;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.ResourceLimitEvent;
 import org.graalvm.polyglot.Value;
@@ -129,10 +129,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @Override
     public Object buildLimits(long statementLimit, Predicate<org.graalvm.polyglot.Source> statementLimitSourceFilter,
-                    Duration timeLimit, Duration timeLimitAccuracy,
                     Consumer<ResourceLimitEvent> onLimit) {
         try {
-            return new PolyglotLimits(statementLimit, statementLimitSourceFilter, timeLimit, timeLimitAccuracy, onLimit);
+            return new PolyglotLimits(statementLimit, statementLimitSourceFilter, onLimit);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(this, t);
         }
@@ -286,9 +285,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue) {
+    public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence) {
         try {
-            return new PolyglotTargetMapping(sourceType, targetType, acceptsValue, convertValue);
+            return new PolyglotTargetMapping(sourceType, targetType, acceptsValue, convertValue, precedence);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(this, t);
         }
@@ -303,7 +302,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
          * No entered context. Try to do something reasonable.
          */
         assert !(hostValue instanceof Value);
-        PolyglotContextImpl valueContext = null;
         Object guestValue = null;
         if (hostValue == null) {
             return hostNull;
@@ -312,9 +310,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         } else if (HostWrapper.isInstance(hostValue)) {
             HostWrapper hostWrapper = HostWrapper.asInstance(hostValue);
             // host wrappers can nicely reuse the associated context
+            PolyglotLanguageContext languageContext = hostWrapper.getLanguageContext();
+            assert languageContext != null : "HostWrappers must be guaranteed to have non-null language context.";
             guestValue = hostWrapper.getGuestObject();
-            valueContext = hostWrapper.getContext();
-            return valueContext.asValue(guestValue);
+            return languageContext.asValue(guestValue);
         } else {
             /*
              * We currently cannot support doing interop without a context so we create our own

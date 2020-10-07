@@ -83,7 +83,6 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMMemIntrinsicFactor
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMMemIntrinsicFactory.LLVMLibcMemsetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMSignalNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMSyscall;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMLoadLibraryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsPrimitive;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsString;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotBoxedPredicateNodeGen;
@@ -448,8 +447,6 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         add("polyglot_as_string", (args, nodeFactory) -> LLVMPolyglotAsString.create(args.get(1), args.get(2), args.get(3), args.get(4)));
         add("polyglot_from_string", (args, nodeFactory) -> LLVMPolyglotFromString.create(args.get(1), args.get(2)));
         add("polyglot_from_string_n", (args, nodeFactory) -> LLVMPolyglotFromString.createN(args.get(1), args.get(2), args.get(3)));
-
-        add("truffle_load_library", (args, nodeFactory) -> LLVMLoadLibraryNodeGen.create(args.get(1)));
 
         add("__polyglot_as_typeid", (args, nodeFactory) -> LLVMTypeIDNode.create(args.get(1)));
         add("polyglot_as_typed", (args, nodeFactory) -> LLVMPolyglotAsTyped.create(args.get(1), args.get(2)));

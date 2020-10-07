@@ -25,6 +25,7 @@
 package com.oracle.svm.jni.nativeapi;
 
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallIntMethodAFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallVoidMethodAFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetByteArrayElementsFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.NewByteArrayFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ReleaseByteArrayElementsFunctionPointer;
@@ -437,10 +438,10 @@ public interface JNINativeInterface extends PointerBase {
     void setCallVoidMethodV(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getCallVoidMethodA();
+    CallVoidMethodAFunctionPointer getCallVoidMethodA();
 
     @CField
-    void setCallVoidMethodA(CFunctionPointer p);
+    void setCallVoidMethodA(CallVoidMethodAFunctionPointer p);
 
     @CField
     CFunctionPointer getCallNonvirtualObjectMethod();
@@ -917,10 +918,10 @@ public interface JNINativeInterface extends PointerBase {
     void setCallStaticVoidMethodV(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getCallStaticVoidMethodA();
+    CallVoidMethodAFunctionPointer getCallStaticVoidMethodA();
 
     @CField
-    void setCallStaticVoidMethodA(CFunctionPointer p);
+    void setCallStaticVoidMethodA(CallVoidMethodAFunctionPointer p);
 
     @CField
     GetFieldIDFunctionPointer getGetStaticFieldID();
