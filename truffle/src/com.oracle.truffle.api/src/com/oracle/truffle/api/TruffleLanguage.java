@@ -3189,6 +3189,13 @@ public abstract class TruffleLanguage<C> {
          * <p>
          * For non-void methods, all the conversions supported by {@link Value#as} will be in effect
          * to coerce the guest methods' return value to the expected Java return type.
+         * <p>
+         * Instances of the host class have the following additional special members:
+         * <ul>
+         * <li>{@code super}: provides access to the super methods of the host class via a wrapper
+         * object. Can be used to call super methods from guest method overrides.
+         * <li>{@code this}: returns the original guest object.
+         * </ul>
          *
          * @param types the types to extend. Must be non-null and contain at least one extensible
          *            superclass or interface, and at most one superclass. All types must be public,
@@ -3215,7 +3222,7 @@ public abstract class TruffleLanguage<C> {
          * Creates a Java host adapter class. Returns a host symbol that can be instantiated with a
          * guest object to create an instance of the provided host types that delegates non-final
          * method invocations to the guest object provided to the instantiate message.
-         *
+         * <p>
          * A host class is generated as follows:
          * <p>
          * For every protected or public constructor in the extended class, the adapter class will
@@ -3246,6 +3253,13 @@ public abstract class TruffleLanguage<C> {
          * <p>
          * For non-void methods, all the conversions supported by {@link Value#as} will be in effect
          * to coerce the guest methods' return value to the expected Java return type.
+         * <p>
+         * Instances of the host class have the following additional special members:
+         * <ul>
+         * <li>{@code super}: provides access to the super methods of the host class via a wrapper
+         * object. Can be used to call super methods from guest method overrides.
+         * <li>{@code this}: returns the original guest object.
+         * </ul>
          *
          * @param types the types to extend. Must be non-null and contain at least one extensible
          *            superclass or interface, and at most one superclass. All types must be public,
