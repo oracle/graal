@@ -54,7 +54,7 @@ public abstract class InstanceOfNode extends QuickNode {
     }
 
     InstanceOfNode(Klass typeToCheck, int top, int curBCI) {
-        super(top, curBCI, false);
+        super(top, curBCI);
         assert !typeToCheck.isPrimitive();
         this.typeToCheck = typeToCheck;
     }

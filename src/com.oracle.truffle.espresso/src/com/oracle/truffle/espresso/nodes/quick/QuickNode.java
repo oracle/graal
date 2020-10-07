@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes.quick;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -33,22 +35,23 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
 
     public static final QuickNode[] EMPTY_ARRAY = new QuickNode[0];
 
-    private final BranchProfile exceptionProfile;
+    @CompilationFinal private boolean exceptionProfile;
+
+    protected final void enterExceptionProfile() {
+        if (!exceptionProfile) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            exceptionProfile = true;
+        }
+    }
 
     protected final int top;
 
     private final int callerBCI;
 
     protected QuickNode(int top, int callerBCI) {
-        this(top, callerBCI, true);
-    }
-
-    protected QuickNode(int top, int callerBCI, boolean exceptionProfile) {
         this.top = top;
         this.callerBCI = callerBCI;
-        this.exceptionProfile = exceptionProfile
-                        ? BranchProfile.create()
-                        : BranchProfile.getUncached();
+        this.exceptionProfile = false;
     }
 
     @Override
@@ -58,7 +61,7 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
 
     protected final StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {
-            getExceptionProfile().enter();
+            enterExceptionProfile();
             throw getBytecodesNode().getMeta().throwNullPointerException();
         }
         return value;
@@ -75,9 +78,5 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
     @Override
     public SourceSection getSourceSection() {
         return getBytecodesNode().getSourceSectionAtBCI(callerBCI);
-    }
-
-    public final BranchProfile getExceptionProfile() {
-        return exceptionProfile;
     }
 }

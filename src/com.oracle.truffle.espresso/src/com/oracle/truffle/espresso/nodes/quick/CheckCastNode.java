@@ -76,7 +76,7 @@ public abstract class CheckCastNode extends QuickNode {
         if (StaticObject.isNull(receiver) || executeCheckCast(receiver.getKlass())) {
             return 0;
         }
-        getExceptionProfile().enter();
+        enterExceptionProfile();
         Meta meta = typeToCheck.getMeta();
         throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
                         getExceptionMessage(root, receiver));
