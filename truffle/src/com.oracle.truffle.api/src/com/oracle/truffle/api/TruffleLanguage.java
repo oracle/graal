@@ -1139,7 +1139,7 @@ public abstract class TruffleLanguage<C> {
      *
      * @param context the current context of the language
      * @return an iterable with scopes in their nesting order from the inner-most to the outer-most.
-     * @since 0.30engine.enter(context)
+     * @since 0.30
      * @deprecated implement {@link #getScope(Object)} instead.
      */
     @SuppressWarnings("deprecation")
