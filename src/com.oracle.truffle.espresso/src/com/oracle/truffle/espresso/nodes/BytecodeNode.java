@@ -2177,7 +2177,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         return value;
     }
 
-    public final void enterImplicitExceptionProfile() {
+    public void enterImplicitExceptionProfile() {
         if (!implicitExceptionProfile) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             implicitExceptionProfile = true;
