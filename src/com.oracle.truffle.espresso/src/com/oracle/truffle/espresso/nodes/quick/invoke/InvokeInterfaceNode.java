@@ -66,7 +66,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     }
 
     InvokeInterfaceNode(Method resolutionSeed, int top, int curBCI) {
-        super(top, curBCI, Bytecodes.INVOKEINTERFACE);
+        super(top, curBCI);
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
         this.itableIndex = resolutionSeed.getITableIndex();
@@ -107,5 +107,10 @@ public abstract class InvokeInterfaceNode extends QuickNode {
 
     private int getResultAt() {
         return top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
+    }
+
+    @Override
+    public int getOpcode() {
+        return Bytecodes.INVOKEINTERFACE;
     }
 }

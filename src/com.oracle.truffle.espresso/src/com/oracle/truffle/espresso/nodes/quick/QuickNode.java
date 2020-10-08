@@ -38,16 +38,10 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
     protected final int top;
 
     private final int callerBCI;
-    private final int opcode;
-
-    protected QuickNode(int top, int callerBCI, int opcode) {
-        this.top = top;
-        this.callerBCI = callerBCI;
-        this.opcode = opcode;
-    }
 
     protected QuickNode(int top, int callerBCI) {
-        this(top, callerBCI, -1);
+        this.top = top;
+        this.callerBCI = callerBCI;
     }
 
     @Override
@@ -83,7 +77,9 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
         return getBytecodesNode().getSourceSectionAtBCI(callerBCI);
     }
 
-    public final int getOpcode() {
-        return opcode;
+    public int getOpcode() {
+        // invoke quickening nodes override this with the actual opcode
+        // it's only relevant for invoke nodes
+        return -1;
     }
 }

@@ -40,6 +40,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public abstract class InvokeVirtualNode extends QuickNode {
 
     final Method resolutionSeed;
+    private final int opcode;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -68,9 +69,10 @@ public abstract class InvokeVirtualNode extends QuickNode {
     }
 
     InvokeVirtualNode(Method resolutionSeed, int top, int curBCI, int opcode) {
-        super(top, curBCI, opcode);
+        super(top, curBCI);
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
+        this.opcode = opcode;
     }
 
     static MethodVersion methodLookup(StaticObject receiver, Method resolutionSeed) {
@@ -114,5 +116,10 @@ public abstract class InvokeVirtualNode extends QuickNode {
 
     private int getResultAt() {
         return top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
+    }
+
+    @Override
+    public int getOpcode() {
+        return opcode;
     }
 }
