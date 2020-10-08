@@ -35,7 +35,7 @@ valist/libvahandler$(SO_EXT): valist/vahandler.c valist/Makefile
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
 
-valist/main.out: valist/main.c valist/Makefile
+valist/main.out: valist/main.c valist/libvahandler$(SO_EXT) valist/Makefile
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -Lvalist -lvahandler -fPIC -o $@ $<
 
