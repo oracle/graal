@@ -27,6 +27,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added utility method to find an instrumentable parent node [InstrumentableNode.findInstrumentableParent](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/InstrumentableNode.html#findInstrumentableParent-com.oracle.truffle.api.nodes.Node-).
 * Deprecated `DebugScope.getArguments()` without replacement. This API was added without use-case.
 * Added the [RootNode.isTrivial](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#isTrivial) method, for specifying root nodes that are always more efficient to inline than not to.
+* A node parameter now needs to be provided to TruffleContext.enter() and TruffleContext.leave(Object). The overloads without node parameter are deprecated. This is useful to allow the runtime to compile the enter and leave code better if a node is passed as argument. 
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.

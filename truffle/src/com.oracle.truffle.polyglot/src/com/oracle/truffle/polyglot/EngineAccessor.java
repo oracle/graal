@@ -90,6 +90,7 @@ import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
@@ -719,15 +720,54 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object enterInternalContext(Object polyglotLanguageContext) {
+        public Object enterInternalContext(Node node, Object polyglotLanguageContext) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotLanguageContext);
-            return context.engine.enter(context);
+            PolyglotEngineImpl engine = resolveEngine(node, context);
+            if (CompilerDirectives.isPartialEvaluationConstant(engine)) {
+                return engine.enter(context);
+            } else {
+                return enterInternalContextBoundary(context, engine);
+            }
+        }
+
+        @TruffleBoundary
+        private static Object enterInternalContextBoundary(PolyglotContextImpl context, PolyglotEngineImpl engine) {
+            return engine.enter(context);
         }
 
         @Override
-        public void leaveInternalContext(Object impl, Object prev) {
+        public void leaveInternalContext(Node node, Object impl, Object prev) {
+            CompilerAsserts.partialEvaluationConstant(node);
             PolyglotContextImpl context = ((PolyglotContextImpl) impl);
-            context.engine.leave(prev, context);
+            PolyglotEngineImpl engine = resolveEngine(node, context);
+            if (CompilerDirectives.isPartialEvaluationConstant(engine)) {
+                engine.leave(prev, context);
+            } else {
+                leaveInternalContextBoundary(prev, context, engine);
+            }
+        }
+
+        @TruffleBoundary
+        private static void leaveInternalContextBoundary(Object prev, PolyglotContextImpl context, PolyglotEngineImpl engine) {
+            engine.leave(prev, context);
+        }
+
+        private static PolyglotEngineImpl resolveEngine(Node node, PolyglotContextImpl context) {
+            PolyglotEngineImpl engine;
+            if (node != null) {
+                RootNode root = node.getRootNode();
+                if (root == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw new IllegalStateException("Passed node is not yet adopted. Adopt it first.");
+                }
+                CompilerAsserts.partialEvaluationConstant(root);
+                engine = (PolyglotEngineImpl) EngineAccessor.NODES.getPolyglotEngine(root);
+                CompilerAsserts.partialEvaluationConstant(engine);
+                assert engine != null : "root node engine must not be null";
+            } else {
+                engine = context.engine;
+            }
+            return engine;
         }
 
         @Override

@@ -1089,7 +1089,7 @@ public abstract class TruffleLanguage<C> {
      * @deprecated implement {@link com.oracle.truffle.api.interop.NodeLibrary} instead.
      */
     @Deprecated
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "deprecation"})
     protected Iterable<Scope> findLocalScopes(C context, Node node, Frame frame) {
         assert node != null;
         return LanguageAccessor.engineAccess().createDefaultLexicalScope(node, frame, (Class<? extends TruffleLanguage<?>>) getClass());
@@ -1139,9 +1139,10 @@ public abstract class TruffleLanguage<C> {
      *
      * @param context the current context of the language
      * @return an iterable with scopes in their nesting order from the inner-most to the outer-most.
-     * @since 0.30
+     * @since 0.30engine.enter(context)
      * @deprecated implement {@link #getScope(Object)} instead.
      */
+    @SuppressWarnings("deprecation")
     @Deprecated
     protected Iterable<Scope> findTopScopes(C context) {
         Object global = getLanguageGlobal(context);

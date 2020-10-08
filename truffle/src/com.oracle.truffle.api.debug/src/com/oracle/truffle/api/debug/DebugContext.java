@@ -73,7 +73,7 @@ public final class DebugContext {
      */
     public DebugValue evaluate(String code, String languageId) {
         assert code != null;
-        Object prevContext = context.enter();
+        Object prevContext = context.enter(null);
         try {
             Debugger debugger = executionLifecycle.getDebugger();
             CallTarget target = debugger.getEnv().parse(Source.newBuilder(languageId, code, "eval").build());
@@ -83,7 +83,7 @@ public final class DebugContext {
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         } finally {
-            context.leave(prevContext);
+            context.leave(null, prevContext);
         }
     }
 
@@ -98,12 +98,12 @@ public final class DebugContext {
      */
     public <T> T runInContext(Supplier<T> run) {
         assert run != null;
-        Object prevContext = context.enter();
+        Object prevContext = context.enter(null);
         try {
             T ret = run.get();
             return ret;
         } finally {
-            context.leave(prevContext);
+            context.leave(null, prevContext);
         }
     }
 

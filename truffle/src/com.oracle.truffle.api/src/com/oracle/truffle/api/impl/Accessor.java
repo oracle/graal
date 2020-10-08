@@ -304,9 +304,9 @@ public abstract class Accessor {
 
         public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config);
 
-        public abstract Object enterInternalContext(Object polyglotContext);
+        public abstract Object enterInternalContext(Node node, Object polyglotContext);
 
-        public abstract void leaveInternalContext(Object polyglotContext, Object prev);
+        public abstract void leaveInternalContext(Node node, Object polyglotContext, Object prev);
 
         public abstract void closeContext(Object polyglotContext, boolean force, Node closeLocation, boolean resourceExhaused, String resourceExhausedReason);
 

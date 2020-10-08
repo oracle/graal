@@ -1463,7 +1463,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             Object returnValue = Null.INSTANCE;
             TruffleContext inner = createInnerContext();
-            Object prev = inner.enter();
+            Object prev = inner.enter(this);
             try {
                 for (BaseNode child : children) {
                     if (child != null) {
@@ -1471,7 +1471,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     }
                 }
             } finally {
-                inner.leave(prev);
+                inner.leave(this, prev);
                 inner.close();
             }
             return returnValue;
