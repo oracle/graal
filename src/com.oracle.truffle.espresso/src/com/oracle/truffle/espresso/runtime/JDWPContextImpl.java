@@ -654,7 +654,7 @@ public final class JDWPContextImpl implements JDWPContext {
             // refresh subclasses when needed
             Collections.sort(refreshSubClasses, new SubClassHierarchyComparator());
             for (ObjectKlass subKlass : refreshSubClasses) {
-                JDWPLogger.log("Updating sub class %s for redefined super class", JDWPLogger.LogLevel.REDEFINE, subKlass.getNameAsString());
+                JDWPLogger.log("Updating sub class %s for redefined super class", JDWPLogger.LogLevel.REDEFINE, subKlass.getName());
                 subKlass.onSuperKlassUpdate();
             }
         } finally {

@@ -1075,7 +1075,7 @@ public final class ObjectKlass extends Klass {
             // find the old real method
             Method method = findMethod(changedMethod, oldVersion.declaredMethods);
             method.redefine(changedMethod, packet.parserKlass, ids);
-            JDWPLogger.log("Redefining method %s.%s", JDWPLogger.LogLevel.REDEFINE, method.getDeclaringKlass().getNameAsString(), method.getNameAsString());
+            JDWPLogger.log("Redefining method %s.%s", JDWPLogger.LogLevel.REDEFINE, method.getDeclaringKlass().getName(), method.getName());
         }
 
         if (change.getAddedAndRemovedMethods().size() > 0) {
@@ -1091,7 +1091,7 @@ public final class ObjectKlass extends Klass {
                     it.remove();
                     oldDeclaredMethod.removedByRedefinition();
                     oldDeclaredMethod.getMethodVersion().getAssumption().invalidate();
-                    JDWPLogger.log("Removed method %s.%s", JDWPLogger.LogLevel.REDEFINE, oldDeclaredMethod.getDeclaringKlass().getNameAsString(), oldDeclaredMethod.getNameAsString());
+                    JDWPLogger.log("Removed method %s.%s", JDWPLogger.LogLevel.REDEFINE, oldDeclaredMethod.getDeclaringKlass().getName(), oldDeclaredMethod.getName());
                 }
             }
 
@@ -1099,7 +1099,7 @@ public final class ObjectKlass extends Klass {
             for (ParserMethod addedMethod : addedMethods) {
                 LinkedMethod linkedMethod = new LinkedMethod(addedMethod);
                 Method added = new Method(this, linkedMethod, pool);
-                JDWPLogger.log("Added method %s.%s", JDWPLogger.LogLevel.REDEFINE, added.getDeclaringKlass().getNameAsString(), added.getNameAsString());
+                JDWPLogger.log("Added method %s.%s", JDWPLogger.LogLevel.REDEFINE, added.getDeclaringKlass().getName(), added.getName());
                 declaredMethods.addLast(added);
             }
 
