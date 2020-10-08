@@ -192,7 +192,6 @@ final class DITypeExtractor implements MetadataVisitor {
 
             case DW_TAG_CLASS_TYPE: {
                 String name = MDNameExtractor.getName(mdType.getName());
-                name = String.format("class %s", name);
 
                 final LLVMSourceClassLikeType type = new LLVMSourceClassLikeType(name, size, align, offset, location);
                 parsedTypes.put(mdType, type);
