@@ -348,6 +348,12 @@ public final class GraphBuilder {
             mark(afterEnd, BLOCK_START);
         }
 
+        // Temporary fix here:
+        // Split handlers block if some of their bytecodes can throw. Such bytecodes will be
+        // considered a block of their own, so that the exception handler is not seen as a
+        // successor to blocks that cannot throw.
+        //
+        // Ideally, we should handle exception handlers separately from the actual successors.
         int bci = handler.getStartBCI();
         int nextBCI;
         while (bci <= handler.getEndBCI()) {

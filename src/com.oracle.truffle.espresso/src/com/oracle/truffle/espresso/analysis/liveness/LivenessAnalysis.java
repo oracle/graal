@@ -57,10 +57,18 @@ public class LivenessAnalysis {
 
     public static LivenessAnalysis analyze(Method method) {
         Graph<? extends LinkedBlock> graph = GraphBuilder.build(method);
+
+        // Transform the graph into a more manageable graph consisting of only the history of
+        // load/stores.
         LoadStoreFinder loadStoreClosure = new LoadStoreFinder(graph);
         BlockIterator.analyze(method, graph, loadStoreClosure);
+
+        // Computes the entry/end live sets for each variable for each block.
         BlockBoundaryFinder blockBoundaryFinder = new BlockBoundaryFinder(method, loadStoreClosure.result());
         DepthFirstBlockIterator.analyze(method, graph, blockBoundaryFinder);
+
+        // Using the live sets and history, build a set of action for each bci, such that it frees
+        // as early as possible each dead local.
         return new LivenessAnalysis(blockBoundaryFinder.result(), graph, method);
     }
 
@@ -85,8 +93,22 @@ public class LivenessAnalysis {
 
     private static void processBlock(BCILocalActionRecord[] actions, BlockBoundaryResult helper, int blockID, Graph<? extends LinkedBlock> graph, Method m) {
         LinkedBlock current = graph.get(blockID);
+
+        // merge the state from all predecessors
+        BitSet mergedEntryState = mergePredecessors(helper, graph, m, current);
+
+        // Locals inherited from merging predecessors, but are not needed down the line can be
+        // killed on block entry.
+        killLocalsOnBlockEntry(actions, helper, blockID, m, current, mergedEntryState);
+
+        // Replay history in reverse to seek the last load for each variable.
+        replayHistory(actions, helper, blockID);
+    }
+
+    private static BitSet mergePredecessors(BlockBoundaryResult helper, Graph<? extends LinkedBlock> graph, Method m, LinkedBlock current) {
         BitSet mergedEntryState = new BitSet(m.getMaxLocals());
         if (current == graph.entryBlock()) {
+            // The entry block has the arguments as live variables.
             for (int i = 0; i < m.getParameterCount() + (m.isStatic() ? 0 : 1); i++) {
                 mergedEntryState.set(i);
             }
@@ -100,7 +122,10 @@ public class LivenessAnalysis {
                 }
             }
         }
+        return mergedEntryState;
+    }
 
+    private static void killLocalsOnBlockEntry(BCILocalActionRecord[] actions, BlockBoundaryResult helper, int blockID, Method m, LinkedBlock current, BitSet mergedEntryState) {
         ArrayList<LocalVariableAction> startActions = new ArrayList<>();
         BitSet entryState = helper.entryFor(blockID);
         for (int i = 0; i < m.getMaxLocals(); i++) {
@@ -117,7 +142,9 @@ public class LivenessAnalysis {
             }
             recordAction(actions, current.start(), startAction, true);
         }
+    }
 
+    private static void replayHistory(BCILocalActionRecord[] actions, BlockBoundaryResult helper, int blockID) {
         BitSet endState = (BitSet) helper.endFor(blockID).clone();
         for (Record r : helper.historyFor(blockID).reverse()) {
             switch (r.type) {
@@ -131,9 +158,10 @@ public class LivenessAnalysis {
                     break;
                 case STORE:
                     if (!endState.get(r.local)) {
-                        // last load for this value
+                        // Store is not used: can be killed immediately.
                         recordAction(actions, r.bci, new NullOutAction(r.local), false);
                     }
+                    // Store for this variable kills the local between here and the previous usage
                     endState.clear(r.local);
                     break;
             }

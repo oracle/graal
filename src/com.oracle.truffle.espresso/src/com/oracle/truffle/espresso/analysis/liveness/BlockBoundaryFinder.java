@@ -64,8 +64,12 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
     @Override
     public BlockIterator.BlockProcessResult processBlock(LinkedBlock b, BytecodeStream bs, AnalysisProcessor processor) {
         if (b.isLeaf() || successorsAreDoneOrLoops(processor, b)) {
+            // If a successor goes back to a block in process, it is a loop. Register this block as
+            // a loop end
             identifyLoops(b, processor);
-            getEntryLiveSet(b.id(), processor); // Compute live sets.
+            // Compute live sets.
+            getEntryLiveSet(b.id(), processor);
+            // Propagate loop information through loop ends
             propagateLoop(b, processor);
             return BlockIterator.BlockProcessResult.DONE;
         }
@@ -248,7 +252,7 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
     }
 
     private BitSet mergeSuccessors(BitSet[] lives) {
-        // TODO: use BitSet.or
+        // TODO: use BitSet.or ?
         BitSet merges = new BitSet(maxLocals);
         for (BitSet live : lives) {
             for (int i = 0; i < maxLocals; i++) {
