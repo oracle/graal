@@ -73,11 +73,7 @@ public class LivenessAnalysis {
     }
 
     private LivenessAnalysis(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
-        if (method.getDeclaringKlass().getRuntimePackage().toString().startsWith("java")) {
-            this.result = new BCILocalActionRecord[method.getCode().length];
-        } else {
-            this.result = buildResultFrom(result, graph, method);
-        }
+        this.result = buildResultFrom(result, graph, method);
     }
 
     private static BCILocalActionRecord[] buildResultFrom(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
