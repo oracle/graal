@@ -65,6 +65,7 @@ public class LivenessAnalysis {
     }
 
     private LivenessAnalysis(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
+        // this.result = new BCILocalActionRecord[method.getCode().length];
         this.result = buildResultFrom(result, graph, method);
     }
 

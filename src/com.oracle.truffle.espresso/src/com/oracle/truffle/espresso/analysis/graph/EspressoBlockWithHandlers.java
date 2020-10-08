@@ -28,7 +28,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 public class EspressoBlockWithHandlers extends EspressoBlock implements ExceptionEdgeBlock<EspressoException> {
 
     // Contains the handlers index in method.getExceptionHandlers.
-    private int[] handlers;
+    private final int[] handlers;
 
     public EspressoBlockWithHandlers(EspressoExecutionGraph graph, int id, int start, int end, int[] successors, int[] handlers, int[] predecessors) {
         super(graph, id, start, end, successors, predecessors);

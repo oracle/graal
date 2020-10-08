@@ -56,6 +56,7 @@ public final class GraphBuilder {
     private static final long IS_CONTROL_SINK = 1L << 58;
     private static final long IS_JSR = 1L << 57;
     private static final long IS_RET = 1L << 56;
+    private static final long TRAPS = 1L << 55;
 
     private static final int BLOCK_ID_SHIFT = 16;
     private static final long BLOCK_ID_MASK = 0xFFFFL << BLOCK_ID_SHIFT;
@@ -114,6 +115,9 @@ public final class GraphBuilder {
             if (Bytecodes.isBlockEnd(curOpcode)) {
                 markBlock(bci, curOpcode);
             }
+            if (Bytecodes.canTrap(curOpcode)) {
+                mark(bci, TRAPS);
+            }
             bci = bs.nextBCI(bci);
         }
         for (ExceptionHandler handler : handlers) {
@@ -146,18 +150,23 @@ public final class GraphBuilder {
         int start = 0;
         int[] successors = null;
         boolean isRet = false;
+        boolean traps = false;
         for (int bci = 0; bci < status.length; bci++) {
             if (bci != 0 && isStatus(bci, BLOCK_START)) {
                 assert temp[id] == null;
                 assert id == readBlockID(start);
-                temp[id] = createTempBlock(id, start, successors, isRet, bci);
+                temp[id] = createTempBlock(id, start, successors, isRet, bci, traps);
                 start = bci;
                 id++;
                 successors = null;
                 isRet = false;
+                traps = false;
             }
             if (isStatus(bci, IS_RET)) {
                 isRet = true;
+            }
+            if (isStatus(bci, TRAPS)) {
+                traps = true;
             }
             if (isStatus(bci, HAS_TARGET)) {
                 assert successors == null;
@@ -168,7 +177,7 @@ public final class GraphBuilder {
                 successors = EMPTY_SUCCESSORS;
             }
         }
-        temp[id] = createTempBlock(id, start, successors, isRet, status.length);
+        temp[id] = createTempBlock(id, start, successors, isRet, status.length, traps);
 
         temporaryBlocks = temp;
         int[] handlerBlocks = new int[handlers.length];
@@ -179,8 +188,8 @@ public final class GraphBuilder {
         handlerToBlock = handlerBlocks;
     }
 
-    private TemporaryBlock createTempBlock(int id, int start, int[] successors, boolean isRet, int bci) {
-        return new TemporaryBlock(id, start, bci - 1, successors, isRet);
+    private TemporaryBlock createTempBlock(int id, int start, int[] successors, boolean isRet, int bci, boolean traps) {
+        return new TemporaryBlock(id, start, bci - 1, successors, isRet, traps);
     }
 
     /**
@@ -338,6 +347,20 @@ public final class GraphBuilder {
         if (afterEnd < bs.endBCI()) {
             mark(afterEnd, BLOCK_START);
         }
+
+        int bci = handler.getStartBCI();
+        int nextBCI;
+        while (bci <= handler.getEndBCI()) {
+            nextBCI = bs.nextBCI(bci);
+            if (Bytecodes.canTrap(bs.currentBC(bci))) {
+                mark(bci, BLOCK_START);
+                if (nextBCI < bs.endBCI()) {
+                    mark(nextBCI, BLOCK_START);
+                }
+            }
+            bci = nextBCI;
+        }
+
         mark(handler.getHandlerBCI(), BLOCK_START);
     }
 
@@ -406,6 +429,8 @@ public final class GraphBuilder {
         private final int[] successors;
         private final boolean isRet;
 
+        private final boolean traps;
+
         // Additional successors
         private final ArrayList<Integer> handlers = new ArrayList<>();
         private final ArrayList<Integer> handlerBlocks = new ArrayList<>();
@@ -415,7 +440,7 @@ public final class GraphBuilder {
 
         private int[] fullyLinkedSuccessors = null;
 
-        TemporaryBlock(int id, int start, int end, int[] successors, boolean isRet) {
+        TemporaryBlock(int id, int start, int end, int[] successors, boolean isRet, boolean traps) {
             this.id = id;
             this.start = start;
             this.end = end;
@@ -425,6 +450,7 @@ public final class GraphBuilder {
                 this.successors = new int[]{id + 1};
             }
             this.isRet = isRet;
+            this.traps = traps;
         }
 
         @Override
@@ -443,8 +469,10 @@ public final class GraphBuilder {
         }
 
         void registerHandler(int handlerPos, GraphBuilder builder) {
-            handlers.add(handlerPos);
-            handlerBlocks.add(builder.handlerToBlock[handlerPos]);
+            if (traps) {
+                handlers.add(handlerPos);
+                handlerBlocks.add(builder.handlerToBlock[handlerPos]);
+            }
         }
 
         void registerPredecessor(int predecessor) {
