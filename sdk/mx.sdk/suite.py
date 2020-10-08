@@ -455,15 +455,7 @@ suite = {
           "extracted-dependency:LLVM_ORG_COMPILER_RT_LINUX",
           "file:3rd_party_license_llvm-toolchain.txt",
         ],
-        "./patches/" : [
-          "file:patches/*",
-        ],
-        "./patches/graalvm-llvm-runtime/" : [
-          "file:../sulong/patches/*",
-        ],
-        "./patches/native-image/" : [
-          "file:../substratevm/patches/*"
-        ],
+        "./patches/" : "file:llvm-patches",
       },
       "platformDependent" : True,
       "maven": False,
