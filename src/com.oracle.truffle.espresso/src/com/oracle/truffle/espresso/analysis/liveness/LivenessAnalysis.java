@@ -73,8 +73,11 @@ public class LivenessAnalysis {
     }
 
     private LivenessAnalysis(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
-        // this.result = new BCILocalActionRecord[method.getCode().length];
-        this.result = buildResultFrom(result, graph, method);
+        if (method.getDeclaringKlass().getRuntimePackage().toString().startsWith("java")) {
+            this.result = new BCILocalActionRecord[method.getCode().length];
+        } else {
+            this.result = buildResultFrom(result, graph, method);
+        }
     }
 
     private static BCILocalActionRecord[] buildResultFrom(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
@@ -145,7 +148,12 @@ public class LivenessAnalysis {
     }
 
     private static void replayHistory(BCILocalActionRecord[] actions, BlockBoundaryResult helper, int blockID) {
-        BitSet endState = (BitSet) helper.endFor(blockID).clone();
+        BitSet endState = helper.endFor(blockID);
+        if (endState == null) {
+            // unreachable
+            return;
+        }
+        endState = (BitSet) endState.clone();
         for (Record r : helper.historyFor(blockID).reverse()) {
             switch (r.type) {
                 case LOAD: // Fallthrough
