@@ -1411,6 +1411,7 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.stackrestore":
                     return LLVMStackRestoreNodeGen.create(args[1]);
                 case "llvm.frameaddress":
+                case "llvm.frameaddress.p0i8":
                     return LLVMFrameAddressNodeGen.create(args[1]);
                 case "llvm.va_start":
                     return LLVMVAStartNodeGen.create(callerArgumentCount, args[1]);
