@@ -69,7 +69,7 @@ public abstract class InstanceOfNode extends QuickNode {
     public final int execute(final VirtualFrame frame) {
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
         BytecodeNode root = getBytecodesNode();
-        StaticObject receiver = root.peekObject(frame, top - 1);
+        StaticObject receiver = root.popObject(frame, top - 1);
         boolean result = StaticObject.notNull(receiver) && executeInstanceOf(receiver.getKlass());
         root.putKind(frame, top - 1, result, JavaKind.Boolean);
         return 0; // stack effect -> pop receiver, push boolean

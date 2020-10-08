@@ -48,8 +48,8 @@ public abstract class ReferenceArrayStoreNode extends QuickNode {
     public final int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
         StaticObject array = nullCheck(root.popObject(frame, top - 3));
-        int index = root.peekInt(frame, top - 2);
-        StaticObject value = root.peekObject(frame, top - 1);
+        int index = root.popInt(frame, top - 2);
+        StaticObject value = root.popObject(frame, top - 1);
         executeStore(array, index, value);
         return Bytecodes.stackEffectOf(Bytecodes.AASTORE);
     }

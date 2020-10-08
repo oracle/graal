@@ -93,11 +93,8 @@ public abstract class InvokeVirtualNode extends QuickNode {
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
         BytecodeNode root = getBytecodesNode();
         // TODO(peterssen): IsNull Node?.
-        StaticObject receiver = root.peekReceiver(frame, top, resolutionSeed);
-        nullCheck(receiver);
         Object[] args = root.peekAndReleaseArguments(frame, top, true, resolutionSeed.getParsedSignature());
-        assert receiver != null;
-        assert receiver == args[0] : "receiver must be the first argument";
+        StaticObject receiver = nullCheck((StaticObject) args[0]);
         Object result = executeVirtual(receiver, args);
         return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, resolutionSeed.getReturnKind());
     }

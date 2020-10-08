@@ -91,10 +91,8 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
         BytecodeNode root = getBytecodesNode();
         // TODO(peterssen): IsNull Node?.
-        final StaticObject receiver = nullCheck(root.peekReceiver(frame, top, resolutionSeed));
-        assert receiver != null;
         final Object[] args = root.peekAndReleaseArguments(frame, top, true, resolutionSeed.getParsedSignature());
-        assert receiver == args[0] : "receiver must be the first argument";
+        final StaticObject receiver = nullCheck((StaticObject) args[0]);
         Object result = executeInterface(receiver, args);
         return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, Signatures.returnKind(resolutionSeed.getParsedSignature()));
     }

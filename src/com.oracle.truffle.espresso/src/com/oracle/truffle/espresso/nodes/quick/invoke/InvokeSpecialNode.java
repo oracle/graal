@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class InvokeSpecialNode extends QuickNode {
     @CompilationFinal protected MethodVersion method;
@@ -53,9 +54,8 @@ public final class InvokeSpecialNode extends QuickNode {
             adoptChildren();
         }
         // TODO(peterssen): IsNull Node?
-        Object receiver = nullCheck(root.peekReceiver(frame, top, method.getMethod()));
         Object[] args = root.peekAndReleaseArguments(frame, top, true, method.getMethod().getParsedSignature());
-        assert receiver == args[0] : "receiver must be the first argument";
+        nullCheck((StaticObject) args[0]); // nullcheck receiver
         Object result = directCallNode.call(args);
         return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, method.getMethod().getReturnKind());
     }

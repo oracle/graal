@@ -48,8 +48,8 @@ public abstract class IntArrayStoreNode extends QuickNode {
     public final int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
         StaticObject array = nullCheck(root.popObject(frame, top - 3));
-        int index = root.peekInt(frame, top - 2);
-        int value = root.peekInt(frame, top - 1);
+        int index = root.popInt(frame, top - 2);
+        int value = root.popInt(frame, top - 1);
         executeStore(array, index, value);
         return Bytecodes.stackEffectOf(Bytecodes.IASTORE);
     }
