@@ -48,9 +48,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @SuppressWarnings("serial")
 @ExportLibrary(InteropLibrary.class)
-public class RegexInterruptedException extends AbstractTruffleException {
+public final class RegexInterruptedException extends AbstractTruffleException {
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     ExceptionType getExceptionType() {
         return ExceptionType.INTERRUPT;
     }

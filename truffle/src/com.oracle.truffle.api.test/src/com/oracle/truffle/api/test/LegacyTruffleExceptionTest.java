@@ -79,7 +79,24 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
                     LangObject exceptionObject = new LangObject(exception);
                     exception.setExceptionObject(exceptionObject);
                     return exceptionObject;
-                });
+                }, false);
+            }
+        });
+        verifyingHandler.expect(BlockNode.Kind.TRY, BlockNode.Kind.CATCH, BlockNode.Kind.FINALLY);
+        context.eval(ProxyLanguage.ID, "Test");
+    }
+
+    @Test
+    public void testLegacyExceptionCustomGuestObject() {
+        setupEnv(createContext(verifyingHandler), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                return createAST(LegacyTruffleExceptionTest.class, languageInstance, (n) -> {
+                    LegacyCatchableException exception = new LegacyCatchableException("Test exception", n);
+                    LangObject exceptionObject = new LangObject(exception);
+                    exception.setExceptionObject(exceptionObject);
+                    return exceptionObject;
+                }, true);
             }
         });
         verifyingHandler.expect(BlockNode.Kind.TRY, BlockNode.Kind.CATCH, BlockNode.Kind.FINALLY);
@@ -96,7 +113,7 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
                     LangObject exceptionObject = new LangObject(exception);
                     exception.setExceptionObject(exceptionObject);
                     return exceptionObject;
-                });
+                }, false);
             }
         });
         verifyingHandler.expect(BlockNode.Kind.TRY);

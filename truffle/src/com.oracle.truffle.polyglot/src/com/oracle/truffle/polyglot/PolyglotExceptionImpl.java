@@ -128,7 +128,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             try {
                 ExceptionType exceptionType = interop.getExceptionType(exception);
                 this.internal = false;
-                this.cancelled = isCancelled(exception);    // Handle legacy TruffleException
+                this.cancelled = isLegacyTruffleExceptionCancelled(exception);    // Handle legacy
+                                                                                  // TruffleException
                 this.syntaxError = exceptionType == ExceptionType.PARSE_ERROR;
                 this.exit = exceptionType == ExceptionType.EXIT;
                 this.exitStatus = this.exit ? interop.getExceptionExitStatus(exception) : 0;
@@ -158,16 +159,17 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 throw CompilerDirectives.shouldNotReachHere(ume);
             }
         } else {
-            this.cancelled = isCancelled(exception);
+            this.cancelled = (exception instanceof CancelExecution) || isLegacyTruffleExceptionCancelled(exception);
             this.internal = !cancelled && !resourceExhausted;
             this.syntaxError = false;
             this.incompleteSource = false;
-            this.exit = isExit(exception);
-            this.exitStatus = exit ? getExitStatus(exception) : 0;
-            this.interrupted = isInterrupted(exception);
-            com.oracle.truffle.api.source.SourceSection locaction = getSourceLocation(exception);
-            this.sourceLocation = locaction != null ? newSourceSection(locaction) : null;
-            this.guestObject = getGuestObject(languageContext, exception);
+            this.exit = isLegacyTruffleExceptionExit(exception);
+            this.exitStatus = exit ? getLegacyTruffleExceptionExitStatus(exception) : 0;
+            this.interrupted = false;
+            com.oracle.truffle.api.source.SourceSection location = exception instanceof CancelExecution ? ((CancelExecution) exception).getSourceLocation()
+                            : getLegacyTruffleExceptionSourceLocation(exception);
+            this.sourceLocation = location != null ? newSourceSection(location) : null;
+            this.guestObject = getLegacyTruffleExceptionGuestObject(languageContext, exception);
         }
         if (isHostException()) {
             this.message = asHostException().getMessage();
@@ -198,10 +200,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     }
 
     @SuppressWarnings("deprecation")
-    private static boolean isCancelled(Throwable e) {
-        if (e instanceof CancelExecution) {
-            return true;
-        }
+    private static boolean isLegacyTruffleExceptionCancelled(Throwable e) {
         // Legacy TruffleException
         if (e instanceof com.oracle.truffle.api.TruffleException) {
             return ((com.oracle.truffle.api.TruffleException) e).isCancelled();
@@ -210,17 +209,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     }
 
     @SuppressWarnings("deprecation")
-    private static boolean isInterrupted(Throwable e) {
-        // Legacy TruffleException
-        if (e instanceof com.oracle.truffle.api.TruffleException) {
-            return ((com.oracle.truffle.api.TruffleException) e).isInterrupted();
-        }
-        return false;
-    }
-
-    @SuppressWarnings("deprecation")
-    private static boolean isExit(Throwable e) {
-        // TODO: Add check of an exception from the coordinated exit here
+    private static boolean isLegacyTruffleExceptionExit(Throwable e) {
         // Legacy TruffleException
         if (e instanceof com.oracle.truffle.api.TruffleException) {
             return ((com.oracle.truffle.api.TruffleException) e).isExit();
@@ -229,8 +218,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     }
 
     @SuppressWarnings("deprecation")
-    private static int getExitStatus(Throwable e) {
-        // TODO: Add exit status from the coordinated exit here
+    private static int getLegacyTruffleExceptionExitStatus(Throwable e) {
         // Legacy TruffleException
         if (e instanceof com.oracle.truffle.api.TruffleException) {
             return ((com.oracle.truffle.api.TruffleException) e).getExitStatus();
@@ -239,10 +227,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     }
 
     @SuppressWarnings("deprecation")
-    private static com.oracle.truffle.api.source.SourceSection getSourceLocation(Throwable e) {
-        if (e instanceof CancelExecution) {
-            return ((CancelExecution) e).getSourceLocation();
-        }
+    private static com.oracle.truffle.api.source.SourceSection getLegacyTruffleExceptionSourceLocation(Throwable e) {
         // Legacy TruffleException
         if (e instanceof com.oracle.truffle.api.TruffleException) {
             return ((com.oracle.truffle.api.TruffleException) e).getSourceLocation();
@@ -251,7 +236,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     }
 
     @SuppressWarnings("deprecation")
-    private static Value getGuestObject(PolyglotLanguageContext languageContext, Throwable e) {
+    private static Value getLegacyTruffleExceptionGuestObject(PolyglotLanguageContext languageContext, Throwable e) {
         // Legacy TruffleException
         if (e instanceof com.oracle.truffle.api.TruffleException) {
             Object exceptionObject = ((com.oracle.truffle.api.TruffleException) e).getExceptionObject();

@@ -47,7 +47,7 @@ import com.oracle.truffle.api.source.SourceSection;
 /**
  * Represents an exception thrown during the execution of a guest language program. All exceptions
  * thrown in a guest language implementation that are not implementing {@link TruffleException} are
- * considered {@link #isInternalError() internal} errors.
+ * considered internal errors.
  * <p>
  * {@link TruffleException} is most efficient if the {@link Throwable#getCause() cause} is left
  * uninitialized. Implementations of {@link TruffleException} also should not prevent initialization
@@ -67,7 +67,8 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * @since 0.27
  * @see TruffleStackTrace TruffleStackTrace to access the stack trace of an exception.
- * @deprecated Use {@code com.oracle.truffle.api.exception.AbstractTruffleException}.
+ * @deprecated Use {@link com.oracle.truffle.api.exception.AbstractTruffleException} as a base class
+ *             for Truffle exceptions.
  */
 @Deprecated
 public interface TruffleException {
@@ -77,7 +78,11 @@ public interface TruffleException {
      * may return <code>null</code> to indicate that the location is not available.
      *
      * @since 0.27
+     * @deprecated Pass the location into the
+     *             {@link com.oracle.truffle.api.exception.AbstractTruffleException#AbstractTruffleException(Node location)
+     *             AbstractTruffleException constructor}.
      */
+    @Deprecated
     Node getLocation();
 
     /**
@@ -86,7 +91,14 @@ public interface TruffleException {
      * returns <code>null</code> to indicate that no object is available for this exception.
      *
      * @since 0.27
+     * @deprecated The {@link com.oracle.truffle.api.exception.AbstractTruffleException} is itself
+     *             an interop object. When a delegation to an existing interop object is needed use
+     *             the {@code @ExportLibrary(delegateTo=...)} to forward interop messages to a guest
+     *             object stored inside of the exception. In case of delegation the default export
+     *             for the {@link com.oracle.truffle.api.exception.AbstractTruffleException} is not
+     *             used and all the interop exception messages have to be implemented.
      */
+    @Deprecated
     default Object getExceptionObject() {
         return null;
     }
@@ -98,7 +110,13 @@ public interface TruffleException {
      * of guest language source code.
      *
      * @since 0.27
+     * @deprecated Return {@link com.oracle.truffle.api.interop.ExceptionType#PARSE_ERROR} in the
+     *             {@link {@link com.oracle.truffle.api.interop.interop.InteropLibrary#getExceptionType(Object)}
+     *             message implementation. See
+     *             {@link com.oracle.truffle.api.exception.AbstractTruffleException} for a sample
+     *             implementation of a syntax error.
      */
+    @Deprecated
     default boolean isSyntaxError() {
         return false;
     }
@@ -117,7 +135,12 @@ public interface TruffleException {
      * returns <code>true</code>.
      *
      * @since 0.27
+     * @deprecated Implement the
+     *             {@link com.oracle.truffle.api.interop.interop.InteropLibrary#isExceptionIncompleteSource(Object)}
+     *             message. See {@link com.oracle.truffle.api.exception.AbstractTruffleException}
+     *             for a sample implementation of a syntax error.
      */
+    @Deprecated
     default boolean isIncompleteSource() {
         return false;
     }
@@ -128,7 +151,9 @@ public interface TruffleException {
      * {@link TruffleException} are considered internal.
      *
      * @since 0.27
+     * @deprecated The internal errors are no more {@link TruffleException}s.
      */
+    @Deprecated
     default boolean isInternalError() {
         return false;
     }
@@ -139,42 +164,45 @@ public interface TruffleException {
      * not catch this exception, they must just rethrow it.
      *
      * @since 0.27
+     * @deprecated Use {@link TruffleContext#closeCancelled(Node, String)} for a correct context
+     *             cancellation.
      */
+    @Deprecated
     default boolean isCancelled() {
         return false;
     }
 
     /**
      * Returns <code>true</code> if the exception indicates that the application was exited within
-     * the guest language program. If {@link #isExit()} returns <code>true</code> also
-     * {@link #getExitStatus()} should be implemented.
+     * the guest language program. If {@code isExit()} returns <code>true</code> also
+     * {@code getExitStatus()} should be implemented.
      *
      * @see #getExitStatus()
      * @since 0.27
+     * @deprecated Return {@link com.oracle.truffle.api.interop.ExceptionType#EXIT} in the
+     *             {@link {@link com.oracle.truffle.api.interop.interop.InteropLibrary#getExceptionType(Object)}
+     *             message implementation. See
+     *             {@link com.oracle.truffle.api.exception.AbstractTruffleException} for a sample
+     *             implementation of an exit exception.
      */
+    @Deprecated
     default boolean isExit() {
         return false;
     }
 
     /**
-     * Returns the exit status if this exception indicates that the application was {@link #isExit()
-     * exited}. The exit status is intended to be passed to {@link System#exit(int)}.
+     * Returns the exit status if this exception indicates that the application was exited. The exit
+     * status is intended to be passed to {@link System#exit(int)}.
      *
-     * @see #isExit()
      * @since 0.27
+     * @deprecated Implement the
+     *             {@link com.oracle.truffle.api.interop.interop.InteropLibrary#getExceptionExitStatus(Object)}
+     *             message. See {@link com.oracle.truffle.api.exception.AbstractTruffleException}
+     *             for a sample implementation of an exit exception.
      */
+    @Deprecated
     default int getExitStatus() {
         return 0;
-    }
-
-    /**
-     * Returns <code>true</code> if the application thread was interrupted by an
-     * {@link InterruptedException}.
-     *
-     * @since 20.3.0
-     */
-    default boolean isInterrupted() {
-        return false;
     }
 
     /**
@@ -186,7 +214,11 @@ public interface TruffleException {
      * trace limit is computed.
      *
      * @since 0.27
+     * @deprecated Pass the limit into the
+     *             {@link com.oracle.truffle.api.exception.AbstractTruffleException#AbstractTruffleException(String, Throwable, int, Node)
+     *             AbstractTruffleException constructor}.
      */
+    @Deprecated
     default int getStackTraceElementLimit() {
         return -1;
     }
@@ -197,7 +229,15 @@ public interface TruffleException {
      *
      * @return the {@link SourceSection} or null
      * @since 0.33
+     * @deprecated Pass the location into the
+     *             {@link com.oracle.truffle.api.exception.AbstractTruffleException#AbstractTruffleException(Node location)
+     *             AbstractTruffleException constructor} or implement
+     *             {@link com.oracle.truffle.api.interop.interop.InteropLibrary#hasSourceLocation(Object)}
+     *             and
+     *             {@link com.oracle.truffle.api.interop.interop.InteropLibrary#getSourceLocation(Object)}
+     *             messages.
      */
+    @Deprecated
     default SourceSection getSourceLocation() {
         final Node node = getLocation();
         return node == null ? null : node.getEncapsulatingSourceSection();

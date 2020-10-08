@@ -1086,21 +1086,6 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    boolean hasExceptionSuppressed() {
-        return isException() && EngineAccessor.EXCEPTION.hasExceptionSuppressed(obj);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    Object getExceptionSuppressed() throws UnsupportedMessageException {
-        if (isException()) {
-            return EngineAccessor.EXCEPTION.getExceptionSuppressed(obj);
-        }
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    @TruffleBoundary
     boolean hasExceptionStackTrace() {
         return isException() && TruffleStackTrace.fillIn((Throwable) obj) != null;
     }

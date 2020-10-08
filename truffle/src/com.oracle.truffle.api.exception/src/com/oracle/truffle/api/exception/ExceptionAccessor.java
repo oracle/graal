@@ -56,7 +56,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -127,33 +126,6 @@ final class ExceptionAccessor extends Accessor {
 
         @Override
         @TruffleBoundary
-        public boolean hasExceptionSuppressed(Object receiver) {
-            for (Throwable se : ((Throwable) receiver).getSuppressed()) {
-                if (isTruffleException(se)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        @Override
-        @TruffleBoundary
-        public Object getExceptionSuppressed(Object receiver) {
-            List<Throwable> suppressed = new ArrayList<>();
-            for (Throwable se : ((Throwable) receiver).getSuppressed()) {
-                if (isTruffleException(se)) {
-                    suppressed.add(se);
-                }
-            }
-            if (suppressed.isEmpty()) {
-                throw throwUnsupportedMessageException();
-            } else {
-                return new InteropList(suppressed.toArray(new Throwable[suppressed.size()]));
-            }
-        }
-
-        @Override
-        @TruffleBoundary
         public boolean hasExceptionMessage(Object receiver) {
             return ((AbstractTruffleException) receiver).getMessage() != null;
         }
@@ -202,6 +174,37 @@ final class ExceptionAccessor extends Accessor {
                 throw throwUnsupportedMessageException();
             }
             return sourceSection;
+        }
+
+        @Override
+        public boolean assertGuestObject(Object guestObject) {
+            if (guestObject == null) {
+                throw new AssertionError("Guest object must be null.");
+            }
+            InteropLibrary interop = InteropLibrary.getUncached();
+            if (interop.hasExecutableName(guestObject)) {
+                Object executableName;
+                try {
+                    executableName = interop.getExecutableName(guestObject);
+                } catch (UnsupportedMessageException um) {
+                    throw new AssertionError("Failed to get the executable name.", um);
+                }
+                if (!interop.isString(executableName)) {
+                    throw new AssertionError("Executable name must be an interop string.");
+                }
+            }
+            if (interop.hasDeclaringMetaObject(guestObject)) {
+                Object metaObject;
+                try {
+                    metaObject = interop.getDeclaringMetaObject(guestObject);
+                } catch (UnsupportedMessageException um) {
+                    throw new AssertionError("Failed to get the declaring meta object.", um);
+                }
+                if (!interop.isMetaObject(metaObject)) {
+                    throw new AssertionError("Declaring meta object must be an interop meta object");
+                }
+            }
+            return true;
         }
 
         private static RuntimeException throwUnsupportedMessageException() {

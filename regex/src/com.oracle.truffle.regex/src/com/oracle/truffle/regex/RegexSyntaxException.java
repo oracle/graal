@@ -48,7 +48,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
-public class RegexSyntaxException extends AbstractTruffleException {
+public final class RegexSyntaxException extends AbstractTruffleException {
 
     private static final String template = "Invalid regular expression: /%s/%s: %s";
     private static final String templateNoFlags = "Invalid regular expression: %s: %s";
@@ -92,6 +92,7 @@ public class RegexSyntaxException extends AbstractTruffleException {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     ExceptionType getExceptionType() {
         return ExceptionType.PARSE_ERROR;
     }

@@ -4,16 +4,25 @@
 CLSS public abstract interface com.oracle.truffle.api.TruffleException
  anno 0 java.lang.Deprecated()
 meth public abstract com.oracle.truffle.api.nodes.Node getLocation()
+ anno 0 java.lang.Deprecated()
 meth public boolean isCancelled()
+ anno 0 java.lang.Deprecated()
 meth public boolean isExit()
+ anno 0 java.lang.Deprecated()
 meth public boolean isIncompleteSource()
+ anno 0 java.lang.Deprecated()
 meth public boolean isInternalError()
-meth public boolean isInterrupted()
+ anno 0 java.lang.Deprecated()
 meth public boolean isSyntaxError()
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.source.SourceSection getSourceLocation()
+ anno 0 java.lang.Deprecated()
 meth public int getExitStatus()
+ anno 0 java.lang.Deprecated()
 meth public int getStackTraceElementLimit()
+ anno 0 java.lang.Deprecated()
 meth public java.lang.Object getExceptionObject()
+ anno 0 java.lang.Deprecated()
 
 CLSS public abstract com.oracle.truffle.api.exception.AbstractTruffleException
 cons protected init()
@@ -25,8 +34,6 @@ cons protected init(java.lang.String,java.lang.Throwable,int,com.oracle.truffle.
 fld public final static int UNLIMITED_STACK_TRACE = -1
 intf com.oracle.truffle.api.TruffleException
 intf com.oracle.truffle.api.interop.TruffleObject
-meth public boolean isInterrupted()
- anno 0 java.lang.Deprecated()
 meth public final boolean isCancelled()
  anno 0 java.lang.Deprecated()
 meth public final boolean isExit()

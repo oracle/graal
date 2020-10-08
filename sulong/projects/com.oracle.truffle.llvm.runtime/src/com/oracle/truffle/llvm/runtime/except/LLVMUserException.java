@@ -29,8 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.except;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -58,5 +61,34 @@ public final class LLVMUserException extends LLVMException {
     @Override
     public String getMessage() {
         return "LLVMException:" + unwindHeader.toString();
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isException() {
+        return true;
+    }
+
+    @ExportMessage
+    RuntimeException throwException() {
+        throw this;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    ExceptionType getExceptionType() {
+        return ExceptionType.RUNTIME_ERROR;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasExceptionMessage() {
+        return true;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    String getExceptionMessage() {
+        return getMessage();
     }
 }

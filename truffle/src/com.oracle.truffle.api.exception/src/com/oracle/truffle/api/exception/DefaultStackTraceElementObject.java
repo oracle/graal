@@ -61,9 +61,10 @@ final class DefaultStackTraceElementObject implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     @SuppressWarnings("static-method")
     boolean hasExecutableName() {
-        return true;
+        return rootNode.getName() != null;
     }
 
     @ExportMessage

@@ -603,6 +603,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.truffle.api.test",
         "mx:JUNIT",
         "TRUFFLE_NFI",
         "TRUFFLE_TCK",

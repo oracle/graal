@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.interop;
 
 import static com.oracle.truffle.api.interop.ExceptionType.EXIT;
-import static com.oracle.truffle.api.interop.ExceptionType.INTERRUPT;
 import static com.oracle.truffle.api.interop.ExceptionType.PARSE_ERROR;
 import static com.oracle.truffle.api.interop.ExceptionType.RUNTIME_ERROR;
 
@@ -80,8 +79,6 @@ final class LegacyTruffleExceptionSupport {
         com.oracle.truffle.api.TruffleException truffleException = asTruffleException(receiver);
         if (truffleException.isExit()) {
             return EXIT;
-        } else if (truffleException.isInterrupted()) {
-            return INTERRUPT;
         } else if (truffleException.isSyntaxError()) {
             return PARSE_ERROR;
         } else {
@@ -131,16 +128,6 @@ final class LegacyTruffleExceptionSupport {
         } else {
             return ((Throwable) receiver).getCause();
         }
-    }
-
-    @TruffleBoundary
-    static boolean hasExceptionSuppressed(Object receiver) {
-        return InteropAccessor.EXCEPTION.hasExceptionSuppressed(receiver);
-    }
-
-    @TruffleBoundary
-    static Object getExceptionSuppressed(Object receiver) {
-        return InteropAccessor.EXCEPTION.getExceptionSuppressed(receiver);
     }
 
     @TruffleBoundary

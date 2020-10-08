@@ -789,10 +789,6 @@ public abstract class Accessor {
 
         public abstract Object getExceptionCause(Object receiver);
 
-        public abstract boolean hasExceptionSuppressed(Object receiver);
-
-        public abstract Object getExceptionSuppressed(Object receiver);
-
         public abstract boolean hasExceptionMessage(Object receiver);
 
         public abstract Object getExceptionMessage(Object receiver);
@@ -804,6 +800,8 @@ public abstract class Accessor {
         public abstract boolean hasSourceLocation(Object receiver);
 
         public abstract SourceSection getSourceLocation(Object receiver);
+
+        public abstract boolean assertGuestObject(Object guestObject);
     }
 
     public abstract static class IOSupport extends Support {

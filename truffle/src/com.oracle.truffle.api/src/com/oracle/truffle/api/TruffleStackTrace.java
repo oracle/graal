@@ -192,8 +192,10 @@ public final class TruffleStackTrace extends Exception {
      * no guest language frames can ever be stored in this throwable. This method fills in the
      * stacktrace by calling {@link #fillIn(Throwable)}, so it is not necessary to call
      * {@link #fillIn(Throwable)} before. The returned list is not modifiable. The number of stack
-     * trace elements that are filled in can be customized by implementing
-     * {@link TruffleException#getStackTraceElementLimit()}.
+     * trace elements that are filled in can be customized by the {@code stackTraceElementLimit}
+     * parameter of the
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException#AbstractTruffleException(String, Throwable, int, Node)
+     * AbstractTruffleException constructor}.
      *
      * @param throwable the throwable instance to look for guest language frames
      * @since 19.0
@@ -279,7 +281,9 @@ public final class TruffleStackTrace extends Exception {
      * was already filled before then this method has no effect. The implementation attaches a
      * lightweight exception object to the last location in the {@link Throwable#getCause() cause}
      * chain of the exception. The number stack trace elements that are filled in can be customized
-     * by implementing {@link TruffleException#getStackTraceElementLimit()}.
+     * by the {@code stackTraceElementLimit} parameter of the
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException#AbstractTruffleException(String, Throwable, int, Node)
+     * AbstractTruffleException constructor}.
      *
      * @param throwable the Throwable to fill
      * @since 19.0

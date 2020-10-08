@@ -221,7 +221,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
             this.addSuppressed(t);
         }
         TruffleStackTrace.fillIn(prototype);
-        assert prototype.lazyStackTrace != null : "Prototype mast have a stack trace after fillIn.";
+        assert prototype.lazyStackTrace != null : "Prototype must have a stack trace after fillIn.";
         this.lazyStackTrace = prototype.lazyStackTrace;
     }
 
@@ -398,18 +398,6 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
         } catch (UnsupportedMessageException um) {
             throw CompilerDirectives.shouldNotReachHere(um);
         }
-    }
-
-    /**
-     * Returns {@code true} if the exception indicates that the application thread was interrupted.
-     *
-     * @deprecated Use {@link InteropLibrary#getExceptionType(Object)}.
-     * @since 20.3
-     */
-    @Deprecated
-    @Override
-    public boolean isInterrupted() {
-        return getExceptionType() == ExceptionType.INTERRUPT;
     }
 
     /**

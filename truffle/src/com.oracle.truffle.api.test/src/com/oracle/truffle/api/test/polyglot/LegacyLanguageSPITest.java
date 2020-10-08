@@ -111,7 +111,6 @@ public class LegacyLanguageSPITest {
                 }
                 PolyglotException polyglotException = (PolyglotException) cause;
                 assertTrue(polyglotException.isCancelled());
-                assertTrue(polyglotException.isInterrupted());
             }
             engine.close();
         } finally {
@@ -173,11 +172,6 @@ public class LegacyLanguageSPITest {
 
         @Override
         public boolean isCancelled() {
-            return true;
-        }
-
-        @Override
-        public boolean isInterrupted() {
             return true;
         }
 

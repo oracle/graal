@@ -32,7 +32,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import java.io.IOException;
 
 @ExportLibrary(InteropLibrary.class)
-class InspectorIOException extends AbstractTruffleException {
+final class InspectorIOException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 1205823327748715981L;
 
@@ -41,11 +41,13 @@ class InspectorIOException extends AbstractTruffleException {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     ExceptionType getExceptionType() {
         return ExceptionType.EXIT;
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     int getExceptionExitStatus() {
         // See https://nodejs.org/api/process.html#process_exit_codes
         return 12;

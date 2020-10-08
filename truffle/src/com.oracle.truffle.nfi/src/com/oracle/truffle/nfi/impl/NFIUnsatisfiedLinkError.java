@@ -51,7 +51,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("serial")
 @ExportLibrary(InteropLibrary.class)
-public class NFIUnsatisfiedLinkError extends AbstractTruffleException {
+final class NFIUnsatisfiedLinkError extends AbstractTruffleException {
 
     NFIUnsatisfiedLinkError(String message) {
         this(message, null);

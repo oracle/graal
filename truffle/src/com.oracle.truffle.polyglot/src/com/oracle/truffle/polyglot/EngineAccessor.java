@@ -947,13 +947,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object asHostObject(Object obj) {
             assert isHostObject(obj);
-            if (obj instanceof HostException) {
-                HostException javaException = (HostException) obj;
-                return javaException.getOriginal();
-            } else {
-                HostObject javaObject = (HostObject) obj;
-                return javaObject.obj;
-            }
+            return HostObject.valueOf(obj);
         }
 
         @Override

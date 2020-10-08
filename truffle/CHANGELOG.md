@@ -45,7 +45,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Implement the new method `RootNode.translateStackTraceElement` which allows guest languages to transform stack trace elements to accessible guest objects for other languages.
     * Consider making executable interop objects of the guest language implement `InteropLibrary.hasExecutableName(Object)` and `InteropLibrary.hasDeclaringMetaObject(Object)`.
     * Make exception printing in the guest language use `InteropLibrary.getExceptionMessage(Object)`, `InteropLibrary.getExceptionCause(Object)` and `InteropLibrary.getExceptionStackTrace(Object)` for foreign exceptions to print them in the style of the language.
-    * Make all exports of `InteropLibrary.throwException(Object)` throw an instance of `AbstractTruffleException`. This contract will be enforced in future versions when `TruffleException` was removed.
+    * Make all exports of `InteropLibrary.throwException(Object)` throw an instance of `AbstractTruffleException`. This contract will be enforced in future versions when `TruffleException` will be removed.
 * Added [TruffleInstrument.Env.getEnteredContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#getEnteredContext--) returning the entered `TruffleContext`.
 
 
