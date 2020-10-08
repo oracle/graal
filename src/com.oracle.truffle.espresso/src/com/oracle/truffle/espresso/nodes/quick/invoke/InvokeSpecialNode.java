@@ -35,13 +35,11 @@ import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 public final class InvokeSpecialNode extends QuickNode {
     @CompilationFinal protected MethodVersion method;
     @Child private DirectCallNode directCallNode;
-    private final int opcode;
 
-    public InvokeSpecialNode(Method method, int top, int callerBCI, int opcode) {
+    public InvokeSpecialNode(Method method, int top, int callerBCI) {
         super(top, callerBCI);
         this.method = method.getMethodVersion();
         this.directCallNode = DirectCallNode.create(method.getCallTarget());
-        this.opcode = opcode;
     }
 
     @Override
@@ -74,10 +72,5 @@ public final class InvokeSpecialNode extends QuickNode {
     @Override
     public boolean removedByRedefintion() {
         return method.getMethod().isRemovedByRedefition();
-    }
-
-    @Override
-    public int getOpcode() {
-        return opcode;
     }
 }

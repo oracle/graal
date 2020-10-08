@@ -1074,7 +1074,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             BytecodeStream original = new BytecodeStream(getMethodVersion().getCodeAttribute().getOriginalCode());
                             char cpi = original.readCPI(curBCI);
-                            int nodeOpcode = quickNode.getOpcode();
+                            int nodeOpcode = original.currentBC(curBCI);
                             Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
                             QuickNode invoke = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors));
                             nodes[bs.readCPI(curBCI)] = invoke;
@@ -1916,20 +1916,20 @@ public final class BytecodeNode extends EspressoMethodNode {
             if (resolved.isPrivate()) {
                 assert getJavaVersion().java9OrLater();
                 // Interface private methods do not appear in itables.
-                invoke = new InvokeSpecialNode(resolved, top, curBCI, opcode);
+                invoke = new InvokeSpecialNode(resolved, top, curBCI);
             } else {
                 // Can happen in old classfiles that calls j.l.Object on interfaces.
-                invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI, opcode);
+                invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI);
             }
         } else if (opcode == INVOKEVIRTUAL && (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate())) {
-            invoke = new InvokeSpecialNode(resolved, top, curBCI, opcode);
+            invoke = new InvokeSpecialNode(resolved, top, curBCI);
         } else {
             // @formatter:off
             switch (opcode) {
                 case INVOKESTATIC    : invoke = new InvokeStaticNode(resolved, top, curBCI);          break;
                 case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolved, top, curBCI); break;
-                case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI, opcode);   break;
-                case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolved, top, curBCI, opcode);         break;
+                case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI);   break;
+                case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolved, top, curBCI);         break;
                 default              :
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
