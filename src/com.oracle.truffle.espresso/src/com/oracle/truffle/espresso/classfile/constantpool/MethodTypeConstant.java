@@ -54,7 +54,7 @@ public interface MethodTypeConstant extends PoolConstant {
         try {
             for (int i = 0; i < pcount; i++) {
                 Symbol<Symbol.Type> paramType = Signatures.parameterType(signature, i);
-                ptypes[i] = resolveAndCheckAccess(accessingKlass, meta, paramType).mirror();
+                ptypes[i] = meta.resolveSymbolAndAccessCheck(paramType, accessingKlass).mirror();
             }
         } catch (EspressoException e) {
             if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
@@ -63,7 +63,7 @@ public interface MethodTypeConstant extends PoolConstant {
             throw e;
         }
         try {
-            rtype = resolveAndCheckAccess(accessingKlass, meta, rt).mirror();
+            rtype = meta.resolveSymbolAndAccessCheck(rt, accessingKlass).mirror();
         } catch (EspressoException e) {
             EspressoException rethrow = e;
             if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
@@ -76,14 +76,6 @@ public interface MethodTypeConstant extends PoolConstant {
         }
 
         return (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(null, rtype, StaticObject.createArray(meta.java_lang_Class_array, ptypes));
-    }
-
-    static Klass resolveAndCheckAccess(Klass accessingKlass, Meta meta, Symbol<Symbol.Type> paramType) {
-        Klass klass = meta.resolveSymbolOrFail(paramType, accessingKlass.getDefiningClassLoader());
-        if (!Klass.checkAccess(klass, accessingKlass)) {
-            Meta.throwException(meta.java_lang_IllegalAccessError);
-        }
-        return klass;
     }
 
     /**
