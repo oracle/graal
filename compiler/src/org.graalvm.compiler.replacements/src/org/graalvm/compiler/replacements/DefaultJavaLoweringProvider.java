@@ -1323,4 +1323,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         WriteNode nonVolatileWrite = graph.add(new WriteNode(n.getAddress(), n.getLocationIdentity(), n.value(), n.getBarrierType()));
         graph.replaceFixedWithFixed(n, nonVolatileWrite);
     }
+
+    @Override
+    public boolean supportsOptimizedFilling(OptionValues options) {
+        return false;
+    }
 }

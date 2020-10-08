@@ -168,9 +168,10 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter boolean maybeUnroll,
                     @ConstantParameter boolean supportsBulkZeroing,
+                    @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData) {
         Object result = allocateArrayImpl(hub.asWord(), prototypeMarkWord, length, arrayBaseOffset, log2ElementSize, fillContents, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
-                        profilingData);
+                        supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
 
@@ -246,11 +247,12 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter boolean maybeUnroll,
                     @ConstantParameter boolean supportsBulkZeroing,
+                    @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData) {
         // Primitive array types are eagerly pre-resolved. We can use a floating load.
         KlassPointer picHub = LoadConstantIndirectlyNode.loadKlass(hub);
         return allocateArrayImpl(picHub.asWord(), prototypeMarkWord, length, arrayBaseOffset, log2ElementSize, fillContents, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
-                        profilingData);
+                        supportsOptimizedFilling, profilingData);
     }
 
     @Snippet
@@ -263,11 +265,12 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter boolean maybeUnroll,
                     @ConstantParameter boolean supportsBulkZeroing,
+                    @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData) {
         // Array type would be resolved by dominating resolution.
         KlassPointer picHub = LoadConstantIndirectlyFixedNode.loadKlass(hub);
         return allocateArrayImpl(picHub.asWord(), prototypeMarkWord, length, arrayBaseOffset, log2ElementSize, fillContents, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
-                        profilingData);
+                        supportsOptimizedFilling, profilingData);
     }
 
     @Snippet
@@ -280,6 +283,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter JavaKind knownElementKind,
                     @ConstantParameter int knownLayoutHelper,
                     @ConstantParameter boolean supportsBulkZeroing,
+                    @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData) {
         /*
          * We only need the dynamic check for void when we have no static information from
@@ -323,7 +327,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
 
         Object result = allocateArrayImpl(nonNullKlass.asWord(), prototypeMarkWord, length, arrayBaseOffset, log2ElementSize, fillContents, emitMemoryBarrier, false, supportsBulkZeroing,
-                        profilingData);
+                        supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
 
@@ -721,6 +725,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
             args.addConst("maybeUnroll", length.isConstant());
             args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("profilingData", getProfilingData(localOptions, "array", arrayType));
 
             SnippetTemplate template = template(node, args);
@@ -794,6 +799,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                 args.addConst("knownLayoutHelper", 0);
             }
             args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+            args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(localOptions));
             args.addConst("profilingData", getProfilingData(localOptions, "dynamic type", null));
 
             template(node, args).instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
