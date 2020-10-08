@@ -33,9 +33,9 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.Assumption;
@@ -1054,8 +1054,7 @@ public final class ObjectKlass extends Klass {
         ParserKlass parserKlass = packet.parserKlass;
         DetectedChange change = packet.detectedChange;
         RedefinitionCache oldVersion = redefineCache;
-        StaticObject classLoader = oldVersion.pool.getClassLoader();
-        RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), parserKlass.getConstantPool(), classLoader);
+        RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), parserKlass.getConstantPool(), oldVersion.pool.getClassLoader());
         ObjectKlass[] superInterfaces = getSuperInterfaces();
         LinkedKlass[] interfaces = new LinkedKlass[superInterfaces.length];
         for (int i = 0; i < superInterfaces.length; i++) {
@@ -1067,67 +1066,60 @@ public final class ObjectKlass extends Klass {
         Method[] vtable = oldVersion.vtable;
         ObjectKlass[] iKlassTable = oldVersion.iKlassTable;
         Method[] mirandaMethods = oldVersion.mirandaMethods;
-        Method[] newDeclaredMethods = oldVersion.declaredMethods;
 
         // changed methods
-        List<ParserMethod> changedMethodBodies = packet.detectedChange.getChangedMethodBodies();
-        for (ParserMethod changedMethod : changedMethodBodies) {
-            // find the old real method
-            Method method = findMethod(changedMethod, oldVersion.declaredMethods);
-            method.redefine(changedMethod, packet.parserKlass, ids);
+        Map<Method, ParserMethod> changedMethodBodies = packet.detectedChange.getChangedMethodBodies();
+        for (Map.Entry<Method, ParserMethod> entry : changedMethodBodies.entrySet()) {
+            Method method = entry.getKey();
+            ParserMethod newMethod = entry.getValue();
+            method.redefine(newMethod, packet.parserKlass, ids);
             JDWPLogger.log("Redefining method %s.%s", JDWPLogger.LogLevel.REDEFINE, method.getDeclaringKlass().getName(), method.getName());
         }
 
-        if (change.getAddedAndRemovedMethods().size() > 0) {
-            LinkedList<Method> declaredMethods = new LinkedList<>(Arrays.asList(oldVersion.declaredMethods));
-            List<ParserMethod> removedMethods = change.getRemovedMethods();
-            List<ParserMethod> addedMethods = change.getAddedMethods();
+        List<Method> removedMethods = change.getRemovedMethods();
+        List<ParserMethod> addedMethods = change.getAddedMethods();
 
-            // removed methods
-            Iterator<Method> it = declaredMethods.iterator();
-            while (it.hasNext()) {
-                Method oldDeclaredMethod = it.next();
-                if (removedMethods.contains(oldDeclaredMethod.getLinkedMethod().getParserMethod())) {
-                    it.remove();
-                    oldDeclaredMethod.removedByRedefinition();
-                    oldDeclaredMethod.getMethodVersion().getAssumption().invalidate();
-                    JDWPLogger.log("Removed method %s.%s", JDWPLogger.LogLevel.REDEFINE, oldDeclaredMethod.getDeclaringKlass().getName(), oldDeclaredMethod.getName());
-                }
-            }
+        LinkedList<Method> declaredMethods = new LinkedList<>(Arrays.asList(oldVersion.declaredMethods));
+        declaredMethods.removeAll(removedMethods);
 
-            // added methods
-            for (ParserMethod addedMethod : addedMethods) {
-                LinkedMethod linkedMethod = new LinkedMethod(addedMethod);
-                Method added = new Method(this, linkedMethod, pool);
-                JDWPLogger.log("Added method %s.%s", JDWPLogger.LogLevel.REDEFINE, added.getDeclaringKlass().getName(), added.getName());
-                declaredMethods.addLast(added);
-            }
+        // in case of an added/removed virtual method, we must also update the tables
+        // which might have ripple implications on all subclasses
+        boolean virtualMethodsModified = false;
 
-            newDeclaredMethods = declaredMethods.toArray(new Method[declaredMethods.size()]);
+        for (Method removedMethod : removedMethods) {
+            virtualMethodsModified |= isVirtual(removedMethod.getLinkedMethod().getParserMethod());
+            ParserMethod parserMethod = removedMethod.getLinkedMethod().getParserMethod();
+            updateOverrideMethods(ids, parserMethod.getFlags(), parserMethod.getName(), parserMethod.getSignature());
+            removedMethod.removedByRedefinition();
+            removedMethod.getMethodVersion().getAssumption().invalidate();
+            JDWPLogger.log("Removed method %s.%s", JDWPLogger.LogLevel.REDEFINE, removedMethod.getDeclaringKlass().getName(), removedMethod.getName());
+        }
 
-            if (isInterface()) {
-                InterfaceTables.InterfaceCreationResult icr = InterfaceTables.constructInterfaceItable(this, newDeclaredMethods);
-                vtable = icr.methodtable;
-                iKlassTable = icr.klassTable;
-            } else {
-                InterfaceTables.CreationResult methodCR = InterfaceTables.create(getSuperKlass(), superInterfaces, newDeclaredMethods);
-                iKlassTable = methodCR.klassTable;
-                mirandaMethods = methodCR.mirandas;
-                vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, true);
-                itable = InterfaceTables.fixTables(vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
-            }
-            // in case of an added/removed virtual method, we must also update the tables
-            // which might have ripple implications on all subclasses
-            boolean isRefresh = false;
-            for (ParserMethod m : change.getAddedAndRemovedMethods()) {
-                if (isVirtual(m)) {
-                    isRefresh = true;
-                }
-                updateOverrideMethods(ids, m.getFlags(), m.getName(), m.getSignature());
-            }
-            if (isRefresh) {
-                refreshSubClasses.addAll(getSubTypes());
-            }
+        for (ParserMethod addedMethod : addedMethods) {
+            LinkedMethod linkedMethod = new LinkedMethod(addedMethod);
+            Method added = new Method(this, linkedMethod, pool);
+            declaredMethods.addLast(added);
+            virtualMethodsModified |= isVirtual(addedMethod);
+            updateOverrideMethods(ids, addedMethod.getFlags(), addedMethod.getName(), addedMethod.getSignature());
+            JDWPLogger.log("Added method %s.%s", JDWPLogger.LogLevel.REDEFINE, added.getDeclaringKlass().getName(), added.getName());
+        }
+
+        Method[] newDeclaredMethods = declaredMethods.toArray(new Method[declaredMethods.size()]);
+
+        if (isInterface()) {
+            InterfaceTables.InterfaceCreationResult icr = InterfaceTables.constructInterfaceItable(this, newDeclaredMethods);
+            vtable = icr.methodtable;
+            iKlassTable = icr.klassTable;
+        } else {
+            InterfaceTables.CreationResult methodCR = InterfaceTables.create(getSuperKlass(), superInterfaces, newDeclaredMethods);
+            iKlassTable = methodCR.klassTable;
+            mirandaMethods = methodCR.mirandas;
+            vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, true);
+            itable = InterfaceTables.fixTables(vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
+        }
+
+        if (virtualMethodsModified) {
+            refreshSubClasses.addAll(getSubTypes());
         }
 
         redefineCache = new RedefinitionCache(pool, linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);

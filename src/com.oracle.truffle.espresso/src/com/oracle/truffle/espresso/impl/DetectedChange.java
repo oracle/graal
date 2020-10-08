@@ -24,41 +24,37 @@ package com.oracle.truffle.espresso.impl;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 final class DetectedChange {
 
-    private final List<ParserMethod> changedMethodBodies = new ArrayList<>();
+    private final Map<Method, ParserMethod> changedMethodBodies = new HashMap<>();
     private final List<ParserMethod> addedMethods = new ArrayList<>();
-    private final List<ParserMethod> removedMethods = new ArrayList<>();
+    private final List<Method> removedMethods = new ArrayList<>();
 
-    void addMethodBodyChange(ParserMethod newMethod) {
-        changedMethodBodies.add(newMethod);
+    void addMethodBodyChange(Method oldMethod, ParserMethod newMethod) {
+        changedMethodBodies.put(oldMethod, newMethod);
     }
 
-    List<ParserMethod> getChangedMethodBodies() {
-        return Collections.unmodifiableList(changedMethodBodies);
+    Map<Method, ParserMethod> getChangedMethodBodies() {
+        return Collections.unmodifiableMap(changedMethodBodies);
     }
 
     List<ParserMethod> getAddedMethods() {
         return Collections.unmodifiableList(addedMethods);
     }
 
-    List<ParserMethod> getRemovedMethods() {
+    List<Method> getRemovedMethods() {
         return Collections.unmodifiableList(removedMethods);
-    }
-
-    List<ParserMethod> getAddedAndRemovedMethods() {
-        ArrayList<ParserMethod> result = new ArrayList<>(addedMethods);
-        result.addAll(removedMethods);
-        return Collections.unmodifiableList(result);
     }
 
     public void addNewMethods(List<ParserMethod> methods) {
         addedMethods.addAll(methods);
     }
 
-    public void addRemovedMethods(List<ParserMethod> methods) {
+    public void addRemovedMethods(List<Method> methods) {
         removedMethods.addAll(methods);
     }
 }
