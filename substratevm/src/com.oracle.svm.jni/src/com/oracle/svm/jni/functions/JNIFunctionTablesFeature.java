@@ -62,7 +62,6 @@ import com.oracle.svm.jni.functions.JNIFunctions.UnimplementedWithJNIEnvArgument
 import com.oracle.svm.jni.functions.JNIFunctions.UnimplementedWithJavaVMArgument;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
 import com.oracle.svm.jni.hosted.JNIFieldAccessorMethod;
-import com.oracle.svm.jni.hosted.JNIFieldAccessorMethodFactory;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
 import com.oracle.svm.jni.hosted.JNIPrimitiveArrayOperationMethod;
 import com.oracle.svm.jni.hosted.JNIPrimitiveArrayOperationMethod.Operation;
@@ -152,7 +151,8 @@ public class JNIFunctionTablesFeature implements Feature {
             boolean[] trueFalse = {true, false};
             for (boolean isSetter : trueFalse) {
                 for (boolean isStatic : trueFalse) {
-                    JNIFieldAccessorMethod method = ImageSingletons.lookup(JNIFieldAccessorMethodFactory.class).create(kind, isSetter, isStatic, generatedMethodClass, constantPool, wrappedMetaAccess);
+                    JNIFieldAccessorMethod method = ImageSingletons.lookup(JNIFieldAccessorMethod.Factory.class).create(kind, isSetter, isStatic, generatedMethodClass, constantPool,
+                                    wrappedMetaAccess);
                     AnalysisMethod analysisMethod = access.getUniverse().lookup(method);
                     access.getBigBang().addRootMethod(analysisMethod).registerAsEntryPoint(method.createEntryPointData());
                     generated.add(method);

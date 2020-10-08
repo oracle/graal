@@ -67,7 +67,7 @@ import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.JNISupport;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
-import com.oracle.svm.jni.hosted.JNIFieldAccessorMethodFactory;
+import com.oracle.svm.jni.hosted.JNIFieldAccessorMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethodSupport;
@@ -159,8 +159,8 @@ public class JNIAccessFeature implements Feature {
         if (!ImageSingletons.contains(JNIJavaCallWrapperMethodSupport.class)) {
             ImageSingletons.add(JNIJavaCallWrapperMethodSupport.class, new JNIJavaCallWrapperMethodSupport());
         }
-        if (!ImageSingletons.contains(JNIFieldAccessorMethodFactory.class)) {
-            ImageSingletons.add(JNIFieldAccessorMethodFactory.class, new JNIFieldAccessorMethodFactory());
+        if (!ImageSingletons.contains(JNIFieldAccessorMethod.Factory.class)) {
+            ImageSingletons.add(JNIFieldAccessorMethod.Factory.class, new JNIFieldAccessorMethod.Factory());
         }
         if (!ImageSingletons.contains(JNISupport.class)) {
             ImageSingletons.add(JNISupport.class, new JNISupport());

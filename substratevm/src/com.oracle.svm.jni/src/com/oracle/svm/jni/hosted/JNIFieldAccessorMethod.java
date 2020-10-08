@@ -110,6 +110,13 @@ import jdk.vm.ci.meta.Signature;
  */
 public class JNIFieldAccessorMethod extends JNIGeneratedMethod {
 
+    public static class Factory {
+        public JNIFieldAccessorMethod create(JavaKind kind, boolean isSetter, boolean isStatic, ResolvedJavaType generatedMethodClass, ConstantPool constantPool,
+                        MetaAccessProvider wrappedMetaAccess) {
+            return new JNIFieldAccessorMethod(kind, isSetter, isStatic, generatedMethodClass, constantPool, wrappedMetaAccess);
+        }
+    }
+
     protected final JavaKind fieldKind;
     protected final boolean isSetter;
     protected final boolean isStatic;
@@ -118,7 +125,7 @@ public class JNIFieldAccessorMethod extends JNIGeneratedMethod {
     protected final String name;
     protected final Signature signature;
 
-    public JNIFieldAccessorMethod(JavaKind fieldKind, boolean isSetter, boolean isStatic, ResolvedJavaType declaringClass, ConstantPool constantPool, MetaAccessProvider metaAccess) {
+    protected JNIFieldAccessorMethod(JavaKind fieldKind, boolean isSetter, boolean isStatic, ResolvedJavaType declaringClass, ConstantPool constantPool, MetaAccessProvider metaAccess) {
         if (!EnumSet.of(JavaKind.Object, JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short,
                         JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double).contains(fieldKind)) {
 
