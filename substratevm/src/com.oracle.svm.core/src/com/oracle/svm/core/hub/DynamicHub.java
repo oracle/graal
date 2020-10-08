@@ -49,7 +49,6 @@ import java.net.URL;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.security.cert.Certificate;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -1030,10 +1029,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
             this.publicClasses = publicClasses;
             this.enclosingMethodOrConstructor = enclosingMethodOrConstructor;
         }
-
-        public boolean isFieldRegisteredForReflection(Field field) {
-            return Arrays.asList(this.declaredFields).contains(field);
-        }
     }
 
     @TargetClass(value = java.lang.Class.class, innerClass = "MethodArray", onlyWith = JDK8OrEarlier.class)
@@ -1048,11 +1043,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setReflectionData(ReflectionData rd) {
         this.rd = rd;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public ReflectionData getReflectionData() {
-        return this.rd;
     }
 
     @KeepOriginal

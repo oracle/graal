@@ -85,7 +85,6 @@ import com.oracle.svm.hosted.option.HostedOptionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 @SuppressWarnings("deprecation")
 public class FeatureImpl {
@@ -452,10 +451,6 @@ public class FeatureImpl {
     public static class AfterAnalysisAccessImpl extends AnalysisAccessBase implements Feature.AfterAnalysisAccess {
         AfterAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
-        }
-
-        public DynamicHub.ReflectionData getReflectionData(ResolvedJavaType type) {
-            return bb.getHostVM().dynamicHub(type).getReflectionData();
         }
     }
 
