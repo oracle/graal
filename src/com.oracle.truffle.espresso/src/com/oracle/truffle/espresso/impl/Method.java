@@ -133,7 +133,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // the parts of the method that can change when it's redefined
     // are encapsulated within the methodVersion
     @CompilationFinal volatile MethodVersion methodVersion;
-    @CompilationFinal private Assumption removedByRedefinition;
+    @CompilationFinal private final Assumption removedByRedefinition = Truffle.getRuntime().createAssumption();
 
     public Method identity() {
         return proxy == null ? this : proxy;
@@ -1010,15 +1010,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public void removedByRedefinition() {
-        if (removedByRedefinition == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            removedByRedefinition = Truffle.getRuntime().createAssumption();
-        }
         removedByRedefinition.invalidate();
     }
 
     public boolean isRemovedByRedefition() {
-        return removedByRedefinition != null && !removedByRedefinition.isValid();
+        return !removedByRedefinition.isValid();
     }
 
     public final class MethodVersion implements MethodRef {
