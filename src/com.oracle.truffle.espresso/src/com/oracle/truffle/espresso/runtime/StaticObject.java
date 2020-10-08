@@ -74,6 +74,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
@@ -2051,24 +2052,35 @@ public final class StaticObject implements TruffleObject {
         return this.<T[]> unwrap()[index];
     }
 
+    public void putObject(StaticObject value, int index, Meta meta) {
+        putObject(value, index, meta, null);
+    }
+
     /**
      * Workaround to avoid casting to Object[] in InterpreterToVM (non-leaf type check).
      */
-    public void putObject(StaticObject value, int index, Meta meta) {
+    public void putObject(StaticObject value, int index, Meta meta, BytecodeNode bytecodeNode) {
         checkNotForeign();
         assert isArray();
         if (index >= 0 && index < length()) {
-            UNSAFE.putObject(fields, getObjectFieldIndex(index), arrayStoreExCheck(value, ((ArrayKlass) klass).getComponentType(), meta));
+            // TODO(peterssen): Use different profiles for index-out-of-bounds and array-store
+            // exceptions.
+            UNSAFE.putObject(fields, getObjectFieldIndex(index), arrayStoreExCheck(value, ((ArrayKlass) klass).getComponentType(), meta, bytecodeNode));
         } else {
-            CompilerDirectives.transferToInterpreter();
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
+            }
             throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
-    private static Object arrayStoreExCheck(StaticObject value, Klass componentType, Meta meta) {
+    private static Object arrayStoreExCheck(StaticObject value, Klass componentType, Meta meta, BytecodeNode bytecodeNode) {
         if (StaticObject.isNull(value) || instanceOf(value, componentType)) {
             return value;
         } else {
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
+            }
             throw Meta.throwException(meta.java_lang_ArrayStoreException);
         }
     }
@@ -2194,21 +2206,35 @@ public final class StaticObject implements TruffleObject {
     }
 
     public void setArrayByte(byte value, int index, Meta meta) {
+        setArrayByte(value, index, meta, null);
+    }
+
+    public void setArrayByte(byte value, int index, Meta meta, BytecodeNode bytecodeNode) {
         checkNotForeign();
         assert isArray() && (fields instanceof byte[] || fields instanceof boolean[]);
         if (index >= 0 && index < length()) {
             UNSAFE.putByte(fields, getArrayByteOffset(index), value);
         } else {
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
+            }
             throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
     public byte getArrayByte(int index, Meta meta) {
+        return getArrayByte(index, meta, null);
+    }
+
+    public byte getArrayByte(int index, Meta meta, BytecodeNode bytecodeNode) {
         checkNotForeign();
         assert isArray() && (fields instanceof byte[] || fields instanceof boolean[]);
         if (index >= 0 && index < length()) {
             return UNSAFE.getByte(fields, getArrayByteOffset(index));
         } else {
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
+            }
             throw Meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
