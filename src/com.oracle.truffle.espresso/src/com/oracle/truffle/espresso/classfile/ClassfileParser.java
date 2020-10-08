@@ -967,6 +967,9 @@ public final class ClassfileParser {
 
     private BootstrapMethodsAttribute parseBootstrapMethods(Symbol<Name> name) {
         int entryCount = stream.readU2();
+        if (maxBootstrapMethodAttrIndex >= entryCount) {
+            throw ConstantPool.classFormatError("Invalid bootstrapMethod index: " + maxBootstrapMethodAttrIndex + ", actual bootstrap methods size: " + entryCount);
+        }
         BootstrapMethodsAttribute.Entry[] entries = new BootstrapMethodsAttribute.Entry[entryCount];
         for (int i = 0; i < entryCount; ++i) {
             int bootstrapMethodRef = stream.readU2();
