@@ -106,6 +106,7 @@ class NativeImageVM(GraalVm):
             self.extra_profile_run_args = []
             self.extra_agent_profile_run_args = []
             self.benchmark_name = None
+            self.benchmark_suite_name = None
             self.benchmark_output_dir = None
             self.config_dir = None
             self.profile_dir = None
@@ -153,6 +154,9 @@ class NativeImageVM(GraalVm):
                     # not for end-users
                     if trimmed_arg.startswith('benchmark-name='):
                         self.benchmark_name = trimmed_arg[len('benchmark-name='):]
+                        found = True
+                    if trimmed_arg.startswith('benchmark-suite-name='):
+                        self.benchmark_suite_name = trimmed_arg[len('benchmark-suite-name='):]
                         found = True
                     if not found:
                         mx.abort("Invalid benchmark argument: " + arg)
@@ -365,6 +369,24 @@ class NativeImageVM(GraalVm):
             write_output = final_command or self.is_gate
             self.exit_code = mx.run(self.command, out=self.stdout(write_output), err=self.stderr(write_output), cwd=self.cwd, nonZeroIsFatal=False)
 
+    def rules(self, output, benchmarks, bmSuiteArgs):
+        return [
+            mx_benchmark.StdOutRule(
+                r"The executed image size for benchmark (?P<bench_suite>[a-zA-Z0-9_\-]+):(?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
+                {
+                    "bench-suite": ("<bench_suite>", str),
+                    "benchmark": ("<benchmark>", str),
+                    "vm": "svm",
+                    "metric.name": "binary-size",
+                    "metric.value": ("<value>", int),
+                    "metric.unit": "B",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                })
+        ]
+
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
 
         if '-version' in args:
@@ -481,9 +503,6 @@ class NativeImageVM(GraalVm):
                 final_image_command = base_image_build_args + executable_name_args + pgo_args
                 with stages.set_command(final_image_command) as s:
                     s.execute_command()
-                    if s.exit_code == 0:
-                        image_size = os.stat(image_path).st_size
-                        out('Final image size: ' + str(image_size) + ' B')
 
             # Execute the benchmark
             if stages.change_stage('run'):
@@ -491,6 +510,10 @@ class NativeImageVM(GraalVm):
                 image_run_cmd = [image_path] + image_run_args + config.extra_run_args
                 with stages.set_command(image_run_cmd) as s:
                     s.execute_command(True)
+                    if s.exit_code == 0:
+                        # The image size for benchmarks is tracked by printing on stdout and matching the rule.
+                        image_size = os.stat(image_path).st_size
+                        out('The executed image size for benchmark ' + config.benchmark_suite_name + ':' + config.benchmark_name + ' is ' + str(image_size) + ' B')
 
     def create_log_files(self, config, executable_name, stage):
         stdout_path = os.path.abspath(
