@@ -620,11 +620,11 @@ public final class ObjectKlass extends Klass {
         return getRedefineCache().iKlassTable;
     }
 
-    int lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature, Klass subClass) {
+    int findVirtualMethodIndex(Symbol<Name> name, Symbol<Signature> signature, Klass subClass) {
         for (int i = 0; i < getVTable().length; i++) {
             Method m = getVTable()[i];
-            if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
-                if (m.isProtected() || m.isPublic() || sameRuntimePackage(subClass)) {
+            if (!m.isStatic() && !m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
+                if (m.isProtected() || m.isPublic() || m.getDeclaringKlass().sameRuntimePackage(subClass)) {
                     return i;
                 }
             }
@@ -1164,7 +1164,7 @@ public final class ObjectKlass extends Klass {
 
             while (superKlass != null) {
                 // look for the method
-                int vtableIndex = superKlass.lookupVirtualMethod(name, signature, superKlass);
+                int vtableIndex = superKlass.findVirtualMethodIndex(name, signature, superKlass);
                 if (vtableIndex != -1) {
                     superKlass.getVTable()[vtableIndex].onSubclassMethodChanged(ids);
                 }
