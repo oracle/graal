@@ -759,14 +759,14 @@ public class LLIRTestGen {
                         "frem_x86_fp80", // Fails with managed sulong
                         "fsub_x86_fp80", // Fails with managed sulong
                         "fdiv_x86_fp80", // Fails with managed sulong
-                        "shl_2xi8", // Works with LLVM9 but not with LLVM10, depends on undefined behavior
-                        "shl_3xi8", // Works with LLVM9 but not with LLVM10, depends on undefined behavior
-                        "lshr_3xi8", // Works with LLVM9 but not with LLVM10, depends on undefined behavior
-                        "lshr_2xi8", // Works with LLVM9 but not with LLVM10, depends on undefined behavior
-                        "ashr_4xi8", // Works with LLVM9 but not with LLVM10, depends on undefined behavior
-                        "shl_4xi8", // Works with LLVM9 but not with LLVM10, depends on undefined behavior
-                        "lshr_4xi8", // Works with LLVM9 but not with LLVM10, depends on undefined behavior
-                        "ashr_3xi8" // Works with LLVM9 but not with LLVM10, depends on undefined behavior
+                        "shl_2xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "shl_3xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "lshr_3xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "lshr_2xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "ashr_4xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "shl_4xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "lshr_4xi8", // Works with LLVM9 but not 10, depends on undefined behavior
+                        "ashr_3xi8" // Works with LLVM9 but not 10, depends on undefined behavior
         ));
         if (Platform.isAArch64()) {
             filenameBlacklist.addAll(Arrays.asList(
