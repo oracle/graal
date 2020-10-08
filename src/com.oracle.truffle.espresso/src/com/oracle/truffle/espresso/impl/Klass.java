@@ -200,7 +200,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method method = lookupMethod.execute(this, member, true, true, arguments.length);
         if (method != null) {
-            assert method.isStatic() && method.isPublic() && member.equals(method.getName().toString()) && method.getParameterCount() == arguments.length;
+            assert method.isStatic() && method.isPublic();
+            assert member.equals(method.getName().toString()) || member.equals(method.getName() + ":" + method.getRawSignature());
+            assert method.getParameterCount() == arguments.length;
+
             return invoke.execute(method, null, arguments);
         }
         throw UnknownIdentifierException.create(member);
