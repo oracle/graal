@@ -10,7 +10,7 @@ import * as utils from './utils';
 import { toggleCodeCoverage, activeTextEditorChaged } from './graalVMCoverage';
 import { GraalVMConfigurationProvider, GraalVMDebugAdapterDescriptorFactory, GraalVMDebugAdapterTracker } from './graalVMDebug';
 import { installGraalVM, addExistingGraalVM, installGraalVMComponent, uninstallGraalVMComponent, selectInstalledGraalVM, findGraalVMs, InstallationNodeProvider, Component, Installation, setupProxy, removeGraalVMInstallation } from './graalVMInstall';
-import { startLanguageServer, stopLanguageServer } from './graalVMLanguageServer';
+import { registerLSPNotificationHandler, startLanguageServer, stopLanguageServer } from './graalVMLanguageServer';
 import { installRPackage, rConfig, R_LANGUAGE_SERVER_PACKAGE_NAME } from './graalVMR';
 import { installRubyGem, rubyConfig, RUBY_LANGUAGE_SERVER_GEM_NAME } from './graalVMRuby';
 import { addNativeImageToPOM } from './graalVMNativeImage';
@@ -52,6 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.window.showErrorMessage("Ruby isn't present in GraalVM Installation.");
 		}
 	}));
+	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.registerLSPNotificationHandler', registerLSPNotificationHandler));
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(e => {
 		if (e) {
 			activeTextEditorChaged(e);
