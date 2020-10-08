@@ -146,6 +146,8 @@ public interface MethodHandleConstant extends PoolConstant {
         /**
          * Resolves a method handle without resolving the method reference, which is not the
          * behavior described in the specs {5.4.3.5. Method Type and Method Handle Resolution }
+         * <p>
+         * see {@code JDK-8188145}
          */
         private ResolvedConstant hotspotResolutionBehavior(RuntimeConstantPool pool, Klass accessingKlass, Meta meta) {
             StaticObject mtype;
