@@ -43,6 +43,11 @@ public interface Constant extends SymbolImpl {
 
     LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory);
 
+    /**
+     * This interface can be used by {@link Constant} values in their
+     * {@link Constant#addToBuffer(Buffer, LLVMParserRuntime, DataLayout, GetStackSpaceFactory)}
+     * methods to add values.
+     */
     interface Buffer {
         ByteBuffer getBuffer();
 

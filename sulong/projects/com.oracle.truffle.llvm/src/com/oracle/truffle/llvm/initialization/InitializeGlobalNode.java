@@ -49,6 +49,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateLiteralInPlaceNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateLiteralInPlaceNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -137,6 +138,11 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
         }
     }
 
+    /**
+     * This class is used to assemble constants that will be materialized efficiently using an
+     * {@link AggregateLiteralInPlaceNode}. It collects primitive constant values in a buffer, and
+     * non-primitive/non-constant values in a separate list of store nodes.
+     */
     private static final class Buffer implements Constant.Buffer {
 
         private final ByteBuffer buffer;

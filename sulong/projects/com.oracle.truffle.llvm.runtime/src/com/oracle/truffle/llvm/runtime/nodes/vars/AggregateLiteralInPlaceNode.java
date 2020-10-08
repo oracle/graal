@@ -54,9 +54,15 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
     @CompilationFinal(dimensions = 1) private final int[] offsets;
     @CompilationFinal(dimensions = 1) private final int[] sizes;
 
+    /**
+     * This node initializes a block of memory with a with combination of raw bytes and explicit
+     * store nodes. When executed, it transfers all bytes from {@code data} to the target (using i8
+     * and i64 stores as appropriate), except for those covered by a node in {@code stores}. Every
+     * store node has a corresponding entry in {@code offsets} and {@sizes}.
+     */
     public AggregateLiteralInPlaceNode(byte[] data, LLVMOffsetStoreNode[] stores, int[] offsets, int[] sizes) {
         assert offsets.length == stores.length + 1 && stores.length == sizes.length;
-        assert offsets[offsets.length - 1] == data.length;
+        assert offsets[offsets.length - 1] == data.length : "offsets is expected to have a trailing entry with the overall size";
         this.data = data;
         this.stores = stores;
         this.sizes = sizes;
