@@ -38,30 +38,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
+/*
+ @ApiInfo(
+ group="Truffle"
+ )
+ */
 
-@ExportLibrary(InteropLibrary.class)
-public class MemoryDescriptor extends Dictionary {
-    private final Integer initial;
-    private final Integer maximum;
-
-    public MemoryDescriptor(Integer initial, Integer maximum) {
-        this.initial = initial;
-        this.maximum = maximum;
-        addMembers(new Object[]{
-                        "initial", this.initial,
-                        "maximum", this.maximum,
-        });
-    }
-
-    public int initial() {
-        return initial;
-    }
-
-    public int maximum() {
-        return maximum;
-    }
-}
+/**
+ * This package contains memory related classes used by
+ * {@link com.oracle.truffle.api.TruffleLanguage} implementations.
+ *
+ * @since 20.3
+ */
+package com.oracle.truffle.api.memory;

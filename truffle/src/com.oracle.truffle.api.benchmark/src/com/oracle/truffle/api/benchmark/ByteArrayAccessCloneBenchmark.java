@@ -38,30 +38,82 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
+package com.oracle.truffle.api.benchmark;
 
-@ExportLibrary(InteropLibrary.class)
-public class MemoryDescriptor extends Dictionary {
-    private final Integer initial;
-    private final Integer maximum;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import sun.misc.Unsafe;
 
-    public MemoryDescriptor(Integer initial, Integer maximum) {
-        this.initial = initial;
-        this.maximum = maximum;
-        addMembers(new Object[]{
-                        "initial", this.initial,
-                        "maximum", this.maximum,
-        });
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.Random;
+
+/**
+ * This benchmarks compares different ways to clone an array.
+ */
+@State(Scope.Benchmark)
+public class ByteArrayAccessCloneBenchmark extends TruffleBenchmark {
+    static final Unsafe UNSAFE;
+
+    static {
+        try {
+            Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            UNSAFE = (Unsafe) f.get(null);
+        } catch (Exception e) {
+            throw new RuntimeException();
+        }
     }
 
-    public int initial() {
-        return initial;
+    @Param({"10", "20", "30", "40", "50", "100", "1_000", "10_000", "100_000", "1_000_000"}) public String count;
+
+    byte[] array;
+
+    @Setup(Level.Trial)
+    public void setup() {
+        Random r = new Random();
+        r.setSeed(0);
+        array = new byte[Integer.parseInt(count.replaceAll("_", ""))];
+        for (int i = 0; i < array.length; ++i) {
+            array[i] = (byte) r.nextInt(256);
+        }
     }
 
-    public int maximum() {
-        return maximum;
+    @Benchmark
+    public byte[] unsafeCopyMemory() {
+        byte[] copy = new byte[array.length];
+        UNSAFE.copyMemory(array, 0, copy, 0, array.length);
+        return copy;
+    }
+
+    @Benchmark
+    public byte[] systemArrayCopy() {
+        byte[] copy = new byte[array.length];
+        System.arraycopy(array, 0, copy, 0, array.length);
+        return copy;
+    }
+
+    @Benchmark
+    public byte[] arrayLoopCopy() {
+        byte[] copy = new byte[array.length];
+        for (int i = 0; i < array.length; ++i) {
+            copy[i] = array[i];
+        }
+        return copy;
+    }
+
+    @Benchmark
+    public byte[] arraysCopyOf() {
+        return Arrays.copyOf(array, array.length);
+    }
+
+    @Benchmark
+    public byte[] arrayClone() {
+        return array.clone();
     }
 }

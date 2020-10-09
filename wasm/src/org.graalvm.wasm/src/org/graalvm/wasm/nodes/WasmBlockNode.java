@@ -1193,7 +1193,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // Skip the 0x00 constant.
                     offset++;
                     trace("memory_size");
-                    int pageSize = (int) (instance().memory().pageSize());
+                    int pageSize = instance().memory().pageSize();
                     pushInt(frame, stackPointer, pageSize);
                     stackPointer++;
                     break;
@@ -1205,7 +1205,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     stackPointer--;
                     int extraSize = popInt(frame, stackPointer);
                     final WasmMemory memory = instance().memory();
-                    int pageSize = (int) memory.pageSize();
+                    int pageSize = memory.pageSize();
                     if (memory.grow(extraSize)) {
                         pushInt(frame, stackPointer, pageSize);
                         stackPointer++;

@@ -38,30 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
+package com.oracle.truffle.api.memory;
 
-@ExportLibrary(InteropLibrary.class)
-public class MemoryDescriptor extends Dictionary {
-    private final Integer initial;
-    private final Integer maximum;
-
-    public MemoryDescriptor(Integer initial, Integer maximum) {
-        this.initial = initial;
-        this.maximum = maximum;
-        addMembers(new Object[]{
-                        "initial", this.initial,
-                        "maximum", this.maximum,
-        });
-    }
-
-    public int initial() {
-        return initial;
-    }
-
-    public int maximum() {
-        return maximum;
+/**
+ * Thrown when an access through {@link ByteArraySupport} is out of bounds.
+ * 
+ * @since 20.3
+ */
+@SuppressWarnings("serial")
+final class ByteArrayOutOfBoundsException extends IndexOutOfBoundsException {
+    /**
+     * For performance reasons, this exception does not record any stack trace information.
+     *
+     * @since 20.3
+     */
+    @Override
+    @SuppressWarnings("sync-override")
+    public Throwable fillInStackTrace() {
+        return this;
     }
 }

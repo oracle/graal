@@ -52,11 +52,12 @@ import org.graalvm.wasm.utils.cases.WasmCase;
 import org.graalvm.wasm.utils.cases.WasmCaseData;
 import org.graalvm.wasm.utils.cases.WasmStringCase;
 import org.junit.Test;
-
 import org.graalvm.wasm.test.WasmFileSuite;
 
+import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
+
 public class ValidationSuite extends WasmFileSuite {
-    private WasmCase[] testCases = {
+    private final WasmCase[] testCases = {
                     // # 3.2 Types
 
                     // ## 3.2.1 Limits
@@ -296,15 +297,5 @@ public class ValidationSuite extends WasmFileSuite {
 
     private static WasmBinaryCase binaryCase(String name, String errorMessage, String hexString) {
         return WasmCase.create(name, WasmCase.expectedThrows(errorMessage, WasmCaseData.ErrorType.Validation), hexStringToByteArray(hexString), opts);
-    }
-
-    private static byte[] hexStringToByteArray(String input) {
-        String s = input.replaceAll("\\s+", "");
-        int len = s.length();
-        byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4) + Character.digit(s.charAt(i + 1), 16));
-        }
-        return data;
     }
 }

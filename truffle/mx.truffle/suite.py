@@ -790,6 +790,7 @@ suite = {
           "com.oracle.truffle.api.debug",
           "com.oracle.truffle.api.nodes",
           "com.oracle.truffle.api.source",
+          "com.oracle.truffle.api.memory",
           "com.oracle.truffle.api.io",
           "com.oracle.truffle.api.frame",
           "com.oracle.truffle.api",

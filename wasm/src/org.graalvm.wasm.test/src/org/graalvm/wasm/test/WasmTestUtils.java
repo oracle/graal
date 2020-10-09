@@ -38,30 +38,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
+package org.graalvm.wasm.test;
 
-@ExportLibrary(InteropLibrary.class)
-public class MemoryDescriptor extends Dictionary {
-    private final Integer initial;
-    private final Integer maximum;
+import java.io.ByteArrayOutputStream;
 
-    public MemoryDescriptor(Integer initial, Integer maximum) {
-        this.initial = initial;
-        this.maximum = maximum;
-        addMembers(new Object[]{
-                        "initial", this.initial,
-                        "maximum", this.maximum,
-        });
+public final class WasmTestUtils {
+    private WasmTestUtils() {
     }
 
-    public int initial() {
-        return initial;
-    }
+    public static byte[] hexStringToByteArray(String... strings) {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        for (final String string : strings) {
+            String s = string.replaceAll("[^0-9A-z]", "");
+            assert s.length() % 2 == 0;
+            for (int i = 0; i < s.length(); i += 2) {
+                bytes.write((Character.digit(s.charAt(i), 16) << 4) + Character.digit(s.charAt(i + 1), 16));
+            }
 
-    public int maximum() {
-        return maximum;
+        }
+        return bytes.toByteArray();
     }
 }
