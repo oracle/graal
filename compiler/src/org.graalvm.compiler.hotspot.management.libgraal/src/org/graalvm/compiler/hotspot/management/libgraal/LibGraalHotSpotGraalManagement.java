@@ -56,7 +56,8 @@ public final class LibGraalHotSpotGraalManagement extends MBeanProxy<HotSpotGraa
          * initialization. The HotSpot side of this management interface requires initializing a
          * complete JVMCI runtime which loads ~200 classes.
          */
-        @Option(help = "Milliseconds to delay initialization of libgraal JMX interface.", type = OptionType.Expert)//
+        @Option(help = "Milliseconds to delay initialization of the libgraal JMX interface. " +
+                        "Specify a negative value to disable the interface altogether.", type = OptionType.Expert)//
         static final OptionKey<Integer> LibGraalManagementDelay = new OptionKey<>(1000);
     }
 
@@ -72,7 +73,9 @@ public final class LibGraalHotSpotGraalManagement extends MBeanProxy<HotSpotGraa
     @Override
     public void initialize(HotSpotGraalRuntime runtime, GraalHotSpotVMConfig config) {
         int delay = Options.LibGraalManagementDelay.getValue(runtime.getOptions());
-        if (delay == 0) {
+        if (delay < 0) {
+            return;
+        } else if (delay == 0) {
             initialize0(runtime, config);
         } else {
             Thread t = new GraalServiceThread(new Runnable() {
