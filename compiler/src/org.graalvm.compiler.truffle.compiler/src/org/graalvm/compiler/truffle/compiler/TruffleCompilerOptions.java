@@ -48,7 +48,7 @@ public final class TruffleCompilerOptions {
         throw new IllegalStateException("No instance allowed.");
     }
 
-    @NativeImageReinitialize private static volatile OptionValues optionValues;
+    @NativeImageReinitialize private static volatile OptionValues graalOptionValues;
 
     /**
      * Uses the --engine option if set, otherwise falls back on the -Dgraal option.
@@ -87,11 +87,11 @@ public final class TruffleCompilerOptions {
     /**
      * Gets the object holding the values of Graal options.
      */
-    public static OptionValues getOptions() {
-        OptionValues result = optionValues;
+    public static OptionValues getGraalOptions() {
+        OptionValues result = graalOptionValues;
         if (result == null) {
-            result = TruffleCompilerRuntime.getRuntime().getOptions(OptionValues.class);
-            optionValues = result;
+            result = TruffleCompilerRuntime.getRuntime().getGraalOptions(OptionValues.class);
+            graalOptionValues = result;
         }
         return result;
     }

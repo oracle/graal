@@ -127,7 +127,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
     private static OptimizedCallTarget compileAST(RootNode rootNode) {
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
-        DebugContext debug = new DebugContext.Builder(TruffleCompilerOptions.getOptions()).build();
+        DebugContext debug = new DebugContext.Builder(TruffleCompilerOptions.getGraalOptions()).build();
         try (DebugContext.Scope s = debug.scope("EncodedGraphCacheTest")) {
             CompilationIdentifier compilationId = getTruffleCompilerFromRuntime(target).createCompilationIdentifier(target);
             TruffleInliningPlan inliningPlan = new TruffleInlining(target, new DefaultInliningPolicy());

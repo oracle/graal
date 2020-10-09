@@ -61,7 +61,6 @@ public @interface TruffleToLibGraal {
         GetGraphDumpDirectory,
         GetInfopoints,
         GetInfopointsCount,
-        GetInitialOptions,
         GetMarksCount,
         GetNodeCount,
         GetNodeTypes,

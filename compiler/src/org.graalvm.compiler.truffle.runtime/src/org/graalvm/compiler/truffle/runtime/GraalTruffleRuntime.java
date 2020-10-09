@@ -156,11 +156,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private volatile GraalTestTVMCI testTvmci;
 
     /**
-     * Option values initialized from Truffle compiler runtime.
-     */
-    @NativeImageReinitialize private volatile Map<String, Object> initialOptions;
-
-    /**
      * Utility method that casts the singleton {@link TruffleRuntime}.
      */
     public static GraalTruffleRuntime getRuntime() {
@@ -245,26 +240,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return optimizedAssumption.registerDependency();
     }
 
-    @Override
-    public final Map<String, Object> getOptions() {
-        Map<String, Object> res = initialOptions;
-        if (res == null) {
-            synchronized (this) {
-                res = initialOptions;
-                if (res == null) {
-                    res = createInitialOptions();
-                    initialOptions = res;
-                }
-            }
-        }
-        return res;
-    }
-
     protected abstract JavaConstant forObject(Object object);
 
     protected abstract <T> T asObject(Class<T> type, JavaConstant constant);
-
-    protected abstract Map<String, Object> createInitialOptions();
 
     protected abstract boolean isPrintGraphEnabled();
 

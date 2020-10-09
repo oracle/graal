@@ -665,7 +665,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     public void allowedRecursion() {
         /* Recursion depth just below the threshold that reports it as too deep recursion. */
         FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode result = new RecursionTestNode(PEGraphDecoder.Options.InliningDepthError.getValue(TruffleCompilerOptions.getOptions()) - 5);
+        AbstractTestNode result = new RecursionTestNode(PEGraphDecoder.Options.InliningDepthError.getValue(TruffleCompilerOptions.getGraalOptions()) - 5);
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "allowedRecursion", result));
     }
 
@@ -673,7 +673,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     public void tooDeepRecursion() {
         /* Recursion depth just above the threshold that reports it as too deep recursion. */
         FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode result = new RecursionTestNode(PEGraphDecoder.Options.InliningDepthError.getValue(TruffleCompilerOptions.getOptions()));
+        AbstractTestNode result = new RecursionTestNode(PEGraphDecoder.Options.InliningDepthError.getValue(TruffleCompilerOptions.getGraalOptions()));
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "tooDeepRecursion", result));
     }
 

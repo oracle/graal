@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.compiler.hotspot;
 import static org.graalvm.compiler.core.GraalCompiler.compileGraph;
 import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider.withNodeSourcePosition;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getOptions;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -101,6 +100,7 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCICompiler;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getGraalOptions;
 
 public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implements HotSpotTruffleCompiler {
 
@@ -117,7 +117,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     private final HotSpotGraalRuntimeProvider hotspotGraalRuntime;
 
     public static HotSpotTruffleCompilerImpl create(final TruffleCompilerRuntime runtime) {
-        OptionValues options = TruffleCompilerOptions.getOptions();
+        OptionValues options = TruffleCompilerOptions.getGraalOptions();
         HotSpotGraalRuntimeProvider hotspotGraalRuntime = (HotSpotGraalRuntimeProvider) getCompiler(options).getGraalRuntime();
         Backend backend = hotspotGraalRuntime.getHostBackend();
         Suites suites = backend.getSuites().getDefaultSuites(options);
@@ -224,7 +224,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
                 return;
             }
             HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) backend.getCompilationIdentifier(method);
-            OptionValues options = getOptions();
+            OptionValues options = getGraalOptions();
             try (DebugContext debug = DebugStubsAndSnippets.getValue(options)
                             ? hotspotGraalRuntime.openDebugContext(options, compilationId, method, getDebugHandlerFactories(), DebugContext.getDefaultLogStream())
                             : DebugContext.disabled(options);
@@ -233,7 +233,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
                 CompilationResult compResult = compileTruffleCallBoundaryMethod(method, compilationId, debug);
                 CodeCacheProvider codeCache = lastTierProviders.getCodeCache();
                 try (DebugContext.Scope s = debug.scope("CodeInstall", codeCache, method, compResult)) {
-                    CompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, method, compilationId.getRequest(), compResult, getOptions());
+                    CompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, method, compilationId.getRequest(), compResult, getGraalOptions());
                     codeCache.setDefaultCode(method, compiledCode);
                 } catch (Throwable e) {
                     throw debug.handle(e);

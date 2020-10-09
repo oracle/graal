@@ -27,20 +27,13 @@ package com.oracle.svm.truffle.api;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
@@ -63,7 +56,6 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
@@ -332,52 +324,16 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public <T> T getOptions(Class<T> type) {
+    public <T> T getGraalOptions(Class<T> type) {
         if (type == OptionValues.class) {
             return type.cast(RuntimeOptionValues.singleton());
         }
-        return super.getOptions(type);
-    }
-
-    @Override
-    public <T> T convertOptions(Class<T> type, Map<String, Object> map) {
-        if (type == OptionValues.class) {
-            final EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
-            for (Map.Entry<String, Object> e : map.entrySet()) {
-                final String optionName = e.getKey();
-                final Object optionValue = e.getValue();
-                Optional<OptionDescriptor> descriptor = RuntimeOptionParser.singleton().getDescriptor(optionName);
-                if (descriptor.isPresent()) {
-                    OptionDescriptor desc = descriptor.get();
-                    Class<?> valueType = optionValue.getClass();
-                    if (desc.getOptionValueType().isAssignableFrom(valueType)) {
-                        values.put(desc.getOptionKey(), optionValue);
-                    } else {
-                        throw new IllegalArgumentException("Invalid type of option '" + optionName + "': required " + desc.getOptionValueType().getSimpleName() + ", got " + valueType);
-                    }
-                }
-            }
-            return type.cast(new OptionValues(values));
-
-        }
-        return super.convertOptions(type, map);
-    }
-
-    @Override
-    protected Map<String, Object> createInitialOptions() {
-        Map<String, Object> res = new HashMap<>();
-        UnmodifiableMapCursor<OptionKey<?>, Object> optionValues = RuntimeOptionValues.singleton().getMap().getEntries();
-        while (optionValues.advance()) {
-            final OptionKey<?> key = optionValues.getKey();
-            Object value = optionValues.getValue();
-            res.put(key.getName(), value);
-        }
-        return res;
+        return super.getGraalOptions(type);
     }
 
     @Override
     protected boolean isPrintGraphEnabled() {
-        return DebugOptions.PrintGraph.getValue(getOptions(OptionValues.class)) != DebugOptions.PrintGraphTarget.Disable;
+        return DebugOptions.PrintGraph.getValue(getGraalOptions(OptionValues.class)) != DebugOptions.PrintGraphTarget.Disable;
     }
 
     @Platforms(HOSTED_ONLY.class)

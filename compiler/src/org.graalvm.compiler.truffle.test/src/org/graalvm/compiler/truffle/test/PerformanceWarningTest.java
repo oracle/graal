@@ -125,7 +125,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         try {
             GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
-            DebugContext debug = new Builder(TruffleCompilerOptions.getOptions()).build();
+            DebugContext debug = new Builder(TruffleCompilerOptions.getGraalOptions()).build();
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;
                 CompilationIdentifier compilationId = getTruffleCompiler(target).createCompilationIdentifier(compilable);

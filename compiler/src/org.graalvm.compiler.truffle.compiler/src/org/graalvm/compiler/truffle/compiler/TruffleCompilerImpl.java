@@ -237,10 +237,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public final TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
         final DebugContext debugContext;
         if (compilation == null) {
-            debugContext = new Builder(TruffleCompilerOptions.getOptions()).build();
+            debugContext = new Builder(TruffleCompilerOptions.getGraalOptions()).build();
         } else {
             TruffleCompilationIdentifier ident = asTruffleCompilationIdentifier(compilation);
-            OptionValues graalOptions = TruffleCompilerOptions.getOptions();
+            OptionValues graalOptions = TruffleCompilerOptions.getGraalOptions();
             CompilableTruffleAST compilable = ident.getCompilable();
             org.graalvm.options.OptionValues truffleOptions = TruffleCompilerOptions.getOptionsForCompiler(options);
             if (ExpansionStatistics.isEnabled(truffleOptions)) {
@@ -286,7 +286,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                 notifyCompilableOfFailure(compilable, e);
             }
         } else {
-            final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
+            final OptionValues debugContextOptionValues = TruffleCompilerOptions.getGraalOptions();
             try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.getDefaultLogStream());
                             DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
                 actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, graalDebug);
