@@ -39,7 +39,7 @@ typedef union {
 
 int main(void) {
     VENDOR vendor;
-    unsigned int a, b, c, d;
+    unsigned int a;
 
     __cpuid(0, a, vendor.b, vendor.c, vendor.d);
     vendor.str[12] = 0;
