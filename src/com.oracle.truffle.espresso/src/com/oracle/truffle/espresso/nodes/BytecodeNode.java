@@ -1116,13 +1116,23 @@ public final class BytecodeNode extends EspressoMethodNode {
                         QuickNode quickNode = nodes[bs.readCPI(curBCI)];
                         if (quickNode.removedByRedefintion()) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            BytecodeStream original = new BytecodeStream(getMethodVersion().getCodeAttribute().getOriginalCode());
-                            char cpi = original.readCPI(curBCI);
-                            int nodeOpcode = original.currentBC(curBCI);
-                            Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
-                            QuickNode invoke = replace(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors));
-                            nodes[bs.readCPI(curBCI)] = invoke;
-                            top += invoke.execute(frame);
+                            synchronized (this) {
+                                // re-check if node was already replaced by another thread
+                                if (quickNode != nodes[bs.readCPI(curBCI)]) {
+                                    // another thread beat us
+                                    top += nodes[bs.readCPI(curBCI)].execute(frame);
+                                } else {
+                                    // other threads might still have beat us but if
+                                    // so, the resolution failed and so will we below
+                                    BytecodeStream original = new BytecodeStream(getMethodVersion().getCodeAttribute().getOriginalCode());
+                                    char cpi = original.readCPI(curBCI);
+                                    int nodeOpcode = original.currentBC(curBCI);
+                                    Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
+                                    QuickNode invoke = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors));
+                                    nodes[bs.readCPI(curBCI)] = invoke;
+                                    top += invoke.execute(frame);
+                                }
+                            }
                         } else {
                             top += quickNode.execute(frame);
                         }
