@@ -54,6 +54,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibG
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InstallTruffleCallBoundaryMethods;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.IsBasicDumpEnabled;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.IsDumpChannelOpen;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.IsPrintGraphEnabled;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.NewCompiler;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.OpenCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.OpenDebugContext;
@@ -363,6 +364,19 @@ final class TruffleToLibGraalEntryPoints {
             scope.setObjectResult(WordFactory.nullPointer());
         }
         return scope.getObjectResult();
+    }
+
+    @TruffleToLibGraal(IsPrintGraphEnabled)
+    @SuppressWarnings({"unused", "try"})
+    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_isPrintGraphEnabled")
+    public static boolean isPrintGraphEnabled(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long truffleRuntimeHandle) {
+        try (JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(GetInitialOptions, env)) {
+            HSTruffleCompilerRuntime hsTruffleRuntime = LibGraalObjectHandles.resolve(truffleRuntimeHandle, HSTruffleCompilerRuntime.class);
+            return DebugOptions.PrintGraph.getValue(hsTruffleRuntime.getOptions(OptionValues.class)) != DebugOptions.PrintGraphTarget.Disable;
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            return false;
+        }
     }
 
     private static Map<String, Object> decodeOptions(JNIEnv env, JByteArray hsOptions) {

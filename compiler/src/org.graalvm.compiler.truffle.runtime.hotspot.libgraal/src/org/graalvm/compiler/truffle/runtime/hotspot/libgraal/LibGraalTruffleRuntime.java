@@ -117,4 +117,11 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
             return OptionsEncoder.decode(serializedOptions);
         }
     }
+
+    @Override
+    protected boolean isPrintGraphEnabled() {
+        try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+            return TruffleToLibGraalCalls.isPrintGraphEnabled(getIsolateThread(), handle());
+        }
+    }
 }

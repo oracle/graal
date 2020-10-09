@@ -29,6 +29,7 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.options.OptionDescriptors;
@@ -78,6 +79,11 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
             res.put(key.getName(), value);
         }
         return res;
+    }
+
+    @Override
+    protected boolean isPrintGraphEnabled() {
+        return DebugOptions.PrintGraph.getValue(getOptions(OptionValues.class)) != DebugOptions.PrintGraphTarget.Disable;
     }
 
     @Override

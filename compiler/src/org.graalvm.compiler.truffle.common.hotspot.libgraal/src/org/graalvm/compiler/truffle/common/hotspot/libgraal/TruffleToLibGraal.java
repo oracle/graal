@@ -76,6 +76,7 @@ public @interface TruffleToLibGraal {
         InstallTruffleCallBoundaryMethods,
         IsBasicDumpEnabled,
         IsDumpChannelOpen,
+        IsPrintGraphEnabled,
         NewCompiler,
         OpenCompilation,
         OpenDebugContext,

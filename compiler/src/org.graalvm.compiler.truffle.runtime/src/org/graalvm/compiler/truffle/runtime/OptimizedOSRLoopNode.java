@@ -334,7 +334,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
         // using static methods with LoopNode return type ensures
         // that only one loop node implementation gets loaded.
-        if (engine.compilation && TruffleRuntimeOptions.getPolyglotOptionValue(engineOptions, PolyglotCompilerOptions.OSR)) {
+        if (engine.compilation && engineOptions.get(PolyglotCompilerOptions.OSR)) {
             return createDefault(repeat, engineOptions);
         } else {
             return OptimizedLoopNode.create(repeat);
@@ -343,8 +343,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
     private static LoopNode createDefault(RepeatingNode repeatableNode, OptionValues options) {
         return new OptimizedDefaultOSRLoopNode(repeatableNode,
-                        TruffleRuntimeOptions.getPolyglotOptionValue(options, PolyglotCompilerOptions.OSRCompilationThreshold),
-                        TruffleRuntimeOptions.getPolyglotOptionValue(options, PolyglotCompilerOptions.FirstTierBackedgeCounts));
+                        options.get(PolyglotCompilerOptions.OSRCompilationThreshold),
+                        options.get(PolyglotCompilerOptions.FirstTierBackedgeCounts));
     }
 
     /**

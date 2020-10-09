@@ -51,7 +51,6 @@ import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.LoopNodeFactory;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -78,6 +77,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.compiler.debug.DebugOptions;
 
 class SubstrateTruffleOptions {
 
@@ -127,7 +127,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
-        truffleCompiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget), callTarget, true);
+        truffleCompiler.initialize(getOptionsForCompiler(callTarget), callTarget, true);
         if (SubstrateTruffleOptions.isMultiThreaded()) {
             compileQueue = TruffleFeature.getSupport().createBackgroundCompileQueue(this);
         }
@@ -298,7 +298,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             // Single threaded compilation does not require cancellation.
             doCompile(optimizedCallTarget, null);
         } catch (com.oracle.truffle.api.OptimizationFailedException e) {
-            if (TruffleRuntimeOptions.getPolyglotOptionValue(optimizedCallTarget.getOptionValues(), PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
+            if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
             }
             if (SubstrateTruffleOptions.TrufflePropagateCompilationErrors.getValue()) {
@@ -373,6 +373,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             res.put(key.getName(), value);
         }
         return res;
+    }
+
+    @Override
+    protected boolean isPrintGraphEnabled() {
+        return DebugOptions.PrintGraph.getValue(getOptions(OptionValues.class)) != DebugOptions.PrintGraphTarget.Disable;
     }
 
     @Platforms(HOSTED_ONLY.class)

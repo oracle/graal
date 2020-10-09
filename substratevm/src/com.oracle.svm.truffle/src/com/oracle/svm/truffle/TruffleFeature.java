@@ -73,19 +73,16 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.OptimizedAssumption;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -124,7 +121,6 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.hosted.option.RuntimeOptionFeature;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
 import com.oracle.svm.truffle.api.SubstratePartialEvaluator;
@@ -499,8 +495,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             registerKnownTruffleFields(config, partialEvaluator.getKnownTruffleTypes());
             support.registerInterpreterEntryMethodsAsCompiled(partialEvaluator, access);
 
-            registerTruffleOptions(config);
-
             GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getConfigPrototype();
 
             if (Options.TruffleInlineDuringParsing.getValue()) {
@@ -561,20 +555,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         assert LibraryFactory.class.isAssignableFrom(clazz) || LibraryExport.class.isAssignableFrom(clazz) : clazz;
         if (!Modifier.isAbstract(clazz.getModifiers())) {
             access.registerAsInHeap(clazz);
-        }
-    }
-
-    /**
-     * The {@link SharedTruffleRuntimeOptions} are initialized by values assigned to
-     * {@link SharedTruffleCompilerOptions}. Fields of the latter must be registered as as accessed
-     * so that the {@link RuntimeOptionFeature} will pick them up to make the options settable at
-     * runtime.
-     */
-    private static void registerTruffleOptions(BeforeAnalysisAccessImpl config) {
-        for (Field field : SharedTruffleCompilerOptions.class.getDeclaredFields()) {
-            if (OptionKey.class.isAssignableFrom(field.getType())) {
-                config.registerAsAccessed(field);
-            }
         }
     }
 

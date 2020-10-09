@@ -305,9 +305,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                     try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(compilable)))) {
                         final org.graalvm.options.OptionValues options = TruffleCompilerOptions.getOptionsForCompiler(optionsMap);
                         partialEvaluator.initialize(options);
-                        if (firstInitialization) {
-                            TruffleCompilerOptions.checkDeprecation(compilable);
-                        }
                         initialized = true;
 
                         if (!FirstTierUseEconomy.getValue(options)) {

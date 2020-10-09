@@ -45,7 +45,6 @@ import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.test.TestWithPolyglotOptions;
 import org.junit.Test;
 
@@ -90,10 +89,10 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         OptimizedCallTarget compilable = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(42));
         TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
-            try (TruffleDebugContext debug = compiler.openDebugContext(TruffleRuntimeOptions.getOptionsForCompiler(compilable), compilation)) {
+            try (TruffleDebugContext debug = compiler.openDebugContext(GraalTruffleRuntime.getOptionsForCompiler(compilable), compilation)) {
                 TruffleInliningPlan inliningPlan = runtime.createInliningPlan(compilable, null);
                 TestListener listener = new TestListener();
-                compiler.doCompile(debug, compilation, TruffleRuntimeOptions.getOptionsForCompiler(compilable), inliningPlan, null, listener);
+                compiler.doCompile(debug, compilation, GraalTruffleRuntime.getOptionsForCompiler(compilable), inliningPlan, null, listener);
             }
         } catch (Throwable t) {
             String message = t.getMessage();

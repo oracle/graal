@@ -204,7 +204,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                     }
                 }
 
-                if (TruffleRuntimeOptions.getPolyglotOptionValue(engineOptions, PolyglotCompilerOptions.TraceAssumptions)) {
+                if (engineOptions.get(PolyglotCompilerOptions.TraceAssumptions)) {
                     logStackTrace = true;
                     logInvalidatedDependency(dependency, message, logger);
                 }
@@ -310,7 +310,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
 
     private static void logStackTrace(OptionValues engineOptions, TruffleLogger logger) {
         final int skip = 1;
-        final int limit = TruffleRuntimeOptions.getPolyglotOptionValue(engineOptions, PolyglotCompilerOptions.TraceStackTraceLimit);
+        final int limit = engineOptions.get(PolyglotCompilerOptions.TraceStackTraceLimit);
         StackTraceElement[] stackTrace = new Throwable().getStackTrace();
         StringBuilder strb = new StringBuilder();
         String sep = "";
