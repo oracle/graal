@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.Assumption;
@@ -1095,7 +1096,7 @@ public final class ObjectKlass extends Klass {
             JDWPLogger.log("Redefining method %s.%s", JDWPLogger.LogLevel.REDEFINE, method.getDeclaringKlass().getName(), method.getName());
         }
 
-        List<Method> removedMethods = change.getRemovedMethods();
+        Set<Method> removedMethods = change.getRemovedMethods();
         List<ParserMethod> addedMethods = change.getAddedMethods();
 
         LinkedList<Method> declaredMethods = new LinkedList<>(Arrays.asList(oldVersion.declaredMethods));
