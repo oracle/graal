@@ -633,7 +633,7 @@ public final class ObjectKlass extends Klass {
     }
 
 
-    List<Method> lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method> result) {
+    void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method> result) {
         Symbol<Name> name = current.getName();
         Symbol<Signature> signature = current.getRawSignature();
         for (Method m : getVTable()) {
@@ -661,7 +661,6 @@ public final class ObjectKlass extends Klass {
                 }
             }
         }
-        return result;
     }
 
     public Method resolveInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
@@ -1168,7 +1167,7 @@ public final class ObjectKlass extends Klass {
 
             while (superKlass != null) {
                 // look for the method
-                int vtableIndex = superKlass.findVirtualMethodIndex(name, signature, superKlass);
+                int vtableIndex = superKlass.findVirtualMethodIndex(name, signature, this);
                 if (vtableIndex != -1) {
                     superKlass.getVTable()[vtableIndex].onSubclassMethodChanged(ids);
                 }
