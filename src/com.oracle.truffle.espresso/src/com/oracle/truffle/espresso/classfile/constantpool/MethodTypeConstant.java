@@ -54,7 +54,7 @@ public interface MethodTypeConstant extends PoolConstant {
         try {
             for (int i = 0; i < pcount; i++) {
                 Symbol<Symbol.Type> paramType = Signatures.parameterType(signature, i);
-                ptypes[i] = meta.resolveSymbolOrFail(paramType, accessingKlass.getDefiningClassLoader()).mirror();
+                ptypes[i] = meta.resolveSymbolAndAccessCheck(paramType, accessingKlass).mirror();
             }
         } catch (EspressoException e) {
             if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
@@ -63,7 +63,7 @@ public interface MethodTypeConstant extends PoolConstant {
             throw e;
         }
         try {
-            rtype = meta.resolveSymbolOrFail(rt, accessingKlass.getDefiningClassLoader()).mirror();
+            rtype = meta.resolveSymbolAndAccessCheck(rt, accessingKlass).mirror();
         } catch (EspressoException e) {
             EspressoException rethrow = e;
             if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {

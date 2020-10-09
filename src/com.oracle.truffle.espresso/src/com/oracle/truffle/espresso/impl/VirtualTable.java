@@ -66,7 +66,7 @@ public final class VirtualTable {
             overrides.clear();
         }
         if (superKlass != null) {
-            superKlass.lookupVirtualMethodOverrides(m.getName(), m.getRawSignature(), thisKlass, overrides);
+            superKlass.lookupVirtualMethodOverrides(m, thisKlass, overrides);
         }
         Method toSet = m;
         if (!overrides.isEmpty()) {
