@@ -59,7 +59,9 @@ final class BooleanCoverageNode extends AbstractCoverageNode {
     protected void onEnter(VirtualFrame frame) {
         if (noReset.isValid()) {
             if (!coveredFinal) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 coveredFinal = true;
+                covered = true;
             }
         } else {
             covered = true;
