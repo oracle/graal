@@ -22,12 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.methodhandles;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
+import java.lang.invoke.WrongMethodTypeException;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 
 @TargetClass(java.lang.invoke.MethodType.class)
 final class Target_java_lang_invoke_MethodType {
@@ -56,4 +62,11 @@ final class Target_java_lang_invoke_MethodType_ConcurrentWeakInternSet {
 
 @TargetClass(className = "java.lang.invoke.Invokers")
 final class Target_java_lang_invoke_Invokers {
+    @Substitute
+    @TargetElement(onlyWith = MethodHandlesSupported.class)
+    static void checkExactType(MethodHandle mh, MethodType expected) {
+        if (!expected.equals(mh.type())) {
+            throw new WrongMethodTypeException("expected " + expected + " but found " + mh.type());
+        }
+    }
 }
