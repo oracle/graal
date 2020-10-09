@@ -54,6 +54,15 @@ Note that most options also require the additional `--experimental-options` flag
 [engine] opt done     BinaryConstraint.input                                      |AST   19|Time  740( 408+332 )ms|Inlined   0Y   0N|IR   109/  166|CodeSize    530|Addr 0x1102e8690|Src octane-deltablue.js:409
 ```
 
+A brief explanation of some of these fields:
+- `AST`: number of non-trivial AST nodes in this `CallTarget` (not counting inlined call targets)
+- `Calls/Thres`: number of calls / number of calls necessary to trigger optimization
+- `CallsAndLoop/Thres`: number of calls + number of loop iterations / number of those necessary to trigger optimization
+- `Time`: compilation time (in parentheses: time for partial evaluation + time for the rest of compilation)
+- `Inlined`: number of `DirectCallNode`s, both inlined (`Y`) or not (`N`)
+- `IR`: Number of Graal (Intermediate Representation) nodes after partial evalution / after compilation & lowering
+- `CodeSize`: size of the generated machine code 
+
 `--engine.TraceCompilationAST` prints the Truffle AST for each compilation.
 
 ```
