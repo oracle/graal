@@ -1120,7 +1120,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 // re-check if node was already replaced by another thread
                                 if (quickNode != nodes[bs.readCPI(curBCI)]) {
                                     // another thread beat us
-                                    top += nodes[bs.readCPI(curBCI)].execute(frame);
+                                    quickNode = nodes[bs.readCPI(curBCI)];
                                 } else {
                                     // other threads might still have beat us but if
                                     // so, the resolution failed and so will we below
@@ -1128,11 +1128,11 @@ public final class BytecodeNode extends EspressoMethodNode {
                                     char cpi = original.readCPI(curBCI);
                                     int nodeOpcode = original.currentBC(curBCI);
                                     Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
-                                    QuickNode invoke = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors));
-                                    nodes[bs.readCPI(curBCI)] = invoke;
-                                    top += invoke.execute(frame);
+                                    quickNode = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors));
+                                    nodes[bs.readCPI(curBCI)] = quickNode;
                                 }
                             }
+                            top += quickNode.execute(frame);
                         } else {
                             top += quickNode.execute(frame);
                         }
