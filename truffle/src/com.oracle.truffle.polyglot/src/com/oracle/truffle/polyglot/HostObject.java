@@ -1095,19 +1095,18 @@ final class HostObject implements TruffleObject {
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean hasMetaObject() {
-        return true;
+        return !isNull();
     }
 
     @ExportMessage
     Object getMetaObject() throws UnsupportedMessageException {
-        Object javaObject = this.obj;
-        Class<?> javaType;
-        if (javaObject == null) {
-            javaType = Void.class;
+        if (hasMetaObject()) {
+            Object javaObject = this.obj;
+            Class<?> javaType = javaObject.getClass();
+            return HostObject.forClass(javaType, languageContext);
         } else {
-            javaType = javaObject.getClass();
+            throw UnsupportedMessageException.create();
         }
-        return HostObject.forClass(javaType, languageContext);
     }
 
     @SuppressWarnings("static-method")
@@ -1145,7 +1144,7 @@ final class HostObject implements TruffleObject {
             if (HostObject.isInstance(other)) {
                 HostObject otherHost = ((HostObject) other);
                 if (otherHost.isNull()) {
-                    return c == Void.class;
+                    return false;
                 } else {
                     return c.isInstance(otherHost.obj);
                 }
@@ -1155,7 +1154,7 @@ final class HostObject implements TruffleObject {
             } else {
                 boolean canConvert = ToHostNode.canConvert(other, c, c,
                                 ToHostNode.allowsImplementation(languageContext, c),
-                                languageContext, ToHostNode.MAX,
+                                languageContext, ToHostNode.LOWEST,
                                 InteropLibrary.getFactory().getUncached(other),
                                 TargetMappingNode.getUncached());
                 return canConvert;

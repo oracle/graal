@@ -61,7 +61,6 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
 
@@ -194,7 +193,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
          * zone prevents stack overflows.
          */
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
-        ThreadingSupportImpl.pauseRecurringCallback("No exception must flow out of the monitor code.");
         VMOperationControl.guaranteeOkayToBlock("No Java synchronization must be performed within a VMOperation: if the object is already locked, the VM is deadlocked");
         try {
             singleton().monitorEnter(obj);
@@ -221,7 +219,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             throw VMError.shouldNotReachHere("Unexpected exception in MonitorSupport.monitorEnter", ex);
 
         } finally {
-            ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
             StackOverflowCheck.singleton().protectYellowZone();
         }
     }
@@ -239,7 +236,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated", calleeMustBe = false)
     private static void slowPathMonitorExit(Object obj) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
-        ThreadingSupportImpl.pauseRecurringCallback("No exception must flow out of the monitor code.");
         try {
             singleton().monitorExit(obj);
 
@@ -262,7 +258,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             throw VMError.shouldNotReachHere("Unexpected exception in MonitorSupport.monitorExit", ex);
 
         } finally {
-            ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
             StackOverflowCheck.singleton().protectYellowZone();
         }
     }

@@ -141,6 +141,45 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
     }
 }
 
+@TargetClass(className = "jdk.internal.loader.Loader", onlyWith = JDK11OrLater.class)
+@SuppressWarnings({"unused", "static-method"})
+final class Target_jdk_internal_loader_Loader {
+
+    @Substitute
+    private URL findResource(String mn, String name) {
+        return findResource(name);
+    }
+
+    @Substitute
+    private URL findResource(String name) {
+        List<byte[]> arr = Resources.get(name);
+        return arr == null ? null : Resources.createURL(name, arr.get(0));
+    }
+
+    @Substitute
+    private Enumeration<URL> findResources(String name) {
+        List<byte[]> arr = Resources.get(name);
+        if (arr == null) {
+            return Collections.emptyEnumeration();
+        }
+        List<URL> res = new ArrayList<>(arr.size());
+        for (byte[] data : arr) {
+            res.add(Resources.createURL(name, data));
+        }
+        return Collections.enumeration(res);
+    }
+
+    @Substitute
+    private URL getResource(String name) {
+        return findResource(name);
+    }
+
+    @Substitute
+    private Enumeration<URL> getResources(String name) {
+        return findResources(name);
+    }
+}
+
 @TargetClass(ClassLoader.class)
 @SuppressWarnings("static-method")
 final class Target_java_lang_ClassLoader {
@@ -349,6 +388,15 @@ final class Target_java_lang_ClassLoader {
 
     @Delete
     private static native void registerNatives();
+
+    @Delete
+    private native Class<?> defineClass(String name, byte[] b, int off, int len);
+
+    @Delete
+    private native Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain);
+
+    @Delete
+    private native Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain);
 
     @Delete
     @TargetElement(onlyWith = JDK8OrEarlier.class)

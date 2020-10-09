@@ -25,6 +25,12 @@ ahead-of-time. To inform `native-image` of guest languages used by an
 application, specify `--language:<languageId>` for each guest language (e.g.,
 `--language:js`).
 
+* [Install Native Image](#install-native-image)
+* [Prerequisites](#prerequisites)
+* [Build a Native Image](#build-a-native-image)
+* [Images and Entry Points](#images-and-entry-points)
+* [Ahead-of-time Compilation Limitations](#ahead-of-time-compilation-limitations)
+
 ### License
 
 The Native Image technology is distributed as a separate installable to GraalVM.
@@ -135,6 +141,35 @@ Docker containers. The `--install-exit-handlers` option gives you the same
 signal handlers that a JVM does.
 
 For more complex examples, visit the [native image generation](https://www.graalvm.org/docs/examples/native-list-dir/) or [compiling a Java and Kotlin app ahead-of-time](https://www.graalvm.org/docs/examples/java-kotlin-aot/) pages.
+
+## Images and Entry Points
+
+A native image can be built as a standalone executable, which is the default, or as a shared library by passing `--shared` to the native image builder. For an image to be useful, it needs to have at least one entry point method.
+
+For executables, Native Image supports Java main methods with a signature that takes the command line arguments as an array of strings:
+
+```java
+public static void main(String[] arg) { /* ... */ }
+```
+
+For shared libraries, Native Image provides the `@CEntryPoint` annotation to specify entry point methods that should be exported and callable from C.
+Entry point methods must be static and may only have non-object parameters and return types – this includes Java primitives, but also Word types (including pointers). One of the parameters of an entry point method has to be of type `IsolateThread` or `Isolate`. This parameter provides the current thread's execution context for the call.
+
+For example:
+
+```java
+@CEntryPoint static int add(IsolateThread thread, int a, int b) {
+    return a + b;
+}
+```
+
+When building a shared library, an additional C header file is generated.
+This header file contains declarations for the [C API](C-API.md), which allows creating isolates and attaching threads from C code, as well as declarations for each entry point in user code. The generated C declaration for the above example is:
+```c
+int add(graal_isolatethread_t* thread, int a, int b);
+```
+
+Both executable images and shared library images can have an arbitrary number of entry points, for example, to implement callbacks or APIs.
 
 ### How to Determine What Version of GraalVM an Image Is Generated With?
 

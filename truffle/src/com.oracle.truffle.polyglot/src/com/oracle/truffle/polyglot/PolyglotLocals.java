@@ -509,11 +509,11 @@ final class PolyglotLocals {
             return result;
         }
 
-        final Object readLocal(PolyglotContextImpl context, Object[] locals) {
+        final Object readLocal(PolyglotContextImpl context, Object[] locals, boolean threadLocal) {
             assert locals != null && index < locals.length && locals[index] != null : invalidLocalMessage(context, locals);
             Object result;
             if (CompilerDirectives.isPartialEvaluationConstant(this)) {
-                result = readLocalFast(locals);
+                result = readLocalFast(locals, threadLocal);
             } else {
                 result = locals[index];
             }
@@ -521,9 +521,9 @@ final class PolyglotLocals {
             return result;
         }
 
-        private Object readLocalFast(Object[] locals) {
+        private Object readLocalFast(Object[] locals, boolean threadLocal) {
             Object result;
-            StableLocalLocations stableLocations = this.engine.contextThreadLocalLocations;
+            StableLocalLocations stableLocations = (threadLocal ? this.engine.contextThreadLocalLocations : this.engine.contextLocalLocations);
             LocalLocation[] locations = stableLocations.locations;
             if (!stableLocations.assumption.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

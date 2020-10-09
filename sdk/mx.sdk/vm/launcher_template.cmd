@@ -145,7 +145,7 @@ goto :eof
     endlocal & ( set "arg=%arg%" )
     exit /b 0
 
-:: Unfortunately, parsing of `--jvm.*` and `--vm.*` arguments has to be done blind:
+:: Unfortunately, parsing of `--vm.*` arguments has to be done blind:
 :: Maybe some of those arguments where not really intended for the launcher but were application
 :: arguments.
 
@@ -185,23 +185,13 @@ goto :eof
     call :unquote_arg !original_arg!
     set "arg_quoted=%quoted%"
 
-    if "!arg:~0,6!"=="--jvm." (
-        >&2 echo '--jvm.*' options are deprecated, use '--vm.*' instead.
-        set prefix=jvm
-        call :unquote_arg !arg:~6!
-        call :process_vm_arg !arg!
-        if errorlevel 1 exit /b 1
-    ) else if "!arg:~0,5!"=="--vm." (
+    if "!arg:~0,5!"=="--vm." (
         set prefix=vm
         call :unquote_arg !arg:~5!
         call :process_vm_arg !arg!
         if errorlevel 1 exit /b 1
     ) else (
-        set cond=false
-        if "!arg!"=="--native" set cond=true
-        if "!arg:~0,9!"=="--native." set cond=true
-
-        if !cond!==true (
+        if "!arg!"=="--native" (
             >&2 echo The native version of %basename% does not exist: cannot use '!arg!'.
             set "extra="
             if "!basename!"=="polyglot" set "extra= --language:all"

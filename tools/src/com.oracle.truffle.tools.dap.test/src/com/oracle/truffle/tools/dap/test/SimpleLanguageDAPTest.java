@@ -300,9 +300,9 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":9}");
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
-                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":9,\"command\":\"continue\"}"
+                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":9,\"command\":\"continue\"}",
+                "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\"}"
         );
-        tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\",\"seq\":18}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":10}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":10,\"command\":\"threads\",\"seq\":19}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":11}");
@@ -346,14 +346,13 @@ public final class SimpleLanguageDAPTest {
         // Set breakpoint:
         tester.sendMessage("{\"command\":\"setBreakpoints\",\"arguments\":{\"source\":{\"name\":\"SLTest.sl\",\"sourceReference\":2},\"lines\":[12],\"breakpoints\":[{\"line\":12}],\"sourceModified\":false},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"endLine\":12,\"endColumn\":7,\"line\":12,\"verified\":true,\"column\":3,\"id\":1}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"setBreakpoints\",\"seq\":13}");
-        // Continue
+        // Continue and suspend at the breakpoint:
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":8}");
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
-                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":8,\"command\":\"continue\"}"
+                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":8,\"command\":\"continue\"}",
+                "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\"}"
         );
-        // Suspend at the breakpoint:
-        tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\",\"seq\":16}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":9}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":9,\"command\":\"threads\",\"seq\":17}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":10}");
@@ -365,9 +364,9 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":12}");
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
-                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":12,\"command\":\"continue\"}"
+                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":12,\"command\":\"continue\"}",
+                "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\"}"
         );
-        tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\",\"seq\":22}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":13}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":13,\"command\":\"threads\",\"seq\":23}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":14}");
@@ -424,14 +423,13 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":9,\"command\":\"threads\",\"seq\":19}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":10}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":5,\"name\":\"main\",\"column\":5,\"id\":1,\"source\":{\"path\":\"/test/SLTest.sl\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":10,\"command\":\"stackTrace\",\"seq\":20}");
-        // Step over the method with breakpoint:
+        // Step over the method with breakpoint, step over not finished, the second breakpoint is hit:
         tester.sendMessage("{\"command\":\"next\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":11}");
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
-                "{\"success\":true,\"type\":\"response\",\"request_seq\":11,\"command\":\"next\"}"
+                "{\"success\":true,\"type\":\"response\",\"request_seq\":11,\"command\":\"next\"}",
+                "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\"}"
         );
-        // Step over not finished, the second breakpoint is hit:
-        tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\",\"seq\":23}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":12}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":12,\"command\":\"threads\",\"seq\":24}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":13}");
@@ -439,14 +437,13 @@ public final class SimpleLanguageDAPTest {
         // Remove the second breakpoint
         tester.sendMessage("{\"command\":\"setBreakpoints\",\"arguments\":{\"source\":{\"name\":\"SLTest.sl\",\"path\":\"/test/SLTest.sl\"},\"lines\":[4],\"breakpoints\":[{\"line\":4}],\"sourceModified\":false},\"type\":\"request\",\"seq\":14}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"endLine\":4,\"endColumn\":14,\"line\":4,\"verified\":true,\"column\":10,\"id\":1}]},\"type\":\"response\",\"request_seq\":14,\"command\":\"setBreakpoints\",\"seq\":26}");
-        // Continue
+        // Continue, the first breakpoint is hit again:
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":15}");
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
-                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":15,\"command\":\"continue\"}"
+                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":15,\"command\":\"continue\"}",
+                "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\"}"
         );
-        // The first breakpoint is hit again:
-        tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\",\"seq\":29}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":16}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":16,\"command\":\"threads\",\"seq\":30}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":17}");
@@ -466,9 +463,9 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"next\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":21}");
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
-                "{\"success\":true,\"type\":\"response\",\"request_seq\":21,\"command\":\"next\"}"
+                "{\"success\":true,\"type\":\"response\",\"request_seq\":21,\"command\":\"next\"}",
+                "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\"}"
         );
-        tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\",\"seq\":39}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":22}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":22,\"command\":\"threads\",\"seq\":40}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":23}");
@@ -515,14 +512,13 @@ public final class SimpleLanguageDAPTest {
         // Set function breakpoint:
         tester.sendMessage("{\"command\":\"setFunctionBreakpoints\",\"arguments\":{\"breakpoints\":[{\"name\":\"foo0\"}]},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"endLine\":1,\"endColumn\":1,\"line\":1,\"verified\":true,\"column\":1,\"id\":1}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"setFunctionBreakpoints\",\"seq\":13}");
-        // Continue:
+        // Continue and suspend at the breakpoint:
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":8}");
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
-                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":8,\"command\":\"continue\"}"
+                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":8,\"command\":\"continue\"}",
+                "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\"}"
         );
-        // Suspend at the breakpoint:
-        tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\",\"seq\":16}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":9}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":9,\"command\":\"threads\",\"seq\":17}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":10}");
@@ -569,14 +565,13 @@ public final class SimpleLanguageDAPTest {
         // Set function breakpoint:
         tester.sendMessage("{\"command\":\"setFunctionBreakpoints\",\"arguments\":{\"breakpoints\":[{\"name\":\"isNull\"}]},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"endLine\":1,\"endColumn\":1,\"line\":1,\"verified\":true,\"column\":1,\"id\":1}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"setFunctionBreakpoints\",\"seq\":13}");
-        // Continue:
+        // Continue and suspend at the breakpoint:
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":8}");
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
-                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":8,\"command\":\"continue\"}"
+                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":8,\"command\":\"continue\"}",
+                "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\"}"
         );
-        // Suspend at the breakpoint:
-        tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\",\"seq\":16}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":9}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":9,\"command\":\"threads\",\"seq\":17}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":10}");
@@ -712,7 +707,7 @@ public final class SimpleLanguageDAPTest {
         tester.finish();
     }
 
-//    @Test
+    @Test
     public void testReturnValue() throws Exception {
         tester = DAPTester.start(true);
         Source source = Source.newBuilder("sl", CODE_RET_VAL, "SLTest.sl").uri(new URI("file:///test/SLTest.sl")).build();
@@ -890,9 +885,9 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":12}");
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
-                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":12,\"command\":\"continue\"}"
+                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":12,\"command\":\"continue\"}",
+                "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\"}"
         );
-        tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\",\"seq\":20}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":13}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":13,\"command\":\"threads\",\"seq\":21}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":14}");
@@ -1063,9 +1058,9 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":14}");
         tester.compareReceivedMessages(
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1},\"type\":\"event\"}",
-                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":14,\"command\":\"continue\"}"
+                "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":14,\"command\":\"continue\"}",
+                "{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\"}"
         );
-        tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"breakpoint\",\"description\":\"Paused on breakpoint\"},\"type\":\"event\",\"seq\":23}");
         tester.sendMessage("{\"command\":\"threads\",\"type\":\"request\",\"seq\":15}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"threads\":[{\"name\":\"testRunner\",\"id\":1}]},\"type\":\"response\",\"request_seq\":15,\"command\":\"threads\",\"seq\":24}");
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":16}");

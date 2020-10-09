@@ -139,7 +139,7 @@ public class NativeImageOptions {
         try {
             return CStandards.valueOf(CStandard.getValue());
         } catch (IllegalArgumentException e) {
-            throw UserError.abort("C standard " + CStandard.getValue() + " is not supported. Supported standards are: " + Arrays.toString(CStandards.values()));
+            throw UserError.abort("C standard %s is not supported. Supported standards are: %s", CStandard.getValue(), Arrays.toString(CStandards.values()));
         }
     }
 

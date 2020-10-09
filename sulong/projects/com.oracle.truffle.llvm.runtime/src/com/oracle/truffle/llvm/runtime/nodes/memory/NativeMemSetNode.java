@@ -93,7 +93,7 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
         Object object = pointer.getObject();
         Object type = nativeTypes.getNativeType(object);
         if (type instanceof LLVMInteropType.Array) {
-            long elementSize = ((LLVMInteropType.Array) type).getElementSize();
+            long elementSize = ((LLVMInteropType.Array) type).elementSize;
             if (length % elementSize == 0) {
                 return elementSize;
             }

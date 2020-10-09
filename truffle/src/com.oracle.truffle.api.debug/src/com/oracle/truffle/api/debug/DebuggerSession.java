@@ -65,7 +65,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.debug.Breakpoint.BreakpointConditionFailure;
 import com.oracle.truffle.api.debug.DebuggerNode.InputValuesProvider;
@@ -282,12 +281,11 @@ public final class DebuggerSession implements Closeable {
             return null;
         }
         try {
-            Iterable<Scope> scopes = debugger.getEnv().findTopScopes(languageId);
-            Iterator<Scope> it = scopes.iterator();
-            if (!it.hasNext()) {
+            Object scope = debugger.getEnv().getScope(info);
+            if (scope == null) {
                 return null;
             }
-            return new DebugScope(it.next(), it, this, info);
+            return new DebugScope(scope, this, info);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
@@ -1525,9 +1523,10 @@ public final class DebuggerSession implements Closeable {
         @TruffleBoundary
         private void doReturn(MaterializedFrame frame, Object result) {
             SteppingStrategy steppingStrategy;
+            Object newResult = null;
             try {
                 if (hasRootElement) {
-                    doStepAfter(frame, result);
+                    newResult = doStepAfter(frame, result);
                 }
             } finally {
                 steppingStrategy = strategyMap.get(Thread.currentThread());
@@ -1537,7 +1536,7 @@ public final class DebuggerSession implements Closeable {
                 }
             }
             if (steppingStrategy != null && steppingStrategy.isStopAfterCall()) {
-                Object newResult = notifyCallerReturn(context, steppingStrategy, this, SuspendAnchor.AFTER, result);
+                newResult = notifyCallerReturn(context, steppingStrategy, this, SuspendAnchor.AFTER, newResult != null ? newResult : result);
                 if (newResult != result) {
                     throw getContext().createUnwind(new ChangedReturnInfo(newResult));
                 }

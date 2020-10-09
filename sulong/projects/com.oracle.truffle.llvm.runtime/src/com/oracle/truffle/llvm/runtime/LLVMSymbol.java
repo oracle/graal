@@ -29,19 +29,17 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
 public abstract class LLVMSymbol {
 
-    @CompilationFinal private String name;
-    @CompilationFinal private ExternalLibrary library;
+    private final String name;
     private final int moduleId;
     private final int symbolIndex;
     private final boolean exported;
-    static final LLVMSymbol[] EMPTY = {};
 
     // Index for non-parsed symbols, such as alias, and function symbol for inline assembly.
     public static final int INVALID_INDEX = -1;
@@ -49,15 +47,8 @@ public abstract class LLVMSymbol {
     // ID for non-parsed symbols, such as alias, function symbol for inline assembly.
     public static final int INVALID_ID = -1;
 
-    // ID reserved for non-parsed miscellaneous functions.
-    public static final int MISCFUNCTION_ID = 0;
-
-    // Index reserved for non-parsed miscellaneous functions.
-    private static int miscFunctionIndex = 0;
-
-    public LLVMSymbol(String name, ExternalLibrary library, int bitcodeID, int symbolIndex, boolean exported) {
+    public LLVMSymbol(String name, int bitcodeID, int symbolIndex, boolean exported) {
         this.name = name;
-        this.library = library;
         this.moduleId = bitcodeID;
         this.symbolIndex = symbolIndex;
         this.exported = exported;
@@ -67,25 +58,8 @@ public abstract class LLVMSymbol {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public ExternalLibrary getLibrary() {
-        return library;
-    }
-
-    public void setLibrary(ExternalLibrary library) {
-        this.library = library;
-    }
-
-    public static int getMiscSymbolIndex() {
-        int index = miscFunctionIndex;
-        miscFunctionIndex++;
-        return index;
-    }
-
     public String getKind() {
+        CompilerAsserts.neverPartOfCompilation();
         return this.getClass().getSimpleName();
     }
 
@@ -125,8 +99,6 @@ public abstract class LLVMSymbol {
     public boolean hasValidIndexAndID() {
         return symbolIndex >= 0 && moduleId >= 0;
     }
-
-    public abstract boolean isDefined();
 
     public abstract boolean isGlobalVariable();
 

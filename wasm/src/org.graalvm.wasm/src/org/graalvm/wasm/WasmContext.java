@@ -45,9 +45,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
+import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
@@ -59,6 +59,7 @@ public final class WasmContext {
     private final TableRegistry tableRegistry;
     private final Linker linker;
     private Map<String, WasmInstance> moduleInstances;
+    private int moduleNameCount;
 
     public static WasmContext getCurrent() {
         return WasmLanguage.getCurrentContext();
@@ -72,7 +73,8 @@ public final class WasmContext {
         this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker(language);
-        instantiateBuiltinModules();
+        this.moduleNameCount = 0;
+        instantiateBuiltinInstances();
     }
 
     public CallTarget parse(Source source) {
@@ -104,11 +106,12 @@ public final class WasmContext {
         return linker;
     }
 
-    public Iterable<Scope> getTopScopes() {
+    @SuppressWarnings("deprecation")
+    public Iterable<com.oracle.truffle.api.Scope> getTopScopes() {
         // Go through all WasmModules parsed with this context, and create a Scope for each of them.
-        ArrayList<Scope> scopes = new ArrayList<>();
+        ArrayList<com.oracle.truffle.api.Scope> scopes = new ArrayList<>();
         for (Map.Entry<String, WasmInstance> entry : moduleInstances.entrySet()) {
-            Scope scope = Scope.newBuilder(entry.getKey(), entry.getValue()).build();
+            com.oracle.truffle.api.Scope scope = com.oracle.truffle.api.Scope.newBuilder(entry.getKey(), entry.getValue()).build();
             scopes.add(scope);
         }
         return scopes;
@@ -121,14 +124,14 @@ public final class WasmContext {
         return moduleInstances;
     }
 
-    void registerModule(WasmInstance module) {
-        if (moduleInstances.containsKey(module.name())) {
-            throw new RuntimeException("Context already contains a module named '" + module.name() + "'.");
+    public void register(WasmInstance instance) {
+        if (moduleInstances.containsKey(instance.name())) {
+            throw new WasmExecutionException(null, "Context already contains an instance named '" + instance.name() + "'.");
         }
-        moduleInstances.put(module.name(), module);
+        moduleInstances.put(instance.name(), instance);
     }
 
-    private void instantiateBuiltinModules() {
+    private void instantiateBuiltinInstances() {
         final String extraModuleValue = WasmOptions.Builtins.getValue(env.getOptions());
         if (extraModuleValue.equals("")) {
             return;
@@ -141,8 +144,32 @@ public final class WasmContext {
             }
             final String name = parts[0];
             final String key = parts.length == 2 ? parts[1] : parts[0];
-            final WasmInstance module = BuiltinModule.createBuiltinModule(language, this, name, key);
+            final WasmInstance module = BuiltinModule.createBuiltinInstance(language, this, name, key);
             moduleInstances.put(name, module);
         }
+    }
+
+    private String freshModuleName() {
+        return "module-" + moduleNameCount++;
+    }
+
+    public WasmModule readModule(byte[] data) {
+        return readModule(freshModuleName(), data);
+    }
+
+    public WasmModule readModule(String moduleName, byte[] data) {
+        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(this.environment().getOptions());
+        final WasmModule module = new WasmModule(moduleName, data, storeConstantsPolicy);
+        final BinaryParser reader = new BinaryParser(language, module);
+        reader.readModule();
+        return module;
+    }
+
+    public WasmInstance readInstance(WasmModule module) {
+        final WasmInstance instance = new WasmInstance(module, module.storeConstantsPolicy());
+        final BinaryParser reader = new BinaryParser(language, module);
+        reader.readInstance(this, instance);
+        this.register(instance);
+        return instance;
     }
 }

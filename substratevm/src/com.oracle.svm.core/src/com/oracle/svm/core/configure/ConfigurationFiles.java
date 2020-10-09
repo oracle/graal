@@ -114,7 +114,7 @@ public final class ConfigurationFiles {
                     resources.add(e.nextElement());
                 }
             } catch (IOException e) {
-                throw UserError.abort(e, "Error while looking for " + fileName + " in " + root);
+                throw UserError.abort(e, "Error while looking for %s in %s", fileName, root);
             }
         }
         return resources;

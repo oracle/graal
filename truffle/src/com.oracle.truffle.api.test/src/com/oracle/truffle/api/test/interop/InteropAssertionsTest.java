@@ -51,6 +51,7 @@ import java.util.function.Supplier;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -496,4 +497,150 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertTrue(l0.isIdentical(v0, v1, l1));
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    static class Members implements TruffleObject {
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class ScopeTest implements TruffleObject {
+
+        boolean hasLanguage;
+        boolean isScope;
+        boolean hasScopeParent;
+        boolean hasMembers;
+        Supplier<Class<? extends TruffleLanguage<?>>> getLanguage;
+        Supplier<Object> getScopeParent;
+        Supplier<Object> getMembers;
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasLanguage() {
+            return hasLanguage;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return getLanguage.get();
+        }
+
+        @ExportMessage
+        boolean isScope() {
+            return isScope;
+        }
+
+        @ExportMessage
+        final boolean hasScopeParent() {
+            return hasScopeParent;
+        }
+
+        @ExportMessage
+        Object getScopeParent() throws UnsupportedMessageException {
+            if (getScopeParent == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return getScopeParent.get();
+        }
+
+        @ExportMessage
+        final boolean hasMembers() {
+            return hasMembers;
+        }
+
+        @ExportMessage
+        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
+            if (getMembers == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return getMembers.get();
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return "Local";
+        }
+    }
+
+    @Test
+    public void testScope() throws InteropException {
+        ScopeTest v = new ScopeTest();
+        InteropLibrary l = createLibrary(InteropLibrary.class, v);
+
+        v.hasLanguage = false;
+        v.isScope = false;
+        v.hasScopeParent = false;
+        v.getScopeParent = null;
+        v.hasMembers = false;
+        v.getMembers = null;
+        assertFalse(l.isScope(v));
+        assertFalse(l.hasScopeParent(v));
+        assertFalse(l.hasMembers(v));
+        assertFails(() -> l.getScopeParent(v), UnsupportedMessageException.class);
+
+        v.isScope = false;
+        v.hasScopeParent = true;
+        assertFalse(l.isScope(v));
+        assertFails(() -> l.hasScopeParent(v), AssertionError.class);
+        assertFails(() -> l.getScopeParent(v), AssertionError.class);
+
+        v.isScope = true;
+        v.hasScopeParent = false;
+        v.hasMembers = true;
+        v.getMembers = () -> new Members();
+        assertFails(() -> l.isScope(v), AssertionError.class); // It does not have a language
+        v.hasLanguage = true;
+        v.getLanguage = () -> ProxyLanguage.class;
+        assertTrue(l.isScope(v));
+
+        v.hasMembers = false;
+        v.getMembers = null;
+        assertFails(() -> l.isScope(v), AssertionError.class);
+        assertFalse(l.hasScopeParent(v));
+        assertFails(() -> l.getScopeParent(v), UnsupportedMessageException.class);
+
+        v.hasMembers = true;
+        v.getMembers = () -> new Members();
+        assertTrue(l.isScope(v));
+        assertFalse(l.hasScopeParent(v));
+        assertFails(() -> l.getScopeParent(v), UnsupportedMessageException.class);
+
+        v.hasScopeParent = false;
+        v.getScopeParent = () -> "No Scope";
+        assertTrue(l.isScope(v));
+        assertFails(() -> l.hasScopeParent(v), AssertionError.class);
+        assertFails(() -> l.getScopeParent(v), AssertionError.class);
+
+        v.hasScopeParent = true;
+        v.getScopeParent = () -> "No Scope";
+        assertTrue(l.isScope(v));
+        assertFails(() -> l.hasScopeParent(v), AssertionError.class);
+        assertFails(() -> l.getScopeParent(v), AssertionError.class);
+
+        ScopeTest parentScope = new ScopeTest();
+        v.getScopeParent = () -> parentScope;
+        assertFails(() -> l.hasScopeParent(v), AssertionError.class);
+        assertFails(() -> l.getScopeParent(v), AssertionError.class);
+
+        parentScope.isScope = true;
+        parentScope.hasMembers = true;
+        parentScope.getMembers = () -> new Members();
+        parentScope.hasLanguage = true;
+        parentScope.getLanguage = () -> ProxyLanguage.class;
+        v.getScopeParent = () -> parentScope;
+        assertTrue(l.isScope(v));
+        assertTrue(l.hasScopeParent(v));
+        assertEquals(parentScope, l.getScopeParent(v));
+
+        v.isScope = false;
+        assertFalse(l.isScope(v));
+        assertFails(() -> l.hasScopeParent(v), AssertionError.class);
+        assertFails(() -> l.getScopeParent(v), AssertionError.class);
+
+        v.isScope = true;
+        v.hasScopeParent = false;
+        v.getScopeParent = () -> parentScope;
+        assertFails(() -> l.hasScopeParent(v), AssertionError.class);
+        assertFails(() -> l.getScopeParent(v), AssertionError.class);
+    }
 }

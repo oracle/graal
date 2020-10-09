@@ -5,6 +5,7 @@ bench-arguments : ["--machine-name", "${MACHINE_NAME}", "--", "-Xmx${XMX}", "-Xm
 bench-jvmci : {
   mx-benchmark : ["mx", "--kill-with-sigquit", "benchmark", "--fork-count-file=${FORK_COUNT_FILE}", "--extras=${BENCH_SERVER_EXTRAS}", "--results-file", "${BENCH_RESULTS_FILE_PATH}"]
   mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
+  mx-awfy : ${bench-jvmci.mx-benchmark} ["awfy:*"]
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
   mx-dacapo-timing : ${bench-jvmci.mx-benchmark} ["dacapo-timing:*"]
   mx-scala-dacapo-timing : ${bench-jvmci.mx-benchmark} ["scala-dacapo-timing:*"]
@@ -53,6 +54,14 @@ default-heap: {
     XMS: ${DEFAULT_HEAP_SIZE}
     XMX: ${DEFAULT_HEAP_SIZE}
   }
+}
+
+bench-awfy: ${bench-common} ${default-heap} ${awfy-bench-notifications} {
+  targets : [bench, daily]
+  run: [
+    ${bench-jvmci.mx-dacapo} ${bench-arguments}
+  ]
+  timelimit: "30:00"
 }
 
 bench-dacapo: ${bench-common} ${default-heap} ${dacapo-bench-notifications} {

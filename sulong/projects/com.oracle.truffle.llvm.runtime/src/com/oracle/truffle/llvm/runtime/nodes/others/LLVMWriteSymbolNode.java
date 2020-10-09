@@ -66,7 +66,7 @@ public abstract class LLVMWriteSymbolNode extends LLVMNode {
             CompilerAsserts.partialEvaluationConstant(symbol);
             try {
                 int index = symbol.getSymbolIndex(false);
-                symbols[index] = newAssumedValue(symbol.getKind(), symbol.getName(), pointer);
+                symbols[index] = newAssumedValue(symbol, pointer);
             } catch (LLVMIllegalSymbolIndexException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMLinkerException(this, "Writing symbol into symbol table is inconsistent.");
@@ -75,7 +75,7 @@ public abstract class LLVMWriteSymbolNode extends LLVMNode {
     }
 
     @TruffleBoundary
-    private static AssumedValue<LLVMPointer> newAssumedValue(String prefix, String name, LLVMPointer pointer) {
-        return new AssumedValue<>(prefix + "." + name, pointer);
+    private static AssumedValue<LLVMPointer> newAssumedValue(LLVMSymbol symbol, LLVMPointer pointer) {
+        return new AssumedValue<>(symbol.getKind() + "." + symbol.getName(), pointer);
     }
 }

@@ -610,7 +610,7 @@ public final class SuspendedEvent {
     }
 
     /**
-     * Prepare to execute in <strong>step out</strong> mode when guest language program execution
+     * Prepare to execute in <strong>step over</strong> mode when guest language program execution
      * resumes. In this mode, the current thread continues until it arrives to a code location with
      * one of the enabled {@link StepConfig.Builder#sourceElements(SourceElement...) source
      * elements}, ignoring any nested ones, and repeats that process

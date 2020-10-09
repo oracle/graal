@@ -112,11 +112,13 @@ builds += [
   ${x52.default-libgraal} ${bench-renaissance-0-10-0}             ${labsjdk11} { name: "bench-compiler-renaissance-0-10-0-libgraal-11-linux-x52" }
 
   #  secondary benchmark suites
+  ${x52.default-libgraal} ${bench-awfy-hwloc}                     ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-awfy-libgraal-linux-x52" }
   ${x52.default-libgraal} ${bench-renaissance-legacy-hwloc}       ${oraclejdk8} { name: "bench-compiler-renaissance-legacy-libgraal-linux-x52" }
   ${x52.default-libgraal} ${bench-specjvm2008-OneVM}              ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-specjvm2008-OneVM-libgraal-linux-x52" }
   ${x52.default-libgraal} ${bench-micros-graal-whitebox}          ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-jmh-micros-graal-whitebox-libgraal-linux-x52" }
   ${x52.default-libgraal} ${bench-micros-graal-dist}              ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-jmh-micros-graal-dist-libgraal-linux-x52" }
 
+  ${x52.default-libgraal} ${bench-awfy-hwloc}                     ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-awfy-libgraal-11-linux-x52" }
   ${x52.default-libgraal} ${bench-renaissance-legacy-hwloc}       ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-renaissance-legacy-libgraal-11-linux-x52" }
   ${x52.default-libgraal} ${bench-specjvm2008-OneVM}              ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-specjvm2008-OneVM-libgraal-11-linux-x52" }
   ${x52.default-libgraal} ${bench-micros-graal-whitebox}          ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-jmh-micros-graal-whitebox-libgraal-11-linux-x52" }
@@ -152,9 +154,11 @@ builds += [
   ${x52.default} ${bench-specjbb2015}                    ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-specjbb2015-11-linux-x52" }
 
   #  secondary benchmark suites
+  ${x52.default} ${bench-awfy-hwloc}                     ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-awfy-linux-x52" }
   ${x52.default} ${bench-renaissance-legacy-hwloc}       ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-renaissance-legacy-linux-x52" }
   ${x52.default} ${bench-specjvm2008-OneVM}              ${oraclejdk8} { targets: [daily, bench], name: "bench-compiler-specjvm2008-OneVM-linux-x52" }
 
+  ${x52.default} ${bench-awfy-hwloc}                     ${labsjdk11} { targets: [daily, bench], name: "bench-compiler-awfy-11-linux-x52" }
   ${x52.default} ${bench-specjvm2008-OneVM}              ${labsjdk11} { targets: [weekly, bench], name: "bench-compiler-specjvm2008-OneVM-11-linux-x52" }
 
   #  special configurations

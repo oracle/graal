@@ -989,7 +989,7 @@ public abstract class DebugValue {
         }
         Object value = get();
         try {
-            return getProperties(value, getSession(), resolveLanguage(), null);
+            return getProperties(value, null, getSession(), resolveLanguage(), null);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
@@ -997,7 +997,7 @@ public abstract class DebugValue {
         }
     }
 
-    static ValuePropertiesCollection getProperties(Object value, DebuggerSession session, LanguageInfo language, DebugScope scope) {
+    static ValuePropertiesCollection getProperties(Object value, String receiverName, DebuggerSession session, LanguageInfo language, DebugScope scope) {
         if (INTEROP.hasMembers(value)) {
             Object keys;
             try {
@@ -1005,7 +1005,7 @@ public abstract class DebugValue {
             } catch (UnsupportedMessageException e) {
                 return null;
             }
-            return new ValuePropertiesCollection(session, language, value, keys, scope);
+            return new ValuePropertiesCollection(session, language, value, keys, receiverName, scope);
         }
         return null;
     }

@@ -120,6 +120,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final String TRUNCATION_SUFFIX = "...";
 
+    private static final String UNKNOWN = "Unknown";
+
     protected final PolyglotLanguageContext languageContext;
 
     static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
@@ -648,7 +650,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
 
             String valueToString;
-            String metaObjectToString = "Unknown";
+            String metaObjectToString = UNKNOWN;
             try {
                 InteropLibrary uncached = InteropLibrary.getFactory().getUncached(view);
                 if (uncached.hasMetaObject(view)) {
@@ -665,7 +667,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 languageName = "Java"; // java is our host language for now
 
                 // hide meta objects of null
-                if (metaObjectToString.equals("java.lang.Void")) {
+                if (UNKNOWN.equals(metaObjectToString) && INTEROP.isNull(receiver)) {
                     hideType = true;
                 }
             } else {
@@ -2281,7 +2283,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Object.class};
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, null};
             }
 
             @Override

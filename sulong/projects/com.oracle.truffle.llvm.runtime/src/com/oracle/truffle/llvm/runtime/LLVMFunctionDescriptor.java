@@ -174,7 +174,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
         @Specialization(limit = "5", guards = "self == cachedSelf")
         static Object doCached(@SuppressWarnings("unused") LLVMFunctionDescriptor self, Object[] args,
                         @Cached("self") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedSelf,
-                        @Cached("create(cachedSelf.getForeignCallTarget())") DirectCallNode call) {
+                        @Cached("createCall(cachedSelf)") DirectCallNode call) {
             return call.call(args);
         }
 
@@ -182,6 +182,12 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
         static Object doPolymorphic(LLVMFunctionDescriptor self, Object[] args,
                         @Cached IndirectCallNode call) {
             return call.call(self.getForeignCallTarget(), args);
+        }
+
+        protected static DirectCallNode createCall(LLVMFunctionDescriptor self) {
+            DirectCallNode callNode = DirectCallNode.create(self.getForeignCallTarget());
+            callNode.forceInlining();
+            return callNode;
         }
     }
 

@@ -36,9 +36,9 @@ import java.text.spi.DateFormatSymbolsProvider;
 import java.text.spi.DecimalFormatSymbolsProvider;
 import java.text.spi.NumberFormatProvider;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.List;
 import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.ResourceBundle;
@@ -49,7 +49,6 @@ import java.util.spi.LocaleNameProvider;
 import java.util.spi.LocaleServiceProvider;
 import java.util.spi.TimeZoneNameProvider;
 
-import com.oracle.svm.core.util.UserError;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
@@ -62,6 +61,7 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -276,7 +276,7 @@ public abstract class LocalizationFeature implements Feature {
             String dotBundleName = bundleName.replace("/", ".");
             resourceBundle = ModuleSupport.getResourceBundle(dotBundleName, imageLocale, Thread.currentThread().getContextClassLoader());
         }
-        UserError.guarantee(resourceBundle != null, "The bundle named: %s, has not been found. " + "" +
+        UserError.guarantee(resourceBundle != null, "The bundle named: %s, has not been found. " +
                         "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
                         "verify the bundle path is accessible in the classpath.", bundleName);
         addBundleToCache(bundleName, resourceBundle);

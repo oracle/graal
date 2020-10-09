@@ -25,8 +25,10 @@
 package com.oracle.svm.hosted.jdk;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 
@@ -47,6 +49,22 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
         } else {
             rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl", "java.lang.ProcessHandleImpl$Info", "java.io.FilePermission");
         }
-
     }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            access.registerReachabilityHandler(this::registerColorProfileResources, clazz(access, "java.awt.color.ICC_Profile"));
+
+            /* These classes contain standard color profile caches which may not be loaded yet */
+            rerunClassInit(access, "java.awt.color.ColorSpace");
+            rerunClassInit(access, "java.awt.color.ICC_Profile");
+        }
+    }
+
+    public void registerColorProfileResources(@SuppressWarnings("unused") DuringAnalysisAccess access) {
+        ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
+        resourcesRegistry.addResources("sun.java2d.cmm.profiles.*");
+    }
+
 }

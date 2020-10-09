@@ -45,12 +45,10 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -102,7 +100,6 @@ public final class SLContext {
     private final SLFunctionRegistry functionRegistry;
     private final SLLanguage language;
     private final AllocationReporter allocationReporter;
-    private final Iterable<Scope> topScopes; // Cache the top scopes
 
     public SLContext(SLLanguage language, TruffleLanguage.Env env, List<NodeFactory<? extends SLBuiltinNode>> externalBuiltins) {
         this.env = env;
@@ -111,7 +108,6 @@ public final class SLContext {
         this.language = language;
         this.allocationReporter = env.lookup(AllocationReporter.class);
         this.functionRegistry = new SLFunctionRegistry(language);
-        this.topScopes = Collections.singleton(Scope.newBuilder("global", functionRegistry.getFunctionsObject()).build());
         installBuiltins();
         for (NodeFactory<? extends SLBuiltinNode> builtin : externalBuiltins) {
             installBuiltin(builtin);
@@ -146,10 +142,6 @@ public final class SLContext {
      */
     public SLFunctionRegistry getFunctionRegistry() {
         return functionRegistry;
-    }
-
-    public Iterable<Scope> getTopScopes() {
-        return topScopes;
     }
 
     /**

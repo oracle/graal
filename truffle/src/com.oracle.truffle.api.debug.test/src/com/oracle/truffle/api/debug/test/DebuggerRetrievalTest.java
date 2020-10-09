@@ -51,7 +51,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -94,8 +93,8 @@ public class DebuggerRetrievalTest {
         }
 
         @Override
-        protected Iterable<Scope> findTopScopes(Debugger context) {
-            return Collections.singleton(Scope.newBuilder("Debugger top scope", new TopScopeObject(context)).build());
+        protected Object getScope(Debugger context) {
+            return new TopScopeObject(context);
         }
 
         @ExportLibrary(InteropLibrary.class)
@@ -106,6 +105,23 @@ public class DebuggerRetrievalTest {
 
             private TopScopeObject(Debugger context) {
                 this.context = context;
+            }
+
+            @ExportMessage
+            @SuppressWarnings("static-method")
+            boolean hasLanguage() {
+                return true;
+            }
+
+            @ExportMessage
+            @SuppressWarnings("static-method")
+            Class<? extends TruffleLanguage<?>> getLanguage() {
+                return LanguageThatNeedsDebugger.class;
+            }
+
+            @ExportMessage
+            boolean isScope() {
+                return true;
             }
 
             @ExportMessage
@@ -130,6 +146,11 @@ public class DebuggerRetrievalTest {
                 } else {
                     throw UnknownIdentifierException.create(member);
                 }
+            }
+
+            @ExportMessage
+            Object toDisplayString(boolean allowSideEffects) {
+                return "Debugger top scope";
             }
         }
 

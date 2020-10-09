@@ -276,7 +276,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             if (checkWordTypes()) {
                 if ((x.getStackKind() == JavaKind.Object && y.getStackKind() == getWordTypes().getWordKind()) ||
                                 (x.getStackKind() == getWordTypes().getWordKind() && y.getStackKind() == JavaKind.Object)) {
-                    throw UserError.abort("Should not compare Word to Object in condition at " + method.format("%H.%n(%p)") + " in " + method.asStackTraceElement(bci()));
+                    throw UserError.abort("Should not compare Word to Object in condition at %s in %s", method, method.asStackTraceElement(bci()));
                 }
             }
 
@@ -324,9 +324,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 boolean isWordValue = value.getStackKind() == getWordTypes().getWordKind();
 
                 if (isWordTypeExpected && !isWordValue) {
-                    throw UserError.abort("Expected Word but got Object for " + reason + " in " + method.asStackTraceElement(bci()));
+                    throw UserError.abort("Expected Word but got Object for %s in %s", reason, method.asStackTraceElement(bci()));
                 } else if (!isWordTypeExpected && isWordValue) {
-                    throw UserError.abort("Expected Object but got Word for " + reason + " in " + method.asStackTraceElement(bci()));
+                    throw UserError.abort("Expected Object but got Word for %s in %s", reason, method.asStackTraceElement(bci()));
                 }
             }
         }

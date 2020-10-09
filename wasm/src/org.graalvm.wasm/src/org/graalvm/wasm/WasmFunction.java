@@ -134,6 +134,10 @@ public class WasmFunction {
         return typeIndex;
     }
 
+    public SymbolTable.FunctionType type() {
+        return symbolTable.typeAt(typeIndex());
+    }
+
     public int typeEquivalenceClass() {
         return typeEquivalenceClass;
     }

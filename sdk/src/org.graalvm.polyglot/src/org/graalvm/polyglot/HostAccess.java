@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -354,6 +354,63 @@ public final class HostAccess {
     }
 
     /**
+     * Represents the precedence of a target type mapping. The precedence influences target type
+     * mappings in two ways:
+     * <ul>
+     * <li>The conversion order in which target mappings are performed. {@link #HIGHEST Highest} and
+     * {@link #HIGH high} precedences are invoked before all {@link Value#as(Class) default
+     * mappings}. {@link #LOW Low} after all loss less conversions and {@link #LOWEST lowest} after
+     * all other default mappings.
+     * <li>To disambiguate multiple selected overloads on method invocation. The overload precedence
+     * defines which method has precedence over other applicable methods. {@link #HIGHEST Highest}
+     * have higher and {@link #HIGH high} have the same precedence as the default loss-less mapping.
+     * The precedence {@link #LOW low} declares equal precedence than all lossy coercions and
+     * {@link #LOWEST lowest} defines precedence lower than all default mappings.
+     * </ul>
+     *
+     * @see Value#as(Class) for detailed information on conversion order.
+     * @since 20.3
+     */
+    public enum TargetMappingPrecedence {
+
+        /**
+         * Defines higher precedence and conversion order as all default mappings and target type
+         * mappings with lower precedence.
+         *
+         * @since 20.3
+         */
+        HIGHEST,
+
+        /**
+         * Defines high or default precedence and conversion order for a target type mapping. This
+         * precedence makes mappings be used before all other default mappings and treated with
+         * equal overload precedence as default loss less mappings like primitive coercions.
+         *
+         * @since 20.3
+         */
+        HIGH,
+
+        /**
+         * Defines low precedence and conversion order for a target type mapping. This precedence
+         * makes mappings be used before all other default lossy mappings and treated with equal
+         * overload precedence as default lossy mappings, like mappings to Map.
+         *
+         * @since 20.3
+         */
+        LOW,
+
+        /**
+         * Defines lowest precedence and conversion order for a target type mapping. This precedence
+         * makes mappings be used after all other default mappings and treated with lower overload
+         * precedence as all default mappings or other target type mappings.
+         *
+         * @since 20.3
+         */
+        LOWEST
+
+    }
+
+    /**
      * Builder to create a custom {@link HostAccess host access policy}.
      *
      * @since 19.0
@@ -544,6 +601,17 @@ public final class HostAccess {
 
         /**
          * Adds a custom source to target type mapping for Java host calls, host field assignments
+         * and {@link Value#as(Class) explicit value conversions}. Method is equivalent to calling
+         * the targetTypeMapping method with precedence {@link TargetMappingPrecedence#HIGH}.
+         *
+         * @since 19.0
+         */
+        public <S, T> Builder targetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> accepts, Function<S, T> converter) {
+            return targetTypeMapping(sourceType, targetType, accepts, converter, TargetMappingPrecedence.HIGH);
+        }
+
+        /**
+         * Adds a custom source to target type mapping for Java host calls, host field assignments
          * and {@link Value#as(Class) explicit value conversions}. The source type specifies the
          * static source type for the conversion. The target type specifies the exact and static
          * target type of the mapping. Sub or base target types won't trigger the mapping. Custom
@@ -570,11 +638,31 @@ public final class HostAccess {
          * value the {@link Value} should be used as source type.
          * <p>
          * Multiple mappings may be added for a source or target class. Multiple mappings are
-         * applied in the order they were added. The first mapping that accepts the source value
-         * will be used. Custom target type mappings all use the same precedence when an overloaded
-         * method is selected. This means that if two methods with a custom target type mapping are
-         * applicable for a set of arguments, an {@link IllegalArgumentException} is thrown at
-         * runtime.
+         * applied in the order they were added, grouped by the {@link TargetMappingPrecedence
+         * priority} where the highest priority group is applied first. See {@link Value#as(Class)}
+         * for a detailed ordered list of the conversion order used. The first mapping that accepts
+         * the source value will be used. If the {@link TargetMappingPrecedence#HIGH default
+         * priority} is used then all custom target type mappings use the same precedence when an
+         * overloaded method is selected. This means that if two methods with a custom target type
+         * mapping are applicable for a set of arguments, an {@link IllegalArgumentException} is
+         * thrown at runtime. Using a non-default priority for the mapping allows to configure
+         * whether the method will be prioritized or deprioritized depending on the precedence.
+         * <p>
+         * For example take a configured target mapping from <code>String</code> to <code>int</code>
+         * and two overloaded methods that takes an int or a {@link String} parameter. If this
+         * method is invoked with a <code>String</code> value then there are three possible outcomes
+         * depending on the precedence that was used for the custom mapping:
+         * <ul>
+         * <li>{@link TargetMappingPrecedence#HIGHEST}: The int method overload will be selected and
+         * invoked as the target mapping has a higher precedence than default.
+         * <li>{@link TargetMappingPrecedence#HIGH}: The execution fails with an error as all
+         * overloads have equivalent precedence.
+         * <li>{@link TargetMappingPrecedence#LOW} or {@link TargetMappingPrecedence#LOWEST}: The
+         * String method overload will be selected and invoked as the target mapping has a lower
+         * precedence than default.
+         * <li>In this example the outcome of low and lowest are equivalent. There are differences
+         * between low and lowest. See {@link TargetMappingPrecedence} for details.
+         * </ul>
          * <p>
          * Primitive boxed target types will be applied to the primitive and boxed values. It is
          * therefore enough to specify a target mapping to {@link Integer} to also map to the target
@@ -642,20 +730,24 @@ public final class HostAccess {
          * @param converter a function that produces the converted value of the mapping. May return
          *            <code>null</code>. May throw {@link ClassCastException} if the source value is
          *            not convertible.
+         * @param precedence the precedence of the defined mapping which influences conversion order
+         *            and precedence with default mappings and other target type mappings.
          * @throws IllegalArgumentException for primitive target types.
-         * @since 19.0
+         * @since 20.3
          */
-        public <S, T> Builder targetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> accepts, Function<S, T> converter) {
+        public <S, T> Builder targetTypeMapping(Class<S> sourceType, Class<T> targetType,
+                        Predicate<S> accepts, Function<S, T> converter, TargetMappingPrecedence precedence) {
             Objects.requireNonNull(sourceType);
             Objects.requireNonNull(targetType);
             Objects.requireNonNull(converter);
+            Objects.requireNonNull(precedence);
             if (targetType.isPrimitive()) {
-                throw new IllegalArgumentException("Primitive target type is not supported as target mapping.");
+                throw new IllegalArgumentException("Primitive target type is not supported as target mapping. Use boxed primitives instead.");
             }
             if (targetMappings == null) {
                 targetMappings = new ArrayList<>();
             }
-            targetMappings.add(Engine.getImpl().newTargetTypeMapping(sourceType, targetType, accepts, converter));
+            targetMappings.add(Engine.getImpl().newTargetTypeMapping(sourceType, targetType, accepts, converter, precedence));
             return this;
         }
 

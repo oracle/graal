@@ -143,8 +143,7 @@ public class ClassInitializationFeature implements GraalFeature {
             for (String info : infos.split(",")) {
                 boolean noMatches = Arrays.stream(InitKind.values()).noneMatch(v -> info.endsWith(v.suffix()));
                 if (noMatches) {
-                    throw UserError.abort(
-                                    "Element in class initialization configuration must end in " + RUN_TIME.suffix() + ", " + RERUN.suffix() + ", or " + BUILD_TIME.suffix() + ". Found: " + info);
+                    throw UserError.abort("Element in class initialization configuration must end in %s, %s, or %s. Found: %s", RUN_TIME.suffix(), RERUN.suffix(), BUILD_TIME.suffix(), info);
                 }
 
                 Pair<String, InitKind> elementType = InitKind.strip(info);
@@ -227,7 +226,7 @@ public class ClassInitializationFeature implements GraalFeature {
         classInitializationSupport.checkDelayedInitialization();
 
         for (AnalysisType type : access.getUniverse().getTypes()) {
-            if (type.isInTypeCheck() || type.isInstantiated()) {
+            if (type.isReachable() || type.isInstantiated()) {
                 DynamicHub hub = access.getHostVM().dynamicHub(type);
                 if (hub.getClassInitializationInfo() == null) {
                     buildClassInitializationInfo(access, type, hub);
@@ -295,7 +294,7 @@ public class ClassInitializationFeature implements GraalFeature {
     }
 
     private static boolean isRelevantForPrinting(AnalysisType type) {
-        return !type.isPrimitive() && !type.isArray() && type.isInTypeCheck();
+        return !type.isPrimitive() && !type.isArray() && type.isReachable();
     }
 
     private static String quote(String className) {
@@ -311,7 +310,7 @@ public class ClassInitializationFeature implements GraalFeature {
         classInitializationSupport.setConfigurationSealed(false);
         classInitializationSupport.classesWithKind(RUN_TIME).stream()
                         .filter(t -> metaAccess.optionalLookupJavaType(t).isPresent())
-                        .filter(t -> metaAccess.lookupJavaType(t).isInTypeCheck())
+                        .filter(t -> metaAccess.lookupJavaType(t).isReachable())
                         .filter(t -> classInitializationSupport.canBeProvenSafe(t))
                         .forEach(c -> {
                             AnalysisType type = metaAccess.lookupJavaType(c);

@@ -268,7 +268,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         try {
             return ReflectionUtil.newInstance(header);
         } catch (ReflectionUtilError ex) {
-            throw UserError.abort(ex.getCause(), "CHeader " + header.getName() + " cannot be instantiated. Please make sure that it has a nullary constructor and is not abstract.");
+            throw UserError.abort(ex.getCause(), "CHeader %s cannot be instantiated. Please make sure that it has a nullary constructor and is not abstract.", header.getName());
         }
     }
 

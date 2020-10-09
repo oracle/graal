@@ -80,11 +80,15 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.Position;
+import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.loop.LoopEx;
 import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.loop.phases.LoopTransformations;
 import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -1592,6 +1596,7 @@ public class SnippetTemplate {
 
             // Replace all usages of the replacee with the value returned by the snippet
             ValueNode returnValue = null;
+            AbstractBeginNode originalWithExceptionNextNode = null;
             if (returnNode != null && !(replacee instanceof ControlSinkNode)) {
                 ReturnNode returnDuplicate = (ReturnNode) duplicates.get(returnNode);
                 returnValue = returnDuplicate.result();
@@ -1609,7 +1614,7 @@ public class SnippetTemplate {
                         fwn.setNext(null);
                     } else if (replacee instanceof WithExceptionNode) {
                         WithExceptionNode withExceptionNode = (WithExceptionNode) replacee;
-                        next = withExceptionNode.next();
+                        next = originalWithExceptionNextNode = withExceptionNode.next();
                         withExceptionNode.setNext(null);
                     }
                     returnDuplicate.replaceAndDelete(next);
@@ -1627,7 +1632,31 @@ public class SnippetTemplate {
                 GraphUtil.killCFG(unwindPathDuplicate);
 
             } else {
-                GraalError.guarantee(!(replacee instanceof WithExceptionNode), "Snippet does not have an UnwindNode, but replacee is a node with an exception handler");
+                /*
+                 * Since the snippet unwindPath is null, a placeholder WithExceptionNode needs to be
+                 * added for any WithExceptionNode replacee. This placeholder WithExceptionNode
+                 * temporarily preserves the replacee's original exception edge and is needed
+                 * because lowering should not remove edges from the original CFG.
+                 */
+                if (replacee instanceof WithExceptionNode) {
+                    GraalError.guarantee(!replacee.graph().isAfterFloatingReadPhase(), "Using a snippet with an UnwindNode after floating reads would require support for the memory graph");
+                    GraalError.guarantee(originalWithExceptionNextNode != null, "Need to have next node to link placeholder to.");
+
+                    WithExceptionNode newExceptionNode = replacee.graph().add(new PlaceholderWithExceptionNode());
+
+                    /*
+                     * First attaching placeholder as predecessor of original WithExceptionNode next
+                     * edge.
+                     */
+                    ((FixedWithNextNode) originalWithExceptionNextNode.predecessor()).setNext(newExceptionNode);
+                    newExceptionNode.setNext(originalWithExceptionNextNode);
+
+                    /* Now connecting exception edge. */
+                    WithExceptionNode oldExceptionNode = (WithExceptionNode) replacee;
+                    AbstractBeginNode exceptionEdge = oldExceptionNode.exceptionEdge();
+                    oldExceptionNode.setExceptionEdge(null);
+                    newExceptionNode.setExceptionEdge(exceptionEdge);
+                }
             }
 
             if (killReplacee) {
@@ -2059,5 +2088,27 @@ public class SnippetTemplate {
 
     public void setMayRemoveLocation(boolean mayRemoveLocation) {
         this.mayRemoveLocation = mayRemoveLocation;
+    }
+}
+
+/**
+ * This class represent a temporary WithExceptionNode which will be removed during the following
+ * simplification phase. This class is needed during lowering to temporarily preserve the original
+ * CFG edges for select snippet lowerings.
+ */
+@NodeInfo(size = NodeSize.SIZE_0, cycles = NodeCycles.CYCLES_0, cyclesRationale = "This node is immediately removed on next simplification pass")
+final class PlaceholderWithExceptionNode extends WithExceptionNode implements Simplifiable {
+    static final NodeClass<PlaceholderWithExceptionNode> TYPE = NodeClass.create(PlaceholderWithExceptionNode.class);
+
+    protected PlaceholderWithExceptionNode() {
+        super(TYPE, StampFactory.forVoid());
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (exceptionEdge != null) {
+            killExceptionEdge();
+        }
+        graph().removeSplit(this, next());
     }
 }

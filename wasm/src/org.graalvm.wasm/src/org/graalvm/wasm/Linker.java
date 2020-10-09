@@ -314,10 +314,12 @@ public class Linker {
         resolutionDag.resolveLater(new ImportMemorySym(instance.name(), importDescriptor), new Sym[]{new ExportMemorySym(importedModuleName, importedMemoryName)}, resolveAction);
     }
 
-    void resolveMemoryExport(WasmModule module, String exportedMemoryName) {
+    void resolveMemoryExport(WasmInstance instance, String exportedMemoryName) {
+        WasmModule module = instance.module();
         final ImportDescriptor importDescriptor = module.symbolTable().importedMemory();
         final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportMemorySym(module.name(), importDescriptor)} : ResolutionDag.NO_DEPENDENCIES;
-        resolutionDag.resolveLater(new ExportMemorySym(module.name(), exportedMemoryName), dependencies, NO_RESOLVE_ACTION);
+        resolutionDag.resolveLater(new ExportMemorySym(module.name(), exportedMemoryName), dependencies, () -> {
+        });
     }
 
     void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int offsetAddress, int offsetGlobalIndex, int byteLength, byte[] data) {

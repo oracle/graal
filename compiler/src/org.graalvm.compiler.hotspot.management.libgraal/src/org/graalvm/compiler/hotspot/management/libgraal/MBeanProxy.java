@@ -224,7 +224,7 @@ class MBeanProxy<T extends DynamicMBean> {
                     jniEnvOffset = config.jniEnvironmentOffset;
                     defineClassesInHotSpot(getCurrentJNIEnv());
                     try {
-                        MBeanProxy<?> memPoolMBean = new MBeanProxy<>(memPoolBean, nameWithIsolateId(LibGraalMemoryPoolMBean.NAME));
+                        MBeanProxy<?> memPoolMBean = new MBeanProxy<>(memPoolBean, memPoolBean.getObjectId());
                         enqueueForRegistration(memPoolMBean, runtime);
                     } catch (MalformedObjectNameException mon) {
                         throw new AssertionError("Invlid object name.", mon);

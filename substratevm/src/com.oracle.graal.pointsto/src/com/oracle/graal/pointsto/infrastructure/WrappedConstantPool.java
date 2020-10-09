@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
-    private final Universe universe;
+    protected final Universe universe;
     protected final ConstantPool wrapped;
     private final WrappedJavaType defaultAccessingClass;
 

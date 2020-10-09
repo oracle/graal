@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -41,21 +40,23 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
+@SuppressWarnings("deprecation")
 public abstract class DebugExprTypeofNode extends LLVMExpressionNode {
 
     private final String name;
-    private Iterable<Scope> scopes;
+    private final Iterable<com.oracle.truffle.api.Scope> scopes;
 
-    public DebugExprTypeofNode(String name, Iterable<Scope> scopes) {
+    @SuppressWarnings("unchecked")
+    public DebugExprTypeofNode(String name, Iterable</* Scope */ ?> scopes) {
         this.name = name;
-        this.scopes = scopes;
+        this.scopes = (Iterable<com.oracle.truffle.api.Scope>) scopes;
     }
 
     @TruffleBoundary
     @Specialization
     public LLVMSourceType getLLVMSourceType() {
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
-        for (Scope scope : scopes) {
+        for (com.oracle.truffle.api.Scope scope : scopes) {
             Object vars = scope.getVariables();
             try {
                 if (library.isMemberReadable(vars, name)) {

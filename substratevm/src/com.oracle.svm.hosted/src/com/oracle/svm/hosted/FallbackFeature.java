@@ -214,7 +214,7 @@ public class FallbackFeature implements Feature {
 
     static UserError.UserException reportAsFallback(RuntimeException original) {
         if (SubstrateOptions.FallbackThreshold.getValue() == SubstrateOptions.NoFallback) {
-            throw UserError.abort(original, original.getMessage());
+            throw UserError.abort(original, "%s", original.getMessage());
         }
         throw reportFallback(ABORT_MSG_PREFIX + ". " + original.getMessage(), original);
     }

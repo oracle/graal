@@ -41,11 +41,13 @@
 package com.oracle.truffle.api.interop;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+import static com.oracle.truffle.api.interop.AssertUtils.assertString;
 import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
 import static com.oracle.truffle.api.interop.AssertUtils.validArgument;
 import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
 import static com.oracle.truffle.api.interop.AssertUtils.validNonInteropArgument;
 import static com.oracle.truffle.api.interop.AssertUtils.validReturn;
+import static com.oracle.truffle.api.interop.AssertUtils.validScope;
 import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
 import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 
@@ -71,7 +73,6 @@ import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
-import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.TriState;
 
@@ -528,7 +529,7 @@ public abstract class InteropLibrary extends Library {
      * @since 19.0
      */
     @Abstract(ifExported = {"getMembers", "isMemberReadable", "readMember", "isMemberModifiable", "isMemberInsertable", "writeMember", "isMemberRemovable", "removeMember", "isMemberInvocable",
-                    "invokeMember", "isMemberInternal", "hasMemberReadSideEffects", "hasMemberWriteSideEffects"})
+                    "invokeMember", "isMemberInternal", "hasMemberReadSideEffects", "hasMemberWriteSideEffects", "isScope"})
     public boolean hasMembers(Object receiver) {
         return false;
     }
@@ -536,7 +537,9 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns an array of member name strings. The returned value must return <code>true</code> for
      * {@link #hasArrayElements(Object)} and every array element must be of type
-     * {@link #isString(Object) string}.
+     * {@link #isString(Object) string}. The member elements may also provide additional information
+     * like {@link #getSourceLocation(Object) source location} in case of {@link #isScope(Object)
+     * scope} variables, etc.
      * <p>
      * If the includeInternal argument is <code>true</code> then internal member names are returned
      * as well. Internal members are implementation specific and should not be exposed to guest
@@ -547,7 +550,7 @@ public abstract class InteropLibrary extends Library {
      * @see #hasMembers(Object)
      * @since 19.0
      */
-    @Abstract(ifExported = "hasMembers")
+    @Abstract(ifExported = {"hasMembers", "isScope"})
     public Object getMembers(Object receiver, boolean includeInternal) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
@@ -1305,7 +1308,7 @@ public abstract class InteropLibrary extends Library {
      * @see #toDisplayString(Object)
      * @since 20.1
      */
-    @Abstract(ifExported = {"getLanguage"})
+    @Abstract(ifExported = {"getLanguage", "isScope"})
     @TruffleBoundary
     public boolean hasLanguage(Object receiver) {
         return getLegacyEnv(receiver, false) != null;
@@ -1423,7 +1426,7 @@ public abstract class InteropLibrary extends Library {
      * @see TruffleLanguage#getLanguageView(Object, Object)
      * @since 20.1
      */
-    @Abstract(ifExported = {"hasLanguage", "getLanguage"})
+    @Abstract(ifExported = {"hasLanguage", "getLanguage", "isScope"})
     @TruffleBoundary
     public Object toDisplayString(Object receiver, boolean allowSideEffects) {
         Env env = getLegacyEnv(receiver, false);
@@ -1736,6 +1739,77 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isIdenticalOrUndefined")
     public int identityHashCode(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns <code>true</code> if the value represents a scope object, else <code>false</code>.
+     * The scope object contains variables as {@link #getMembers(Object) members} and has a
+     * {@link InteropLibrary#toDisplayString(Object, boolean) scope display name}. It needs to be
+     * associated with a {@link #getLanguage(Object) language}. The scope may return a
+     * {@link InteropLibrary#getSourceLocation(Object) source location} that indicates the range of
+     * the scope in the source code. The scope may have {@link #hasScopeParent(Object) parent
+     * scopes}.
+     * <p>
+     * The {@link #getMembers(Object) members} of a scope represent all visible flattened variables,
+     * including all parent scopes, if any. The variables of the current scope must be listed first
+     * in {@link #getMembers(Object)}. Variables of the {@link InteropLibrary#getScopeParent(Object)
+     * parent scope} must be listed afterwards, even if they contain duplicates. This allows to
+     * resolve which variables are redeclared in sub scopes.
+     * <p>
+     * Every {@link #getMembers(Object) member} may not be just a String literal, but a
+     * {@link #isString(Object) string object} that provides also a
+     * {@link #getSourceLocation(Object) source location} of its declaration. When different
+     * variables of the same name are in different scopes, they will be represented by different
+     * member elements providing the same {@link #asString(Object) name}.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #hasMembers(Object)} and {@link #toDisplayString(Object, boolean)} must be
+     * implemented and {@link #hasSourceLocation(Object)} is recommended.
+     *
+     * @see #getLanguage(Object)
+     * @see #getMembers(Object)
+     * @see #hasScopeParent(Object)
+     * @since 20.3
+     */
+    @Abstract(ifExported = "hasScopeParent")
+    public boolean isScope(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns <code>true</code> if this scope has an enclosing parent scope, else
+     * <code>false</code>.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isScope(Object)} and {@link #getScopeParent(Object)} must be implemented.
+     *
+     * @see #isScope(Object)
+     * @see #getScopeParent(Object)
+     * @since 20.3
+     */
+    @Abstract(ifExported = "getScopeParent")
+    public boolean hasScopeParent(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns the parent scope object if it {@link #hasScopeParent(Object) has the parent}. The
+     * returned object must be a {@link #isScope(Object) scope} and must provide a reduced list of
+     * {@link #getMembers(Object) member} variables, omitting all variables that are local to the
+     * current scope.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isScope(Object)} and {@link #getScopeParent(Object)} must be implemented.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasScopeParent(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isScope(Object)
+     * @see #hasScopeParent(Object)
+     * @since 20.3
+     */
+    @Abstract(ifExported = "hasScopeParent")
+    public Object getScopeParent(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
@@ -2303,6 +2377,7 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getMembers(receiver, internal);
                 assert validReturn(receiver, result);
                 assert isMultiThreaded(receiver) || assertMemberKeys(receiver, result, internal);
+                assert !delegate.hasScopeParent(receiver) || assertScopeMembers(receiver, result, delegate.getMembers(delegate.getScopeParent(receiver), internal));
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
@@ -2321,7 +2396,7 @@ public abstract class InteropLibrary extends Library {
                 assert false : violationPost(receiver, e);
                 return true;
             }
-            for (int i = 0; i < arraySize; i++) {
+            for (long i = 0; i < arraySize; i++) {
                 assert uncached.isArrayElementReadable(result, i) : violationPost(receiver, result);
                 Object element;
                 try {
@@ -2336,6 +2411,61 @@ public abstract class InteropLibrary extends Library {
                 } catch (UnsupportedMessageException e) {
                     assert false : violationInvariant(result, i);
                 }
+            }
+            return true;
+        }
+
+        private static boolean assertScopeMembers(Object receiver, Object allMembers, Object parentMembers) {
+            assert parentMembers != null : violationPost(receiver, parentMembers);
+            InteropLibrary allUncached = InteropLibrary.getUncached(allMembers);
+            InteropLibrary parentUncached = InteropLibrary.getUncached(parentMembers);
+            assert allUncached.hasArrayElements(allMembers) : violationPost(receiver, allMembers);
+            assert parentUncached.hasArrayElements(parentMembers) : violationPost(receiver, parentMembers);
+            long allSize;
+            long parentSize;
+            try {
+                allSize = allUncached.getArraySize(allMembers);
+                parentSize = parentUncached.getArraySize(parentMembers);
+            } catch (UnsupportedMessageException e) {
+                assert false : violationPost(receiver, e);
+                return true;
+            }
+            assert AssertUtils.validScopeMemberLengths(allSize, parentSize, allMembers, parentMembers);
+            long currentSize = allSize - parentSize;
+            for (long i = 0; i < parentSize; i++) {
+                assert allUncached.isArrayElementReadable(allMembers, i + currentSize) : violationPost(receiver, allMembers);
+                assert parentUncached.isArrayElementReadable(parentMembers, i) : violationPost(receiver, parentMembers);
+                Object allElement;
+                Object parentElement;
+                try {
+                    allElement = allUncached.readArrayElement(allMembers, i + currentSize);
+                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    assert false : violationPost(receiver, allMembers);
+                    return true;
+                }
+                try {
+                    parentElement = parentUncached.readArrayElement(parentMembers, i);
+                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    assert false : violationPost(receiver, parentMembers);
+                    return true;
+                }
+                assert InteropLibrary.getUncached().isString(allElement) : violationPost(receiver, allElement);
+                assert InteropLibrary.getUncached().isString(parentElement) : violationPost(receiver, parentElement);
+                String allElementName;
+                String parentElementName;
+                try {
+                    allElementName = InteropLibrary.getUncached().asString(allElement);
+                } catch (UnsupportedMessageException e) {
+                    assert false : violationInvariant(allElement);
+                    return true;
+                }
+                try {
+                    parentElementName = InteropLibrary.getUncached().asString(parentElement);
+                } catch (UnsupportedMessageException e) {
+                    assert false : violationInvariant(parentElement);
+                    return true;
+                }
+                assert AssertUtils.validScopeMemberNames(allElementName, parentElementName, allMembers, parentMembers, i + currentSize, i);
             }
             return true;
         }
@@ -2741,17 +2871,6 @@ public abstract class InteropLibrary extends Library {
             return result;
         }
 
-        private static boolean assertString(Object receiver, Object string) {
-            InteropLibrary uncached = InteropLibrary.getFactory().getUncached(string);
-            assert uncached.isString(string) : violationPost(receiver, string);
-            try {
-                assert uncached.asString(string) != null : violationPost(receiver, string);
-            } catch (UnsupportedMessageException e) {
-                assert false; // should be handled by uncached assertions
-            }
-            return true;
-        }
-
         @Override
         public boolean hasSourceLocation(Object receiver) {
             if (CompilerDirectives.inCompiledCode()) {
@@ -3090,5 +3209,57 @@ public abstract class InteropLibrary extends Library {
             return true;
         }
 
+        @Override
+        public boolean isScope(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.isScope(receiver);
+            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver);
+            assert !result || delegate.hasLanguage(receiver) : violationInvariant(receiver);
+            return result;
+        }
+
+        @Override
+        public boolean hasScopeParent(Object receiver) {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.hasScopeParent(receiver);
+            }
+            assert preCondition(receiver);
+            boolean result = delegate.hasScopeParent(receiver);
+            if (result) {
+                assert delegate.isScope(receiver) : violationInvariant(receiver);
+                try {
+                    assert validScope(delegate.getScopeParent(receiver));
+                } catch (UnsupportedMessageException e) {
+                    assert false : violationInvariant(receiver);
+                }
+            } else {
+                try {
+                    delegate.getScopeParent(receiver);
+                    assert false : violationInvariant(receiver);
+                } catch (UnsupportedMessageException e) {
+                }
+            }
+            return result;
+        }
+
+        @Override
+        public Object getScopeParent(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getScopeParent(receiver);
+            }
+            assert preCondition(receiver);
+            boolean hadScopeParent = delegate.hasScopeParent(receiver);
+            try {
+                Object result = delegate.getScopeParent(receiver);
+                assert hadScopeParent : violationInvariant(receiver);
+                assert delegate.isScope(receiver) : violationInvariant(receiver);
+                assert validScope(result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !hadScopeParent : violationInvariant(receiver);
+                throw e;
+            }
+        }
     }
 }

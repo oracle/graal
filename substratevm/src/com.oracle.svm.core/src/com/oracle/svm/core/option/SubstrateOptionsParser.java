@@ -182,7 +182,7 @@ public class SubstrateOptionsParser {
             if (eqIndex != -1) {
                 return OptionParseResult.error("Cannot mix +/- with <name>=<value> format: '" + optionPrefix + option + "'");
             }
-            optionName = option.substring(1, option.length());
+            optionName = option.substring(1);
             if (booleanOptionFormat == BooleanOptionFormat.NAME_VALUE) {
                 return OptionParseResult.error("Option '" + optionName + "' must use <name>=<value> format, not +/- prefix");
             }
@@ -215,7 +215,7 @@ public class SubstrateOptionsParser {
                     msg.append(' ').append(match.getName());
                 }
             }
-            msg.append(". Use " + optionPrefix + SubstrateOptions.PrintFlags.getName() + "= to list all available options.");
+            msg.append(". Use ").append(optionPrefix).append(SubstrateOptions.PrintFlags.getName()).append("= to list all available options.");
             return OptionParseResult.error(msg.toString());
         }
 
@@ -232,6 +232,10 @@ public class SubstrateOptionsParser {
                 if (optionType.isArray()) {
                     OptionKey<?> optionKey = desc.getOptionKey();
                     Object addValue = parseValue(optionType.getComponentType(), optionName, valueString);
+                    if (addValue instanceof OptionParseResult) {
+                        return (OptionParseResult) addValue;
+                    }
+
                     Object previous = valuesMap.get(optionKey);
                     if (previous == null) {
                         value = Array.newInstance(optionType.getComponentType(), 1);
@@ -243,6 +247,9 @@ public class SubstrateOptionsParser {
                     }
                 } else {
                     value = parseValue(optionType, optionName, valueString);
+                    if (value instanceof OptionParseResult) {
+                        return (OptionParseResult) value;
+                    }
                 }
             } catch (NumberFormatException ex) {
                 return OptionParseResult.error("Invalid value for option '" + optionName + "': '" + valueString + "' is not a valid number");
@@ -266,8 +273,9 @@ public class SubstrateOptionsParser {
                 String enumString = null;
                 try {
                     String[] enumStrings = SubstrateUtil.split(optionValue, ",");
-                    for (int i = 0; i < enumStrings.length; i++) {
-                        enumString = enumStrings[i];
+
+                    for (String string : enumStrings) {
+                        enumString = string;
                         selectedOptionTypes.add(OptionType.valueOf(enumString));
                     }
                 } catch (IllegalArgumentException e) {
@@ -580,31 +588,57 @@ public class SubstrateOptionsParser {
         APIOption[] apiOptions = field.getAnnotationsByType(APIOption.class);
 
         for (APIOption apiOption : apiOptions) {
-            assert !apiOption.name().equals(apiOptionName) || apiOption.deprecated().equals("") : "Using the deprecated option in a description: " + apiOption;
+            String selected = selectVariant(apiOption, apiOptionName);
+            assert selected == null || apiOption.deprecated().equals("") : "Using the deprecated option in a description: " + apiOption;
         }
 
         if (option.getDescriptor().getOptionValueType() == Boolean.class) {
             VMError.guarantee(value.equals("+") || value.equals("-"), "Boolean option value can be only + or -");
             for (APIOption apiOption : apiOptions) {
-                String apiValue = apiOption.kind() == APIOption.APIOptionKind.Negated ? "-" : "+";
-                if (apiValue.equals(value)) {
-                    return APIOption.Utils.name(apiOption);
+                String selected = selectVariant(apiOption, apiOptionName);
+                if (selected != null) {
+                    String apiValue = apiOption.kind() == APIOption.APIOptionKind.Negated ? "-" : "+";
+                    if (apiValue.equals(value)) {
+                        return APIOption.Utils.optionName(selected);
+                    }
                 }
             }
             return HOSTED_OPTION_PREFIX + value + option;
         } else {
+            String apiOptionWithValue = null;
             for (APIOption apiOption : apiOptions) {
-                String fixedValue = apiOption.fixedValue().length == 0 ? null : apiOption.fixedValue()[0];
-                if (apiOptionName == null || apiOption.name().equals(apiOptionName)) {
-                    if (fixedValue == null) {
-                        return APIOption.Utils.name(apiOption) + "=" + value;
-                    } else if (value.equals(fixedValue)) {
-                        return APIOption.Utils.name(apiOption);
+                String selected = selectVariant(apiOption, apiOptionName);
+                if (selected != null) {
+                    String optionName = APIOption.Utils.optionName(selected);
+                    if (apiOption.fixedValue().length == 0) {
+                        if (apiOptionWithValue == null) {
+                            /* First APIOption that accepts value is selected as fallback */
+                            apiOptionWithValue = optionName + apiOption.valueSeparator() + value;
+                        }
+                    } else if (apiOption.fixedValue()[0].equals(value)) {
+                        /* Return requested option expressed as fixed-value APIOption */
+                        return optionName;
                     }
                 }
             }
+            if (apiOptionWithValue != null) {
+                /* Returning APIOption that accepts value is better than raw option */
+                return apiOptionWithValue;
+            }
             assert apiOptionName == null : "invalid API option name " + apiOptionName;
+            /* Return raw option if nothing else matches */
             return HOSTED_OPTION_PREFIX + option.getName() + "=" + value;
         }
+    }
+
+    private static String selectVariant(APIOption apiOption, String apiOptionName) {
+        VMError.guarantee(apiOption.name().length > 0, "APIOption requires at least one name");
+        if (apiOptionName == null) {
+            return apiOption.name()[0];
+        }
+        if (Arrays.asList(apiOption.name()).contains(apiOptionName)) {
+            return apiOptionName;
+        }
+        return null;
     }
 }

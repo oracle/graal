@@ -123,7 +123,7 @@ public abstract class ToLLVM extends LLVMNode {
 
         protected abstract Object execute(Object value, LLVMInteropType.Value incomingType) throws UnsupportedMessageException;
 
-        @Specialization(limit = "3", guards = "incomingType.getKind() == I1")
+        @Specialization(limit = "3", guards = "incomingType.kind == I1")
         static boolean doI1(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.isBoolean(value)) {
@@ -132,7 +132,7 @@ public abstract class ToLLVM extends LLVMNode {
             return interop.asBoolean(value);
         }
 
-        @Specialization(limit = "3", guards = "incomingType.getKind() == I8")
+        @Specialization(limit = "3", guards = "incomingType.kind == I8")
         static byte doI8(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.fitsInByte(value)) {
@@ -141,7 +141,7 @@ public abstract class ToLLVM extends LLVMNode {
             return interop.asByte(value);
         }
 
-        @Specialization(limit = "3", guards = "incomingType.getKind() == I16")
+        @Specialization(limit = "3", guards = "incomingType.kind == I16")
         static short doI16(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.fitsInShort(value)) {
@@ -150,7 +150,7 @@ public abstract class ToLLVM extends LLVMNode {
             return interop.asShort(value);
         }
 
-        @Specialization(limit = "3", guards = "incomingType.getKind() == I32")
+        @Specialization(limit = "3", guards = "incomingType.kind == I32")
         static int doI32(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.fitsInInt(value)) {
@@ -159,7 +159,7 @@ public abstract class ToLLVM extends LLVMNode {
             return interop.asInt(value);
         }
 
-        @Specialization(limit = "3", guards = "incomingType.getKind() == I64")
+        @Specialization(limit = "3", guards = "incomingType.kind == I64")
         static long doI64(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.fitsInLong(value)) {
@@ -168,7 +168,7 @@ public abstract class ToLLVM extends LLVMNode {
             return interop.asLong(value);
         }
 
-        @Specialization(limit = "3", guards = "incomingType.getKind() == FLOAT")
+        @Specialization(limit = "3", guards = "incomingType.kind == FLOAT")
         static float doFloat(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.fitsInFloat(value)) {
@@ -177,7 +177,7 @@ public abstract class ToLLVM extends LLVMNode {
             return interop.asFloat(value);
         }
 
-        @Specialization(limit = "3", guards = "incomingType.getKind() == DOUBLE")
+        @Specialization(limit = "3", guards = "incomingType.kind == DOUBLE")
         static double doDouble(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.fitsInDouble(value)) {
@@ -186,10 +186,10 @@ public abstract class ToLLVM extends LLVMNode {
             return interop.asDouble(value);
         }
 
-        @Specialization(guards = "incomingType.getKind() == POINTER")
+        @Specialization(guards = "incomingType.kind == POINTER")
         static LLVMPointer doPointer(Object value, LLVMInteropType.Value incomingType,
                         @Cached WrapPointer wrap) {
-            return wrap.execute(value, incomingType.getBaseType());
+            return wrap.execute(value, incomingType.baseType);
         }
     }
 

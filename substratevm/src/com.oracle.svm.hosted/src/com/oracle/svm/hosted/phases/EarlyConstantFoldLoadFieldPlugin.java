@@ -24,12 +24,14 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -44,9 +46,11 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class EarlyConstantFoldLoadFieldPlugin implements NodePlugin {
 
     private final ResolvedJavaField isImageBuildTimeField;
+    private final SnippetReflectionProvider snippetReflection;
 
-    public EarlyConstantFoldLoadFieldPlugin(MetaAccessProvider metaAccess) {
+    public EarlyConstantFoldLoadFieldPlugin(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection) {
         isImageBuildTimeField = metaAccess.lookupJavaField(ReflectionUtil.lookupField(ClassInitializationTracking.class, "IS_IMAGE_BUILD_TIME"));
+        this.snippetReflection = snippetReflection;
     }
 
     @Override
@@ -64,7 +68,8 @@ public class EarlyConstantFoldLoadFieldPlugin implements NodePlugin {
              * matter at all (because it is the hosted assertion status), we instead return the
              * appropriate runtime assertion status.
              */
-            boolean assertionsEnabled = SubstrateOptions.getRuntimeAssertionsForClass(field.getDeclaringClass().toJavaName());
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(snippetReflection, field.getDeclaringClass());
+            boolean assertionsEnabled = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
             b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(!assertionsEnabled));
             return true;
         }

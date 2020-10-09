@@ -563,7 +563,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     DirectCallNode callNode = (DirectCallNode) children[childrenOffset];
                     childrenOffset++;
 
-                    Object[] args = createArgumentsForCall(frame, function, numArgs, stackPointer);
+                    Object[] args = createArgumentsForCall(frame, function.typeIndex(), numArgs, stackPointer);
                     stackPointer -= args.length;
 
                     trace("direct call to function %s (%d args)", function, args.length);
@@ -616,10 +616,18 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
                     // Currently, table elements may only be functions.
                     // We can add a check here when this changes in the future.
-                    final WasmFunctionInstance functionInstance = (WasmFunctionInstance) elements[elementIndex];
-                    final WasmFunction function = functionInstance.function();
-                    if (function == null) {
+                    final Object element = elements[elementIndex];
+                    if (element == null) {
                         throw WasmTrap.format(this, "Table element at index %d is uninitialized.", elementIndex);
+                    }
+                    final WasmFunction function;
+                    final CallTarget target;
+                    if (element instanceof WasmFunctionInstance) {
+                        final WasmFunctionInstance functionInstance = (WasmFunctionInstance) element;
+                        function = functionInstance.function();
+                        target = functionInstance.target();
+                    } else {
+                        throw WasmTrap.format(this, "Unknown table element type: %s", element);
                     }
 
                     // Extract the function type index.
@@ -636,7 +644,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += 1;
 
                     // Validate that the function type matches the expected type.
-                    if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
+                    if (function != null && expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
                         // TODO: This check may be too rigorous, as the WebAssembly specification
                         // seems to allow multiple definitions of the same type.
                         // We should refine the check.
@@ -649,11 +657,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     childrenOffset++;
 
                     int numArgs = instance().symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
-                    Object[] args = createArgumentsForCall(frame, function, numArgs, stackPointer);
+                    Object[] args = createArgumentsForCall(frame, expectedFunctionTypeIndex, numArgs, stackPointer);
                     stackPointer -= args.length;
 
                     trace("indirect call to function %s (%d args)", function, args.length);
-                    final CallTarget target = functionInstance.target();
                     final Object result = callNode.execute(target, args);
                     trace("return from indirect_call to function %s : %s", function, result);
                     // At the moment, WebAssembly functions may return up to one value.
@@ -2419,13 +2426,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @ExplodeLoop
-    private Object[] createArgumentsForCall(VirtualFrame frame, WasmFunction function, int numArgs, int stackPointerOffset) {
+    private Object[] createArgumentsForCall(VirtualFrame frame, int functionTypeIndex, int numArgs, int stackPointerOffset) {
         CompilerAsserts.partialEvaluationConstant(numArgs);
         Object[] args = new Object[numArgs];
         int stackPointer = stackPointerOffset;
         for (int i = numArgs - 1; i >= 0; --i) {
             stackPointer--;
-            byte type = instance().symbolTable().functionTypeArgumentTypeAt(function.typeIndex(), i);
+            byte type = instance().symbolTable().functionTypeArgumentTypeAt(functionTypeIndex, i);
             switch (type) {
                 case ValueTypes.I32_TYPE:
                     args[i] = popInt(frame, stackPointer);

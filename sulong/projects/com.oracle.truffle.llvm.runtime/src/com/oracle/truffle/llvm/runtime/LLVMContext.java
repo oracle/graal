@@ -29,20 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -54,9 +40,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -78,7 +61,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.HandleContainer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -89,6 +71,20 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
 import org.graalvm.collections.EconomicMap;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
 public final class LLVMContext {
 
     public static final String SULONG_INIT_CONTEXT = "__sulong_init_context";
@@ -96,10 +92,12 @@ public final class LLVMContext {
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
+    private final Object truffleFilesLock = new Object();
     private final Toolchain toolchain;
     @CompilationFinal private Path internalLibraryPath;
     @CompilationFinal private TruffleFile internalLibraryPathFile;
     private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
+    private final List<TruffleFile> truffleFiles = new ArrayList<>();
     private final Object externalLibrariesLock = new Object();
     private final List<String> internalLibraryNames;
 
@@ -137,7 +135,7 @@ public final class LLVMContext {
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
 
-    // private for storing the globals of each bcode file;
+    // The symbol table for storing the symbols of each bitcode library
     @CompilationFinal(dimensions = 2) private AssumedValue<LLVMPointer>[][] symbolStorage;
     private boolean[] libraryLoaded;
 
@@ -242,18 +240,16 @@ public final class LLVMContext {
     abstract static class InitializeContextNode extends LLVMStatementNode {
 
         @CompilationFinal private ContextReference<LLVMContext> ctxRef;
-        private final FrameSlot stackPointer;
 
-        @Child DirectCallNode initContext;
+        @Child private DirectCallNode initContext;
 
-        InitializeContextNode(LLVMFunctionDescriptor initContextDescriptor, FrameDescriptor rootFrame) {
-            this.stackPointer = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
+        InitializeContextNode(LLVMFunctionDescriptor initContextDescriptor) {
             RootCallTarget initContextFunction = initContextDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
             this.initContext = DirectCallNode.create(initContextFunction);
         }
 
         @Specialization
-        public void doInit(VirtualFrame frame) {
+        public void doInit() {
             if (ctxRef == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 ctxRef = lookupContextReference(LLVMLanguage.class);
@@ -263,8 +259,7 @@ public final class LLVMContext {
                 assert !ctx.cleanupNecessary;
                 ctx.initialized = true;
                 ctx.cleanupNecessary = true;
-                StackPointer sp = (StackPointer) FrameUtil.getObjectSafe(frame, this.stackPointer);
-                Object[] args = new Object[]{sp.getLLVMStack(), ctx.getApplicationArguments(), getEnvironmentVariables(), getRandomValues()};
+                Object[] args = new Object[]{ctx.getThreadingStack().getStack(), ctx.getApplicationArguments(), getEnvironmentVariables(), getRandomValues()};
                 initContext.call(args);
             }
         }
@@ -305,7 +300,7 @@ public final class LLVMContext {
              */
             String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
             for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
-                ExternalLibrary library = addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>");
+                ExternalLibrary library = addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>", false);
                 TruffleFile file = library.hasFile() ? library.getFile() : env.getInternalTruffleFile(library.getPath().toUri());
                 env.parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
             }
@@ -392,14 +387,14 @@ public final class LLVMContext {
         return threadingStack != null;
     }
 
-    public LLVMStatementNode createInitializeContextNode(FrameDescriptor rootFrame) {
+    public LLVMStatementNode createInitializeContextNode() {
         // we can't do the initialization in the LLVMContext constructor nor in
         // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
         // do it in a delayed way.
         if (sulongInitContext == null) {
             throw new IllegalStateException("Context cannot be initialized:" + SULONG_INIT_CONTEXT + " was not found");
         }
-        return InitializeContextNodeGen.create(createFunctionDescriptor(sulongInitContext), rootFrame);
+        return InitializeContextNodeGen.create(createFunctionDescriptor(sulongInitContext));
     }
 
     public Toolchain getToolchain() {
@@ -453,8 +448,7 @@ public final class LLVMContext {
     }
 
     public void addLibsulongDataLayout(DataLayout datalayout) {
-        // Libsulong datalayout can only be set once. This should be called by
-        // Runner#parseDefaultLibraries.
+        // Libsulong datalayout can only be set once.
         if (!datalayoutInitialised) {
             this.libsulongDatalayout = datalayout;
             datalayoutInitialised = true;
@@ -579,22 +573,21 @@ public final class LLVMContext {
     /**
      * Inject implicit or modify explicit dependencies for a {@code library}.
      *
-     * @param library the library for which dependencies might be injected
      * @param libraries a (potentially unmodifiable) list of dependencies
      */
     @SuppressWarnings("unchecked")
-    public List<String> preprocessDependencies(ExternalLibrary library, List<String> libraries) {
-        return language.getCapability(PlatformCapability.class).preprocessDependencies(this, library, libraries);
+    public List<String> preprocessDependencies(List<String> libraries, TruffleFile file) {
+        return language.getCapability(PlatformCapability.class).preprocessDependencies(this, file, libraries);
     }
 
-    public ExternalLibrary addInternalLibrary(String lib, Object reason) {
+    public ExternalLibrary addInternalLibrary(String lib, Object reason, boolean isNative) {
         CompilerAsserts.neverPartOfCompilation();
-        final ExternalLibrary newLib = createExternalLibrary(lib, reason, InternalLibraryLocator.INSTANCE);
+        final ExternalLibrary newLib = createExternalLibrary(lib, reason, InternalLibraryLocator.INSTANCE, isNative);
         assert newLib.isInternal() : "Internal library not detected as internal: " + lib;
         return getOrAddExternalLibrary(newLib);
     }
 
-    private static final class InternalLibraryLocator extends LibraryLocator {
+    public static final class InternalLibraryLocator extends LibraryLocator {
 
         public static final InternalLibraryLocator INSTANCE = new InternalLibraryLocator();
 
@@ -627,7 +620,7 @@ public final class LLVMContext {
      */
     public ExternalLibrary addExternalLibrary(String lib, Object reason, LibraryLocator locator) {
         CompilerAsserts.neverPartOfCompilation();
-        ExternalLibrary newLib = createExternalLibrary(lib, reason, locator);
+        ExternalLibrary newLib = createExternalLibrary(lib, reason, locator, true);
         if (isDefaultLibrary(newLib)) {
             // Disallow loading default libraries explicitly.
             throw new LLVMLinkerException("Adding an internal library (possibly from the command line) as an external library.");
@@ -646,7 +639,7 @@ public final class LLVMContext {
      * @return null if not yet loaded
      */
     public ExternalLibrary findExternalLibrary(String lib, Object reason, LibraryLocator locator) {
-        final ExternalLibrary newLib = createExternalLibrary(lib, reason, locator);
+        final ExternalLibrary newLib = createExternalLibrary(lib, reason, locator, true);
         return getExternalLibrary(newLib);
     }
 
@@ -656,8 +649,7 @@ public final class LLVMContext {
      *
      * @see ExternalLibrary#makeBitcodeLibrary
      */
-    private ExternalLibrary createExternalLibrary(String lib, Object reason, LibraryLocator locator) {
-        boolean isNative = true;
+    private ExternalLibrary createExternalLibrary(String lib, Object reason, LibraryLocator locator, boolean isNative) {
         TruffleFile tf = locator.locate(this, lib, reason);
         if (tf == null) {
             // Unable to locate the library -> will go to native
@@ -668,42 +660,15 @@ public final class LLVMContext {
         return ExternalLibrary.createFromFile(tf, isNative, isInternalLibraryFile(tf));
     }
 
-    /**
-     * @return true if the library has been added
-     */
-    public boolean ensureExternalLibraryAdded(ExternalLibrary newLib) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (isDefaultLibrary(newLib)) {
-            // Disallow loading default libraries explicitly.
-            return false;
-        }
-        ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
-        if (existingLib == newLib) {
-            return true;
-        }
-        LibraryLocator.traceAlreadyLoaded(this, existingLib);
-        return false;
-    }
-
-    public boolean isInternalLibrary(ExternalLibrary lib) {
-        if (lib.getFile() != null) {
-            return isInternalLibraryFile(lib.getFile());
-        }
-        if (lib.getPath() != null) {
-            return isInternalLibraryPath(lib.getPath());
-        }
-        return isDefaultLibrary(lib);
-    }
-
     private boolean isDefaultLibrary(ExternalLibrary lib) {
         return internalLibraryNames.contains(lib.getName());
     }
 
-    private boolean isInternalLibraryPath(Path path) {
+    public boolean isInternalLibraryPath(Path path) {
         return path.normalize().startsWith(internalLibraryPath);
     }
 
-    private boolean isInternalLibraryFile(TruffleFile file) {
+    public boolean isInternalLibraryFile(TruffleFile file) {
         return file.normalize().startsWith(internalLibraryPathFile);
     }
 
@@ -729,6 +694,20 @@ public final class LLVMContext {
             } else {
                 externalLibraries.add(externalLib);
                 return externalLib;
+            }
+        }
+    }
+
+    public TruffleFile getOrAddTruffleFile(TruffleFile file) {
+        synchronized (truffleFilesLock) {
+            int index = truffleFiles.indexOf(file);
+            if (index >= 0) {
+                TruffleFile ret = truffleFiles.get(index);
+                assert ret.equals(file);
+                return ret;
+            } else {
+                truffleFiles.add(file);
+                return file;
             }
         }
     }

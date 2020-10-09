@@ -96,7 +96,6 @@ When a value is reached from multiple branches it is expanded only the first tim
 Subsequent discoveries of the same value use an identifier reference to point to the previously expansion location: `id-ref=<value-id>`.
 
 ##### Suppressing expansion of values
-
 Some values, such as `String`, `BigInteger` and primitive arrays, are not expanded by default and marked with `(expansion suppressed)`.
 All the other types are expanded by default.
 To force the suppression of types expanded by default you can use `-H:ImageObjectTreeSuppressTypes=<comma-separated-patterns>`.
@@ -117,8 +116,8 @@ The pattern accepts the `*` modifier:
   - ends-with: `*<str>` - the pattern exactly matches all entries that end with `<str>`
   - starts-with: `<str>*` - the pattern exactly matches all entries that start with `<str>`
   - contains: `*<str>*` - the pattern exactly matches all entries that contain `<str>`
-  - equals: `<str>` - the pattern exactly matches all entries that are equal to `<str>`  
-  - all: `*` - the pattern matches all entries  
+  - equals: `<str>` - the pattern exactly matches all entries that are equal to `<str>`
+  - all: `*` - the pattern matches all entries
 
 ###### Examples
 Types suppression/expansion:
@@ -139,7 +138,6 @@ Roots suppression/expansion:
   - `-H:ImageObjectTreeExpandRoots=*` - force the expansion of all roots, including those suppressed by default
 
 ##### Report files
-
 The reports are generated in the `reports` subdirectory, relative to the image building directory.
 When executing the `native-image` executable the image build directory defaults to the working directory and can be modified using the `-H:Path=<dir>` option.
 

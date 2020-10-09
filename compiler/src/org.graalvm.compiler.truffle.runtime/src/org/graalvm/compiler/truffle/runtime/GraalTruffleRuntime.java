@@ -212,15 +212,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return testTvmci;
     }
 
-    private static boolean useInlining(TruffleCompilationTask task, OptimizedCallTarget sourceTarget) {
-        return sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining) && (task.isLastTier() || sourceTarget.getOptionValue(PolyglotCompilerOptions.FirstTierInlining));
-    }
-
     @Override
     public TruffleInlining createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task) {
         final OptimizedCallTarget sourceTarget = (OptimizedCallTarget) compilable;
         final TruffleInliningPolicy policy;
-        if (task != null && useInlining(task, sourceTarget)) {
+        if (task != null && sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining) &&
+                        !sourceTarget.getOptionValue(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
             policy = TruffleInliningPolicy.getInliningPolicy();
         } else {
             policy = TruffleInliningPolicy.getNoInliningPolicy();
@@ -388,6 +385,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         for (TruffleTypes s : TruffleRuntimeServices.load(TruffleTypes.class)) {
             for (Class<?> c : s.getTypes()) {
                 m.put(c.getName(), c);
+            }
+        }
+        if (JAVA_SPECIFICATION_VERSION >= 15) {
+            String className = "jdk.internal.access.foreign.MemorySegmentProxy";
+            try {
+                Class<?> c = Class.forName(className);
+                m.put(c.getName(), c);
+            } catch (ClassNotFoundException e) {
+                throw new NoClassDefFoundError(className);
             }
         }
         return m;

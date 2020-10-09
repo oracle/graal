@@ -35,6 +35,7 @@ import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
@@ -221,8 +222,74 @@ public final class Block extends AbstractBlockBase<Block> {
     }
 
     /**
-     * The execution frequency of this block relative to the start block as estimated by the
-     * profiling information.
+     * Get the relative Frequency of a basic block.
+     *
+     * In order for profile guided optimizations to utilize profiling information from the
+     * interpreter during optimization Graal uses the concept of block and loop frequencies, i.e.,
+     * the frequency of a certain piece of code relative to the start of a method. This is used as a
+     * proxy for the importance of code inside a single method.
+     *
+     * During the life cycle of a method executed by the JavaVM every method is initially executed
+     * by the interpreter which gathers profiling information. Among this profiling information is
+     * the so called branch probability, i.e. the probability for the true and false successor of a
+     * single binary branch.
+     *
+     * For a simple if then else construct like
+     *
+     * <pre>
+     * if (a) {
+     *  thenAction()
+     * } else {
+     *  elseAction()
+     * }
+     * </pre>
+     *
+     * and a true successor probability of 0.5 this means 50% of the time when executing the code
+     * condition a was false. This only becomes relevant in a large context: e.g., out of 1000 times
+     * the code is executed, 500 times a is false.
+     *
+     * The interpreter collects these branch profiles for every java bytecode if instruction. The
+     * Graal compiler uses them to derive its internal representation of execution probabilities
+     * called "block frequencies". Since the Graal compiler only compiles one method at a time and
+     * does not perform inter method optimizations the actual total numbers for invocation and
+     * execution counts are not interesting. Thus, Graal uses the branch probabilities from the
+     * interpreter to derive a metric for profiles within a single compilation unit. These are the
+     * block frequencies. Block frequencies are applied to basic blocks, i.e., every basic block has
+     * one. It is a floating point number that expresses how often a basic block will be executed
+     * with respect to the start of a method. Thus, the metric only makes sense within a single
+     * compilation unit and it marks hot regions of code.
+     *
+     * Consider the following method foo:
+     *
+     * <pre>
+     * void foo() {
+     *  // method start: frequency = 1
+     *  int i=0;
+     *  while (true) {
+     *      if(i>=10) { // exit
+     *          break;
+     *      }
+     *      consume(i)
+     *      i++;
+     *  }
+     *  return // method end: relative frequency = 1
+     * }
+     * </pre>
+     *
+     * Every method's start basic block is unconditionally executed thus it has a frequency of 1.
+     * Then foo contains a loop that consists of a loop header, a condition, an exit and a loop
+     * body. In this while loop, the header is executed initially once and then how often the back
+     * edges indicate that the loop will be executed. For this Graal uses the frequency of the loop
+     * exit condition (i.e. {@code i >= 10}). When the condition has a false successor (enter the
+     * loop body) frequency of roughly 90% we can calculate the loop frequency from that: the loop
+     * frequency is the entry block frequency times the frequency from the exit condition's false
+     * successor which accumulates roughly to 1/0.1 which amounts to roughly 10 loop iterations.
+     * However, since we know the loop is exited at some point the code after the loop has again a
+     * block frequency set to 1 (loop entry frequency).
+     *
+     * Graal {@link IfNode#setTrueSuccessorProbability(double) sets the profiles} during parsing and
+     * later computes loop frequencies for {@link LoopBeginNode}. Finally, the frequency for basic
+     * {@link Block}s is set during {@link ControlFlowGraph} construction.
      */
     @Override
     public double getRelativeFrequency() {

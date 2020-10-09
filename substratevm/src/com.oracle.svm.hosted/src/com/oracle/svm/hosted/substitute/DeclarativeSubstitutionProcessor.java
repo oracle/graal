@@ -104,20 +104,20 @@ public class DeclarativeSubstitutionProcessor extends AnnotationSubstitutionProc
             try {
                 loadFile(new FileReader(substitutionFileName));
             } catch (FileNotFoundException ex) {
-                throw UserError.abort("Substitution file " + substitutionFileName + " not found.");
+                throw UserError.abort("Substitution file %s not found.", substitutionFileName);
             } catch (IOException | JSONParserException ex) {
-                throw UserError.abort("Could not parse substitution file " + substitutionFileName + ": " + ex.getMessage());
+                throw UserError.abort("Could not parse substitution file %s: %s", substitutionFileName, ex.getMessage());
             }
         }
         for (String substitutionResourceName : OptionUtils.flatten(",", Options.SubstitutionResources.getValue())) {
             try {
                 InputStream substitutionStream = imageClassLoader.findResourceAsStreamByName(substitutionResourceName);
                 if (substitutionStream == null) {
-                    throw UserError.abort("Substitution resource not found: " + substitutionResourceName);
+                    throw UserError.abort("Substitution resource not found: %s", substitutionResourceName);
                 }
                 loadFile(new InputStreamReader(substitutionStream));
             } catch (IOException | JSONParserException ex) {
-                throw UserError.abort("Could not parse substitution resource " + substitutionResourceName + ": " + ex.getMessage());
+                throw UserError.abort("Could not parse substitution resource %s: %s", substitutionResourceName, ex.getMessage());
             }
         }
     }
@@ -139,9 +139,9 @@ public class DeclarativeSubstitutionProcessor extends AnnotationSubstitutionProc
             Class<?> annotatedClass = imageClassLoader.findClassByName(classDescriptor.annotatedClass());
 
             if (annotatedClasses.contains(annotatedClass)) {
-                throw UserError.abort("target class already registered using explicit @TargetClass annotation: " + annotatedClass);
+                throw UserError.abort("Target class already registered using explicit @TargetClass annotation: %s", annotatedClass);
             } else if (classDescriptors.containsKey(annotatedClass)) {
-                throw UserError.abort("target class already registered using substitution file: " + annotatedClass);
+                throw UserError.abort("Target class already registered using substitution file: %s", annotatedClass);
             }
             classDescriptors.put(annotatedClass, classDescriptor);
 

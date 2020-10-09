@@ -33,19 +33,18 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
-import com.oracle.truffle.llvm.parser.StackManager;
-import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
@@ -57,12 +56,13 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.SulongLibrary;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.BitSet;
 import java.util.List;
@@ -90,13 +90,12 @@ import java.util.Objects;
  * while the dependencies will return null.
  *
  */
-public final class LoadModulesNode extends RootNode {
+public final class LoadModulesNode extends LLVMRootNode {
 
     private static final String MAIN_METHOD_NAME = "main";
     private static final String START_METHOD_NAME = "_start";
 
     @CompilerDirectives.CompilationFinal RootCallTarget mainFunctionCallTarget;
-    final FrameSlot stackPointerSlot;
     final String sourceName;
     final int bitcodeID;
     final Source source;
@@ -137,13 +136,11 @@ public final class LoadModulesNode extends RootNode {
 
     private LoadModulesNode(String name, LLVMParserResult parserResult, LLVMContext context,
                     FrameDescriptor rootFrame, boolean lazyParsing, List<Object> dependenciesSource, Source source, LLVMLanguage language) throws Type.TypeOverflowException {
-
-        super(language, rootFrame);
+        super(language, rootFrame, parserResult.getRuntime().getNodeFactory().createStackAccess(rootFrame));
         this.mainFunctionCallTarget = null;
         this.sourceName = name;
         this.source = source;
         this.bitcodeID = parserResult.getRuntime().getBitcodeID();
-        this.stackPointerSlot = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
         this.parserResult = parserResult;
         this.dependenciesSource = dependenciesSource;
         this.language = language;
@@ -152,9 +149,9 @@ public final class LoadModulesNode extends RootNode {
         this.hasInitialised = false;
 
         this.initContext = null;
-        String moduleName = parserResult.getRuntime().getLibrary().toString();
+        String moduleName = parserResult.getRuntime().getLibraryName();
         this.initSymbols = new InitializeSymbolsNode(parserResult, parserResult.getRuntime().getNodeFactory(), lazyParsing,
-                        isInternalSulongLibrary(context, parserResult.getRuntime().getLibrary()), moduleName);
+                        isInternalSulongLibrary(context, parserResult.getRuntime().getFile()), moduleName);
         this.initScopes = new InitializeScopeNode(parserResult);
         this.initExternals = new InitializeExternalNode(parserResult);
         this.initGlobals = new InitializeGlobalNode(rootFrame, parserResult, moduleName);
@@ -173,14 +170,12 @@ public final class LoadModulesNode extends RootNode {
         return source.createUnavailableSection();
     }
 
-    public static LoadModulesNode create(String name, LLVMParserResult parserResult, FrameDescriptor rootFrame,
+    public static LoadModulesNode create(String name, LLVMParserResult parserResult,
                     boolean lazyParsing, LLVMContext context, List<Object> dependencySources, Source source, LLVMLanguage language) {
-        LoadModulesNode node = null;
         try {
-            node = new LoadModulesNode(name, parserResult, context, rootFrame, lazyParsing, dependencySources, source, language);
-            return node;
+            return new LoadModulesNode(name, parserResult, context, new FrameDescriptor(), lazyParsing, dependencySources, source, language);
         } catch (Type.TypeOverflowException e) {
-            throw new LLVMUnsupportedException(node, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
+            throw new LLVMUnsupportedException(null, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
         }
     }
 
@@ -198,20 +193,17 @@ public final class LoadModulesNode extends RootNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 // Parse the dependencies of this library.
                 for (int i = 0; i < dependenciesSource.size(); i++) {
-                    // native dependencies are null
-                    if (dependenciesSource.get(i) != null) {
-                        if (dependenciesSource.get(i) instanceof Source) {
-                            CallTarget callTarget = context.getEnv().parseInternal((Source) dependenciesSource.get(i));
-                            dependencies[i] = DirectCallNode.create(callTarget);
-                            // The call targets are needed for initialising the scope.
-                            callTargets[i] = callTarget;
-                        } else if (dependenciesSource.get(i) instanceof CallTarget) {
-                            dependencies[i] = DirectCallNode.create((CallTarget) dependenciesSource.get(i));
-                            // The call targets are needed for initialising the scope.
-                            callTargets[i] = (CallTarget) dependenciesSource.get(i);
-                        } else {
-                            throw new IllegalStateException("Unknown dependency.");
-                        }
+                    if (dependenciesSource.get(i) instanceof Source) {
+                        CallTarget callTarget = context.getEnv().parseInternal((Source) dependenciesSource.get(i));
+                        dependencies[i] = insert(DirectCallNode.create(callTarget));
+                        // The call targets are needed for initialising the scope.
+                        callTargets[i] = callTarget;
+                    } else if (dependenciesSource.get(i) instanceof CallTarget) {
+                        dependencies[i] = insert(DirectCallNode.create((CallTarget) dependenciesSource.get(i)));
+                        // The call targets are needed for initialising the scope.
+                        callTargets[i] = (CallTarget) dependenciesSource.get(i);
+                    } else {
+                        throw new IllegalStateException("Unknown dependency.");
                     }
                 }
                 // Set up the start and main functions, as well as the context initialise and dipose
@@ -222,11 +214,11 @@ public final class LoadModulesNode extends RootNode {
                 // future.
                 if (mainFunction != null) {
                     RootCallTarget startCallTarget = startFunctionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
-                    Path applicationPath = mainFunction.getLibrary().getPath();
-                    RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
+                    Path applicationPath = Paths.get(mainFunction.getStringPath());
+                    RootNode rootNode = new LLVMGlobalRootNode(language, new FrameDescriptor(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
                     mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
                 }
-                initContext = this.insert(context.createInitializeContextNode(getFrameDescriptor()));
+                initContext = this.insert(context.createInitializeContextNode());
                 hasInitialised = true;
             }
 
@@ -246,8 +238,8 @@ public final class LoadModulesNode extends RootNode {
     private LLVMScope loadModule(VirtualFrame frame,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
 
-        try (LLVMStack.StackPointer stackPointer = ctxRef.get().getThreadingStack().getStack().newFrame()) {
-            frame.setObject(stackPointerSlot, stackPointer);
+        stackAccess.executeEnter(frame, ctxRef.get().getThreadingStack().getStack());
+        try {
             LLVMLoadingPhase phase;
             LLVMLocalScope localScope = null;
             BitSet visited;
@@ -365,9 +357,12 @@ public final class LoadModulesNode extends RootNode {
                 return resultScope;
             }
             return null;
+        } finally {
+            stackAccess.executeExit(frame);
         }
     }
 
+    @ExplodeLoop
     private void executeInitialiseSymbol(LLVMContext context, BitSet visited) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);
@@ -381,6 +376,7 @@ public final class LoadModulesNode extends RootNode {
         }
     }
 
+    @ExplodeLoop
     private void executeInitialiseExternal(LLVMContext context, BitSet visited, LLVMLocalScope localScope) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);
@@ -393,6 +389,7 @@ public final class LoadModulesNode extends RootNode {
         }
     }
 
+    @ExplodeLoop
     private void executeInitialiseGlobals(LLVMContext context, BitSet visited, VirtualFrame frame) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);
@@ -405,6 +402,7 @@ public final class LoadModulesNode extends RootNode {
         }
     }
 
+    @ExplodeLoop
     private void executeInitialiseOverwrite(LLVMContext context, BitSet visited, LLVMLocalScope localScope) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);
@@ -417,6 +415,7 @@ public final class LoadModulesNode extends RootNode {
         initOverwrite.execute(context, localScope);
     }
 
+    @ExplodeLoop
     private void executeInitialiseContext(BitSet visited, VirtualFrame frame) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);
@@ -429,6 +428,7 @@ public final class LoadModulesNode extends RootNode {
         }
     }
 
+    @ExplodeLoop
     private void executeInitialiseModule(LLVMContext context, BitSet visited, VirtualFrame frame) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);
@@ -441,6 +441,7 @@ public final class LoadModulesNode extends RootNode {
         }
     }
 
+    @ExplodeLoop
     private void executeDone(LLVMContext context, BitSet visited) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);
@@ -480,9 +481,8 @@ public final class LoadModulesNode extends RootNode {
 
     // A library is a sulong internal library if it contains the path of the internal llvm
     // library directory
-    private static boolean isInternalSulongLibrary(LLVMContext context, ExternalLibrary library) {
-        Path internalPath = context.getInternalLibraryPath();
-        return library.getPath().startsWith(internalPath);
+    private static boolean isInternalSulongLibrary(LLVMContext context, TruffleFile file) {
+        return context.isInternalLibraryFile(file);
     }
 
     /**
@@ -493,7 +493,7 @@ public final class LoadModulesNode extends RootNode {
         LLVMScope fileScope = parserResult.getRuntime().getFileScope();
         LLVMSymbol mainSymbol = fileScope.get(MAIN_METHOD_NAME);
 
-        if (mainSymbol != null && mainSymbol.isFunction() && mainSymbol.isDefined()) {
+        if (mainSymbol != null && mainSymbol.isFunction()) {
             /*
              * The `isLLVMIRFunction` check makes sure the `main` function is really defined in
              * bitcode. This prevents us from finding a native `main` function (e.g. the `main` of
@@ -522,21 +522,21 @@ public final class LoadModulesNode extends RootNode {
         LLVMScope fileScope = language.getInternalFileScopes("libsulong");
 
         LLVMSymbol function = fileScope.get(START_METHOD_NAME);
-        if (function != null && function.isDefined()) {
+        if (function != null) {
             startFunction = context.createFunctionDescriptor(function.asFunction());
         } else {
             throw new IllegalStateException("Context cannot be initialized: start function, " + START_METHOD_NAME + ", was not found in sulong libraries");
         }
 
         LLVMSymbol tmpInitContext = fileScope.get(LLVMContext.SULONG_INIT_CONTEXT);
-        if (tmpInitContext != null && tmpInitContext.isDefined() && tmpInitContext.isFunction()) {
+        if (tmpInitContext != null && tmpInitContext.isFunction()) {
             initContext = tmpInitContext;
         } else {
             throw new IllegalStateException("Context cannot be initialized: " + LLVMContext.SULONG_INIT_CONTEXT + " was not found in sulong libraries");
         }
 
         LLVMSymbol tmpDisposeContext = fileScope.get(LLVMContext.SULONG_DISPOSE_CONTEXT);
-        if (tmpDisposeContext != null && tmpDisposeContext.isDefined() && tmpDisposeContext.isFunction()) {
+        if (tmpDisposeContext != null && tmpDisposeContext.isFunction()) {
             disposeContext = tmpDisposeContext;
         } else {
             throw new IllegalStateException("Context cannot be initialized: " + LLVMContext.SULONG_DISPOSE_CONTEXT + " was not found in sulong libraries");

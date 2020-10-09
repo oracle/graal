@@ -211,7 +211,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
 
                 @CompilerDirectives.TruffleBoundary
                 @Specialization(guards = {"localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) == null",
-                                "!symbol.isDefined()", "!intrinsicProvider.isIntrinsified(symbol.getName())", "nfiContextExtension != null",
+                                "!intrinsicProvider.isIntrinsified(symbol.getName())", "nfiContextExtension != null",
                                 "symbol.isGlobalVariable()"})
                 LLVMPointer allocateNativeGlobal(@SuppressWarnings("unused") LLVMLocalScope localScope,
                                 @SuppressWarnings("unused") LLVMScope globalScope,
@@ -220,9 +220,6 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                                 @CachedContext(LLVMLanguage.class) LLVMContext context) {
                     NFIContextExtension.NativePointerIntoLibrary pointer = nfiContextExtension.getNativeHandle(context, symbol.getName());
                     if (pointer != null) {
-                        if (!symbol.isDefined()) {
-                            symbol.asGlobalVariable().define(pointer.getLibrary());
-                        }
                         return LLVMNativePointer.create(pointer.getAddress());
                     }
                     return null;
@@ -248,7 +245,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
 
                 @CompilerDirectives.TruffleBoundary
                 @Specialization(guards = {"intrinsicProvider != null", "localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) == null",
-                                "!symbol.isDefined()", "intrinsicProvider.isIntrinsified(symbol.getName())", "symbol.isFunction()"})
+                                "intrinsicProvider.isIntrinsified(symbol.getName())", "symbol.isFunction()"})
                 LLVMPointer allocateIntrinsicFunction(@SuppressWarnings("unused") LLVMLocalScope localScope,
                                 @SuppressWarnings("unused") LLVMScope globalScope,
                                 LLVMIntrinsicProvider intrinsicProvider,
@@ -269,7 +266,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                  */
                 @CompilerDirectives.TruffleBoundary
                 @Specialization(guards = {"localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) == null",
-                                "!symbol.isDefined()", "!intrinsicProvider.isIntrinsified(symbol.getName())", "nfiContextExtension != null",
+                                "!intrinsicProvider.isIntrinsified(symbol.getName())", "nfiContextExtension != null",
                                 "symbol.isFunction()"})
                 LLVMPointer allocateNativeFunction(@SuppressWarnings("unused") LLVMLocalScope localScope,
                                 @SuppressWarnings("unused") LLVMScope globalScope,
@@ -279,7 +276,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                     NFIContextExtension.NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, symbol.getName());
                     if (nativeFunction != null) {
                         LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction());
-                        functionDescriptor.getFunctionCode().define(nativeFunction.getLibrary(), new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
+                        functionDescriptor.getFunctionCode().define(new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
                         return LLVMManagedPointer.create(functionDescriptor);
                     }
                     return null;

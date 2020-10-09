@@ -1866,6 +1866,26 @@ public class ValueAPITest {
         }));
     }
 
+    @Test
+    public void testMetaObjectNull() {
+        Value nullValue = context.asValue(null);
+        assertFalse(context.asValue(nullValue).isMetaObject());
+        assertNull(context.asValue(nullValue).getMetaObject());
+
+        assertFalse(context.asValue(null).isMetaObject());
+        assertNull(context.asValue(null).getMetaObject());
+    }
+
+    @Test
+    public void testIsMetaInstanceNull() {
+        Value nullValue = context.asValue(null);
+        assertFalse(context.asValue(Object.class).isMetaInstance(nullValue));
+        assertFalse(context.asValue(Void.class).isMetaInstance(nullValue));
+
+        assertFalse(context.asValue(Object.class).isMetaInstance(null));
+        assertFalse(context.asValue(Void.class).isMetaInstance(null));
+    }
+
     @ExportLibrary(InteropLibrary.class)
     static final class StringWrapper implements TruffleObject {
 

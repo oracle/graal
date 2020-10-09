@@ -29,12 +29,17 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
+import static com.oracle.truffle.llvm.parser.model.GlobalSymbol.CONSTRUCTORS_VARNAME;
+import static com.oracle.truffle.llvm.parser.model.GlobalSymbol.DESTRUCTORS_VARNAME;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
-import com.oracle.truffle.llvm.parser.StackManager;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
@@ -43,13 +48,11 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.Pair;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMGetStackFromFrameNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -61,12 +64,6 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-
-import static com.oracle.truffle.llvm.parser.model.GlobalSymbol.CONSTRUCTORS_VARNAME;
-import static com.oracle.truffle.llvm.parser.model.GlobalSymbol.DESTRUCTORS_VARNAME;
 
 /**
  * Registers the destructor and executes the constructor of a module. This happens after
@@ -112,7 +109,9 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
     public static RootCallTarget createDestructor(LLVMParserResult parserResult, String moduleName, LLVMLanguage language) {
         LLVMStatementNode[] destructors = createStructor(DESTRUCTORS_VARNAME, parserResult, DESCENDING_PRIORITY);
         if (destructors.length > 0) {
-            LLVMStatementRootNode root = new LLVMStatementRootNode(language, StaticInitsNodeGen.create(destructors, "fini", moduleName), StackManager.createRootFrame());
+            FrameDescriptor frameDescriptor = new FrameDescriptor();
+            LLVMStatementRootNode root = new LLVMStatementRootNode(language, StaticInitsNodeGen.create(destructors, "fini", moduleName), frameDescriptor,
+                            parserResult.getRuntime().getNodeFactory().createStackAccess(frameDescriptor));
             return Truffle.getRuntime().createCallTarget(root);
         } else {
             return null;
@@ -151,7 +150,6 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
             final int indexedTypeLength = functionType.getAlignment(dataLayout);
 
             final ArrayList<Pair<Integer, LLVMStatementNode>> structors = new ArrayList<>(elemCount);
-            FrameDescriptor rootFrame = StackManager.createRootFrame();
             for (int i = 0; i < elemCount; i++) {
                 final LLVMExpressionNode globalVarAddress = nodeFactory.createLiteral(global, new PointerType(globalSymbol.getType()));
                 final LLVMExpressionNode iNode = nodeFactory.createLiteral(i, PrimitiveType.I32);
@@ -161,8 +159,7 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
                 final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
                 final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(indexedTypeLength, functionType, loadedStruct, oneLiteralNode);
                 final LLVMExpressionNode loadedFunction = CommonNodeFactory.createLoad(functionType, functionLoadTarget);
-                final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
-                                LLVMGetStackFromFrameNode.create(rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
+                final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{nodeFactory.createGetStackFromFrame()};
                 final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(CommonNodeFactory.createFunctionCall(loadedFunction, argNodes, functionType));
 
                 final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);

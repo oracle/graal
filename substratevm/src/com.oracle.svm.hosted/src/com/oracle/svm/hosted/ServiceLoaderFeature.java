@@ -124,7 +124,7 @@ public class ServiceLoaderFeature implements Feature {
 
     @SuppressWarnings("try")
     private boolean handleType(AnalysisType type, DuringAnalysisAccessImpl access) {
-        if (!type.isInTypeCheck() || type.isArray()) {
+        if (!type.isReachable() || type.isArray()) {
             /*
              * Type is not seen as used yet by the static analysis. Note that a constant class
              * literal is enough to register a type as "in type check". Arrays are also never
@@ -155,14 +155,14 @@ public class ServiceLoaderFeature implements Feature {
         try {
             resourceURLs = access.getImageClassLoader().getClassLoader().getResources(serviceResourceLocation);
         } catch (IOException ex) {
-            throw UserError.abort(ex, "Error loading service implementation resources for service `" + serviceClassName + "`");
+            throw UserError.abort(ex, "Error loading service implementation resources for service `%s`", serviceClassName);
         }
         while (resourceURLs.hasMoreElements()) {
             URL resourceURL = resourceURLs.nextElement();
             try {
                 implementationClassNames.addAll(parseServiceResource(resourceURL));
             } catch (IOException ex) {
-                throw UserError.abort(ex, "Error loading service implementations for service `" + serviceClassName + "` from URL `" + resourceURL + "`");
+                throw UserError.abort(ex, "Error loading service implementations for service `%s` from URL `%s`", serviceClassName, resourceURL);
             }
         }
 
@@ -200,7 +200,7 @@ public class ServiceLoaderFeature implements Feature {
 
             Class<?> implementationClass = access.findClassByName(implementationClassName);
             if (implementationClass == null) {
-                throw UserError.abort("Could not find registered service implementation class `" + implementationClassName + "` for service `" + serviceClassName + "`");
+                throw UserError.abort("Could not find registered service implementation class `%s` for service `%s`", implementationClassName, serviceClassName);
             }
             try {
                 access.getMetaAccess().lookupJavaType(implementationClass);
@@ -216,6 +216,20 @@ public class ServiceLoaderFeature implements Feature {
                 continue;
             }
 
+            try {
+                /*
+                 * Check if the implementation class has a nullary constructor. The
+                 * ServiceLoaderFeature documentation specifies that "the only requirement enforced
+                 * is that provider classes must have a zero-argument constructor so that they can
+                 * be instantiated during loading". Since we eagerly scan all services we ignore
+                 * service classes that don't respect the requirement. On HotSpot trying to load
+                 * such a service would lead to a ServiceConfigurationError.
+                 */
+                implementationClass.getDeclaredConstructor();
+            } catch (NoSuchMethodException ex) {
+                continue;
+            }
+
             /* Allow Class.forName at run time for the service implementation. */
             RuntimeReflection.register(implementationClass);
             /* Allow reflective instantiation at run time for the service implementation. */
@@ -224,6 +238,7 @@ public class ServiceLoaderFeature implements Feature {
             /* Add line to the new resource that will be available at run time. */
             newResourceValue.append(implementationClass.getName());
             newResourceValue.append('\n');
+
         }
 
         DebugContext debugContext = access.getDebugContext();

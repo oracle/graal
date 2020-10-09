@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,35 +24,24 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.tools.agentscript.FrameLibrary;
-import java.util.Set;
-import java.util.TreeSet;
 
 @SuppressWarnings("unused")
 @ExportLibrary(InteropLibrary.class)
 final class VariablesObject implements TruffleObject {
 
-    private final TruffleInstrument.Env env;
-    private final Node where;
-    private final Frame frame;
+    final Object scope;
     private final Object returnValue;
 
-    VariablesObject(TruffleInstrument.Env env, Node where, Frame frame, Object returnValue) {
-        this.env = env;
-        this.where = where;
-        this.frame = frame.materialize();
+    VariablesObject(Object scope, Object returnValue) {
+        this.scope = scope;
         this.returnValue = returnValue;
     }
 
@@ -65,41 +54,34 @@ final class VariablesObject implements TruffleObject {
         return true;
     }
 
-    @CompilerDirectives.TruffleBoundary
     @ExportMessage
-    Object getMembers(boolean includeInternal, @CachedLibrary(limit = "1") FrameLibrary frameLibrary) {
-        Set<String> names = new TreeSet<>();
-        try {
-            frameLibrary.collectNames(AccessorFrameLibrary.DEFAULT.create(where, frame, env), names);
-        } catch (InteropException ex) {
-            throw InsightException.raise(ex);
-        }
-        return ArrayObject.wrap(names);
+    static Object getMembers(VariablesObject obj, boolean includeInternal, @CachedLibrary("obj.scope") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.getMembers(obj.scope);
     }
 
     @ExportMessage
-    Object readMember(String member, @CachedLibrary(limit = "1") FrameLibrary frameLibrary) throws UnknownIdentifierException {
-        return frameLibrary.readMember(AccessorFrameLibrary.DEFAULT.create(where, frame, env), member);
+    static Object readMember(VariablesObject obj, String member, @CachedLibrary("obj.scope") InteropLibrary interop) throws UnknownIdentifierException, UnsupportedMessageException {
+        return interop.readMember(obj.scope, member);
     }
 
     @ExportMessage
-    static boolean isMemberReadable(VariablesObject obj, String member) {
-        return true;
+    static boolean isMemberReadable(VariablesObject obj, String member, @CachedLibrary("obj.scope") InteropLibrary interop) {
+        return interop.isMemberReadable(obj.scope, member);
     }
 
     @ExportMessage
-    void writeMember(String member, Object value, @CachedLibrary(limit = "1") FrameLibrary frameLibrary)
-                    throws UnknownIdentifierException, UnsupportedTypeException {
-        frameLibrary.writeMember(AccessorFrameLibrary.DEFAULT.create(where, frame, env), member, value);
+    static void writeMember(VariablesObject obj, String member, Object value, @CachedLibrary("obj.scope") InteropLibrary interop)
+                    throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+        interop.writeMember(obj.scope, member, value);
     }
 
     @ExportMessage
-    static boolean isMemberModifiable(VariablesObject obj, String member) {
-        return true;
+    static boolean isMemberModifiable(VariablesObject obj, String member, @CachedLibrary("obj.scope") InteropLibrary interop) {
+        return interop.isMemberModifiable(obj.scope, member);
     }
 
     @ExportMessage
-    static boolean isMemberInsertable(VariablesObject obj, String member) {
-        return false;
+    static boolean isMemberInsertable(VariablesObject obj, String member, @CachedLibrary("obj.scope") InteropLibrary interop) {
+        return interop.isMemberInsertable(obj.scope, member);
     }
 }

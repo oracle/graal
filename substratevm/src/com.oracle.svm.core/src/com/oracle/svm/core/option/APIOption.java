@@ -49,9 +49,10 @@ public @interface APIOption {
     }
 
     /**
-     * The name of the option when exposed as native-image option.
+     * The name of the option when exposed as native-image option. If more than one name is passed
+     * the other names are set up as aliases for the option.
      */
-    String name();
+    String[] name();
 
     /**
      * Provide a custom help message for the option.
@@ -59,6 +60,12 @@ public @interface APIOption {
     String customHelp() default "";
 
     APIOptionKind kind() default APIOptionKind.Default;
+
+    /**
+     * Provide a custom separator that should be used to separate the option name from its option
+     * values. The default separator is {@code '='}.
+     */
+    char valueSeparator() default '=';
 
     /**
      * The value that will be passed to a non-boolean option when no {@code =} is specified.
@@ -107,11 +114,11 @@ public @interface APIOption {
     }
 
     class Utils {
-        public static String name(APIOption annotation) {
-            if (annotation.name().startsWith("-")) {
-                return annotation.name();
+        public static String optionName(String name) {
+            if (name.startsWith("-")) {
+                return name;
             } else {
-                return "--" + annotation.name();
+                return "--" + name;
             }
         }
     }

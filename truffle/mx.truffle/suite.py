@@ -273,6 +273,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "8+",
       "workingSets" : "SimpleLanguage,Test",
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.dsl.processor" : {
@@ -337,6 +338,7 @@ suite = {
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.api.debug" : {
@@ -365,6 +367,7 @@ suite = {
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
       "testProject" : True,
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.api.object" : {
@@ -448,6 +451,7 @@ suite = {
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
       "testProject" : True,
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.tck" : {
@@ -485,6 +489,7 @@ suite = {
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Tools",
       "testProject" : False,
+      "jacoco" : "exclude",
     },
     "com.oracle.truffle.tck.instrumentation" : {
       "subDir" : "src",
@@ -598,6 +603,7 @@ suite = {
         "native.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:nativetest>"
       },
       "testProject" : True,
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.nfi.test.native" : {
@@ -628,6 +634,7 @@ suite = {
         },
       },
       "testProject" : True,
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.sl" : {
@@ -667,6 +674,7 @@ suite = {
       "workingSets" : "Truffle,SimpleLanguage,Test",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "mx:JMH_1_21"],
       "testProject" : True,
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.st" : {
@@ -693,6 +701,7 @@ suite = {
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
       "testProject" : True,
+      "jacoco" : "exclude",
     },
 
     "com.oracle.graalvm.locator": {
@@ -704,6 +713,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8+",
       "license": "GPLv2-CPE",
+      "jacoco" : "exclude",
     },
 
     "com.oracle.graalvm.locator.jdk8" : {

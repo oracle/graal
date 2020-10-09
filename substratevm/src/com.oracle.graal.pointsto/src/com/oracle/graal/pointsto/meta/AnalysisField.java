@@ -318,11 +318,38 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         return writtenBy.keySet();
     }
 
+    /**
+     * Returns true if the field is reachable. Fields that are read or manually registered as
+     * reachable are always reachable. For fields that are write-only, more cases need to be
+     * considered:
+     * 
+     * If a primitive field is never read, writes to it are useless as well and we can eliminate the
+     * field. Unless the field is volatile, because the write is a memory barrier and therefore has
+     * side effects.
+     *
+     * Object fields must be preserved even when they are never read, because the reachability of an
+     * object is an observable side effect: Removing an object field could lead to a ReferenceQueue
+     * processing the no-longer-stored value object. An example is the field DirectByteBuffer.att:
+     * It is never read, but it ensures that native memory is not reclaimed when only a view to a
+     * DirectByteBuffer remains reachable.
+     */
     public boolean isAccessed() {
-        // If a field is never read, writes to it are useless as well and we can
-        // eliminate the field. Unless it is volatile, where the write is a memory barrier
-        // and therefore has side effects.
-        return isAccessed || isRead || (isWritten && Modifier.isVolatile(getModifiers()));
+        return isAccessed || isRead || (isWritten && (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object));
+    }
+
+    /**
+     * Returns true if the field needs to be preserved in the image heap. If this method returns
+     * false but {@link #isAccessed} is true, then memory for the field is still reserved. The value
+     * written into the image heap is then the default value for the field's type.
+     *
+     * This method is necessary for the handling of write-only fields: Not all write-only fields can
+     * be eliminated completely (see the comment in {@link #isAccessed}. But in the image heap, such
+     * field values do not need to be preserved because the write happens at image build time (so
+     * memory barriers are no issue) and the image heap is not garbage collected (so object
+     * reachability is no issue).
+     */
+    public boolean isInImageHeap() {
+        return isAccessed || isRead;
     }
 
     public boolean isWritten() {

@@ -142,6 +142,9 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.library.DefaultExportProvider;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryExport;
+import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -260,6 +263,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 
     private Support support;
+    // Checkstyle: stop
+    private ClassLoader imageClassLoader;
+    // Checkstyle: resume
 
     private final Set<ResolvedJavaMethod> blacklistMethods;
     private final Set<GraalFeature.CallTreeNode> blacklistViolations;
@@ -325,6 +331,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         if (support == null) {
             support = new Support();
         }
+        imageClassLoader = a.getApplicationClassLoader();
 
         TruffleRuntime runtime = Truffle.getRuntime();
         UserError.guarantee(runtime != null, "TruffleRuntime not available via Truffle.getRuntime()");
@@ -344,7 +351,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class)) {
             RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
         }
-        initializeTruffleReflectively(Thread.currentThread().getContextClassLoader());
+        initializeTruffleReflectively(imageClassLoader);
 
         // reinitialize language cache
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "reinitializeNativeImageState", Collections.emptyList());
@@ -365,7 +372,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         invokeStaticMethod("com.oracle.truffle.polyglot.InstrumentCache", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "resetPreInitializedEngine", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.impl.TruffleLocator", "resetNativeImageState", Collections.emptyList());
-        invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "resetNativeImageState", Collections.emptyList());
+        invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "resetNativeImageState", Collections.singletonList(ClassLoader.class), imageClassLoader);
         invokeStaticMethod("com.oracle.truffle.api.nodes.Node", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.source.Source", "resetNativeImageState", Collections.emptyList());
         // clean up cached object layouts
@@ -451,6 +458,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         registerDynamicObjectFields(config);
 
+        config.registerSubtypeReachabilityHandler(TruffleFeature::registerTruffleLibrariesAsInHeap, LibraryFactory.class);
+        config.registerSubtypeReachabilityHandler(TruffleFeature::registerTruffleLibrariesAsInHeap, LibraryExport.class);
+
         if (useTruffleCompiler()) {
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
             GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
@@ -514,20 +524,17 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         firstAnalysisRun = true;
     }
 
-    private static Class<?> findGeneratedLibraryClass(DuringAnalysisAccess config, Class<?> lib) {
-        String className = lib.getPackage().getName() + "." + lib.getSimpleName() + "Gen";
-        Class<?> genClass = config.findClassByName(className);
-        if (genClass == null) {
-            if (className.startsWith("com.oracle.truffle.api.library.test")) {
-                /*
-                 * The Truffle unit tests contain libraries that don't have generated code as they
-                 * were deliberately containing errors. Ignore them for this check.
-                 */
-                return null;
-            }
-            throw UserError.abort(String.format("Could not find generated library class '%s'. Did the Java compilation succeed and did the Truffle annotation processor run?", className));
+    /**
+     * Reachable libraries and receivers are instantiated during initialization.
+     *
+     * @see #initializeTruffleLibrariesAtBuildTime
+     */
+    private static void registerTruffleLibrariesAsInHeap(DuringAnalysisAccess access, Class<?> clazz) {
+        assert access.isReachable(clazz) : clazz;
+        assert LibraryFactory.class.isAssignableFrom(clazz) || LibraryExport.class.isAssignableFrom(clazz) : clazz;
+        if (!Modifier.isAbstract(clazz.getModifiers())) {
+            access.registerAsInHeap(clazz);
         }
-        return genClass;
     }
 
     /**
@@ -604,40 +611,40 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             firstAnalysisRun = false;
             Object keep = invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotContextImpl", "resetSingleContextState", Collections.singleton(boolean.class), false);
             invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "preInitializeEngine", Collections.emptyList());
-            access.requireAnalysisIteration();
             invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotContextImpl", "restoreSingleContextState", Collections.singleton(Object.class), keep);
+            access.requireAnalysisIteration();
         }
 
-        /*
-         * Register library and exports for Truffle Libraries.
-         */
         for (AnalysisType type : ((DuringAnalysisAccessImpl) access).getBigBang().getUniverse().getTypes()) {
-            for (ExportLibrary library : type.getDeclaredAnnotationsByType(ExportLibrary.class)) {
-                Class<?> genLib = findGeneratedLibraryClass(access, library.value());
-                if (genLib != null) {
-                    access.registerAsInHeap(genLib);
-                }
+            if (!access.isReachable(type.getJavaClass())) {
+                continue;
             }
-            GenerateLibrary generateLibrary = type.getAnnotation(GenerateLibrary.class);
-            if (generateLibrary != null) {
-                Class<?> lib = findGeneratedLibraryClass(access, type.getJavaClass());
-                if (lib != null) {
-                    access.registerAsInHeap(lib);
-                }
-            }
+            initializeTruffleLibrariesAtBuildTime(type);
+            initializeDynamicObjectLayouts(type);
         }
+    }
 
-        initializeDynamicObjectLayouts(access);
+    /**
+     * Ensure that the necessary generated classes are properly initialized and registered, which
+     * will eventually make them reachable.
+     *
+     * @see #registerTruffleLibrariesAsInHeap
+     */
+    private static void initializeTruffleLibrariesAtBuildTime(AnalysisType type) {
+        if (type.isAnnotationPresent(GenerateLibrary.class)) {
+            /* Eagerly resolve library type. */
+            LibraryFactory.resolve(type.getJavaClass().asSubclass(Library.class));
+        }
+        if (type.getDeclaredAnnotationsByType(ExportLibrary.class).length != 0) {
+            /* Eagerly resolve receiver type. */
+            invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "lookup", Collections.singleton(Class.class), type.getJavaClass());
+        }
     }
 
     private final Set<Class<?>> dynamicObjectClasses = new HashSet<>();
 
-    private void initializeDynamicObjectLayouts(DuringAnalysisAccess access) {
-        DuringAnalysisAccessImpl config = (DuringAnalysisAccessImpl) access;
-        for (AnalysisType type : config.getUniverse().getTypes()) {
-            if (!type.isInstantiated()) {
-                continue;
-            }
+    private void initializeDynamicObjectLayouts(AnalysisType type) {
+        if (type.isInstantiated()) {
             Class<?> javaClass = type.getJavaClass();
             if (DynamicObject.class.isAssignableFrom(javaClass) && dynamicObjectClasses.add(javaClass)) {
                 // Force layout initialization.
@@ -914,10 +921,10 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 collectImplementations(frameType, implementations);
 
                 if (implementations.size() > 1) {
-                    throw UserError.abort("More than one implementation of " + Frame.class.getTypeName() +
-                                    " found. For performance reasons, Truffle languages must not provide new implementations, and instead only use the single implementation provided by the Truffle runtime. " +
-                                    "To disable this check, add " + SubstrateOptionsParser.commandArgument(Options.TruffleCheckFrameImplementation, "-") + " to the native-image command line. " +
-                                    "Found classes: " + implementations.stream().map(m -> m.toJavaName(true)).collect(Collectors.joining(", ")));
+                    throw UserError.abort("More than one implementation of %s found. For performance reasons, Truffle languages must not provide new implementations, " +
+                                    "and instead only use the single implementation provided by the Truffle runtime. To disable this check, add %s to the native-image command line. Found classes: %s",
+                                    Frame.class.getTypeName(), SubstrateOptionsParser.commandArgument(Options.TruffleCheckFrameImplementation, "-"),
+                                    implementations.stream().map(m -> m.toJavaName(true)).collect(Collectors.joining(", ")));
                 } else {
                     assert implementations.size() == 0 || implementations.iterator().next() == frameType.getSingleImplementor();
                 }

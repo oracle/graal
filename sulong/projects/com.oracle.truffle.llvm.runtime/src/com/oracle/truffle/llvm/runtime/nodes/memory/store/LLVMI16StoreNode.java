@@ -43,6 +43,10 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 @GenerateUncached
 public abstract class LLVMI16StoreNode extends LLVMStoreNodeCommon {
 
+    public static LLVMI16StoreNode create() {
+        return LLVMI16StoreNodeGen.create(null, null);
+    }
+
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected void doOp(LLVMNativePointer addr, short value,
                     @CachedLanguage LLVMLanguage language) {

@@ -112,7 +112,7 @@ abstract class CommonPointerLibraries {
                 // not found
                 return false;
             } else {
-                return member.getType() instanceof LLVMInteropType.Value;
+                return member.type instanceof LLVMInteropType.Value;
             }
         } else {
             return false;
@@ -146,7 +146,7 @@ abstract class CommonPointerLibraries {
     static long getArraySize(LLVMPointerImpl receiver,
                     @Shared("isArray") @Cached ConditionProfile isArray) throws UnsupportedMessageException {
         if (isArray.profile(receiver.getExportType() instanceof LLVMInteropType.Array)) {
-            return ((LLVMInteropType.Array) receiver.getExportType()).getLength();
+            return ((LLVMInteropType.Array) receiver.getExportType()).length;
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -156,7 +156,7 @@ abstract class CommonPointerLibraries {
     static boolean isArrayElementReadable(LLVMPointerImpl receiver, long idx,
                     @Shared("isArray") @Cached ConditionProfile isArray) {
         if (isArray.profile(receiver.getExportType() instanceof LLVMInteropType.Array)) {
-            long length = ((LLVMInteropType.Array) receiver.getExportType()).getLength();
+            long length = ((LLVMInteropType.Array) receiver.getExportType()).length;
             return Long.compareUnsigned(idx, length) < 0;
         } else {
             return false;
@@ -176,8 +176,8 @@ abstract class CommonPointerLibraries {
                     @Shared("isArray") @Cached ConditionProfile isArray) {
         if (isArray.profile(receiver.getExportType() instanceof LLVMInteropType.Array)) {
             LLVMInteropType.Array arrayType = (LLVMInteropType.Array) receiver.getExportType();
-            if (arrayType.getElementType() instanceof LLVMInteropType.Value) {
-                long length = arrayType.getLength();
+            if (arrayType.elementType instanceof LLVMInteropType.Value) {
+                long length = arrayType.length;
                 return Long.compareUnsigned(idx, length) < 0;
             } else {
                 // embedded structured type, write not possible
@@ -235,7 +235,7 @@ abstract class CommonPointerLibraries {
         Object readArrayElement(long idx,
                         @Cached BranchProfile exception) throws InvalidArrayIndexException {
             try {
-                return type.getMember((int) idx).getName();
+                return type.getMember((int) idx).name;
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw InvalidArrayIndexException.create(idx);

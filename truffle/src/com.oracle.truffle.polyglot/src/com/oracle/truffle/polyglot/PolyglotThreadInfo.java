@@ -97,7 +97,6 @@ final class PolyglotThreadInfo {
     void enter(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
         assert Thread.currentThread() == getThread();
         enteredCount++;
-
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, profiledContext.closed)) {
             /*
              * This event should be very rare. The context was closed between the volatile read of
@@ -109,14 +108,18 @@ final class PolyglotThreadInfo {
             profiledContext.checkClosed();
             assert false : "checkClosed must throw";
         }
-
         if (!engine.customHostClassLoader.isValid()) {
             setContextClassLoader();
+        }
+        try {
+            EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
+        } catch (Throwable t) {
+            enteredCount--;
+            throw t;
         }
         if (engine.specializationStatistics != null) {
             engine.specializationStatistics.enter();
         }
-        EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
     }
 
     boolean isPolyglotThread(PolyglotContextImpl c) {
@@ -135,13 +138,16 @@ final class PolyglotThreadInfo {
         /*
          * Notify might be false if the context was closed already on a second thread.
          */
-        EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
-        enteredCount--;
-        if (!engine.customHostClassLoader.isValid()) {
-            restoreContextClassLoader();
-        }
-        if (engine.specializationStatistics != null) {
-            leaveStatistics(engine.specializationStatistics);
+        try {
+            EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
+        } finally {
+            enteredCount--;
+            if (!engine.customHostClassLoader.isValid()) {
+                restoreContextClassLoader();
+            }
+            if (engine.specializationStatistics != null) {
+                leaveStatistics(engine.specializationStatistics);
+            }
         }
 
     }
