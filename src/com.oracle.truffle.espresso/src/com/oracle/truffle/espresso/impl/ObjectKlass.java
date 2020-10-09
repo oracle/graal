@@ -632,7 +632,6 @@ public final class ObjectKlass extends Klass {
         return -1;
     }
 
-
     void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method> result) {
         Symbol<Name> name = current.getName();
         Symbol<Signature> signature = current.getRawSignature();
