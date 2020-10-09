@@ -1138,15 +1138,6 @@ public final class ObjectKlass extends Klass {
         InterpreterToVM.setFieldInt(++value, mirror(), getMeta().java_lang_Class_classRedefinedCount);
     }
 
-    private static Method findMethod(ParserMethod changedMethod, Method[] declaredMethods) {
-        for (Method declaredMethod : declaredMethods) {
-            if (changedMethod.getName().equals(declaredMethod.getName()) && changedMethod.getSignature().equals(declaredMethod.getDescriptor())) {
-                return declaredMethod;
-            }
-        }
-        return null;
-    }
-
     // if an added/removed method is an override of a super method
     // we need to invalidate the super class method, to allow
     // for new method dispatch lookup
