@@ -633,17 +633,20 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
 
     @Substitute
     private static void shutdownLibGraal(HotSpotGraalRuntime runtime) {
-        long offset = runtime.getVMConfig().jniEnvironmentOffset;
-        long javaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
-        JNI.JNIEnv env = (JNI.JNIEnv) WordFactory.unsigned(javaThreadAddr).add(WordFactory.unsigned(offset));
         try {
-            JNI.JClass libGraalIsolateClass = JNIUtil.findClass(env, JNIUtil.getJVMCIClassLoader(env),
-                            JNIUtil.getBinaryName("org.graalvm.libgraal.LibGraalIsolate"), true);
-            JNI.JMethodID unregisterMethod = JNIUtil.findMethod(env, libGraalIsolateClass, true, "unregister", "(J)V");
-            JNI.JValue args = StackValue.get(JNI.JValue.class);
-            args.setLong(IsolateUtil.getIsolateID());
-            env.getFunctions().getCallStaticVoidMethodA().call(env, libGraalIsolateClass, unregisterMethod, args);
-            JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+            // Unregister this isolate if it was create as a peer
+            if (LibGraalEntryPoints.hasLibGraalIsolatePeer()) {
+                long offset = runtime.getVMConfig().jniEnvironmentOffset;
+                long javaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
+                JNI.JNIEnv env = (JNI.JNIEnv) WordFactory.unsigned(javaThreadAddr).add(WordFactory.unsigned(offset));
+                JNI.JClass libGraalIsolateClass = JNIUtil.findClass(env, JNIUtil.getJVMCIClassLoader(env),
+                                JNIUtil.getBinaryName("org.graalvm.libgraal.LibGraalIsolate"), true);
+                JNI.JMethodID unregisterMethod = JNIUtil.findMethod(env, libGraalIsolateClass, true, "unregister", "(J)V");
+                JNI.JValue args = StackValue.get(JNI.JValue.class);
+                args.setLong(IsolateUtil.getIsolateID());
+                env.getFunctions().getCallStaticVoidMethodA().call(env, libGraalIsolateClass, unregisterMethod, args);
+                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+            }
         } catch (Throwable t) {
             t.printStackTrace(TTY.out);
         } finally {
