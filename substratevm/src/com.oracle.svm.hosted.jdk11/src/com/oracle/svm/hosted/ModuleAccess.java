@@ -67,8 +67,7 @@ class ModuleAccess {
     private static Stream<ModuleDescriptor> loadAllModules(Feature.BeforeAnalysisAccess access) {
         List<Path> applicationModulePath = access.getApplicationModulePath();
         ModuleFinder finder = ModuleFinder.of(applicationModulePath.toArray(new Path[0]));
-        Stream<ModuleDescriptor> applicationModules = finder.findAll()
-                        .stream()
+        Stream<ModuleDescriptor> applicationModules = finder.findAll().stream()
                         .map(ModuleReference::descriptor);
         Stream<ModuleDescriptor> bootLayerModules = ModuleLayer.boot()
                         .modules()
