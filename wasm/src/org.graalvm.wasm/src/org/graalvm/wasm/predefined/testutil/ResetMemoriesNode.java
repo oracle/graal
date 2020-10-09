@@ -42,45 +42,38 @@ package org.graalvm.wasm.predefined.testutil;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.MemoryRegistry;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 /**
- * Resets the memory and the globals of the modules in the context to the values specified in the
- * module's binary.
+ * Reset all memories to zero.
  */
-public class ResetContextNode extends WasmBuiltinRootNode {
-    public ResetContextNode(WasmLanguage language, WasmInstance module) {
+public class ResetMemoriesNode extends WasmBuiltinRootNode {
+    public ResetMemoriesNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        boolean zeroMemory = (boolean) frame.getArguments()[0];
-        resetModuleState(zeroMemory);
-        return WasmVoidResult.getInstance();
+        assert frame.getArguments().length == 0;
+        return resetMemory(context);
     }
 
     @Override
     public String builtinNodeName() {
-        return TestutilModule.Names.RESET_CONTEXT;
+        return TestutilModule.Names.RESET_MEMORIES;
     }
 
     @CompilerDirectives.TruffleBoundary
-    private void resetModuleState(boolean zeroMemory) {
-        boolean first = true;
-        WasmContext context = contextReference().get();
-        for (WasmInstance m : context.moduleInstances().values()) {
-            // TODO: Note that this approach assumes that there is only one memory per context.
-            // If we want to support multiple memories _in a context_ in our tests,
-            // and we want to reset them, this code will have to be changed.
-            if (!m.isBuiltin()) {
-                context.linker().resetModuleState(context, m, first && zeroMemory);
-                first = false;
-            }
+    private static WasmVoidResult resetMemory(WasmContext context) {
+        final MemoryRegistry memories = context.memories();
+        for (int i = 0; i < memories.count(); ++i) {
+            memories.memory(i).clear();
         }
+        return WasmVoidResult.getInstance();
     }
 }

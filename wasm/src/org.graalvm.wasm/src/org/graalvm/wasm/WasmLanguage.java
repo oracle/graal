@@ -45,7 +45,8 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.nodes.WasmEmptyRootNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.options.OptionDescriptors;
 
 @TruffleLanguage.Registration(id = "wasm", name = "WebAssembly", defaultMimeType = "application/wasm", byteMimeTypes = "application/wasm", contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, fileTypeDetectors = WasmFileDetector.class, //
@@ -64,9 +65,14 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         final String moduleName = isFirst ? "main" : request.getSource().getName();
         isFirst = false;
         final byte[] data = request.getSource().getBytes().toByteArray();
-        WasmModule module = context.readModule(moduleName, data);
-        context.readInstance(module);
-        return Truffle.getRuntime().createCallTarget(new WasmEmptyRootNode(this));
+        final WasmModule module = context.readModule(moduleName, data);
+        final WasmInstance instance = context.readInstance(module);
+        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            @Override
+            public WasmInstance execute(VirtualFrame frame) {
+                return instance;
+            }
+        });
     }
 
     @Override

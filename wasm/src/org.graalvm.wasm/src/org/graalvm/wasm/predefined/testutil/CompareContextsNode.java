@@ -70,7 +70,7 @@ public class CompareContextsNode extends WasmBuiltinRootNode {
 
     @Override
     public String builtinNodeName() {
-        return TestutilModule.Names.RESET_CONTEXT;
+        return TestutilModule.Names.COMPARE_CONTEXTS;
     }
 
     @CompilerDirectives.TruffleBoundary

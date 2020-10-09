@@ -40,6 +40,35 @@
  */
 package org.graalvm.wasm.nodes;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RepeatingNode;
+import org.graalvm.wasm.Assert;
+import org.graalvm.wasm.BinaryStreamParser;
+import org.graalvm.wasm.SymbolTable;
+import org.graalvm.wasm.ValueTypes;
+import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.WasmFunctionInstance;
+import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.exception.WasmExecutionException;
+import org.graalvm.wasm.exception.WasmTrap;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryException;
+
 import static org.graalvm.wasm.WasmTracing.trace;
 import static org.graalvm.wasm.constants.Instructions.BLOCK;
 import static org.graalvm.wasm.constants.Instructions.BR;
@@ -213,36 +242,6 @@ import static org.graalvm.wasm.constants.Instructions.NOP;
 import static org.graalvm.wasm.constants.Instructions.RETURN;
 import static org.graalvm.wasm.constants.Instructions.SELECT;
 import static org.graalvm.wasm.constants.Instructions.UNREACHABLE;
-
-import org.graalvm.wasm.Assert;
-import org.graalvm.wasm.BinaryStreamParser;
-import org.graalvm.wasm.SymbolTable;
-import org.graalvm.wasm.ValueTypes;
-import org.graalvm.wasm.WasmCodeEntry;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunction;
-import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.exception.WasmExecutionException;
-import org.graalvm.wasm.exception.WasmTrap;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.memory.WasmMemoryException;
-
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RepeatingNode;
 
 public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 

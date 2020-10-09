@@ -40,12 +40,11 @@
  */
 package org.graalvm.wasm;
 
-import static org.graalvm.wasm.WasmUtil.unsignedInt32ToLong;
-
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.CallIndirect;
 import org.graalvm.wasm.constants.ExportIdentifier;
@@ -64,10 +63,10 @@ import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.Node;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+
+import static org.graalvm.wasm.WasmUtil.unsignedInt32ToLong;
 
 /**
  * Simple recursive-descend parser for the binary WebAssembly format.
@@ -1315,8 +1314,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private int readTargetOffset(ExecutionState state) {
-        int value = readUnsignedInt32(state);
-        return value;
+        return readUnsignedInt32(state);
     }
 
     private byte readExportType() {
@@ -1446,7 +1444,7 @@ public class BinaryParser extends BinaryStreamParser {
      * Reset the state of the globals in a module that had already been parsed and linked.
      */
     @SuppressWarnings("unused")
-    void resetGlobalState(WasmContext context, WasmInstance instance) {
+    public void resetGlobalState(WasmContext context, WasmInstance instance) {
         int globalIndex = 0;
         if (tryJumpToSection(Section.IMPORT)) {
             int numImports = readVectorLength();
@@ -1529,11 +1527,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    void resetMemoryState(WasmContext context, WasmInstance instance, boolean zeroMemory) {
-        final WasmMemory memory = instance.memory();
-        if (memory != null && zeroMemory) {
-            memory.clear();
-        }
+    public void resetMemoryState(WasmContext context, WasmInstance instance) {
         if (tryJumpToSection(Section.DATA)) {
             readDataSection(context, instance);
         }

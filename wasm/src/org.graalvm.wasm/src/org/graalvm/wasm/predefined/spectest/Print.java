@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,61 +38,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.testutil;
+package org.graalvm.wasm.predefined.spectest;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
-import org.graalvm.wasm.Assert;
-import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-/**
- * Records the context state (memory and global variables) into a custom object.
- */
-public class SaveContextNodeNode extends WasmBuiltinRootNode {
-    public SaveContextNodeNode(WasmLanguage language, WasmInstance module) {
+public class Print extends WasmBuiltinRootNode {
+
+    public Print(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        return saveModuleState();
+        for (final Object arg : frame.getArguments()) {
+            print(arg);
+        }
+        return WasmVoidResult.getInstance();
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static void print(Object string) {
+        System.out.println(string);
     }
 
     @Override
     public String builtinNodeName() {
-        return TestutilModule.Names.SAVE_CONTEXT;
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private ContextState saveModuleState() {
-        final WasmContext context = contextReference().get();
-        Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, only 0 or 1 memories can be saved.");
-        final WasmMemory currentMemory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
-        final GlobalRegistry globals = context.globals().duplicate();
-        return new ContextState(currentMemory, globals);
-    }
-
-    static final class ContextState implements TruffleObject {
-        private final WasmMemory memory;
-        private final GlobalRegistry globals;
-
-        private ContextState(WasmMemory memory, GlobalRegistry globals) {
-            this.memory = memory;
-            this.globals = globals;
-        }
-
-        public WasmMemory memory() {
-            return memory;
-        }
-
-        public GlobalRegistry globals() {
-            return globals;
-        }
+        return "print";
     }
 }
