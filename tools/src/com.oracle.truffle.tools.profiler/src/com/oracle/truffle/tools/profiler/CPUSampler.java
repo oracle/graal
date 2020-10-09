@@ -40,6 +40,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.tools.profiler.impl.ProfilerException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
@@ -311,7 +312,7 @@ public final class CPUSampler implements Closeable {
     public synchronized void setPeriod(long samplePeriod) {
         enterChangeConfig();
         if (samplePeriod < 1) {
-            throw new IllegalArgumentException(String.format("Invalid sample period %s.", samplePeriod));
+            throw new ProfilerException(String.format("Invalid sample period %s.", samplePeriod));
         }
         this.period = samplePeriod;
     }
@@ -346,7 +347,7 @@ public final class CPUSampler implements Closeable {
     public synchronized void setStackLimit(int stackLimit) {
         enterChangeConfig();
         if (stackLimit < 1) {
-            throw new IllegalArgumentException(String.format("Invalid stack limit %s.", stackLimit));
+            throw new ProfilerException(String.format("Invalid stack limit %s.", stackLimit));
         }
         this.stackLimit = stackLimit;
     }
@@ -629,9 +630,9 @@ public final class CPUSampler implements Closeable {
     private void enterChangeConfig() {
         assert Thread.holdsLock(this);
         if (closed) {
-            throw new IllegalStateException("CPUSampler is already closed.");
+            throw new ProfilerException("CPUSampler is already closed.");
         } else if (collecting) {
-            throw new IllegalStateException("Cannot change sampler configuration while collecting. Call setCollecting(false) to disable collection first.");
+            throw new ProfilerException("Cannot change sampler configuration while collecting. Call setCollecting(false) to disable collection first.");
         }
         invalidateStack();
     }

@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import com.oracle.truffle.tools.profiler.impl.ProfilerException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
@@ -103,7 +104,7 @@ public final class CPUTracer implements Closeable {
      */
     public synchronized void setCollecting(boolean collecting) {
         if (closed) {
-            throw new IllegalStateException("CPUTracer is already closed.");
+            throw new ProfilerException("CPUTracer is already closed.");
         }
         if (this.collecting != collecting) {
             this.collecting = collecting;
@@ -169,9 +170,9 @@ public final class CPUTracer implements Closeable {
     private synchronized void verifyConfigAllowed() {
         assert Thread.holdsLock(this);
         if (closed) {
-            throw new IllegalStateException("CPUTracer is already closed.");
+            throw new ProfilerException("CPUTracer is already closed.");
         } else if (collecting) {
-            throw new IllegalStateException("Cannot change tracer configuration while collecting. Call setCollecting(false) to disable collection first.");
+            throw new ProfilerException("Cannot change tracer configuration while collecting. Call setCollecting(false) to disable collection first.");
         }
     }
 

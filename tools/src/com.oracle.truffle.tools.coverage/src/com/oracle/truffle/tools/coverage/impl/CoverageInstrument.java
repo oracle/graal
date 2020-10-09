@@ -110,7 +110,7 @@ public class CoverageInstrument extends TruffleInstrument {
     public static CoverageTracker getTracker(Engine engine) {
         Instrument instrument = engine.getInstruments().get(ID);
         if (instrument == null) {
-            throw new IllegalStateException("Tracker is not installed.");
+            throw new CoverageException("Tracker is not installed.");
         }
         return instrument.lookup(CoverageTracker.class);
     }
@@ -128,14 +128,14 @@ public class CoverageInstrument extends TruffleInstrument {
                 final String outputPath = option.getValue(env.getOptions());
                 final File file = new File(outputPath);
                 if (file.exists()) {
-                    throw new IllegalArgumentException("Cannot redirect output to an existing file!");
+                    throw new CoverageException("Cannot redirect output to an existing file!");
                 }
                 return new PrintStream(new FileOutputStream(file));
             } else {
                 return new PrintStream(env.out());
             }
         } catch (FileNotFoundException e) {
-            throw new IllegalArgumentException("Cannot redirect output to a directory");
+            throw new CoverageException("Cannot redirect output to a directory");
         }
     }
 
