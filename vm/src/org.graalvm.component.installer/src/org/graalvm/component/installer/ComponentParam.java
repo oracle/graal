@@ -26,12 +26,13 @@ package org.graalvm.component.installer;
 
 import java.io.IOException;
 import org.graalvm.component.installer.persist.MetadataLoader;
+import org.graalvm.component.installer.remote.FileDownloader;
 
 public interface ComponentParam {
     String getSpecification();
 
     String getDisplayName();
-
+    
     MetadataLoader createMetaLoader() throws IOException;
 
     MetadataLoader createFileLoader() throws IOException;

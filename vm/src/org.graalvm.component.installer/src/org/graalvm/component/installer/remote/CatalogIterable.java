@@ -38,6 +38,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
@@ -48,11 +49,13 @@ import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.FileIterable;
 import org.graalvm.component.installer.FileIterable.FileComponent;
+import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.UnknownVersionException;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
+import org.graalvm.component.installer.remote.RemoteComponentParam.DelegateMetaLoader;
 
 /**
  * Interprets installer arguments as entries from a catalog.
@@ -276,9 +279,14 @@ public class CatalogIterable implements ComponentIterable {
         }
 
         @Override
+        public FileDownloader configureRelatedDownloader(FileDownloader dn) {
+            return configurer.processDownloader(getCatalogInfo(), dn);
+        }
+
+        @Override
         protected FileDownloader createDownloader() {
             FileDownloader d = super.createDownloader();
-            return configurer.processDownloader(getCatalogInfo(), d);
+            return configureRelatedDownloader(d);
         }
 
         @Override
@@ -296,6 +304,127 @@ public class CatalogIterable implements ComponentIterable {
         @Override
         public ComponentInfo completeMetadata() throws IOException {
             return createFileLoader().completeMetadata();
+        }
+    }
+    
+    static class SubstLoader extends DelegateMetaLoader {
+        public SubstLoader(RemoteComponentParam param, MetadataLoader delegate) {
+            param.super(delegate);
+        }
+
+        @Override
+        protected ComponentInfo configureComponentInfo(ComponentInfo info) {
+            super.configureComponentInfo(info);
+            injectCatalogData(info);
+            return info;
+        }
+
+        private ComponentInfo injectCatalogData(ComponentInfo ci) {
+            if (ci.getLicenseType() != null) {
+                ComponentInfo cat = catalogInfo();
+                ci.setLicenseType(cat.getLicenseType());
+                ci.setLicensePath(cat.getLicensePath());
+            }
+            return ci;
+        }
+    }
+    
+    static class CatalogItemSubstitutions implements MetadataLoader {
+        private final MetadataLoader delegate;
+        private final ComponentInfo catalogComponentInfo;
+        private ComponentInfo cached;
+
+        public CatalogItemSubstitutions(MetadataLoader delegate, ComponentInfo catalogComponentInfo) {
+            this.delegate = delegate;
+            this.catalogComponentInfo = catalogComponentInfo;
+        }
+
+        @Override
+        public void close() throws IOException {
+            delegate.close();
+        }
+        
+        @Override
+        public ComponentInfo getComponentInfo() {
+            if (cached != null) {
+                return cached;
+            }
+            cached = injectCatalogData(delegate.getComponentInfo());
+            return cached;
+        }
+        
+        private ComponentInfo injectCatalogData(ComponentInfo ci) {
+            if (ci.getLicenseType() != null) {
+                ci.setLicenseType(catalogComponentInfo.getLicenseType());
+                ci.setLicensePath(ci.getLicensePath());
+            }
+            return ci;
+        }
+
+        @Override
+        public List<InstallerStopException> getErrors() {
+            return delegate.getErrors();
+        }
+
+        @Override
+        public Archive getArchive() throws IOException {
+            return delegate.getArchive();
+        }
+
+        @Override
+        public String getLicenseType() {
+            return delegate.getLicenseType();
+        }
+
+        @Override
+        public String getLicenseID() {
+            return delegate.getLicenseID();
+        }
+
+        @Override
+        public String getLicensePath() {
+            String id = delegate.getLicensePath();
+            if (id == null) {
+                return catalogComponentInfo.getLicensePath();
+            } else {
+                return id;
+            }
+        }
+
+        @Override
+        public MetadataLoader infoOnly(boolean only) {
+            return delegate.infoOnly(only);
+        }
+
+        @Override
+        public boolean isNoVerifySymlinks() {
+            return delegate.isNoVerifySymlinks();
+        }
+
+        @Override
+        public void loadPaths() throws IOException {
+            delegate.loadPaths();
+        }
+
+        @Override
+        public Map<String, String> loadPermissions() throws IOException {
+            return delegate.loadPermissions();
+        }
+
+        @Override
+        public Map<String, String> loadSymlinks() throws IOException {
+            return delegate.loadSymlinks();
+        }
+
+        @Override
+        public void setNoVerifySymlinks(boolean noVerifySymlinks) {
+            delegate.setNoVerifySymlinks(noVerifySymlinks);
+        }
+
+        @Override
+        public ComponentInfo completeMetadata() throws IOException {
+            cached = injectCatalogData(delegate.completeMetadata());
+            return cached;
         }
     }
 }
