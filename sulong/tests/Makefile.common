@@ -123,7 +123,7 @@ tool-info.txt:
 	@cat $@
 
 ifdef GRAALVM_LLVM_HOME
-%/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
+%/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib -Wno-override-module
 endif
 
 %.c.dir/ref.out: %.c
