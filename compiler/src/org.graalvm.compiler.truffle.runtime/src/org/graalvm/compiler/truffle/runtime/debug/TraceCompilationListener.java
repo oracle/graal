@@ -154,7 +154,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                         (compilation.timePartialEvaluationFinished - compilation.timeCompilationStarted) / 1e6, //
                         (timeCompilationFinished - compilation.timePartialEvaluationFinished) / 1e6));
         properties.put("Tier", target.isValidLastTier() ? "2" : "1");
-        properties.put("Calls", String.format("%3dI/%3dD", inlinedCalls, dispatchedCalls));
+        properties.put("Inlined", String.format("%3dY %3dN", inlinedCalls, dispatchedCalls));
         properties.put("IR", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
         properties.put("CodeSize", result.getTargetCodeSize());
         if (target.getCodeAddress() != 0) {

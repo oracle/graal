@@ -37,7 +37,7 @@ Note that most options also require the additional `--experimental-options` flag
 `--engine.TraceCompilation` prints a line each time a method is compiled.
 
 ```
-[engine] opt done     EqualityConstraint.execute                                  |AST   17|Time  134( 110+24  )ms |Calls   3I/  1D|IR   222/  266|CodeSize    691|Addr 0x113dd1250|Src octane-deltablue.js:528
+[engine] opt done     EqualityConstraint.execute                                  |AST   17|Time  134( 110+24  )ms |Inlined   3Y   1N|IR   222/  266|CodeSize    691|Addr 0x113dd1250|Src octane-deltablue.js:528
 ```
 
 `--engine.TraceCompilationDetail` also prints a line when compilation is queued, starts or completes.
@@ -49,9 +49,9 @@ Note that most options also require the additional `--experimental-options` flag
 [engine] opt start    BinaryConstraint.input                                      |AST   19|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:409
 [engine] opt queued   OrderedCollection.at                                        |AST   15|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:67
 ... more queues ...
-[engine] opt done     BinaryConstraint.output                                     |AST   19|Time  734( 420+314 )ms|Calls     0I/    0D|IR   110/  176|CodeSize    565|Addr 0x1102cb190|Src octane-deltablue.js:416
+[engine] opt done     BinaryConstraint.output                                     |AST   19|Time  734( 420+314 )ms|Inlined   0Y   0N|IR   110/  176|CodeSize    565|Addr 0x1102cb190|Src octane-deltablue.js:416
 [engine] opt start    OrderedCollection.at                                        |AST   15|Calls/Thres   29924/    3|CallsAndLoop/Thres   29924/ 1000 |Src octane-deltablue.js:67
-[engine] opt done     BinaryConstraint.input                                      |AST   19|Time  740( 408+332 )ms|Calls     0I/    0D|IR   109/  166|CodeSize    530|Addr 0x1102e8690|Src octane-deltablue.js:409
+[engine] opt done     BinaryConstraint.input                                      |AST   19|Time  740( 408+332 )ms|Inlined   0Y   0N|IR   109/  166|CodeSize    530|Addr 0x1102e8690|Src octane-deltablue.js:409
 ```
 
 `--engine.TraceCompilationAST` prints the Truffle AST for each compilation.
