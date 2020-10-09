@@ -82,10 +82,4 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
     public SourceSection getSourceSection() {
         return getBytecodesNode().getSourceSectionAtBCI(callerBCI);
     }
-
-    public int getOpcode() {
-        // invoke quickening nodes override this with the actual opcode
-        // it's only relevant for invoke nodes
-        return -1;
-    }
 }
