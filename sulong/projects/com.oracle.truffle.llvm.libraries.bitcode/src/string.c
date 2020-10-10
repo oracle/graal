@@ -29,7 +29,7 @@
  */
 
 #include <stdlib.h>
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 #include <limits.h>
 
 char *strncpy(char *dest, const char *source, size_t n) {

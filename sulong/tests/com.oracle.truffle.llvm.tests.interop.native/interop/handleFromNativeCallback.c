@@ -27,20 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
-#include <truffle.h>
+#include <graalvm/llvm/polyglot.h>
+#include <graalvm/llvm/handles.h>
 
 int callbackPointerArgTest(int (*callback)(void *), void *arg);
 
 int callback(void *handle) {
-    void *managed = truffle_managed_from_handle(handle);
+    void *managed = resolve_handle(handle);
     return polyglot_as_i32(polyglot_get_member(managed, "valueI"));
 }
 
 int testHandleFromNativeCallback(void *managed) {
-    void *handle = truffle_handle_for_managed(managed);
+    void *handle = create_handle(managed);
     int ret = callbackPointerArgTest(callback, handle);
-    truffle_release_handle(handle);
+    release_handle(handle);
     return ret;
 }
 

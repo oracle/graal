@@ -28,122 +28,133 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <llvm/api/toolchain.h>
-#include <polyglot.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <graalvm/llvm/polyglot.h>
+#include "common.h"
 
-static void should_not_reach() {
-    fprintf(stderr, "cannot call polyglot intrinsics from native code.\n");
-    abort();
-}
-
-// llvm/api/toolchain.h
-void *toolchain_api_tool(const void *name) {
-    should_not_reach();
-}
-void *toolchain_api_paths(const void *name) {
-    should_not_reach();
-}
-void *toolchain_api_identifier(void) {
-    should_not_reach();
-}
-// polyglot.h
 void *polyglot_import(const char *name) {
     should_not_reach();
+    return NULL;
 }
 void polyglot_export(const char *name, void *value) {
     should_not_reach();
 }
 void *polyglot_eval(const char *id, const char *code) {
     should_not_reach();
+    return NULL;
 }
 void *polyglot_eval_file(const char *id, const char *filename) {
     should_not_reach();
+    return NULL;
 }
 void *polyglot_java_type(const char *classname) {
     should_not_reach();
+    return NULL;
 }
 void *polyglot_get_arg(int i) {
     should_not_reach();
+    return NULL;
 }
 int polyglot_get_arg_count() {
     should_not_reach();
+    return 0;
 }
 int8_t polyglot_as_i8(const void *value) {
     should_not_reach();
+    return 0;
 }
 int16_t polyglot_as_i16(const void *value) {
     should_not_reach();
+    return 0;
 }
 int32_t polyglot_as_i32(const void *value) {
     should_not_reach();
+    return 0;
 }
 int64_t polyglot_as_i64(const void *value) {
     should_not_reach();
+    return 0;
 }
 float polyglot_as_float(const void *value) {
     should_not_reach();
+    return 0;
 }
 double polyglot_as_double(const void *value) {
     should_not_reach();
+    return 0;
 }
 bool polyglot_as_boolean(const void *value) {
     should_not_reach();
+    return false;
 }
 bool polyglot_can_execute(const void *value) {
     should_not_reach();
+    return false;
 }
 void *polyglot_invoke(void *object, const char *name, ...) {
     should_not_reach();
+    return NULL;
 }
 bool polyglot_can_instantiate(const void *object) {
     should_not_reach();
+    return false;
 }
 void *polyglot_new_instance(const void *object, ...) {
     should_not_reach();
+    return NULL;
 }
 bool polyglot_has_members(const void *value) {
     should_not_reach();
+    return false;
 }
 bool polyglot_has_member(const void *value, const char *name) {
     should_not_reach();
+    return false;
 }
 void *polyglot_get_member(const void *object, const char *name) {
     should_not_reach();
+    return NULL;
 }
 void polyglot_put_member(void *object, const char *name, ...) {
     should_not_reach();
 }
 bool polyglot_remove_member(void *object, const char *name) {
     should_not_reach();
+    return false;
 }
 bool polyglot_has_array_elements(const void *value) {
     should_not_reach();
+    return false;
 }
 uint64_t polyglot_get_array_size(const void *array) {
     should_not_reach();
+    return 0;
 }
 void *polyglot_get_array_element(const void *array, int idx) {
     should_not_reach();
+    return NULL;
 }
 void polyglot_set_array_element(void *array, int idx, ...) {
     should_not_reach();
 }
 bool polyglot_remove_array_element(void *array, int idx) {
     should_not_reach();
+    return false;
 }
 uint64_t polyglot_get_string_size(const void *value) {
     should_not_reach();
+    return 0;
 }
 uint64_t polyglot_as_string(const void *value, char *buffer, uint64_t bufsize, const char *charset) {
     should_not_reach();
+    return 0;
 }
 void *polyglot_from_string(const char *string, const char *charset) {
     should_not_reach();
+    return NULL;
 }
 void *polyglot_from_string_n(const char *string, uint64_t size, const char *charset) {
     should_not_reach();
+    return NULL;
 }
 // we can provide a defensive implementation for the following functions
 bool polyglot_is_value(const void *value) {
@@ -190,42 +201,4 @@ void *polyglot_as_typed(void *value, polyglot_typeid typeId) {
 }
 void *polyglot_from_typed(void *ptr, polyglot_typeid typeId) {
     return ptr;
-}
-
-// truffle.h
-void truffle_load_library(const char *string) {
-    should_not_reach();
-}
-void *truffle_virtual_malloc(size_t size) {
-    should_not_reach();
-}
-void *truffle_managed_malloc(long size) {
-    should_not_reach();
-}
-void *truffle_managed_memcpy(void *destination, const void *source, size_t count) {
-    should_not_reach();
-}
-void *truffle_handle_for_managed(void *managedObject) {
-    should_not_reach();
-}
-void *truffle_release_handle(void *nativeHandle) {
-    should_not_reach();
-}
-void *truffle_managed_from_handle(void *nativeHandle) {
-    should_not_reach();
-}
-bool truffle_is_handle_to_managed(void *nativeHandle) {
-    should_not_reach();
-}
-void *truffle_assign_managed(void *dst, void *managed) {
-    should_not_reach();
-}
-void *truffle_deref_handle_for_managed(void *managed) {
-    should_not_reach();
-}
-bool truffle_cannot_be_handle(void *nativeHandle) {
-    should_not_reach();
-}
-void *truffle_decorate_function(void *function, void *wrapper) {
-    should_not_reach();
 }

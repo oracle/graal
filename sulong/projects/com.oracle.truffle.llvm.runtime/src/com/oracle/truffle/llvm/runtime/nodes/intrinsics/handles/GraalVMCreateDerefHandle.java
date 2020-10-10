@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,45 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
+public abstract class GraalVMCreateDerefHandle extends LLVMIntrinsic {
 
     @Specialization
-    protected boolean doLongCase(long address,
-                    @CachedLanguage LLVMLanguage language,
-                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
-        if (!language.getNoDerefHandleAssumption().isValid() && LLVMNativeMemory.isDerefHandleMemory(address)) {
-            return context.get().getDerefHandleContainer().isHandle(address);
-        } else if (!language.getNoCommonHandleAssumption().isValid() && LLVMNativeMemory.isCommonHandleMemory(address)) {
-            return context.get().getHandleContainer().isHandle(address);
+    protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        LLVMNativePointer handle = context.getDerefHandleContainer().allocate(this, value.getObject());
+        if (value.getOffset() != 0) {
+            return handle.increment(value.getOffset());
         }
-        return false;
+        return handle;
     }
 
     @Specialization
-    protected boolean doPointerCase(LLVMNativePointer a,
-                    @CachedLanguage LLVMLanguage language,
-                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
-        return doLongCase(a.asNative(), language, context);
-    }
-
-    @Fallback
-    protected boolean doGeneric(@SuppressWarnings("unused") Object object) {
-        return false;
+    protected LLVMNativePointer doError(LLVMNativePointer p) {
+        throw new LLVMPolyglotException(this, "Can't create handle from native pointer %s.", p);
     }
 }

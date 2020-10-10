@@ -29,7 +29,7 @@
  */
 
 #include <stdio.h>
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 struct BigInteger {
     struct BigInteger *(*pow)(int);

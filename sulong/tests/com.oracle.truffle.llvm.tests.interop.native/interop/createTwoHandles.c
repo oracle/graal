@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,31 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
+#include <graalvm/llvm/polyglot.h>
+#include <graalvm/llvm/handles.h>
 
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+int main() {
+    void *p = polyglot_import("object");
 
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleCannotBeHandle extends LLVMIntrinsic {
+    void *p1 = create_handle(p);
+    void *p2 = create_handle(p);
 
-    @Specialization
-    protected boolean doLongCase(long a) {
-        return !LLVMNativeMemory.isHandleMemory(a);
+    if (p1 != p2) {
+        return 1;
     }
-
-    @Specialization
-    protected boolean doPointerCase(LLVMNativePointer a) {
-        return doLongCase(a.asNative());
-    }
-
-    @Fallback
-    protected boolean doGeneric(@SuppressWarnings("unused") Object object) {
-        return true;
-    }
+    return 0;
 }
