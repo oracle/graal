@@ -425,7 +425,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     protected void installShutdownHooks() {
-        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
+        addShutdownHook(this::shutdown);
+    }
+
+    protected void addShutdownHook(Runnable hook) {
+        Runtime.getRuntime().addShutdownHook(new Thread(hook));
     }
 
     protected void lookupCallMethods(MetaAccessProvider metaAccess) {
@@ -630,7 +634,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         listeners.remove(listener);
     }
 
-    private void shutdown() {
+    protected void shutdown() {
         getListener().onShutdown();
         TruffleCompiler tcp = truffleCompiler;
         if (tcp != null) {

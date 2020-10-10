@@ -451,4 +451,46 @@ public class SubstrateOptions {
     /** Command line option to disable image build server. */
     public static final String NO_SERVER = "--no-server";
 
+    @Fold
+    public static boolean supportCompileInIsolates() {
+        UserError.guarantee(!ConcealedOptions.SupportCompileInIsolates.getValue() || SpawnIsolates.getValue(),
+                        "Option %s must be enabled to support isolated compilations through option %s",
+                        SpawnIsolates.getName(),
+                        ConcealedOptions.SupportCompileInIsolates.getName());
+        return ConcealedOptions.SupportCompileInIsolates.getValue();
+    }
+
+    public static boolean shouldCompileInIsolates() {
+        /*
+         * If SupportCompileInIsolates is unset, CompileInIsolates becomes unreachable because this
+         * expression is folded, and cannot be used at runtime.
+         */
+        return supportCompileInIsolates() && ConcealedOptions.CompileInIsolates.getValue();
+    }
+
+    @Option(help = "Size of the reserved address space of each compilation isolate (0: default for new isolates).") //
+    public static final RuntimeOptionKey<Long> CompilationIsolateAddressSpaceSize = new RuntimeOptionKey<>(0L);
+
+    /** Query these options only through an appropriate method. */
+    public static class ConcealedOptions {
+
+        @Option(help = "Support runtime compilation in separate isolates (enable at runtime with option CompileInIsolates).") //
+        public static final HostedOptionKey<Boolean> SupportCompileInIsolates = new HostedOptionKey<Boolean>(null) {
+            @Override
+            public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+                if (!values.containsKey(this)) {
+                    return SpawnIsolates.getValueOrDefault(values);
+                }
+                return super.getValueOrDefault(values);
+            }
+
+            @Override
+            public Boolean getValue(OptionValues values) {
+                return getValueOrDefault(values.getMap());
+            }
+        };
+
+        @Option(help = "Activate runtime compilation in separate isolates (enable support during image build with option SupportCompileInIsolates).") //
+        public static final RuntimeOptionKey<Boolean> CompileInIsolates = new RuntimeOptionKey<>(true);
+    }
 }

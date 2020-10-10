@@ -96,6 +96,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -130,6 +131,8 @@ import com.oracle.svm.truffle.api.SubstratePartialEvaluator;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompilerImpl;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
+import com.oracle.svm.truffle.isolated.IsolateAwareTruffleCompiler;
+import com.oracle.svm.truffle.isolated.IsolatedTruffleRuntimeSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -222,6 +225,14 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         }
 
         public SubstrateTruffleCompiler createTruffleCompiler(SubstrateTruffleRuntime runtime) {
+            SubstrateTruffleCompiler compiler = createSubstrateTruffleCompilerImpl(runtime);
+            if (SubstrateOptions.supportCompileInIsolates()) {
+                compiler = new IsolateAwareTruffleCompiler(compiler);
+            }
+            return compiler;
+        }
+
+        protected static SubstrateTruffleCompiler createSubstrateTruffleCompilerImpl(SubstrateTruffleRuntime runtime) {
             GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
             SnippetReflectionProvider snippetReflectionProvider = graalFeature.getHostedProviders().getSnippetReflection();
             return new SubstrateTruffleCompilerImpl(runtime,
@@ -235,13 +246,23 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                             snippetReflectionProvider);
         }
 
+        protected static boolean isIsolatedCompilation() {
+            return !SubstrateUtil.HOSTED && SubstrateOptions.shouldCompileInIsolates();
+        }
+
         public Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumptionConstant) {
+            if (isIsolatedCompilation()) {
+                return IsolatedTruffleRuntimeSupport.registerOptimizedAssumptionDependency(optimizedAssumptionConstant);
+            }
             Object target = SubstrateObjectConstant.asObject(optimizedAssumptionConstant);
             OptimizedAssumption assumption = (OptimizedAssumption) KnownIntrinsics.convertUnknownValue(target, Object.class);
             return assumption.registerDependency();
         }
 
         public JavaConstant getCallTargetForCallNode(JavaConstant callNodeConstant) {
+            if (isIsolatedCompilation()) {
+                return IsolatedTruffleRuntimeSupport.getCallTargetForCallNode(callNodeConstant);
+            }
             Object target = SubstrateObjectConstant.asObject(callNodeConstant);
             OptimizedDirectCallNode callNode = (OptimizedDirectCallNode) KnownIntrinsics.convertUnknownValue(target, Object.class);
             OptimizedCallTarget callTarget = callNode.getCallTarget();
@@ -253,11 +274,17 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         }
 
         public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
+            if (isIsolatedCompilation()) {
+                return IsolatedTruffleRuntimeSupport.asCompilableTruffleAST(constant);
+            }
             return (CompilableTruffleAST) KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(OptimizedCallTarget.class, constant), Object.class);
         }
 
         @SuppressWarnings("unused")
         public boolean tryLog(SubstrateTruffleRuntime runtime, String loggerId, CompilableTruffleAST compilable, String message) {
+            if (isIsolatedCompilation()) {
+                return IsolatedTruffleRuntimeSupport.tryLog(loggerId, compilable, message);
+            }
             return false;
         }
     }
