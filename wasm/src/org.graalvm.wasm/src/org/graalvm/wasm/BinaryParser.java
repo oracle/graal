@@ -53,6 +53,7 @@ import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.constants.Instructions;
 import org.graalvm.wasm.constants.LimitsPrefix;
 import org.graalvm.wasm.constants.Section;
+import org.graalvm.wasm.exception.BinaryParserException;
 import org.graalvm.wasm.exception.WasmLinkerException;
 import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -63,6 +64,11 @@ import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
 
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
@@ -1370,11 +1376,23 @@ public class BinaryParser extends BinaryStreamParser {
 
     private String readName() {
         int nameLength = readVectorLength();
-        byte[] name = new byte[nameLength];
-        for (int i = 0; i != nameLength; ++i) {
-            name[i] = read1();
+        int afterNameOffset = nameLength + offset;
+        if (afterNameOffset < 0 || data.length < afterNameOffset) {
+            throw BinaryParserException.format("The binary is truncated at: %d", data.length);
         }
-        return new String(name, StandardCharsets.US_ASCII);
+
+        // Decode and verify UTF-8 encoding of the name
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+        decoder.onMalformedInput(CodingErrorAction.REPORT);
+        decoder.onUnmappableCharacter(CodingErrorAction.REPORT);
+        CharBuffer result;
+        try {
+            result = decoder.decode(ByteBuffer.wrap(data, offset, nameLength));
+        } catch (CharacterCodingException ex) {
+            throw BinaryParserException.format("Invalid UTF-8 encoding of the name at: %d", offset);
+        }
+        offset += nameLength;
+        return result.toString();
     }
 
     protected int readUnsignedInt32() {
