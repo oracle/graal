@@ -267,6 +267,14 @@ public class ValidationSuite extends WasmFileSuite {
                                     "Custom Section - excessive name length",
                                     "Declared section (0x00) size is incorrect: 4 should = 1.",
                                     "0061 736d 0100 0000 0001 0300 0100"),
+
+                    binaryCase(
+                                    "Export name - overlong encoding",
+                                    "Invalid UTF-8 encoding of the name at: 23",
+                                    // (func (export \"\\F0\\82\\82\\AC\")
+                                    // (result i32) i32.const 42)
+                                    // F0 82 82 AC is UTF-8 overlong encoding of Euro sign
+                                    "0061 736d 0100 0000 0105 0160 0001 7f03 0201 0007 0801 04F0 8282 AC00 000a 0601 0400 412a 0b")
     };
 
     private static Properties opts = SystemProperties.createFromOptions(
