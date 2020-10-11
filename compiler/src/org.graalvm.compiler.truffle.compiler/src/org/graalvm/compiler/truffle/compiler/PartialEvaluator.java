@@ -105,6 +105,7 @@ import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -684,7 +685,12 @@ public abstract class PartialEvaluator {
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
             final StructuredGraph graph = b.getGraph();
             if (graph.getNodeCount() > nodeLimit) {
-                throw b.bailout("Graph too big to safely compile. Node count: " + graph.getNodeCount() + ". Limit: " + nodeLimit);
+                try {
+                    throw b.bailout("Graph too big to safely compile. Node count: " + graph.getNodeCount() + ". Limit: " + nodeLimit);
+                } catch (BailoutException e) {
+                    // wrap it to detect it later
+                    throw new GraphTooBigBailoutException(e);
+                }
             }
             // Continue onto other plugins.
             return null;

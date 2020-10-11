@@ -57,6 +57,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
+import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
@@ -310,6 +311,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private final int uninitializedNodeCount;
 
     private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = NO_CALL;
+    volatile List<OptimizedCallTarget> blockCompilations;
 
     protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
@@ -805,8 +807,33 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
+    /**
+     * Computes block compilation using {@link BlockNode} APIs. If no block node is used in the AST
+     * or block node compilation is disabled then this method always returns <code>false</code>.
+     */
+    public final boolean computeBlockCompilations() {
+        if (blockCompilations == null) {
+            this.blockCompilations = OptimizedBlockNode.preparePartialBlockCompilations(this);
+            if (!blockCompilations.isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
-    public final void onCompilationFailed(Supplier<String> serializedException, boolean bailout, boolean permanentBailout) {
+    public final void onCompilationFailed(Supplier<String> serializedException, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
+        if (graphTooBig) {
+            /*
+             * The idea is that if the compilation failed because of too many compilations we retry
+             * after block compilations completed.
+             */
+            if (computeBlockCompilations()) {
+                // retry compilation
+                return;
+            }
+        }
+
         ExceptionAction action;
         if (bailout && !permanentBailout) {
             /*

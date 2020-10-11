@@ -646,19 +646,26 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     protected final void doCompile(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
-        List<OptimizedCallTarget> blockCompilations = OptimizedBlockNode.preparePartialBlockCompilations(callTarget);
-        for (OptimizedCallTarget blockTarget : blockCompilations) {
-            if (blockTarget.isValid()) {
-                continue;
+        List<OptimizedCallTarget> oldBlockCompilations = callTarget.blockCompilations;
+        if (oldBlockCompilations != null) {
+            for (OptimizedCallTarget blockTarget : oldBlockCompilations) {
+                if (blockTarget.isValid()) {
+                    continue;
+                }
+                int nodeCount = blockTarget.getNonTrivialNodeCount();
+                if (nodeCount > callTarget.engine.getEngineOptions().get(PolyglotCompilerOptions.PartialBlockMaximumSize)) {
+                    listeners.onCompilationDequeued(blockTarget, null, "Partial block is too big to be compiled.");
+                    continue;
+                }
+                compileImpl(blockTarget, task);
             }
-            int nodeCount = blockTarget.getNonTrivialNodeCount();
-            if (nodeCount > callTarget.engine.getEngineOptions().get(PolyglotCompilerOptions.PartialBlockMaximumSize)) {
-                listeners.onCompilationDequeued(blockTarget, null, "Partial block is too big to be compiled.");
-                continue;
-            }
-            compileImpl(blockTarget, task);
         }
         compileImpl(callTarget, task);
+
+        if (oldBlockCompilations == null && callTarget.blockCompilations != null) {
+            // retry with block compilations
+            doCompile(callTarget, task);
+        }
     }
 
     @SuppressWarnings("try")
@@ -718,7 +725,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 listeners.onCompilationDequeued(callTarget, this, String.format("Failed to create Truffle compiler due to %s.", t.getMessage()));
             }
         } finally {
-            callTarget.onCompilationFailed(() -> CompilableTruffleAST.serializeException(t), false, false);
+            callTarget.onCompilationFailed(() -> CompilableTruffleAST.serializeException(t), false, false, false);
         }
     }
 
