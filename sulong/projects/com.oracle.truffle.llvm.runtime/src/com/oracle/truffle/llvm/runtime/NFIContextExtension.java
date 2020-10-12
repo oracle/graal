@@ -106,10 +106,10 @@ public final class NFIContextExtension implements ContextExtension {
         }
     }
 
-    public NativePointerIntoLibrary getNativeHandle(LLVMContext context, String name) {
+    public NativePointerIntoLibrary getNativeHandle(String name) {
         CompilerAsserts.neverPartOfCompilation();
         try {
-            NativeLookupResult result = getNativeDataObjectOrNull(context, name);
+            NativeLookupResult result = getNativeDataObjectOrNull(name);
             if (result != null) {
                 long pointer = INTEROP.asPointer(result.getObject());
                 return new NativePointerIntoLibrary(pointer);
@@ -126,7 +126,7 @@ public final class NFIContextExtension implements ContextExtension {
 
         try {
             String signature = getNativeSignature(descriptor.getLLVMFunction().getType(), 0);
-            Object createNativeWrapper = getNativeFunction(descriptor.getContext(), "createNativeWrapper", String.format("(env, %s):object", signature));
+            Object createNativeWrapper = getNativeFunction("createNativeWrapper", String.format("(env, %s):object", signature));
             try {
                 wrapper = INTEROP.execute(createNativeWrapper, new LLVMNativeWrapper(descriptor));
             } catch (InteropException ex) {
@@ -277,8 +277,7 @@ public final class NFIContextExtension implements ContextExtension {
         return types;
     }
 
-    @SuppressWarnings("unused")
-    public synchronized NativeLookupResult getNativeFunctionOrNull(LLVMContext context, String name) {
+    public synchronized NativeLookupResult getNativeFunctionOrNull(String name) {
         CompilerAsserts.neverPartOfCompilation();
         Object[] cursor = libraryHandles.toArray();
         for (int i = 0; i < cursor.length; i++) {
@@ -295,8 +294,7 @@ public final class NFIContextExtension implements ContextExtension {
         return null;
     }
 
-    @SuppressWarnings("unused")
-    private synchronized NativeLookupResult getNativeDataObjectOrNull(LLVMContext context, String name) {
+    private synchronized NativeLookupResult getNativeDataObjectOrNull(String name) {
         CompilerAsserts.neverPartOfCompilation();
         Object[] cursor = libraryHandles.toArray();
         for (int i = 0; i < cursor.length; i++) {
@@ -338,9 +336,9 @@ public final class NFIContextExtension implements ContextExtension {
         }
     }
 
-    public Object getNativeFunction(LLVMContext context, String name, String signature) {
+    public Object getNativeFunction(String name, String signature) {
         CompilerAsserts.neverPartOfCompilation();
-        NativeLookupResult result = getNativeFunctionOrNull(context, name);
+        NativeLookupResult result = getNativeFunctionOrNull(name);
         if (result != null) {
             return bindNativeFunction(result.getObject(), signature);
         }
