@@ -99,9 +99,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      */
     private static final Map<Character, CodePointSet> UNICODE_CHAR_CLASS_SETS;
 
-    private static final String ASCII_WHITESPACE = "\\x09-\\x0d\\x20";
-    private static final String ASCII_NON_WHITESPACE = "\\x00-\\x08\\x0e-\\x1f\\x21-\\u{10ffff}";
-
     private static final Map<String, CodePointSet> POSIX_CHAR_CLASSES;
 
     static {
@@ -884,9 +881,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             case 'W':
                 char className = (char) curChar();
                 advance();
-                if ((bytes || getLocalFlags().isAscii()) && (className == 's' || className == 'S')) {
-                    String snippet = className == 's' ? ASCII_WHITESPACE : ASCII_NON_WHITESPACE;
-                    emitSnippet(inCharClass ? snippet : "[" + snippet + "]");
+                if (inCharClass) {
+                    curCharClass.addSet(UNICODE_CHAR_CLASS_SETS.get(className));
                 } else {
                     emitSnippet("\\" + className);
                 }
