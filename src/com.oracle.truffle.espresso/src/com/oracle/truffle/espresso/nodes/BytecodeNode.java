@@ -500,6 +500,12 @@ public final class BytecodeNode extends EspressoMethodNode {
         return (StaticObject) result;
     }
 
+    private Object peekReturnAddressOrObject(VirtualFrame frame, int slot) {
+        Object result = FrameUtil.getObjectSafe(frame, stackSlots[slot]);
+        assert result instanceof StaticObject || result instanceof ReturnAddress;
+        return result;
+    }
+
     /**
      * Reads and clear the operand stack slot.
      */
@@ -1479,7 +1485,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     private void dup1(VirtualFrame frame, int top) {
         // value1 -> value1, value1
         if (frame.isObject(stackSlots[top - 1])) {
-            putObject(frame, top, peekObject(frame, top - 1));
+            putObjectOrReturnAddress(frame, top, peekReturnAddressOrObject(frame, top - 1));
         } else {
             putInt(frame, top, peekInt(frame, top - 1));
         }
