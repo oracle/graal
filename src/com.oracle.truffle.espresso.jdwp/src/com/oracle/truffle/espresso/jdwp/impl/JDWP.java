@@ -342,8 +342,8 @@ final class JDWP {
                 reply.writeBoolean(true); // canGetCurrentContendedMonitor
                 reply.writeBoolean(true); // canGetMonitorInfo
                 reply.writeBoolean(true); // canRedefineClasses
-                reply.writeBoolean(false); // canAddMethod
-                reply.writeBoolean(false); // canUnrestrictedlyRedefineClasses
+                reply.writeBoolean(true); // canAddMethod
+                reply.writeBoolean(true); // canUnrestrictedlyRedefineClasses
                 reply.writeBoolean(true); // canPopFrames
                 reply.writeBoolean(true); // canUseInstanceFilters
                 reply.writeBoolean(true); // canGetSourceDebugExtension
@@ -374,10 +374,9 @@ final class JDWP {
             public static final int ID = 18;
 
             static CommandResult createReply(Packet packet, JDWPContext context) {
-
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-
+                JDWPLogger.log("Request to redefine received", JDWPLogger.LogLevel.REDEFINE);
                 int classes = input.readInt();
                 RedefineInfo[] redefineInfos = new RedefineInfo[classes];
                 for (int i = 0; i < classes; i++) {
@@ -398,8 +397,10 @@ final class JDWP {
                 int errorCode = context.redefineClasses(redefineInfos);
                 if (errorCode != 0) {
                     reply.errorCode(errorCode);
+                    JDWPLogger.log("Redefine failed with error code: %d", JDWPLogger.LogLevel.REDEFINE, errorCode);
                     return new CommandResult(reply);
                 }
+                JDWPLogger.log("Redefine successful", JDWPLogger.LogLevel.REDEFINE);
                 return new CommandResult(reply);
             }
         }
@@ -1669,6 +1670,11 @@ final class JDWP {
                 }
 
                 Object callee = context.getIds().fromId((int) objectId);
+                if (callee == null) {
+                    // object was garbage collected
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
+                }
                 MethodRef method = verifyMethodRef(methodId, reply, context);
 
                 if (method == null) {
@@ -2009,7 +2015,7 @@ final class JDWP {
 
                 CallFrame[] frames = suspendedInfo.getStackFrames();
 
-                if (length == -1) {
+                if (length == -1 || length > frames.length) {
                     length = frames.length;
                 }
                 reply.writeInt(length);

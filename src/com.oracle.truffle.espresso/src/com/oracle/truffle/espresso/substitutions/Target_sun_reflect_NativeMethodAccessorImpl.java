@@ -230,7 +230,9 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                 curMethod = (StaticObject) meta.java_lang_reflect_Method_root.get(curMethod);
             }
         }
-
+        if (reflectedMethod.isRemovedByRedefition()) {
+            throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, "removed by class redefinition");
+        }
         Klass klass = ((StaticObject) meta.java_lang_reflect_Method_clazz.get(guestMethod)).getMirrorKlass();
 
         if (klass == meta.java_lang_invoke_MethodHandle && (reflectedMethod.getName() == Name.invoke || reflectedMethod.getName() == Name.invokeExact)) {

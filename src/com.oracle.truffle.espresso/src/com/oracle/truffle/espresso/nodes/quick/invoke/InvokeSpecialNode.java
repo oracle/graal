@@ -68,4 +68,9 @@ public final class InvokeSpecialNode extends QuickNode {
     private int getResultAt() {
         return top - Signatures.slotsForParameters(method.getMethod().getParsedSignature()) - 1; // -receiver
     }
+
+    @Override
+    public boolean removedByRedefintion() {
+        return method.getMethod().isRemovedByRedefition();
+    }
 }

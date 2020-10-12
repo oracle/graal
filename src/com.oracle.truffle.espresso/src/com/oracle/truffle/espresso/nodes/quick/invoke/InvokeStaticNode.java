@@ -91,4 +91,9 @@ public final class InvokeStaticNode extends QuickNode {
         // no receiver
         return top - Signatures.slotsForParameters(method.getMethod().getParsedSignature());
     }
+
+    @Override
+    public boolean removedByRedefintion() {
+        return method.getMethod().isRemovedByRedefition();
+    }
 }

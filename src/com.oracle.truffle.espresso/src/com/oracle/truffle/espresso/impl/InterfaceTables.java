@@ -58,9 +58,9 @@ final class InterfaceTables {
     private static final Entry[][] EMPTY_ENTRY_DUAL_ARRAY = new Entry[0][];
     private static final Method[][] EMPTY_METHOD_DUAL_ARRAY = new Method[0][];
 
-    private final ObjectKlass thisKlass;
     private final ObjectKlass superKlass;
     private final ObjectKlass[] superInterfaces;
+    private final Method[] declaredMethods;
     private final ArrayList<Entry[]> tmpTables = new ArrayList<>();
     private final ArrayList<ObjectKlass> tmpKlassTable = new ArrayList<>();
     private final ArrayList<Method> mirandas = new ArrayList<>();
@@ -122,10 +122,10 @@ final class InterfaceTables {
         }
     }
 
-    private InterfaceTables(ObjectKlass thisKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
-        this.thisKlass = thisKlass;
+    private InterfaceTables(ObjectKlass superKlass, ObjectKlass[] superInterfaces, Method[] declaredMethods) {
         this.superKlass = superKlass;
         this.superInterfaces = superInterfaces;
+        this.declaredMethods = declaredMethods;
     }
 
     /**
@@ -172,8 +172,7 @@ final class InterfaceTables {
     /**
      * Performs the first step of itable creation.
      *
-     * @param thisKlass the Klass for which the table is constructed
-     * @param superKlass the super class of thisKlass
+     * @param superKlass the super class of this Klass
      * @param superInterfaces the superInterfaces of thisKlass
      * @return a 3-uple containing: <p>
      *      - An intermediate helper for the itable.
@@ -183,31 +182,31 @@ final class InterfaceTables {
      */
     // checkstyle: resume
     // @formatter:on
-    public static CreationResult create(ObjectKlass thisKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
-        return new InterfaceTables(thisKlass, superKlass, superInterfaces).create();
+    public static CreationResult create(ObjectKlass superKlass, ObjectKlass[] superInterfaces, Method[] declaredMethods) {
+        return new InterfaceTables(superKlass, superInterfaces, declaredMethods).create();
     }
 
     /**
      * Performs second and third step of itable creation.
      * 
-     * @param thisKlass the klass for which we are creating an itable
+     * @param vtable the vtable of the klass for which we are creating an itable
+     * @param mirandas the mirandas of the klass for which we are creating an itable
+     * @param declaredMethods the declared methods of the klass for which we are creating an itable
      * @param tables The helper table obtained from first step
      * @param iklassTable the interfaces directly and indirectly implemented by thisKlass
      * @return the final itable
      */
-    public static Method[][] fixTables(ObjectKlass thisKlass, Entry[][] tables, ObjectKlass[] iklassTable) {
+    public static Method[][] fixTables(Method[] vtable, Method[] mirandas, Method[] declaredMethods, Entry[][] tables, ObjectKlass[] iklassTable) {
         ArrayList<Method[]> tmpTables = new ArrayList<>();
-        Method[] vtable = thisKlass.getVTable();
-        Method[] mirandas = thisKlass.getMirandaMethods();
 
         // Second step
         // Remember here that the interfaces are sorted, most specific at the end.
         for (int i = iklassTable.length - 1; i >= 0; i--) {
-            fixVTable(tables[i], vtable, mirandas, thisKlass.getDeclaredMethods(), iklassTable[i].getInterfaceMethodsTable());
+            fixVTable(tables[i], vtable, mirandas, declaredMethods, iklassTable[i].getInterfaceMethodsTable());
         }
         // Third step
         for (Entry[] entries : tables) {
-            tmpTables.add(getITable(entries, vtable, mirandas, thisKlass.getDeclaredMethods()));
+            tmpTables.add(getITable(entries, vtable, mirandas, declaredMethods));
         }
         return tmpTables.toArray(EMPTY_METHOD_DUAL_ARRAY);
     }
@@ -344,7 +343,7 @@ final class InterfaceTables {
             assert index == m.getVTableIndex();
             return new Entry(Location.SUPERVTABLE, index);
         }
-        index = getMethodTableIndex(thisKlass.getDeclaredMethods(), im, mname, sig);
+        index = getMethodTableIndex(declaredMethods, im, mname, sig);
         if (index != -1) {
             return new Entry(Location.DECLARED, index);
         }

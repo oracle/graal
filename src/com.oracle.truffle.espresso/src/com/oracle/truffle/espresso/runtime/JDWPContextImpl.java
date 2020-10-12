@@ -26,6 +26,8 @@ package com.oracle.truffle.espresso.runtime;
 import java.lang.reflect.Array;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import com.oracle.truffle.api.TruffleLanguage;
@@ -36,6 +38,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.ChangePacket;
 import com.oracle.truffle.espresso.impl.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
@@ -54,6 +57,7 @@ import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
+import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
@@ -627,12 +631,71 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public int redefineClasses(RedefineInfo[] redefineInfos) {
-        for (RedefineInfo redefineInfo : redefineInfos) {
-            int result = ClassRedefinition.redefineClass((Klass) redefineInfo.getKlass(), redefineInfo.getClassBytes(), context, getIds());
-            if (result != 0) {
-                return result;
+        try {
+            JDWPLogger.log("Redefining %d classes", JDWPLogger.LogLevel.REDEFINE, redefineInfos.length);
+            // list of sub classes that needs to refresh things like vtable
+            List<ObjectKlass> refreshSubClasses = new ArrayList<>();
+
+            // first, detect all changes to all classes
+            List<ChangePacket> changePackets = ClassRedefinition.detectClassChanges(redefineInfos, context);
+
+            // We have to redefine super classes prior to subclasses
+            Collections.sort(changePackets, new HierarchyComparator());
+
+            // begin redefine transaction
+            ClassRedefinition.begin();
+            for (ChangePacket packet : changePackets) {
+                JDWPLogger.log("Redefining class %s", JDWPLogger.LogLevel.REDEFINE, packet.parserKlass.getName());
+                int result = ClassRedefinition.redefineClass(packet, getIds(), refreshSubClasses);
+                if (result != 0) {
+                    return result;
+                }
             }
+            // refresh subclasses when needed
+            Collections.sort(refreshSubClasses, new SubClassHierarchyComparator());
+            for (ObjectKlass subKlass : refreshSubClasses) {
+                JDWPLogger.log("Updating sub class %s for redefined super class", JDWPLogger.LogLevel.REDEFINE, subKlass.getName());
+                subKlass.onSuperKlassUpdate();
+            }
+        } finally {
+            ClassRedefinition.end();
         }
         return 0;
+    }
+
+    private static class HierarchyComparator implements Comparator<ChangePacket> {
+        public int compare(ChangePacket packet1, ChangePacket packet2) {
+            Klass k1 = (Klass) packet1.info.getKlass();
+            Klass k2 = (Klass) packet2.info.getKlass();
+            // we need to do this check because isAssignableFrom is true in this case
+            // and we would get an order that doesn't exist
+            if (k1.equals(k2)) {
+                return 0;
+            }
+            if (k1.isAssignableFrom(k2)) {
+                return -1;
+            } else if (k2.isAssignableFrom(k1)) {
+                return 1;
+            }
+            // no hierarchy
+            return 0;
+        }
+    }
+
+    private static class SubClassHierarchyComparator implements Comparator<ObjectKlass> {
+        public int compare(ObjectKlass k1, ObjectKlass k2) {
+            // we need to do this check because isAssignableFrom is true in this case
+            // and we would get an order that doesn't exist
+            if (k1.equals(k2)) {
+                return 0;
+            }
+            if (k1.isAssignableFrom(k2)) {
+                return -1;
+            } else if (k2.isAssignableFrom(k1)) {
+                return 1;
+            }
+            // no hierarchy
+            return 0;
+        }
     }
 }

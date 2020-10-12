@@ -56,6 +56,10 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
     @Override
     public abstract int execute(VirtualFrame frame);
 
+    public boolean removedByRedefintion() {
+        return false;
+    }
+
     public abstract boolean producedForeignObject(VirtualFrame frame);
 
     protected final StaticObject nullCheck(StaticObject value) {

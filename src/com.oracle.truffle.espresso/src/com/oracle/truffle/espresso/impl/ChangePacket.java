@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,19 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 
-public final class LinkedMethod {
-    private final ParserMethod parserMethod;
+public final class ChangePacket {
 
-    public ParserMethod getParserMethod() {
-        return parserMethod;
-    }
+    public final RedefineInfo info;
+    public final ParserKlass parserKlass;
+    public final ClassRedefinition.ClassChange classChange;
+    public final DetectedChange detectedChange;
 
-    // int vtableSlot; // not all methods have vtable entry
-    protected int getFlags() {
-        return parserMethod.getFlags();
-    }
-
-    protected Symbol<Signature> getRawSignature() {
-        return parserMethod.getSignature();
-    }
-
-    protected Symbol<Name> getName() {
-        return parserMethod.getName();
-    }
-
-    LinkedMethod(ParserMethod parserMethod) {
-        this.parserMethod = parserMethod;
-    }
-
-    public Attribute getAttribute(Symbol<Name> name) {
-        return parserMethod.getAttribute(name);
+    public ChangePacket(RedefineInfo redefineInfo, ParserKlass parserKlass, ClassRedefinition.ClassChange classChange, DetectedChange detectedChange) {
+        this.info = redefineInfo;
+        this.parserKlass = parserKlass;
+        this.classChange = classChange;
+        this.detectedChange = detectedChange;
     }
 }

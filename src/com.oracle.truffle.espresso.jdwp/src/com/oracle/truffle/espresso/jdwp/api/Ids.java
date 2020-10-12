@@ -55,7 +55,7 @@ public final class Ids<T> {
 
     /**
      * Returns the unique ID representing the input object.
-     * 
+     *
      * @param object
      * @return the ID of the object
      */
@@ -78,7 +78,7 @@ public final class Ids<T> {
 
     /**
      * Returns the object that is stored under the input ID.
-     * 
+     *
      * @param id the ID assigned to a object by {@code getIdAsLong()}
      * @return the object stored under the ID
      */

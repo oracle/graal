@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
@@ -102,6 +103,11 @@ public final class RuntimeConstantPool extends ConstantPool {
         return c;
     }
 
+    private Resolvable.ResolvedConstant resolvedAtNoCache(Klass accessingKlass, int index, String description) {
+        CompilerAsserts.neverPartOfCompilation();
+        return ((Resolvable) pool.at(index, description)).resolve(this, index, accessingKlass);
+    }
+
     public StaticObject resolvedStringAt(int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(null, index, "string");
         return (StaticObject) resolved.value();
@@ -119,6 +125,12 @@ public final class RuntimeConstantPool extends ConstantPool {
 
     public Method resolvedMethodAt(Klass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "method");
+        return (Method) resolved.value();
+    }
+
+    public Method resolvedMethodAtNoCache(Klass accessingKlass, int index) {
+        CompilerAsserts.neverPartOfCompilation();
+        Resolvable.ResolvedConstant resolved = resolvedAtNoCache(accessingKlass, index, "method");
         return (Method) resolved.value();
     }
 
