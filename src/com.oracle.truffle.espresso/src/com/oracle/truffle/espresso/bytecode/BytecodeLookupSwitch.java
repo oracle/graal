@@ -42,25 +42,30 @@ public final class BytecodeLookupSwitch extends BytecodeSwitch {
 
     @Override
     public int offsetAt(BytecodeStream stream, int bci, int i) {
-        assert stream.opcode(bci) == LOOKUPSWITCH;
+        assert stream.opcode(bci) == getSwitchBytecode();
         return stream.readInt(getAlignedBci(bci) + OFFSET_TO_FIRST_PAIR_OFFSET + PAIR_SIZE * i);
     }
 
     @Override
     public int keyAt(BytecodeStream stream, int bci, int i) {
-        assert stream.opcode(bci) == LOOKUPSWITCH;
+        assert stream.opcode(bci) == getSwitchBytecode();
         return stream.readInt(getAlignedBci(bci) + OFFSET_TO_FIRST_PAIR_MATCH + PAIR_SIZE * i);
     }
 
     @Override
     public int numberOfCases(BytecodeStream stream, int bci) {
-        assert stream.opcode(bci) == LOOKUPSWITCH;
+        assert stream.opcode(bci) == getSwitchBytecode();
         return stream.readInt(getAlignedBci(bci) + OFFSET_TO_NUMBER_PAIRS);
     }
 
     @Override
     public int size(BytecodeStream stream, int bci) {
-        assert stream.opcode(bci) == LOOKUPSWITCH;
+        assert stream.opcode(bci) == getSwitchBytecode();
         return getAlignedBci(bci) + OFFSET_TO_FIRST_PAIR_MATCH + PAIR_SIZE * numberOfCases(stream, bci) - bci;
+    }
+
+    @Override
+    protected int getSwitchBytecode() {
+        return LOOKUPSWITCH;
     }
 }

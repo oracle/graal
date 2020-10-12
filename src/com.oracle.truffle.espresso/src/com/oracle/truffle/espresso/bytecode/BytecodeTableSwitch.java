@@ -46,7 +46,7 @@ public final class BytecodeTableSwitch extends BytecodeSwitch {
      * @return the low key
      */
     public int lowKey(BytecodeStream stream, int bci) {
-        assert stream.opcode(bci) == TABLESWITCH;
+        assert stream.opcode(bci) == getSwitchBytecode();
         return stream.readInt(getAlignedBci(bci) + OFFSET_TO_LOW_KEY);
     }
 
@@ -56,31 +56,36 @@ public final class BytecodeTableSwitch extends BytecodeSwitch {
      * @return the high key
      */
     public int highKey(BytecodeStream stream, int bci) {
-        assert stream.opcode(bci) == TABLESWITCH;
+        assert stream.opcode(bci) == getSwitchBytecode();
         return stream.readInt(getAlignedBci(bci) + OFFSET_TO_HIGH_KEY);
     }
 
     @Override
     public int keyAt(BytecodeStream stream, int bci, int i) {
-        assert stream.opcode(bci) == TABLESWITCH;
+        assert stream.opcode(bci) == getSwitchBytecode();
         return lowKey(stream, bci) + i;
     }
 
     @Override
     public int offsetAt(BytecodeStream stream, int bci, int i) {
-        assert stream.opcode(bci) == TABLESWITCH;
+        assert stream.opcode(bci) == getSwitchBytecode();
         return stream.readInt(getAlignedBci(bci) + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * i);
     }
 
     @Override
     public int numberOfCases(BytecodeStream stream, int bci) {
-        assert stream.opcode(bci) == TABLESWITCH;
+        assert stream.opcode(bci) == getSwitchBytecode();
         return highKey(stream, bci) - lowKey(stream, bci) + 1;
     }
 
     @Override
     public int size(BytecodeStream stream, int bci) {
-        assert stream.opcode(bci) == TABLESWITCH;
+        assert stream.opcode(bci) == getSwitchBytecode();
         return getAlignedBci(bci) + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * numberOfCases(stream, bci) - bci;
+    }
+
+    @Override
+    protected int getSwitchBytecode() {
+        return TABLESWITCH;
     }
 }
