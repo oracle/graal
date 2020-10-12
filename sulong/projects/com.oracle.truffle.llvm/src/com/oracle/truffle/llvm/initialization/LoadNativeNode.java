@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
-final public class LoadNativeNode extends RootNode {
+public final class LoadNativeNode extends RootNode {
 
     final String sourceName;
     final CallTarget callTarget;
