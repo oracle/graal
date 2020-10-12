@@ -795,6 +795,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * <li>character class escapes</li>
      * <li>assertion escapes</li>
      * <li>backreferences</li>
+     * <li>extended grapheme clusters</li>
+     * <li>subexpression calls</li>
      * </ul>
      */
     private void escape() {
@@ -810,8 +812,16 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             lastTerm = TermCategory.Atom;
             return;
         }
+        if (extendedGraphemeCluster()) {
+            lastTerm = TermCategory.Atom;
+            return;
+        }
+        if (subexpressionCall()) {
+            lastTerm = TermCategory.Atom;
+            return;
+        }
         // characterEscape has to come after assertionEscape because of the ambiguity of \b, which
-        // (outside of character classes) is resolved in the favor of the assertion
+        // (outside of character classes) is resolved in the favor of the assertion.
         // characterEscape also has to come after backreference because of the ambiguity between
         // backreferences and octal character escapes which must be resolved in favor of
         // backreferences
@@ -933,6 +943,29 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             if (groupNumber >= openLookbehind.containedGroups) {
                 throw syntaxErrorHere("cannot refer to group defined in the same lookbehind subpattern");
             }
+        }
+    }
+
+    private boolean extendedGraphemeCluster() {
+        if (curChar() == 'X') {
+            advance();
+            bailOut("extended grapheme cluster escape not supported");
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private boolean subexpressionCall() {
+        if (match("g<")) {
+            String groupName = parseGroupName('>');
+            if (namedCaptureGroups == null || !namedCaptureGroups.containsKey(groupName)) {
+                throw syntaxErrorAtRel(String.format("undefined name <%s> reference", groupName), groupName.length() + 1);
+            }
+            bailOut("subexpression calls not supported");
+            return true;
+        } else {
+            return false;
         }
     }
 
