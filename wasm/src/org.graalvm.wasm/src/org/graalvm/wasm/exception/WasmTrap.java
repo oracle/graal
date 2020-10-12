@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.api.WebAssembly;
 
 /**
  * Thrown when a WebAssembly program encounters a trap, as defined by the specification.
@@ -78,6 +79,11 @@ public final class WasmTrap extends RuntimeException implements TruffleException
     @Override
     public Node getLocation() {
         return location;
+    }
+
+    @Override
+    public Object getExceptionObject() {
+        return new WebAssembly.RuntimeError(getMessage());
     }
 
     @SuppressWarnings("sync-override")
