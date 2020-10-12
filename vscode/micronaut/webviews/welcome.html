@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}}; script-src {{cspSource}}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{cssUri}}">
+    <title>Micronaut Tools</title>
+</head>
+
+<body>
+	<div class="welcomePageContainer">
+		<div class="welcomePage" role="document">
+
+			<div class="title">
+				<h1 class="caption">Micronaut Tools</h1>
+				<p>
+					<a href="https://micronaut.io/">Micronaut</a> Support for Visual Studio Code.
+					Integrated with <a href="https://www.graalvm.org/">GraalVM</a> to get the most from your applications.
+				</p>
+			</div>
+
+			<div class="content">
+				<div class="links">
+					<div class="section">
+						<h2 class="caption">Project</h2>
+						<ul>
+							<li><a href="command:extension.micronaut.createProject" title="Create a new Micronaut project">Create new Micronaut project...</a></li>
+							<li><a href="command:vscode.openFolder" title="Open existing Micronaut project">Open existing Micronaut project...</a></li>
+						</ul>
+					</div>
+					<div class="section">
+						<h2 class="caption">Native Image</h2>
+						<ul class="list">
+							<li><a href="command:extension.micronaut.buildNativeImage" title="Build native image from a Micronaut project">Build native image...</a></li>
+							<li><a href="https://www.graalvm.org/reference-manual/native-image/" title="Open native image documentation">Learn about native image</a></li>
+						</ul>
+					</div>
+					<div class="section help">
+						<h2 class="caption">Help</h2>
+						<ul>
+							<li><a href="vscode:extension/oracle-labs-graalvm.micronaut" title="Open extension documentation">Extension documentation</a></li>
+							<li><a href="https://github.com/oracle/graal/issues/new?assignees=&labels=feature,vscode&template=0_feature_request.md&title=" title="File a new feature request">Request a feature</a></li>
+							<li><a href="https://github.com/oracle/graal/issues/new?assignees=&labels=bug,agent&template=5_issues_other.md&title=" title="File a new bug report">File a bug</a></li>
+							<li><a href="https://github.com/oracle/graal/discussions" title="Provide us with a feedback">Send feedback</a></li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="docs">
+					<div class="section">
+						<h2 class="caption">Getting Started</h2>
+						<div class="list">
+							<div class="item">
+								<a class="button" href="https://guides.micronaut.io/creating-your-first-micronaut-app/guide/index.html" title="Sample Micronaut application guide">
+									<h3 class="caption">Sample application</h3>
+									<span class="detail">Create your first Micronaut application</span>
+								</a>
+							</div>
+						</div>
+					</div>
+					<div class="section">
+						<h2 class="caption">Documentation</h2>
+						<div class="list">
+							<div class="item">
+								<a class="button" href="https://micronaut.io/documentation.html" title="Micronaut documentation">
+									<h3 class="caption">Micronaut documentation</h3>
+									<span class="detail">User guide, API reference, and much more on Micronaut</span>
+								</a>
+							</div>
+							<div class="item">
+								<a class="button" href="https://guides.micronaut.io/" title="Micronaut guides">
+									<h3 class="caption">Micronaut guides</h3>
+									<span class="detail">Learn all Micronaut features</span>
+								</a>
+							</div>
+						</div>
+					</div>
+				</div>
+
+			</div>
+
+			<div class="footer">
+				<p class="showOnStartup">
+					<input type="checkbox" id="showWelcomePage" class="checkbox" {{showWelcomePage}}>
+					<label class="caption" for="showWelcomePage">Show this page when using Micronaut</label>
+				</p>
+			</div>
+
+		</div>
+	</div>
+
+	<script src="{{jsUri}}"></script>
+
+</body>
