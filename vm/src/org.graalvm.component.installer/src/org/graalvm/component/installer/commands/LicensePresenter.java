@@ -147,7 +147,7 @@ public class LicensePresenter {
             if (list == null) {
                 list = feedback.l10n("INSTALL_LicenseComponentStart", ci.getName());
             } else {
-                list = feedback.l10n("INSTALL_LicenseComponentCont", ci.getName());
+                list = feedback.l10n("INSTALL_LicenseComponentCont", list, ci.getName());
             }
         }
         return list;
@@ -210,7 +210,7 @@ public class LicensePresenter {
             state = State.NONE;
             return 0;
         }
-        
+
         if (!ALL_NUMBERS.matcher(userInput).matches()) {
             feedback.output("INSTALL_LicenseNumberInvalidEntry", licensesToAccept.size());
             return -1;
@@ -271,7 +271,7 @@ public class LicensePresenter {
             state = State.LIST;
         }
     }
-    
+
     boolean isLicenseRemote(String licenseId) {
         MetadataLoader ldr = licensesToAccept.get(licenseId).get(0);
         String licPath = ldr.getLicensePath();
@@ -293,33 +293,33 @@ public class LicensePresenter {
             return loadFileLicenseText(ldr);
         }
     }
-    
+
     private Map<String, String> remoteLicenseContents = new HashMap<>();
-    
+
     String downloadLicenseText(String id, MetadataLoader ldr) throws IOException {
         String c = remoteLicenseContents.get(id);
         if (c != null) {
             return c;
         }
-        String t =ldr.getLicenseType();
+        String t = ldr.getLicenseType();
         String label;
-        
+
         if (!t.equals(ldr.getLicensePath())) {
             label = feedback.l10n("INSTALL_DownloadLicenseName", t);
         } else {
             label = feedback.l10n("INSTALL_DownloadLicenseFile");
         }
         FileDownloader dn = new FileDownloader(
-                label,
-                new URL(ldr.getLicensePath()), 
-                feedback);
-        
+                        label,
+                        new URL(ldr.getLicensePath()),
+                        feedback);
+
         dn.download();
         c = String.join("\n", Files.readAllLines(dn.getLocalFile().toPath())); // NOI18N
         remoteLicenseContents.put(id, c);
         return c;
     }
-    
+
     String loadFileLicenseText(MetadataLoader ldr) throws IOException {
         // may require a download of the archive
         try (Archive a = ldr.getArchive()) {

@@ -100,9 +100,9 @@ public class WebCatalog implements SoftwareChannel {
         init(in.getLocalRegistry(), out);
     }
 
-    public void init(ComponentRegistry local, Feedback out) {
+    public void init(ComponentRegistry aLocal, Feedback out) {
         this.feedback = out.withBundle(WebCatalog.class);
-        this.local = local;
+        this.local = aLocal;
     }
 
     @Override
@@ -127,7 +127,7 @@ public class WebCatalog implements SoftwareChannel {
         Properties props = new Properties();
         // create the storage. If the init fails, but process will not terminate, the storage will
         // serve no components on the next call.
-        RemotePropertiesStorage newStorage = new RemotePropertiesStorage(feedback, local, props, sb.toString(), null, catalogURL);
+        RemotePropertiesStorage newStorage = createPropertiesStorage(feedback, local, props, sb.toString(), catalogURL);
         if (remoteProcessor != null) {
             newStorage.setRemoteProcessor(remoteProcessor);
         }
@@ -207,11 +207,11 @@ public class WebCatalog implements SoftwareChannel {
         props.putAll(loadProps);
         return newStorage;
     }
-    
-    protected ComponentStorage createPropertiesStorage(Feedback feedback,
-            ComponentRegistry local, Properties props, String selector, URL baseURL) {
+
+    protected RemotePropertiesStorage createPropertiesStorage(Feedback aFeedback,
+                    ComponentRegistry aLocal, Properties props, String selector, URL baseURL) {
         return new RemotePropertiesStorage(
-            feedback, local, props, selector, null, catalogURL);
+                        aFeedback, aLocal, props, selector, null, baseURL);
     }
 
     @Override

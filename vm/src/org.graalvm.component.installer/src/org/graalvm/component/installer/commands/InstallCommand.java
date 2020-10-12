@@ -221,15 +221,16 @@ public class InstallCommand implements InstallerCommand {
      * License IDs processed by the user.
      */
     private Set<String> processedLicenses = new HashSet<>();
-    
+
     /**
      * Licenses, which must be accepted at most before the installation.
      */
     private Map<String, List<MetadataLoader>> licensesToAccept = new LinkedHashMap<>();
 
     /**
-     * Adds a license to be accepted. Does not add a license ID that has been already processed
-     * in previous round(s).
+     * Adds a license to be accepted. Does not add a license ID that has been already processed in
+     * previous round(s).
+     * 
      * @param id license ID
      * @param ldr loader that can deliver the license details.
      */
@@ -471,7 +472,7 @@ public class InstallCommand implements InstallerCommand {
             }
         }
     }
-    
+
     protected void processComponents(Iterable<ComponentParam> toProcess) throws IOException {
         for (Iterator<ComponentParam> it = toProcess.iterator(); it.hasNext();) {
             appendParameterText();
@@ -745,11 +746,11 @@ public class InstallCommand implements InstallerCommand {
     Map<String, List<MetadataLoader>> getLicensesToAccept() {
         return licensesToAccept;
     }
-    
+
     protected LicensePresenter createLicensePresenter() {
         return new LicensePresenter(feedback, input.getLocalRegistry(), licensesToAccept);
     }
-    
+
     /**
      * Forces the user to accept the licenses.
      * 

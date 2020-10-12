@@ -24,7 +24,6 @@
  */
 package org.graalvm.component.installer;
 
-import java.io.IOException;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import java.nio.file.Path;
 import java.util.Map;

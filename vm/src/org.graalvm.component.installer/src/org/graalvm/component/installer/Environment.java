@@ -44,7 +44,7 @@ import java.util.function.Supplier;
 /**
  * Implementation of feedback and input for commands.
  */
-public class Environment implements Feedback, CommandInput {
+public class Environment implements Feedback, CommandInput, Config {
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
                     "org.graalvm.component.installer.Bundle");
 
@@ -105,23 +105,28 @@ public class Environment implements Feedback, CommandInput {
         this.fileIterable = new FileIterable(this, this);
     }
 
-    Environment enableStacktraces() {
+    @Override
+    public Environment enableStacktraces() {
         this.stacktraces = true;
         return this;
     }
 
+    @Override
     public boolean isAutoYesEnabled() {
         return autoYesEnabled;
     }
 
+    @Override
     public void setAutoYesEnabled(boolean autoYesEnabled) {
         this.autoYesEnabled = autoYesEnabled;
     }
 
+    @Override
     public boolean isNonInteractive() {
         return nonInteractive;
     }
 
+    @Override
     public void setNonInteractive(boolean nonInteractive) {
         this.nonInteractive = nonInteractive;
     }
@@ -130,6 +135,7 @@ public class Environment implements Feedback, CommandInput {
         return allOutputToErr;
     }
 
+    @Override
     public void setAllOutputToErr(boolean allOutputToErr) {
         this.allOutputToErr = allOutputToErr;
         if (allOutputToErr) {
@@ -139,10 +145,12 @@ public class Environment implements Feedback, CommandInput {
         }
     }
 
+    @Override
     public void setFileIterable(ComponentIterable fileIterable) {
         this.fileIterable = fileIterable;
     }
 
+    @Override
     public void setCatalogFactory(CatalogFactory catalogFactory) {
         this.catalogFactory = catalogFactory;
     }

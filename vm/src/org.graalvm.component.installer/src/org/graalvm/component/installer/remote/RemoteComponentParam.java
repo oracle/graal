@@ -110,7 +110,7 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
         return fileLoader = doCreateFileLoader(metadataFromLocal(downloadLocalFile()));
     }
 
-    protected MetadataLoader doCreateFileLoader(MetadataLoader delegate) throws IOException {
+    protected MetadataLoader doCreateFileLoader(MetadataLoader delegate) {
         return new DelegateMetaLoader(delegate);
     }
 
@@ -129,7 +129,7 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
         public void close() throws IOException {
             delegate.close();
         }
-        
+
         protected final ComponentInfo catalogInfo() {
             return catalogInfo;
         }
@@ -140,7 +140,7 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
             complete = true;
             return fileInfo;
         }
-        
+
         protected ComponentInfo configureComponentInfo(ComponentInfo info) {
             if (remoteURL != null) {
                 info.setRemoteURL(remoteURL);

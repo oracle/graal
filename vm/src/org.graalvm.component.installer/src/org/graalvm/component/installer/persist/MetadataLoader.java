@@ -88,7 +88,7 @@ public interface MetadataLoader extends Closeable {
      * @return ComponentInfo with completed metadata
      */
     ComponentInfo completeMetadata() throws IOException;
-    
+
     default FileDownloader configureRelatedDownloader(FileDownloader dn) {
         return dn;
     }

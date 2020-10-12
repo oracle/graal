@@ -50,7 +50,7 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
     private final String flavourPrefix;
     private final String singleVersionPrefix;
     private final Version graalVersion;
-    
+
     private RemoteInfoProcessor remoteProcessor = RemoteInfoProcessor.NONE;
 
     private Map<String, Properties> filteredComponents;
@@ -71,7 +71,7 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
     public void setRemoteProcessor(RemoteInfoProcessor remoteProcessor) {
         this.remoteProcessor = remoteProcessor;
     }
-    
+
     /**
      * Returns properties relevant for a specific component ID. May return properties for several
      * versions of the component. Return {@code null} if the component does not exist at all.
@@ -221,9 +221,10 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
         info.setOrigin(baseURL.toString());
         return configureComponentInfo(info);
     }
-    
+
     /**
      * Allows to override, or supplement component information.
+     * 
      * @param info component info
      * @return possibly modified or new instance.
      */
