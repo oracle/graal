@@ -795,6 +795,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * <li>character class escapes</li>
      * <li>assertion escapes</li>
      * <li>backreferences</li>
+     * <li>named backreferences</li>
      * <li>extended grapheme clusters</li>
      * <li>subexpression calls</li>
      * </ul>
@@ -809,6 +810,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             return;
         }
         if (backreference()) {
+            lastTerm = TermCategory.Atom;
+            return;
+        }
+        if (namedBackreference()) {
             lastTerm = TermCategory.Atom;
             return;
         }
@@ -914,16 +919,47 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             if (groupNumber > groups) {
                 throw syntaxErrorAtRel("invalid group reference " + number, number.length());
             }
-            verifyGroupReference(groupNumber, number);
-            if (getLocalFlags().isIgnoreCase()) {
-                bailOut("case insensitive backreferences not supported");
+            emitBackreference(groupNumber);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private boolean namedBackreference() {
+        if (match("k<")) {
+            String groupName = parseGroupName('>');
+            if (namedCaptureGroups != null && namedCaptureGroups.containsKey(groupName)) {
+                int groupNumber = namedCaptureGroups.get(groupName);
+                emitBackreference(groupNumber);
             } else {
-                emitSnippet("\\" + number);
+                throw syntaxErrorAtRel("unknown group name " + groupName, groupName.length() + 1);
             }
             return true;
         } else {
             return false;
         }
+    }
+
+    private void emitBackreference(int groupNumber) {
+        if (isCaptureGroupOpen(groupNumber)) {
+            // Ruby syntax allows references to an open capture group. However, such a reference can
+            // never match anything as the capture group is reset on entry.
+            emitSnippet("[]");
+        } else if (getLocalFlags().isIgnoreCase()) {
+            bailOut("case insensitive backreferences not supported");
+        } else {
+            emitSnippet("\\" + groupNumber);
+        }
+    }
+
+    private boolean isCaptureGroupOpen(int groupNumber) {
+        for (Group openGroup : groupStack) {
+            if (groupNumber == openGroup.groupNumber) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -934,11 +970,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * @throws RegexSyntaxException if the backreference is not valid
      */
     private void verifyGroupReference(int groupNumber, String groupName) throws RegexSyntaxException {
-        for (Group openGroup : groupStack) {
-            if (groupNumber == openGroup.groupNumber) {
-                throw syntaxErrorAtRel("cannot refer to an open group", groupName.length() + 1);
-            }
-        }
         for (Lookbehind openLookbehind : lookbehindStack) {
             if (groupNumber >= openLookbehind.containedGroups) {
                 throw syntaxErrorHere("cannot refer to group defined in the same lookbehind subpattern");
@@ -1308,7 +1339,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * Parses one of the many syntactic forms that start with a parenthesis, assuming that the
      * parenthesis was already parsed. These consist of the following:
      * <ul>
-     * <li>named backreferences (?P=name)</li>
      * <li>non-capturing groups (?:...)</li>
      * <li>comments (?#...)</li>
      * <li>positive and negative lookbehind assertions, (?<=...) and (?<!...)</li>
@@ -1330,20 +1360,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     mustHaveMore();
                     final int ch1 = consumeChar();
                     switch (ch1) {
-                        case 'P': {
-                            mustHaveMore();
-                            final int ch2 = consumeChar();
-                            switch (ch2) {
-                                case '=': {
-                                    namedBackreference();
-                                    break;
-                                }
-                                default:
-                                    throw syntaxErrorAtRel("unknown extension ?P" + new String(Character.toChars(ch2)), 3);
-                            }
-                            break;
-                        }
-
                         case ':':
                             group(false, Optional.empty(), start);
                             break;
@@ -1452,21 +1468,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             }
         }
         return true;
-    }
-
-    /**
-     * Parses a named backreference, assuming that the prefix '(?P=' was already parsed.
-     */
-    private void namedBackreference() {
-        String groupName = parseGroupName(')');
-        if (namedCaptureGroups != null && namedCaptureGroups.containsKey(groupName)) {
-            int groupNumber = namedCaptureGroups.get(groupName);
-            verifyGroupReference(groupNumber, groupName);
-            emitSnippet("\\" + groupNumber);
-            lastTerm = TermCategory.Atom;
-        } else {
-            throw syntaxErrorAtRel("unknown group name " + groupName, groupName.length() + 1);
-        }
     }
 
     /**
@@ -1594,6 +1595,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             }
         }
         if (!lookbehindStack.isEmpty()) {
+            // TODO: Handle conditional backreferences in open capture groups
             verifyGroupReference(groupNumber, groupId);
         }
         disjunction();
