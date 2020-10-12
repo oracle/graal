@@ -95,8 +95,8 @@ abstract class BytecodeSwitch {
     public abstract int size(BytecodeStream stream, int bci);
 
     /**
-     * Gets the bytecode accepted by this switch helper.
-     * Either {@code LOOKUPSWITCH} or {@code TABLESWITCH}.
+     * Gets the bytecode accepted by this switch helper. Either {@code LOOKUPSWITCH} or
+     * {@code TABLESWITCH}.
      *
      * @return bytecode accepted by this switch helper
      */
