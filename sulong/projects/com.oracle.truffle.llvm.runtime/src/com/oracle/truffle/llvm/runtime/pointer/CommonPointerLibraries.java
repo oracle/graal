@@ -163,7 +163,6 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static class InvokeMember {
-        @SuppressWarnings("unused")
         @Specialization(guards = {"asClazz(receiver)==clazz", "member.equals(methodName)", "argCount==arguments.length"})
         static Object doCached(LLVMPointerImpl receiver, String member, Object[] arguments,
                         @CachedContext(LLVMLanguage.class) LLVMContext context, @CachedLibrary(limit = "5") InteropLibrary interop,
@@ -223,7 +222,6 @@ abstract class CommonPointerLibraries {
         return llvmFunction;
     }
 
-    @SuppressWarnings("unused")
     @ExportMessage
     static boolean isMemberInsertable(LLVMPointerImpl receiver, String ident) {
         return false;
