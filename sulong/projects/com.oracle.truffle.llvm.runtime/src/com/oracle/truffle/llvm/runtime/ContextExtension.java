@@ -39,6 +39,7 @@ public interface ContextExtension {
         return this.getClass();
     }
 
-    default void initialize() {
+    @SuppressWarnings("unused")
+    default void initialize(LLVMContext context) {
     }
 }

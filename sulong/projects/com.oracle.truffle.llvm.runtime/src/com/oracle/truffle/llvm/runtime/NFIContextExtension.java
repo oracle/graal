@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -49,10 +50,9 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class NFIContextExtension implements ContextExtension {
 
@@ -60,8 +60,8 @@ public final class NFIContextExtension implements ContextExtension {
 
     @CompilerDirectives.CompilationFinal private Object defaultLibraryHandle;
     private boolean internalLibrariesAdded = false;
-    // we use an EconomicMap because iteration order must match the insertion order
-    private final EconomicMap<TruffleFile, Object> libraryHandles = EconomicMap.create();
+    private final List<Object> libraryHandles = new ArrayList<>();
+    private final EconomicMap<TruffleFile, CallTarget> visited = EconomicMap.create();
     private final TruffleLanguage.Env env;
 
     public NFIContextExtension(Env env) {
@@ -69,9 +69,21 @@ public final class NFIContextExtension implements ContextExtension {
     }
 
     @Override
-    public void initialize() {
+    public void initialize(LLVMContext context) {
         assert !isInitialized();
-        this.defaultLibraryHandle = loadDefaultLibrary();
+        if (!internalLibrariesAdded) {
+            TruffleFile file = LLVMContext.InternalLibraryLocator.INSTANCE.locateLibrary(context, "libsulong-native." + getNativeLibrarySuffix(), "<default nfi library>");
+            Object lib = loadLibrary(file, context);
+            if (lib instanceof CallTarget) {
+                libraryHandles.add(((CallTarget) lib).call());
+            }
+
+            Object defaultLib = loadDefaultLibrary();
+            if (defaultLib instanceof CallTarget) {
+                this.defaultLibraryHandle = ((CallTarget) defaultLib).call();
+            }
+            internalLibrariesAdded = true;
+        }
     }
 
     public boolean isInitialized() {
@@ -126,15 +138,30 @@ public final class NFIContextExtension implements ContextExtension {
         return wrapper;
     }
 
-    public synchronized void parseNativeLibrary(TruffleFile file, LLVMContext context) throws UnsatisfiedLinkError {
+    public synchronized void addLibraryHandles(Object library) {
         CompilerAsserts.neverPartOfCompilation();
-        if (!libraryHandles.containsKey(file) && !handleSpecialLibraries(file)) {
-            try {
-                libraryHandles.put(file, loadLibrary(file, context));
-            } catch (UnsatisfiedLinkError e) {
-                System.err.println(file.toString() + " not found!\n" + e.getMessage());
-                throw e;
+        if (!libraryHandles.contains(library)) {
+            libraryHandles.add(library);
+        }
+    }
+
+    public synchronized CallTarget parseNativeLibrary(TruffleFile file, LLVMContext context) throws UnsatisfiedLinkError {
+        CompilerAsserts.neverPartOfCompilation();
+        try {
+            if (!visited.containsKey(file)) {
+                Object callTarget = loadLibrary(file, context);
+                if (callTarget != null) {
+                    visited.put(file, (CallTarget) callTarget);
+                    return (CallTarget) callTarget;
+                } else {
+                    throw new IllegalStateException("Native library call target is null.");
+                }
+            } else {
+                return visited.get(file);
             }
+        } catch (UnsatisfiedLinkError e) {
+            System.err.println(file.toString() + " not found!\n" + e.getMessage());
+            throw e;
         }
     }
 
@@ -154,23 +181,6 @@ public final class NFIContextExtension implements ContextExtension {
         }
     }
 
-    /**
-     * @return true if the library does not need to be loaded
-     */
-    private static boolean handleSpecialLibraries(TruffleFile file) {
-        Path fileNamePath = Paths.get(file.getPath()).getFileName();
-        if (fileNamePath == null) {
-            throw new IllegalArgumentException("Filename path of " + file.getPath() + " is null");
-        }
-        String fileName = fileNamePath.toString().trim();
-        if (fileName.startsWith("libc.") || fileName.startsWith("libSystem.")) {
-            // nothing to do, since libsulong.so already links against libc.so/libSystem.B.dylib
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     private Object loadLibrary(TruffleFile file, LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
         String libName = file.getPath();
@@ -187,7 +197,8 @@ public final class NFIContextExtension implements ContextExtension {
         }
         final Source source = Source.newBuilder("nfi", loadExpression, "(load " + libName + ")").internal(true).build();
         try {
-            return env.parseInternal(source).call();
+            // remove the call to the calltarget
+            return env.parseInternal(source);
         } catch (UnsatisfiedLinkError ex) {
             if (optional) {
                 return null;
@@ -201,7 +212,8 @@ public final class NFIContextExtension implements ContextExtension {
         CompilerAsserts.neverPartOfCompilation();
         final Source source = Source.newBuilder("nfi", "default", "default").internal(true).build();
         try {
-            return env.parseInternal(source).call();
+            // remove the call to the calltarget
+            return env.parseInternal(source);
         } catch (Exception ex) {
             throw new IllegalArgumentException(ex);
         }
@@ -268,20 +280,9 @@ public final class NFIContextExtension implements ContextExtension {
     @SuppressWarnings("unused")
     public synchronized NativeLookupResult getNativeFunctionOrNull(LLVMContext context, String name) {
         CompilerAsserts.neverPartOfCompilation();
-        if (!internalLibrariesAdded) {
-            TruffleFile file = LLVMContext.InternalLibraryLocator.INSTANCE.locateLibrary(context, "libsulong-native.", "<default nfi library>");
-            if (file == null) {
-                // Unable to locate the library -> will go to native
-                Path path = Paths.get("libsulong-native.");
-                LibraryLocator.traceDelegateNative(context, path);
-                file = env.getInternalTruffleFile(path.toUri());
-            }
-            libraryHandles.put(file, loadLibrary(file, context));
-            internalLibrariesAdded = true;
-        }
-        MapCursor<TruffleFile, Object> cursor = libraryHandles.getEntries();
-        while (cursor.advance()) {
-            Object symbol = getNativeFunctionOrNull(cursor.getValue(), name);
+        Object[] cursor = libraryHandles.toArray();
+        for (int i = 0; i < cursor.length; i++) {
+            Object symbol = getNativeFunctionOrNull(cursor[i], name);
             if (symbol != null) {
                 return new NativeLookupResult(symbol);
             }
@@ -297,20 +298,9 @@ public final class NFIContextExtension implements ContextExtension {
     @SuppressWarnings("unused")
     private synchronized NativeLookupResult getNativeDataObjectOrNull(LLVMContext context, String name) {
         CompilerAsserts.neverPartOfCompilation();
-        if (!internalLibrariesAdded) {
-            TruffleFile file = LLVMContext.InternalLibraryLocator.INSTANCE.locateLibrary(context, "libsulong-native.", "<default nfi library>");
-            if (file == null) {
-                // Unable to locate the library -> will go to native
-                Path path = Paths.get("libsulong-native.");
-                LibraryLocator.traceDelegateNative(context, path);
-                file = env.getInternalTruffleFile(path.toUri());
-            }
-            libraryHandles.put(file, loadLibrary(file, context));
-            internalLibrariesAdded = true;
-        }
-        MapCursor<TruffleFile, Object> cursor = libraryHandles.getEntries();
-        while (cursor.advance()) {
-            Object symbol = getNativeDataObjectOrNull(cursor.getValue(), name);
+        Object[] cursor = libraryHandles.toArray();
+        for (int i = 0; i < cursor.length; i++) {
+            Object symbol = getNativeFunctionOrNull(cursor[i], name);
             if (symbol != null) {
                 return new NativeLookupResult(symbol);
             }
