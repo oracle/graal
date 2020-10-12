@@ -173,7 +173,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     RawLoadNode load = (RawLoadNode) node;
                     if (load.getLocationIdentity().isSingle()) {
                         ValueNode object = GraphUtil.unproxify(load.object());
-                        UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, load.offset(), load.getLocationIdentity());
+                        UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, load.offset(), load.getLocationIdentity(), load.accessKind());
                         ValueNode cachedValue = state.getCacheEntry(identifier);
                         if (cachedValue != null && areValuesReplaceable(load, cachedValue, considerGuards)) {
                             if (load.accessKind() == JavaKind.Boolean) {
@@ -195,7 +195,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     RawStoreNode write = (RawStoreNode) node;
                     if (write.getKilledLocationIdentity().isSingle()) {
                         ValueNode object = GraphUtil.unproxify(write.object());
-                        UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, write.offset(), write.getKilledLocationIdentity());
+                        UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, write.offset(), write.getKilledLocationIdentity(), write.accessKind());
                         ValueNode cachedValue = state.getCacheEntry(identifier);
                         ValueNode value = getScalarAlias(write.value());
                         if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {

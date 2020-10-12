@@ -379,4 +379,21 @@ public class UnsafeReadEliminationTest extends GraalCompilerTest {
         test("aliasingSafeUnsafe3");
     }
 
+    public static boolean aliasingUnsafe() {
+        UNSAFE.putByte(FINAL_BYTE_ARRAY, byteArrayBaseOffset + 1, (byte) 0x44);
+        UNSAFE.putByte(FINAL_BYTE_ARRAY, byteArrayBaseOffset, (byte) 0x55);
+        int after = UNSAFE.getInt(FINAL_BYTE_ARRAY, byteArrayBaseOffset);
+
+        FINAL_BYTE_ARRAY[0] = 0; // reset
+        FINAL_BYTE_ARRAY[1] = 0; // reset
+        FINAL_BYTE_ARRAY[2] = 0; // reset
+        FINAL_BYTE_ARRAY[3] = 0; // reset
+        return 0x55 != after;
+    }
+
+    @Test
+    public void testAliasingUnsafe() {
+        test("aliasingUnsafe");
+    }
+
 }
