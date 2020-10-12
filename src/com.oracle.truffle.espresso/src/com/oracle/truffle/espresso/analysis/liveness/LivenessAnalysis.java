@@ -39,17 +39,19 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
 public class LivenessAnalysis {
+    public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis();
+
     @CompilerDirectives.CompilationFinal(dimensions = 1) BCILocalActionRecord[] result;
 
     public void performPreBCI(VirtualFrame frame, int bci, BytecodeNode node) {
-        if (result[bci] == null) {
+        if (result == null || result[bci] == null) {
             return;
         }
         result[bci].pre(frame, node);
     }
 
     public void performPostBCI(VirtualFrame frame, int bci, BytecodeNode node) {
-        if (result[bci] == null) {
+        if (result == null || result[bci] == null) {
             return;
         }
         result[bci].post(frame, node);
@@ -67,6 +69,8 @@ public class LivenessAnalysis {
         BlockBoundaryFinder blockBoundaryFinder = new BlockBoundaryFinder(method, loadStoreClosure.result());
         DepthFirstBlockIterator.analyze(method, graph, blockBoundaryFinder);
 
+        graph.log(blockBoundaryFinder);
+
         // Using the live sets and history, build a set of action for each bci, such that it frees
         // as early as possible each dead local.
         return new LivenessAnalysis(blockBoundaryFinder.result(), graph, method);
@@ -74,6 +78,9 @@ public class LivenessAnalysis {
 
     private LivenessAnalysis(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
         this.result = buildResultFrom(result, graph, method);
+    }
+
+    private LivenessAnalysis() {
     }
 
     private static BCILocalActionRecord[] buildResultFrom(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {

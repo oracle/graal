@@ -21,25 +21,8 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.analysis.graph;
+package com.oracle.truffle.espresso.analysis;
 
-import java.util.Arrays;
-
-import com.oracle.truffle.espresso.analysis.BlockLogger;
-
-public interface Graph<T extends LinkedBlock> {
-    T entryBlock();
-
-    T get(int blockID);
-
-    int totalBlocks();
-
-    default void log(BlockLogger logger) {
-        for (int i = 0; i < totalBlocks(); i++) {
-            T block = get(i);
-            System.err.println("B" + i + "[" + block.start() + ", " + block.end() + "]: ");
-            logger.log(i, "\t");
-            System.err.println("\tto: " + Arrays.toString(block.successorsID()));
-        }
-    }
+public interface BlockLogger {
+    void log(int block, String tab);
 }

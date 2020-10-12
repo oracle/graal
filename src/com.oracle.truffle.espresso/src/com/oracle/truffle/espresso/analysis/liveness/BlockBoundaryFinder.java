@@ -25,23 +25,28 @@ package com.oracle.truffle.espresso.analysis.liveness;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.espresso.analysis.AnalysisProcessor;
 import com.oracle.truffle.espresso.analysis.BlockIterator;
 import com.oracle.truffle.espresso.analysis.BlockIteratorClosure;
+import com.oracle.truffle.espresso.analysis.BlockLogger;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.impl.Method;
 
-public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBoundaryResult {
+public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBoundaryResult, BlockLogger {
     private final int maxLocals;
 
+    // For each loop entry, records all paths that have been discovered to loop back.
     private final List<LoopRecord>[] loops;
-    private final Set<Integer>[] registeredInLoops;
+    // For each block, records through which successor a given block has been registered to a loop.
+    private final Map<Integer, Set<Integer>>[] registeredInLoops;
 
     private final BitSet[] blockEntryLiveSet;
     private final History[] blockHistory;
@@ -56,7 +61,7 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
         this.blockEntryLiveSet = new BitSet[blockHistory.length];
         this.blockEndLiveSet = new BitSet[blockHistory.length];
         this.loops = new List[blockHistory.length];
-        this.registeredInLoops = new Set[blockHistory.length];
+        this.registeredInLoops = new Map[blockHistory.length];
 
         this.emptyBitSet = new BitSet(maxLocals);
     }
@@ -100,21 +105,14 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
             if (processor.isInProcess(succ)) {
                 registerLoop(succ, succ, processor);
             } else if (registeredInLoops[succ] != null) {
-                for (int loopEntry : registeredInLoops[succ]) {
-                    if (!isLoopRegistered(loopEntry, b.id())) {
-                        registerLoop(loopEntry, succ, processor);
+                Map<Integer, Set<Integer>> entryToSuccessor = registeredInLoops[succ];
+                for (int le : entryToSuccessor.keySet()) {
+                    if (!entryToSuccessor.get(le).contains(succ)) {
+                        registerLoop(le, succ, processor);
                     }
                 }
             }
         }
-    }
-
-    private boolean isLoopRegistered(int loopEntry, int block) {
-        Set<Integer> set = registeredInLoops[block];
-        if (set != null) {
-            return set.contains(loopEntry);
-        }
-        return false;
     }
 
     private BitSet getEntryLiveSet(int blockID, AnalysisProcessor processor) {
@@ -160,10 +158,10 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
                     propagateLoop(endState, entryState, toPropagate, block, processor);
                 }
                 for (LinkedBlock block : loop) {
-                    Set<Integer> set = registeredInLoops[block.id()];
-                    if (set != null) {
-                        set.remove(b.id());
-                        if (set.isEmpty()) {
+                    Map<Integer, Set<Integer>> map = registeredInLoops[block.id()];
+                    if (map != null) {
+                        map.remove(b.id());
+                        if (map.isEmpty()) {
                             registeredInLoops[block.id()] = null;
                         }
                     }
@@ -214,14 +212,26 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
         List<LinkedBlock> loop = processor.findLoop(loopEntry);
         registered.add(new LoopRecord(isLoopEnd, loop, successor));
 
-        for (LinkedBlock block : loop) {
-            Set<Integer> set = registeredInLoops[block.id()];
-            if (set == null) {
-                set = new HashSet<>();
-                registeredInLoops[block.id()] = set;
-            }
-            set.add(loopEntry);
+        registerSuccessorLoop(loopEntry, loop.get(0), successor);
+        for (int i = 1; i < loop.size(); i++) {
+            LinkedBlock block = loop.get(i);
+            int successorID = loop.get(i - 1).id();
+            registerSuccessorLoop(loopEntry, block, successorID);
         }
+    }
+
+    private void registerSuccessorLoop(int loopEntry, LinkedBlock block, int successorID) {
+        Map<Integer, Set<Integer>> map = registeredInLoops[block.id()];
+        if (map == null) {
+            map = new HashMap<>();
+            registeredInLoops[block.id()] = map;
+        }
+        Set<Integer> set = map.get(loopEntry);
+        if (set == null) {
+            set = new HashSet<>();
+            map.put(loopEntry, set);
+        }
+        set.add(successorID);
     }
 
     private boolean successorsAreDoneOrLoops(AnalysisProcessor processor, LinkedBlock b) {
@@ -279,5 +289,14 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
         public Iterator<LinkedBlock> iterator() {
             return loop.iterator();
         }
+    }
+
+    @Override
+    public void log(int block, String tab) {
+        System.err.println(tab + entryFor(block));
+        for (Record r : historyFor(block)) {
+            System.err.println(tab + tab + r.type + " " + r.local);
+        }
+        System.err.println(tab + endFor(block));
     }
 }
