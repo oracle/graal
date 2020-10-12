@@ -114,7 +114,6 @@ import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -1060,8 +1059,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     /**
-     * Returns OptimizedCallTarget's {@link PolyglotCompilerOptions} as a {@link Map}.
-     * The returned map can be passed as a {@code options} to the {@link TruffleCompiler} methods.
+     * Returns OptimizedCallTarget's {@link PolyglotCompilerOptions} as a {@link Map}. The returned
+     * map can be passed as a {@code options} to the {@link TruffleCompiler} methods.
      */
     public static Map<String, Object> getOptionsForCompiler(OptimizedCallTarget callTarget) {
         Map<String, Object> map = new HashMap<>();

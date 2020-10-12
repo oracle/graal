@@ -52,7 +52,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceInlining;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
@@ -92,9 +91,9 @@ public final class PerformanceInformationHandler implements Closeable {
 
     public static boolean isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind warningKind) {
         PerformanceInformationHandler handler = instance.get();
-        return getPolyglotOptionValue(handler.options, TracePerformanceWarnings).contains(warningKind) ||
-                        getPolyglotOptionValue(handler.options, PerformanceWarningsAreFatal).contains(warningKind) ||
-                        getPolyglotOptionValue(handler.options, TreatPerformanceWarningsAsErrors).contains(warningKind);
+        return handler.options.get(TracePerformanceWarnings).contains(warningKind) ||
+                        handler.options.get(PerformanceWarningsAreFatal).contains(warningKind) ||
+                        handler.options.get(TreatPerformanceWarningsAsErrors).contains(warningKind);
     }
 
     public static void logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind warningKind, CompilableTruffleAST compilable, List<? extends Node> locations, String details,
@@ -121,7 +120,7 @@ public final class PerformanceInformationHandler implements Closeable {
         if (locations == null || locations.isEmpty()) {
             return null;
         }
-        int limit = getPolyglotOptionValue(options, TraceStackTraceLimit); // TODO
+        int limit = options.get(TraceStackTraceLimit); // TODO
         if (limit <= 0) {
             return null;
         }
@@ -216,10 +215,10 @@ public final class PerformanceInformationHandler implements Closeable {
             }
         }
 
-        if (!Collections.disjoint(getWarnings(), getPolyglotOptionValue(options, PerformanceWarningsAreFatal))) { // TODO
+        if (!Collections.disjoint(getWarnings(), options.get(PerformanceWarningsAreFatal))) { // TODO
             throw new AssertionError("Performance warning detected and is fatal.");
         }
-        if (!Collections.disjoint(getWarnings(), getPolyglotOptionValue(options, TreatPerformanceWarningsAsErrors))) {
+        if (!Collections.disjoint(getWarnings(), options.get(TreatPerformanceWarningsAsErrors))) {
             throw new AssertionError("Performance warning detected and is treated as a compilation error.");
         }
     }
@@ -246,7 +245,7 @@ public final class PerformanceInformationHandler implements Closeable {
     }
 
     static void reportDecisionIsNull(CompilableTruffleAST compilable, JavaConstant callNode) {
-        if (TruffleCompilerOptions.getPolyglotOptionValue(instance.get().options, TraceInlining)) {
+        if (instance.get().options.get(TraceInlining)) {
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("callNode", callNode.toValueString());
             logInliningWarning(compilable, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
@@ -254,7 +253,7 @@ public final class PerformanceInformationHandler implements Closeable {
     }
 
     static void reportCallTargetChanged(CompilableTruffleAST compilable, JavaConstant callNode, TruffleInliningPlan.Decision decision) {
-        if (TruffleCompilerOptions.getPolyglotOptionValue(instance.get().options, TraceInlining)) {
+        if (instance.get().options.get(TraceInlining)) {
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("originalTarget", decision.getTargetName());
             properties.put("callNode", callNode.toValueString());

@@ -101,7 +101,6 @@ import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.VoidGraphStructure;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleDebugContextImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
@@ -191,8 +190,8 @@ final class TruffleToLibGraalEntryPoints {
         try (JNILibGraalScope<TruffleToLibGraal.Id> s = scope) {
             HSTruffleCompilerRuntime hsTruffleRuntime = LibGraalObjectHandles.resolve(truffleRuntimeHandle, HSTruffleCompilerRuntime.class);
             assert TruffleCompilerRuntime.getRuntime() == hsTruffleRuntime;
-            OptionValues options = TruffleCompilerOptions.getGraalOptions();
-            CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue(options), options);
+            OptionValues graalOptions = hsTruffleRuntime.getGraalOptions(OptionValues.class);
+            CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue(graalOptions), graalOptions);
             String name = compilerConfigurationFactory.getName();
             scope.setObjectResult(createHSString(env, name));
         } catch (Throwable t) {
@@ -339,7 +338,10 @@ final class TruffleToLibGraalEntryPoints {
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_isPrintGraphEnabled")
     public static boolean isPrintGraphEnabled(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long truffleRuntimeHandle) {
         try (JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(IsPrintGraphEnabled, env)) {
-            return DebugOptions.PrintGraph.getValue(TruffleCompilerOptions.getGraalOptions()) != DebugOptions.PrintGraphTarget.Disable;
+            HSTruffleCompilerRuntime hsTruffleRuntime = LibGraalObjectHandles.resolve(truffleRuntimeHandle, HSTruffleCompilerRuntime.class);
+            assert TruffleCompilerRuntime.getRuntime() == hsTruffleRuntime;
+            OptionValues graalOptions = hsTruffleRuntime.getGraalOptions(OptionValues.class);
+            return DebugOptions.PrintGraph.getValue(graalOptions) != DebugOptions.PrintGraphTarget.Disable;
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
             return false;
