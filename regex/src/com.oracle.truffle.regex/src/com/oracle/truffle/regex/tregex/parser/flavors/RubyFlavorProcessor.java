@@ -1308,12 +1308,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * Parses one of the many syntactic forms that start with a parenthesis, assuming that the
      * parenthesis was already parsed. These consist of the following:
      * <ul>
-     * <li>named capture groups (?P<name>...)</li>
      * <li>named backreferences (?P=name)</li>
      * <li>non-capturing groups (?:...)</li>
      * <li>comments (?#...)</li>
      * <li>positive and negative lookbehind assertions, (?<=...) and (?<!...)</li>
      * <li>positive and negative lookahead assertions (?=...) and (?!...)</li>
+     * <li>named capture groups (?P<name>...)</li>
      * <li>atomic groups (?>...)</li>
      * <li>conditional backreferences (?(id/name)yes-pattern|no-pattern)</li>
      * <li>inline local and global flags, (?aiLmsux-imsx:...) and (?aiLmsux)</li>
@@ -1334,11 +1334,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                             mustHaveMore();
                             final int ch2 = consumeChar();
                             switch (ch2) {
-                                case '<': {
-                                    String groupName = parseGroupName('>');
-                                    group(true, Optional.of(groupName), start);
-                                    break;
-                                }
                                 case '=': {
                                     namedBackreference();
                                     break;
@@ -1368,7 +1363,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                                     lookbehind(false);
                                     break;
                                 default:
-                                    throw syntaxErrorAtRel("unknown extension ?<" + new String(Character.toChars(ch2)), 3);
+                                    retreat();
+                                    String groupName = parseGroupName('>');
+                                    group(true, Optional.of(groupName), start);
+                                    break;
                             }
                             break;
                         }
