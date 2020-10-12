@@ -69,8 +69,6 @@ public class LivenessAnalysis {
         BlockBoundaryFinder blockBoundaryFinder = new BlockBoundaryFinder(method, loadStoreClosure.result());
         DepthFirstBlockIterator.analyze(method, graph, blockBoundaryFinder);
 
-        graph.log(blockBoundaryFinder);
-
         // Using the live sets and history, build a set of action for each bci, such that it frees
         // as early as possible each dead local.
         return new LivenessAnalysis(blockBoundaryFinder.result(), graph, method);

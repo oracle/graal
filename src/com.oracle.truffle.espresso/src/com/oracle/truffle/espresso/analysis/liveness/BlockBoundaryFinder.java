@@ -45,7 +45,8 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
 
     // For each loop entry, records all paths that have been discovered to loop back.
     private final List<LoopRecord>[] loops;
-    // For each block, records through which successor a given block has been registered to a loop.
+    // For each block, records through which predecessor a given block has been registered to a
+    // loop.
     private final Map<Integer, Set<Integer>>[] registeredInLoops;
 
     private final BitSet[] blockEntryLiveSet;
@@ -103,12 +104,12 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
     private void identifyLoops(LinkedBlock b, AnalysisProcessor processor) {
         for (int succ : b.successorsID()) {
             if (processor.isInProcess(succ)) {
-                registerLoop(succ, succ, processor);
+                registerLoopPath(succ, succ, processor);
             } else if (registeredInLoops[succ] != null) {
-                Map<Integer, Set<Integer>> entryToSuccessor = registeredInLoops[succ];
-                for (int le : entryToSuccessor.keySet()) {
-                    if (!entryToSuccessor.get(le).contains(succ)) {
-                        registerLoop(le, succ, processor);
+                Map<Integer, Set<Integer>> successorEntries = registeredInLoops[succ];
+                for (int le : successorEntries.keySet()) {
+                    if (!successorEntries.get(le).contains(b.id())) {
+                        registerLoopPath(le, succ, processor);
                     }
                 }
             }
@@ -144,30 +145,54 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
         return entryLiveSet;
     }
 
-    private void propagateLoop(LinkedBlock b, AnalysisProcessor processor) {
-        List<LoopRecord> registeredLoops = loops[b.id()];
+    private void propagateLoop(LinkedBlock loopEntry, AnalysisProcessor processor) {
+        List<LoopRecord> registeredLoops = loops[loopEntry.id()];
         if (registeredLoops != null) {
             for (LoopRecord loop : registeredLoops) {
-                BitSet toPropagate = (BitSet) getEntryLiveSet(loop.successor, processor).clone();
-                for (LinkedBlock block : loop) {
-                    BitSet endState = getEndState(block, processor);
-                    if (isSuperSet(endState, toPropagate)) {
-                        break;
-                    }
-                    BitSet entryState = getEntryLiveSet(block.id(), processor);
-                    propagateLoop(endState, entryState, toPropagate, block, processor);
-                }
-                for (LinkedBlock block : loop) {
-                    Map<Integer, Set<Integer>> map = registeredInLoops[block.id()];
-                    if (map != null) {
-                        map.remove(b.id());
-                        if (map.isEmpty()) {
-                            registeredInLoops[block.id()] = null;
-                        }
+                correctNestedLoop(loopEntry.id(), loop);
+                propagateLoopPath(processor, loop);
+                unregisterLoop(loopEntry, loop);
+            }
+            loops[loopEntry.id()] = null;
+        }
+    }
+
+    private void correctNestedLoop(int loopEntry, LoopRecord loop) {
+        Map<Integer, Set<Integer>> map = registeredInLoops[loopEntry];
+        if (map != null) {
+            for (int entry : map.keySet()) {
+                if (entry != loopEntry) {
+                    int lastBlockInPath = loop.loop.get(0).id();
+                    if (registeredInLoops[lastBlockInPath].get(entry) == null) {
+                        assert loops[entry] != null;
+                        loops[entry].add(loop);
                     }
                 }
             }
-            loops[b.id()] = null;
+        }
+    }
+
+    private void unregisterLoop(LinkedBlock b, LoopRecord loop) {
+        for (LinkedBlock block : loop) {
+            Map<Integer, Set<Integer>> map = registeredInLoops[block.id()];
+            if (map != null) {
+                map.remove(b.id());
+                if (map.isEmpty()) {
+                    registeredInLoops[block.id()] = null;
+                }
+            }
+        }
+    }
+
+    private void propagateLoopPath(AnalysisProcessor processor, LoopRecord loop) {
+        BitSet toPropagate = (BitSet) getEntryLiveSet(loop.successor, processor).clone();
+        for (LinkedBlock block : loop) {
+            BitSet endState = getEndState(block, processor);
+            if (isSuperSet(endState, toPropagate)) {
+                break;
+            }
+            BitSet entryState = getEntryLiveSet(block.id(), processor);
+            propagateLoop(endState, entryState, toPropagate, block, processor);
         }
     }
 
@@ -201,26 +226,24 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
         return true;
     }
 
-    private void registerLoop(int loopEntry, int successor, AnalysisProcessor processor) {
-        boolean isLoopEnd = loopEntry == successor;
-
+    private void registerLoopPath(int loopEntry, int successor, AnalysisProcessor processor) {
         List<LoopRecord> registered = loops[loopEntry];
         if (registered == null) {
             registered = new ArrayList<>();
             loops[loopEntry] = registered;
         }
         List<LinkedBlock> loop = processor.findLoop(loopEntry);
-        registered.add(new LoopRecord(isLoopEnd, loop, successor));
+        registered.add(new LoopRecord(loop, successor));
 
-        registerSuccessorLoop(loopEntry, loop.get(0), successor);
+        registerPredecessorLoop(loopEntry, processor.idToBlock(successor), loop.get(0).id());
         for (int i = 1; i < loop.size(); i++) {
-            LinkedBlock block = loop.get(i);
-            int successorID = loop.get(i - 1).id();
-            registerSuccessorLoop(loopEntry, block, successorID);
+            LinkedBlock block = loop.get(i - 1);
+            int successorID = loop.get(i).id();
+            registerPredecessorLoop(loopEntry, block, successorID);
         }
     }
 
-    private void registerSuccessorLoop(int loopEntry, LinkedBlock block, int successorID) {
+    private void registerPredecessorLoop(int loopEntry, LinkedBlock block, int successorID) {
         Map<Integer, Set<Integer>> map = registeredInLoops[block.id()];
         if (map == null) {
             map = new HashMap<>();
@@ -275,12 +298,10 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
     }
 
     private static class LoopRecord implements Iterable<LinkedBlock> {
-        final boolean isLoopEnd;
         final List<LinkedBlock> loop;
         final int successor;
 
-        public LoopRecord(boolean isLoopEnd, List<LinkedBlock> loop, int successor) {
-            this.isLoopEnd = isLoopEnd;
+        public LoopRecord(List<LinkedBlock> loop, int successor) {
             this.loop = loop;
             this.successor = successor;
         }
