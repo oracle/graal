@@ -198,7 +198,7 @@ final class ParserDriver {
                         dependencies.add(calls);
                     } else {
                         Object sourceOrCallTarget = createDependencySource(sulongLibraryName, null, false, file);
-                        if (!dependencies.contains(sourceOrCallTarget)) {
+                        if (sourceOrCallTarget != null && !dependencies.contains(sourceOrCallTarget)) {
                             dependencies.add(sourceOrCallTarget);
                         }
                     }
@@ -221,7 +221,7 @@ final class ParserDriver {
                         // for native libraries, the path is the same as the library's name. The NFI
                         // will figure out the path.
                         Object sourceOrCallTarget = createDependencySource(externalLibraryName, externalLibraryName, true, file);
-                        if (!dependencies.contains(sourceOrCallTarget)) {
+                        if (sourceOrCallTarget != null && !dependencies.contains(sourceOrCallTarget)) {
                             dependencies.add(sourceOrCallTarget);
                         }
                     }
@@ -422,7 +422,7 @@ final class ParserDriver {
                     Object sourceOrCallTarget = createDependencySource(lib, lib, true, file);
                     // A source is null if it's a native library, which will be added to the NFI
                     // context extension instead.
-                    if (!dependencies.contains(sourceOrCallTarget)) {
+                    if (sourceOrCallTarget != null && !dependencies.contains(sourceOrCallTarget)) {
                         dependencies.add(sourceOrCallTarget);
                     }
                 }
@@ -436,9 +436,11 @@ final class ParserDriver {
             if (!isNative) {
                 throw new LLVMParserException("'" + file.getName() + "' is not a file or does not exist.");
             } else {
-                // If the file or the path of the file does not exists, then assume that this is not
-                // a bitcode file, but a native file and the NFI is going to handle it.
                 CallTarget callTarget = parseNativeLibrary(libName, libPath);
+                // null is returned if the NFIContextExtension does not exists.
+                if (callTarget == null) {
+                    return null;
+                }
                 return createNativeLibraryCallTarget(libName, callTarget);
             }
         }
