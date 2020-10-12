@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -222,18 +222,18 @@ public abstract class LLVMArithmetic {
             if (overflow) {
                 return left > 0 ? Byte.MAX_VALUE : Byte.MIN_VALUE;
             } else {
-                return (byte)res;
+                return (byte) res;
             }
         }
 
-            @Override
+        @Override
         public short evalI16(short left, short right) {
             final int res = left + right;
             final boolean overflow = (((res ^ left) & (res ^ right)) & (1 << (Short.SIZE - 1))) != 0;
             if (overflow) {
                 return left > 0 ? Short.MAX_VALUE : Short.MIN_VALUE;
             } else {
-                return (short)res;
+                return (short) res;
             }
         }
 
@@ -316,28 +316,28 @@ public abstract class LLVMArithmetic {
         public byte evalI8(byte left, byte right) {
             final int res = (left & LLVMExpressionNode.I8_MASK) + (right & LLVMExpressionNode.I8_MASK);
             final boolean overflow = (res & (1 << Byte.SIZE)) != 0;
-            return(byte)(overflow?LLVMExpressionNode.I8_MASK:res);
+            return (byte) (overflow ? LLVMExpressionNode.I8_MASK : res);
         }
 
         @Override
         public short evalI16(short left, short right) {
             final int res = (left & LLVMExpressionNode.I16_MASK) + (right & LLVMExpressionNode.I16_MASK);
             final boolean overflow = (res & (1 << Short.SIZE)) != 0;
-            return(short)(overflow?LLVMExpressionNode.I16_MASK:res);
+            return (short) (overflow ? LLVMExpressionNode.I16_MASK : res);
         }
 
         @Override
         public int evalI32(int left, int right) {
             final int res = left + right;
             final boolean overflow = ((~res & left) | (~res & right) | (left & right)) < 0;
-            return overflow?-1:res;
+            return overflow ? -1 : res;
         }
 
         @Override
         public long evalI64(long left, long right) {
             final long res = left + right;
             final boolean overflow = ((~res & left) | (~res & right) | (left & right)) < 0;
-            return overflow?-1:res;
+            return overflow ? -1 : res;
         }
     };
 
@@ -398,20 +398,20 @@ public abstract class LLVMArithmetic {
             final int res = left - right;
             final boolean overflow = (((left ^ right) & (left ^ res)) & (1 << (Byte.SIZE - 1))) != 0;
             if (overflow) {
-                return ((left > 0) ^ (right < 0))  ? Byte.MAX_VALUE : Byte.MIN_VALUE;
+                return ((left > 0) ^ (right < 0)) ? Byte.MAX_VALUE : Byte.MIN_VALUE;
             } else {
-                return (byte)res;
+                return (byte) res;
             }
         }
 
-            @Override
+        @Override
         public short evalI16(short left, short right) {
             final int res = left - right;
             final boolean overflow = (((left ^ right) & (left ^ res)) & (1 << (Short.SIZE - 1))) != 0;
             if (overflow) {
                 return ((left > 0) ^ (right < 0)) ? Short.MAX_VALUE : Short.MIN_VALUE;
             } else {
-                return (short)res;
+                return (short) res;
             }
         }
 
@@ -494,28 +494,28 @@ public abstract class LLVMArithmetic {
         public byte evalI8(byte left, byte right) {
             final int res = (left & LLVMExpressionNode.I8_MASK) - (right & LLVMExpressionNode.I8_MASK);
             boolean overflow = res < 0;
-            return (byte) (overflow?0:res);
+            return (byte) (overflow ? 0 : res);
         }
 
         @Override
         public short evalI16(short left, short right) {
             final int res = (left & LLVMExpressionNode.I16_MASK) - (right & LLVMExpressionNode.I16_MASK);
             boolean overflow = res < 0;
-            return (short) (overflow?0:res);
+            return (short) (overflow ? 0 : res);
         }
 
         @Override
         public int evalI32(int left, int right) {
             final int res = left - right;
             final boolean overflow = Integer.compareUnsigned(left, right) < 0;
-            return overflow?0:res;
+            return overflow ? 0 : res;
         }
 
         @Override
         public long evalI64(long left, long right) {
             final long res = left - right;
             final boolean overflow = Long.compareUnsigned(left, right) < 0;
-            return overflow?0:res;
+            return overflow ? 0 : res;
         }
     };
 
