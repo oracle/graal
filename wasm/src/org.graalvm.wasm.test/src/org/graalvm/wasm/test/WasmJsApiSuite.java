@@ -265,6 +265,21 @@ public class WasmJsApiSuite {
         });
     }
 
+    @Test
+    public void testInstantiateWithUnicodeExport() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithUnicodeExport, null);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final Executable euroSignFn = (Executable) instance.exports().readMember("\u20AC");
+                Assert.assertEquals("Result should be 42", 42, euroSignFn.executeFunction(new Object[0]));
+            } catch (UnknownIdentifierException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder("wasm");
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
@@ -463,4 +478,13 @@ public class WasmJsApiSuite {
                     (byte) 0x61, (byte) 0x6c, (byte) 0x01, (byte) 0x09, (byte) 0x67, (byte) 0x65, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c,
                     (byte) 0x02, (byte) 0x07, (byte) 0x02, (byte) 0x00, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x00,
     };
+
+    // (module (func (export "\E2\82\AC") (result i32) i32.const 42))
+    // E2 82 AC is UTF-8 encoding of Euro sign
+    private static final byte[] binaryWithUnicodeExport = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x7f, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x07, (byte) 0x07, (byte) 0x01, (byte) 0x03, (byte) 0xe2, (byte) 0x82, (byte) 0xac,
+                    (byte) 0x00, (byte) 0x00, (byte) 0x0a, (byte) 0x06, (byte) 0x01, (byte) 0x04, (byte) 0x00, (byte) 0x41, (byte) 0x2a, (byte) 0x0b
+    };
+
 }
