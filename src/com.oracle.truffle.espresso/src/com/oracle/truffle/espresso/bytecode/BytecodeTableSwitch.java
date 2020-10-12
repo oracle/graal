@@ -32,13 +32,10 @@ public final class BytecodeTableSwitch extends BytecodeSwitch {
     private static final int OFFSET_TO_FIRST_JUMP_OFFSET = 12;
     private static final int JUMP_OFFSET_SIZE = 4;
 
-    /**
-     * Constructor for a {@link BytecodeStream}.
-     *
-     * @param stream the {@code BytecodeStream} containing the switch instruction
-     */
-    public BytecodeTableSwitch(BytecodeStream stream) {
-        super(stream);
+    public static final BytecodeTableSwitch INSTANCE = new BytecodeTableSwitch();
+
+    private BytecodeTableSwitch() {
+        // singleton
     }
 
     /**
@@ -46,7 +43,7 @@ public final class BytecodeTableSwitch extends BytecodeSwitch {
      *
      * @return the low key
      */
-    public int lowKey(int bci) {
+    public int lowKey(BytecodeStream stream, int bci) {
         return stream.readInt(getAlignedBci(bci) + OFFSET_TO_LOW_KEY);
     }
 
@@ -55,27 +52,27 @@ public final class BytecodeTableSwitch extends BytecodeSwitch {
      *
      * @return the high key
      */
-    public int highKey(int bci) {
+    public int highKey(BytecodeStream stream, int bci) {
         return stream.readInt(getAlignedBci(bci) + OFFSET_TO_HIGH_KEY);
     }
 
     @Override
-    public int keyAt(int bci, int i) {
-        return lowKey(bci) + i;
+    public int keyAt(BytecodeStream stream, int bci, int i) {
+        return lowKey(stream, bci) + i;
     }
 
     @Override
-    public int offsetAt(int bci, int i) {
+    public int offsetAt(BytecodeStream stream, int bci, int i) {
         return stream.readInt(getAlignedBci(bci) + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * i);
     }
 
     @Override
-    public int numberOfCases(int bci) {
-        return highKey(bci) - lowKey(bci) + 1;
+    public int numberOfCases(BytecodeStream stream, int bci) {
+        return highKey(stream, bci) - lowKey(stream, bci) + 1;
     }
 
     @Override
-    public int size(int bci) {
-        return getAlignedBci(bci) + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * numberOfCases(bci) - bci;
+    public int size(BytecodeStream stream, int bci) {
+        return getAlignedBci(bci) + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * numberOfCases(stream, bci) - bci;
     }
 }

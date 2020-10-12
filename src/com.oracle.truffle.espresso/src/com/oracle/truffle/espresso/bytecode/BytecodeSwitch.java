@@ -28,20 +28,6 @@ package com.oracle.truffle.espresso.bytecode;
  */
 public abstract class BytecodeSwitch {
 
-    /**
-     * The {@link BytecodeStream} containing the bytecode array.
-     */
-    protected final BytecodeStream stream;
-
-    /**
-     * Constructor for a {@link BytecodeStream}.
-     *
-     * @param stream the {@code BytecodeStream} containing the switch instruction
-     */
-    public BytecodeSwitch(BytecodeStream stream) {
-        this.stream = stream;
-    }
-
     public int getAlignedBci(int bci) {
         return (bci + 4) & 0xfffffffc;
     }
@@ -52,8 +38,8 @@ public abstract class BytecodeSwitch {
      * @param i index of the switch target
      * @return the index of the instruction denoted by the {@code i}'th switch target
      */
-    public int targetAt(int bci, int i) {
-        return bci + offsetAt(bci, i);
+    public int targetAt(BytecodeStream stream, int bci, int i) {
+        return bci + offsetAt(stream, bci, i);
     }
 
     /**
@@ -61,8 +47,8 @@ public abstract class BytecodeSwitch {
      *
      * @return the index of the instruction for the default switch target
      */
-    public int defaultTarget(int bci) {
-        return bci + defaultOffset(bci);
+    public int defaultTarget(BytecodeStream stream, int bci) {
+        return bci + defaultOffset(stream, bci);
     }
 
     /**
@@ -70,37 +56,41 @@ public abstract class BytecodeSwitch {
      *
      * @return the offset to the default switch target
      */
-    public int defaultOffset(int bci) {
+    public int defaultOffset(BytecodeStream stream, int bci) {
         return stream.readInt(getAlignedBci(bci));
     }
 
     /**
      * Gets the key at {@code i}'th switch target index.
      *
+     *
+     * @param stream
      * @param i the switch target index
      * @return the key at {@code i}'th switch target index
      */
-    public abstract int keyAt(int bci, int i);
+    public abstract int keyAt(BytecodeStream stream, int bci, int i);
 
     /**
      * Gets the offset from the start of the switch instruction for the {@code i}'th switch target.
      *
+     *
+     * @param stream
      * @param i the switch target index
      * @return the offset to the {@code i}'th switch target
      */
-    public abstract int offsetAt(int bci, int i);
+    public abstract int offsetAt(BytecodeStream stream, int bci, int i);
 
     /**
      * Gets the number of switch targets.
      *
      * @return the number of switch targets
      */
-    public abstract int numberOfCases(int bci);
+    public abstract int numberOfCases(BytecodeStream stream, int bci);
 
     /**
      * Gets the total size in bytes of the switch instruction.
      *
      * @return the total size in bytes of the switch instruction
      */
-    public abstract int size(int bci);
+    public abstract int size(BytecodeStream stream, int bci);
 }

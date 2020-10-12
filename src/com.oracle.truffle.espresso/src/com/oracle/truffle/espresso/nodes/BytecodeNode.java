@@ -981,18 +981,18 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                     case TABLESWITCH: {
                         int index = popInt(frame, top - 1);
-                        BytecodeTableSwitch switchHelper = bs.getBytecodeTableSwitch();
-                        int low = switchHelper.lowKey(curBCI);
-                        int high = switchHelper.highKey(curBCI);
+                        BytecodeTableSwitch switchHelper = BytecodeTableSwitch.INSTANCE;
+                        int low = switchHelper.lowKey(bs, curBCI);
+                        int high = switchHelper.highKey(bs, curBCI);
                         assert low <= high;
 
                         // Interpreter uses direct lookup.
                         if (CompilerDirectives.inInterpreter()) {
                             int targetBCI;
                             if (low <= index && index <= high) {
-                                targetBCI = switchHelper.targetAt(curBCI, index - low);
+                                targetBCI = switchHelper.targetAt(bs, curBCI, index - low);
                             } else {
-                                targetBCI = switchHelper.defaultTarget(curBCI);
+                                targetBCI = switchHelper.defaultTarget(bs, curBCI);
                             }
                             CompilerAsserts.partialEvaluationConstant(targetBCI);
                             checkBackEdge(curBCI, targetBCI, top, curOpcode);
@@ -1009,7 +1009,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         for (int i = low; i != high + 1; ++i) {
                             if (i == index) {
                                 // Key found.
-                                int targetBCI = switchHelper.targetAt(curBCI, i - low);
+                                int targetBCI = switchHelper.targetAt(bs, curBCI, i - low);
                                 CompilerAsserts.partialEvaluationConstant(targetBCI);
                                 checkBackEdge(curBCI, targetBCI, top, curOpcode);
                                 if (instrument != null) {
@@ -1022,7 +1022,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         }
 
                         // Key not found.
-                        int targetBCI = switchHelper.defaultTarget(curBCI);
+                        int targetBCI = switchHelper.defaultTarget(bs, curBCI);
                         CompilerAsserts.partialEvaluationConstant(targetBCI);
                         checkBackEdge(curBCI, targetBCI, top, curOpcode);
                         if (instrument != null) {
@@ -1034,19 +1034,19 @@ public final class BytecodeNode extends EspressoMethodNode {
                     }
                     case LOOKUPSWITCH: {
                         int key = popInt(frame, top - 1);
-                        BytecodeLookupSwitch switchHelper = bs.getBytecodeLookupSwitch();
+                        BytecodeLookupSwitch switchHelper = BytecodeLookupSwitch.INSTANCE;
                         int low = 0;
-                        int high = switchHelper.numberOfCases(curBCI) - 1;
+                        int high = switchHelper.numberOfCases(bs, curBCI) - 1;
                         while (low <= high) {
                             int mid = (low + high) >>> 1;
-                            int midVal = switchHelper.keyAt(curBCI, mid);
+                            int midVal = switchHelper.keyAt(bs, curBCI, mid);
                             if (midVal < key) {
                                 low = mid + 1;
                             } else if (midVal > key) {
                                 high = mid - 1;
                             } else {
                                 // Key found.
-                                int targetBCI = curBCI + switchHelper.offsetAt(curBCI, mid);
+                                int targetBCI = curBCI + switchHelper.offsetAt(bs, curBCI, mid);
                                 CompilerAsserts.partialEvaluationConstant(targetBCI);
                                 checkBackEdge(curBCI, targetBCI, top, curOpcode);
                                 if (instrument != null) {
@@ -1059,7 +1059,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         }
 
                         // Key not found.
-                        int targetBCI = switchHelper.defaultTarget(curBCI);
+                        int targetBCI = switchHelper.defaultTarget(bs, curBCI);
                         CompilerAsserts.partialEvaluationConstant(targetBCI);
                         checkBackEdge(curBCI, targetBCI, top, curOpcode);
                         if (instrument != null) {

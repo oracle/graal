@@ -32,32 +32,29 @@ public final class BytecodeLookupSwitch extends BytecodeSwitch {
     private static final int OFFSET_TO_FIRST_PAIR_OFFSET = 12;
     private static final int PAIR_SIZE = 8;
 
-    /**
-     * Constructor for a {@link BytecodeStream}.
-     *
-     * @param stream the {@code BytecodeStream} containing the switch instruction
-     */
-    public BytecodeLookupSwitch(BytecodeStream stream) {
-        super(stream);
+    public static final BytecodeLookupSwitch INSTANCE = new BytecodeLookupSwitch();
+
+    private BytecodeLookupSwitch() {
+        // singleton
     }
 
     @Override
-    public int offsetAt(int bci, int i) {
+    public int offsetAt(BytecodeStream stream, int bci, int i) {
         return stream.readInt(getAlignedBci(bci) + OFFSET_TO_FIRST_PAIR_OFFSET + PAIR_SIZE * i);
     }
 
     @Override
-    public int keyAt(int bci, int i) {
+    public int keyAt(BytecodeStream stream, int bci, int i) {
         return stream.readInt(getAlignedBci(bci) + OFFSET_TO_FIRST_PAIR_MATCH + PAIR_SIZE * i);
     }
 
     @Override
-    public int numberOfCases(int bci) {
+    public int numberOfCases(BytecodeStream stream, int bci) {
         return stream.readInt(getAlignedBci(bci) + OFFSET_TO_NUMBER_PAIRS);
     }
 
     @Override
-    public int size(int bci) {
-        return getAlignedBci(bci) + OFFSET_TO_FIRST_PAIR_MATCH + PAIR_SIZE * numberOfCases(bci) - bci;
+    public int size(BytecodeStream stream, int bci) {
+        return getAlignedBci(bci) + OFFSET_TO_FIRST_PAIR_MATCH + PAIR_SIZE * numberOfCases(stream, bci) - bci;
     }
 }

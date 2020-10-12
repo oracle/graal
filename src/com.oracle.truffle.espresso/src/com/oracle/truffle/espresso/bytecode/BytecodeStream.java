@@ -44,9 +44,6 @@ public final class BytecodeStream {
     @CompilationFinal(dimensions = 1) //
     private final byte[] code;
 
-    private final BytecodeLookupSwitch bytecodeLookupSwitch;
-    private final BytecodeTableSwitch bytecodeTableSwitch;
-
     /**
      * Creates a new {@code BytecodeStream} for the specified bytecode.
      *
@@ -55,8 +52,6 @@ public final class BytecodeStream {
     public BytecodeStream(final byte[] code) {
         assert code != null;
         this.code = code;
-        this.bytecodeLookupSwitch = new BytecodeLookupSwitch(this);
-        this.bytecodeTableSwitch = new BytecodeTableSwitch(this);
     }
 
     /**
@@ -216,10 +211,10 @@ public final class BytecodeStream {
         if (length == 0) {
             switch (opcode(curBCI)) {
                 case Bytecodes.TABLESWITCH: {
-                    return getBytecodeTableSwitch().size(curBCI);
+                    return BytecodeTableSwitch.INSTANCE.size(this, curBCI);
                 }
                 case Bytecodes.LOOKUPSWITCH: {
-                    return getBytecodeLookupSwitch().size(curBCI);
+                    return BytecodeLookupSwitch.INSTANCE.size(this, curBCI);
                 }
                 case Bytecodes.WIDE: {
                     int opc = Bytes.beU1(code, curBCI + 1);
@@ -236,14 +231,6 @@ public final class BytecodeStream {
             }
         }
         return length;
-    }
-
-    public BytecodeTableSwitch getBytecodeTableSwitch() {
-        return bytecodeTableSwitch;
-    }
-
-    public BytecodeLookupSwitch getBytecodeLookupSwitch() {
-        return bytecodeLookupSwitch;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -293,13 +280,13 @@ public final class BytecodeStream {
                     // @formatter:on
                     // Checkstyle: resume
                     str.append('\n');
-                    BytecodeTableSwitch helper = getBytecodeTableSwitch();
-                    int low = helper.lowKey(bci);
-                    int high = helper.highKey(bci);
+                    BytecodeTableSwitch helper = BytecodeTableSwitch.INSTANCE;
+                    int low = helper.lowKey(this, bci);
+                    int high = helper.highKey(this, bci);
                     for (int i = low; i != high + 1; i++) {
-                        str.append('\t').append(i).append(": ").append(helper.targetAt(bci, i)).append('\n');
+                        str.append('\t').append(i).append(": ").append(helper.targetAt(this, bci, i)).append('\n');
                     }
-                    str.append("\tdefault: ").append(helper.defaultTarget(bci));
+                    str.append("\tdefault: ").append(helper.defaultTarget(this, bci));
                 } else if (opcode == Bytecodes.LOOKUPSWITCH) {
                     // @formatter:off
                     // checkstyle: stop
@@ -312,13 +299,13 @@ public final class BytecodeStream {
                     // @formatter:on
                     // Checkstyle: resume
                     str.append('\n');
-                    BytecodeLookupSwitch helper = getBytecodeLookupSwitch();
+                    BytecodeLookupSwitch helper = BytecodeLookupSwitch.INSTANCE;
                     int low = 0;
-                    int high = helper.numberOfCases(bci) - 1;
+                    int high = helper.numberOfCases(this, bci) - 1;
                     for (int i = low; i <= high; i++) {
-                        str.append('\t').append(helper.keyAt(bci, i)).append(": ").append(helper.targetAt(bci, i));
+                        str.append('\t').append(helper.keyAt(this, bci, i)).append(": ").append(helper.targetAt(this, bci, i));
                     }
-                    str.append("\tdefault: ").append(helper.defaultTarget(bci));
+                    str.append("\tdefault: ").append(helper.defaultTarget(this, bci));
                 } else {
                     // {bci}: {opcode} {corresponding value}
                     if (nextBCI - bci == 2) {

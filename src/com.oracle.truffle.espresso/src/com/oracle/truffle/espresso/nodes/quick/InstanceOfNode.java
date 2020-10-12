@@ -61,7 +61,6 @@ public abstract class InstanceOfNode extends QuickNode {
 
     @TruffleBoundary
     static boolean instanceOf(Klass typeToCheck, Klass instanceKlass) {
-        // TODO(peterssen): Method lookup is uber-slow and non-spec-compliant.
         return typeToCheck.isAssignableFrom(instanceKlass);
     }
 
