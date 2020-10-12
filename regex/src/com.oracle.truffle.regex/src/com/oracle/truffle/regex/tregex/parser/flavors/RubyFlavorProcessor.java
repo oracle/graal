@@ -347,7 +347,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * to avoid having to repeatedly allocate new ones, we return unused instances to this shared pool, to be reused
      * later.
      */
-    private final List<CodePointSetAccumulator> nestedCharClassPool = new ArrayList<>();
+    private final List<CodePointSetAccumulator> charClassPool = new ArrayList<>();
 
     @TruffleBoundary
     public RubyFlavorProcessor(RegexSource source, boolean bytes) {
@@ -1059,6 +1059,13 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             negated = true;
         }
         int firstPosInside = position;
+        collectCharClassContents(start, firstPosInside);
+        if (negated) {
+            negateCharClass();
+        }
+    }
+
+    private void collectCharClassContents(int start, int firstPosInside) {
         classBody: while (true) {
             if (atEnd()) {
                 throw syntaxErrorAtAbs("unterminated character set", start);
@@ -1081,6 +1088,15 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     nestedCharClass();
                     lowerBound = Optional.empty();
                     break;
+                case '&':
+                    if (match("&")) {
+                        CodePointSetAccumulator curCharClassBackup = curCharClass;
+                        curCharClass = acquireCodePointSetAccumulator();
+                        collectCharClassContents(start, firstPosInside);
+                        curCharClassBackup.intersectWith(curCharClass.get());
+                        curCharClass = curCharClassBackup;
+                        return;
+                    }
                 default:
                     lowerBound = Optional.of(ch);
             }
@@ -1115,19 +1131,25 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 curCharClass.addCodePoint(lowerBound.get());
             }
         }
-        if (negated) {
-            negateCharClass();
+    }
+
+    private CodePointSetAccumulator acquireCodePointSetAccumulator() {
+        if (charClassPool.isEmpty()) {
+            return new CodePointSetAccumulator();
+        } else {
+            CodePointSetAccumulator accumulator = charClassPool.remove(charClassPool.size() - 1);
+            accumulator.clear();
+            return accumulator;
         }
+    }
+
+    private void releaseCodePointSetAccumulator(CodePointSetAccumulator accumulator) {
+        charClassPool.add(accumulator);
     }
 
     private void nestedCharClass() {
         CodePointSetAccumulator curCharClassBackup = curCharClass;
-        if (nestedCharClassPool.isEmpty()) {
-            curCharClass = new CodePointSetAccumulator();
-        } else {
-            curCharClass = nestedCharClassPool.remove(nestedCharClassPool.size() - 1);
-            curCharClass.clear();
-        }
+        curCharClass = acquireCodePointSetAccumulator();
         if (curChar() == ':') {
             advance();
             tryThis(this::collectPosixCharClass, this::collectCharClass);
@@ -1135,7 +1157,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             collectCharClass();
         }
         curCharClass.copyTo(curCharClassBackup);
-        nestedCharClassPool.add(curCharClass);
+        releaseCodePointSetAccumulator(curCharClass);
         curCharClass = curCharClassBackup;
     }
 

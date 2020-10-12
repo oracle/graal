@@ -124,6 +124,13 @@ public class CodePointSetAccumulator implements Iterable<Range> {
         }
     }
 
+    public void intersectWith(SortedListOfRanges other) {
+        IntRangesBuffer t = getTmp();
+        tmp = acc;
+        acc = t;
+        SortedListOfRanges.union(tmp, other, acc);
+    }
+
     @Override
     public Iterator<Range> iterator() {
         return acc.rangesIterator();
