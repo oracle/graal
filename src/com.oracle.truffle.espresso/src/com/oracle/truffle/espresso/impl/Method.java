@@ -1002,6 +1002,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         MethodVersion version = methodVersion;
         if (!version.getAssumption().isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (isRemovedByRedefition()) {
+                // for a removed method, we return the latest known
+                // method version in case active frames try to
+                // retrieve information for obsolete methods
+                return version;
+            }
             do {
                 version = methodVersion;
             } while (!version.getAssumption().isValid());
