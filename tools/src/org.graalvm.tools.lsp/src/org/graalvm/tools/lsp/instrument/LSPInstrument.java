@@ -35,12 +35,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.Pair;
@@ -52,10 +55,10 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
-import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.LSPIOException;
-import org.graalvm.tools.lsp.server.LanguageServerImpl;
+import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.server.LSPFileSystem;
+import org.graalvm.tools.lsp.server.LanguageServerImpl;
 import org.graalvm.tools.lsp.server.TruffleAdapter;
 import org.graalvm.tools.lsp.server.utils.CoverageEventNode;
 
@@ -258,6 +261,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
     private static final class ContextAwareExecutorImpl implements ContextAwareExecutor {
         private final Context.Builder contextBuilder;
         static final String WORKER_THREAD_ID = "LS Context-aware Worker";
+        Context currentContext = null;
         Context lastNestedContext = null;
         private volatile WeakReference<Thread> workerThread = new WeakReference<>(null);
         /**
@@ -291,6 +295,30 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
             return execute(wrapWithNewContext(taskWithResult, cached));
         }
 
+        @Override
+        public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, int timeoutMillis, Callable<T> onTimeoutTask) {
+            if (timeoutMillis <= 0) {
+                return executeWithNestedContext(taskWithResult);
+            } else {
+                Future<T> future = execute(wrapWithNewContext(taskWithResult, false));
+                try {
+                    return CompletableFuture.completedFuture(future.get(timeoutMillis, TimeUnit.MILLISECONDS));
+                } catch (TimeoutException e) {
+                    future.cancel(true);
+                    if (currentContext != null) {
+                        currentContext.close(true);
+                    }
+                    try {
+                        return CompletableFuture.completedFuture(onTimeoutTask.call());
+                    } catch (Exception timeoutTaskException) {
+                        return CompletableFuture.failedFuture(timeoutTaskException);
+                    }
+                } catch (InterruptedException | ExecutionException e) {
+                    return CompletableFuture.failedFuture(e);
+                }
+            }
+        }
+
         private <T> Future<T> execute(Callable<T> taskWithResult) {
             if (Thread.currentThread() == workerThread.get()) {
                 FutureTask<T> futureTask = new FutureTask<>(taskWithResult);
@@ -306,26 +334,25 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
 
                 @Override
                 public T call() throws Exception {
-                    Context context;
                     if (cached) {
                         if (lastNestedContext == null) {
                             lastNestedContext = contextBuilder.build();
                         }
-                        context = lastNestedContext;
+                        currentContext = lastNestedContext;
                     } else {
-                        context = contextBuilder.build();
+                        currentContext = contextBuilder.build();
                     }
 
                     try {
-                        context.enter();
+                        currentContext.enter();
                         try {
                             return taskWithResult.call();
                         } finally {
-                            context.leave();
+                            currentContext.leave();
                         }
                     } finally {
                         if (!cached) {
-                            context.close();
+                            currentContext.close();
                         }
                     }
                 }
