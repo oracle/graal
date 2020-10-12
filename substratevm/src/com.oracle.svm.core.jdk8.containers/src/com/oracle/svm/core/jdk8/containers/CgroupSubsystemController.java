@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
+import com.oracle.svm.core.SubstrateUtil;
+
 /**
  * Cgroup version agnostic controller logic
  *
@@ -163,7 +165,7 @@ public interface CgroupSubsystemController {
         try {
             Optional<String> result = Optional.empty();
             for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get(controller.path(), param))) {
-                String[] tokens = line.split(" ");
+                String[] tokens = SubstrateUtil.split(line, " ");
                 if (tokens.length == 2 && tokens[0].equals(entryname)) {
                     result = Optional.of(tokens[1]);
                     break;
@@ -192,10 +194,10 @@ public interface CgroupSubsystemController {
         if (range == null || EMPTY_STR.equals(range)) return null;
 
         ArrayList<Integer> results = new ArrayList<>();
-        String strs[] = range.split(",");
+        String strs[] = SubstrateUtil.split(range, ",");
         for (String str : strs) {
             if (str.contains("-")) {
-                String lohi[] = str.split("-");
+                String lohi[] = SubstrateUtil.split(str, "-");
                 // validate format
                 if (lohi.length != 2) {
                     continue;

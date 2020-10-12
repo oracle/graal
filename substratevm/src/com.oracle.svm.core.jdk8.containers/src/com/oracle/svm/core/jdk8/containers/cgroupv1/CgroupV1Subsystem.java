@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk8.containers.CgroupSubsystem;
 import com.oracle.svm.core.jdk8.containers.CgroupSubsystemController;
 import com.oracle.svm.core.jdk8.containers.CgroupUtil;
@@ -71,7 +72,7 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
         try {
             for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get("/proc/self/mountinfo"))) {
                 if (line.contains(" - cgroup ")) {
-                    String[] tokens = line.split(" ");
+                    String[] tokens = SubstrateUtil.split(line, " ");
                     createSubSystemController(subsystem, tokens);
                 }
             }
@@ -105,7 +106,7 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
          */
         try {
             for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get("/proc/self/cgroup"))) {
-                String[] tokens = line.split(":");
+                String[] tokens = SubstrateUtil.split(line, ":");
                 if (tokens.length >= 3) {
                     setSubSystemControllerPath(subsystem, tokens);
                 }
@@ -130,7 +131,7 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
         if (mountentry.length < 5) return;
 
         Path p = Paths.get(mountentry[4]);
-        String[] subsystemNames = p.getFileName().toString().split(",");
+        String[] subsystemNames = SubstrateUtil.split(p.getFileName().toString(), ",");
 
         for (String subsystemName: subsystemNames) {
             switch (subsystemName) {
@@ -290,7 +291,7 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
             return null;
         }
 
-        String list[] = usagelist.split(" ");
+        String list[] = SubstrateUtil.split(usagelist, " ");
         long percpu[] = new long[list.length];
         for (int i = 0; i < list.length; i++) {
             percpu[i] = Long.parseLong(list[i]);
