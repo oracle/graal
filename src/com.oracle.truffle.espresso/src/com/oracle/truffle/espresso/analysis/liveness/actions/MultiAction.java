@@ -29,34 +29,33 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.analysis.Util;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
 public class MultiAction extends LocalVariableAction {
-    private static final LocalVariableAction[] EMPTY_ACTIONS = new LocalVariableAction[0];
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private final int actions[];
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final LocalVariableAction actions[];
-
-    public MultiAction(LocalVariableAction[] actions) {
+    public MultiAction(int[] actions) {
         this.actions = actions;
     }
 
     @Override
     @ExplodeLoop
     public void execute(VirtualFrame frame, BytecodeNode node) {
-        for (LocalVariableAction action : actions) {
-            action.execute(frame, node);
+        for (int local : actions) {
+            node.nullOutLocalObject(frame, local);
         }
     }
 
     @Override
     public String toString() {
-        return Arrays.deepToString(actions);
+        return Arrays.toString(actions);
     }
 
     public static class TempMultiAction extends LocalVariableAction {
-        private final ArrayList<LocalVariableAction> actions;
+        private final ArrayList<Integer> actions;
 
         @Override
         public void execute(VirtualFrame frame, BytecodeNode node) {
@@ -64,7 +63,8 @@ public class MultiAction extends LocalVariableAction {
         }
 
         public void add(LocalVariableAction action) {
-            actions.add(action);
+            assert action instanceof NullOutAction;
+            actions.add(((NullOutAction) action).local());
         }
 
         public TempMultiAction() {
@@ -72,11 +72,14 @@ public class MultiAction extends LocalVariableAction {
         }
 
         public TempMultiAction(ArrayList<LocalVariableAction> actions) {
-            this.actions = actions;
+            this.actions = new ArrayList<>();
+            for (LocalVariableAction action : actions) {
+                add(action);
+            }
         }
 
         public MultiAction freeze() {
-            return new MultiAction(actions.toArray(EMPTY_ACTIONS));
+            return new MultiAction(Util.toIntArray(actions));
         }
     }
 }

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -118,6 +119,7 @@ public class Target_com_oracle_truffle_espresso_InternalUtils {
         return true;
     }
 
+    @CompilerDirectives.TruffleBoundary
     @Substitution
     public static void triggerLivenessAnalysis(@Host(java.lang.reflect.Method.class) StaticObject method, @InjectMeta Meta meta) {
         Method m = Method.getHostReflectiveMethodRoot(method, meta);

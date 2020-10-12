@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.nodes.BytecodeNode;
 public class LivenessAnalysis {
     public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis();
 
+    // TODO: Split array to save an header.
     @CompilerDirectives.CompilationFinal(dimensions = 1) BCILocalActionRecord[] result;
 
     public void performPreBCI(VirtualFrame frame, int bci, BytecodeNode node) {
@@ -134,7 +135,7 @@ public class LivenessAnalysis {
         BitSet entryState = helper.entryFor(blockID);
         for (int i = 0; i < m.getMaxLocals(); i++) {
             if (mergedEntryState.get(i) && !entryState.get(i)) {
-                startActions.add(new NullOutAction(i));
+                startActions.add(NullOutAction.get(i));
             }
         }
         if (!startActions.isEmpty()) {
@@ -161,14 +162,14 @@ public class LivenessAnalysis {
                 case IINC:
                     if (!endState.get(r.local)) {
                         // last load for this value
-                        recordAction(actions, r.bci, new NullOutAction(r.local), false);
+                        recordAction(actions, r.bci, NullOutAction.get(r.local), false);
                         endState.set(r.local);
                     }
                     break;
                 case STORE:
                     if (!endState.get(r.local)) {
                         // Store is not used: can be killed immediately.
-                        recordAction(actions, r.bci, new NullOutAction(r.local), false);
+                        recordAction(actions, r.bci, NullOutAction.get(r.local), false);
                     }
                     // Store for this variable kills the local between here and the previous usage
                     endState.clear(r.local);

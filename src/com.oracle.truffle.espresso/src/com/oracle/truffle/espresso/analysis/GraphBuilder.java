@@ -324,7 +324,7 @@ public final class GraphBuilder {
         int defaultTarget = helper.defaultTarget(bci);
         targets.add(defaultTarget);
         mark(defaultTarget, BLOCK_START);
-        switchTable.add(toIntArray(targets));
+        switchTable.add(Util.toIntArray(targets));
     }
 
     private void markJsr(int bci) {
@@ -372,15 +372,6 @@ public final class GraphBuilder {
         }
 
         mark(handler.getHandlerBCI(), BLOCK_START);
-    }
-
-    private static int[] toIntArray(ArrayList<Integer> targets) {
-        int[] result = new int[targets.size()];
-        int pos = 0;
-        for (int i : targets) {
-            result[pos++] = i;
-        }
-        return result;
     }
 
     private void mark(int bci, long state) {
@@ -490,12 +481,12 @@ public final class GraphBuilder {
 
         EspressoBlock promote(GraphBuilder builder, EspressoExecutionGraph graph) {
             if (successors.length == 0 && handlers.isEmpty() && !isRet) {
-                return new EspressoBlock(graph, id, start, end, EspressoBlock.EMPTY_ID_ARRAY, toIntArray(predecessors));
+                return new EspressoBlock(graph, id, start, end, EspressoBlock.EMPTY_ID_ARRAY, Util.toIntArray(predecessors));
             }
             if (handlers.isEmpty()) {
-                return new EspressoBlock(graph, id, start, end, successors(builder), toIntArray(predecessors));
+                return new EspressoBlock(graph, id, start, end, successors(builder), Util.toIntArray(predecessors));
             }
-            return new EspressoBlockWithHandlers(graph, id, start, end, successors(builder), toIntArray(handlers), toIntArray(predecessors));
+            return new EspressoBlockWithHandlers(graph, id, start, end, successors(builder), Util.toIntArray(handlers), Util.toIntArray(predecessors));
         }
 
         private int[] successors(GraphBuilder builder) {
@@ -528,6 +519,6 @@ public final class GraphBuilder {
                 }
             }
         }
-        return toIntArray(fullyLinkedSuccessors);
+        return Util.toIntArray(fullyLinkedSuccessors);
     }
 }

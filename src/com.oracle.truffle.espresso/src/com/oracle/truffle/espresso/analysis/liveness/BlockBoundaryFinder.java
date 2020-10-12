@@ -127,9 +127,11 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
                 switch (record.type) {
                     case LOAD: // Fallthrough
                     case IINC:
+                        // Load: must be alive before here.
                         entryLiveSet.set(record.local);
                         break;
                     case STORE:
+                        // Store: need not be alive
                         break;
                 }
                 treated.set(record.local);
@@ -138,6 +140,7 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
         BitSet endState = getEndState(processor.idToBlock(blockID), processor);
         for (int i = 0; i < maxLocals; i++) {
             if (!treated.get(i) && endState.get(i)) {
+                // One of the successor needs the local
                 entryLiveSet.set(i);
             }
         }
@@ -145,12 +148,18 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
         return entryLiveSet;
     }
 
+    /**
+     * TODO: Rework the loop handling so that we simply register each loop end, then propagate
+     * upwards using predecessors.
+     */
     private void propagateLoop(LinkedBlock loopEntry, AnalysisProcessor processor) {
         List<LoopRecord> registeredLoops = loops[loopEntry.id()];
         if (registeredLoops != null) {
             for (LoopRecord loop : registeredLoops) {
                 correctNestedLoop(loopEntry.id(), loop);
                 propagateLoopPath(processor, loop);
+            }
+            for (LoopRecord loop : registeredLoops) {
                 unregisterLoop(loopEntry, loop);
             }
             loops[loopEntry.id()] = null;
@@ -185,6 +194,7 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
     }
 
     private void propagateLoopPath(AnalysisProcessor processor, LoopRecord loop) {
+        // Ensure that the live set of the loop entry lives through the entire loop.
         BitSet toPropagate = (BitSet) getEntryLiveSet(loop.successor, processor).clone();
         for (LinkedBlock block : loop) {
             BitSet endState = getEndState(block, processor);
@@ -268,31 +278,31 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
 
     private BitSet getEndState(LinkedBlock b, AnalysisProcessor processor) {
         if (blockEndLiveSet[b.id()] != null) {
+            // Leaf block: no need to keep anything alive.
             return blockEndLiveSet[b.id()];
         }
         BitSet[] successorsLiveset = new BitSet[b.successorsID().length];
         for (int i = 0; i < b.successorsID().length; i++) {
             int succ = b.successorsID()[i];
             if (processor.isInProcess(succ)) {
+                // Loop: speculate (certainly wrongly) that the loop entry needs no more live local
+                // than us.
                 successorsLiveset[i] = emptyBitSet;
             } else {
+                // Should be already computed (DFS traversal)
                 successorsLiveset[i] = getEntryLiveSet(succ, processor);
             }
         }
-        BitSet endState = mergeSuccessors(successorsLiveset);
+        BitSet endState = mergeSuccessorLiveSets(successorsLiveset);
+
         blockEndLiveSet[b.id()] = endState;
         return endState;
     }
 
-    private BitSet mergeSuccessors(BitSet[] lives) {
-        // TODO: use BitSet.or ?
+    private BitSet mergeSuccessorLiveSets(BitSet[] lives) {
         BitSet merges = new BitSet(maxLocals);
         for (BitSet live : lives) {
-            for (int i = 0; i < maxLocals; i++) {
-                if (live.get(i)) {
-                    merges.set(i);
-                }
-            }
+            merges.or(live);
         }
         return merges;
     }

@@ -28,9 +28,25 @@ import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
 public class NullOutAction extends LocalVariableAction {
+    private static final int MAX_CACHE = 256;
+
+    private static final LocalVariableAction[] CACHE = new LocalVariableAction[MAX_CACHE];
+
     private final int local;
 
-    public NullOutAction(int local) {
+    public static LocalVariableAction get(int local) {
+        if (local < MAX_CACHE) {
+            LocalVariableAction res = CACHE[local];
+            if (res == null) {
+                res = CACHE[local] = new NullOutAction(local);
+            }
+            return res;
+        } else {
+            return new NullOutAction(local);
+        }
+    }
+
+    private NullOutAction(int local) {
         this.local = local;
     }
 
@@ -42,5 +58,9 @@ public class NullOutAction extends LocalVariableAction {
     @Override
     public String toString() {
         return local + "";
+    }
+
+    public int local() {
+        return local;
     }
 }
