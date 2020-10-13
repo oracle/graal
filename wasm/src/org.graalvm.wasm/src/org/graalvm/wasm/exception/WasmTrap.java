@@ -44,14 +44,18 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Thrown when a WebAssembly program encounters a trap, as defined by the specification.
  */
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class WasmTrap extends AbstractTruffleException {
 
     private static final long serialVersionUID = 8195809219857028793L;
