@@ -226,7 +226,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         masm.setCodePatchShifter(compilationResult::shiftCodePatch);
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, omitFrame, config.preserveFramePointer);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
-        CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, Register.None);
+        CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, Register.None);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
