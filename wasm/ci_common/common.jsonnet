@@ -152,7 +152,7 @@ local graal_suite_root = root_ci.graal_suite_root;
     run+: [
       gate_cmd_jvmci
     ],
-    timelimit: '45:00',
+    timelimit: '1:00:00',
   },
 
   gate_graalwasm_emsdk_jvmci: self.setup_emsdk + {
