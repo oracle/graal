@@ -75,7 +75,7 @@ public class WasmPolyglotTestSuite {
         Source source = sourceBuilder.build();
         Context context = contextBuilder.build();
         context.eval(source);
-        Value mainFunction = context.getBindings("wasm").getMember("main");
+        Value mainFunction = context.getBindings("wasm").getMember("main").getMember("main");
         Value result = mainFunction.execute();
         Assert.assertEquals("Should be equal: ", 42, result.asInt());
     }
@@ -91,8 +91,8 @@ public class WasmPolyglotTestSuite {
         contextBuilder.option("wasm.UseUnsafeMemory", "true");
         Context context = contextBuilder.build();
         context.eval(source);
-        context.getBindings("wasm").getMember("main").execute();
-        UnsafeWasmMemory memory = getPrivateField(context.getBindings("wasm").getMember("memory"), "receiver");
+        context.getBindings("wasm").getMember("main").getMember("main").execute();
+        UnsafeWasmMemory memory = getPrivateField(context.getBindings("wasm").getMember("main").getMember("memory"), "receiver");
         Assert.assertTrue("Memory should have been allocated.", !memory.freed());
         context.close();
         Assert.assertTrue("Memory should have been freed.", memory.freed());
