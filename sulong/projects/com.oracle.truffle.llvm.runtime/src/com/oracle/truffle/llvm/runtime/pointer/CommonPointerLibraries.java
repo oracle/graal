@@ -204,7 +204,7 @@ abstract class CommonPointerLibraries {
     static LLVMInteropType.Clazz asClazz(LLVMPointerImpl receiver) throws UnsupportedTypeException {
         LLVMInteropType type = receiver.getExportType();
         if (!(type instanceof LLVMInteropType.Clazz)) {
-            throw UnsupportedTypeException.create(new Object[]{receiver}, receiver + " cannot be casted to LLVMInteropType.Clazz");
+            throw UnsupportedTypeException.create(new Object[]{receiver}, "Receiver type is not a class");
         }
         return (Clazz) type;
     }
