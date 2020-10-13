@@ -60,6 +60,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         HISTOGRAM,
         CALLTREE,
         JSON,
+        FLAMEGRAPH,
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
@@ -179,6 +180,9 @@ class CPUSamplerCLI extends ProfilerCLI {
                     break;
                 case JSON:
                     printSamplingJson(out, options, data);
+                    break;
+                case FLAMEGRAPH:
+                    SVGSamplerOutput.printSamplingFlameGraph(out, sampler);
             }
         }
     }
@@ -704,4 +708,5 @@ class CPUSamplerCLI extends ProfilerCLI {
             }
         }
     }
+
 }
