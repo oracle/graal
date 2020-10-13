@@ -414,7 +414,6 @@ abstract class ToHostNode extends Node {
 
     @TruffleBoundary
     private static <T> T asJavaObject(Object value, Class<T> targetType, Type genericType, boolean allowsImplementation, PolyglotLanguageContext languageContext) {
-        Objects.requireNonNull(value);
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
         Object obj;
         if (interop.isNull(value)) {
