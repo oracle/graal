@@ -36,7 +36,7 @@ public interface SubstrateTruffleCompiler extends TruffleCompilerBase {
     PartialEvaluator getPartialEvaluator();
 
     /**
-     * Tears down the isolate used for this compiler.
+     * Called on tear-down of the current isolate.
      */
     void teardown();
 }
