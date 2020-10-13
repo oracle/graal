@@ -186,7 +186,7 @@ public interface GraalTruffleRuntimeListener {
 
     static void addASTSizeProperty(OptimizedCallTarget target, Map<String, Object> properties) {
         int nodeCount = target.getNonTrivialNodeCount();
-        properties.put("ASTSize", String.format("%5d", nodeCount));
+        properties.put("AST", String.format("%4d", nodeCount));
     }
 
     /**
