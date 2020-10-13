@@ -37,8 +37,10 @@ import com.oracle.truffle.espresso.analysis.graph.EspressoBlockWithHandlers;
 import com.oracle.truffle.espresso.analysis.graph.EspressoExecutionGraph;
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
+import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeSwitch;
+import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
@@ -309,24 +311,24 @@ public final class GraphBuilder {
     private void markSwitch(int bci, int opcode) {
         BytecodeSwitch helper;
         if (opcode == Bytecodes.TABLESWITCH) {
-            helper = bs.getBytecodeTableSwitch();
+            helper = BytecodeTableSwitch.INSTANCE;
         } else {
             assert opcode == Bytecodes.LOOKUPSWITCH;
-            helper = bs.getBytecodeLookupSwitch();
+            helper = BytecodeLookupSwitch.INSTANCE;
         }
         ArrayList<Integer> targets = new ArrayList<>();
         mark(bci, SWITCH);
         markTarget(bci, switchTable.size());
         BitSet present = new BitSet();
-        for (int i = 0; i < helper.numberOfCases(bci); i++) {
-            int target = helper.targetAt(bci, i);
+        for (int i = 0; i < helper.numberOfCases(bs, bci); i++) {
+            int target = helper.targetAt(bs, bci, i);
             if (!present.get(target)) {
                 targets.add(target);
                 present.set(target);
             }
             mark(target, BLOCK_START);
         }
-        int defaultTarget = helper.defaultTarget(bci);
+        int defaultTarget = helper.defaultTarget(bs, bci);
         if (!present.get(defaultTarget)) {
             targets.add(defaultTarget);
         }

@@ -26,7 +26,7 @@ package com.oracle.truffle.espresso.bytecode;
  * An abstract class that provides the state and methods common to {@link Bytecodes#LOOKUPSWITCH}
  * and {@link Bytecodes#TABLESWITCH} instructions.
  */
-abstract class BytecodeSwitch {
+public abstract class BytecodeSwitch {
 
     public int getAlignedBci(int bci) {
         return (bci + 4) & 0xfffffffc;
