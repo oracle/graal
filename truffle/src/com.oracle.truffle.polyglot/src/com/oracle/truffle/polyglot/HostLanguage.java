@@ -41,7 +41,7 @@
 package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -55,7 +55,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
@@ -66,7 +65,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
@@ -200,14 +198,10 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
     }
 
     @SuppressWarnings("serial")
-    private static class HostLanguageException extends RuntimeException implements TruffleException {
+    private static class HostLanguageException extends AbstractTruffleException {
 
         HostLanguageException(String message) {
             super(message);
-        }
-
-        public Node getLocation() {
-            return null;
         }
     }
 

@@ -152,7 +152,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
         if (handle.equal(WordFactory.zero())) {
             CompilerDirectives.transferToInterpreter();
             String error = PosixUtils.dlerror();
-            throw new UnsatisfiedLinkError(error);
+            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(error), RuntimeException.class);
         }
         return handle.rawValue();
     }
@@ -179,7 +179,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
             CompilerDirectives.transferToInterpreter();
             String error = PosixUtils.dlerror();
             if (error != null) {
-                throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(error), UnsatisfiedLinkError.class);
+                throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(error), RuntimeException.class);
             }
         }
         return ret.rawValue();

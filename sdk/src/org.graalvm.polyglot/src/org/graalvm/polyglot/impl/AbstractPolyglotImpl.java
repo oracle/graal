@@ -496,6 +496,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isResourceExhausted();
 
+        public abstract boolean isInterrupted();
+
     }
 
     public abstract static class AbstractStackFrameImpl {

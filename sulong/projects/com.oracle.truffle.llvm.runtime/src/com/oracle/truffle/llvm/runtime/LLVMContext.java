@@ -485,7 +485,7 @@ public final class LLVMContext {
                 } else {
                     throw new IllegalStateException("Context cannot be disposed: " + SULONG_DISPOSE_CONTEXT + " is not a function or enclosed inside a LLVMManagedPointer");
                 }
-            } catch (ControlFlowException e) {
+            } catch (ControlFlowException | LLVMExitException e) {
                 // nothing needs to be done as the behavior is not defined
             }
         }

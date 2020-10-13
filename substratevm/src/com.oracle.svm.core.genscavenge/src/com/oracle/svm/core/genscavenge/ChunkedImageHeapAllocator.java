@@ -269,8 +269,8 @@ class ChunkedImageHeapAllocator {
  */
 final class FillerObjectDummyPartition implements ImageHeapPartition {
     /**
-     * Zero so that the {@linkplain ImageHeapObject#getOffsetInPartition() partition-relative
-     * offsets} of filler objects are always their absolute locations.
+     * Zero so that the partition-relative offsets of filler objects are always their absolute
+     * locations.
      */
     @Override
     public long getStartOffset() {
@@ -279,11 +279,6 @@ final class FillerObjectDummyPartition implements ImageHeapPartition {
 
     @Override
     public String getName() {
-        throw VMError.shouldNotReachHere();
-    }
-
-    @Override
-    public boolean isWritable() {
         throw VMError.shouldNotReachHere();
     }
 

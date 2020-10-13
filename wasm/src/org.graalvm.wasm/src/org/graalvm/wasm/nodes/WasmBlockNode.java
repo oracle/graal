@@ -2356,7 +2356,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         break;
                     }
                     case F32_DEMOTE_F64: {
-                        throw WasmExecutionException.create(this, "not implemented: F32_DEMOTE_F64");
+                        stackPointer--;
+                        double x = popAsDouble(frame, stackPointer);
+                        float result = (float) x;
+                        pushFloat(frame, stackPointer, result);
+                        stackPointer++;
+                        trace("push demote_f64(0x%016X) = %f [f32]", x, result);
+                        break;
                     }
                     case F64_CONVERT_I32_S:
                     case F64_CONVERT_I32_U: {
@@ -2379,7 +2385,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         break;
                     }
                     case F64_PROMOTE_F32: {
-                        throw WasmExecutionException.create(this, "not implemented: F64_PROMOTE_F32");
+                        stackPointer--;
+                        float x = popAsFloat(frame, stackPointer);
+                        double result = x;
+                        pushDouble(frame, stackPointer, result);
+                        stackPointer++;
+                        trace("push promote_f32(0x%016X) = %f [f64]", x, result);
+                        break;
                     }
                     case I32_REINTERPRET_F32: {
                         // As we don't store type information for the frame slots (everything is

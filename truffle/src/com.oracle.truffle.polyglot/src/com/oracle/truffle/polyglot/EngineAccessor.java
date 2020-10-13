@@ -120,6 +120,7 @@ final class EngineAccessor extends Accessor {
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
     static final JDKSupport JDKSERVICES = ACCESSOR.jdkSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
+    static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
 
     private static List<AbstractClassLoaderSupplier> locatorLoaders() {
@@ -332,6 +333,12 @@ final class EngineAccessor extends Accessor {
         public TruffleContext getTruffleContext(Object polyglotLanguageContext) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
             return languageContext.context.currentTruffleContext;
+        }
+
+        @Override
+        public TruffleContext getCurrentCreatorTruffleContext() {
+            PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
+            return context != null ? context.creatorTruffleContext : null;
         }
 
         @SuppressWarnings("unchecked")
@@ -940,8 +947,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object asHostObject(Object obj) {
             assert isHostObject(obj);
-            HostObject javaObject = (HostObject) obj;
-            return javaObject.obj;
+            return HostObject.valueOf(obj);
         }
 
         @Override

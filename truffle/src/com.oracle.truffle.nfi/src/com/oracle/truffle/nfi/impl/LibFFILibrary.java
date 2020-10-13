@@ -119,7 +119,7 @@ final class LibFFILibrary implements TruffleObject {
                         @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws UnknownIdentifierException {
             try {
                 return ctx.lookupSymbol(receiver, symbol);
-            } catch (UnsatisfiedLinkError ex) {
+            } catch (NFIUnsatisfiedLinkError ex) {
                 exception.enter();
                 throw UnknownIdentifierException.create(symbol);
             }

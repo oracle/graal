@@ -41,10 +41,14 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-public class RegexSyntaxException extends RuntimeException implements TruffleException {
+@ExportLibrary(InteropLibrary.class)
+public final class RegexSyntaxException extends AbstractTruffleException {
 
     private static final String template = "Invalid regular expression: /%s/%s: %s";
     private static final String templateNoFlags = "Invalid regular expression: %s: %s";
@@ -87,14 +91,10 @@ public class RegexSyntaxException extends RuntimeException implements TruffleExc
         this.position = position;
     }
 
-    @Override
-    public boolean isSyntaxError() {
-        return true;
-    }
-
-    @Override
-    public Node getLocation() {
-        return null;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    ExceptionType getExceptionType() {
+        return ExceptionType.PARSE_ERROR;
     }
 
     public String getReason() {

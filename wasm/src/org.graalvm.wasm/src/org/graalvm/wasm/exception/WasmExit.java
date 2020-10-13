@@ -41,21 +41,25 @@
 package org.graalvm.wasm.exception;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Thrown when a WebAssembly program encounters an exit call.
  */
-public class WasmExit extends ThreadDeath implements TruffleException {
+@ExportLibrary(InteropLibrary.class)
+public class WasmExit extends AbstractTruffleException {
 
     private static final long serialVersionUID = 1787712823539392187L;
-    private final Node location;
     private final int exitCode;
 
     @TruffleBoundary
     public WasmExit(Node location, int exitCode) {
-        this.location = location;
+        super(location);
         this.exitCode = exitCode;
     }
 
@@ -65,18 +69,14 @@ public class WasmExit extends ThreadDeath implements TruffleException {
         return "Program exited with status code " + exitCode + ".";
     }
 
-    @Override
-    public Node getLocation() {
-        return location;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    ExceptionType getExceptionType() {
+        return ExceptionType.EXIT;
     }
 
-    @Override
-    public boolean isExit() {
-        return true;
-    }
-
-    @Override
-    public int getExitStatus() {
+    @ExportMessage
+    int getExceptionExitStatus() {
         return exitCode;
     }
 }

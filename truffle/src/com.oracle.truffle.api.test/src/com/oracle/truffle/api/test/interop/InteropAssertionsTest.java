@@ -51,8 +51,11 @@ import java.util.function.Supplier;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -642,5 +645,319 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         v.getScopeParent = () -> parentScope;
         assertFails(() -> l.hasScopeParent(v), AssertionError.class);
         assertFails(() -> l.getScopeParent(v), AssertionError.class);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("serial")
+    static final class ExceptionTest extends AbstractTruffleException {
+
+        boolean hasExceptionMessage;
+        Supplier<Object> getExceptionMessage;
+        ExceptionType exceptionType;
+        Supplier<Integer> getExceptionExitStatus;
+        Supplier<Boolean> isExceptionIncompleteSource;
+        boolean hasExceptionCause;
+        Supplier<Object> getExceptionCause;
+        boolean hasExceptionStackTrace;
+        Supplier<Object> getExceptionStackTrace;
+
+        ExceptionTest() {
+            hasExceptionMessage = true;
+            getExceptionMessage = () -> "Test exception";
+            exceptionType = ExceptionType.RUNTIME_ERROR;
+        }
+
+        @ExportMessage
+        boolean hasExceptionMessage() {
+            return hasExceptionMessage;
+        }
+
+        @ExportMessage
+        Object getExceptionMessage() throws UnsupportedMessageException {
+            if (getExceptionMessage == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return getExceptionMessage.get();
+        }
+
+        @ExportMessage
+        ExceptionType getExceptionType() {
+            return exceptionType;
+        }
+
+        @ExportMessage
+        int getExceptionExitStatus() throws UnsupportedMessageException {
+            if (getExceptionExitStatus == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return getExceptionExitStatus.get();
+        }
+
+        @ExportMessage
+        boolean isExceptionIncompleteSource() throws UnsupportedMessageException {
+            if (isExceptionIncompleteSource == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return isExceptionIncompleteSource.get();
+        }
+
+        @ExportMessage
+        boolean hasExceptionCause() {
+            return hasExceptionCause;
+        }
+
+        @ExportMessage
+        Object getExceptionCause() throws UnsupportedMessageException {
+            if (getExceptionCause == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return getExceptionCause.get();
+        }
+
+        @ExportMessage
+        boolean hasExceptionStackTrace() {
+            return hasExceptionStackTrace;
+        }
+
+        @ExportMessage
+        Object getExceptionStackTrace() throws UnsupportedMessageException {
+            if (getExceptionStackTrace == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return getExceptionStackTrace.get();
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class StackFrameTest implements TruffleObject {
+
+        boolean hasExecutableName;
+        Supplier<Object> getExecutableName;
+        boolean hasDeclaringMetaObject;
+        Supplier<Object> getDeclaringMetaObject;
+
+        StackFrameTest(String name) {
+            hasExecutableName = true;
+            getExecutableName = () -> name;
+        }
+
+        @ExportMessage
+        boolean hasExecutableName() {
+            return hasExecutableName;
+        }
+
+        @ExportMessage
+        Object getExecutableName() throws UnsupportedMessageException {
+            if (getExecutableName == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return getExecutableName.get();
+        }
+
+        @ExportMessage
+        boolean hasDeclaringMetaObject() {
+            return hasDeclaringMetaObject;
+        }
+
+        @ExportMessage
+        Object getDeclaringMetaObject() throws UnsupportedMessageException {
+            if (getDeclaringMetaObject == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return getDeclaringMetaObject.get();
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class StackTraceTest implements TruffleObject {
+
+        Supplier<Object[]> content;
+
+        StackTraceTest(Object... frames) {
+            content = () -> frames;
+        }
+
+        @ExportMessage
+        boolean hasArrayElements() {
+            return content != null;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return content.get().length;
+        }
+
+        @ExportMessage
+        @SuppressWarnings({"static-method", "unused"})
+        boolean isArrayElementReadable(long index) {
+            return true;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            checkBounds(index);
+            return content.get()[(int) index];
+        }
+
+        private void checkBounds(long index) throws InvalidArrayIndexException {
+            if (index < 0 || index >= content.get().length) {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+    }
+
+    @Test
+    public void testGetExceptionMessage() throws UnsupportedMessageException {
+        ExceptionTest exceptionTest = new ExceptionTest();
+        InteropLibrary exceptionLib = createLibrary(InteropLibrary.class, exceptionTest);
+        assertEquals(exceptionTest.getExceptionMessage.get(), exceptionLib.getExceptionMessage(exceptionTest));
+        exceptionTest.hasExceptionMessage = false;
+        assertFails(() -> exceptionLib.getExceptionMessage(exceptionTest), AssertionError.class);
+        exceptionTest.hasExceptionMessage = true;
+        exceptionTest.getExceptionMessage = null;
+        assertFails(() -> exceptionLib.getExceptionMessage(exceptionTest), AssertionError.class);
+        exceptionTest.getExceptionMessage = () -> null;
+        assertFails(() -> exceptionLib.getExceptionMessage(exceptionTest), NullPointerException.class);
+        exceptionTest.getExceptionMessage = () -> 1;
+        assertFails(() -> exceptionLib.getExceptionMessage(exceptionTest), AssertionError.class);
+        TruffleObject empty = new TruffleObject() {
+        };
+        InteropLibrary objectLib = createLibrary(InteropLibrary.class, empty);
+        assertFails(() -> objectLib.getExceptionMessage(empty), UnsupportedMessageException.class);
+    }
+
+    @Test
+    public void getExceptionExitStatus() throws UnsupportedMessageException {
+        ExceptionTest exceptionTest = new ExceptionTest();
+        InteropLibrary exceptionLib = createLibrary(InteropLibrary.class, exceptionTest);
+        exceptionTest.exceptionType = ExceptionType.EXIT;
+        exceptionTest.getExceptionExitStatus = () -> 255;
+        assertEquals(exceptionTest.getExceptionExitStatus.get().intValue(), exceptionLib.getExceptionExitStatus(exceptionTest));
+        exceptionTest.exceptionType = ExceptionType.RUNTIME_ERROR;
+        assertFails(() -> exceptionLib.getExceptionExitStatus(exceptionTest), AssertionError.class);
+        exceptionTest.exceptionType = ExceptionType.EXIT;
+        exceptionTest.getExceptionExitStatus = null;
+        assertFails(() -> exceptionLib.getExceptionExitStatus(exceptionTest), AssertionError.class);
+        TruffleObject empty = new TruffleObject() {
+        };
+        InteropLibrary objectLib = createLibrary(InteropLibrary.class, empty);
+        assertFails(() -> objectLib.getExceptionExitStatus(empty), UnsupportedMessageException.class);
+    }
+
+    @Test
+    public void isExceptionIncompleteSource() throws UnsupportedMessageException {
+        ExceptionTest exceptionTest = new ExceptionTest();
+        InteropLibrary exceptionLib = createLibrary(InteropLibrary.class, exceptionTest);
+        exceptionTest.exceptionType = ExceptionType.PARSE_ERROR;
+        exceptionTest.isExceptionIncompleteSource = () -> true;
+        assertEquals(exceptionTest.isExceptionIncompleteSource.get().booleanValue(), exceptionLib.isExceptionIncompleteSource(exceptionTest));
+        exceptionTest.exceptionType = ExceptionType.RUNTIME_ERROR;
+        assertFails(() -> exceptionLib.isExceptionIncompleteSource(exceptionTest), AssertionError.class);
+        exceptionTest.exceptionType = ExceptionType.PARSE_ERROR;
+        exceptionTest.isExceptionIncompleteSource = null;
+        assertFails(() -> exceptionLib.isExceptionIncompleteSource(exceptionTest), AssertionError.class);
+        TruffleObject empty = new TruffleObject() {
+        };
+        InteropLibrary objectLib = createLibrary(InteropLibrary.class, empty);
+        assertFails(() -> objectLib.isExceptionIncompleteSource(empty), UnsupportedMessageException.class);
+    }
+
+    @Test
+    public void getExceptionCause() throws UnsupportedMessageException {
+        ExceptionTest exceptionTest = new ExceptionTest();
+        InteropLibrary exceptionLib = createLibrary(InteropLibrary.class, exceptionTest);
+        exceptionTest.hasExceptionCause = true;
+        ExceptionTest cause = new ExceptionTest();
+        exceptionTest.getExceptionCause = () -> cause;
+        assertEquals(cause, exceptionLib.getExceptionCause(exceptionTest));
+        exceptionTest.hasExceptionCause = false;
+        assertFails(() -> exceptionLib.getExceptionCause(exceptionTest), AssertionError.class);
+        exceptionTest.hasExceptionCause = true;
+        exceptionTest.getExceptionCause = null;
+        assertFails(() -> exceptionLib.getExceptionCause(exceptionTest), AssertionError.class);
+        exceptionTest.getExceptionCause = () -> null;
+        assertFails(() -> exceptionLib.getExceptionCause(exceptionTest), NullPointerException.class);
+        TruffleObject empty = new TruffleObject() {
+        };
+        exceptionTest.getExceptionCause = () -> empty;
+        assertFails(() -> exceptionLib.getExceptionCause(exceptionTest), AssertionError.class);
+        exceptionTest.getExceptionCause = () -> new RuntimeException();
+        assertFails(() -> exceptionLib.getExceptionCause(exceptionTest), AssertionError.class);
+        InteropLibrary objectLib = createLibrary(InteropLibrary.class, empty);
+        assertFails(() -> objectLib.getExceptionCause(empty), UnsupportedMessageException.class);
+    }
+
+    @Test
+    public void getExceptionStackTrace() throws UnsupportedMessageException {
+        ExceptionTest exceptionTest = new ExceptionTest();
+        InteropLibrary exceptionLib = createLibrary(InteropLibrary.class, exceptionTest);
+        StackTraceTest stackTrace = new StackTraceTest(new StackFrameTest("main"));
+        exceptionTest.hasExceptionStackTrace = true;
+        exceptionTest.getExceptionStackTrace = () -> stackTrace;
+        assertEquals(stackTrace, exceptionLib.getExceptionStackTrace(exceptionTest));
+
+        exceptionTest.hasExceptionStackTrace = false;
+        assertFails(() -> exceptionLib.getExceptionStackTrace(exceptionTest), AssertionError.class);
+        exceptionTest.hasExceptionStackTrace = true;
+        exceptionTest.getExceptionStackTrace = null;
+        assertFails(() -> exceptionLib.getExceptionStackTrace(exceptionTest), AssertionError.class);
+        exceptionTest.getExceptionStackTrace = () -> null;
+        assertFails(() -> exceptionLib.getExceptionStackTrace(exceptionTest), AssertionError.class);
+        TruffleObject empty = new TruffleObject() {
+        };
+        exceptionTest.getExceptionStackTrace = () -> empty;
+        assertFails(() -> exceptionLib.getExceptionStackTrace(exceptionTest), AssertionError.class);
+        StackTraceTest stackTraceWithEmptyFrame = new StackTraceTest(empty);
+        exceptionTest.getExceptionStackTrace = () -> stackTraceWithEmptyFrame;
+        exceptionLib.getExceptionStackTrace(exceptionTest);
+        InteropLibrary objectLib = createLibrary(InteropLibrary.class, empty);
+        assertFails(() -> objectLib.getExceptionStackTrace(empty), UnsupportedMessageException.class);
+    }
+
+    @Test
+    public void getExectuableName() throws UnsupportedMessageException {
+        StackFrameTest stackFrameTest = new StackFrameTest("foo");
+        InteropLibrary stackFrameLib = createLibrary(InteropLibrary.class, stackFrameTest);
+        assertEquals(stackFrameTest.getExecutableName.get(), stackFrameLib.getExecutableName(stackFrameTest));
+        stackFrameTest.hasExecutableName = false;
+        assertFails(() -> stackFrameLib.getExecutableName(stackFrameTest), AssertionError.class);
+        stackFrameTest.hasExecutableName = true;
+        stackFrameTest.getExecutableName = null;
+        assertFails(() -> stackFrameLib.getExecutableName(stackFrameTest), AssertionError.class);
+        stackFrameTest.getExecutableName = () -> null;
+        assertFails(() -> stackFrameLib.getExecutableName(stackFrameTest), NullPointerException.class);
+        TruffleObject empty = new TruffleObject() {
+        };
+        stackFrameTest.getExecutableName = () -> empty;
+        assertFails(() -> stackFrameLib.getExecutableName(stackFrameTest), AssertionError.class);
+        InteropLibrary objectLib = createLibrary(InteropLibrary.class, empty);
+        assertFails(() -> objectLib.getExecutableName(empty), UnsupportedMessageException.class);
+    }
+
+    @Test
+    public void getDeclaringMetaObject() throws UnsupportedMessageException {
+        StackFrameTest stackFrameTest = new StackFrameTest("foo");
+        MetaObjectTest metaObject = new MetaObjectTest();
+        metaObject.isMetaObject = true;
+        metaObject.getMetaQualifiedName = () -> "std";
+        metaObject.getMetaSimpleName = () -> "std";
+        metaObject.isMetaInstance = (i) -> false;
+        stackFrameTest.hasDeclaringMetaObject = true;
+        stackFrameTest.getDeclaringMetaObject = () -> metaObject;
+        InteropLibrary stackFrameLib = createLibrary(InteropLibrary.class, stackFrameTest);
+        assertEquals(metaObject, stackFrameLib.getDeclaringMetaObject(stackFrameTest));
+        stackFrameTest.hasDeclaringMetaObject = false;
+        assertFails(() -> stackFrameLib.getDeclaringMetaObject(stackFrameTest), AssertionError.class);
+        stackFrameTest.hasDeclaringMetaObject = true;
+        stackFrameTest.getDeclaringMetaObject = null;
+        assertFails(() -> stackFrameLib.getDeclaringMetaObject(stackFrameTest), AssertionError.class);
+        stackFrameTest.getDeclaringMetaObject = () -> null;
+        assertFails(() -> stackFrameLib.getDeclaringMetaObject(stackFrameTest), AssertionError.class);
+        TruffleObject empty = new TruffleObject() {
+        };
+        stackFrameTest.getDeclaringMetaObject = () -> empty;
+        assertFails(() -> stackFrameLib.getDeclaringMetaObject(stackFrameTest), AssertionError.class);
+        InteropLibrary objectLib = createLibrary(InteropLibrary.class, empty);
+        assertFails(() -> objectLib.getDeclaringMetaObject(empty), UnsupportedMessageException.class);
     }
 }

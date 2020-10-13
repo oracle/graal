@@ -60,12 +60,12 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.ThreadsActivationListener;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import java.lang.reflect.Method;
 
 public class TruffleContextTest extends AbstractPolyglotTest {
 
@@ -155,7 +155,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         for (int i = 0; i < threads.size(); i++) {
             Throwable e = exceptions.get(i).get();
             assertNotNull(e);
-            assertTrue(((TruffleException) e).isCancelled());
+            assertEquals(getCancelExcecutionClass(), e.getClass());
             assertEquals("testreason", e.getMessage());
             assertTrue(tc.isClosed());
         }
@@ -175,16 +175,14 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
         assertFails(() -> tc.close(), IllegalStateException.class);
 
-        assertFails(() -> tc.closeCancelled(node, "testreason"), TruffleException.class, (e) -> {
-            assertSame(e.getLocation(), node);
-            assertTrue(e.isCancelled());
+        assertFails(() -> tc.closeCancelled(node, "testreason"), getCancelExcecutionClass(), (e) -> {
+            assertSame(getCancelExcecutionLocation(e), node);
             assertEquals("testreason", ((Throwable) e).getMessage());
         });
 
-        assertFails(() -> tc.closeResourceExhausted(node, "testreason"), TruffleException.class, (e) -> {
-            assertSame(e.getLocation(), node);
+        assertFails(() -> tc.closeResourceExhausted(node, "testreason"), getCancelExcecutionClass(), (e) -> {
+            assertSame(getCancelExcecutionLocation(e), node);
             assertEquals("testreason", ((Throwable) e).getMessage());
-            assertTrue(e.isCancelled());
         });
         tc.leave(prev);
     }
@@ -284,8 +282,8 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
         // we allow cancel in this case. the error will be propagated an the caller
         // need to make sure to either propagate the cancel the parent context
-        assertFails(() -> tc1.closeCancelled(null, ""), TruffleException.class);
-        assertFails(() -> tc1.closeResourceExhausted(null, ""), TruffleException.class);
+        assertFails(() -> tc1.closeCancelled(null, ""), getCancelExcecutionClass());
+        assertFails(() -> tc1.closeResourceExhausted(null, ""), getCancelExcecutionClass());
 
         tc1.leave(prev3);
         tc2.leave(prev2);
@@ -293,4 +291,21 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
     }
 
+    private static Class<? extends Throwable> getCancelExcecutionClass() {
+        try {
+            return Class.forName("com.oracle.truffle.polyglot.PolyglotEngineImpl$CancelExecution").asSubclass(Throwable.class);
+        } catch (ClassNotFoundException cnf) {
+            throw new AssertionError("Cannot load CancelExecution class.", cnf);
+        }
+    }
+
+    private static Node getCancelExcecutionLocation(Throwable t) {
+        try {
+            Method m = t.getClass().getDeclaredMethod("getLocation");
+            m.setAccessible(true);
+            return (Node) m.invoke(t);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Failed to invoke CancelExecution.getLocation.", e);
+        }
+    }
 }
