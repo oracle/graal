@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -61,9 +62,11 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.proxy.Proxy;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
 final class PolyglotExceptionImpl extends AbstractExceptionImpl {
@@ -91,6 +94,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     private final boolean incompleteSource;
     private final boolean syntaxError;
     private final boolean resourceExhausted;
+    private final boolean interrupted;
     private final int exitStatus;
     private final Value guestObject;
     private final String message;
@@ -109,6 +113,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         this(polyglot, null, null, original);
     }
 
+    @SuppressWarnings("deprecation")
     private PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, PolyglotLanguageContext languageContext, Throwable original) {
         super(polyglot);
         this.polyglot = polyglot;
@@ -118,55 +123,53 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
         this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
         this.resourceExhausted = isResourceLimit(exception);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        if (interop.isException(exception)) {
+            try {
+                ExceptionType exceptionType = interop.getExceptionType(exception);
+                this.internal = false;
+                this.cancelled = isLegacyTruffleExceptionCancelled(exception);    // Handle legacy
+                                                                                  // TruffleException
+                this.syntaxError = exceptionType == ExceptionType.PARSE_ERROR;
+                this.exit = exceptionType == ExceptionType.EXIT;
+                this.exitStatus = this.exit ? interop.getExceptionExitStatus(exception) : 0;
+                this.incompleteSource = this.syntaxError ? interop.isExceptionIncompleteSource(exception) : false;
+                this.interrupted = exceptionType == ExceptionType.INTERRUPT;
 
-        if (exception instanceof TruffleException) {
-            TruffleException truffleException = (TruffleException) exception;
-            this.internal = truffleException.isInternalError();
-            this.cancelled = truffleException.isCancelled();
-            this.syntaxError = truffleException.isSyntaxError();
-            this.incompleteSource = truffleException.isIncompleteSource();
-            this.exit = truffleException.isExit();
-            this.exitStatus = this.exit ? truffleException.getExitStatus() : 0;
-
-            com.oracle.truffle.api.source.SourceSection section = truffleException.getSourceLocation();
-            if (section != null) {
-                com.oracle.truffle.api.source.Source truffleSource = section.getSource();
-                String language = truffleSource.getLanguage();
-                if (language == null) {
-                    Objects.requireNonNull(engine, "Source location can not be accepted without language context.");
-                    PolyglotLanguage foundLanguage = engine.findLanguage(null, language, truffleSource.getMimeType(), false, true);
-                    if (foundLanguage != null) {
-                        language = foundLanguage.getId();
+                if (interop.hasSourceLocation(exception)) {
+                    this.sourceLocation = newSourceSection(interop.getSourceLocation(exception));
+                } else {
+                    this.sourceLocation = null;
+                }
+                Object exceptionObject;
+                if (languageContext != null && !(exception instanceof HostException) && (exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject()) != null) {
+                    /*
+                     * Allow proxies in guest language objects. This is for legacy support. Ideally
+                     * we should get rid of this if it is no longer relied upon.
+                     */
+                    Object receiver = exceptionObject;
+                    if (receiver instanceof Proxy) {
+                        receiver = languageContext.toGuestValue(receiver);
                     }
+                    this.guestObject = languageContext.asValue(receiver);
+                } else {
+                    this.guestObject = null;
                 }
-                Source source = polyglot.getAPIAccess().newSource(language, truffleSource);
-                this.sourceLocation = polyglot.getAPIAccess().newSourceSection(source, section);
-            } else {
-                this.sourceLocation = null;
-            }
-            Object exceptionObject;
-            if (languageContext != null && !(exception instanceof HostException) && (exceptionObject = ((TruffleException) exception).getExceptionObject()) != null) {
-                /*
-                 * Allow proxies in guest language objects. This is for legacy support. Ideally we
-                 * should get rid of this if it is no longer relied upon.
-                 */
-                Object receiver = exceptionObject;
-                if (receiver instanceof Proxy) {
-                    receiver = languageContext.toGuestValue(receiver);
-                }
-                this.guestObject = languageContext.asValue(receiver);
-            } else {
-                this.guestObject = null;
+            } catch (UnsupportedMessageException ume) {
+                throw CompilerDirectives.shouldNotReachHere(ume);
             }
         } else {
-            this.cancelled = false;
-            this.internal = !resourceExhausted;
+            this.cancelled = (exception instanceof CancelExecution) || isLegacyTruffleExceptionCancelled(exception);
+            this.internal = !cancelled && !resourceExhausted;
             this.syntaxError = false;
             this.incompleteSource = false;
-            this.exit = false;
-            this.exitStatus = 0;
-            this.sourceLocation = null;
-            this.guestObject = null;
+            this.exit = isLegacyTruffleExceptionExit(exception);
+            this.exitStatus = exit ? getLegacyTruffleExceptionExitStatus(exception) : 0;
+            this.interrupted = false;
+            com.oracle.truffle.api.source.SourceSection location = exception instanceof CancelExecution ? ((CancelExecution) exception).getSourceLocation()
+                            : getLegacyTruffleExceptionSourceLocation(exception);
+            this.sourceLocation = location != null ? newSourceSection(location) : null;
+            this.guestObject = getLegacyTruffleExceptionGuestObject(languageContext, exception);
         }
         if (isHostException()) {
             this.message = asHostException().getMessage();
@@ -196,6 +199,71 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         return toCheck instanceof StackOverflowError || toCheck instanceof OutOfMemoryError;
     }
 
+    @SuppressWarnings("deprecation")
+    private static boolean isLegacyTruffleExceptionCancelled(Throwable e) {
+        // Legacy TruffleException
+        if (e instanceof com.oracle.truffle.api.TruffleException) {
+            return ((com.oracle.truffle.api.TruffleException) e).isCancelled();
+        }
+        return false;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean isLegacyTruffleExceptionExit(Throwable e) {
+        // Legacy TruffleException
+        if (e instanceof com.oracle.truffle.api.TruffleException) {
+            return ((com.oracle.truffle.api.TruffleException) e).isExit();
+        }
+        return false;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int getLegacyTruffleExceptionExitStatus(Throwable e) {
+        // Legacy TruffleException
+        if (e instanceof com.oracle.truffle.api.TruffleException) {
+            return ((com.oracle.truffle.api.TruffleException) e).getExitStatus();
+        }
+        return 0;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static com.oracle.truffle.api.source.SourceSection getLegacyTruffleExceptionSourceLocation(Throwable e) {
+        // Legacy TruffleException
+        if (e instanceof com.oracle.truffle.api.TruffleException) {
+            return ((com.oracle.truffle.api.TruffleException) e).getSourceLocation();
+        }
+        return null;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static Value getLegacyTruffleExceptionGuestObject(PolyglotLanguageContext languageContext, Throwable e) {
+        // Legacy TruffleException
+        if (e instanceof com.oracle.truffle.api.TruffleException) {
+            Object exceptionObject = ((com.oracle.truffle.api.TruffleException) e).getExceptionObject();
+            if (exceptionObject != null) {
+                if (exceptionObject instanceof Proxy) {
+                    exceptionObject = languageContext.toGuestValue(exceptionObject);
+                }
+                return languageContext.asValue(exceptionObject);
+            }
+        }
+        return null;
+    }
+
+    private SourceSection newSourceSection(com.oracle.truffle.api.source.SourceSection section) {
+        com.oracle.truffle.api.source.Source truffleSource = section.getSource();
+        String language = truffleSource.getLanguage();
+        if (language == null) {
+            Objects.requireNonNull(engine, "Source location can not be accepted without language context.");
+            PolyglotLanguage foundLanguage = engine.findLanguage(null, language, truffleSource.getMimeType(), false, true);
+            if (foundLanguage != null) {
+                language = foundLanguage.getId();
+            }
+        }
+        Source source = polyglot.getAPIAccess().newSource(language, truffleSource);
+        return polyglot.getAPIAccess().newSourceSection(source, section);
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof PolyglotExceptionImpl) {
@@ -222,6 +290,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     @Override
     public boolean isResourceExhausted() {
         return resourceExhausted;
+    }
+
+    @Override
+    public boolean isInterrupted() {
+        return interrupted;
     }
 
     @Override
@@ -484,14 +557,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             this.impl = impl;
             this.apiAccess = impl.polyglot.getAPIAccess();
 
-            Throwable cause = impl.exception;
-            while (cause.getCause() != null && cause.getStackTrace().length == 0) {
-                if (cause instanceof HostException) {
-                    cause = ((HostException) cause).getOriginal();
-                } else {
-                    cause = cause.getCause();
-                }
-            }
+            Throwable cause = findCause(impl.exception);
             if (EngineAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
                 this.hostStack = EngineAccessor.LANGUAGE.getInternalStackTraceElements(cause);
             } else if (cause.getStackTrace() == null || cause.getStackTrace().length == 0) {
@@ -508,6 +574,24 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 // To mark the beginning of the stack trace and separate from the previous one
                 PrintStream out = System.out;
                 out.println();
+            }
+        }
+
+        private Throwable findCause(Throwable throwable) {
+            Throwable cause = throwable;
+            if (cause instanceof HostException) {
+                return findCause(((HostException) cause).getOriginal());
+            } else if (EngineAccessor.EXCEPTION.isException(cause)) {
+                return EngineAccessor.EXCEPTION.getLazyStackTrace(cause);
+            } else {
+                while (cause.getCause() != null && cause.getStackTrace().length == 0) {
+                    if (cause instanceof HostException) {
+                        cause = ((HostException) cause).getOriginal();
+                    } else {
+                        cause = cause.getCause();
+                    }
+                }
+                return cause;
             }
         }
 

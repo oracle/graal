@@ -51,7 +51,6 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -63,6 +62,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -95,9 +95,9 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
             callTarget = env.parse(sourceWrapper.getSource());
             logger.log(Level.FINER, "Parsing done.");
         } catch (Exception e) {
-            if (e instanceof TruffleException) {
+            if (INTEROP.isException(e)) {
                 throw DiagnosticsNotification.create(surrogate.getUri(),
-                                Diagnostic.create(SourceUtils.getRangeFrom((TruffleException) e), e.getMessage(), DiagnosticSeverity.Error, null, "Graal", null));
+                                Diagnostic.create(SourceUtils.getRangeFrom(e, INTEROP), e.getMessage(), DiagnosticSeverity.Error, null, "Graal", null));
             } else {
                 // TODO(ds) throw an Exception which the LSPServer can catch to send a client
                 // notification
@@ -321,11 +321,15 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
         } catch (EvaluationResultException e) {
             return e.isError() ? EvaluationResult.createError(e.getResult()) : EvaluationResult.createResult(e.getResult());
         } catch (RuntimeException e) {
-            if (e instanceof TruffleException) {
-                if (((TruffleException) e).isExit()) {
-                    return EvaluationResult.createEvaluationSectionNotReached();
-                } else {
-                    return EvaluationResult.createError(e);
+            if (INTEROP.isException(e)) {
+                try {
+                    if (INTEROP.getExceptionType(e) == ExceptionType.EXIT) {
+                        return EvaluationResult.createEvaluationSectionNotReached();
+                    } else {
+                        return EvaluationResult.createError(e);
+                    }
+                } catch (UnsupportedMessageException ume) {
+                    throw CompilerDirectives.shouldNotReachHere(ume);
                 }
             }
         } finally {

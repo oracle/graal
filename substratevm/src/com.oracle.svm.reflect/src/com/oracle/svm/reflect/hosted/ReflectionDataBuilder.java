@@ -261,10 +261,15 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             clazz.getConstructors();
             clazz.getDeclaredClasses();
             clazz.getClasses();
-        } catch (TypeNotPresentException | NoClassDefFoundError e) {
+        } catch (TypeNotPresentException | NoClassDefFoundError | VerifyError e) {
             /*
              * If any of the methods or fields reference missing types in their signatures a
              * NoClassDefFoundError is thrown. Skip registering reflection metadata for this class.
+             *
+             * If the class fails verification then no reflection metadata can be registered.
+             * Howerver, the class is still registered for run time loading with Class.forName() and
+             * its class initializer is replaced with a synthesized 'throw new VerifyError()' (see
+             * ClassInitializationFeature.buildRuntimeInitializationInfo()).
              */
             // Checkstyle: stop
             System.out.println("WARNING: Could not register reflection metadata for " + clazz.getTypeName() +

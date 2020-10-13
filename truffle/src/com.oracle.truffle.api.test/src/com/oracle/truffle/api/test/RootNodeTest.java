@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,14 +48,21 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import org.graalvm.polyglot.Context;
 
 /**
  * <h3>Creating a Root Node</h3>
@@ -132,16 +139,125 @@ public class RootNodeTest {
         try {
             Truffle.getRuntime().createCallTarget(rootNode).call(marker);
         } catch (TestException e) {
-            MaterializedFrame frame = e.frame;
-            List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(e);
-            Assert.assertEquals(1, stackTrace.size());
-            Assert.assertNull(stackTrace.get(0).getLocation());
-            Assert.assertEquals(rootNode.getCallTarget(), stackTrace.get(0).getTarget());
-            Assert.assertNotNull(stackTrace.get(0).getFrame());
-            Assert.assertEquals(1, stackTrace.get(0).getFrame().getArguments().length);
-            Assert.assertEquals(marker, stackTrace.get(0).getFrame().getArguments()[0]);
-            Assert.assertEquals(marker, frame.getArguments()[0]);
+            asserCapturedFrames(rootNode, marker, e, e.frame);
         }
+    }
+
+    @Test
+    public void testCapturingFramesLegacyException() {
+        TestRootNode4 rootNode = new TestRootNode4(true);
+        Object marker = new Object();
+        try {
+            Truffle.getRuntime().createCallTarget(rootNode).call(marker);
+        } catch (LegacyTestException e) {
+            asserCapturedFrames(rootNode, marker, e, e.frame);
+        }
+    }
+
+    @Test
+    public void testTranslateStackTraceElementNotEntered() {
+        RootNode rootNode = new TestRootNode3(true);
+        try {
+            Truffle.getRuntime().createCallTarget(rootNode).call();
+        } catch (TestException e) {
+            TruffleStackTraceElement stackTraceElement = getStackTraceElementFor(e, rootNode);
+            Assert.assertNotNull(stackTraceElement);
+            AbstractPolyglotTest.assertFails(() -> stackTraceElement.getGuestObject(), AssertionError.class);
+        }
+    }
+
+    @Test
+    public void testTranslateStackTraceElementEntered() throws UnsupportedMessageException {
+        try (Context ctx = Context.create()) {
+            ctx.enter();
+            RootNode rootNode = new TestRootNode3(true);
+            try {
+                Truffle.getRuntime().createCallTarget(rootNode).call();
+            } catch (TestException e) {
+                TruffleStackTraceElement stackTraceElement = getStackTraceElementFor(e, rootNode);
+                Assert.assertNotNull(stackTraceElement);
+                Object guestObject = stackTraceElement.getGuestObject();
+                verifyStackTraceElementGuestObject(guestObject);
+            }
+        }
+    }
+
+    @Test
+    public void testTranslateStackTraceElementCustomGuestObject() throws UnsupportedMessageException {
+        try (Context ctx = Context.create()) {
+            ctx.enter();
+            testTranslateStackTraceElementCustomGuestObjectImpl(true, true, true, true);
+            testTranslateStackTraceElementCustomGuestObjectImpl(true, false, true, false);
+            testTranslateStackTraceElementCustomGuestObjectImpl(false, true, false, true);
+            testTranslateStackTraceElementCustomGuestObjectImpl(false, false, false, false);
+        }
+    }
+
+    private static void testTranslateStackTraceElementCustomGuestObjectImpl(boolean hasExecutableName,
+                    boolean hasDeclaringMetaObject, boolean isString, boolean isMetaObject) throws UnsupportedMessageException {
+        RootNode rootNode = new TestRootNode5(hasExecutableName, hasDeclaringMetaObject, isString, isMetaObject);
+        try {
+            Truffle.getRuntime().createCallTarget(rootNode).call();
+        } catch (TestException e) {
+            TruffleStackTraceElement stackTraceElement = getStackTraceElementFor(e, rootNode);
+            Assert.assertNotNull(stackTraceElement);
+            Object guestObject = stackTraceElement.getGuestObject();
+            verifyStackTraceElementGuestObject(guestObject);
+        }
+    }
+
+    @Test
+    public void testTranslateStackTraceElementInvalidCustomGuestObject() {
+        try (Context ctx = Context.create()) {
+            ctx.enter();
+            testTranslateStackTraceElementInvalidCustomGuestObjectImpl(true, true, false, true);
+            testTranslateStackTraceElementInvalidCustomGuestObjectImpl(true, true, true, false);
+        }
+    }
+
+    private static void testTranslateStackTraceElementInvalidCustomGuestObjectImpl(boolean hasExecutableName,
+                    boolean hasDeclaringMetaObject, boolean isString, boolean isMetaObject) {
+        RootNode rootNode = new TestRootNode5(hasExecutableName, hasDeclaringMetaObject, isString, isMetaObject);
+        try {
+            Truffle.getRuntime().createCallTarget(rootNode).call();
+        } catch (TestException e) {
+            TruffleStackTraceElement stackTraceElement = getStackTraceElementFor(e, rootNode);
+            Assert.assertNotNull(stackTraceElement);
+            AbstractPolyglotTest.assertFails(() -> stackTraceElement.getGuestObject(), AssertionError.class);
+        }
+    }
+
+    private static TruffleStackTraceElement getStackTraceElementFor(Throwable t, RootNode rootNode) {
+        for (TruffleStackTraceElement stackTraceElement : TruffleStackTrace.getStackTrace(t)) {
+            if (rootNode == stackTraceElement.getTarget().getRootNode()) {
+                return stackTraceElement;
+            }
+        }
+        return null;
+    }
+
+    static void verifyStackTraceElementGuestObject(Object guestObject) throws UnsupportedMessageException {
+        Assert.assertNotNull(guestObject);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        if (interop.hasExecutableName(guestObject)) {
+            Object executableName = interop.getExecutableName(guestObject);
+            Assert.assertTrue(interop.isString(executableName));
+        }
+        if (interop.hasDeclaringMetaObject(guestObject)) {
+            Object metaObject = interop.getDeclaringMetaObject(guestObject);
+            Assert.assertTrue(interop.isMetaObject(metaObject));
+        }
+    }
+
+    private static void asserCapturedFrames(RootNode rootNode, Object arg, Throwable e, MaterializedFrame frame) {
+        List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(e);
+        Assert.assertEquals(1, stackTrace.size());
+        Assert.assertNull(stackTrace.get(0).getLocation());
+        Assert.assertEquals(rootNode.getCallTarget(), stackTrace.get(0).getTarget());
+        Assert.assertNotNull(stackTrace.get(0).getFrame());
+        Assert.assertEquals(1, stackTrace.get(0).getFrame().getArguments().length);
+        Assert.assertEquals(arg, stackTrace.get(0).getFrame().getArguments()[0]);
+        Assert.assertEquals(arg, frame.getArguments()[0]);
     }
 
     class TestRootNode extends RootNode {
@@ -171,19 +287,15 @@ public class RootNodeTest {
     }
 
     @SuppressWarnings("serial")
-    class TestException extends RuntimeException implements TruffleException {
+    static final class TestException extends AbstractTruffleException {
         MaterializedFrame frame;
 
         TestException(VirtualFrame frame) {
             this.frame = frame.materialize();
         }
-
-        public Node getLocation() {
-            return null;
-        }
     }
 
-    class TestRootNode3 extends RootNode {
+    static final class TestRootNode3 extends RootNode {
         private boolean shouldCaptureFrames;
 
         TestRootNode3(boolean shouldCaptureFrames) {
@@ -199,6 +311,137 @@ public class RootNodeTest {
         @Override
         public Object execute(VirtualFrame frame) {
             throw new TestException(frame);
+        }
+    }
+
+    @SuppressWarnings({"serial", "deprecation"})
+    static final class LegacyTestException extends RuntimeException implements com.oracle.truffle.api.TruffleException {
+        MaterializedFrame frame;
+
+        LegacyTestException(VirtualFrame frame) {
+            this.frame = frame.materialize();
+        }
+
+        @Override
+        public Node getLocation() {
+            return null;
+        }
+    }
+
+    static final class TestRootNode4 extends RootNode {
+        private boolean shouldCaptureFrames;
+
+        TestRootNode4(boolean shouldCaptureFrames) {
+            super(null);
+            this.shouldCaptureFrames = shouldCaptureFrames;
+        }
+
+        @Override
+        public boolean isCaptureFramesForTrace() {
+            return this.shouldCaptureFrames;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw new LegacyTestException(frame);
+        }
+    }
+
+    static final class TestRootNode5 extends RootNode {
+
+        private final TruffleStackTraceElementGuestObject truffleStackTraceElementGuestObject;
+
+        TestRootNode5(boolean hasExecutableName, boolean hasDeclaringMetaObject, boolean isString, boolean isMetaObject) {
+            super(null);
+            truffleStackTraceElementGuestObject = new TruffleStackTraceElementGuestObject(hasExecutableName, hasDeclaringMetaObject, isString, isMetaObject);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw new TestException(frame);
+        }
+
+        @Override
+        protected Object translateStackTraceElement(TruffleStackTraceElement element) {
+            return truffleStackTraceElementGuestObject;
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        static final class TruffleStackTraceElementGuestObject implements TruffleObject {
+
+            private static final TruffleObject EMPTY = new TruffleObject() {
+            };
+
+            private final boolean hasExecutableName;
+            private final boolean hasDeclaringMetaObject;
+            private final boolean isString;
+            private final boolean isMetaObject;
+
+            TruffleStackTraceElementGuestObject(boolean hasExecutableName, boolean hasDeclaringMetaObject, boolean isString, boolean isMetaObject) {
+                this.hasExecutableName = hasExecutableName;
+                this.hasDeclaringMetaObject = hasDeclaringMetaObject;
+                this.isString = isString;
+                this.isMetaObject = isMetaObject;
+            }
+
+            @ExportMessage
+            boolean hasExecutableName() {
+                return hasExecutableName;
+            }
+
+            @ExportMessage
+            Object getExecutableName() throws UnsupportedMessageException {
+                if (!hasExecutableName) {
+                    throw UnsupportedMessageException.create();
+                }
+                return isString ? "main" : EMPTY;
+            }
+
+            @ExportMessage
+            boolean hasDeclaringMetaObject() {
+                return hasDeclaringMetaObject;
+            }
+
+            @ExportMessage
+            Object getDeclaringMetaObject() throws UnsupportedMessageException {
+                if (!hasDeclaringMetaObject) {
+                    throw UnsupportedMessageException.create();
+                }
+                return isMetaObject ? MetaObject.INSTANCE : EMPTY;
+            }
+
+            @ExportLibrary(InteropLibrary.class)
+            static final class MetaObject implements TruffleObject {
+
+                static final MetaObject INSTANCE = new MetaObject();
+
+                private MetaObject() {
+                }
+
+                @SuppressWarnings("static-method")
+                @ExportMessage
+                boolean isMetaObject() {
+                    return true;
+                }
+
+                @SuppressWarnings({"static-method", "unused"})
+                @ExportMessage
+                boolean isMetaInstance(Object object) {
+                    return false;
+                }
+
+                @SuppressWarnings("static-method")
+                @ExportMessage
+                Object getMetaQualifiedName() {
+                    return "std";
+                }
+
+                @SuppressWarnings("static-method")
+                @ExportMessage
+                Object getMetaSimpleName() {
+                    return "std";
+                }
+            }
         }
     }
 }

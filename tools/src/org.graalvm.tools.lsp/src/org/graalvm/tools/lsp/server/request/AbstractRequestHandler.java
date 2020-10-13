@@ -40,12 +40,13 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 import org.graalvm.tools.lsp.server.utils.NearestSectionsFinder.NearestSections;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+
 import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -94,8 +95,14 @@ public abstract class AbstractRequestHandler {
         try {
             return future.get();
         } catch (ExecutionException e) {
-            if (e.getCause() instanceof RuntimeException && e instanceof TruffleException) {
-                throw (RuntimeException) e.getCause();
+            Throwable cause = e.getCause();
+            InteropLibrary interopLib = InteropLibrary.getUncached();
+            if (cause != null && interopLib.isException(cause)) {
+                try {
+                    throw interopLib.throwException(cause);
+                } catch (UnsupportedMessageException ume) {
+                    throw CompilerDirectives.shouldNotReachHere(ume);
+                }
             } else {
                 e.printStackTrace(err);
             }

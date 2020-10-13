@@ -82,7 +82,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -121,7 +120,9 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -1912,17 +1913,11 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @SuppressWarnings("serial")
-    static class TestException extends RuntimeException implements TruffleException {
-
-        final Node location;
+    @ExportLibrary(InteropLibrary.class)
+    static class TestException extends AbstractTruffleException {
 
         TestException(Node location) {
-            super("test");
-            this.location = location;
-        }
-
-        public Node getLocation() {
-            return location;
+            super("test", location);
         }
     }
 
@@ -2468,7 +2463,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
     }
 
+    @SuppressWarnings("serial")
     private static final class MyKillException extends ThreadDeath {
-        static final long serialVersionUID = 1;
     }
 }

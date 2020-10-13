@@ -41,24 +41,28 @@
 package org.graalvm.wasm.exception;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.api.WebAssembly;
 
 /**
  * Thrown when a WebAssembly program encounters a trap, as defined by the specification.
  */
-public final class WasmTrap extends RuntimeException implements TruffleException {
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
+public final class WasmTrap extends AbstractTruffleException {
 
     private static final long serialVersionUID = 8195809219857028793L;
 
-    private final Node location;
-
     private WasmTrap(Node location, String message) {
-        super(message);
+        super(message, location);
         CompilerAsserts.neverPartOfCompilation();
-        this.location = location;
     }
 
     @TruffleBoundary
@@ -76,20 +80,37 @@ public final class WasmTrap extends RuntimeException implements TruffleException
         return new WasmTrap(location, String.format(format, arg));
     }
 
-    @Override
-    public Node getLocation() {
-        return location;
+    @ExportMessage
+    public boolean hasMembers() {
+        return true;
     }
 
-    @Override
-    public Object getExceptionObject() {
-        return new WebAssembly.RuntimeError(getMessage());
+    @ExportMessage
+    @SuppressWarnings({"unused", "static-method"})
+    final Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
-    @SuppressWarnings("sync-override")
-    @Override
-    public Throwable fillInStackTrace() {
-        return this;
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    public Object readMember(String member) throws UnknownIdentifierException {
+        switch (member) {
+            case "message":
+                return getMessage();
+            default:
+                throw UnknownIdentifierException.create(member);
+        }
+    }
+
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    public boolean isMemberReadable(String member) {
+        switch (member) {
+            case "message":
+                return true;
+            default:
+                return false;
+        }
     }
 
 }
