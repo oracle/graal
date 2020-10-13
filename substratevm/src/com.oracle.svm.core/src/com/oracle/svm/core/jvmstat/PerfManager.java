@@ -24,6 +24,25 @@
  */
 package com.oracle.svm.core.jvmstat;
 
-public interface PerfManager {
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
+public interface PerfManager {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    void register(PerfDataHolder perfDataHolder);
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    PerfLongConstant createPerfLongConstant(String name, PerfUnit unit);
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    PerfLongCounter createPerfLongCounter(String name, PerfUnit unit);
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    PerfLongVariable createPerfLongVariable(String name, PerfUnit unit);
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    PerfStringConstant createPerfStringConstant(String name);
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    PerfStringVariable createPerfStringVariable(String name, int lengthInBytes);
 }

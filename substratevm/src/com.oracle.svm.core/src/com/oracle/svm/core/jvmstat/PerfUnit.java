@@ -24,10 +24,21 @@
  */
 package com.oracle.svm.core.jvmstat;
 
-public enum Units {
-    NONE,
-    BYTES,
-    TICKS,
-    EVENTS,
-    HERTZ
+public enum PerfUnit {
+    NONE(1),
+    BYTES(2),
+    TICKS(3),
+    EVENTS(4),
+    STRING(5),
+    HERTZ(6);
+
+    private final int intValue;
+
+    private PerfUnit(int value) {
+        this.intValue = value;
+    }
+
+    public int getIntValue() {
+        return intValue;
+    }
 }

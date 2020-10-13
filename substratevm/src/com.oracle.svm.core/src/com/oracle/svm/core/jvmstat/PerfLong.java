@@ -25,5 +25,5 @@
 package com.oracle.svm.core.jvmstat;
 
 public interface PerfLong extends PerfDataEntry {
-    void initialize(long value);
+    void allocate(long initialValue);
 }

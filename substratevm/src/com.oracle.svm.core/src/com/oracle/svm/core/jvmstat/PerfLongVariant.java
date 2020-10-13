@@ -25,6 +25,8 @@
 package com.oracle.svm.core.jvmstat;
 
 public interface PerfLongVariant extends PerfLong {
+    void allocate();
+
     void setValue(long value);
 
     void inc();

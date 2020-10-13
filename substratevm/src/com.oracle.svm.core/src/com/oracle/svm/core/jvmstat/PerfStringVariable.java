@@ -25,4 +25,5 @@
 package com.oracle.svm.core.jvmstat;
 
 public interface PerfStringVariable extends PerfString {
+    void allocate();
 }

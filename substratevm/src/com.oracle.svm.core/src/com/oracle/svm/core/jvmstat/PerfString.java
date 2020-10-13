@@ -25,5 +25,5 @@
 package com.oracle.svm.core.jvmstat;
 
 public interface PerfString extends PerfDataEntry {
-    void initialize(String initialValue);
+    void allocate(String initialValue);
 }
