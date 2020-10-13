@@ -47,13 +47,13 @@ import com.oracle.truffle.api.object.ObjectType;
 
 import org.junit.Assert;
 
+@SuppressWarnings("deprecation")
 public class ObjectTypeSuperclassTest {
 
     public static class ObjectTypeSuperclass extends ObjectType {
 
     }
 
-    @SuppressWarnings("deprecation")
     @com.oracle.truffle.api.object.dsl.Layout(objectTypeSuperclass = ObjectTypeSuperclass.class)
     public interface ObjectTypeSuperclassTestLayout {
 

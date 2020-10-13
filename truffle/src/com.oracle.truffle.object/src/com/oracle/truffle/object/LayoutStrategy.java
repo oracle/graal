@@ -372,7 +372,7 @@ public abstract class LayoutStrategy {
             }
             return newShape;
         } else if (transition instanceof ObjectTypeTransition) {
-            return shape.changeType(((ObjectTypeTransition) transition).getObjectType());
+            return shape.setDynamicType(((ObjectTypeTransition) transition).getObjectType());
         } else if (transition instanceof ObjectFlagsTransition) {
             return shape.setFlags(((ObjectFlagsTransition) transition).getObjectFlags());
         } else if (transition instanceof ReservePrimitiveArrayTransition) {

@@ -52,7 +52,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.LocationFactory;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 
@@ -321,6 +320,10 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         return cloneWithShape(currentShape);
     }
 
+    static com.oracle.truffle.api.object.ObjectType getObjectType(Shape shape) {
+        return shape.getObjectType();
+    }
+
     @ExportMessage
     static class Accepts {
 
@@ -328,13 +331,13 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         @SuppressWarnings("unused")
         static boolean doCachedShape(DynamicObjectImpl receiver,
                         @Shared("cachedShape") @Cached("receiver.getShape()") Shape cachedShape,
-                        @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getObjectType().getClass()", allowUncached = true) Class<? extends ObjectType> typeClass) {
+                        @Shared("cachedTypeClass") @Cached(value = "getObjectType(receiver.getShape()).getClass()", allowUncached = true) Class<? extends com.oracle.truffle.api.object.ObjectType> typeClass) {
             return true;
         }
 
         @Specialization(replaces = "doCachedShape")
         static boolean doCachedTypeClass(DynamicObjectImpl receiver,
-                        @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getObjectType().getClass()", allowUncached = true) Class<? extends ObjectType> typeClass) {
+                        @Shared("cachedTypeClass") @Cached(value = "getObjectType(receiver.getShape()).getClass()", allowUncached = true) Class<? extends com.oracle.truffle.api.object.ObjectType> typeClass) {
             return typeClass == receiver.getShape().getObjectType().getClass();
         }
     }
@@ -346,14 +349,14 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         @SuppressWarnings("unused")
         static Class<?> doCachedShape(DynamicObjectImpl receiver,
                         @Shared("cachedShape") @Cached("receiver.getShape()") Shape cachedShape,
-                        @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getObjectType().getClass()", allowUncached = true) Class<? extends ObjectType> typeClass) {
+                        @Shared("cachedTypeClass") @Cached(value = "getObjectType(receiver.getShape()).getClass()", allowUncached = true) Class<? extends com.oracle.truffle.api.object.ObjectType> typeClass) {
             return cachedShape.getObjectType().dispatch();
         }
 
         @Specialization(replaces = "doCachedShape")
         static Class<?> doCachedTypeClass(DynamicObjectImpl receiver,
-                        @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getObjectType().getClass()", allowUncached = true) Class<? extends ObjectType> typeClass) {
-            ObjectType objectType = CompilerDirectives.castExact(receiver.getShape().getObjectType(), typeClass);
+                        @Shared("cachedTypeClass") @Cached(value = "getObjectType(receiver.getShape()).getClass()", allowUncached = true) Class<? extends com.oracle.truffle.api.object.ObjectType> typeClass) {
+            com.oracle.truffle.api.object.ObjectType objectType = CompilerDirectives.castExact(receiver.getShape().getObjectType(), typeClass);
             return objectType.dispatch();
         }
     }
