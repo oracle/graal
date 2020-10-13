@@ -47,6 +47,7 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeListener {
 
     private final ThreadLocal<Times> currentCompilation = new ThreadLocal<>();
+    private long startTime = System.nanoTime();
 
     private TraceCompilationListener(GraalTruffleRuntime runtime) {
         super(runtime);
@@ -63,17 +64,24 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         return properties;
     }
 
+    private Map<String, Object> queueProperties(OptimizedCallTarget target) {
+        Map<String, Object> properties = defaultProperties(target);
+        properties.put("Queue", runtime.getCompilationQueueSize());
+        properties.put("Time", System.nanoTime() - startTime);
+        return properties;
+    }
+
     @Override
     public void onCompilationQueued(OptimizedCallTarget target) {
         if (target.engine.traceCompilationDetails) {
-            runtime.logEvent(target, 0, "opt queued", defaultProperties(target));
+            runtime.logEvent(target, 0, "opt queued", queueProperties(target));
         }
     }
 
     @Override
     public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
         if (target.engine.traceCompilationDetails) {
-            Map<String, Object> properties = defaultProperties(target);
+            Map<String, Object> properties = queueProperties(target);
             properties.put("Reason", reason);
             runtime.logEvent(target, 0, "opt unqueued", properties);
         }
