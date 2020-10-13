@@ -24,6 +24,8 @@
 package com.oracle.truffle.espresso.analysis.liveness;
 
 import java.util.BitSet;
+import java.util.List;
+import java.util.Map;
 
 public interface BlockBoundaryResult {
     BitSet entryFor(int blockID);
@@ -31,4 +33,8 @@ public interface BlockBoundaryResult {
     History historyFor(int blockID);
 
     BitSet endFor(int blockID);
+
+    Map<Integer, List<Integer>> getLoops();
+
+    int maxLocals();
 }

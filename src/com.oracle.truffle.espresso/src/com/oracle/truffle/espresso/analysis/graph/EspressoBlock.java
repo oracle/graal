@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.analysis.graph;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.espresso.analysis.Util;
+
 public class EspressoBlock implements LinkedBlock {
     public static final int[] EMPTY_ID_ARRAY = new int[0];
 
@@ -46,6 +48,8 @@ public class EspressoBlock implements LinkedBlock {
         this.end = end;
         this.successors = successors;
         this.predecessors = predecessors;
+        assert Util.assertNoDupe(successors);
+        assert Util.assertNoDupe(predecessors);
     }
 
     @Override

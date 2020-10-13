@@ -265,7 +265,11 @@ public final class GraphBuilder {
                 return new int[]{branchID};
             } else {
                 int nextId = id + 1;
-                return new int[]{nextId, branchID};
+                if (branchID == nextId) {
+                    return new int[]{branchID};
+                } else {
+                    return new int[]{nextId, branchID};
+                }
             }
         }
     }
@@ -316,13 +320,19 @@ public final class GraphBuilder {
         ArrayList<Integer> targets = new ArrayList<>();
         mark(bci, SWITCH);
         markTarget(bci, switchTable.size());
+        BitSet present = new BitSet();
         for (int i = 0; i < helper.numberOfCases(bci); i++) {
             int target = helper.targetAt(bci, i);
-            targets.add(target);
+            if (!present.get(target)) {
+                targets.add(target);
+                present.set(target);
+            }
             mark(target, BLOCK_START);
         }
         int defaultTarget = helper.defaultTarget(bci);
-        targets.add(defaultTarget);
+        if (!present.get(defaultTarget)) {
+            targets.add(defaultTarget);
+        }
         mark(defaultTarget, BLOCK_START);
         switchTable.add(Util.toIntArray(targets));
     }
@@ -451,6 +461,7 @@ public final class GraphBuilder {
             }
             this.isRet = isRet;
             this.traps = traps;
+            assert Util.assertNoDupe(this.successors);
         }
 
         @Override
@@ -516,6 +527,7 @@ public final class GraphBuilder {
             for (int i : list) {
                 if (!present.get(i)) {
                     fullyLinkedSuccessors.add(i);
+                    present.set(i);
                 }
             }
         }

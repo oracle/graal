@@ -70,6 +70,24 @@ public class LivenessAnalysis {
         BlockBoundaryFinder blockBoundaryFinder = new BlockBoundaryFinder(method, loadStoreClosure.result());
         DepthFirstBlockIterator.analyze(method, graph, blockBoundaryFinder);
 
+        // Forces loop ends to inherit the loop entry state, and propagates the changes.
+        LoopPropagatorClosure loopPropagation = new LoopPropagatorClosure(graph, blockBoundaryFinder.result());
+        while (loopPropagation.process(graph)) {
+            /*
+             * This loop should iterate at MOST exactly the maximum number of nested loops in the
+             * method.
+             *
+             * The reasoning is the following:
+             *
+             * - The only reason a new iteration is required is when a loop entry's state gets
+             * modified by the previous iteration.
+             *
+             * - This can happen only if a new live variable gets propagated from an outer loop.
+             *
+             * - Which means that we do not need to re-propagate the state of the outermost loop.
+             */
+        }
+
         // Using the live sets and history, build a set of action for each bci, such that it frees
         // as early as possible each dead local.
         return new LivenessAnalysis(blockBoundaryFinder.result(), graph, method);
