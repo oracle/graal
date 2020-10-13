@@ -865,14 +865,10 @@ public class SLDebugTest {
                     numInteropStacks++;
                 }
             }
-            // There were at least as many interop internal frames as frames in fac function:
-            assertTrue("numInteropStacks = " + numInteropStacks, numInteropStacks >= numStacksAt6);
-            // Some more internal frames remain
-            while (sfIt.hasNext()) {
-                dsf = sfIt.next();
-                assertNull(dsf.getSourceSection());
-                assertTrue(dsf.isInternal());
-            }
+            // There are no interop implementation details
+            assertEquals(0, numInteropStacks);
+            // No further internal frames remain
+            assertFalse(sfIt.hasNext());
             done[0] = true;
         })) {
             Assert.assertNotNull(session);

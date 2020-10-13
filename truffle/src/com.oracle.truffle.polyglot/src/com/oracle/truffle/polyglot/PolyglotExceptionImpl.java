@@ -49,6 +49,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
+import java.util.function.Function;
 
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -396,7 +397,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         } else {
             return new Iterable<StackFrame>() {
                 public Iterator<StackFrame> iterator() {
-                    return new StackFrameIterator(PolyglotExceptionImpl.this);
+                    return createStackFrameIterator(PolyglotExceptionImpl.this);
                 }
             };
         }
@@ -517,7 +518,69 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         }
     }
 
-    private static class StackFrameIterator implements Iterator<StackFrame> {
+    static Iterator<StackFrame> createStackFrameIterator(PolyglotExceptionImpl impl) {
+        APIAccess apiAccess = impl.polyglot.getAPIAccess();
+
+        Throwable cause = findCause(impl.exception);
+        StackTraceElement[] hostStack;
+        if (EngineAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
+            hostStack = EngineAccessor.LANGUAGE.getInternalStackTraceElements(cause);
+        } else if (cause.getStackTrace() == null || cause.getStackTrace().length == 0) {
+            hostStack = impl.exception.getStackTrace();
+        } else {
+            hostStack = cause.getStackTrace();
+        }
+        Iterator<TruffleStackTraceElement> guestFrames = impl.guestFrames == null ? Collections.emptyIterator() : impl.guestFrames.iterator();
+        // we always start in some host stack frame
+        boolean inHostLanguage = impl.isHostException() || impl.isInternalError();
+
+        if (TRACE_STACK_TRACE_WALKING) {
+            // To mark the beginning of the stack trace and separate from the previous one
+            PrintStream out = System.out;
+            out.println();
+        }
+        return new MergedHostGuestIterator<>(hostStack, guestFrames, inHostLanguage, new Function<StackTraceElement, StackFrame>() {
+            @Override
+            public StackFrame apply(StackTraceElement element) {
+                return apiAccess.newPolyglotStackTraceElement(impl.impl, PolyglotExceptionFrame.createHost(impl, element));
+            }
+        }, new Function<TruffleStackTraceElement, StackFrame>() {
+
+            private boolean firstGuestFrame = true;
+
+            @Override
+            public StackFrame apply(TruffleStackTraceElement guestFrame) {
+                boolean first = this.firstGuestFrame;
+                this.firstGuestFrame = false;
+                PolyglotExceptionFrame guest = PolyglotExceptionFrame.createGuest(impl, guestFrame, first);
+                if (guest != null) {
+                    return apiAccess.newPolyglotStackTraceElement(impl.impl, guest);
+                } else {
+                    return null;
+                }
+            }
+        });
+    }
+
+    private static Throwable findCause(Throwable throwable) {
+        Throwable cause = throwable;
+        if (cause instanceof HostException) {
+            return findCause(((HostException) cause).getOriginal());
+        } else if (EngineAccessor.EXCEPTION.isException(cause)) {
+            return EngineAccessor.EXCEPTION.getLazyStackTrace(cause);
+        } else {
+            while (cause.getCause() != null && cause.getStackTrace().length == 0) {
+                if (cause instanceof HostException) {
+                    cause = ((HostException) cause).getOriginal();
+                } else {
+                    cause = cause.getCause();
+                }
+            }
+            return cause;
+        }
+    }
+
+    static class MergedHostGuestIterator<T, G> implements Iterator<T> {
 
         private static final String POLYGLOT_PACKAGE = Engine.class.getName().substring(0, Engine.class.getName().lastIndexOf('.') + 1);
         private static final String HOST_INTEROP_PACKAGE = "com.oracle.truffle.polyglot.";
@@ -530,76 +593,39 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                         HOST_INTEROP_PACKAGE + "ObjectProxyHandler"
         };
 
-        final PolyglotExceptionImpl impl;
-        final Iterator<TruffleStackTraceElement> guestFrames;
-        final StackTraceElement[] hostStack;
-        final ListIterator<StackTraceElement> hostFrames;
-        /*
-         * Initial host frames are skipped if the error is a regular non-internal guest language
-         * error.
-         */
-        final APIAccess apiAccess;
+        private final Iterator<G> guestFrames;
+        private final StackTraceElement[] hostStack;
+        private final ListIterator<StackTraceElement> hostFrames;
+        private final Function<StackTraceElement, T> hostFrameConvertor;
+        private final Function<G, T> guestFrameConvertor;
+        private boolean inHostLanguage;
+        private T fetchedNext;
 
-        boolean inHostLanguage;
-        boolean firstGuestFrame = true;
-        PolyglotExceptionFrame fetchedNext;
-
-        StackFrameIterator(PolyglotExceptionImpl impl) {
-            this.impl = impl;
-            this.apiAccess = impl.polyglot.getAPIAccess();
-
-            Throwable cause = findCause(impl.exception);
-            if (EngineAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
-                this.hostStack = EngineAccessor.LANGUAGE.getInternalStackTraceElements(cause);
-            } else if (cause.getStackTrace() == null || cause.getStackTrace().length == 0) {
-                this.hostStack = impl.exception.getStackTrace();
-            } else {
-                this.hostStack = cause.getStackTrace();
-            }
-            this.guestFrames = impl.guestFrames == null ? Collections.emptyIterator() : impl.guestFrames.iterator();
+        MergedHostGuestIterator(StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor) {
+            this.hostStack = hostStack;
             this.hostFrames = Arrays.asList(hostStack).listIterator();
-            // we always start in some host stack frame
-            this.inHostLanguage = impl.isHostException() || impl.isInternalError();
-
-            if (TRACE_STACK_TRACE_WALKING) {
-                // To mark the beginning of the stack trace and separate from the previous one
-                PrintStream out = System.out;
-                out.println();
-            }
+            this.guestFrames = guestFrames;
+            this.inHostLanguage = inHostLanguage;
+            this.hostFrameConvertor = hostFrameConvertor;
+            this.guestFrameConvertor = guestFrameConvertor;
         }
 
-        private Throwable findCause(Throwable throwable) {
-            Throwable cause = throwable;
-            if (cause instanceof HostException) {
-                return findCause(((HostException) cause).getOriginal());
-            } else if (EngineAccessor.EXCEPTION.isException(cause)) {
-                return EngineAccessor.EXCEPTION.getLazyStackTrace(cause);
-            } else {
-                while (cause.getCause() != null && cause.getStackTrace().length == 0) {
-                    if (cause instanceof HostException) {
-                        cause = ((HostException) cause).getOriginal();
-                    } else {
-                        cause = cause.getCause();
-                    }
-                }
-                return cause;
-            }
-        }
-
+        @Override
         public boolean hasNext() {
             return fetchNext() != null;
         }
 
-        public StackFrame next() {
-            PolyglotExceptionFrame next = fetchNext();
+        @Override
+        public T next() {
+            T next = fetchNext();
             if (next == null) {
                 throw new NoSuchElementException();
             }
             fetchedNext = null;
-            return apiAccess.newPolyglotStackTraceElement(impl.impl, next);
+            return next;
         }
 
-        PolyglotExceptionFrame fetchNext() {
+        T fetchNext() {
             if (fetchedNext != null) {
                 return fetchedNext;
             }
@@ -644,19 +670,17 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 if (isGuestCall(element)) {
                     inHostLanguage = false;
                     // construct guest frame
-                    TruffleStackTraceElement guestFrame = null;
                     if (guestFrames.hasNext()) {
-                        guestFrame = guestFrames.next();
-                    }
-                    PolyglotExceptionFrame frame = PolyglotExceptionFrame.createGuest(impl, guestFrame, firstGuestFrame);
-                    firstGuestFrame = false;
-                    if (frame != null) {
-                        fetchedNext = frame;
-                        return fetchedNext;
+                        G guestFrame = guestFrames.next();
+                        T frame = guestFrameConvertor.apply(guestFrame);
+                        if (frame != null) {
+                            fetchedNext = frame;
+                            return fetchedNext;
+                        }
                     }
                 } else if (inHostLanguage) {
                     // construct host frame
-                    fetchedNext = (PolyglotExceptionFrame.createHost(impl, element));
+                    fetchedNext = hostFrameConvertor.apply(element);
                     return fetchedNext;
                 } else {
                     // skip stack frame that is part of guest language stack
@@ -665,9 +689,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
 
             // consume guest frames
             if (guestFrames.hasNext()) {
-                TruffleStackTraceElement guestFrame = guestFrames.next();
-                PolyglotExceptionFrame frame = PolyglotExceptionFrame.createGuest(impl, guestFrame, firstGuestFrame);
-                firstGuestFrame = false;
+                G guestFrame = guestFrames.next();
+                T frame = guestFrameConvertor.apply(guestFrame);
                 if (frame != null) {
                     fetchedNext = frame;
                     return fetchedNext;
