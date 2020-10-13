@@ -342,7 +342,7 @@ public class BinaryParser extends BinaryStreamParser {
          * done before reading the body block, because we need to be able to create direct call
          * nodes {@see TruffleRuntime#createDirectCallNode} during parsing.
          */
-        WasmRootNode rootNode = new WasmRootNode(language, codeEntry);
+        WasmRootNode rootNode = new WasmRootNode(language, instance, codeEntry);
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         instance.setTarget(funcIndex, callTarget);
 

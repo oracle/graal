@@ -53,6 +53,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.wasm.ValueTypes;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmVoidResult;
 
@@ -61,12 +62,14 @@ import static org.graalvm.wasm.WasmTracing.trace;
 @NodeInfo(language = "wasm", description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
+    protected final WasmInstance instance;
     private final WasmCodeEntry codeEntry;
     @CompilationFinal private ContextReference<WasmContext> rawContextReference;
     @Child private WasmNode body;
 
-    public WasmRootNode(TruffleLanguage<?> language, WasmCodeEntry codeEntry) {
+    public WasmRootNode(TruffleLanguage<?> language, WasmInstance instance, WasmCodeEntry codeEntry) {
         super(language);
+        this.instance = instance;
         this.codeEntry = codeEntry;
         this.body = null;
     }
@@ -92,7 +95,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
         // be able to parse multiple modules before the code gets run.
-        context.linker().tryLink();
+        context.linker().tryLink(instance);
     }
 
     @Override
