@@ -169,6 +169,11 @@ public final class HostAccess {
         this.allowListAccess = allowListAccess;
     }
 
+    /**
+     * {@inheritDoc}
+     * 
+     * @since 20.3
+     */
     @Override
     public boolean equals(Object obj) {
         if (!(obj instanceof HostAccess)) {
@@ -187,6 +192,11 @@ public final class HostAccess {
                         && equalsSet(accessAnnotations, other.accessAnnotations);
     }
 
+    /**
+     * {@inheritDoc}
+     * 
+     * @since 20.3
+     */
     @Override
     public int hashCode() {
         return Objects.hash(allowPublic, allowAllImplementations,
