@@ -120,6 +120,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -1829,7 +1830,7 @@ public class ValueAPITest {
 
     @Test
     public void testGuestException() {
-        Value exceptionValue = context.asValue(new ExceptionWrapper(new RuntimeException("expected")));
+        Value exceptionValue = context.asValue(new ExceptionWrapper(new LanguageException("expected")));
         assertValue(exceptionValue, EXCEPTION);
         try {
             exceptionValue.throwException();
@@ -2020,6 +2021,14 @@ public class ValueAPITest {
                 throw InvalidArrayIndexException.create(idx);
             }
             return members[(int) idx];
+        }
+    }
+
+    @SuppressWarnings("serial")
+    private static final class LanguageException extends AbstractTruffleException {
+
+        LanguageException(String message) {
+            super(message);
         }
     }
 

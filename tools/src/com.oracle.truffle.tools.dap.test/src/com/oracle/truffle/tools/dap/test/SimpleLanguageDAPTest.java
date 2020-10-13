@@ -995,7 +995,7 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"invert\",\"column\":12,\"id\":2,\"source\":{\"path\":\"/test/SLThrow.sl\",\"name\":\"SLThrow.sl\"}},{\"line\":3,\"name\":\"main\",\"column\":10,\"id\":3,\"source\":{\"path\":\"/test/SLThrow.sl\",\"name\":\"SLThrow.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":7,\"command\":\"stackTrace\",\"seq\":13}");
         // Ask for the exception info:
         tester.sendMessage("{\"command\":\"exceptionInfo\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":8}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"exceptionId\":\"Error\",\"breakMode\":\"unhandled\"},\"type\":\"response\",\"request_seq\":8,\"command\":\"exceptionInfo\",\"seq\":14}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"exceptionId\":\"Error\",\"description\":\"Unsupported\",\"breakMode\":\"unhandled\"},\"type\":\"response\",\"request_seq\":8,\"command\":\"exceptionInfo\",\"seq\":14}");
         // Continue to finish:
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":9}");
         tester.compareReceivedMessages(

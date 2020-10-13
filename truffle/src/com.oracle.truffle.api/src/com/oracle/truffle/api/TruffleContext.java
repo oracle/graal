@@ -297,17 +297,16 @@ public final class TruffleContext implements AutoCloseable {
 
     /**
      * Force closes the context as cancelled and stops all the execution on all active threads using
-     * a {@link TruffleException#isCancelled() cancelled} exception. If this context is not
-     * currently {@link #isEntered() entered} on the current thread then this method waits until the
-     * close operation is complete and {@link #isClosed()} returns <code>true</code>, else it throws
-     * the cancelled exception upon its completion of this method. If an attempt to close a context
-     * was successful then consecutive calls to close have no effect.
+     * a {@link ThreadDeath} exception. If this context is not currently {@link #isEntered()
+     * entered} on the current thread then this method waits until the close operation is complete
+     * and {@link #isClosed()} returns <code>true</code>, else it throws the cancelled exception
+     * upon its completion of this method. If an attempt to close a context was successful then
+     * consecutive calls to close have no effect.
      * <p>
      * If forced and this context currently {@link #isEntered() entered} on the current thread and
      * no other context is entered on the current thread then this method directly throws a
-     * {@link TruffleException} error that is marked {@link TruffleException#isCancelled()
-     * cancelled} instead of completing to indicate that the current thread should be stopped. The
-     * thrown {@link TruffleException} is must not be caught by the guest language and freely
+     * {@link ThreadDeath} error instead of completing to indicate that the current thread should be
+     * stopped. The thrown {@link ThreadDeath} must not be caught by the guest language and freely
      * propagated to the guest application to cancel the execution on the current thread. If a
      * context is {@link #isActive() active} on the current thread, but not {@link #isEntered()
      * entered}, then an {@link IllegalStateException} is thrown, as parent contexts that are active

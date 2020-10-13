@@ -98,21 +98,21 @@ import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -283,19 +283,18 @@ public class LanguageSPITest {
     }
 
     @SuppressWarnings("serial")
-    private static class Interrupted extends RuntimeException implements TruffleException {
+    @ExportLibrary(InteropLibrary.class)
+    static class Interrupted extends AbstractTruffleException {
 
-        public boolean isCancelled() {
-            return true;
-        }
-
-        public Node getLocation() {
-            return null;
+        @ExportMessage
+        ExceptionType getExceptionType() {
+            return ExceptionType.INTERRUPT;
         }
     }
 
-    @SuppressWarnings("serial")
-    private static final class ParseException extends RuntimeException implements TruffleException {
+    @SuppressWarnings({"serial"})
+    @ExportLibrary(InteropLibrary.class)
+    static final class ParseException extends AbstractTruffleException {
         private final Source source;
         private final int start;
         private final int length;
@@ -307,18 +306,22 @@ public class LanguageSPITest {
             this.length = length;
         }
 
-        @Override
-        public boolean isSyntaxError() {
-            return true;
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        ExceptionType getExceptionType() {
+            return ExceptionType.PARSE_ERROR;
         }
 
-        @Override
-        public Node getLocation() {
-            return null;
+        @ExportMessage
+        boolean hasSourceLocation() {
+            return source != null;
         }
 
-        @Override
-        public SourceSection getSourceLocation() {
+        @ExportMessage(name = "getSourceLocation")
+        SourceSection getSourceSection() throws UnsupportedMessageException {
+            if (source == null) {
+                throw UnsupportedMessageException.create();
+            }
             return source.createSection(start, length);
         }
     }
@@ -362,7 +365,7 @@ public class LanguageSPITest {
                     throw new AssertionError(cause);
                 }
                 PolyglotException polyglotException = (PolyglotException) cause;
-                assertTrue(polyglotException.isCancelled());
+                assertTrue(polyglotException.isInterrupted());
             }
             engine.close();
         } finally {
@@ -2007,19 +2010,8 @@ public class LanguageSPITest {
 
     }
 
-    static final Source TEST_SOURCE = Source.newBuilder("", "", "testLanguageErrorDuringInitialization").build();
-
     @SuppressWarnings("serial")
-    static class TestError extends RuntimeException implements TruffleException {
-
-        public SourceSection getSourceLocation() {
-            return TEST_SOURCE.createSection(0, 0);
-        }
-
-        public Node getLocation() {
-            return null;
-        }
-
+    static class TestError extends RuntimeException {
     }
 
     @Test
@@ -2037,7 +2029,6 @@ public class LanguageSPITest {
             fail();
         } catch (PolyglotException e) {
             assertTrue(e.isGuestException());
-            assertEquals("testLanguageErrorDuringInitialization", e.getSourceLocation().getSource().getName());
         }
         context.close();
     }

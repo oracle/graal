@@ -161,8 +161,8 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "sdk:GRAAL_SDK",
-        "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.instrumentation",
+        "com.oracle.truffle.api.exception",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
@@ -309,6 +309,19 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.library",
+        "com.oracle.truffle.api.profiles",
+      ],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "8+",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.exception" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.interop",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
@@ -590,6 +603,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.truffle.api.test",
         "mx:JUNIT",
         "TRUFFLE_NFI",
         "TRUFFLE_TCK",
@@ -798,6 +812,7 @@ suite = {
           "com.oracle.truffle.api.dsl",
           "com.oracle.truffle.api.profiles",
           "com.oracle.truffle.api.interop",
+          "com.oracle.truffle.api.exception",
           "com.oracle.truffle.api.object",
           "com.oracle.truffle.api.utilities",
           "com.oracle.truffle.api.library",
@@ -811,6 +826,7 @@ suite = {
       "javaCompliance" : "8+",
       "dependencies" : [
         "com.oracle.truffle.api",
+        "com.oracle.truffle.api.exception",
         "com.oracle.truffle.api.dsl",
         "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.debug",

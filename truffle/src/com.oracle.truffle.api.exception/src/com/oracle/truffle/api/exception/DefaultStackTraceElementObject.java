@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,19 +38,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.exception;
 
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
-@SuppressWarnings("serial")
-final class TruffleSecurityException extends SecurityException implements TruffleException {
+@ExportLibrary(InteropLibrary.class)
+final class DefaultStackTraceElementObject implements TruffleObject {
 
-    TruffleSecurityException(String message) {
-        super(message);
+    private final RootNode rootNode;
+    private final SourceSection sourceSection;
+
+    DefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection) {
+        this.rootNode = rootNode;
+        this.sourceSection = sourceSection;
     }
 
-    @Override
-    public Node getLocation() {
-        return null;
+    @ExportMessage
+    @TruffleBoundary
+    @SuppressWarnings("static-method")
+    boolean hasExecutableName() {
+        return rootNode.getName() != null;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getExecutableName() {
+        return rootNode.getName();
+    }
+
+    @ExportMessage
+    boolean hasSourceLocation() {
+        return sourceSection != null;
+    }
+
+    @ExportMessage
+    SourceSection getSourceLocation() throws UnsupportedMessageException {
+        if (sourceSection == null) {
+            throw UnsupportedMessageException.create();
+        } else {
+            return sourceSection;
+        }
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasDeclaringMetaObject() {
+        return false;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    Object getDeclaringMetaObject() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 }
