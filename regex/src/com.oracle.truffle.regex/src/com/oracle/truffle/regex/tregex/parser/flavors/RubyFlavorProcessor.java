@@ -1408,14 +1408,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                             absentExpression();
                             break;
                         case '-':
-                        case 'i':
-                        case 'L':
                         case 'm':
-                        case 's':
+                        case 'i':
                         case 'x':
-                        case 'a':
-                        case 't':
-                        case 'u':
                             flags(ch1);
                             break;
 
@@ -1642,6 +1637,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
         switch (ch) {
             case ')':
+                // This should update the flags that are currently in scope instead of the global flags.
                 globalFlags = globalFlags.addFlags(positiveFlags);
                 break;
             case ':':
@@ -1660,14 +1656,15 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     }
                     ch = consumeChar();
                 }
-                if (ch != ':') {
-                    if (Character.isAlphabetic(ch)) {
-                        throw syntaxErrorAtRel("unknown flag", 1);
-                    } else {
-                        throw syntaxErrorAtRel("missing :", 1);
-                    }
+                if (ch == ')') {
+                    globalFlags = globalFlags.addFlags(positiveFlags).delFlags(negativeFlags);
+                } else if (ch == ':') {
+                    localFlags(positiveFlags, negativeFlags, start);
+                } else if (Character.isAlphabetic(ch)) {
+                    throw syntaxErrorAtRel("unknown flag", 1);
+                } else {
+                    throw syntaxErrorAtRel("missing : or )", 1);
                 }
-                localFlags(positiveFlags, negativeFlags, start);
                 break;
             default:
                 if (Character.isAlphabetic(ch)) {
@@ -1688,9 +1685,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      *            reporting purposes
      */
     private void localFlags(RubyFlags positiveFlags, RubyFlags negativeFlags, int start) {
-        if (positiveFlags.overlaps(negativeFlags)) {
-            throw syntaxErrorHere("bad inline flags: flag turned on and off");
-        }
         RubyFlags newFlags = getLocalFlags().addFlags(positiveFlags).delFlags(negativeFlags);
         flagsStack.push(newFlags);
         group(false, Optional.empty(), start);
