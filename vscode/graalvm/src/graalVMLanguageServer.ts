@@ -48,7 +48,7 @@ export function startLanguageServer(graalVMHome: string) {
 					} else {
 						languageServerPID = serverProcess.pid;
 						serverProcess.stderr.once('data', data => {
-							reject(data);
+							console.error('[GraalLSP process stderr] ' + new String(data));
 						});
 						serverProcess.stdout.once('data', () => {
 							connectAndRetryIfRefused(new net.Socket(), LSHOST, lsPort, resolve, reject, CONNECTION_NUM_RETRIES);
