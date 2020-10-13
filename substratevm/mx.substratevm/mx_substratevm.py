@@ -1432,15 +1432,10 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             ]
             graal_compiler_flags_map[11].extend(['--add-opens=' + entry + '=' + target_module for entry in add_opens_packages])
 
-            # Currently JDK 13, 14, and JDK 11 have the same flags
-            graal_compiler_flags_map[13] = list(graal_compiler_flags_map[11])
-            graal_compiler_flags_map[14] = list(graal_compiler_flags_map[11])
-
-            graal_compiler_flags_map[15] = list(graal_compiler_flags_map[11])
-            graal_compiler_flags_map[15].extend(['--add-opens=' + entry + '=' + target_module for entry in [
-                # Access to Container Metrics
-                'java.base/jdk.internal.platform',
-            ]])
+            # Currently JDK 13, 14, 15 and JDK 11 have the same flags
+            graal_compiler_flags_map[13] = graal_compiler_flags_map[11]
+            graal_compiler_flags_map[14] = graal_compiler_flags_map[11]
+            graal_compiler_flags_map[15] = graal_compiler_flags_map[11]
 
         graal_compiler_flags_base = [
             '-XX:+UseParallelGC',  # native image generation is a throughput-oriented task

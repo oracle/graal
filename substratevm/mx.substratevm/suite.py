@@ -183,7 +183,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": ["com.oracle.svm.core"],
             "overlayTarget": "com.oracle.svm.core",
-            "javaCompliance": "8..14",
+            "javaCompliance": "8+",
             "workingSets": "SVM",
             "spotbugs": "false",
         },
@@ -238,7 +238,6 @@ suite = {
                 "java.base" : [
                     "jdk.internal.loader",
                     "jdk.internal.misc",
-                    "jdk.internal.platform",
                     "sun.invoke.util",
                 ],
             },

@@ -181,13 +181,7 @@ class ContainersFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         RuntimeClassInitializationSupport classInitSupport = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-        if (JavaVersionUtil.JAVA_SPEC < 15) {
-            classInitSupport.initializeAtRunTime("com.oracle.svm.core.jdk8.containers.cgroupv1.CgroupV1Subsystem", "for cgroup support");
-            classInitSupport.initializeAtRunTime("com.oracle.svm.core.jdk8.containers.cgroupv2.CgroupV2Subsystem", "for cgroup support");
-        } else {
-            /* We use the JDK implementation. */
-            classInitSupport.initializeAtRunTime("jdk.internal.platform.cgroupv1.CgroupV1Subsystem", "for cgroup support");
-            classInitSupport.initializeAtRunTime("jdk.internal.platform.cgroupv2.CgroupV2Subsystem", "for cgroup support");
-        }
+        classInitSupport.initializeAtRunTime("com.oracle.svm.core.jdk8.containers.cgroupv1.CgroupV1Subsystem", "for cgroup support");
+        classInitSupport.initializeAtRunTime("com.oracle.svm.core.jdk8.containers.cgroupv2.CgroupV2Subsystem", "for cgroup support");
     }
 }
