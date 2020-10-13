@@ -31,7 +31,9 @@ import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.graal.isolated.IsolateAwareProviderObjectReplacements;
 import com.oracle.svm.graal.meta.SubstrateRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -45,6 +47,9 @@ public class SubstrateRuntimeGraalSetup implements RuntimeGraalSetup {
 
     @Override
     public GraalProviderObjectReplacements getProviderObjectReplacements(AnalysisMetaAccess aMetaAccess) {
+        if (SubstrateOptions.supportCompileInIsolates()) {
+            return new IsolateAwareProviderObjectReplacements(aMetaAccess);
+        }
         return new GraalProviderObjectReplacements(aMetaAccess);
     }
 

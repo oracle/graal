@@ -59,7 +59,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     private static Map<String, Object> defaultProperties(OptimizedCallTarget target) {
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.putAll(target.getDebugProperties());
-        properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
+        properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
         return properties;
     }
 
@@ -149,20 +149,20 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         int dispatchedCalls = calls - inlinedCalls;
         Map<String, Object> properties = new LinkedHashMap<>();
         GraalTruffleRuntimeListener.addASTSizeProperty(target, properties);
-        properties.put("Time", String.format("%5.0f(%4.0f+%-4.0f)ms", //
+        properties.put("Time", String.format("%4.0f(%4.0f+%-4.0f)ms", //
                         (timeCompilationFinished - compilation.timeCompilationStarted) / 1e6, //
                         (compilation.timePartialEvaluationFinished - compilation.timeCompilationStarted) / 1e6, //
                         (timeCompilationFinished - compilation.timePartialEvaluationFinished) / 1e6));
-        properties.put("Tier", target.isValidLastTier() ? "Last" : "First");
-        properties.put("DirectCallNodes", String.format("I %4d/D %4d", inlinedCalls, dispatchedCalls));
-        properties.put("GraalNodes", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
+        properties.put("Tier", target.isValidLastTier() ? "2" : "1");
+        properties.put("Inlined", String.format("%3dY %3dN", inlinedCalls, dispatchedCalls));
+        properties.put("IR", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
         properties.put("CodeSize", result.getTargetCodeSize());
         if (target.getCodeAddress() != 0) {
-            properties.put("CodeAddress", "0x" + Long.toHexString(target.getCodeAddress()));
+            properties.put("Addr", "0x" + Long.toHexString(target.getCodeAddress()));
         } else {
-            properties.put("CodeAddress", "N/A");
+            properties.put("Addr", "N/A");
         }
-        properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
+        properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
 
         runtime.logEvent(target, 0, "opt done", properties);
 
@@ -181,7 +181,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             Map<String, Object> properties = defaultProperties(target);
             properties.put("Reason", reason);
-            runtime.logEvent(target, 0, "opt invalidated", properties);
+            runtime.logEvent(target, 0, "opt inv.", properties);
         }
     }
 
