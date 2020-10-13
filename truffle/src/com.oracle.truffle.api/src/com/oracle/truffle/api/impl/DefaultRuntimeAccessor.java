@@ -144,11 +144,6 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public boolean isPreinitializationEnabled() {
-            return true;
-        }
-
-        @Override
         public Object createRuntimeData(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
             return null;
         }
