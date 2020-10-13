@@ -218,14 +218,18 @@ final class PolyglotSourceCache {
             Source sourceValue = forLanguage ? source : EngineAccessor.SOURCE.copySource(source);
             WeakSourceKey ref = new WeakSourceKey(new SourceKey(sourceId, argumentNames), source, deadSources);
             WeakCacheValue value = sourceCache.get(ref);
-            if (value == null && parse) {
-                value = new WeakCacheValue(parseImpl(context, argumentNames, sourceValue), sourceValue);
-                WeakCacheValue prev = sourceCache.putIfAbsent(ref, value);
-                if (prev != null) {
-                    /*
-                     * Parsed twice -> discard the one not in the cache.
-                     */
-                    value = prev;
+            if (value == null) {
+                if (parse) {
+                    value = new WeakCacheValue(parseImpl(context, argumentNames, sourceValue), sourceValue);
+                    WeakCacheValue prev = sourceCache.putIfAbsent(ref, value);
+                    if (prev != null) {
+                        /*
+                         * Parsed twice -> discard the one not in the cache.
+                         */
+                        value = prev;
+                    }
+                } else {
+                    return null;
                 }
             }
             return value.target;
