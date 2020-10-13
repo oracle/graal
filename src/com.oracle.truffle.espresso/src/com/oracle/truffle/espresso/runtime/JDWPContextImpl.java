@@ -33,6 +33,8 @@ import java.util.List;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -67,6 +69,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 public final class JDWPContextImpl implements JDWPContext {
 
     public static final String JAVA_LANG_STRING = "Ljava/lang/String;";
+    private static final InteropLibrary UNCACHED = InteropLibrary.getUncached();
 
     private final EspressoContext context;
     private final Ids<Object> ids;
@@ -383,6 +386,17 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public int getArrayLength(Object array) {
         StaticObject staticObject = (StaticObject) array;
+        if (staticObject.isForeignObject()) {
+            try {
+                long arrayLength = UNCACHED.getArraySize(staticObject.rawForeignObject());
+                if (arrayLength > Integer.MAX_VALUE) {
+                    return -1;
+                }
+                return (int) arrayLength;
+            } catch (UnsupportedMessageException e) {
+                return -1;
+            }
+        }
         return staticObject.length();
     }
 
@@ -403,8 +417,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public boolean verifyArrayLength(Object array, int maxIndex) {
-        StaticObject staticObject = (StaticObject) array;
-        return maxIndex <= staticObject.length();
+        return maxIndex <= getArrayLength(array);
     }
 
     @Override
