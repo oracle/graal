@@ -118,8 +118,8 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         runtimeOptions.values().forEach(o -> extractOption(NativeImage.oR, o, apiOptions, groupDefaults));
         groupDefaults.forEach((groupName, defaults) -> {
             VMError.guarantee(defaults.size() <= 1,
-                            String.format("APIOptionGroup %s can only have a single default (having: %s)",
-                                            APIOption.Utils.optionName(groupName), String.join(", ", defaults)));
+                            String.format("APIOptionGroup %s must only have a single default (but has: %s)",
+                                            groupName, String.join(", ", defaults)));
 
         });
         return apiOptions;
