@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.image;
+package com.oracle.svm.core.genscavenge;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -30,6 +30,11 @@ import java.util.List;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.image.ImageHeap;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
+import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.util.VMError;
 
 public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayouter.AbstractImageHeapPartition> implements ImageHeapLayouter {
@@ -247,7 +252,6 @@ public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayou
             return name;
         }
 
-        @Override
         public boolean isWritable() {
             return writable;
         }
