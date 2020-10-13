@@ -69,6 +69,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
@@ -1274,6 +1275,42 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
                         IllegalArgumentException.class);
         assertFails(() -> value.getMember("foo").execute(Double.NaN),
                         IllegalArgumentException.class);
+    }
+
+    @Test
+    public void testHostObjectTargetTypeMappingLowest() {
+        HostAccess.Builder b = HostAccess.newBuilder();
+        b.allowPublicAccess(true);
+        b.targetTypeMapping(Number.class, String.class, null, Number::toString, TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Boolean.class, null, n -> n.doubleValue() != 0.0, TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Integer.class, null, n -> n.intValue(), TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Long.class, null, n -> n.longValue(), TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Double.class, null, n -> n.doubleValue(), TargetMappingPrecedence.LOWEST);
+        HostAccess hostAccess = b.build();
+        setupEnv(Context.newBuilder().allowHostAccess(hostAccess).build());
+
+        assertEquals("42", context.asValue(new BigDecimal(42)).as(String.class));
+
+        assertEquals(false, context.asValue(new BigDecimal(0)).as(Boolean.class));
+        assertEquals(true, context.asValue(new BigDecimal(1)).as(Boolean.class));
+
+        assertEquals(Integer.valueOf(42), context.asValue(new BigDecimal(42)).as(Integer.class));
+        assertEquals(Integer.valueOf(42), context.asValue(new BigDecimal(42.5)).as(Integer.class));
+
+        assertEquals(Long.valueOf(42), context.asValue(new BigDecimal(42)).as(Long.class));
+        assertEquals(Long.valueOf(42), context.asValue(new BigDecimal(42.5)).as(Long.class));
+
+        assertEquals(Double.valueOf(42.5), context.asValue(new BigDecimal(42.5)).as(Double.class));
+        assertEquals(Double.valueOf(Double.POSITIVE_INFINITY), context.asValue(new BigDecimal(2).pow(9001)).as(Double.class));
+
+        // sanity check: default mappings take precedence over lowest in overload selection.
+        assertEquals("object", context.asValue(new StringHierarchy()).invokeMember("hierarchy", new BigDecimal(42)).asString());
+
+        // the only applicable method is one that requires the lowest precedence target mapping.
+        Value stringClass = context.asValue(String.class).getMember("static");
+        assertEquals("42", stringClass.newInstance(new BigDecimal(42)).asString());
+        Value integerClass = context.asValue(Integer.class).getMember("static");
+        assertEquals("42", integerClass.invokeMember("toString", new BigDecimal(42)).asString());
     }
 
 }
