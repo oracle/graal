@@ -23,9 +23,18 @@
 
 package com.oracle.truffle.espresso.analysis;
 
+import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 
 public abstract class BlockIteratorClosure {
     public abstract BlockIterator.BlockProcessResult processBlock(LinkedBlock b, BytecodeStream bs, AnalysisProcessor processor);
+
+    public int[] getSuccessors(LinkedBlock b) {
+        return b.successorsID();
+    }
+
+    public LinkedBlock getEntry(Graph<? extends LinkedBlock> graph) {
+        return graph.entryBlock();
+    }
 }

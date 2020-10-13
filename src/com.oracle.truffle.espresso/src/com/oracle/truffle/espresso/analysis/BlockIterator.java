@@ -51,6 +51,10 @@ public class BlockIterator implements AnalysisProcessor {
         new BlockIterator(method, graph, closure).analyze();
     }
 
+    public static void analyze(Graph<? extends LinkedBlock> graph, BlockIteratorClosure closure) {
+        new BlockIterator(graph, closure);
+    }
+
     protected BlockIterator(Method m, Graph<? extends LinkedBlock> graph, BlockIteratorClosure closure) {
         assert m.getCodeAttribute() != null;
         this.bs = new BytecodeStream(m.getCode());
@@ -60,8 +64,17 @@ public class BlockIterator implements AnalysisProcessor {
         this.closure = closure;
     }
 
+    protected BlockIterator(Graph<? extends LinkedBlock> graph, BlockIteratorClosure closure) {
+        assert graph != null;
+        this.bs = null;
+        this.graph = graph;
+        this.enqueued = new BitSet(graph.totalBlocks());
+        this.done = new BitSet(graph.totalBlocks());
+        this.closure = closure;
+    }
+
     protected final void analyze() {
-        push(graph.entryBlock());
+        push(closure.getEntry(graph));
         while (!queue.isEmpty()) {
             LinkedBlock b = peek();
             BlockProcessResult result = closure.processBlock(b, bs, this);
@@ -74,7 +87,7 @@ public class BlockIterator implements AnalysisProcessor {
             done.set(b.id());
             pop();
         }
-        for (int id : b.successorsID()) {
+        for (int id : closure.getSuccessors(b)) {
             push(graph.get(id));
         }
     }

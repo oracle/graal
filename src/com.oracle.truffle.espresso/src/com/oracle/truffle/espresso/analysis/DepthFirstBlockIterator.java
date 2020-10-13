@@ -34,8 +34,17 @@ public class DepthFirstBlockIterator extends BlockIterator {
         new DepthFirstBlockIterator(m, graph, closure).analyze();
     }
 
+    public static void analyze(Graph<? extends LinkedBlock> graph, BlockIteratorClosure closure) {
+        new DepthFirstBlockIterator(graph, closure).analyze();
+    }
+
     private DepthFirstBlockIterator(Method m, Graph<? extends LinkedBlock> graph, BlockIteratorClosure closure) {
         super(m, graph, closure);
+        this.successors = new IntArrayIterator[graph.totalBlocks()];
+    }
+
+    private DepthFirstBlockIterator(Graph<? extends LinkedBlock> graph, BlockIteratorClosure closure) {
+        super(graph, closure);
         this.successors = new IntArrayIterator[graph.totalBlocks()];
     }
 
@@ -56,7 +65,7 @@ public class DepthFirstBlockIterator extends BlockIterator {
     private void pushNextSuccessor(LinkedBlock b) {
         IntArrayIterator iterator = successors[b.id()];
         if (iterator == null) {
-            iterator = new IntArrayIterator(b.successorsID());
+            iterator = new IntArrayIterator(closure.getSuccessors(b));
             successors[b.id()] = iterator;
         }
         assert iterator.hasNext();
