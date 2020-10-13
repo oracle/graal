@@ -391,22 +391,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     /**
-     * Allows retaining only one language and remove all other languages.
-     *
-     * NOTE: this method is called reflectively by downstream projects.
-     */
-    @SuppressWarnings("unused")
-    private static void retainLanguageFromNativeImage(String languageId) {
-        assert TruffleOptions.AOT : "Only supported during image generation";
-        assert nativeImageCache.containsKey(languageId);
-        LanguageCache cache = nativeImageCache.get(languageId);
-        nativeImageCache.keySet().retainAll(Arrays.asList(languageId));
-        if (cache != null) {
-            nativeImageMimes.values().retainAll(Arrays.asList(cache));
-        }
-    }
-
-    /**
      * Fetches all active language classes.
      *
      * NOTE: this method is called reflectively by downstream projects.

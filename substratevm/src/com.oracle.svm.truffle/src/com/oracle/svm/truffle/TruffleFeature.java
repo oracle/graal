@@ -332,10 +332,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "removeLanguageFromNativeImage", Collections.singletonList(String.class), mimeType);
     }
 
-    public static void retainTruffleLanguage(String mimeType) {
-        invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "retainLanguageFromNativeImage", Collections.singletonList(String.class), mimeType);
-    }
-
     private static Collection<Class<?>> getLanguageClasses() {
         return invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "getLanguageClasses", Collections.emptyList());
     }
