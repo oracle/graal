@@ -94,7 +94,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
@@ -111,6 +110,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
 import com.oracle.truffle.polyglot.PolyglotLocals.AbstractContextLocal;
@@ -1362,7 +1362,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     }
 
     @SuppressWarnings("serial")
-    static final class CancelExecution extends ThreadDeath implements TruffleException {
+    static final class CancelExecution extends ThreadDeath {
 
         private final Node location;
         private final String cancelMessage;
@@ -1374,8 +1374,12 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             this.resourceLimit = resourceLimit;
         }
 
-        public Node getLocation() {
+        Node getLocation() {
             return location;
+        }
+
+        SourceSection getSourceLocation() {
+            return location == null ? null : location.getEncapsulatingSourceSection();
         }
 
         public boolean isResourceLimit() {
@@ -1390,11 +1394,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 return cancelMessage;
             }
         }
-
-        public boolean isCancelled() {
-            return true;
-        }
-
     }
 
     @Override

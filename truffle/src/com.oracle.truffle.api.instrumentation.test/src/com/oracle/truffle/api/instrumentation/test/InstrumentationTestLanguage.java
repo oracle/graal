@@ -65,7 +65,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -95,9 +94,11 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.C
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.DefineTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.FunctionsObject;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.LoopTag;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -1082,6 +1083,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Child InstrumentedNode tryNode;
         @Children private final CatchNode[] catchNodes;
+        @Child InteropLibrary interop;
 
         TryCatchNode(BaseNode[] children) {
             super();
@@ -1091,6 +1093,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             catchNodes = new CatchNode[cn];
             System.arraycopy(children, tn, catchNodes, 0, cn);
             tryNode = new TryNode(tryNodes, catchNodes);
+            interop = InteropLibrary.getFactory().createDispatched(5);
         }
 
         @Override
@@ -1126,14 +1129,16 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             try {
                 return tryNode.execute(frame);
             } catch (Exception ex) {
-                if (ex instanceof TruffleException) {
-                    Object exceptionObject = getExceptionObject((TruffleException) ex);
-                    if (exceptionObject != null) {
-                        String type = InstrumentationTestLanguage.toString(exceptionObject);
-                        for (CatchNode cn : catchNodes) {
-                            if (type.startsWith(cn.getExceptionName())) {
-                                return cn.execute(frame);
-                            }
+                if (interop.isException(ex) && interop.isString(ex)) {
+                    String type;
+                    try {
+                        type = interop.asString(ex);
+                    } catch (UnsupportedMessageException ume) {
+                        throw CompilerDirectives.shouldNotReachHere(ume);
+                    }
+                    for (CatchNode cn : catchNodes) {
+                        if (type.startsWith(cn.getExceptionName())) {
+                            return cn.execute(frame);
                         }
                     }
                 }
@@ -1195,10 +1200,18 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             @TruffleBoundary
             final Object invokeMember(String member, Object[] arguments) throws UnknownIdentifierException {
                 if ("catches".equals(member)) {
-                    String type = arguments[0].toString();
-                    for (CatchNode c : catches) {
-                        if (type.startsWith(c.getExceptionName())) {
-                            return true;
+                    InteropLibrary interop = InteropLibrary.getUncached();
+                    if (interop.isString(arguments[0])) {
+                        String type;
+                        try {
+                            type = interop.asString(arguments[0]);
+                        } catch (UnsupportedMessageException ume) {
+                            throw CompilerDirectives.shouldNotReachHere(ume);
+                        }
+                        for (CatchNode c : catches) {
+                            if (type.startsWith(c.getExceptionName())) {
+                                return true;
+                            }
                         }
                     }
                     return false;
@@ -1305,37 +1318,55 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @TruffleBoundary
-        private TestLanguageException createException() {
-            return new TestLanguageException(type, message, this);
+        private RuntimeException createException() {
+            // Internal exceptions are normal Java exception for which the
+            // InteropLibrary#isException returns false
+            return "internal".equals(type) ? new RuntimeException(message) : new TestLanguageException(type, message, this);
         }
 
-        public static class TestLanguageException extends RuntimeException implements TruffleException {
+        @ExportLibrary(InteropLibrary.class)
+        public static class TestLanguageException extends AbstractTruffleException {
 
             private static final long serialVersionUID = 2709459650157465163L;
 
             private final String type;
-            private final ThrowNode throwNode;
 
             TestLanguageException(String type, String message, ThrowNode throwNode) {
-                super(message);
+                super(message, throwNode);
                 this.type = type;
-                this.throwNode = throwNode;
             }
 
-            @Override
-            public Node getLocation() {
-                return throwNode;
+            @ExportMessage
+            boolean hasLanguage() {
+                return true;
             }
 
-            public boolean isInternalError() {
-                return type.equals("internal");
+            @ExportMessage
+            Class<? extends TruffleLanguage<?>> getLanguage() {
+                return InstrumentationTestLanguage.class;
             }
 
-            @Override
-            public Object getExceptionObject() {
+            @ExportMessage
+            ExceptionType getExceptionType() {
+                return ExceptionType.RUNTIME_ERROR;
+            }
+
+            @ExportMessage
+            @SuppressWarnings("unused")
+            Object toDisplayString(boolean allowSideEffects) {
+                return asString();
+            }
+
+            @ExportMessage
+            boolean isString() {
+                return true;
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            String asString() {
                 return type + ": " + getMessage();
             }
-
         }
 
         @Override
@@ -3114,11 +3145,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @TruffleBoundary
     private static String toString(Object object) {
         return object.toString();
-    }
-
-    @TruffleBoundary
-    private static Object getExceptionObject(TruffleException ex) {
-        return ex.getExceptionObject();
     }
 
     public static final class SpecialServiceImpl implements SpecialService {

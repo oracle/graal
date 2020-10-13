@@ -89,18 +89,18 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.GCUtils;
@@ -155,7 +155,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
     }
 
     @SuppressWarnings("serial")
-    static class SyntaxError extends RuntimeException implements TruffleException {
+    @ExportLibrary(InteropLibrary.class)
+    static class SyntaxError extends AbstractTruffleException {
 
         private final SourceSection location;
 
@@ -163,15 +164,21 @@ public class ContextAPITest extends AbstractPolyglotTest {
             this.location = location;
         }
 
-        public boolean isSyntaxError() {
-            return true;
+        @ExportMessage
+        ExceptionType getExceptionType() {
+            return ExceptionType.PARSE_ERROR;
         }
 
-        public Node getLocation() {
-            return null;
+        @ExportMessage
+        boolean hasSourceLocation() {
+            return location != null;
         }
 
-        public SourceSection getSourceLocation() {
+        @ExportMessage(name = "getSourceLocation")
+        SourceSection getSourceSection() throws UnsupportedMessageException {
+            if (location == null) {
+                throw UnsupportedMessageException.create();
+            }
             return location;
         }
     }

@@ -313,6 +313,17 @@ public final class PolyglotException extends RuntimeException {
     }
 
     /**
+     * Returns <code>true</code> if the current application thread was interrupted by an
+     * {@link InterruptedException}. {@link InterruptedException} from the host return
+     * <code>true</code> for interrupted.
+     *
+     * @since 20.3
+     */
+    public boolean isInterrupted() {
+        return impl.isInterrupted();
+    }
+
+    /**
      * Returns <code>true</code> if this exception is caused by an attempt of a guest language
      * program to exit the application using a builtin command. The provided exit code can be
      * accessed using {@link #getExitStatus()}.

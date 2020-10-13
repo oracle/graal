@@ -3049,7 +3049,7 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public TruffleProcessBuilder newProcessBuilder(String... command) {
             if (!isCreateProcessAllowed()) {
-                throw new TruffleSecurityException("Process creation is not allowed, to enable it set Context.Builder.allowCreateProcess(true).");
+                throw new SecurityException("Process creation is not allowed, to enable it set Context.Builder.allowCreateProcess(true).");
             }
             FileSystemContext fs = getPublicFileSystemContext();
             List<String> cmd = new ArrayList<>(command.length);

@@ -24,29 +24,30 @@
  */
 package com.oracle.truffle.tools.dap.instrument;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-class DAPIOException extends RuntimeException implements TruffleException {
+@ExportLibrary(InteropLibrary.class)
+class DAPIOException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 3185713689380729847L;
 
     DAPIOException(String hostAndPort, Throwable e) {
-        super(String.format("Starting Debug Protocol Server on %s failed: %s", hostAndPort, e.getLocalizedMessage()), e);
+        super(String.format("Starting Debug Protocol Server on %s failed: %s", hostAndPort, e.getLocalizedMessage()), e, UNLIMITED_STACK_TRACE, null);
     }
 
-    @Override
-    public synchronized Throwable fillInStackTrace() {
-        return this;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    ExceptionType getExceptionType() {
+        return ExceptionType.EXIT;
     }
 
-    @Override
-    public Node getLocation() {
-        return null;
-    }
-
-    @Override
-    public boolean isExit() {
-        return true;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    int getExceptionExitStatus() {
+        return 0;
     }
 }
