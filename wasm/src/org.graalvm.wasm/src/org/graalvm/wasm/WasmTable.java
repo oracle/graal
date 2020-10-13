@@ -41,8 +41,8 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import org.graalvm.wasm.exception.WasmExecutionException;
-import org.graalvm.wasm.exception.WasmValidationException;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 public final class WasmTable {
     private final int maxSize;
@@ -55,7 +55,7 @@ public final class WasmTable {
 
     public void ensureSizeAtLeast(int targetSize) {
         if (maxSize >= 0 && targetSize > maxSize) {
-            throw new WasmValidationException("Table cannot be resized to " + targetSize + ", " +
+            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Table cannot be resized to " + targetSize + ", " +
                             "declared maximum size is " + maxSize);
         }
         if (elements.length < targetSize) {
@@ -87,13 +87,13 @@ public final class WasmTable {
 
     public void initialize(int i, WasmFunctionInstance function) {
         if (elements[i] != null) {
-            throw new WasmValidationException("Table already has an element at index " + i + ".");
+            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Table already has an element at index " + i + ".");
         }
         elements[i] = function;
     }
 
     @SuppressWarnings({"unused", "static-method"})
     public boolean grow(int delta) {
-        throw WasmExecutionException.create(null, "Tables cannot be grown.");
+        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Tables cannot be grown.");
     }
 }

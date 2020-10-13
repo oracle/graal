@@ -41,48 +41,81 @@
 package org.graalvm.wasm.exception;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.nodes.WasmBlockNode;
 
-/**
- * Thrown when a WebAssembly program encounters a trap, as defined by the specification.
- */
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
-public final class WasmTrap extends AbstractTruffleException {
+public final class WasmException extends AbstractTruffleException {
+    private static final long serialVersionUID = -84137683950579647L;
 
-    private static final long serialVersionUID = 8195809219857028793L;
+    private final Failure failure;
 
-    private WasmTrap(Node location, String message) {
+    private WasmException(String message, Node location, Failure failure) {
         super(message, location);
         CompilerAsserts.neverPartOfCompilation();
+        this.failure = failure;
     }
 
     @TruffleBoundary
-    public static WasmTrap create(Node location, String message) {
-        return new WasmTrap(location, message);
+    public static WasmException create(Failure failure, Node location, String message) {
+        return new WasmException(message, location, failure);
     }
 
     @TruffleBoundary
-    public static WasmTrap format(Node location, String format, Object... args) {
-        return new WasmTrap(location, String.format(format, args));
+    public static WasmException create(Failure failure, Node location) {
+        return create(failure, location, failure.name);
     }
 
     @TruffleBoundary
-    public static WasmTrap format(Node location, String format, Object arg) {
-        return new WasmTrap(location, String.format(format, arg));
+    public static WasmException create(Failure failure, String message) {
+        return create(failure, null, message);
+    }
+
+    @TruffleBoundary
+    public static WasmException format(Failure failure, String format, Object arg) {
+        return create(failure, String.format(format, arg));
+    }
+
+    @TruffleBoundary
+    public static WasmException format(Failure failure, Node location, String format, Object... args) {
+        return create(failure, location, String.format(format, args));
+    }
+
+    @TruffleBoundary
+    public static WasmException fromArithmeticException(WasmBlockNode location, ArithmeticException exception) {
+        return create(Failure.fromArithmeticException(exception), location, exception.getMessage());
     }
 
     @ExportMessage
     public boolean hasMembers() {
         return true;
+    }
+
+    @ExportMessage
+    public ExceptionType getExceptionType() {
+        switch (failure.type) {
+            case EXIT:
+                return ExceptionType.EXIT;
+            case MALFORMED:
+            case INVALID:
+            case UNLINKABLE:
+                return ExceptionType.PARSE_ERROR;
+            case INTERNAL:
+            case EXHAUSTION:
+            case TRAP:
+            default:
+                return ExceptionType.RUNTIME_ERROR;
+        }
     }
 
     @ExportMessage
@@ -92,25 +125,30 @@ public final class WasmTrap extends AbstractTruffleException {
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public Object readMember(String member) throws UnknownIdentifierException {
         switch (member) {
             case "message":
                 return getMessage();
+            case "failureType":
+                return failure.type.name;
+            case "failure":
+                return failure.name;
             default:
                 throw UnknownIdentifierException.create(member);
         }
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public boolean isMemberReadable(String member) {
         switch (member) {
             case "message":
+            case "failureType":
+            case "failure":
                 return true;
             default:
                 return false;
         }
     }
-
 }

@@ -40,7 +40,8 @@
  */
 package org.graalvm.wasm;
 
-import org.graalvm.wasm.exception.WasmValidationException;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 public class ReferenceTypes {
     public static final byte FUNCREF = 0x70;
@@ -50,7 +51,7 @@ public class ReferenceTypes {
             case FUNCREF:
                 return "funcref";
             default:
-                throw new WasmValidationException("Unknown value type: 0x" + Integer.toHexString(valueType));
+                throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Unknown value type: 0x" + Integer.toHexString(valueType));
         }
     }
 }

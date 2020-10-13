@@ -46,7 +46,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.exception.BinaryParserException;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 
@@ -115,7 +115,7 @@ public class WebAssembly extends Dictionary {
         try {
             compile(bytes);
             return true;
-        } catch (BinaryParserException ex) {
+        } catch (WasmException ex) {
             return false;
         }
     }

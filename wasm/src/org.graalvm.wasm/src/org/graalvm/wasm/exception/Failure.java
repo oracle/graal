@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,35 +38,59 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 package org.graalvm.wasm.exception;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
+public enum Failure {
+    EXIT(FailureType.EXIT, "program exited"),
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ExceptionType;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+    UNSPECIFIED_TRAP(FailureType.TRAP, "unspecified"),
+    INT_DIVIDE_BY_ZERO(FailureType.TRAP, "integer divide by zero"),
+    INT_OVERFLOW(FailureType.TRAP, "integer overflow"),
 
-@ExportLibrary(InteropLibrary.class)
-public class BinaryParserException extends AbstractTruffleException {
+    UNSPECIFIED_EXHAUSTION(FailureType.EXHAUSTION, "unspecified"),
 
-    private static final long serialVersionUID = -84137683950579647L;
+    UNSPECIFIED_MALFORMED(FailureType.MALFORMED, "unspecified"),
 
-    @TruffleBoundary
-    public static BinaryParserException format(String format, Object arg) {
-        return new BinaryParserException(String.format(format, arg));
+    UNSPECIFIED_INVALID(FailureType.INVALID, "unspecified"),
+    RETURN_STACK_SIZE_MISMATCH(FailureType.INVALID, "type mismatch"),
+
+    UNSPECIFIED_UNLINKABLE(FailureType.UNLINKABLE, "unspecified"),
+
+    UNSPECIFIED_INTERNAL(FailureType.INTERNAL, "unspecified"),
+    OTHER_ARITHMETIC_EXCEPTION(FailureType.INTERNAL, "non-standard arithmetic exception");
+
+    public enum FailureType {
+        EXIT("exit"),
+        TRAP("trap"),
+        EXHAUSTION("exhaustion"),
+        MALFORMED("malformed"),
+        INVALID("invalid"),
+        UNLINKABLE("unlinkable"),
+        INTERNAL("internal");
+
+        public final String name;
+
+        FailureType(String name) {
+            this.name = name;
+        }
     }
 
-    public BinaryParserException(String message) {
-        super(message);
-        CompilerAsserts.neverPartOfCompilation();
+    public final FailureType type;
+    public final String name;
+
+    Failure(FailureType type, String name) {
+        this.type = type;
+        this.name = name;
     }
 
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    ExceptionType getExceptionType() {
-        return ExceptionType.PARSE_ERROR;
+    public static Failure fromArithmeticException(ArithmeticException exception) {
+        switch (exception.getMessage()) {
+            case "/ by zero":
+            case "BigInteger divide by zero":
+                return Failure.INT_DIVIDE_BY_ZERO;
+            default:
+                return Failure.OTHER_ARITHMETIC_EXCEPTION;
+        }
     }
 }

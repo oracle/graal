@@ -48,6 +48,7 @@ import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
@@ -72,7 +73,7 @@ public class SaveContextNodeNode extends WasmBuiltinRootNode {
     @CompilerDirectives.TruffleBoundary
     private ContextState saveModuleState() {
         final WasmContext context = contextReference().get();
-        Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, only 0 or 1 memories can be saved.");
+        Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, only 0 or 1 memories can be saved.", Failure.UNSPECIFIED_MALFORMED);
         final WasmMemory currentMemory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
         final GlobalRegistry globals = context.globals().duplicate();
         return new ContextState(currentMemory, globals);
