@@ -27,7 +27,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
-public class NoAction extends LocalVariableAction {
+public final class NoAction extends LocalVariableAction {
     public static final LocalVariableAction NO_ACTION = new NoAction();
 
     private NoAction() {

@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.analysis.graph;
 
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
-public class EspressoBlockWithHandlers extends EspressoBlock implements ExceptionEdgeBlock<EspressoException> {
+public final class EspressoBlockWithHandlers extends EspressoBlock implements ExceptionEdgeBlock<EspressoException> {
 
     // Contains the handlers index in method.getExceptionHandlers.
     private final int[] handlers;

@@ -76,7 +76,7 @@ import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 
-public class LoadStoreFinder extends BlockIteratorClosure {
+public final class LoadStoreFinder extends BlockIteratorClosure {
 
     private final History[] blockHistory;
 

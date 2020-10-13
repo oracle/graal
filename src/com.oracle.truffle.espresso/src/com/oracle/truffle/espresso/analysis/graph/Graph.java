@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.analysis.graph;
 
+import java.io.PrintStream;
 import java.util.Arrays;
 
 import com.oracle.truffle.espresso.analysis.BlockLogger;
@@ -34,12 +35,12 @@ public interface Graph<T extends LinkedBlock> {
 
     int totalBlocks();
 
-    default void log(BlockLogger logger) {
+    default void log(BlockLogger logger, PrintStream err) {
         for (int i = 0; i < totalBlocks(); i++) {
             T block = get(i);
-            System.err.println("B" + i + "[" + block.start() + ", " + block.end() + "]: ");
-            logger.log(i, "\t");
-            System.err.println("\tto: " + Arrays.toString(block.successorsID()));
+            err.println("B" + i + "[" + block.start() + ", " + block.end() + "]: ");
+            logger.log(i, "\t", err);
+            err.println("\tto: " + Arrays.toString(block.successorsID()));
         }
     }
 }

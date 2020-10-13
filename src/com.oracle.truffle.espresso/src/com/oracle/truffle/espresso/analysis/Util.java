@@ -31,7 +31,10 @@ import java.util.Set;
 
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 
-public class Util {
+public final class Util {
+    private Util() {
+    }
+
     public static int[] toIntArray(ArrayList<Integer> targets) {
         int[] result = new int[targets.size()];
         int pos = 0;
@@ -81,13 +84,13 @@ public class Util {
         return true;
     }
 
-    private static class BitSetIterator implements Iterable<Integer>, Iterator<Integer> {
+    private static final class BitSetIterator implements Iterable<Integer>, Iterator<Integer> {
         private final BitSet bs;
         private int pos = -1;
         private int nextPos = -1;
         private boolean nextAvailable = false;
 
-        public BitSetIterator(BitSet bs) {
+        private BitSetIterator(BitSet bs) {
             this.bs = bs;
         }
 

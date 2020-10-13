@@ -29,7 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 
-public class EspressoExecutionGraph implements Graph<EspressoBlock> {
+public final class EspressoExecutionGraph implements Graph<EspressoBlock> {
 
     private final Method method;
     private final ExceptionHandler[] handlers;

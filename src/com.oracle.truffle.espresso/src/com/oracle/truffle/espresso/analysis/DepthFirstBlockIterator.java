@@ -27,7 +27,7 @@ import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.impl.Method;
 
-public class DepthFirstBlockIterator extends BlockIterator {
+public final class DepthFirstBlockIterator extends BlockIterator {
     private final IntArrayIterator[] successors;
 
     public static void analyze(Method m, Graph<? extends LinkedBlock> graph, BlockIteratorClosure closure) {
@@ -75,11 +75,11 @@ public class DepthFirstBlockIterator extends BlockIterator {
 
     }
 
-    private static class IntArrayIterator {
+    private static final class IntArrayIterator {
         final int[] array;
         int pos = 0;
 
-        public IntArrayIterator(int[] array) {
+        private IntArrayIterator(int[] array) {
             this.array = array;
         }
 

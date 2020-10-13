@@ -38,24 +38,23 @@ import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
-public class LivenessAnalysis {
+public final class LivenessAnalysis {
     public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis();
 
     // TODO: Split array to save an header.
-    @CompilerDirectives.CompilationFinal(dimensions = 1) BCILocalActionRecord[] result;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    final BCILocalActionRecord[] result;
 
     public void performPreBCI(VirtualFrame frame, int bci, BytecodeNode node) {
-        if (result == null || result[bci] == null) {
-            return;
+        if (result != null && result[bci] != null) {
+            result[bci].pre(frame, node);
         }
-        result[bci].pre(frame, node);
     }
 
     public void performPostBCI(VirtualFrame frame, int bci, BytecodeNode node) {
-        if (result == null || result[bci] == null) {
-            return;
+        if (result != null && result[bci] != null) {
+            result[bci].post(frame, node);
         }
-        result[bci].post(frame, node);
     }
 
     public static LivenessAnalysis analyze(Method method) {
@@ -98,6 +97,7 @@ public class LivenessAnalysis {
     }
 
     private LivenessAnalysis() {
+        this.result = null;
     }
 
     private static BCILocalActionRecord[] buildResultFrom(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {

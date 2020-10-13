@@ -34,8 +34,8 @@ import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
-public class MultiAction extends LocalVariableAction {
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final int actions[];
+public final class MultiAction extends LocalVariableAction {
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private final int[] actions;
 
     public MultiAction(int[] actions) {
         this.actions = actions;

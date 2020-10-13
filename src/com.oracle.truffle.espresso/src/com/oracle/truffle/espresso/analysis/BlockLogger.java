@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.analysis;
 
+import java.io.PrintStream;
+
 public interface BlockLogger {
-    void log(int block, String tab);
+    void log(int block, String tab, PrintStream err);
 }

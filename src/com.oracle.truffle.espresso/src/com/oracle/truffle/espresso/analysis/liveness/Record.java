@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.analysis.liveness;
 
-public class Record {
+public final class Record {
     final int bci;
     final int local;
     final LoadStoreFinder.TYPE type;

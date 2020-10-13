@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 
-public class LoopPropagatorClosure extends BlockIteratorClosure {
+public final class LoopPropagatorClosure extends BlockIteratorClosure {
     private final BlockBoundaryResult boundaries;
 
     // Records propagations to apply for loop ends.

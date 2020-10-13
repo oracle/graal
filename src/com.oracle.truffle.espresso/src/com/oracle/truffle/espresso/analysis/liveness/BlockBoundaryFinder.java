@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.analysis.liveness;
 
 import static com.oracle.truffle.espresso.analysis.BlockIterator.BlockProcessResult.DONE;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -40,7 +41,7 @@ import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.impl.Method;
 
-public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBoundaryResult, BlockLogger {
+public final class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBoundaryResult, BlockLogger {
     private final int maxLocals;
     private final int totalBlocks;
 
@@ -181,11 +182,11 @@ public class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBo
     }
 
     @Override
-    public void log(int block, String tab) {
-        System.err.println(tab + entryFor(block));
+    public void log(int block, String tab, PrintStream err) {
+        err.println(tab + entryFor(block));
         for (Record r : historyFor(block)) {
-            System.err.println(tab + tab + r.type + " " + r.local);
+            err.println(tab + tab + r.type + " " + r.local);
         }
-        System.err.println(tab + endFor(block));
+        err.println(tab + endFor(block));
     }
 }

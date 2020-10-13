@@ -28,7 +28,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
-public class BCILocalActionRecord {
+public final class BCILocalActionRecord {
     @CompilerDirectives.CompilationFinal private LocalVariableAction pre;
     @CompilerDirectives.CompilationFinal private LocalVariableAction post;
 

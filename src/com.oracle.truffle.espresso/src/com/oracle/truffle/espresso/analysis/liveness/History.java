@@ -26,7 +26,7 @@ package com.oracle.truffle.espresso.analysis.liveness;
 import java.util.Arrays;
 import java.util.Iterator;
 
-public class History implements Iterable<Record> {
+public final class History implements Iterable<Record> {
     private static final int DEFAULT_CAPACITY = 2;
 
     private Record[] history;

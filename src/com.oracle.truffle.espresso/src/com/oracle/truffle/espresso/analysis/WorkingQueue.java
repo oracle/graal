@@ -28,7 +28,7 @@ import java.util.List;
 
 import com.oracle.truffle.espresso.analysis.graph.Block;
 
-public class WorkingQueue<T extends Block> {
+public final class WorkingQueue<T extends Block> {
     private Element<T> first;
 
     public static class Element<U> {

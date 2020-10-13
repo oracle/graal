@@ -27,7 +27,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
-public class NullOutAction extends LocalVariableAction {
+public final class NullOutAction extends LocalVariableAction {
     private static final int MAX_CACHE = 256;
 
     private static final LocalVariableAction[] CACHE = new LocalVariableAction[MAX_CACHE];

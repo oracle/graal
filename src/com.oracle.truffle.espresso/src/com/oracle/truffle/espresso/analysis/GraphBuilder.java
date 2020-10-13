@@ -426,7 +426,7 @@ public final class GraphBuilder {
         private final int target;
         private final int returnAddress;
 
-        public JsrMarker(int target, int returnAddress) {
+        private JsrMarker(int target, int returnAddress) {
             this.target = target;
             this.returnAddress = returnAddress;
         }
