@@ -100,8 +100,9 @@ export function connectToLanguageServer(connection: (() => Thenable<StreamInfo>)
 			prepareStatus.dispose();
 			vscode.window.setStatusBarMessage('GraalLS is ready.', 3000);
 			resolve(client);
-		}).catch(() => {
+		}).catch((e) => {
 			prepareStatus.dispose();
+			vscode.window.showErrorMessage('GraalLS error: ' + e);
 			vscode.window.setStatusBarMessage('GraalLS failed to initialize.', 3000);
 			resolve(client);
 		});
