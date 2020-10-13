@@ -33,6 +33,8 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.options.Option;
 
+import com.oracle.svm.core.util.VMError;
+
 /**
  * If an {@link Option} is additionally annotated with {@link APIOption} it will be exposed as
  * native-image option with the given name.
@@ -53,6 +55,11 @@ public @interface APIOption {
      * the other names are set up as aliases for the option.
      */
     String[] name();
+
+    /**
+     * Make a boolean option part of a group of boolean options.
+     **/
+    Class<? extends APIOptionGroup> group() default NullGroup.class;
 
     /**
      * Provide a custom help message for the option.
@@ -121,12 +128,25 @@ public @interface APIOption {
                 return "--" + name;
             }
         }
+
+        public static String groupName(APIOptionGroup group) {
+            VMError.guarantee(group.name() != null && !group.name().isEmpty(),
+                            "Invalid APIOptionGroup.name() for " + group.getClass().getName());
+            return optionName(group.name()) + group.valueSeparator();
+        }
     }
 
     class DefaultTransformer implements Function<Object, Object> {
         @Override
         public Object apply(Object o) {
             return o;
+        }
+    }
+
+    public static final class NullGroup implements APIOptionGroup {
+        @Override
+        public String name() {
+            return null;
         }
     }
 }
