@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,9 @@ package com.oracle.truffle.api.object.dsl.test.ruby;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
-import com.oracle.truffle.api.object.dsl.Layout;
-import com.oracle.truffle.api.object.dsl.Nullable;
 
-@Layout
+@SuppressWarnings("deprecation")
+@com.oracle.truffle.api.object.dsl.Layout
 public interface ClassLayout extends ModuleLayout {
 
     DynamicObjectFactory createClassShape(
@@ -55,9 +54,9 @@ public interface ClassLayout extends ModuleLayout {
     DynamicObject createClass(DynamicObjectFactory factory,
                     Object fields,
                     boolean isSingleton,
-                    @Nullable DynamicObject attached,
-                    @Nullable DynamicObjectFactory instanceFactory,
-                    @Nullable DynamicObject superclass);
+                    @com.oracle.truffle.api.object.dsl.Nullable DynamicObject attached,
+                    @com.oracle.truffle.api.object.dsl.Nullable DynamicObjectFactory instanceFactory,
+                    @com.oracle.truffle.api.object.dsl.Nullable DynamicObject superclass);
 
     boolean isClass(DynamicObject object);
 

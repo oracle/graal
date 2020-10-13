@@ -230,17 +230,22 @@ import java.util.concurrent.atomic.AtomicReference;
  * {@codesnippet customid}
  *
  * @since 0.12
+ * @deprecated with no replacement.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
+@Deprecated
 public @interface Layout {
     /** @since 0.12 */
+    @Deprecated
     Class<? extends ObjectType> objectTypeSuperclass() default ObjectType.class;
 
     /** @since 0.12 */
+    @Deprecated
     boolean implicitCastIntToLong() default false;
 
     /** @since 0.12 */
+    @Deprecated
     boolean implicitCastIntToDouble() default false;
 
     /**
@@ -248,6 +253,7 @@ public @interface Layout {
      *
      * @since 20.0
      */
+    @Deprecated
     final class DispatchDefaultValue {
         private DispatchDefaultValue() {
         }
@@ -258,9 +264,11 @@ public @interface Layout {
      *
      * @since 20.0
      */
+    @Deprecated
     Class<?> dispatch() default DispatchDefaultValue.class;
 }
 
+@SuppressWarnings("deprecation")
 class Snippets {
 
     // BEGIN: rectlayout
