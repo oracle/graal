@@ -109,7 +109,7 @@ public final class LoadStoreFinder extends BlockIteratorClosure {
         return BlockIterator.BlockProcessResult.DONE;
     }
 
-    private int findLocalIndex(BytecodeStream bs, int bci, int opcode) {
+    private static int findLocalIndex(BytecodeStream bs, int bci, int opcode) {
         switch (opcode) {
             case ILOAD_0: // fall through
             case ILOAD_1: // fall through

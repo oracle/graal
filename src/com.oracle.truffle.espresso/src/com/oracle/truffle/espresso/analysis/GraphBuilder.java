@@ -66,8 +66,6 @@ public final class GraphBuilder {
 
     private static final int[] EMPTY_SUCCESSORS = new int[0];
 
-    private final Method method;
-
     private final BytecodeStream bs;
     private final ExceptionHandler[] handlers;
 
@@ -82,7 +80,6 @@ public final class GraphBuilder {
     private int nBlocks;
 
     private GraphBuilder(Method method) {
-        this.method = method;
         this.bs = new BytecodeStream(method.getCode());
         this.status = new long[bs.endBCI()];
         this.handlers = method.getExceptionHandlers();
@@ -188,7 +185,7 @@ public final class GraphBuilder {
         handlerToBlock = handlerBlocks;
     }
 
-    private TemporaryBlock createTempBlock(int id, int start, int[] successors, boolean isRet, int bci, boolean traps) {
+    private static TemporaryBlock createTempBlock(int id, int start, int[] successors, boolean isRet, int bci, boolean traps) {
         return new TemporaryBlock(id, start, bci - 1, successors, isRet, traps);
     }
 
@@ -241,7 +238,7 @@ public final class GraphBuilder {
      */
     private EspressoExecutionGraph promote() {
         EspressoBlock[] blocks = new EspressoBlock[temporaryBlocks.length];
-        EspressoExecutionGraph graph = new EspressoExecutionGraph(method, handlers, handlerToBlock, blocks);
+        EspressoExecutionGraph graph = new EspressoExecutionGraph(handlers, handlerToBlock, blocks);
         for (int i = 0; i < temporaryBlocks.length; i++) {
             blocks[i] = temporaryBlocks[i].promote(this, graph);
         }
@@ -423,6 +420,7 @@ public final class GraphBuilder {
     }
 
     private static final class JsrMarker {
+        @SuppressWarnings("unused") // May be useful later.
         private final int target;
         private final int returnAddress;
 
@@ -515,7 +513,7 @@ public final class GraphBuilder {
 
     }
 
-    private static int[] merge(int totalBlocks, int[] successors, List<Integer>... others) {
+    private static int[] merge(int totalBlocks, int[] successors, List<Integer> list) {
         ArrayList<Integer> fullyLinkedSuccessors = new ArrayList<>();
         BitSet present = new BitSet(totalBlocks);
         for (int i = 0; i < successors.length; i++) {
@@ -523,12 +521,10 @@ public final class GraphBuilder {
             present.set(id);
             fullyLinkedSuccessors.add(id);
         }
-        for (List<Integer> list : others) {
-            for (int i : list) {
-                if (!present.get(i)) {
-                    fullyLinkedSuccessors.add(i);
-                    present.set(i);
-                }
+        for (int i : list) {
+            if (!present.get(i)) {
+                fullyLinkedSuccessors.add(i);
+                present.set(i);
             }
         }
         return Util.toIntArray(fullyLinkedSuccessors);

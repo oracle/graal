@@ -24,7 +24,7 @@
 package com.oracle.truffle.espresso.analysis.graph;
 
 public interface LinkedBlock extends Block {
-    <T extends LinkedBlock> Graph<T> graph();
+    Graph<? extends LinkedBlock> graph();
 
     int[] successorsID();
 

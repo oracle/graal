@@ -52,7 +52,7 @@ public class BlockIterator implements AnalysisProcessor {
     }
 
     public static void analyze(Graph<? extends LinkedBlock> graph, BlockIteratorClosure closure) {
-        new BlockIterator(graph, closure);
+        new BlockIterator(graph, closure).analyze();
     }
 
     protected BlockIterator(Method m, Graph<? extends LinkedBlock> graph, BlockIteratorClosure closure) {

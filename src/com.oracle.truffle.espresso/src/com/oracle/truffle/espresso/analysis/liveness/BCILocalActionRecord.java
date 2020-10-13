@@ -65,7 +65,7 @@ public final class BCILocalActionRecord {
         }
     }
 
-    private LocalVariableAction register(LocalVariableAction old, LocalVariableAction action) {
+    private static LocalVariableAction register(LocalVariableAction old, LocalVariableAction action) {
         if (old == null) {
             return action;
         } else if (old instanceof MultiAction.TempMultiAction) {

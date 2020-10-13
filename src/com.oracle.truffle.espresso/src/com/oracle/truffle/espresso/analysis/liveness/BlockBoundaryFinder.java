@@ -109,12 +109,12 @@ public final class BlockBoundaryFinder extends BlockIteratorClosure implements B
     private void identifyLoops(LinkedBlock b, AnalysisProcessor processor) {
         for (int s : b.successorsID()) {
             if (processor.isInProcess(s)) {
-                registerLoopEnd(s, s, b.id(), processor);
+                registerLoopEnd(s, s, b.id());
             }
         }
     }
 
-    private void registerLoopEnd(int loopEntry, int successor, int curBlock, AnalysisProcessor processor) {
+    private void registerLoopEnd(int loopEntry, int successor, int curBlock) {
         List<Integer> registered = loops.get(loopEntry);
         if (registered == null) {
             registered = new ArrayList<>();

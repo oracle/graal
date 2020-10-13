@@ -26,18 +26,15 @@ package com.oracle.truffle.espresso.analysis.graph;
 import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 
 public final class EspressoExecutionGraph implements Graph<EspressoBlock> {
 
-    private final Method method;
     private final ExceptionHandler[] handlers;
     private final int[] handlerToBlock;
     private final EspressoBlock[] blocks;
 
-    public EspressoExecutionGraph(Method method, ExceptionHandler[] handlers, int[] handlerToBlock, EspressoBlock[] blocks) {
-        this.method = method;
+    public EspressoExecutionGraph(ExceptionHandler[] handlers, int[] handlerToBlock, EspressoBlock[] blocks) {
         this.handlers = handlers;
         this.handlerToBlock = handlerToBlock;
         this.blocks = blocks;
