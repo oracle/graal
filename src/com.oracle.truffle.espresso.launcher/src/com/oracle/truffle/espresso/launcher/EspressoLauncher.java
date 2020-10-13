@@ -154,6 +154,8 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                     } else if (arg.startsWith("-Xrunjdwp:")) {
                         String value = arg.substring("-Xrunjdwp:".length());
                         espressoOptions.put("java.JDWPOptions", value);
+                    } else if (arg.startsWith("-Xmn") || arg.startsWith("-Xms") || arg.startsWith("-Xmx") || arg.startsWith("-Xss")) {
+                        unrecognized.add("--vm." + arg.substring(1));
                     } else
                     // -Dsystem.property=value
                     if (arg.startsWith("-D")) {
