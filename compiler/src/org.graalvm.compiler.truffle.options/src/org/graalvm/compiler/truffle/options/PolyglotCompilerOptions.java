@@ -490,9 +490,11 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
 
     // Compilation queue
-    @Option(help = "Use the priority of the compilation job in the compilation queue.", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> UseCompilationJobPriority = new OptionKey<>(false);
+    @Option(help = "Use the priority of first tier compilation jobs in the compilation queue.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> CompilationPriorityFirstTier = new OptionKey<>(false);
 
+    @Option(help = "Use the priority of last tier compilation jobs in the compilation queue.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> CompilationPriorityLastTier = new OptionKey<>(false);
     // Language agnostic inlining
 
     @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.INTERNAL)

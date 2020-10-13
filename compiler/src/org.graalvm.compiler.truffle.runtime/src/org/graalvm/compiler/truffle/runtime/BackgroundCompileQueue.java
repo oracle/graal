@@ -228,6 +228,7 @@ public class BackgroundCompileQueue {
             FIRST,
             LAST
         }
+
         public static final Priority INITIALIZATION = new Priority(0, Tier.INITIALIZATION);
 
         private final Tier tier;
@@ -253,14 +254,16 @@ public class BackgroundCompileQueue {
         private final CancellableCompileTask task;
         private final WeakReference<OptimizedCallTarget> targetRef;
         private final Request request;
-        private final boolean usePriorityValue;
+        private final boolean firstTierPriority;
+        private final boolean lastTierPriority;
 
         RequestImpl(long id, Priority priority, WeakReference<OptimizedCallTarget> targetRef, CancellableCompileTask task, Request request) {
             this.id = id;
             this.priority = priority;
             this.targetRef = targetRef;
             OptimizedCallTarget target = targetRef.get();
-            usePriorityValue = target != null && target.getOptionValue(PolyglotCompilerOptions.UseCompilationJobPriority);
+            firstTierPriority = target != null && target.getOptionValue(PolyglotCompilerOptions.CompilationPriorityFirstTier);
+            lastTierPriority = target != null && target.getOptionValue(PolyglotCompilerOptions.CompilationPriorityLastTier);
             this.task = task;
             this.request = request;
         }
@@ -271,7 +274,8 @@ public class BackgroundCompileQueue {
             if (tierCompare != 0) {
                 return tierCompare;
             }
-            if (usePriorityValue) {
+            if ((firstTierPriority && priority.tier == Priority.Tier.FIRST) ||
+                            (lastTierPriority && priority.tier == Priority.Tier.LAST)) {
                 int valueCompare = -1 * Long.compare(priority.value, that.priority.value);
                 if (valueCompare != 0) {
                     return valueCompare;
