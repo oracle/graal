@@ -314,6 +314,7 @@ public final class HeapPolicy {
      * Collection-triggering Policies
      */
 
+    static final UninterruptibleUtils.AtomicUnsigned edenUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
     static final UninterruptibleUtils.AtomicUnsigned youngUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
 
     static UnsignedWord getYoungUsedBytes() {

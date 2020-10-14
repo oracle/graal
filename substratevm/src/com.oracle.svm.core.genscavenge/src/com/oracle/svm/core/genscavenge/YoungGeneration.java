@@ -264,30 +264,33 @@ final class YoungGeneration extends Generation {
         return true;
     }
 
-    UnsignedWord getSurvivorChunkUsedBytes() {
-        UnsignedWord usedBytes = WordFactory.zero();
+    /**
+     * This value that is only updated at a GC.
+     */
+    UnsignedWord getChunkBytes() {
+        return getEden().getChunkBytes().add(getSurvivorChunkBytes());
+    }
+
+    private UnsignedWord getSurvivorChunkBytes() {
+        UnsignedWord chunkBytes = WordFactory.zero();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-            usedBytes = usedBytes.add(this.survivorFromSpaces[i].getChunkBytes());
-            usedBytes = usedBytes.add(this.survivorToSpaces[i].getChunkBytes());
+            chunkBytes = chunkBytes.add(this.survivorFromSpaces[i].getChunkBytes());
+            chunkBytes = chunkBytes.add(this.survivorToSpaces[i].getChunkBytes());
         }
-        return usedBytes;
+        return chunkBytes;
     }
 
-    UnsignedWord getChunkUsedBytes() {
-        return getEden().getChunkBytes().add(getSurvivorChunkUsedBytes());
+    UnsignedWord computeObjectBytes() {
+        return getEden().computeObjectBytes().add(computeSurvivorObjectBytes());
     }
 
-    UnsignedWord getSurvivorObjectBytes() {
+    private UnsignedWord computeSurvivorObjectBytes() {
         UnsignedWord usedObjectBytes = WordFactory.zero();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-            usedObjectBytes = usedObjectBytes.add(survivorFromSpaces[i].getObjectBytes());
-            usedObjectBytes = usedObjectBytes.add(survivorToSpaces[i].getObjectBytes());
+            usedObjectBytes = usedObjectBytes.add(survivorFromSpaces[i].computeObjectBytes());
+            usedObjectBytes = usedObjectBytes.add(survivorToSpaces[i].computeObjectBytes());
         }
         return usedObjectBytes;
-    }
-
-    UnsignedWord getObjectBytes() {
-        return getEden().getObjectBytes().add(getSurvivorObjectBytes());
     }
 
     @SuppressWarnings("static-method")

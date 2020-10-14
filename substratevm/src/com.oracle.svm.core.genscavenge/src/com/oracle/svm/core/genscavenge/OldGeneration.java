@@ -235,4 +235,13 @@ final class OldGeneration extends Generation {
     boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
         return getFromSpace().walkHeapChunks(visitor) && getToSpace().walkHeapChunks(visitor);
     }
+
+    /**
+     * This value that is only updated at a GC.
+     */
+    UnsignedWord getChunkBytes() {
+        UnsignedWord fromBytes = getFromSpace().getChunkBytes();
+        UnsignedWord toBytes = getToSpace().getChunkBytes();
+        return fromBytes.add(toBytes);
+    }
 }

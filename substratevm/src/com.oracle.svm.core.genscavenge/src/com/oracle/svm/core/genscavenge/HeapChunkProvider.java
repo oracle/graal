@@ -117,6 +117,7 @@ final class HeapChunkProvider {
             zap(result, HeapPolicy.getProducedHeapChunkZapWord());
         }
 
+        HeapPolicy.edenUsedBytes.addAndGet(chunkSize);
         HeapPolicy.youngUsedBytes.addAndGet(chunkSize);
 
         log().string("  result chunk: ").hex(result).string("  ]").newline();
@@ -140,7 +141,7 @@ final class HeapChunkProvider {
     private boolean keepAlignedChunk() {
         Log trace = Log.noopLog().string("[HeapChunkProvider.keepAlignedChunk:");
         UnsignedWord minimumHeapSize = HeapPolicy.getMinimumHeapSize();
-        UnsignedWord heapChunkBytes = HeapImpl.getHeapImpl().getUsedChunkBytes();
+        UnsignedWord heapChunkBytes = HeapImpl.getHeapImpl().getChunkBytes();
         UnsignedWord unusedChunkBytes = bytesInUnusedAlignedChunks.get();
         UnsignedWord bytesInUse = heapChunkBytes.add(unusedChunkBytes);
 
@@ -244,6 +245,7 @@ final class HeapChunkProvider {
             zap(result, HeapPolicy.getProducedHeapChunkZapWord());
         }
 
+        HeapPolicy.edenUsedBytes.addAndGet(chunkSize);
         HeapPolicy.youngUsedBytes.addAndGet(chunkSize);
 
         log().string("  returns ").hex(result).string("  ]").newline();

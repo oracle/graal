@@ -304,7 +304,7 @@ public final class ThreadLocalAllocation {
     }
 
     static void disableAndFlushForThread(IsolateThread vmThread) {
-        retireToSpace(regularTLAB.getAddress(vmThread), HeapImpl.getHeapImpl().getAllocationSpace());
+        retireToSpace(regularTLAB.getAddress(vmThread), HeapImpl.getHeapImpl().getYoungGeneration().getEden());
 
         AlignedHeader alignedChunk;
         while ((alignedChunk = popFromThreadLocalFreeList(vmThread)).isNonNull()) {

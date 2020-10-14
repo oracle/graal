@@ -61,7 +61,7 @@ abstract class CollectionPolicy {
 
     public abstract void nameToLog(Log log);
 
-    static Accounting getAccounting() {
+    static GCAccounting getAccounting() {
         return HeapImpl.getHeapImpl().getGCImpl().getAccounting();
     }
 
