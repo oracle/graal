@@ -188,6 +188,6 @@ class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disab
         results = super(ScalaDaCapoWarmupBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
         self.accumulateResults(results)
         self.warmupResults(results, scala_dacapo_warmup_iterations)
-        return [r for r in results if r["metric.name"] in ["startup", "early-warmup", "late-warmup"]]
+        return results
 
 mx_benchmark.add_bm_suite(ScalaDaCapoWarmupBenchmarkSuite())
