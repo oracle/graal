@@ -280,9 +280,7 @@ public final class LLVMContext {
         }
 
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), parseStackSize(env.getOptions().get(SulongEngineOption.STACK_SIZE)));
-        for (ContextExtension ext : getContextExtensions()) {
-            ext.initialize();
-        }
+
         String languageHome = language.getLLVMLanguageHome();
         if (languageHome != null) {
             PlatformCapability<?> sysContextExt = language.getCapability(PlatformCapability.class);
@@ -291,6 +289,11 @@ public final class LLVMContext {
             // add internal library location also to the external library lookup path
             addLibraryPath(internalLibraryPath.toString());
         }
+
+        for (ContextExtension ext : getContextExtensions()) {
+            ext.initialize(this);
+        }
+
         try {
             /*
              * The default internal libraries are parsed in reverse dependency order, but not
@@ -300,9 +303,8 @@ public final class LLVMContext {
              */
             String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
             for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
-                ExternalLibrary library = addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>", false);
-                TruffleFile file = library.hasFile() ? library.getFile() : env.getInternalTruffleFile(library.getPath().toUri());
-                env.parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
+                TruffleFile file = InternalLibraryLocator.INSTANCE.locateLibrary(this, sulongLibraryNames[i], "<default bitcode library>");
+                env.parseInternal(Source.newBuilder("llvm", file).internal(isInternalLibraryFile(file)).build());
             }
 
             /*- TODO (PLi): after the default libraries have been loaded. The start function symbol,
@@ -604,9 +606,6 @@ public final class LLVMContext {
         }
     }
 
-    /**
-     * @see #addExternalLibrary(String, Object, LibraryLocator)
-     */
     public ExternalLibrary addExternalLibraryDefaultLocator(String lib, Object reason) {
         return addExternalLibrary(lib, reason, DefaultLibraryLocator.INSTANCE);
     }

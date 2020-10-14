@@ -216,9 +216,8 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                 LLVMPointer allocateNativeGlobal(@SuppressWarnings("unused") LLVMLocalScope localScope,
                                 @SuppressWarnings("unused") LLVMScope globalScope,
                                 @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
-                                NFIContextExtension nfiContextExtension,
-                                @CachedContext(LLVMLanguage.class) LLVMContext context) {
-                    NFIContextExtension.NativePointerIntoLibrary pointer = nfiContextExtension.getNativeHandle(context, symbol.getName());
+                                NFIContextExtension nfiContextExtension) {
+                    NFIContextExtension.NativePointerIntoLibrary pointer = nfiContextExtension.getNativeHandle(symbol.getName());
                     if (pointer != null) {
                         return LLVMNativePointer.create(pointer.getAddress());
                     }
@@ -273,7 +272,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                                 @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
                                 NFIContextExtension nfiContextExtension,
                                 @CachedContext(LLVMLanguage.class) LLVMContext context) {
-                    NFIContextExtension.NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, symbol.getName());
+                    NFIContextExtension.NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(symbol.getName());
                     if (nativeFunction != null) {
                         LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction());
                         functionDescriptor.getFunctionCode().define(new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
