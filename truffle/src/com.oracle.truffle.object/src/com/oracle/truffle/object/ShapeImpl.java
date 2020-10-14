@@ -963,6 +963,9 @@ public abstract class ShapeImpl extends Shape {
         if (getDynamicType() == newObjectType) {
             return this;
         }
+        if (getLayout().isLegacyLayout() && !(newObjectType instanceof ObjectType)) {
+            throw new IllegalArgumentException("dynamicType must be an instance of ObjectType");
+        }
         ObjectTypeTransition transition = new ObjectTypeTransition(newObjectType);
         ShapeImpl cachedShape = queryTransition(transition);
         if (cachedShape != null) {
