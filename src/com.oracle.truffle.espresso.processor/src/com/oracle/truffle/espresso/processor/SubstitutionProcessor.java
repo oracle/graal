@@ -393,7 +393,8 @@ public class SubstitutionProcessor extends EspressoProcessor {
     @Override
     String generateImports(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
-        if (parameterTypeName.contains("StaticObject")) {
+        SubstitutorHelper h = (SubstitutorHelper) helper;
+        if (parameterTypeName.contains("StaticObject") || h.returnType.equals("V")) {
             str.append(IMPORT_STATIC_OBJECT);
         }
         str.append("\n");
@@ -450,7 +451,7 @@ public class SubstitutionProcessor extends EspressoProcessor {
         }
         if (h.returnType.equals("V")) {
             str.append(TAB_2).append(extractInvocation(targetClass, targetMethodName, argIndex, helper));
-            str.append(TAB_2).append("return null;\n");
+            str.append(TAB_2).append("return StaticObject.NULL;\n");
         } else {
             str.append(TAB_2).append("return ").append(extractInvocation(targetClass, targetMethodName, argIndex, helper));
         }
