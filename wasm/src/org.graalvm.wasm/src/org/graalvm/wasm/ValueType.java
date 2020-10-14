@@ -40,17 +40,30 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import org.graalvm.wasm.exception.WasmValidationException;
 
-public class ValueTypes {
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"unused", "static-method"})
+public class ValueType implements TruffleObject {
     public static final byte VOID_TYPE = 0x40;
 
     public static final byte I32_TYPE = 0x7F;
+
     public static final byte I64_TYPE = 0x7E;
+
     public static final byte F32_TYPE = 0x7D;
+
     public static final byte F64_TYPE = 0x7C;
 
-    public static String asString(int valueType) {
+    public static final ValueType VOID = new ValueType("void");
+
+    public static String toString(int valueType) {
         switch (valueType) {
             case I32_TYPE:
                 return "i32";
@@ -63,5 +76,47 @@ public class ValueTypes {
             default:
                 throw new WasmValidationException("Unknown value type: 0x" + Integer.toHexString(valueType));
         }
+    }
+
+    private final String name;
+
+    public ValueType(String name) {
+        this.name = name;
+    }
+
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return WasmLanguage.class;
+    }
+
+    @ExportMessage
+    boolean isMetaObject() {
+        return true;
+    }
+
+    @ExportMessage(name = "getMetaQualifiedName")
+    @ExportMessage(name = "getMetaSimpleName")
+    public Object getName() {
+        return name;
+    }
+
+    @ExportMessage(name = "toDisplayString")
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return toString();
+    }
+
+    @ExportMessage
+    final boolean isMetaInstance(Object instance) throws UnsupportedMessageException {
+        return instance instanceof WasmVoidResult;
+    }
+
+    @Override
+    public String toString() {
+        return "wasm-value-type[" + name + "]";
     }
 }

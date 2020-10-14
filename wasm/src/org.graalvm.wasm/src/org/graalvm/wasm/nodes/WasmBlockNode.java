@@ -56,7 +56,7 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
-import org.graalvm.wasm.ValueTypes;
+import org.graalvm.wasm.ValueType;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
@@ -572,27 +572,27 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // As per the WebAssembly specification,
                     // this restriction may be lifted in the future.
                     switch (returnType) {
-                        case ValueTypes.I32_TYPE: {
+                        case ValueType.I32_TYPE: {
                             pushInt(frame, stackPointer, (int) result);
                             stackPointer++;
                             break;
                         }
-                        case ValueTypes.I64_TYPE: {
+                        case ValueType.I64_TYPE: {
                             push(frame, stackPointer, (long) result);
                             stackPointer++;
                             break;
                         }
-                        case ValueTypes.F32_TYPE: {
+                        case ValueType.F32_TYPE: {
                             pushFloat(frame, stackPointer, (float) result);
                             stackPointer++;
                             break;
                         }
-                        case ValueTypes.F64_TYPE: {
+                        case ValueType.F64_TYPE: {
                             pushDouble(frame, stackPointer, (double) result);
                             stackPointer++;
                             break;
                         }
-                        case ValueTypes.VOID_TYPE: {
+                        case ValueType.VOID_TYPE: {
                             // Void return type - do nothing.
                             break;
                         }
@@ -667,27 +667,27 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // future.
                     int returnType = instance().symbolTable().functionTypeReturnType(expectedFunctionTypeIndex);
                     switch (returnType) {
-                        case ValueTypes.I32_TYPE: {
+                        case ValueType.I32_TYPE: {
                             pushInt(frame, stackPointer, (int) result);
                             stackPointer++;
                             break;
                         }
-                        case ValueTypes.I64_TYPE: {
+                        case ValueType.I64_TYPE: {
                             push(frame, stackPointer, (long) result);
                             stackPointer++;
                             break;
                         }
-                        case ValueTypes.F32_TYPE: {
+                        case ValueType.F32_TYPE: {
                             pushFloat(frame, stackPointer, (float) result);
                             stackPointer++;
                             break;
                         }
-                        case ValueTypes.F64_TYPE: {
+                        case ValueType.F64_TYPE: {
                             pushDouble(frame, stackPointer, (double) result);
                             stackPointer++;
                             break;
                         }
-                        case ValueTypes.VOID_TYPE: {
+                        case ValueType.VOID_TYPE: {
                             // Void return type - do nothing.
                             break;
                         }
@@ -726,28 +726,28 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // endregion
                     byte type = codeEntry().localType(index);
                     switch (type) {
-                        case ValueTypes.I32_TYPE: {
+                        case ValueType.I32_TYPE: {
                             int value = getInt(frame, index);
                             pushInt(frame, stackPointer, value);
                             stackPointer++;
                             trace("local.get %d, value = 0x%08X (%d) [i32]", index, value, value);
                             break;
                         }
-                        case ValueTypes.I64_TYPE: {
+                        case ValueType.I64_TYPE: {
                             long value = getLong(frame, index);
                             push(frame, stackPointer, value);
                             stackPointer++;
                             trace("local.get %d, value = 0x%016X (%d) [i64]", index, value, value);
                             break;
                         }
-                        case ValueTypes.F32_TYPE: {
+                        case ValueType.F32_TYPE: {
                             float value = getFloat(frame, index);
                             pushFloat(frame, stackPointer, value);
                             stackPointer++;
                             trace("local.get %d, value = %f [f32]", index, value);
                             break;
                         }
-                        case ValueTypes.F64_TYPE: {
+                        case ValueType.F64_TYPE: {
                             double value = getDouble(frame, index);
                             pushDouble(frame, stackPointer, value);
                             stackPointer++;
@@ -770,28 +770,28 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // endregion
                     byte type = codeEntry().localType(index);
                     switch (type) {
-                        case ValueTypes.I32_TYPE: {
+                        case ValueType.I32_TYPE: {
                             stackPointer--;
                             int value = popInt(frame, stackPointer);
                             setInt(frame, index, value);
                             trace("local.set %d, value = 0x%08X (%d) [i32]", index, value, value);
                             break;
                         }
-                        case ValueTypes.I64_TYPE: {
+                        case ValueType.I64_TYPE: {
                             stackPointer--;
                             long value = pop(frame, stackPointer);
                             setLong(frame, index, value);
                             trace("local.set %d, value = 0x%016X (%d) [i64]", index, value, value);
                             break;
                         }
-                        case ValueTypes.F32_TYPE: {
+                        case ValueType.F32_TYPE: {
                             stackPointer--;
                             float value = popAsFloat(frame, stackPointer);
                             setFloat(frame, index, value);
                             trace("local.set %d, value = %f [f32]", index, value);
                             break;
                         }
-                        case ValueTypes.F64_TYPE: {
+                        case ValueType.F64_TYPE: {
                             stackPointer--;
                             double value = popAsDouble(frame, stackPointer);
                             setDouble(frame, index, value);
@@ -814,7 +814,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // endregion
                     byte type = codeEntry().localType(index);
                     switch (type) {
-                        case ValueTypes.I32_TYPE: {
+                        case ValueType.I32_TYPE: {
                             stackPointer--;
                             int value = popInt(frame, stackPointer);
                             pushInt(frame, stackPointer, value);
@@ -823,7 +823,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             trace("local.tee %d, value = 0x%08X (%d) [i32]", index, value, value);
                             break;
                         }
-                        case ValueTypes.I64_TYPE: {
+                        case ValueType.I64_TYPE: {
                             stackPointer--;
                             long value = pop(frame, stackPointer);
                             push(frame, stackPointer, value);
@@ -832,7 +832,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             trace("local.tee %d, value = 0x%016X (%d) [i64]", index, value, value);
                             break;
                         }
-                        case ValueTypes.F32_TYPE: {
+                        case ValueType.F32_TYPE: {
                             stackPointer--;
                             float value = popAsFloat(frame, stackPointer);
                             pushFloat(frame, stackPointer, value);
@@ -841,7 +841,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             trace("local.tee %d, value = %f [f32]", index, value);
                             break;
                         }
-                        case ValueTypes.F64_TYPE: {
+                        case ValueType.F64_TYPE: {
                             stackPointer--;
                             double value = popAsDouble(frame, stackPointer);
                             pushDouble(frame, stackPointer, value);
@@ -867,7 +867,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                     byte type = instance().symbolTable().globalValueType(index);
                     switch (type) {
-                        case ValueTypes.I32_TYPE: {
+                        case ValueType.I32_TYPE: {
                             int address = instance().globalAddress(index);
                             int value = context.globals().loadAsInt(address);
                             pushInt(frame, stackPointer, value);
@@ -875,7 +875,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             trace("global.get %d, value = 0x%08X (%d) [i32]", index, value, value);
                             break;
                         }
-                        case ValueTypes.I64_TYPE: {
+                        case ValueType.I64_TYPE: {
                             int address = instance().globalAddress(index);
                             long value = context.globals().loadAsLong(address);
                             push(frame, stackPointer, value);
@@ -883,7 +883,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             trace("global.get %d, value = 0x%016X (%d) [i64]", index, value, value);
                             break;
                         }
-                        case ValueTypes.F32_TYPE: {
+                        case ValueType.F32_TYPE: {
                             int address = instance().globalAddress(index);
                             int value = context.globals().loadAsInt(address);
                             pushInt(frame, stackPointer, value);
@@ -891,7 +891,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             trace("global.get %d, value = %f [f32]", index, Float.intBitsToFloat(value));
                             break;
                         }
-                        case ValueTypes.F64_TYPE: {
+                        case ValueType.F64_TYPE: {
                             int address = instance().globalAddress(index);
                             long value = context.globals().loadAsLong(address);
                             push(frame, stackPointer, value);
@@ -919,7 +919,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // mutable.
                     // This is taken care of by validation during wat to wasm compilation.
                     switch (type) {
-                        case ValueTypes.I32_TYPE: {
+                        case ValueType.I32_TYPE: {
                             stackPointer--;
                             int value = popInt(frame, stackPointer);
                             int address = instance().globalAddress(index);
@@ -927,7 +927,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             trace("global.set %d, value = 0x%08X (%d) [i32]", index, value, value);
                             break;
                         }
-                        case ValueTypes.I64_TYPE: {
+                        case ValueType.I64_TYPE: {
                             stackPointer--;
                             long value = pop(frame, stackPointer);
                             int address = instance().globalAddress(index);
@@ -935,7 +935,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             trace("global.set %d, value = 0x%016X (%d) [i64]", index, value, value);
                             break;
                         }
-                        case ValueTypes.F32_TYPE: {
+                        case ValueType.F32_TYPE: {
                             stackPointer--;
                             int value = popInt(frame, stackPointer);
                             int address = instance().globalAddress(index);
@@ -943,7 +943,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             trace("global.set %d, value = %f [f32]", index, Float.intBitsToFloat(value));
                             break;
                         }
-                        case ValueTypes.F64_TYPE: {
+                        case ValueType.F64_TYPE: {
                             stackPointer--;
                             long value = pop(frame, stackPointer);
                             int address = instance().globalAddress(index);
@@ -2441,16 +2441,16 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             stackPointer--;
             byte type = instance().symbolTable().functionTypeArgumentTypeAt(functionTypeIndex, i);
             switch (type) {
-                case ValueTypes.I32_TYPE:
+                case ValueType.I32_TYPE:
                     args[i] = popInt(frame, stackPointer);
                     break;
-                case ValueTypes.I64_TYPE:
+                case ValueType.I64_TYPE:
                     args[i] = pop(frame, stackPointer);
                     break;
-                case ValueTypes.F32_TYPE:
+                case ValueType.F32_TYPE:
                     args[i] = popAsFloat(frame, stackPointer);
                     break;
-                case ValueTypes.F64_TYPE:
+                case ValueType.F64_TYPE:
                     args[i] = popAsDouble(frame, stackPointer);
                     break;
                 default: {

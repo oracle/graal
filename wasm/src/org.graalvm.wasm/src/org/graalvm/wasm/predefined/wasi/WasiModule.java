@@ -48,8 +48,8 @@ import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.emscripten.UnimplementedNode;
 
-import static org.graalvm.wasm.ValueTypes.I32_TYPE;
-import static org.graalvm.wasm.ValueTypes.I64_TYPE;
+import static org.graalvm.wasm.ValueType.I32_TYPE;
+import static org.graalvm.wasm.ValueType.I64_TYPE;
 
 public class WasiModule extends BuiltinModule {
     @Override
