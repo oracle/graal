@@ -582,18 +582,11 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
                 registerAsAllocated(null);
 
                 componentType.registerAsReachable();
-                // elementalType.registerAsReachable();
-                if (elementalType.getSuperclass() != null) {
-                    elementalType.getSuperclass().getArrayClass(dimension).registerAsReachable();
-                }
                 if (elementalType.isInterface()) {
                     universe.objectType().getArrayClass(dimension).registerAsReachable();
                 }
                 if (dimension >= 2) {
                     universe.objectType().getArrayClass(dimension - 1).registerAsReachable();
-                }
-                for (AnalysisType interf : elementalType.getInterfaces()) {
-                    interf.getArrayClass(dimension).registerAsReachable();
                 }
             }
 
