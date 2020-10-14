@@ -53,6 +53,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
@@ -61,18 +62,31 @@ import java.util.zip.ZipOutputStream;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.tck.DebuggerTester;
+import java.util.function.Function;
+import org.graalvm.collections.Pair;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Source;
 
 public class DebuggerSessionTest extends AbstractDebugTest {
@@ -156,6 +170,125 @@ public class DebuggerSessionTest extends AbstractDebugTest {
             });
 
             expectDone();
+        }
+    }
+
+    @Test
+    public void testSuspendHereFailsFromCallback() {
+        Source testSource = testSource("ROOT(\n" +
+                        "  DEFINE(foo, ROOT(STATEMENT)),\n" +
+                        "  CALL(foo)\n" +
+                        ")\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+
+            startEval(testSource);
+            AtomicInteger suspendCount = new AtomicInteger(0);
+            expectSuspended((SuspendedEvent event) -> {
+                if (suspendCount.getAndIncrement() == 0) {
+                    try {
+                        session.suspendHere(null);
+                        Assert.fail("Should not suspend when suspended already.");
+                    } catch (IllegalStateException e) {
+                        // O.K.
+                    }
+                } else {
+                    Assert.fail("Called multiple times: " + suspendCount.get());
+                }
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testSuspendHereFailsNoExecution() {
+        try (DebuggerSession session = startSession()) {
+            if (session.suspendHere(null)) {
+                Assert.fail("Should not suspend when there is no execution.");
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testSuspendHereWrongNode() {
+        Source testSource = testSource("ROOT(\n" +
+                        "  DEFINE(foo, ROOT(EXPRESSION, EXPRESSION, STATEMENT)),\n" +
+                        "  CALL(foo)\n" +
+                        ")\n");
+        popContext();
+        Engine engine = Engine.create();
+        tester = new DebuggerTester(Context.newBuilder().allowAllAccess(true).engine(engine));
+        try (DebuggerSession session = startSession()) {
+            Instrument instrument = engine.getInstruments().get("SuspendDebuggerFromInstrument");
+            Node nodeNoRoot = new Node() {
+            };
+            Pair<DebuggerSession, Function<Node, Node>> sessionNode = Pair.create(session, node -> nodeNoRoot);
+            instrument.lookup(AtomicReference.class).set(sessionNode);
+
+            startEval(testSource);
+            Throwable t = expectThrowable();
+            Assert.assertTrue(t.getMessage(), t.getMessage().endsWith("does not have a root."));
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testSuspendHereFromGuest() {
+        Source testSource = testSource("ROOT(\n" +
+                        "  DEFINE(foo, ROOT(EXPRESSION, EXPRESSION, STATEMENT)),\n" +
+                        "  CALL(foo)\n" +
+                        ")\n");
+        popContext();
+        Engine engine = Engine.create();
+        tester = new DebuggerTester(Context.newBuilder().allowAllAccess(true).engine(engine));
+        try (DebuggerSession session = startSession()) {
+            Instrument instrument = engine.getInstruments().get("SuspendDebuggerFromInstrument");
+            Pair<DebuggerSession, Function<Node, Node>> sessionNode = Pair.create(session, node -> null);
+            instrument.lookup(AtomicReference.class).set(sessionNode);
+
+            startEval(testSource);
+            expectSuspended((SuspendedEvent event) -> {
+                // Suspended immediately at the EXPRESSION's root as we do not have exact location
+                checkState(event, 2, true, " ROOT(EXPRESSION, EXPRESSION, STATEMENT)").prepareContinue();
+                Assert.assertEquals("foo", event.getTopStackFrame().getName());
+            });
+            sessionNode = Pair.create(session, node -> node);
+            instrument.lookup(AtomicReference.class).set(sessionNode);
+            expectSuspended((SuspendedEvent event) -> {
+                // Suspended immediately at the provided EXPRESSION node.
+                checkState(event, 2, true, "EXPRESSION").prepareContinue();
+                Assert.assertEquals("foo", event.getTopStackFrame().getName());
+            });
+            expectDone();
+        }
+    }
+
+    @TruffleInstrument.Registration(id = "SuspendDebuggerFromInstrument", services = AtomicReference.class)
+    public static class SuspendDebuggerFromInstrument extends TruffleInstrument {
+
+        @Override
+        protected void onCreate(Env env) {
+            AtomicReference<Pair<DebuggerSession, Function<Node, Node>>> sessionNodeRef = new AtomicReference<>();
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(), new ExecutionEventListener() {
+
+                @Override
+                @TruffleBoundary
+                public void onEnter(EventContext context, VirtualFrame frame) {
+                    Pair<DebuggerSession, Function<Node, Node>> sessionNode = sessionNodeRef.get();
+                    Node node = sessionNode.getRight().apply(context.getInstrumentedNode());
+                    Assert.assertTrue(sessionNode.getLeft().suspendHere(node));
+                }
+
+                @Override
+                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                }
+
+                @Override
+                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                }
+            });
+            env.registerService(sessionNodeRef);
         }
     }
 

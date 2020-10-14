@@ -49,6 +49,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
@@ -152,6 +153,13 @@ public final class SuspendedEvent {
     SuspendedEvent(DebuggerSession session, Thread thread, SuspendedContext context, MaterializedFrame frame, SuspendAnchor suspendAnchor,
                     InsertableNode insertableNode, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
                     List<Breakpoint> breakpoints, Map<Breakpoint, Throwable> conditionFailures) {
+        Objects.requireNonNull(session, "session");
+        Objects.requireNonNull(thread, "thread");
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(frame, "frame");
+        Objects.requireNonNull(suspendAnchor, "suspendAnchor");
+        Objects.requireNonNull(breakpoints, "breakpoints");
+        Objects.requireNonNull(conditionFailures, "conditionFailures");
         this.session = session;
         this.context = context;
         this.suspendAnchor = suspendAnchor;
@@ -161,7 +169,7 @@ public final class SuspendedEvent {
         this.returnValue = returnValue;
         this.exception = exception;
         this.conditionFailures = conditionFailures;
-        this.breakpoints = breakpoints == null ? Collections.<Breakpoint> emptyList() : Collections.<Breakpoint> unmodifiableList(breakpoints);
+        this.breakpoints = Collections.unmodifiableList(breakpoints);
         this.thread = thread;
         this.sourceSection = context.getInstrumentedSourceSection();
     }
@@ -382,9 +390,6 @@ public final class SuspendedEvent {
      */
     public Throwable getBreakpointConditionException(Breakpoint breakpoint) {
         verifyValidState(true);
-        if (conditionFailures == null) {
-            return null;
-        }
         return conditionFailures.get(breakpoint);
     }
 
@@ -748,7 +753,9 @@ public final class SuspendedEvent {
             if (context.getStackDepth() == 0) {
                 return 0;
             }
-            if (hasRootTag(context.getInstrumentedNode())) {
+            Node node = context.getInstrumentedNode();
+            if (node instanceof RootNode || hasRootTag(node)) {
+                // RootNode can mean that we have no idea which Node we're suspended at
                 return 0;
             } else {
                 return 1; // Skip synthetic frame
