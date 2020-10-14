@@ -64,7 +64,7 @@ public abstract class CollectionPolicy {
     public abstract String getName();
 
     static GCAccounting getAccounting() {
-        return HeapImpl.getHeapImpl().getGCImpl().getAccounting();
+        return GCImpl.getGCImpl().getAccounting();
     }
 
     public static class OnlyIncrementally extends CollectionPolicy {

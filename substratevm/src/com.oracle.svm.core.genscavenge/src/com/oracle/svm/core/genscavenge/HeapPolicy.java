@@ -325,7 +325,6 @@ public final class HeapPolicy {
     }
 
     public static void increaseEdenUsedBytes(UnsignedWord value) {
-        assert !VMOperation.isGCInProgress() : "no need to keep those counters accurate during a GC";
         youngUsedBytes.addAndGet(value);
         edenUsedBytes.addAndGet(value);
     }
