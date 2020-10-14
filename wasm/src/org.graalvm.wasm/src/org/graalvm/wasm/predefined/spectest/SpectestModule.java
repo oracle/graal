@@ -50,10 +50,10 @@ import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
-import static org.graalvm.wasm.ValueType.F32_TYPE;
-import static org.graalvm.wasm.ValueType.F64_TYPE;
-import static org.graalvm.wasm.ValueType.I32_TYPE;
-import static org.graalvm.wasm.ValueType.I64_TYPE;
+import static org.graalvm.wasm.WasmType.F32_TYPE;
+import static org.graalvm.wasm.WasmType.F64_TYPE;
+import static org.graalvm.wasm.WasmType.I32_TYPE;
+import static org.graalvm.wasm.WasmType.I64_TYPE;
 
 public class SpectestModule extends BuiltinModule {
     @Override

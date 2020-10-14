@@ -188,8 +188,8 @@ public class Linker {
             int exportedValueType = importedInstance.symbolTable().globalValueType(exportedGlobalIndex);
             if (exportedValueType != valueType) {
                 throw new WasmLinkerException("Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
-                                "' with the type " + ValueType.toString(valueType) + ", " +
-                                "'but it was exported in the module '" + importedModuleName + "' with the type " + ValueType.toString(exportedValueType) + ".");
+                                "' with the type " + WasmType.toString(valueType) + ", " +
+                                "'but it was exported in the module '" + importedModuleName + "' with the type " + WasmType.toString(exportedValueType) + ".");
             }
             int exportedMutability = importedInstance.symbolTable().globalMutability(exportedGlobalIndex);
             if (exportedMutability != mutability) {

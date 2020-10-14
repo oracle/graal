@@ -411,7 +411,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     @SuppressWarnings("unused")
     private static void checkValidStateOnBlockExit(byte returnTypeId, ExecutionState state, int initialStackSize) {
-        if (returnTypeId == ValueType.VOID_TYPE) {
+        if (returnTypeId == WasmType.VOID_TYPE) {
             Assert.assertIntEqual(state.stackSize(), initialStackSize, "Void function left values in the stack");
         } else {
             Assert.assertIntEqual(state.stackSize(), initialStackSize + 1, "Function left more than 1 values left in stack");
@@ -959,7 +959,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private LoopNode readLoop(WasmInstance instance, WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId) {
         int initialStackPointer = state.stackSize();
-        WasmBlockNode loopBlock = readBlockBody(instance, codeEntry, state, returnTypeId, ValueType.VOID_TYPE);
+        WasmBlockNode loopBlock = readBlockBody(instance, codeEntry, state, returnTypeId, WasmType.VOID_TYPE);
 
         // TODO: Hack to correctly set the stack pointer for abstract interpretation.
         // If a block has branch instructions that target "shallower" blocks which return no value,
@@ -967,7 +967,7 @@ public class BinaryParser extends BinaryStreamParser {
         // interpretation.
         // Correct the stack pointer to the value it would have in case there were no branch
         // instructions.
-        state.setStackSize(returnTypeId != ValueType.VOID_TYPE ? initialStackPointer + 1 : initialStackPointer);
+        state.setStackSize(returnTypeId != WasmType.VOID_TYPE ? initialStackPointer + 1 : initialStackPointer);
 
         return Truffle.getRuntime().createLoopNode(loopBlock);
     }
@@ -992,7 +992,7 @@ public class BinaryParser extends BinaryStreamParser {
         WasmNode falseBranchBlock = null;
         if (peek1(-1) == Instructions.ELSE) {
             falseBranchBlock = readBlockBody(instance, codeEntry, state, blockTypeId, blockTypeId);
-        } else if (blockTypeId != ValueType.VOID_TYPE) {
+        } else if (blockTypeId != WasmType.VOID_TYPE) {
             Assert.fail("An if statement without an else branch block cannot return values.");
         }
         int stackSizeBeforeCondition = stackSizeAfterCondition + 1;
@@ -1256,7 +1256,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void readResultList(int funcTypeIdx) {
         byte b = read1();
         switch (b) {
-            case ValueType.VOID_TYPE:  // special byte indicating empty return type (same as above)
+            case WasmType.VOID_TYPE:  // special byte indicating empty return type (same as above)
                 break;
             case 0x00:  // empty vector
                 break;

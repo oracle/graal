@@ -50,7 +50,7 @@ import org.graalvm.wasm.exception.WasmValidationException;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings({"unused", "static-method"})
-public class ValueType implements TruffleObject {
+public class WasmType implements TruffleObject {
     public static final byte VOID_TYPE = 0x40;
 
     public static final byte I32_TYPE = 0x7F;
@@ -61,7 +61,7 @@ public class ValueType implements TruffleObject {
 
     public static final byte F64_TYPE = 0x7C;
 
-    public static final ValueType VOID = new ValueType("void");
+    public static final WasmType VOID = new WasmType("void");
 
     public static String toString(int valueType) {
         switch (valueType) {
@@ -80,7 +80,7 @@ public class ValueType implements TruffleObject {
 
     private final String name;
 
-    public ValueType(String name) {
+    public WasmType(String name) {
         this.name = name;
     }
 

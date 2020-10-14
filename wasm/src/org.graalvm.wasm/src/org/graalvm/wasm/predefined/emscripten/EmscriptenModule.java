@@ -40,8 +40,8 @@
  */
 package org.graalvm.wasm.predefined.emscripten;
 
-import static org.graalvm.wasm.ValueType.F64_TYPE;
-import static org.graalvm.wasm.ValueType.I32_TYPE;
+import static org.graalvm.wasm.WasmType.F64_TYPE;
+import static org.graalvm.wasm.WasmType.I32_TYPE;
 
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;

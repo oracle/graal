@@ -90,7 +90,7 @@ public abstract class WasmBenchmarkSuiteBase {
             System.out.println("...::: Benchmark " + benchmarkCase.name() + " :::...");
             benchmarkCase.getSources().forEach(context::eval);
 
-            // TODO: This should call benchmarkCase.name(), and not main,
+            // TODO: This should call benchmarkCase.name(), and not main (GR-26734),
             // but we currently have a hack because the WASI module imports
             // a memory from a module called main.
             // We should fix that in the future.

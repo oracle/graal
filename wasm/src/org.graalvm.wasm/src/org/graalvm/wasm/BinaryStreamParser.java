@@ -242,8 +242,8 @@ public abstract class BinaryStreamParser {
         byte type = peek1(data, offset);
         switch (type) {
             case 0x00:
-            case ValueType.VOID_TYPE:
-                return ValueType.VOID_TYPE;
+            case WasmType.VOID_TYPE:
+                return WasmType.VOID_TYPE;
             default:
                 return peekValueType(data, offset);
         }
@@ -258,10 +258,10 @@ public abstract class BinaryStreamParser {
     protected static byte peekValueType(byte[] data, int offset) {
         byte b = peek1(data, offset);
         switch (b) {
-            case ValueType.I32_TYPE:
-            case ValueType.I64_TYPE:
-            case ValueType.F32_TYPE:
-            case ValueType.F64_TYPE:
+            case WasmType.I32_TYPE:
+            case WasmType.I64_TYPE:
+            case WasmType.F32_TYPE:
+            case WasmType.F64_TYPE:
                 break;
             default:
                 Assert.fail(String.format("Invalid value type: 0x%02X", b));

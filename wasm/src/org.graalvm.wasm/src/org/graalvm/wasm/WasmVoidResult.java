@@ -79,7 +79,7 @@ public final class WasmVoidResult implements TruffleObject {
 
     @ExportMessage
     Object getMetaObject() {
-        return ValueType.VOID;
+        return WasmType.VOID;
     }
 
     @ExportMessage(name = "toDisplayString")
