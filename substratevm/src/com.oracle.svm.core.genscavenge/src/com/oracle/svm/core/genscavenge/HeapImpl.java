@@ -287,7 +287,6 @@ public final class HeapImpl extends Heap {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     OldGeneration getOldGeneration() {
-        assert VMOperation.isGCInProgress();
         return oldGeneration;
     }
 
@@ -297,13 +296,11 @@ public final class HeapImpl extends Heap {
 
     @Uninterruptible(reason = "Necessary to return a reasonably consistent value (a GC can change the queried values).")
     public UnsignedWord getUsedBytes() {
-        assert VMOperation.isGCInProgress() : "value is incorrect during a GC";
         return getOldGeneration().getChunkBytes().add(HeapPolicy.getYoungUsedBytes());
     }
 
     @Uninterruptible(reason = "Necessary to return a reasonably consistent value (a GC can change the queried values).")
     public UnsignedWord getCommittedBytes() {
-        assert VMOperation.isGCInProgress() : "value is incorrect during a GC";
         return getUsedBytes().add(getChunkProvider().getBytesInUnusedChunks());
     }
 

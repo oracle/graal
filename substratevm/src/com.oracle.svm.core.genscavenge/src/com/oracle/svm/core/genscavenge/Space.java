@@ -671,11 +671,8 @@ final class Space {
 }
 
 /**
- * Accounting for a {@link Space}.
- *
- * Note that I can not keep track of all the objects allocated in a Space, because many of them are
- * fast-path allocated, which bypasses all any accounting. What I can keep track of is all chunks
- * that are allocated in this Space, and the bytes reserved (but maybe not allocated) for objects.
+ * Accounting for a {@link Space}. For the eden space, the values are inaccurate outside of a GC
+ * (see {@link HeapPolicy#getYoungUsedBytes()} and {@link HeapPolicy#getEdenUsedBytes()}.
  */
 final class SpaceAccounting {
     private long alignedCount;

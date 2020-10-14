@@ -81,6 +81,7 @@ final class HeapChunkProvider {
     HeapChunkProvider() {
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getBytesInUnusedChunks() {
         return bytesInUnusedAlignedChunks.get();
     }
@@ -121,8 +122,7 @@ final class HeapChunkProvider {
             zap(result, HeapPolicy.getProducedHeapChunkZapWord());
         }
 
-        HeapPolicy.edenUsedBytes.addAndGet(chunkSize);
-        HeapPolicy.youngUsedBytes.addAndGet(chunkSize);
+        HeapPolicy.increaseEdenUsedBytes(chunkSize);
 
         log().string("  result chunk: ").hex(result).string("  ]").newline();
         return result;
@@ -237,8 +237,7 @@ final class HeapChunkProvider {
             zap(result, HeapPolicy.getProducedHeapChunkZapWord());
         }
 
-        HeapPolicy.edenUsedBytes.addAndGet(chunkSize);
-        HeapPolicy.youngUsedBytes.addAndGet(chunkSize);
+        HeapPolicy.increaseEdenUsedBytes(chunkSize);
 
         log().string("  returns ").hex(result).string("  ]").newline();
         return result;

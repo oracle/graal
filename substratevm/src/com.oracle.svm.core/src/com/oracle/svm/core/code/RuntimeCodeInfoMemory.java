@@ -62,13 +62,12 @@ public class RuntimeCodeInfoMemory {
 
     private final ReentrantLock lock;
     private NonmovableArray<UntetheredCodeInfo> table;
-    private int count = 0;
+    private int count;
     private long usedBytes;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     RuntimeCodeInfoMemory() {
         lock = new ReentrantLock();
-        count = 0;
     }
 
     public long getUsedBytes() {

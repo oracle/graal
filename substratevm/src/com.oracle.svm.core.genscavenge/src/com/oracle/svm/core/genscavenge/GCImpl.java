@@ -161,8 +161,7 @@ public final class GCImpl implements GC {
 
         printGCBefore(cause.getName());
         boolean outOfMemory = collectImpl(cause.getName());
-        HeapPolicy.edenUsedBytes.set(WordFactory.unsigned(0));
-        HeapPolicy.youngUsedBytes.set(accounting.getYoungChunkBytesAfter());
+        HeapPolicy.setEdenAndYoungGenBytes(WordFactory.unsigned(0), accounting.getYoungChunkBytesAfter());
         printGCAfter(cause.getName());
 
         finishCollection();
