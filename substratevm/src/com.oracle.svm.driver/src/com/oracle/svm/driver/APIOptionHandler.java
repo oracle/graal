@@ -28,6 +28,7 @@ import java.lang.reflect.Field;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -182,6 +183,14 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     VMError.guarantee(apiAnnotation.fixedValue().length == 0 && apiAnnotation.defaultValue().length == 0 ||
                                     (apiAnnotation.fixedValue().length > 0) ^ (apiAnnotation.defaultValue().length > 0),
                                     String.format("APIOption %s(%s) APIOption.defaultValue and APIOption.fixedValue cannot be combined", apiOptionName, rawOptionName));
+
+                    if (apiAnnotation.defaultValue().length > 0) {
+                        defaultValue = apiAnnotation.defaultValue()[0];
+                    }
+                    if (apiAnnotation.fixedValue().length > 0) {
+                        defaultValue = apiAnnotation.fixedValue()[0];
+                    }
+
                     builderOption += rawOptionName;
                     builderOption += "=";
                 }
@@ -192,13 +201,9 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 }
                 VMError.guarantee(helpText != null && !helpText.isEmpty(),
                                 String.format("APIOption %s(%s) needs to provide help text", apiOptionName, rawOptionName));
-                helpText = helpText.substring(0, 1).toLowerCase() + helpText.substring(1);
-
-                if (apiAnnotation.defaultValue().length > 0) {
-                    defaultValue = apiAnnotation.defaultValue()[0];
-                }
-                if (apiAnnotation.fixedValue().length > 0) {
-                    defaultValue = apiAnnotation.fixedValue()[0];
+                if (group == null) {
+                    /* Regular help text needs to start with lower-case letter */
+                    helpText = helpText.substring(0, 1).toLowerCase() + helpText.substring(1);
                 }
 
                 List<Function<Object, Object>> valueTransformers = new ArrayList<>(apiAnnotation.valueTransformer().length);
@@ -299,9 +304,81 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     void printOptions(Consumer<String> println) {
-        apiOptions.entrySet().stream()
-                        .filter(e -> !e.getValue().isDeprecated())
-                        .forEach(e -> SubstrateOptionsParser.printOption(println, e.getKey(), e.getValue().helpText, 4, 22, 66));
+        SortedMap<String, List<OptionInfo>> optionInfo = new TreeMap<>();
+        apiOptions.forEach((optionName, option) -> {
+            if (option.isDeprecated()) {
+                return;
+            }
+            if (option.group != null) {
+                optionName = APIOption.Utils.groupName(option.group);
+            }
+            if (optionInfo.containsKey(optionName)) {
+                List<OptionInfo> options = optionInfo.get(optionName);
+                if (options.size() == 1) {
+                    /* Switch from singletonList to ArrayList */
+                    options = new ArrayList<>(options);
+                    optionInfo.put(optionName, options);
+                }
+                options.add(option);
+            } else {
+                /* Start with space efficient singletonList */
+                optionInfo.put(optionName, Collections.singletonList(option));
+            }
+        });
+        optionInfo.forEach((optionName, options) -> {
+            if (options.size() == 1) {
+                OptionInfo singleOption = options.get(0);
+                if (singleOption.group == null) {
+                    SubstrateOptionsParser.printOption(println, optionName, singleOption.helpText, 4, 22, 66);
+                } else {
+                    /*
+                     * Only print option group with single entry if not enabled by default anyway.
+                     */
+                    if (!Arrays.asList(singleOption.variants).contains(singleOption.defaultValue)) {
+                        printGroupOption(println, optionName, options);
+                    }
+                }
+            } else {
+                printGroupOption(println, optionName, options);
+            }
+        });
+    }
+
+    private static void printGroupOption(Consumer<String> println, String groupName, List<OptionInfo> options) {
+        APIOptionGroup group = options.get(0).group;
+        assert group != null;
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(group.helpText());
+        if (!group.helpText().endsWith(".")) {
+            sb.append(".");
+        }
+        sb.append(" Allowed options for <value>:");
+        SubstrateOptionsParser.printOption(println, groupName + "<value>", sb.toString(), 4, 22, 66);
+
+        for (OptionInfo groupEntry : options) {
+            assert groupEntry.group == group;
+            sb.setLength(0);
+
+            boolean first = true;
+            boolean isDefault = false;
+            for (String variant : groupEntry.variants) {
+                if (variant.equals(groupEntry.defaultValue)) {
+                    isDefault = true;
+                }
+                if (first) {
+                    first = false;
+                } else {
+                    sb.append(" | ");
+                }
+                sb.append("'").append(variant).append("'");
+            }
+            sb.append(": ").append(groupEntry.helpText);
+            if (isDefault) {
+                sb.append(" (default)");
+            }
+            SubstrateOptionsParser.printOption(println, "", sb.toString(), 4, 22, 66);
+        }
     }
 }
 
