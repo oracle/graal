@@ -116,29 +116,6 @@ public class CompilationResultBuilder {
         }
     }
 
-    /**
-     * Wrapper for a code annotation that was produced by the {@link Assembler}.
-     */
-    public static final class AssemblerAnnotation extends CodeAnnotation {
-
-        public final Assembler.CodeAnnotation assemblerCodeAnnotation;
-
-        public AssemblerAnnotation(Assembler.CodeAnnotation assemblerCodeAnnotation) {
-            super(assemblerCodeAnnotation.instructionPosition);
-            this.assemblerCodeAnnotation = assemblerCodeAnnotation;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return this == obj;
-        }
-
-        @Override
-        public String toString() {
-            return assemblerCodeAnnotation.toString();
-        }
-    }
-
     public final Assembler asm;
     public final DataBuilder dataBuilder;
     public final CompilationResult compilationResult;

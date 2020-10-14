@@ -3073,8 +3073,13 @@ public abstract class AArch64Assembler extends Assembler {
 
     public abstract static class PatchableCodeAnnotation extends CodeAnnotation {
 
-        PatchableCodeAnnotation(int instructionStartPosition) {
-            super(instructionStartPosition);
+        /**
+         * The position (bytes from the beginning of the method) of the annotated instruction.
+         */
+        public final int instructionPosition;
+
+        PatchableCodeAnnotation(int instructionPosition) {
+            this.instructionPosition = instructionPosition;
         }
 
         abstract void patch(int codePos, int relative, byte[] code);

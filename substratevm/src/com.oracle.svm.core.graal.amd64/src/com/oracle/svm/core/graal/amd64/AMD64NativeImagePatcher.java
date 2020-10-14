@@ -50,7 +50,7 @@ class AMD64NativeImagePatcherFeature implements Feature {
                     @Override
                     public void accept(Assembler.CodeAnnotation annotation) {
                         if (annotation instanceof OperandDataAnnotation) {
-                            compilationResult.addAnnotation(new AMD64NativeImagePatcher(annotation.instructionPosition, (OperandDataAnnotation) annotation));
+                            compilationResult.addAnnotation(new AMD64NativeImagePatcher((OperandDataAnnotation) annotation));
                         }
                     }
                 };
@@ -62,8 +62,8 @@ class AMD64NativeImagePatcherFeature implements Feature {
 public class AMD64NativeImagePatcher extends CompilationResult.CodeAnnotation implements NativeImagePatcher {
     private final OperandDataAnnotation annotation;
 
-    public AMD64NativeImagePatcher(int instructionStartPosition, OperandDataAnnotation annotation) {
-        super(instructionStartPosition);
+    public AMD64NativeImagePatcher(OperandDataAnnotation annotation) {
+        super(annotation.instructionPosition);
         this.annotation = annotation;
     }
 

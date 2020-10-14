@@ -212,6 +212,10 @@ public abstract class AMD64BaseAssembler extends Assembler {
 
     public static class OperandDataAnnotation extends CodeAnnotation {
         /**
+         * The position (bytes from the beginning of the method) of the annotated instruction.
+         */
+        public final int instructionPosition;
+        /**
          * The position (bytes from the beginning of the method) of the operand.
          */
         public final int operandPosition;
@@ -226,8 +230,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
         public final int nextInstructionPosition;
 
         OperandDataAnnotation(int instructionPosition, int operandPosition, int operandSize, int nextInstructionPosition) {
-            super(instructionPosition);
-
+            this.instructionPosition = instructionPosition;
             this.operandPosition = operandPosition;
             this.operandSize = operandSize;
             this.nextInstructionPosition = nextInstructionPosition;
