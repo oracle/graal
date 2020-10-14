@@ -421,15 +421,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         TraceASTCompilationListener.install(this);
         JFRListener.install(this);
         TruffleSplittingStrategy.installListener(this);
-        installShutdownHooks();
-    }
-
-    protected void installShutdownHooks() {
-        addShutdownHook(this::shutdown);
-    }
-
-    protected void addShutdownHook(Runnable hook) {
-        Runtime.getRuntime().addShutdownHook(new Thread(hook));
+        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
     }
 
     protected void lookupCallMethods(MetaAccessProvider metaAccess) {
@@ -634,7 +626,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         listeners.remove(listener);
     }
 
-    protected void shutdown() {
+    private void shutdown() {
         getListener().onShutdown();
         TruffleCompiler tcp = truffleCompiler;
         if (tcp != null) {

@@ -93,7 +93,7 @@ public interface TruffleCompiler {
 
     /**
      * Notifies this object that it will no longer being used and should thus perform all relevant
-     * finalization tasks.
+     * finalization tasks. This is typically performed when the process exits.
      */
     void shutdown();
 }

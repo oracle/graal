@@ -234,13 +234,15 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
     }
 
     @Override
-    public void shutdown() {
+    public void teardown() {
         if (SubstrateOptions.shouldCompileInIsolates()) {
-            // shutdown() in isolate not called: current implementations only dump profiling data
             tearDownIsolateOnShutdown();
-        } else {
-            delegate.shutdown();
         }
+    }
+
+    @Override
+    public void shutdown() {
+        delegate.shutdown();
     }
 
     protected void tearDownIsolateOnShutdown() {
