@@ -33,6 +33,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 
@@ -143,22 +144,22 @@ final class YoungGeneration extends Generation {
         return original;
     }
 
-    private void releaseSurvivorSpaces(boolean isFromSpace) {
+    private void releaseSurvivorSpaces(ChunkReleaser chunkReleaser, boolean isFromSpace) {
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             if (isFromSpace) {
-                getSurvivorFromSpaceAt(i).releaseChunks();
+                getSurvivorFromSpaceAt(i).releaseChunks(chunkReleaser);
             } else {
-                getSurvivorToSpaceAt(i).releaseChunks();
+                getSurvivorToSpaceAt(i).releaseChunks(chunkReleaser);
             }
         }
     }
 
-    void releaseSpaces() {
-        getEden().releaseChunks();
+    void releaseSpaces(ChunkReleaser chunkReleaser) {
+        getEden().releaseChunks(chunkReleaser);
 
-        releaseSurvivorSpaces(true);
+        releaseSurvivorSpaces(chunkReleaser, true);
         if (HeapImpl.getHeapImpl().getGCImpl().isCompleteCollection()) {
-            releaseSurvivorSpaces(false);
+            releaseSurvivorSpaces(chunkReleaser, false);
         }
     }
 
@@ -266,7 +267,8 @@ final class YoungGeneration extends Generation {
     }
 
     /**
-     * This value is only updated during a GC.
+     * This value is only updated during a GC. Be careful when calling this method during a GC as it
+     * might wrongly include chunks that will be freed at the end of the GC.
      */
     UnsignedWord getChunkBytes() {
         return getEden().getChunkBytes().add(getSurvivorChunkBytes());

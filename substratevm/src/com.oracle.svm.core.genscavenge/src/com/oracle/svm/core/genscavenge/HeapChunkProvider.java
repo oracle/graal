@@ -128,24 +128,28 @@ final class HeapChunkProvider {
         return result;
     }
 
-    /** Release an AlignedHeapChunk, either to the free list or back to the operating system. */
-    void consumeAlignedChunk(AlignedHeader chunk) {
-        log().string("[HeapChunkProvider.consumeAlignedChunk  chunk: ").hex(chunk).newline();
+    /**
+     * Releases a list of AlignedHeapChunks, either to the free list or back to the operating
+     * system. This method may only be called after the chunks were already removed from the spaces.
+     */
+    void consumeAlignedChunks(AlignedHeader firstChunk) {
+        assert HeapChunk.getPrevious(firstChunk).isNull();
+        AlignedHeader cur = firstChunk;
 
-        if (keepAlignedChunk()) {
-            cleanAlignedChunk(chunk);
-            pushUnusedAlignedChunk(chunk);
-        } else {
-            log().string("  release memory to the OS").newline();
-            freeAlignedChunk(chunk);
-        }
-        log().string("  ]").newline();
-    }
-
-    private static boolean keepAlignedChunk() {
         UnsignedWord minimumHeapSize = HeapPolicy.getMinimumHeapSize();
-        UnsignedWord committedBytes = HeapImpl.getHeapImpl().getCommittedBytes();
-        return committedBytes.belowThan(minimumHeapSize);
+        UnsignedWord committedBytesAfterGC = GCImpl.getChunkBytes().add(getBytesInUnusedChunks());
+        if (minimumHeapSize.aboveThan(committedBytesAfterGC)) {
+            UnsignedWord chunksToKeep = minimumHeapSize.subtract(committedBytesAfterGC).unsignedDivide(HeapPolicy.getAlignedHeapChunkSize());
+            while (cur.isNonNull() && chunksToKeep.aboveThan(0)) {
+                AlignedHeader next = HeapChunk.getNext(cur);
+                cleanAlignedChunk(cur);
+                pushUnusedAlignedChunk(cur);
+                chunksToKeep = chunksToKeep.subtract(1);
+                cur = next;
+            }
+        }
+
+        freeAlignedChunkList(cur);
     }
 
     private static void cleanAlignedChunk(AlignedHeader alignedChunk) {
@@ -244,16 +248,11 @@ final class HeapChunkProvider {
     }
 
     /**
-     * Release an UnalignedHeapChunk back to the operating system. They are never recycled to a free
-     * list.
+     * Releases a list of UnalignedHeapChunks back to the operating system. They are never recycled
+     * to a free list.
      */
-    static void consumeUnalignedChunk(UnalignedHeader chunk) {
-        UnsignedWord chunkSize = unalignedChunkSize(chunk);
-        log().string("[HeapChunkProvider.consumeUnalignedChunk  chunk: ").hex(chunk).string("  chunkSize: ").hex(chunkSize).newline();
-
-        freeUnalignedChunk(chunk);
-
-        log().string(" ]").newline();
+    static void consumeUnalignedChunks(UnalignedHeader firstChunk) {
+        freeUnalignedChunkList(firstChunk);
     }
 
     /** Initialize the immutable state of a chunk. */

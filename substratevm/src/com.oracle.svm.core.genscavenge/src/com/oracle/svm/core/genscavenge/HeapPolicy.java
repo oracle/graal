@@ -319,7 +319,7 @@ public final class HeapPolicy {
     private static final UninterruptibleUtils.AtomicUnsigned youngUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
 
     public static void setEdenAndYoungGenBytes(UnsignedWord edenBytes, UnsignedWord youngBytes) {
-        assert VMOperation.isGCInProgress() : "we would have races otherwise";
+        assert VMOperation.isGCInProgress() : "would cause races otherwise";
         youngUsedBytes.set(youngBytes);
         edenUsedBytes.set(edenBytes);
     }

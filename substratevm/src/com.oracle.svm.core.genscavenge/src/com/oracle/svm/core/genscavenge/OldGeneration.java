@@ -32,9 +32,9 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.VMOperation;
 
 /**
  * An OldGeneration has two Spaces, {@link #fromSpace} for existing objects, and {@link #toSpace}
@@ -101,8 +101,8 @@ final class OldGeneration extends Generation {
         getToSpace().promoteObjectChunk(obj);
     }
 
-    void releaseSpaces() {
-        getFromSpace().releaseChunks();
+    void releaseSpaces(ChunkReleaser chunkReleaser) {
+        getFromSpace().releaseChunks(chunkReleaser);
         if (HeapImpl.getHeapImpl().getGCImpl().isCompleteCollection()) {
             getToSpace().cleanRememberedSet();
         }
@@ -240,7 +240,8 @@ final class OldGeneration extends Generation {
     }
 
     /**
-     * This value is only updated during a GC.
+     * This value is only updated during a GC. Be careful when calling this method during a GC as it
+     * might wrongly include chunks that will be freed at the end of the GC.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnsignedWord getChunkBytes() {

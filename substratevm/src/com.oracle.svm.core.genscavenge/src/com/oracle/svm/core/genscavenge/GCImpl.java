@@ -64,6 +64,9 @@ import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
+import com.oracle.svm.core.genscavenge.HeapChunk.Header;
+import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
@@ -106,6 +109,7 @@ public final class GCImpl implements GC {
     private final CollectionVMOperation collectOperation = new CollectionVMOperation();
     private final OutOfMemoryError oldGenerationSizeExceeded = new OutOfMemoryError("Garbage-collected heap size exceeded.");
     private final NoAllocationVerifier noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
+    private final ChunkReleaser chunkReleaser = new ChunkReleaser();
 
     private CollectionPolicy policy;
     private boolean completeCollection = false;
@@ -156,7 +160,7 @@ public final class GCImpl implements GC {
         timers.resetAllExceptMutator();
         collectionEpoch = collectionEpoch.add(1);
 
-        /* Flush chunks from thread-local lists to global lists. */
+        /* Flush all TLAB chunks to eden. */
         ThreadLocalAllocation.disableAndFlushForAllThreads();
 
         printGCBefore(cause.getName());
@@ -234,9 +238,10 @@ public final class GCImpl implements GC {
     }
 
     /**
-     * This value is only updated during a GC.
+     * This value is only updated during a GC. Be careful when calling this method during a GC as it
+     * might wrongly include chunks that will be freed at the end of the GC.
      */
-    private static UnsignedWord getChunkBytes() {
+    public static UnsignedWord getChunkBytes() {
         UnsignedWord youngBytes = HeapImpl.getHeapImpl().getYoungGeneration().getChunkBytes();
         UnsignedWord oldBytes = HeapImpl.getHeapImpl().getOldGeneration().getChunkBytes();
         return youngBytes.add(oldBytes);
@@ -450,7 +455,9 @@ public final class GCImpl implements GC {
             }
             trace.string("  Release spaces: ");
             try (Timer rst = timers.releaseSpaces.open()) {
+                assert chunkReleaser.isEmpty();
                 releaseSpaces();
+                chunkReleaser.release();
             }
             trace.string("  Swap spaces: ");
             swapSpaces();
@@ -868,9 +875,10 @@ public final class GCImpl implements GC {
     private void releaseSpaces() {
         Log trace = Log.noopLog().string("[GCImpl.releaseSpaces:");
         HeapImpl heap = HeapImpl.getHeapImpl();
-        heap.getYoungGeneration().releaseSpaces();
+
+        heap.getYoungGeneration().releaseSpaces(chunkReleaser);
         if (completeCollection) {
-            heap.getOldGeneration().releaseSpaces();
+            heap.getOldGeneration().releaseSpaces(chunkReleaser);
         }
         trace.string("]").newline();
     }
@@ -1068,6 +1076,64 @@ public final class GCImpl implements GC {
 
         @RawField
         void setOutOfMemory(boolean value);
+    }
+
+    public static class ChunkReleaser {
+        private AlignedHeader firstAligned;
+        private UnalignedHeader firstUnaligned;
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        ChunkReleaser() {
+        }
+
+        public boolean isEmpty() {
+            return firstAligned.isNull() && firstUnaligned.isNull();
+        }
+
+        public void add(AlignedHeader chunks) {
+            if (chunks.isNonNull()) {
+                assert HeapChunk.getPrevious(chunks).isNull();
+                if (firstAligned.isNonNull()) {
+                    AlignedHeader lastNewChunk = getLast(chunks);
+                    HeapChunk.setNext(lastNewChunk, firstAligned);
+                    HeapChunk.setPrevious(firstAligned, lastNewChunk);
+                }
+                firstAligned = chunks;
+            }
+        }
+
+        public void add(UnalignedHeader chunks) {
+            if (chunks.isNonNull()) {
+                assert HeapChunk.getPrevious(chunks).isNull();
+                if (firstUnaligned.isNonNull()) {
+                    UnalignedHeader lastNewChunk = getLast(chunks);
+                    HeapChunk.setNext(lastNewChunk, firstUnaligned);
+                    HeapChunk.setPrevious(firstUnaligned, lastNewChunk);
+                }
+                firstUnaligned = chunks;
+            }
+        }
+
+        void release() {
+            if (firstAligned.isNonNull()) {
+                HeapImpl.getChunkProvider().consumeAlignedChunks(firstAligned);
+                firstAligned = WordFactory.nullPointer();
+            }
+            if (firstUnaligned.isNonNull()) {
+                HeapChunkProvider.consumeUnalignedChunks(firstUnaligned);
+                firstUnaligned = WordFactory.nullPointer();
+            }
+        }
+
+        private static <T extends Header<T>> T getLast(T chunks) {
+            T prev = chunks;
+            T next = HeapChunk.getNext(prev);
+            while (next.isNonNull()) {
+                prev = next;
+                next = HeapChunk.getNext(prev);
+            }
+            return prev;
+        }
     }
 
     private void printGCSummary() {
