@@ -1454,6 +1454,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             this.resourceLimit = resourceLimit;
         }
 
+        Node getLocation() {
+            return location;
+        }
+
         SourceSection getSourceLocation() {
             return location == null ? null : location.getEncapsulatingSourceSection();
         }
