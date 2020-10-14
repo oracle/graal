@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
+import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
+
 //Checkstyle: stop
 
 import java.lang.ref.Reference;
@@ -285,6 +288,7 @@ public final class HeapImpl extends Heap {
         return youngGeneration;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     OldGeneration getOldGeneration() {
         assert VMOperation.isGCInProgress();
         return oldGeneration;
@@ -292,6 +296,18 @@ public final class HeapImpl extends Heap {
 
     AtomicReference<PinnedObjectImpl> getPinHead() {
         return pinHead;
+    }
+
+    @Uninterruptible(reason = "Necessary to return a reasonably consistent value (a GC can change the queried values).")
+    public UnsignedWord getUsedBytes() {
+        assert VMOperation.isGCInProgress() : "value is incorrect during a GC";
+        return getOldGeneration().getChunkBytes().add(HeapPolicy.getYoungUsedBytes());
+    }
+
+    @Uninterruptible(reason = "Necessary to return a reasonably consistent value (a GC can change the queried values).")
+    public UnsignedWord getCommittedBytes() {
+        assert VMOperation.isGCInProgress() : "value is incorrect during a GC";
+        return getUsedBytes().add(getChunkProvider().getBytesInUnusedChunks());
     }
 
     void report(Log log) {
@@ -709,25 +725,17 @@ public final class HeapImpl extends Heap {
 final class Target_java_lang_Runtime {
     @Substitute
     private long freeMemory() {
-        // This should return the currently allocated memory that is free. In our GC, it is simpler
-        // to return the amount of memory that is free in total.
-        // TEMP (chaeubl): we should consider the size of the image heap - otherwise, MXBean is not
-        // consistent with this one, and G1 would again be different... All those methods should be
-        // abstracted away as the need to be uninterruptible... Otherwise, we won't be consistent.
-        long imageHeapSize = HeapImpl.getHeapImpl().getImageHeapInfo().getSize();
-        return maxMemory() - HeapPolicy.getYoungUsedBytes().rawValue() - getOldUsedChunkBytes();
+        return maxMemory() - HeapImpl.getHeapImpl().getUsedBytes().rawValue();
     }
 
-    // Total allocated memory
     @Substitute
     private long totalMemory() {
         return maxMemory();
     }
 
-    // Total designated memory
     @Substitute
     private long maxMemory() {
-        /* Get physical memory size, so it gets set correctly instead of being estimated. */
+        // Query the physical memory size, so it gets set correctly instead of being estimated.
         PhysicalMemory.size();
         return HeapPolicy.getMaximumHeapSize().rawValue();
     }

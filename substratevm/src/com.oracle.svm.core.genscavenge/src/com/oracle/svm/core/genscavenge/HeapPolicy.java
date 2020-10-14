@@ -317,6 +317,7 @@ public final class HeapPolicy {
     static final UninterruptibleUtils.AtomicUnsigned edenUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
     static final UninterruptibleUtils.AtomicUnsigned youngUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static UnsignedWord getYoungUsedBytes() {
         return youngUsedBytes.get();
     }

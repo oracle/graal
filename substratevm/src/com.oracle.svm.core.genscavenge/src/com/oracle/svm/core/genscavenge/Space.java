@@ -97,6 +97,7 @@ final class Space {
         HeapChunkProvider.freeUnalignedChunkList(getFirstUnalignedHeapChunk());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isEdenSpace() {
         return age == 0;
     }
@@ -619,13 +620,16 @@ final class Space {
     }
 
     /**
-     * This value that is only updated at a GC.
+     * This value is only updated during a GC.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnsignedWord getChunkBytes() {
+        assert !isEdenSpace() || VMOperation.isGCInProgress() : "eden data is only accurate during a GC";
         return accounting.getAlignedChunkBytes().add(accounting.getUnalignedChunkBytes());
     }
 
     UnsignedWord computeObjectBytes() {
+        assert !isEdenSpace() || VMOperation.isGCInProgress() : "eden data is only accurate during a GC";
         return computeAlignedObjectBytes().add(computeUnalignedObjectBytes());
     }
 
@@ -699,6 +703,7 @@ final class SpaceAccounting {
         return alignedCount;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getAlignedChunkBytes() {
         return alignedChunkBytes;
     }
@@ -707,6 +712,7 @@ final class SpaceAccounting {
         return unalignedCount;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getUnalignedChunkBytes() {
         return unalignedChunkBytes;
     }

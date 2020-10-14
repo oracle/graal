@@ -37,14 +37,9 @@ import javax.management.ObjectName;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateGCOptions;
-import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 
 import sun.management.Util;
@@ -72,15 +67,14 @@ public final class HeapImplMemoryMXBean implements MemoryMXBean, NotificationEmi
 
     @Override
     public MemoryUsage getHeapMemoryUsage() {
-        long imageHeapSize = HeapImpl.getHeapImpl().getImageHeapInfo().getSize();
-        long javaHeapUsed = HeapImpl.getHeapImpl().getChunkBytes();
-        long javaHeapCommitted = HeapImpl.getHeapImpl().getCommittedBytes();
-        return new MemoryUsage(UNDEFINED_MEMORY_USAGE, imageHeapSize + javaHeapUsed, imageHeapSize + javaHeapCommitted, UNDEFINED_MEMORY_USAGE);
+        long heapUsed = HeapImpl.getHeapImpl().getUsedBytes().rawValue();
+        long heapCommitted = HeapImpl.getHeapImpl().getCommittedBytes().rawValue();
+        return new MemoryUsage(UNDEFINED_MEMORY_USAGE, heapUsed, heapCommitted, UNDEFINED_MEMORY_USAGE);
     }
 
     @Override
     public MemoryUsage getNonHeapMemoryUsage() {
-        long used = CodeInfoTable.getRuntimeCodeCache().getUsedBytes();
+        long used = RuntimeCodeInfoMemory.singleton().getUsedBytes();
         return new MemoryUsage(UNDEFINED_MEMORY_USAGE, used, used, UNDEFINED_MEMORY_USAGE);
     }
 

@@ -81,6 +81,10 @@ final class HeapChunkProvider {
     HeapChunkProvider() {
     }
 
+    public UnsignedWord getBytesInUnusedChunks() {
+        return bytesInUnusedAlignedChunks.get();
+    }
+
     @AlwaysInline("Remove all logging when noopLog is returned by this method")
     private static Log log() {
         return Log.noopLog();
@@ -138,22 +142,10 @@ final class HeapChunkProvider {
         log().string("  ]").newline();
     }
 
-    private boolean keepAlignedChunk() {
-        Log trace = Log.noopLog().string("[HeapChunkProvider.keepAlignedChunk:");
+    private static boolean keepAlignedChunk() {
         UnsignedWord minimumHeapSize = HeapPolicy.getMinimumHeapSize();
-        UnsignedWord heapChunkBytes = HeapImpl.getHeapImpl().getChunkBytes();
-        UnsignedWord unusedChunkBytes = bytesInUnusedAlignedChunks.get();
-        UnsignedWord bytesInUse = heapChunkBytes.add(unusedChunkBytes);
-
-        boolean result = bytesInUse.belowThan(minimumHeapSize);
-        trace
-                        .string("  minimumHeapSize: ").unsigned(minimumHeapSize)
-                        .string("  heapChunkBytes: ").unsigned(heapChunkBytes)
-                        .string("  unusedBytes: ").unsigned(unusedChunkBytes)
-                        .string("  bytesInUse: ").unsigned(bytesInUse)
-                        .string("  returns: ").bool(result)
-                        .string(" ]").newline();
-        return result;
+        UnsignedWord committedBytes = HeapImpl.getHeapImpl().getCommittedBytes();
+        return committedBytes.belowThan(minimumHeapSize);
     }
 
     private static void cleanAlignedChunk(AlignedHeader alignedChunk) {

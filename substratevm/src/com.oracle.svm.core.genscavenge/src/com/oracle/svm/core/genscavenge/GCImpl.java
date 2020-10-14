@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-//Checkstyle: stop
-
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
@@ -89,8 +87,6 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
-
-//Checkstyle: resume
 
 /**
  * Garbage collector (incremental or complete) for {@link HeapImpl}.
@@ -239,7 +235,7 @@ public final class GCImpl implements GC {
     }
 
     /**
-     * This value that is only updated at a GC.
+     * This value is only updated during a GC.
      */
     private static UnsignedWord getChunkBytes() {
         UnsignedWord youngBytes = HeapImpl.getHeapImpl().getYoungGeneration().getChunkBytes();

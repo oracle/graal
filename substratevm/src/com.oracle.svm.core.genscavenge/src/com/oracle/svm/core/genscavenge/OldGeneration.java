@@ -34,6 +34,7 @@ import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.VMOperation;
 
 /**
  * An OldGeneration has two Spaces, {@link #fromSpace} for existing objects, and {@link #toSpace}
@@ -214,10 +215,12 @@ final class OldGeneration extends Generation {
         return -1;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Space getFromSpace() {
         return fromSpace;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Space getToSpace() {
         return toSpace;
     }
@@ -237,8 +240,9 @@ final class OldGeneration extends Generation {
     }
 
     /**
-     * This value that is only updated at a GC.
+     * This value is only updated during a GC.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnsignedWord getChunkBytes() {
         UnsignedWord fromBytes = getFromSpace().getChunkBytes();
         UnsignedWord toBytes = getToSpace().getChunkBytes();

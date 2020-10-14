@@ -28,6 +28,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
@@ -58,9 +60,24 @@ public class RuntimeCodeInfoMemory {
         return ImageSingletons.lookup(RuntimeCodeInfoMemory.class);
     }
 
-    private final ReentrantLock lock = new ReentrantLock();
+    private final ReentrantLock lock;
     private NonmovableArray<UntetheredCodeInfo> table;
     private int count = 0;
+    private long usedBytes;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    RuntimeCodeInfoMemory() {
+        lock = new ReentrantLock();
+        count = 0;
+    }
+
+    public long getUsedBytes() {
+        return usedBytes;
+    }
+
+    public int getCount() {
+        return count;
+    }
 
     public void add(CodeInfo info) {
         // It is fine that this method is interruptible as all the relevant work is done in the
@@ -114,6 +131,8 @@ public class RuntimeCodeInfoMemory {
         } while (resized);
         NonmovableArrays.setWord(table, index, info);
         count++;
+        usedBytes = usedBytes + CodeInfoAccess.getCodeSize(info).rawValue() + CodeInfoAccess.getMetadataSize(info).rawValue();
+        assert count > 0 & usedBytes > 0;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -154,6 +173,8 @@ public class RuntimeCodeInfoMemory {
             if (entry.equal(info)) {
                 NonmovableArrays.setWord(table, index, WordFactory.zero());
                 count--;
+                usedBytes = usedBytes - CodeInfoAccess.getCodeSize(info).rawValue() - CodeInfoAccess.getMetadataSize(info).rawValue();
+                assert count >= 0 & usedBytes >= 0;
                 rehashAfterUnregisterAt(index);
                 return true;
             }

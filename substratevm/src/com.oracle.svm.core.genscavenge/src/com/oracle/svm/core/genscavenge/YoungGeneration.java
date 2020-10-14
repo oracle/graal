@@ -35,6 +35,7 @@ import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.VMOperation;
 
 final class YoungGeneration extends Generation {
     private final Space eden;
@@ -265,7 +266,7 @@ final class YoungGeneration extends Generation {
     }
 
     /**
-     * This value that is only updated at a GC.
+     * This value is only updated during a GC.
      */
     UnsignedWord getChunkBytes() {
         return getEden().getChunkBytes().add(getSurvivorChunkBytes());

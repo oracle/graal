@@ -32,8 +32,10 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.log.Log;
 
 /**
- * Accounting for {@link GCImpl}. ChunkBytes refer to bytes reserved (but maybe not occupied).
- * ObjectBytes refer to bytes occupied by objects.
+ * This data is only updated during a GC.
+ *
+ * ChunkBytes refer to bytes reserved (but maybe not occupied). ObjectBytes refer to bytes occupied
+ * by objects.
  */
 final class GCAccounting {
     /* State that is available to collection policies, etc. */
