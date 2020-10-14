@@ -769,13 +769,7 @@ public class SnippetTemplate {
                                 constantNode = ConstantNode.forConstant(stamp, (Constant) arg, metaAccess, snippetCopy);
                             }
                         } else {
-// if (UseEncodedGraphs.getValue(options) && kind == JavaKind.Object) {
-// JavaConstant constant = new SnippetObjectConstant(arg);
-// constantNode = ConstantNode.forConstant(constant, SnippetMetaAccessProvider.singleton(),
-// snippetCopy);
-// } else {
                             constantNode = ConstantNode.forConstant(snippetReflection.forBoxed(kind, arg), metaAccess, snippetCopy);
-                            // }
                         }
                         nodeReplacements.put(parameter, constantNode);
                     } else if (args.info.isVarargsParameter(i)) {
@@ -2093,7 +2087,6 @@ public class SnippetTemplate {
         for (int i = offset; i < args.info.getParameterCount(); i++) {
             if (args.info.isConstantParameter(i)) {
                 JavaKind kind = signature.getParameterKind(i - offset);
-                // avoid assert until signature works better
                 assert IS_IN_NATIVE_IMAGE || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
 
             } else if (args.info.isVarargsParameter(i)) {

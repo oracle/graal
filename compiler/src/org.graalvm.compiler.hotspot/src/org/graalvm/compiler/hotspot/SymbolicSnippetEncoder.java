@@ -440,7 +440,7 @@ public class SymbolicSnippetEncoder {
         HotSpotSnippetReplacementsImpl filteringReplacements = new HotSpotSnippetReplacementsImpl(newProviders, snippetReflection,
                         originalProvider.getReplacements().getDefaultReplacementBytecodeProvider(), originalProvider.getCodeCache().getTarget());
         filteringReplacements.setGraphBuilderPlugins(originalProvider.getReplacements().getGraphBuilderPlugins());
-        try (DebugContext.Scope scaope = debug.scope("VerifySnippetEncodeDecode", graph)) {
+        try (DebugContext.Scope scope = debug.scope("VerifySnippetEncodeDecode", graph)) {
             SnippetObjectFilter filter = new SnippetObjectFilter(originalProvider);
             for (int i = 0; i < encodedGraph.getNumObjects(); i++) {
                 filter.filterSnippetObject(debug, encodedGraph.getObject(i));
@@ -571,7 +571,7 @@ public class SymbolicSnippetEncoder {
 
     @SuppressWarnings("try")
     private boolean verifySingle(DebugContext debug, StructuredGraph graph) {
-        try (DebugContext.Scope scaope = debug.scope("FilterSingleSnippet", graph)) {
+        try (DebugContext.Scope scope = debug.scope("FilterSingleSnippet", graph)) {
 
             EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch);
             SnippetObjectFilter filter = new SnippetObjectFilter(originalReplacements.getProviders());
@@ -743,7 +743,7 @@ public class SymbolicSnippetEncoder {
         EconomicMap<Object, Object> cachedFilteredObjects = EconomicMap.create();
 
         /**
-         * Objects embedded in encoded graphs might need to converted into a symbolic form so
+         * Objects embedded in encoded graphs might need to be converted into a symbolic form so
          * convert the object or pass it through.
          */
         private Object filterSnippetObject(DebugContext debug, Object o) {
@@ -1112,7 +1112,6 @@ public class SymbolicSnippetEncoder {
                         className.contains("org.graalvm.") ||
                         className.contains("com.oracle.graal") ||
                         className.contains("com.oracle.truffle")) {
-            assert !clazz.isPrimitive() && clazz != Object.class;
             type = snippetTypes.get(clazz);
             if (type == null) {
                 type = createType(clazz);

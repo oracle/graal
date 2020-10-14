@@ -42,6 +42,15 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * A minimal implementation of {@link ResolvedJavaType} for use by libgraal.
+ *
+ * Libgraal snippets have their own hierarchy of these types because they represent a distinct type
+ * system that's overlapping with the platform type system. These types are also transient in the
+ * graph and should disappear from the graph once the snippet is inlined an optimized.
+ *
+ * {@link jdk.vm.ci.hotspot.HotSpotResolvedJavaType HotSpotResolvedJavaType} can't be used here
+ * because the Graal classes may not be available in the host VM and even if they are, loading them
+ * causes unnecessary class loading. The Substrate type system could be used but it is
+ * implementation overkill for the purposes of libgraal.
  */
 public final class SnippetResolvedJavaType implements ResolvedJavaType {
     private final Class<?> javaClass;

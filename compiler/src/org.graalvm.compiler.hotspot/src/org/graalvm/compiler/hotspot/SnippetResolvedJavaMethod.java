@@ -40,7 +40,9 @@ import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
- * *A minimal implementation of{@link ResolvedJavaMethod} for use by libgraal.
+ * A minimal implementation of {@link ResolvedJavaMethod} for use by libgraal.
+ *
+ * @see SnippetResolvedJavaType
  */
 public final class SnippetResolvedJavaMethod implements ResolvedJavaMethod {
     private final String name;

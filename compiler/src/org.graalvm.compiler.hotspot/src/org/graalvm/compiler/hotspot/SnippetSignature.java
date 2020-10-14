@@ -39,6 +39,8 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 /**
  * A minimal implementation of {@link Signature} for use by libgraal. It does not support any
  * dynamic resolution of types in signatures.
+ *
+ * @see SnippetResolvedJavaType
  */
 public final class SnippetSignature implements Signature {
 

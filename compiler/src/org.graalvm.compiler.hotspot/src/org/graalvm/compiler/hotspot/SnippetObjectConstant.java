@@ -60,7 +60,7 @@ public class SnippetObjectConstant implements JavaConstant {
     }
 
     /**
-     * Gets the object represented by this constant represents if it is of a given type.
+     * Gets the object represented by this constant if it is of the given type.
      *
      * @param type the expected type of the object represented by this constant. If the object is
      *            required to be of this type, then wrap the call to this method in
