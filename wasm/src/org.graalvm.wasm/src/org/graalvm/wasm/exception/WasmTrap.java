@@ -41,13 +41,21 @@
 package org.graalvm.wasm.exception;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Thrown when a WebAssembly program encounters a trap, as defined by the specification.
  */
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class WasmTrap extends AbstractTruffleException {
 
     private static final long serialVersionUID = 8195809219857028793L;
@@ -71,4 +79,38 @@ public final class WasmTrap extends AbstractTruffleException {
     public static WasmTrap format(Node location, String format, Object arg) {
         return new WasmTrap(location, String.format(format, arg));
     }
+
+    @ExportMessage
+    public boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings({"unused", "static-method"})
+    Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    public Object readMember(String member) throws UnknownIdentifierException {
+        switch (member) {
+            case "message":
+                return getMessage();
+            default:
+                throw UnknownIdentifierException.create(member);
+        }
+    }
+
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    public boolean isMemberReadable(String member) {
+        switch (member) {
+            case "message":
+                return true;
+            default:
+                return false;
+        }
+    }
+
 }
