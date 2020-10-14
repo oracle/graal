@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
-import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
+import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.junit.Assert;
 import org.junit.Test;
@@ -123,12 +123,12 @@ public class UnsafeReadEliminationTest extends GraalCompilerTest {
         CoreProviders context = getDefaultHighTierContext();
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         canonicalizer.apply(graph, context);
-        new EarlyReadEliminationPhase(canonicalizer).apply(graph, context);
+        new ReadEliminationPhase(canonicalizer).apply(graph, context);
         Assert.assertEquals(3, graph.getNodes().filter(UnsafeAccessNode.class).count());
         // after lowering the same applies for reads and writes
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         canonicalizer.apply(graph, context);
-        new EarlyReadEliminationPhase(canonicalizer).apply(graph, context);
+        new ReadEliminationPhase(canonicalizer).apply(graph, context);
         Assert.assertEquals(reads, graph.getNodes().filter(ReadNode.class).count());
         Assert.assertEquals(writes, graph.getNodes().filter(WriteNode.class).count());
     }

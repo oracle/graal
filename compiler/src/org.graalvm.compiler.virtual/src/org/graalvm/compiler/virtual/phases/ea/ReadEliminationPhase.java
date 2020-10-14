@@ -59,16 +59,16 @@ import org.graalvm.word.LocationIdentity;
  * consume(i);
  * </pre>
  */
-public class EarlyReadEliminationPhase extends EffectsPhase<CoreProviders> {
+public class ReadEliminationPhase extends EffectsPhase<CoreProviders> {
 
     protected final boolean considerGuards;
 
-    public EarlyReadEliminationPhase(CanonicalizerPhase canonicalizer) {
+    public ReadEliminationPhase(CanonicalizerPhase canonicalizer) {
         super(1, canonicalizer, true);
         this.considerGuards = true;
     }
 
-    public EarlyReadEliminationPhase(CanonicalizerPhase canonicalizer, boolean considerGuards) {
+    public ReadEliminationPhase(CanonicalizerPhase canonicalizer, boolean considerGuards) {
         super(1, canonicalizer, true);
         this.considerGuards = considerGuards;
     }

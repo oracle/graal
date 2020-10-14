@@ -42,10 +42,10 @@ import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
+import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.junit.Test;
 
-public class EarlyReadEliminationTest extends GraalCompilerTest {
+public class ReadEliminationTest extends GraalCompilerTest {
 
     public static Object staticField;
 
@@ -90,7 +90,7 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
                 ifNode.setCondition(LogicConstantNode.forBoolean(conditions[index++], graph));
             }
         }
-        new EarlyReadEliminationPhase(createCanonicalizerPhase()).apply(graph, context);
+        new ReadEliminationPhase(createCanonicalizerPhase()).apply(graph, context);
     }
 
     public static class TestObject {
@@ -312,7 +312,7 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
         if (doLowering) {
             new LoweringPhase(createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         }
-        new EarlyReadEliminationPhase(createCanonicalizerPhase()).apply(graph, context);
+        new ReadEliminationPhase(createCanonicalizerPhase()).apply(graph, context);
         return graph;
     }
 }
