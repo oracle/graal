@@ -11,6 +11,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * Removed handling of `--jvm.*` and `--native.*` launcher options, which were deprecated since 1.0.0 RC14.
 * Added the ability to specify a `TargetMappingPrecedence` of target type mappings for `HostAccess`  configurations that influence conversion order and precedence in relation to default  mappings and other target type mappings.
 * Added `PolyglotException.isInterrupted()` to determine if an error was caused by an interruption of an application thread. The interrupted exceptions are no longer `PolyglotException.isCancelled()` but `PolyglotException.isInterrupted()`.
+* All Truffle Graal runtime options (-Dgraal.) which were deprecated in GraalVM 20.1 are removed. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-).
 
 ## Version 20.2.0
 * Added `-Dpolyglot.engine.AllowExperimentalOptions=true` to allow experimental options for all polyglot engines of a host VM. This system property is intended to be used for testing only and should not be enabled in production environments.
