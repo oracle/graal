@@ -1,0 +1,6 @@
+Bundle-Symbolic-Name: org.graalvm.python
+Bundle-Name: GraalPython
+Bundle-Version: 1.0
+Bundle-RequireCapability: org.graalvm; filter := "(&(graalvm_version=19.3.3)(os_arch=amd64))"
+x-GraalVM-License-Type: Python License
+x-GraalVM-License-Path: license.txt

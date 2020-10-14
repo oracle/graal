@@ -37,6 +37,7 @@ import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.model.RemoteInfoProcessor;
 import org.graalvm.component.installer.persist.AbstractCatalogStorage;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
 
@@ -50,6 +51,8 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
     private final String singleVersionPrefix;
     private final Version graalVersion;
 
+    private RemoteInfoProcessor remoteProcessor = RemoteInfoProcessor.NONE;
+
     private Map<String, Properties> filteredComponents;
 
     public RemotePropertiesStorage(Feedback fb, ComponentRegistry localReg, Properties catalogProperties, String graalSelector, Version gVersion, URL baseURL) {
@@ -59,6 +62,14 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
         graalVersion = gVersion != null ? gVersion : localReg.getGraalVersion();
         singleVersionPrefix = MessageFormat.format(FORMAT_SINGLE_VERSION,
                         graalVersion.originalString(), graalSelector);
+    }
+
+    public RemoteInfoProcessor getRemoteProcessor() {
+        return remoteProcessor;
+    }
+
+    public void setRemoteProcessor(RemoteInfoProcessor remoteProcessor) {
+        this.remoteProcessor = remoteProcessor;
     }
 
     /**
@@ -208,7 +219,17 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
         info.setRemoteURL(downloadURL);
         info.setShaDigest(hash);
         info.setOrigin(baseURL.toString());
-        return info;
+        return configureComponentInfo(info);
+    }
+
+    /**
+     * Allows to override, or supplement component information.
+     * 
+     * @param info component info
+     * @return possibly modified or new instance.
+     */
+    protected ComponentInfo configureComponentInfo(ComponentInfo info) {
+        return remoteProcessor.decorateComponent(info);
     }
 
     static class PrefixedPropertyReader implements Function<String, String> {

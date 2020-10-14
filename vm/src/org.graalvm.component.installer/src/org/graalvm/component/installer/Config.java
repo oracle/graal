@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.component.installer.model;
-
-import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
+package org.graalvm.component.installer;
 
 /**
- * Serialization of {@link ComponentRegistry}.
+ * Interface for GU environment object. Implemented by {@link Environment} and tests.
+ * 
+ * @author sdedic
  */
-public interface ComponentStorage {
-    /**
-     * Loads list of components.
-     * 
-     * @return set of component IDs
-     * @throws IOException when I/O fails
-     */
-    Set<String> listComponentIDs() throws IOException;
+public interface Config {
+    Config enableStacktraces();
 
-    /**
-     * Loads component files into its metadata.
-     * 
-     * @param ci the component metadata
-     * @return the modified ComponentInfo
-     * @throws IOException on I/O errors
-     */
-    ComponentInfo loadComponentFiles(ComponentInfo ci) throws IOException;
+    boolean isAutoYesEnabled();
 
-    /**
-     * Deserializes Component's metadata.
-     * 
-     * @param id component ID
-     * @return matching ComponentInfo instances
-     * @throws IOException on I/O errors
-     */
-    Set<ComponentInfo> loadComponentMetadata(String id) throws IOException;
+    void setAutoYesEnabled(boolean autoYesEnabled);
 
-    Map<String, String> loadGraalVersionInfo();
+    boolean isNonInteractive();
 
+    void setNonInteractive(boolean nonInteractive);
+
+    void setAllOutputToErr(boolean allOutputToErr);
+
+    void setFileIterable(ComponentIterable fileIterable);
+
+    void setCatalogFactory(CommandInput.CatalogFactory catalogFactory);
 }

@@ -24,40 +24,18 @@
  */
 package org.graalvm.component.installer.model;
 
-import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
-
 /**
- * Serialization of {@link ComponentRegistry}.
+ * Interface to decorate ComponentInfo for remote installables.
+ * 
+ * @author sdedic
  */
-public interface ComponentStorage {
-    /**
-     * Loads list of components.
-     * 
-     * @return set of component IDs
-     * @throws IOException when I/O fails
-     */
-    Set<String> listComponentIDs() throws IOException;
+public interface RemoteInfoProcessor {
+    ComponentInfo decorateComponent(ComponentInfo info);
 
-    /**
-     * Loads component files into its metadata.
-     * 
-     * @param ci the component metadata
-     * @return the modified ComponentInfo
-     * @throws IOException on I/O errors
-     */
-    ComponentInfo loadComponentFiles(ComponentInfo ci) throws IOException;
-
-    /**
-     * Deserializes Component's metadata.
-     * 
-     * @param id component ID
-     * @return matching ComponentInfo instances
-     * @throws IOException on I/O errors
-     */
-    Set<ComponentInfo> loadComponentMetadata(String id) throws IOException;
-
-    Map<String, String> loadGraalVersionInfo();
-
+    RemoteInfoProcessor NONE = new RemoteInfoProcessor() {
+        @Override
+        public ComponentInfo decorateComponent(ComponentInfo info) {
+            return info;
+        }
+    };
 }
