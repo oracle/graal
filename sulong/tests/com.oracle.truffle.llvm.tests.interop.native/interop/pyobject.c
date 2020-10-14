@@ -45,11 +45,11 @@ PyObject *getPyObjectImplicitType() {
     PyMemoryViewObject *obj = (PyMemoryViewObject *) malloc(sizeof(PyMemoryViewObject));
     obj->base.ob_refcnt = 1;
     obj->flags = 42;
-    return obj;
+    return (PyObject *) obj;
 }
 
 PyObject *getPyObjectExplicitType() {
-    PyMemoryViewObject *obj = getPyObjectImplicitType();
+    PyMemoryViewObject *obj = (PyMemoryViewObject *) getPyObjectImplicitType();
     return polyglot_from_PyMemoryViewObject(obj);
 }
 

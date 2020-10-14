@@ -39,6 +39,8 @@ int modular_pow(int base, int exponent, int modulus) {
         base = (base * base) % modulus;
         return result;
     }
+
+    return result;
 }
 
 int main() {

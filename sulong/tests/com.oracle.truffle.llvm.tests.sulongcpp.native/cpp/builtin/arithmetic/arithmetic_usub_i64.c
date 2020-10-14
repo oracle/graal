@@ -31,7 +31,7 @@
 unsigned long __builtin_subcl(unsigned long, unsigned long, unsigned long, unsigned long *);
 #endif
 
-int main(int argc, const char **argv) {
+int main() {
     unsigned long carryout, res;
 
     res = __builtin_subcl((unsigned long) 0x0, (unsigned long) 0x0, 0, &carryout);

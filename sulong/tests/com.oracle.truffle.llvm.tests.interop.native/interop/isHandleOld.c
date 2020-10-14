@@ -41,13 +41,13 @@ int main() {
     if (!truffle_is_handle_to_managed(p1)) {
         return 1;
     }
-    if (!truffle_is_handle_to_managed(l_p1)) {
+    if (!truffle_is_handle_to_managed((void *) l_p1)) {
         return 2;
     }
     if (!truffle_is_handle_to_managed(p2)) {
         return 3;
     }
-    if (!truffle_is_handle_to_managed(l_p2)) {
+    if (!truffle_is_handle_to_managed((void *) l_p2)) {
         return 4;
     }
     if (truffle_is_handle_to_managed(p)) {

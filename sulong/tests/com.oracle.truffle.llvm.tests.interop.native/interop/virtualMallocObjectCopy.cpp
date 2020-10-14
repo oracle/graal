@@ -52,7 +52,7 @@ public:
         return truffle_virtual_malloc(size);
     }
 
-    void operator delete(void *p) {
+    void operator delete(__attribute__((unused)) void *p) {
         // free(p);
     }
 

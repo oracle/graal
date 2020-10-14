@@ -31,7 +31,7 @@
 unsigned short __builtin_addcs(unsigned short, unsigned short, unsigned short, unsigned short *);
 #endif
 
-int main(int argc, const char **argv) {
+int main() {
     unsigned short carryout;
 
     __builtin_addcs((unsigned short) 0x0, (unsigned short) 0x0, 0, &carryout);

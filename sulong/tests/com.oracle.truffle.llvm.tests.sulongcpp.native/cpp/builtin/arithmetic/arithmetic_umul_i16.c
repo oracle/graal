@@ -32,7 +32,7 @@
 bool __builtin_mul_overflow(unsigned short, unsigned short, unsigned short *);
 #endif
 
-int main(int argc, const char **argv) {
+int main() {
     unsigned short res;
 
     if (__builtin_mul_overflow((unsigned short) 0x0, (unsigned short) 0x0, &res)) {

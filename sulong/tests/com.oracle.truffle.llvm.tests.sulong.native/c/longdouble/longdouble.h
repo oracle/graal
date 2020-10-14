@@ -72,7 +72,7 @@
 
 static void printfp(const char *msg, long double *x) {
     uint8_t *p = (uint8_t *) x;
-    int i;
+    size_t i;
 
     printf("%s:", msg);
     for (i = 0; i < sizeof(long double); i++)

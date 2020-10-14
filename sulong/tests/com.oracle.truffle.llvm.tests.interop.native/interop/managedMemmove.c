@@ -30,6 +30,9 @@
 #include <stdlib.h>
 #include <graalvm/llvm/polyglot.h>
 
+void *memmove(void *, const void *, size_t);
+void *memset(void *, int, size_t);
+
 void get_types(void (*ret)(polyglot_typeid typeid)) {
     ret(polyglot_array_typeid(polyglot_i8_typeid(), 0));
     ret(polyglot_array_typeid(polyglot_i16_typeid(), 0));

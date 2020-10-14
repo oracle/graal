@@ -35,10 +35,16 @@ typedef struct _point myPoint;
 typedef struct _point yourPoint;
 
 void foo() {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
     yourPoint p;
+#pragma clang diagnostic pop
 }
 
 int main() {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
     myPoint p;
+#pragma clang diagnostic pop
     return 0;
 }

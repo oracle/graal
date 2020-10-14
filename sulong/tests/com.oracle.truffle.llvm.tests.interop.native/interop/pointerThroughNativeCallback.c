@@ -27,11 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-int callbackPointerArgTest(int (*callback)(struct test *), struct test *arg);
-
 struct test {
     int x;
 };
+
+int callbackPointerArgTest(int (*callback)(struct test *), struct test *arg);
 
 int callback(struct test *test) {
     return test->x;

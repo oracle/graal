@@ -57,7 +57,7 @@ public:
     }
 };
 
-int main(int argc, char *argv[]) {
+int main() {
     B b;
     try {
         throw &b;

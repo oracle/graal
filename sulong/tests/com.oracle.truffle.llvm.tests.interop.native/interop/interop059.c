@@ -42,8 +42,8 @@ int main() {
         return 200 + (int) foreign[1];
     }
 
-    foreign[0] = 101;
-    foreign[1] = 102;
+    foreign[0] = (void *) 101;
+    foreign[1] = (void *) 102;
 
     return 0;
 }
