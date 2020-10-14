@@ -100,6 +100,9 @@ public final class EspressoContext {
 
     // region InitControl
     public long initDoneTimeNanos;
+
+    private boolean mainThreadCreated;
+
     @CompilationFinal private boolean modulesInitialized = false;
     @CompilationFinal private boolean metaInitialized = false;
     private boolean initialized = false;
@@ -119,6 +122,7 @@ public final class EspressoContext {
     public final boolean InlineFieldAccessors;
     public final boolean InlineMethodHandle;
     public final boolean SplitMethodHandles;
+    public final EspressoOptions.LivenessAnalysisMode livenessAnalysisMode;
 
     // Behavior control
     public final boolean EnableManagement;
@@ -193,6 +197,7 @@ public final class EspressoContext {
         this.SplitMethodHandles = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.SplitMethodHandles);
         this.Verify = env.getOptions().get(EspressoOptions.Verify);
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
+        this.livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.MultiThreaded = env.getOptions().get(EspressoOptions.MultiThreaded);
         this.SoftExit = env.getOptions().get(EspressoOptions.SoftExit);

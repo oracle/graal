@@ -28,6 +28,7 @@ import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.BlockIterator;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.GraphBuilder;
@@ -38,26 +39,43 @@ import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
-public final class LivenessAnalysis {
-    public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis();
+public class LivenessAnalysis {
+    public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis() {
+        @Override
+        public void performPreBCI(VirtualFrame frame, int bci, BytecodeNode node) {
+        }
+
+        @Override
+        public void performPostBCI(VirtualFrame frame, int bci, BytecodeNode node) {
+        }
+    };
 
     // TODO: Split array to save an header.
     @CompilerDirectives.CompilationFinal(dimensions = 1) //
-    final BCILocalActionRecord[] result;
+    private final BCILocalActionRecord[] result;
+    private final boolean compiledCodeOnly;
 
     public void performPreBCI(VirtualFrame frame, int bci, BytecodeNode node) {
-        if (result != null && result[bci] != null) {
-            result[bci].pre(frame, node);
+        if (compiledCodeOnly && CompilerDirectives.inCompiledCode()) {
+            if (result != null && result[bci] != null) {
+                result[bci].pre(frame, node);
+            }
         }
     }
 
     public void performPostBCI(VirtualFrame frame, int bci, BytecodeNode node) {
-        if (result != null && result[bci] != null) {
-            result[bci].post(frame, node);
+        if (compiledCodeOnly && CompilerDirectives.inCompiledCode()) {
+            if (result != null && result[bci] != null) {
+                result[bci].post(frame, node);
+            }
         }
     }
 
     public static LivenessAnalysis analyze(Method method) {
+        if (method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.DISABLED) {
+            return NO_ANALYSIS;
+        }
+
         Graph<? extends LinkedBlock> graph = GraphBuilder.build(method);
 
         // Transform the graph into a more manageable graph consisting of only the history of
@@ -94,10 +112,12 @@ public final class LivenessAnalysis {
 
     private LivenessAnalysis(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
         this.result = buildResultFrom(result, graph, method);
+        this.compiledCodeOnly = method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.COMPILED;
     }
 
     private LivenessAnalysis() {
         this.result = null;
+        this.compiledCodeOnly = false;
     }
 
     private static BCILocalActionRecord[] buildResultFrom(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
