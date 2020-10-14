@@ -78,7 +78,7 @@ public final class LibGraalHotSpotGraalManagement extends MBeanProxy<HotSpotGraa
         } else if (delay == 0) {
             initialize0(runtime, config);
         } else {
-            Thread t = new GraalServiceThread(new Runnable() {
+            Thread t = new GraalServiceThread(LibGraalHotSpotGraalManagement.class.getSimpleName() + "-init", new Runnable() {
                 @Override
                 public void run() {
                     try {
@@ -89,7 +89,6 @@ public final class LibGraalHotSpotGraalManagement extends MBeanProxy<HotSpotGraa
                     }
                 }
             });
-            t.setName("LibGraalHotSpotGraalManagementInitialization");
             t.setDaemon(true); // don't delay VM shutdown
             t.start();
         }
