@@ -334,7 +334,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (NumUtil.isInt(src)) {
             AMD64MIOp.MOV.emit(this, OperandSize.QWORD, dst, (int) src);
         } else {
-            AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4);
+            AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4, dst.getDisplacementAnnotation(), dst.instructionStartPosition);
             movl(dst, (int) (src & 0xFFFFFFFF));
             movl(high, (int) (src >> 32));
         }

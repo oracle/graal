@@ -69,6 +69,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
+import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.image.NativeBootImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -90,7 +91,7 @@ public abstract class NativeImageCodeCache {
         public static final HostedOptionKey<Boolean> VerifyDeoptimizationEntryPoints = new HostedOptionKey<>(false);
     }
 
-    private final NativeImageHeap imageHeap;
+    protected final NativeImageHeap imageHeap;
 
     protected final Map<HostedMethod, CompilationResult> compilations;
 
@@ -167,6 +168,12 @@ public abstract class NativeImageCodeCache {
             for (DataPatch patch : compilationResult.getDataPatches()) {
                 if (patch.reference instanceof ConstantReference) {
                     addConstantToHeap(((ConstantReference) patch.reference).getConstant(), compilationResult.getName());
+                }
+            }
+
+            for (CompilationResult.CodeAnnotation codeAnnotation : compilationResult.getCodeAnnotations()) {
+                if (codeAnnotation instanceof HostedImageHeapConstantPatch) {
+                    addConstantToHeap(((HostedImageHeapConstantPatch) codeAnnotation).constant, compilationResult.getName());
                 }
             }
         }

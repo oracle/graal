@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.code.amd64;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.asm.Assembler;
-import org.graalvm.compiler.asm.Assembler.CodeAnnotation;
+import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.AddressDisplacementAnnotation;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -41,7 +41,9 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 
@@ -62,6 +64,10 @@ class AMD64HostedPatcherFeature implements Feature {
                     public void accept(Assembler.CodeAnnotation annotation) {
                         if (annotation instanceof OperandDataAnnotation) {
                             compilationResult.addAnnotation(new AMD64HostedPatcher((OperandDataAnnotation) annotation));
+
+                        } else if (annotation instanceof AddressDisplacementAnnotation) {
+                            AddressDisplacementAnnotation dispAnnotation = (AddressDisplacementAnnotation) annotation;
+                            compilationResult.addAnnotation(new HostedImageHeapConstantPatch(dispAnnotation.operandPosition, (SubstrateObjectConstant) dispAnnotation.annotation));
                         }
                     }
                 };
