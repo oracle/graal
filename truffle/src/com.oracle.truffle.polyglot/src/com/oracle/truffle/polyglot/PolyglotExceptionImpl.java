@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -50,7 +49,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -62,6 +60,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.proxy.Proxy;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.interop.ExceptionType;
@@ -252,15 +251,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
 
     private SourceSection newSourceSection(com.oracle.truffle.api.source.SourceSection section) {
         com.oracle.truffle.api.source.Source truffleSource = section.getSource();
-        String language = truffleSource.getLanguage();
-        if (language == null) {
-            Objects.requireNonNull(engine, "Source location can not be accepted without language context.");
-            PolyglotLanguage foundLanguage = engine.findLanguage(null, language, truffleSource.getMimeType(), false, true);
-            if (foundLanguage != null) {
-                language = foundLanguage.getId();
-            }
-        }
-        Source source = polyglot.getAPIAccess().newSource(language, truffleSource);
+        Source source = polyglot.getAPIAccess().newSource(truffleSource);
         return polyglot.getAPIAccess().newSourceSection(source, section);
     }
 

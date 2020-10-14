@@ -121,7 +121,7 @@ final class PolyglotManagement extends AbstractManagementImpl {
                     return false;
                 } else if (sourceFilter != null) {
                     try {
-                        return sourceFilter.test(engineImpl.getPolyglotSource(s));
+                        return sourceFilter.test(engineImpl.getOrCreatePolyglotSource(s));
                     } catch (Throwable e) {
                         if (config.closing) {
                             // configuration is closing ignore errors.

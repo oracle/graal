@@ -169,6 +169,99 @@ public final class HostAccess {
         this.allowListAccess = allowListAccess;
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof HostAccess)) {
+            return false;
+        }
+        HostAccess other = (HostAccess) obj;
+        return allowPublic == other.allowPublic//
+                        && allowAllImplementations == other.allowAllImplementations//
+                        && allowArrayAccess == other.allowArrayAccess//
+                        && allowListAccess == other.allowListAccess//
+                        && equalsMap(excludeTypes, other.excludeTypes)//
+                        && equalsSet(members, other.members)//
+                        && equalsSet(implementableAnnotations, other.implementableAnnotations)//
+                        && equalsSet(implementableTypes, other.implementableTypes)//
+                        && Objects.equals(targetMappings, other.targetMappings)//
+                        && equalsSet(accessAnnotations, other.accessAnnotations);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(allowPublic, allowAllImplementations,
+                        allowArrayAccess, allowListAccess,
+                        hashMap(excludeTypes),
+                        hashSet(members),
+                        hashSet(implementableAnnotations),
+                        hashSet(implementableTypes),
+                        hashSet(members),
+                        targetMappings,
+                        hashSet(accessAnnotations));
+    }
+
+    private static <T, V> int hashMap(EconomicMap<T, V> map) {
+        int h = 0;
+        if (map != null) {
+            MapCursor<T, V> cursor = map.getEntries();
+            while (cursor.advance()) {
+                h += Objects.hashCode(cursor.getKey()) ^
+                                Objects.hashCode(cursor.getValue());
+            }
+        }
+        return h;
+    }
+
+    private static <V> int hashSet(EconomicSet<V> set) {
+        int h = 0;
+        if (set != null) {
+            for (V v : set) {
+                if (v != null) {
+                    h += v.hashCode();
+                }
+            }
+        }
+        return h;
+    }
+
+    private static <T, V> boolean equalsMap(EconomicMap<T, V> map0, EconomicMap<T, V> map1) {
+        if (Objects.equals(map0, map1)) {
+            return true;
+        } else if (map0 == null) {
+            return false;
+        } else if (map0.size() != map1.size()) {
+            return false;
+        }
+        MapCursor<T, V> cursor = map0.getEntries();
+        while (cursor.advance()) {
+            if (!map1.containsKey(cursor.getKey())) {
+                return false;
+            }
+            V v0 = cursor.getValue();
+            V v1 = map1.get(cursor.getKey());
+            if (!Objects.equals(v0, v1)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static <T> boolean equalsSet(EconomicSet<T> set0, EconomicSet<T> set1) {
+        if (Objects.equals(set0, set1)) {
+            return true;
+        } else if (set0 == null) {
+            return false;
+        } else if (set0.size() != set1.size()) {
+            return false;
+        }
+        for (T v : set0) {
+            if (!set1.contains(v)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static <T> EconomicSet<T> copySet(EconomicSet<T> values, Equivalence equivalence) {
         if (values == null) {
             return null;

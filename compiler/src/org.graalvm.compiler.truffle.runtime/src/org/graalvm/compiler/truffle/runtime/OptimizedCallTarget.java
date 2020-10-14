@@ -59,6 +59,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
+import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -397,6 +398,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
         Node prev = encapsulating.set(null);
         try {
+            profileArguments(args);
             return callIndirect(prev, args);
         } catch (Throwable t) {
             GraalRuntimeAccessor.LANGUAGE.onThrowable(prev, null, t, null);
@@ -407,9 +409,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public final Object callIndirect(Node location, Object... args) {
+    public Object callIndirect(Node location, Object... args) {
         try {
-            stopProfilingArguments();
             return doInvoke(args);
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
@@ -485,20 +486,27 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             runtime().bypassedInstalledCode(this);
         }
         ensureInitialized();
-
         int intCallCount = this.callCount;
         this.callCount = intCallCount == Integer.MAX_VALUE ? intCallCount : ++intCallCount;
         int intLoopCallCount = this.callAndLoopCount;
         this.callAndLoopCount = intLoopCallCount == Integer.MAX_VALUE ? intLoopCallCount : ++intLoopCallCount;
 
         // Check if call target is hot enough to compile
-        if (intCallCount >= engine.callThresholdInInterpreter //
-                        && intLoopCallCount >= engine.callAndLoopThresholdInInterpreter //
-                        && !compilationFailed //
-                        && !isSubmittedForCompilation()) {
+        if (shouldCompileImpl(intCallCount, intLoopCallCount)) {
             return compile(!engine.multiTier);
         }
         return false;
+    }
+
+    private boolean shouldCompileImpl(int intCallCount, int intLoopCallCount) {
+        return intCallCount >= engine.callThresholdInInterpreter //
+                        && intLoopCallCount >= engine.callAndLoopThresholdInInterpreter //
+                        && !compilationFailed //
+                        && !isSubmittedForCompilation();
+    }
+
+    public final boolean shouldCompile() {
+        return !isValid() && shouldCompileImpl(this.callCount, this.callAndLoopCount);
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
@@ -567,17 +575,21 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final void ensureInitialized() {
         if (!initialized) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            initialize();
+            initialize(true);
         }
     }
 
-    private synchronized void initialize() {
+    public final boolean isInitialized() {
+        return initialized;
+    }
+
+    private synchronized void initialize(boolean validate) {
         if (!initialized) {
             if (sourceCallTarget == null && rootNode.isCloningAllowed() && !GraalRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
                 // We are the source CallTarget, so make a copy.
                 this.uninitializedRootNode = NodeUtil.cloneNode(rootNode);
             }
-            GraalRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode());
+            GraalRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode(), validate);
             if (engine.callTargetStatistics) {
                 this.initializedTimestamp = System.nanoTime();
             } else {
@@ -656,7 +668,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return !mayBeAsynchronous && isValid();
     }
 
-    private boolean needsCompile(boolean isLastTierCompilation) {
+    public final boolean needsCompile(boolean isLastTierCompilation) {
         return !isValid() || (engine.multiTier && isLastTierCompilation && !isValidLastTier());
     }
 
@@ -669,6 +681,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         if (task != null) {
             runtime().finishCompilation(this, task, false);
         }
+    }
+
+    boolean isCompiling() {
+        return getCompilationTask() != null;
     }
 
     /**
@@ -704,13 +720,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * @param reason a textual description of the reason why the machine code was invalidated. May
      *            be {@code null}.
      */
-    public final void invalidate(Object source, CharSequence reason) {
+    public final boolean invalidate(Object source, CharSequence reason) {
         cachedNonTrivialNodeCount = -1;
         if (isAlive()) {
             invalidateCode();
             runtime().getListener().onCompilationInvalidated(this, source, reason);
+            return true;
         }
-        cancelCompilation(reason);
+        return cancelCompilation(reason);
     }
 
     final OptimizedCallTarget cloneUninitialized() {
@@ -1014,7 +1031,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // region Arguments profiling
 
     // region Manual Arguments profiling
-    final void initializeArgumentTypes(Class<?>[] argumentTypes) {
+    final void initializeUnsafeArgumentTypes(Class<?>[] argumentTypes) {
         CompilerAsserts.neverPartOfCompilation();
         ArgumentsProfile newProfile = new ArgumentsProfile(argumentTypes, "Custom profiled argument types");
         if (ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, null, newProfile)) {
@@ -1061,6 +1078,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // Argument profiling is not possible for targets of indirect calls.
             // The assumption will invalidate the callee but we shouldn't invalidate the caller.
             CompilerDirectives.transferToInterpreter();
+
             ArgumentsProfile previous = ARGUMENTS_PROFILE_UPDATER.getAndSet(this, ArgumentsProfile.INVALID);
             previous.assumption.invalidate();
         }
@@ -1409,6 +1427,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.maybeSetNeedsSplit(0, toDump);
     }
 
+    public final void resetNeedsSplit() {
+        needsSplit = false;
+    }
+
     private boolean maybeSetNeedsSplit(int depth, List<Node> toDump) {
         final OptimizedDirectCallNode onlyCaller = getSingleCallNode();
         if (depth > engine.splittingMaxPropagationDepth || needsSplit || callSitesKnown == 0 || getCallCount() == 1) {
@@ -1480,4 +1502,47 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.cachedNonTrivialNodeCount = nonTrivialNodeCount;
     }
 
+    public final boolean prepareForAOT() {
+        if (isInitialized()) {
+            throw new IllegalStateException("Cannot prepare for AOT if call target is already initialized.");
+        }
+        /*
+         * We do not validate the call target as we are not technically entered in any context when
+         * we do AOT compilation.
+         */
+        initialize(false);
+
+        ExecutionSignature profile = GraalRuntimeAccessor.NODES.prepareForAOT(rootNode);
+        if (profile == null) {
+            return false;
+        }
+        if (callProfiled) {
+            // call profile already initialized
+            return true;
+        }
+        assert returnProfile == null : "return profile already initialized";
+        assert argumentsProfile == null : "argument profile already initialized";
+
+        Class<?>[] argumentTypes = profile.getArgumentTypes();
+
+        ArgumentsProfile newProfile;
+        if (argumentTypes != null && argumentTypes.length <= MAX_PROFILED_ARGUMENTS && engine.argumentTypeSpeculation) {
+            newProfile = new ArgumentsProfile(argumentTypes, ArgumentsProfile.ARGUMENT_TYPES_ASSUMPTION_NAME);
+        } else {
+            newProfile = ArgumentsProfile.INVALID;
+        }
+
+        ReturnProfile returnProfile;
+        Class<?> returnType = profile.getReturnType();
+        if (returnType != null && returnType != Object.class) {
+            returnProfile = new ReturnProfile(returnType);
+        } else {
+            returnProfile = ReturnProfile.INVALID;
+        }
+
+        this.returnProfile = returnProfile;
+        this.argumentsProfile = newProfile;
+
+        return true;
+    }
 }

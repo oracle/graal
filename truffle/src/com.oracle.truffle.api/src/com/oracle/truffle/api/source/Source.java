@@ -45,6 +45,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -157,13 +158,15 @@ public abstract class Source {
     private static final int BUFFER_SIZE = 8192;
     static final Class<?> BYTE_SEQUENCE_CLASS = ByteSequence.create(new byte[0]).getClass();
 
-    private static final InternedSources SOURCES = new InternedSources();
+    static final InternedSources SOURCES = new InternedSources();
 
     private volatile TextMap textMap;
     private volatile URI computedURI;
-    volatile org.graalvm.polyglot.Source polyglotSource;
+    volatile WeakReference<org.graalvm.polyglot.Source> cachedPolyglotSource;
 
     abstract Object getSourceId();
+
+    abstract Object getSourceKey();
 
     Source() {
     }
@@ -259,7 +262,10 @@ public abstract class Source {
         if (!(obj instanceof Source)) {
             return false;
         }
-        return getSourceId().equals(((Source) obj).getSourceId());
+
+        boolean result = getSourceId().equals(((Source) obj).getSourceId());
+        assert result == getSourceKey().equals(((Source) obj).getSourceKey());
+        return result;
     }
 
     /**

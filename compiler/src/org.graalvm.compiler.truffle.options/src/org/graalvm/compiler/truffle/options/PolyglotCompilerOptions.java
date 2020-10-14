@@ -432,6 +432,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Sets the target non-trivial Truffle node size for partial compilation of BlockNode nodes.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> PartialBlockCompilationSize = new OptionKey<>(3000);
 
+    @Option(help = "Sets the maximum non-trivial Truffle node size for partial compilation of BlockNode nodes.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> PartialBlockMaximumSize = new OptionKey<>(10000);
+
     /*
      * TODO planned options (GR-13444):
      *

@@ -73,12 +73,14 @@ public class BackgroundCompileQueue {
     }
 
     private ExecutorService getExecutorService(OptimizedCallTarget callTarget) {
-        if (compilationExecutorService != null) {
-            return compilationExecutorService;
+        ExecutorService service = this.compilationExecutorService;
+        if (service != null) {
+            return service;
         }
         synchronized (this) {
-            if (compilationExecutorService != null) {
-                return compilationExecutorService;
+            service = this.compilationExecutorService;
+            if (service != null) {
+                return service;
             }
             if (shutdown) {
                 throw new RejectedExecutionException("The BackgroundCompileQueue is shutdown");
@@ -150,6 +152,22 @@ public class BackgroundCompileQueue {
     @SuppressWarnings("unused")
     protected ThreadFactory newThreadFactory(String threadNamePrefix, OptimizedCallTarget callTarget) {
         return new TruffleCompilerThreadFactory(threadNamePrefix, runtime);
+    }
+
+    public void cancelAllTasks() {
+        synchronized (this) {
+            PriorityBlockingQueue<Runnable> localQueue = this.compilationQueue;
+            if (localQueue != null) {
+                localQueue.removeAll(localQueue);
+                compilationExecutorService.shutdown();
+                try {
+                    compilationExecutorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                }
+                this.compilationExecutorService = null;
+                this.compilationQueue = null;
+            }
+        }
     }
 
     public CancellableCompileTask submitTask(Priority priority, OptimizedCallTarget target, Request request) {

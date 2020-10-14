@@ -24,10 +24,16 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-public interface PrioritizedServiceProvider {
+import org.graalvm.options.OptionDescriptors;
+
+public interface GraalRuntimeServiceProvider {
 
     default int getPriority() {
         return 0;
+    }
+
+    default OptionDescriptors getEngineOptions() {
+        return null;
     }
 
 }

@@ -154,6 +154,12 @@ final class NodeAccessor extends Accessor {
         public Object translateStackTraceElement(TruffleStackTraceElement stackTraceLement) {
             return stackTraceLement.getTarget().getRootNode().translateStackTraceElement(stackTraceLement);
         }
+
+        @Override
+        public ExecutionSignature prepareForAOT(RootNode rootNode) {
+            return rootNode.prepareForAOT();
+        }
+
     }
 
 }

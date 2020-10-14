@@ -33,7 +33,20 @@ final class CompilerDebugAccessor extends Accessor {
     private CompilerDebugAccessor() {
     }
 
+    static InstrumentSupport instrumentAccessor() {
+        return ACCESSOR.instrumentSupport();
+    }
+
+    static NodeSupport nodeAccessor() {
+        return ACCESSOR.nodeSupport();
+    }
+
     static JDKSupport jdkServicesAccessor() {
         return ACCESSOR.jdkSupport();
     }
+
+    static EngineSupport engineAccessor() {
+        return ACCESSOR.engineSupport();
+    }
+
 }

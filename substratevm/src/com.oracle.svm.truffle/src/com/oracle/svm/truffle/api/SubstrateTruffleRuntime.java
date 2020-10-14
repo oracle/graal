@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.truffle.api;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
 import java.util.Collections;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -42,7 +40,6 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.LoopNodeFactory;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -102,7 +99,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     private volatile Boolean profilingEnabled;
 
     @Override
-    protected BackgroundCompileQueue getCompileQueue() {
+    public BackgroundCompileQueue getCompileQueue() {
         return compileQueue;
     }
 
@@ -175,14 +172,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         Objects.requireNonNull(compilable, "Compilable must be non null.");
         ensureInitializedAtRuntime((OptimizedCallTarget) compilable);
         return (SubstrateTruffleCompiler) truffleCompiler;
-    }
-
-    @Override
-    protected LoopNodeFactory getLoopNodeFactory() {
-        if (loopNodeFactory == null) {
-            throw shouldNotReachHere("loopNodeFactory not initialized");
-        }
-        return loopNodeFactory;
     }
 
     @Override

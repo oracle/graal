@@ -610,7 +610,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 targets[i].setNonTrivialNodeCount(blockSizes[i]);
                 // we know the parameter types for block compilations. No need to check, lets cast
                 // them unsafely.
-                targets[i].initializeArgumentTypes(new Class<?>[]{materializedFrameClass, Integer.class});
+                targets[i].initializeUnsafeArgumentTypes(new Class<?>[]{materializedFrameClass, Integer.class});
                 // All block compilations share the speculation log of the root compilation.
                 targets[i].setSpeculationLog(rootCompilation.getSpeculationLog());
                 startIndex = endIndex;

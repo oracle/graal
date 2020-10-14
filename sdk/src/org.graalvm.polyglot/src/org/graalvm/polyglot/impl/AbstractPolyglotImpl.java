@@ -62,7 +62,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -78,9 +77,9 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.ResourceLimitEvent;
 import org.graalvm.polyglot.ResourceLimits;
-import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.TypeLiteral;
@@ -146,7 +145,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value newValue(Object value, AbstractValueImpl impl);
 
-        public abstract Source newSource(String language, Object impl);
+        public abstract Source newSource(Object impl);
 
         public abstract SourceSection newSourceSection(Source source, Object impl);
 
@@ -236,10 +235,9 @@ public abstract class AbstractPolyglotImpl {
     protected void initialize() {
     }
 
-    public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
-                    Object logHandlerOrStream,
-                    HostAccess conf);
+    public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties, boolean allowExperimentalOptions,
+                    boolean boundEngine,
+                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf);
 
     public abstract void preInitializeEngine();
 
@@ -352,6 +350,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract String getMimeType(Object impl);
 
+        public abstract String getLanguage(Object impl);
+
     }
 
     public abstract static class AbstractSourceSectionImpl {
@@ -453,6 +453,8 @@ public abstract class AbstractPolyglotImpl {
                         EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader);
 
         public abstract String getImplementationName();
+
+        public abstract Set<Source> getCachedSources();
 
     }
 

@@ -94,7 +94,7 @@ public class ContextThreadLocalTest {
 
     Object setReturnParent(ThreadLocal<Object> tl, Object value) {
         try {
-            Method method = tl.getClass().getDeclaredMethod("setReturnParent", Object.class);
+            Method method = tl.getClass().getDeclaredMethod("setReturnParent", Class.forName(CONTEXT_CLASS));
             method.setAccessible(true);
             return method.invoke(tl, value);
         } catch (Exception e) {
