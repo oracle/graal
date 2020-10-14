@@ -50,7 +50,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLLanguageView;
 
 /**
@@ -87,7 +86,7 @@ public class SLException extends AbstractTruffleException {
 
         result.append(": operation");
         if (operation != null) {
-            NodeInfo nodeInfo = SLContext.lookupNodeInfo(operation.getClass());
+            NodeInfo nodeInfo = SLLanguage.lookupNodeInfo(operation.getClass());
             if (nodeInfo != null) {
                 result.append(" \"").append(nodeInfo.shortName()).append("\"");
             }
