@@ -1,13 +1,14 @@
 # Native Image Maven Plugin
 
 To simplify the generation of native images, Native Image now works out
-of [Maven](https://maven.apache.org/what-is-maven.html) with the [Native Image Maven Plugin](https://search.maven.org/artifact/com.oracle.substratevm/native-image-maven-plugin/).
+of [Maven](https://maven.apache.org/what-is-maven.html) with the [Native Image Maven Plugin](https://search.maven.org/artifact/org.graalvm.nativeimage/native-image-maven-plugin).
 
 One can build a native image directly with Maven
 using the `mvn package` command without running the `native-image` command as a
 separate step. It is sufficient to add `native-image-maven-plugin` into the
 `<plugins>` section of the `pom.xml` file:
-```
+
+```xml
 <plugin>
     <groupId>org.graalvm.nativeimage</groupId>
     <artifactId>native-image-maven-plugin</artifactId>
@@ -29,9 +30,10 @@ separate step. It is sufficient to add `native-image-maven-plugin` into the
     </configuration>
 </plugin>
 ```
+
 Then add the `org.graalvm.sdk` library dependency in the `<dependencies>` list:
 
-```
+```xml
 <dependency>
     <groupId>org.graalvm.sdk</groupId>
     <artifactId>graal-sdk</artifactId>
@@ -58,7 +60,7 @@ It is also possible to customize `native-image-maven-plugin` within a
 2. Configuration parameter `<imageName>`: if an image filename is not set explicitly, use parameter `<imageName>` to provide a custom filename for the image.
 3. Configuration parameter `<buildArgs>`: if you want to pass additional options for to the native image builder, use the `<buildArgs>` parameter in the definition of the plugin. For example, to build a native image with assertions enabled that uses _com.test.classname_ as a main class, add:
 
-```
+```xml
 <configuration>
     <imageName>executable-name</imageName>
     <mainClass>com.test.classname</mainClass>
