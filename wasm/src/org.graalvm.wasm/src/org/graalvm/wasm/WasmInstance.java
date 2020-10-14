@@ -122,9 +122,6 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean isMemberReadable(String member) {
-        if (member == "__memory") {
-            return true;
-        }
         final SymbolTable symbolTable = symbolTable();
         try {
             return symbolTable.exportedFunctions().containsKey(member) || symbolTable.exportedGlobals().containsKey(member) ||
