@@ -82,7 +82,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public final class LLVMContext {
@@ -96,9 +95,7 @@ public final class LLVMContext {
     private final Toolchain toolchain;
     @CompilationFinal private Path internalLibraryPath;
     @CompilationFinal private TruffleFile internalLibraryPathFile;
-    private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
     private final List<TruffleFile> truffleFiles = new ArrayList<>();
-    private final Object externalLibrariesLock = new Object();
     private final List<String> internalLibraryNames;
 
     // A map for pointer-> non-native symbol lookups.
@@ -582,13 +579,6 @@ public final class LLVMContext {
         return language.getCapability(PlatformCapability.class).preprocessDependencies(this, file, libraries);
     }
 
-    public ExternalLibrary addInternalLibrary(String lib, Object reason, boolean isNative) {
-        CompilerAsserts.neverPartOfCompilation();
-        final ExternalLibrary newLib = createExternalLibrary(lib, reason, InternalLibraryLocator.INSTANCE, isNative);
-        assert newLib.isInternal() : "Internal library not detected as internal: " + lib;
-        return getOrAddExternalLibrary(newLib);
-    }
-
     public static final class InternalLibraryLocator extends LibraryLocator {
 
         public static final InternalLibraryLocator INSTANCE = new InternalLibraryLocator();
@@ -606,95 +596,8 @@ public final class LLVMContext {
         }
     }
 
-    public ExternalLibrary addExternalLibraryDefaultLocator(String lib, Object reason) {
-        return addExternalLibrary(lib, reason, DefaultLibraryLocator.INSTANCE);
-    }
-
-    /**
-     * Adds a new library to the context (if not already added). It is assumed that the library is a
-     * native one until it is parsed and we know for sure.
-     *
-     * @see ExternalLibrary#makeBitcodeLibrary
-     * @return the cached library if already added
-     */
-    public ExternalLibrary addExternalLibrary(String lib, Object reason, LibraryLocator locator) {
-        CompilerAsserts.neverPartOfCompilation();
-        ExternalLibrary newLib = createExternalLibrary(lib, reason, locator, true);
-        if (isDefaultLibrary(newLib)) {
-            // Disallow loading default libraries explicitly.
-            throw new LLVMLinkerException("Adding an internal library (possibly from the command line) as an external library.");
-        }
-        ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
-        if (existingLib != newLib) {
-            LibraryLocator.traceAlreadyLoaded(this, existingLib);
-        }
-        return existingLib;
-    }
-
-    /**
-     * Finds an already added library. Note that this might return
-     * {@link ExternalLibrary#isInternal() internal libraries}.
-     *
-     * @return null if not yet loaded
-     */
-    public ExternalLibrary findExternalLibrary(String lib, Object reason, LibraryLocator locator) {
-        final ExternalLibrary newLib = createExternalLibrary(lib, reason, locator, true);
-        return getExternalLibrary(newLib);
-    }
-
-    /**
-     * Creates a new external library. It is assumed that the library is a native one until it is
-     * parsed and we know for sure.
-     *
-     * @see ExternalLibrary#makeBitcodeLibrary
-     */
-    private ExternalLibrary createExternalLibrary(String lib, Object reason, LibraryLocator locator, boolean isNative) {
-        TruffleFile tf = locator.locate(this, lib, reason);
-        if (tf == null) {
-            // Unable to locate the library -> will go to native
-            Path path = Paths.get(lib);
-            LibraryLocator.traceDelegateNative(this, path);
-            return ExternalLibrary.createFromPath(path, isNative, isInternalLibraryPath(path));
-        }
-        return ExternalLibrary.createFromFile(tf, isNative, isInternalLibraryFile(tf));
-    }
-
-    private boolean isDefaultLibrary(ExternalLibrary lib) {
-        return internalLibraryNames.contains(lib.getName());
-    }
-
-    public boolean isInternalLibraryPath(Path path) {
-        return path.normalize().startsWith(internalLibraryPath);
-    }
-
     public boolean isInternalLibraryFile(TruffleFile file) {
         return file.normalize().startsWith(internalLibraryPathFile);
-    }
-
-    private ExternalLibrary getExternalLibrary(ExternalLibrary externalLib) {
-        synchronized (externalLibrariesLock) {
-            int index = externalLibraries.indexOf(externalLib);
-            if (index >= 0) {
-                ExternalLibrary ret = externalLibraries.get(index);
-                assert ret.equals(externalLib);
-                return ret;
-            }
-            return null;
-        }
-    }
-
-    private ExternalLibrary getOrAddExternalLibrary(ExternalLibrary externalLib) {
-        synchronized (externalLibrariesLock) {
-            int index = externalLibraries.indexOf(externalLib);
-            if (index >= 0) {
-                ExternalLibrary ret = externalLibraries.get(index);
-                assert ret.equals(externalLib);
-                return ret;
-            } else {
-                externalLibraries.add(externalLib);
-                return externalLib;
-            }
-        }
     }
 
     public TruffleFile getOrAddTruffleFile(TruffleFile file) {
@@ -708,12 +611,6 @@ public final class LLVMContext {
                 truffleFiles.add(file);
                 return file;
             }
-        }
-    }
-
-    public List<ExternalLibrary> getExternalLibraries(Predicate<ExternalLibrary> filter) {
-        synchronized (externalLibrariesLock) {
-            return externalLibraries.stream().filter(f -> filter.test(f)).collect(Collectors.toList());
         }
     }
 
