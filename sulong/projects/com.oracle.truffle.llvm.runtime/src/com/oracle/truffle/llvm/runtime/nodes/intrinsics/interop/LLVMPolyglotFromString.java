@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -38,6 +37,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -71,34 +71,31 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
     }
 
     @Specialization
-    LLVMManagedPointer doFromString(LLVMCharset charset, ByteBuffer rawString) {
+    LLVMManagedPointer doFromString(LLVMCharset charset, byte[] rawString) {
         return LLVMManagedPointer.create(charset.decode(rawString));
     }
 
     abstract static class ReadBytesNode extends LLVMNode {
-
-        protected abstract ByteBuffer execute(VirtualFrame frame, LLVMCharset charset);
+        protected abstract byte[] execute(VirtualFrame frame, LLVMCharset charset);
     }
 
     @NodeChild(type = LLVMReadCharsetNode.class)
     @NodeChild(value = "string", type = LLVMExpressionNode.class)
     @NodeChild(value = "len", type = LLVMExpressionNode.class)
     abstract static class ReadBytesWithLengthNode extends ReadBytesNode {
-
         @Child private LLVMLoadNode load = LLVMI8LoadNode.create();
 
         @Specialization
-        ByteBuffer doRead(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string, long len) {
-            ByteBuffer buffer = ByteBuffer.allocate((int) len);
+        byte[] doRead(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string, long len) {
+            byte[] buffer = new byte[(int) len];
 
             LLVMPointer ptr = string;
             for (int i = 0; i < len; i++) {
                 byte value = (byte) load.executeWithTarget(ptr);
                 ptr = ptr.increment(Byte.BYTES);
-                buffer.put(value);
+                buffer[i] = value;
             }
 
-            buffer.flip();
             return buffer;
         }
     }
@@ -110,12 +107,19 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
         @CompilationFinal int bufferSize = 8;
 
         @Specialization(limit = "4", guards = "charset.zeroTerminatorLen == increment")
-        ByteBuffer doRead(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string,
+        byte[] doRead(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string,
                         @Cached("charset.zeroTerminatorLen") int increment,
                         @Cached("createLoad(increment)") LLVMLoadNode load,
                         @Cached("create()") PutCharNode put) {
-            int currentBufferSize = bufferSize;
-            ByteBuffer result = ByteBuffer.allocate(currentBufferSize).order(ByteOrder.nativeOrder());
+            int capacity = bufferSize;
+            int size = 0;
+            byte[] result = new byte[capacity];
+            ByteArraySupport byteArraySupport;
+            if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+                byteArraySupport = ByteArraySupport.bigEndian();
+            } else {
+                byteArraySupport = ByteArraySupport.littleEndian();
+            }
 
             LLVMPointer ptr = string;
             Object value;
@@ -123,25 +127,41 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
                 value = load.executeWithTarget(ptr);
                 ptr = ptr.increment(increment);
 
-                if (result.remaining() < increment) {
+                if (capacity - size < increment) {
                     // buffer overflow, allocate a bigger buffer
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    currentBufferSize *= 2;
-                    ByteBuffer prev = result;
-                    result = ByteBuffer.allocate(currentBufferSize).order(ByteOrder.nativeOrder());
-                    prev.flip();
-                    result.put(prev);
+                    capacity *= 2;
+                    byte[] newResult = new byte[capacity];
+                    for (int i = 0; i < size; i++) {
+                        newResult[i] = result[i];
+                    }
+                    result = newResult;
                 }
 
-            } while (put.execute(result, value));
+                int written = put.execute(result, value, byteArraySupport, size);
+                if (written == 0) {
+                    break;
+                }
 
-            if (currentBufferSize > bufferSize) {
-                // next time, start with a bigger buffer
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                bufferSize = currentBufferSize;
+                size += written;
+            } while (true);
+
+            if (capacity > size) {
+                // shrink the space we had allocated to the exact size
+                capacity = size;
+                byte[] newResult = new byte[capacity];
+                for (int i = 0; i < size; i++) {
+                    newResult[i] = result[i];
+                }
+                result = newResult;
             }
 
-            result.flip();
+            if (capacity > bufferSize) {
+                // next time, start with a bigger buffer
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                bufferSize = capacity;
+            }
+
             return result;
         }
 
@@ -163,45 +183,45 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
 
     abstract static class PutCharNode extends LLVMNode {
 
-        protected abstract boolean execute(ByteBuffer target, Object value);
+        protected abstract int execute(byte[] target, Object value, ByteArraySupport byteArraySupport, int index);
 
         @Specialization
-        boolean doByte(ByteBuffer target, byte value) {
+        int doByte(byte[] target, byte value, ByteArraySupport byteArraySupport, int index) {
             if (value == 0) {
-                return false;
+                return 0;
             } else {
-                target.put(value);
-                return true;
+                byteArraySupport.putByte(target, index, value);
+                return Byte.BYTES;
             }
         }
 
         @Specialization
-        boolean doShort(ByteBuffer target, short value) {
+        int doShort(byte[] target, short value, ByteArraySupport byteArraySupport, int index) {
             if (value == 0) {
-                return false;
+                return 0;
             } else {
-                target.putShort(value);
-                return true;
+                byteArraySupport.putShort(target, index, value);
+                return Short.BYTES;
             }
         }
 
         @Specialization
-        boolean doInt(ByteBuffer target, int value) {
+        int doInt(byte[] target, int value, ByteArraySupport byteArraySupport, int index) {
             if (value == 0) {
-                return false;
+                return 0;
             } else {
-                target.putInt(value);
-                return true;
+                byteArraySupport.putInt(target, index, value);
+                return Integer.BYTES;
             }
         }
 
         @Specialization
-        boolean doLong(ByteBuffer target, long value) {
+        int doLong(byte[] target, long value, ByteArraySupport byteArraySupport, int index) {
             if (value == 0) {
-                return false;
+                return 0;
             } else {
-                target.putLong(value);
-                return true;
+                byteArraySupport.putLong(target, index, value);
+                return Long.BYTES;
             }
         }
 
