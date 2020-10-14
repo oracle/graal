@@ -193,7 +193,7 @@ class EspressoShutdownHandler implements ContextAccess {
         // Phase 0: wait.
         boolean nextPhase = !waitSpin(initiatingThread);
 
-        if (getContext().shouldTrySoftExit()) {
+        if (getContext().SoftExit) {
             if (nextPhase) {
                 // Phase 1: Interrupt threads, and stops daemons.
                 teardownPhase1(initiatingThread);
@@ -221,7 +221,7 @@ class EspressoShutdownHandler implements ContextAccess {
         }
 
         Thread hostToGuestReferenceDrainThread = referenceDrainer.referenceDrain();
-        if (getContext().multiThreaded()) {
+        if (getContext().MultiThreaded) {
             hostToGuestReferenceDrainThread.interrupt();
             try {
                 hostToGuestReferenceDrainThread.join();

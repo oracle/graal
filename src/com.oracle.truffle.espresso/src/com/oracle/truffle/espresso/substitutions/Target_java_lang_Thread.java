@@ -194,7 +194,7 @@ public final class Target_java_lang_Thread {
                     // Checkstyle: resume
                     @InjectMeta Meta meta) {
         EspressoContext context = meta.getContext();
-        if (context.multiThreaded()) {
+        if (context.MultiThreaded) {
             // Thread.start() is synchronized.
             KillStatus killStatus = getKillStatus(self);
             if (killStatus != null || context.isClosing()) {

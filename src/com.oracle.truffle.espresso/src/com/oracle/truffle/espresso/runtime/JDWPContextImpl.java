@@ -84,17 +84,17 @@ public final class JDWPContextImpl implements JDWPContext {
 
     public VMListener jdwpInit(TruffleLanguage.Env env, Object mainThread) {
         // enable JDWP instrumenter only if options are set (assumed valid if non-null)
-        if (context.jdwpOptions() != null) {
+        if (context.JDWPOptions != null) {
             Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
             DebuggerController control = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
-            setup.setup(debugger, control, context.jdwpOptions(), this, mainThread);
+            setup.setup(debugger, control, context.JDWPOptions, this, mainThread);
             eventListener = control.getEventListener();
         }
         return eventListener;
     }
 
     public void finalizeContext() {
-        if (context.jdwpOptions() != null) {
+        if (context.JDWPOptions != null) {
             setup.finalizeSession();
         }
     }

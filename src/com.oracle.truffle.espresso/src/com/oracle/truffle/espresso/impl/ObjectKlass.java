@@ -799,7 +799,7 @@ public final class ObjectKlass extends Klass {
 
     private void verifyImpl() {
         CompilerAsserts.neverPartOfCompilation();
-        VerifyMode mode = getContext().verifyMode();
+        VerifyMode mode = getContext().Verify;
         if (mode != VerifyMode.NONE) {
             // Do not verify BootClassLoader classes, they are trusted.
             if (mode == VerifyMode.ALL || !StaticObject.isNull(getDefiningClassLoader())) {

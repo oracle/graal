@@ -56,7 +56,7 @@ class EspressoReferenceDrainer implements ContextAccess {
     void initReferenceDrain() {
         TruffleLanguage.Env env = getContext().getEnv();
         Meta meta = getMeta();
-        boolean multiThreaded = getContext().multiThreaded();
+        boolean multiThreaded = getContext().MultiThreaded;
         if (getJavaVersion().java8OrEarlier()) {
             // Initialize reference queue
             if (multiThreaded) {
@@ -97,7 +97,7 @@ class EspressoReferenceDrainer implements ContextAccess {
     }
 
     void startReferenceDrain() {
-        if (getContext().multiThreaded()) {
+        if (getContext().MultiThreaded) {
             hostToGuestReferenceDrainThread.setDaemon(true);
             hostToGuestReferenceDrainThread.start();
         }

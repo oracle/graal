@@ -57,7 +57,6 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jni.JniEnv;
@@ -583,46 +582,6 @@ public final class EspressoContext {
     }
 
     // endregion Thread management
-
-    // region OptionAccess
-
-    public EspressoOptions.SpecCompliancyMode specCompliancyMode() {
-        return SpecCompliancyMode;
-    }
-
-    public boolean managementEnabled() {
-        return EnableManagement;
-    }
-
-    public boolean multiThreaded() {
-        return MultiThreaded;
-    }
-
-    public boolean shouldTrySoftExit() {
-        return SoftExit;
-    }
-
-    public EspressoOptions.VerifyMode verifyMode() {
-        return Verify;
-    }
-
-    public JDWPOptions jdwpOptions() {
-        return JDWPOptions;
-    }
-
-    public boolean shouldInlineFieldAccessors() {
-        return InlineFieldAccessors;
-    }
-
-    public boolean shouldSplitMethodHandles() {
-        return SplitMethodHandles;
-    }
-
-    public boolean shouldInlineMethodHandles() {
-        return InlineMethodHandle;
-    }
-
-    // endregion OptionAccess
 
     // region Shutdown
 
