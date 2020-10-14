@@ -36,8 +36,8 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
-import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -372,8 +372,10 @@ public class DebugInfoBuilder {
                     Value operand = nodeValueMap.operand(value);
                     if (operand instanceof ConstantValue && ((ConstantValue) operand).isJavaConstant()) {
                         return ((ConstantValue) operand).getJavaConstant();
+                    } else if (LIRValueUtil.isVariable(operand)) {
+                        return LIRValueUtil.asVariable(operand);
                     } else {
-                        assert operand instanceof Variable || operand instanceof RegisterValue : operand + " for " + value;
+                        assert operand instanceof RegisterValue : operand + " for " + value;
                         return (JavaValue) operand;
                     }
 
