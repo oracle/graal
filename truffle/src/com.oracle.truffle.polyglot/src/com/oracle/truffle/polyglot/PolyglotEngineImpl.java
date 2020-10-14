@@ -105,6 +105,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
@@ -114,6 +115,10 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
@@ -186,9 +191,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     @CompilationFinal Assumption singleContext = Truffle.getRuntime().createAssumption("Single context per engine.");
     final Assumption singleThreadPerContext = Truffle.getRuntime().createAssumption("Single thread per context of an engine.");
     final Assumption noInnerContexts = Truffle.getRuntime().createAssumption("No inner contexts.");
-    final Assumption noThreadTimingNeeded = Truffle.getRuntime().createAssumption("No enter timing needed.");
-    final Assumption noPriorityChangeNeeded = Truffle.getRuntime().createAssumption("No priority change needed.");
     final Assumption customHostClassLoader = Truffle.getRuntime().createAssumption("No custom host class loader needed.");
+    final Assumption neverInterrupted = Truffle.getRuntime().createAssumption("No context interrupted.");
 
     volatile OptionDescriptors allOptions;
     volatile boolean closed;
@@ -1352,10 +1356,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
 
         void cancel(List<PolyglotContextImpl> localContexts) {
-            cancel(localContexts, null);
+            cancel(localContexts, 0, null);
         }
 
-        void cancel(List<PolyglotContextImpl> localContexts, Duration timeout) {
+        boolean cancel(List<PolyglotContextImpl> localContexts, long startMillis, Duration timeout) {
             boolean cancelling = false;
             for (PolyglotContextImpl context : localContexts) {
                 if (context.cancelling || context.interrupting) {
@@ -1374,15 +1378,20 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                             context.waitForClose();
                         }
                     } else {
-                        long cancelTimeoutNanos = timeout != Duration.ZERO ? timeout.toNanos() : 0;
+                        long cancelTimeoutMillis = timeout != Duration.ZERO ? timeout.toMillis() : 0;
+                        boolean success = true;
                         for (PolyglotContextImpl context : localContexts) {
-                            context.waitForThreads(cancelTimeoutNanos);
+                            if (!context.waitForThreads(true, true, startMillis, cancelTimeoutMillis)) {
+                                success = false;
+                            }
                         }
+                        return success;
                     }
                 } finally {
                     disableCancel();
                 }
             }
+            return true;
         }
 
         void enableCancel() {
@@ -1409,7 +1418,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                             if (context.invalid || context.cancelling) {
                                 throw context.createCancelException(eventContext.getInstrumentedNode());
                             } else if (context.interrupting) {
-                                throw new InterruptExecution(eventContext);
+                                throw new InterruptExecution(eventContext.getInstrumentedNode());
                             }
                         }
                     });
@@ -1445,10 +1454,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             this.resourceLimit = resourceLimit;
         }
 
-        Node getLocation() {
-            return location;
-        }
-
         SourceSection getSourceLocation() {
             return location == null ? null : location.getEncapsulatingSourceSection();
         }
@@ -1467,24 +1472,19 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
     }
 
-    @SuppressWarnings("serial")
-    static final class InterruptExecution extends Error implements TruffleException {
+    @ExportLibrary(InteropLibrary.class)
+    static final class InterruptExecution extends AbstractTruffleException {
 
-        private final Node node;
-        private final String interruptMessage;
+        private static final long serialVersionUID = 8652484189010224048L;
 
-        InterruptExecution(EventContext context) {
-            this.node = context != null ? context.getInstrumentedNode() : null;
-            this.interruptMessage = "Execution got interrupted.";
+        InterruptExecution(Node location) {
+            super("Execution got interrupted.", location);
         }
 
-        public Node getLocation() {
-            return node;
-        }
-
-        @Override
-        public String getMessage() {
-            return interruptMessage;
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        ExceptionType getExceptionType() {
+            return ExceptionType.INTERRUPT;
         }
     }
 
@@ -1822,7 +1822,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     }
 
     PolyglotThreadInfo getCachedThreadInfo(PolyglotContextImpl context) {
-        if (singleThreadPerContext.isValid() && singleContext.isValid()) {
+        if (singleThreadPerContext.isValid() && singleContext.isValid() && neverInterrupted.isValid()) {
             return context.constantCurrentThreadInfo;
         } else {
             return context.currentThreadInfo;

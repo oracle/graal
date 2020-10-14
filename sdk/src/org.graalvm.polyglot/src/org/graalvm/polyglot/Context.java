@@ -767,17 +767,24 @@ public final class Context implements AutoCloseable {
 
     /**
      * Use this method to interrupt this context. The interruption is non-destructive meaning the
-     * context is still usable after this method finished.
+     * context is still usable after this method finishes. Please note that guest finally blocks are
+     * executed during interrupt. A context thread may not be interruptiple if it uses
+     * non-interruptible waiting or executes non-interruptible host code.
+     * 
+     * This method may be used as a "soft exit", meaning that it can be used before
+     * {@link #close(boolean) close(true)} is executed.
      *
      * @param timeout specifies the duration the interrupt method will wait for the active threads
      *            of the context to be finished. Setting the duration to {@link Duration#ZERO 0}
      *            means wait indefinitely.
      * @throws IllegalStateException in case the context is entered in the current thread.
+     * @return <code>true</code> if the interrupt was successful, i.e., all threads were finished
+     *         within the specified time limit.
      *
      * @since 20.3
      */
-    public void interrupt(Duration timeout) {
-        impl.interrupt(this, timeout);
+    public boolean interrupt(Duration timeout) {
+        return impl.interrupt(this, timeout);
     }
 
     /**

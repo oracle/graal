@@ -164,7 +164,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             this.incompleteSource = false;
             this.exit = isLegacyTruffleExceptionExit(exception);
             this.exitStatus = exit ? getLegacyTruffleExceptionExitStatus(exception) : 0;
-            this.interrupted = false;
+            this.interrupted = exception != null && exception.getCause() instanceof InterruptedException;
             com.oracle.truffle.api.source.SourceSection location = exception instanceof CancelExecution ? ((CancelExecution) exception).getSourceLocation()
                             : getLegacyTruffleExceptionSourceLocation(exception);
             this.sourceLocation = location != null ? newSourceSection(location) : null;
@@ -437,11 +437,18 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             return null;
         }
 
-        PolyglotLanguageContext languageContext = context.getContext(language);
-        if (!languageContext.isCreated()) {
-            return null;
+        synchronized (context) {
+            /*
+             * Synchronized on polyglot context, otherwise isCreated() can change before
+             * getInternalFileSystemContext is called.
+             */
+            PolyglotLanguageContext languageContext = context.getContext(language);
+            if (!languageContext.isCreated()) {
+                return null;
+            }
+
+            return languageContext.getInternalFileSystemContext();
         }
-        return languageContext.getInternalFileSystemContext();
     }
 
     /**

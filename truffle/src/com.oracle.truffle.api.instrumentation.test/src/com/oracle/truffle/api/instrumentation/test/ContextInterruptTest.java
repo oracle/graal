@@ -56,8 +56,12 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleContext;
@@ -73,6 +77,11 @@ public class ContextInterruptTest {
     @Test
     public void testInterruptDuringInfiniteLoop() throws InterruptedException, IOException, ExecutionException {
         testInterruptDuringInfiniteLoop("BLOCK(CONSTANT(42),LOOP(infinity, STATEMENT))", 1, false, false);
+    }
+
+    @Test
+    public void testInterruptDuringInfiniteLoopWithSleep() throws InterruptedException, IOException, ExecutionException {
+        testInterruptDuringInfiniteLoop("BLOCK(CONSTANT(42),LOOP(infinity, SLEEP(1000)))", 1, false, false);
     }
 
     @Test
@@ -126,7 +135,6 @@ public class ContextInterruptTest {
     }
 
     private static void testInterruptDuringInfiniteLoop(String code, int nThreads, boolean multiContext, boolean multiEngine) throws InterruptedException, IOException, ExecutionException {
-        Thread mainThread = Thread.currentThread();
         ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
         CountDownLatch threadsStarted = new CountDownLatch(nThreads);
         CountDownLatch allCancelledLatch = new CountDownLatch(nThreads + 1);
@@ -136,7 +144,7 @@ public class ContextInterruptTest {
         CountDownLatch passLatch = new CountDownLatch(nThreads);
         if (engine != null) {
             builder.engine(engine);
-            TruffleInstrument.Env instrumentEnv = engine.getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
+            TruffleInstrument.Env instrumentEnv = getInstrumentEnv(engine);
             attachListener(passLatch::countDown, instrumentEnv);
         }
         for (int i = 0; i < nThreads; i++) {
@@ -144,7 +152,7 @@ public class ContextInterruptTest {
                 Context ctx = builder.build();
                 contexts.add(ctx);
                 if (engine == null) {
-                    TruffleInstrument.Env instrumentEnv = ctx.getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
+                    TruffleInstrument.Env instrumentEnv = getInstrumentEnv(ctx.getEngine());
                     attachListener(passLatch::countDown, instrumentEnv);
                 }
             } else {
@@ -167,7 +175,6 @@ public class ContextInterruptTest {
                         if (!pe.isInterrupted()) {
                             throw pe;
                         }
-                        mainThread.interrupt();
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -194,7 +201,7 @@ public class ContextInterruptTest {
             for (int i = 0; i < nThreads; i++) {
                 if (multiContext || i == 0) {
                     Context context = contexts.get(i);
-                    context.interrupt(Duration.ofSeconds(100));
+                    Assert.assertTrue(context.interrupt(Duration.ofSeconds(100)));
                 }
             }
             allCancelledLatch.countDown();
@@ -228,6 +235,10 @@ public class ContextInterruptTest {
         }
     }
 
+    private static TruffleInstrument.Env getInstrumentEnv(Engine engine) {
+        return engine.getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
+    }
+
     private static void attachListener(Runnable runnable, TruffleInstrument.Env instrumentEnv) {
         instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.ConstantTag.class).build(), new ExecutionEventListener() {
             @Override
@@ -258,7 +269,7 @@ public class ContextInterruptTest {
         context[0] = Context.create();
         try {
             attachListener(() -> context[0].interrupt(Duration.ofSeconds(100)),
-                            context[0].getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class));
+                            getInstrumentEnv(context[0].getEngine()));
             context[0].initialize(InstrumentationTestLanguage.ID);
             Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "LOOP(infinity,CONSTANT(42))", "SelfInterruptingScript").build();
             context[0].eval(source);
@@ -283,7 +294,7 @@ public class ContextInterruptTest {
                     polyglotThreadException[0] = e;
                     throw e;
                 }
-            }, context[0].getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class));
+            }, getInstrumentEnv(context[0].getEngine()));
             context[0].initialize(InstrumentationTestLanguage.ID);
             Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "CONTEXT(DEFINE(foo,LOOP(infinity,CONSTANT(42))),SPAWN(foo),JOIN())", "SelfInterruptingScript").build();
             context[0].eval(source);
@@ -302,14 +313,14 @@ public class ContextInterruptTest {
     @Test
     public void testInterruptCurrentThreadNotEntered() {
         try (Context context = Context.create()) {
-            context.interrupt(Duration.ofSeconds(100));
+            Assert.assertTrue(context.interrupt(Duration.ofSeconds(100)));
         }
     }
 
     @Test
     public void testInnerContextNotEnteredOuterContext() throws IOException, InterruptedException {
         try (Context context = Context.create()) {
-            TruffleInstrument.Env instrumentEnv = context.getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
+            TruffleInstrument.Env instrumentEnv = getInstrumentEnv(context.getEngine());
             context.initialize(InstrumentationTestLanguage.ID);
             AtomicReference<TruffleLanguage.Env> envReference = new AtomicReference<>();
             instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), new ExecutionEventListener() {
@@ -343,7 +354,7 @@ public class ContextInterruptTest {
     @Test
     public void testInnerContextPolyglotThreadNotEnteredOuterContext() throws IOException {
         try (Context context = Context.newBuilder().allowCreateThread(true).build()) {
-            TruffleInstrument.Env instrumentEnv = context.getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
+            TruffleInstrument.Env instrumentEnv = getInstrumentEnv(context.getEngine());
             instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), new ExecutionEventListener() {
                 @Override
                 public void onEnter(EventContext c, VirtualFrame frame) {
