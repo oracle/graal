@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.parser.metadata;
 public enum Flags {
 
     // see https://llvm.org/svn/llvm-project/llvm/trunk/include/llvm/IR/DebugInfoFlags.def
+    VIRTUAL(1L << 5),
     ARTIFICIAL(1L << 6),
     OBJECT_POINTER(1L << 10),
     STATIC_MEMBER(1L << 12),
