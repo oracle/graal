@@ -162,7 +162,7 @@ public final class GCImpl implements GC {
         printGCBefore(cause.getName());
         boolean outOfMemory = collectImpl(cause.getName());
         HeapPolicy.edenUsedBytes.set(WordFactory.unsigned(0));
-        HeapPolicy.youngUsedBytes.set(getAccounting().getYoungChunkBytesAfter());
+        HeapPolicy.youngUsedBytes.set(accounting.getYoungChunkBytesAfter());
         printGCAfter(cause.getName());
 
         finishCollection();
@@ -211,7 +211,7 @@ public final class GCImpl implements GC {
     private boolean doCollectImpl(CollectionPolicy appliedPolicy) {
         CommittedMemoryProvider.get().beforeGarbageCollection();
 
-        getAccounting().beforeCollection();
+        accounting.beforeCollection();
 
         try (Timer ct = timers.collection.open()) {
             if (appliedPolicy.collectIncrementally()) {
@@ -224,7 +224,7 @@ public final class GCImpl implements GC {
         }
         CommittedMemoryProvider.get().afterGarbageCollection(completeCollection);
 
-        getAccounting().afterCollection(completeCollection, timers.collection);
+        accounting.afterCollection(completeCollection, timers.collection);
         UnsignedWord maxBytes = HeapPolicy.getMaximumHeapSize();
         UnsignedWord usedBytes = getChunkBytes();
         boolean outOfMemory = usedBytes.aboveThan(maxBytes);
@@ -940,7 +940,7 @@ public final class GCImpl implements GC {
         return collectionEpoch;
     }
 
-    GCAccounting getAccounting() {
+    public GCAccounting getAccounting() {
         return accounting;
     }
 

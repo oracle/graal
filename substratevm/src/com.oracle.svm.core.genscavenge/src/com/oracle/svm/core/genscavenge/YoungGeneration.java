@@ -35,7 +35,6 @@ import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.VMOperation;
 
 final class YoungGeneration extends Generation {
     private final Space eden;
@@ -166,6 +165,7 @@ final class YoungGeneration extends Generation {
     void swapSpaces() {
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             assert getSurvivorFromSpaceAt(i).isEmpty() : "Survivor fromSpace should be empty.";
+            assert getSurvivorFromSpaceAt(i).getChunkBytes().equal(0);
             getSurvivorFromSpaceAt(i).absorb(getSurvivorToSpaceAt(i));
         }
     }

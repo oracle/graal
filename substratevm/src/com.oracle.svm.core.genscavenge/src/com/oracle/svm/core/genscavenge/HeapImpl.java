@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
-
 //Checkstyle: stop
 
 import java.lang.ref.Reference;
@@ -231,7 +228,7 @@ public final class HeapImpl extends Heap {
         return runtimeCodeInfoGcSupport;
     }
 
-    GCImpl getGCImpl() {
+    public GCImpl getGCImpl() {
         return gcImpl;
     }
 
@@ -743,10 +740,5 @@ final class Target_java_lang_Runtime {
     @Substitute
     private void gc() {
         HeapImpl.getHeapImpl().getHeapPolicy().getUserRequestedGCPolicy().maybeCauseCollection(GCCause.JavaLangSystemGC);
-    }
-
-    @Fold
-    protected static GCAccounting getAccounting() {
-        return HeapImpl.getHeapImpl().getGCImpl().getAccounting();
     }
 }

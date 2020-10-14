@@ -37,7 +37,7 @@ import com.oracle.svm.core.log.Log;
  * ChunkBytes refer to bytes reserved (but maybe not occupied). ObjectBytes refer to bytes occupied
  * by objects.
  */
-final class GCAccounting {
+public final class GCAccounting {
     /* State that is available to collection policies, etc. */
     private long incrementalCollectionCount = 0;
     private long incrementalCollectionTotalNanos = 0;
@@ -68,11 +68,11 @@ final class GCAccounting {
     GCAccounting() {
     }
 
-    long getIncrementalCollectionCount() {
+    public long getIncrementalCollectionCount() {
         return incrementalCollectionCount;
     }
 
-    long getIncrementalCollectionTotalNanos() {
+    public long getIncrementalCollectionTotalNanos() {
         return incrementalCollectionTotalNanos;
     }
 
@@ -80,11 +80,11 @@ final class GCAccounting {
         return allocatedChunkBytes;
     }
 
-    long getCompleteCollectionCount() {
+    public long getCompleteCollectionCount() {
         return completeCollectionCount;
     }
 
-    long getCompleteCollectionTotalNanos() {
+    public long getCompleteCollectionTotalNanos() {
         return completeCollectionTotalNanos;
     }
 
@@ -100,12 +100,16 @@ final class GCAccounting {
         return allocatedObjectBytes;
     }
 
-    UnsignedWord getOldGenerationAfterChunkBytes() {
+    public UnsignedWord getOldGenerationAfterChunkBytes() {
         return oldChunkBytesAfter;
     }
 
     UnsignedWord getYoungChunkBytesAfter() {
         return youngChunkBytesAfter;
+    }
+
+    public static UnsignedWord getSurvivorSpaceAfterChunkBytes(int survivorIndex) {
+        return HeapImpl.getHeapImpl().getYoungGeneration().getSurvivorFromSpaceAt(survivorIndex).getChunkBytes();
     }
 
     UnsignedWord getLastCollectionPromotedChunkBytes() {

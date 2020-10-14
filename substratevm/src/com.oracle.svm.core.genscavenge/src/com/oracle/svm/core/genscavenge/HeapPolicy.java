@@ -318,8 +318,12 @@ public final class HeapPolicy {
     static final UninterruptibleUtils.AtomicUnsigned youngUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static UnsignedWord getYoungUsedBytes() {
+    public static UnsignedWord getYoungUsedBytes() {
         return youngUsedBytes.get();
+    }
+
+    public static UnsignedWord getEdenUsedBytes() {
+        return edenUsedBytes.get();
     }
 
     private static UnsignedWord getAllocationBeforePhysicalMemorySize() {
