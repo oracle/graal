@@ -901,10 +901,6 @@ abstract class DynamicObjectLibraryImpl {
                     return null;
                 }
 
-                if (cachedCount == 1) {
-                    reportPolymorphicSpecialize();
-                }
-
                 SpecificKey newEntry = SpecificKey.create(key, cachedShape, tail, useIdentity);
                 insert(newEntry);
                 this.keyCache = newEntry;
