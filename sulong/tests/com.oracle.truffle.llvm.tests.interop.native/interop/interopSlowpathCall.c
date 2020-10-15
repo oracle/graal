@@ -28,7 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 struct Foreign {
     int a;

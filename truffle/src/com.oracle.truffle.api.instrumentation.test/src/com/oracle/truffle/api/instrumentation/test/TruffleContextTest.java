@@ -60,12 +60,12 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.ThreadsActivationListener;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import java.lang.reflect.Method;
 
 public class TruffleContextTest extends AbstractPolyglotTest {
 
@@ -80,10 +80,10 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         assertNotNull(tc.toString());
         assertEquals(tc.getParent(), languageEnv.getContext());
 
-        Object prev = tc.enter();
+        Object prev = tc.enter(null);
         assertTrue(tc.isEntered());
         assertFalse(tc.isClosed());
-        tc.leave(prev);
+        tc.leave(null, prev);
 
         assertFalse(tc.isEntered());
         assertFalse(tc.isClosed());
@@ -155,7 +155,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         for (int i = 0; i < threads.size(); i++) {
             Throwable e = exceptions.get(i).get();
             assertNotNull(e);
-            assertTrue(((TruffleException) e).isCancelled());
+            assertEquals(getCancelExcecutionClass(), e.getClass());
             assertEquals("testreason", e.getMessage());
             assertTrue(tc.isClosed());
         }
@@ -171,22 +171,20 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         Node node = new Node() {
         };
 
-        Object prev = tc.enter();
+        Object prev = tc.enter(null);
 
         assertFails(() -> tc.close(), IllegalStateException.class);
 
-        assertFails(() -> tc.closeCancelled(node, "testreason"), TruffleException.class, (e) -> {
-            assertSame(e.getLocation(), node);
-            assertTrue(e.isCancelled());
+        assertFails(() -> tc.closeCancelled(node, "testreason"), getCancelExcecutionClass(), (e) -> {
+            assertSame(getCancelExcecutionLocation(e), node);
             assertEquals("testreason", ((Throwable) e).getMessage());
         });
 
-        assertFails(() -> tc.closeResourceExhausted(node, "testreason"), TruffleException.class, (e) -> {
-            assertSame(e.getLocation(), node);
+        assertFails(() -> tc.closeResourceExhausted(node, "testreason"), getCancelExcecutionClass(), (e) -> {
+            assertSame(getCancelExcecutionLocation(e), node);
             assertEquals("testreason", ((Throwable) e).getMessage());
-            assertTrue(e.isCancelled());
         });
-        tc.leave(prev);
+        tc.leave(null, prev);
     }
 
     @Test
@@ -245,14 +243,14 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         assertFalse(tc2.isActive());
         assertFalse(tc2.isEntered());
 
-        Object prev1 = tc1.enter();
+        Object prev1 = tc1.enter(null);
 
         assertTrue(tc1.isActive());
         assertTrue(tc1.isEntered());
         assertFalse(tc2.isActive());
         assertFalse(tc2.isEntered());
 
-        Object prev2 = tc2.enter();
+        Object prev2 = tc2.enter(null);
 
         assertTrue(tc1.isActive());
         assertFalse(tc1.isEntered());
@@ -262,35 +260,52 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         assertFails(() -> tc1.closeCancelled(null, ""), IllegalStateException.class);
         assertFails(() -> tc1.closeResourceExhausted(null, ""), IllegalStateException.class);
 
-        tc2.leave(prev2);
+        tc2.leave(null, prev2);
 
         assertTrue(tc1.isActive());
         assertTrue(tc1.isEntered());
         assertFalse(tc2.isActive());
         assertFalse(tc2.isEntered());
 
-        tc1.leave(prev1);
+        tc1.leave(null, prev1);
 
         assertFalse(tc1.isActive());
         assertFalse(tc1.isEntered());
         assertFalse(tc2.isActive());
         assertFalse(tc2.isEntered());
 
-        prev1 = tc1.enter();
-        prev2 = tc2.enter();
-        Object prev3 = tc1.enter();
+        prev1 = tc1.enter(null);
+        prev2 = tc2.enter(null);
+        Object prev3 = tc1.enter(null);
 
         assertFails(() -> tc1.close(), IllegalStateException.class);
 
         // we allow cancel in this case. the error will be propagated an the caller
         // need to make sure to either propagate the cancel the parent context
-        assertFails(() -> tc1.closeCancelled(null, ""), TruffleException.class);
-        assertFails(() -> tc1.closeResourceExhausted(null, ""), TruffleException.class);
+        assertFails(() -> tc1.closeCancelled(null, ""), getCancelExcecutionClass());
+        assertFails(() -> tc1.closeResourceExhausted(null, ""), getCancelExcecutionClass());
 
-        tc1.leave(prev3);
-        tc2.leave(prev2);
-        tc1.leave(prev1);
+        tc1.leave(null, prev3);
+        tc2.leave(null, prev2);
+        tc1.leave(null, prev1);
 
     }
 
+    private static Class<? extends Throwable> getCancelExcecutionClass() {
+        try {
+            return Class.forName("com.oracle.truffle.polyglot.PolyglotEngineImpl$CancelExecution").asSubclass(Throwable.class);
+        } catch (ClassNotFoundException cnf) {
+            throw new AssertionError("Cannot load CancelExecution class.", cnf);
+        }
+    }
+
+    private static Node getCancelExcecutionLocation(Throwable t) {
+        try {
+            Method m = t.getClass().getDeclaredMethod("getLocation");
+            m.setAccessible(true);
+            return (Node) m.invoke(t);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Failed to invoke CancelExecution.getLocation.", e);
+        }
+    }
 }

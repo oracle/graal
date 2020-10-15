@@ -48,13 +48,6 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
 
     @Input ValueNode clazz;
 
-    /**
-     * Class pointer to class.class needs to be exposed earlier than this node is lowered so that it
-     * can be replaced by the AOT machinery. If it's not needed for lowering this input can be
-     * ignored.
-     */
-    @OptionalInput ValueNode classClass;
-
     public DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
         this(TYPE, clazz, fillContents, null);
     }
@@ -69,18 +62,26 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
         return clazz;
     }
 
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
+    public static boolean canConvertToNonDynamic(ValueNode clazz, CanonicalizerTool tool) {
         if (clazz.isConstant()) {
             if (GeneratePIC.getValue(tool.getOptions())) {
                 // Can't fold for AOT, because the resulting NewInstanceNode will be missing its
                 // InitializeKlassNode.
-                return this;
+                return false;
             }
             ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
             if (type != null && !throwsInstantiationException(type, tool.getMetaAccess()) && tool.getMetaAccessExtensionProvider().canConstantFoldDynamicAllocation(type)) {
-                return new NewInstanceNode(type, fillContents(), stateBefore());
+                return true;
             }
+        }
+        return false;
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        if (canConvertToNonDynamic(clazz, tool)) {
+            ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
+            return new NewInstanceNode(type, fillContents(), stateBefore());
         }
         return this;
     }
@@ -91,14 +92,5 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
 
     public static boolean throwsInstantiationException(ResolvedJavaType type, MetaAccessProvider metaAccess) {
         return type.isPrimitive() || type.isArray() || type.isInterface() || Modifier.isAbstract(type.getModifiers()) || type.equals(metaAccess.lookupJavaType(Class.class));
-    }
-
-    public ValueNode getClassClass() {
-        return classClass;
-    }
-
-    public void setClassClass(ValueNode newClassClass) {
-        updateUsages(classClass, newClassClass);
-        classClass = newClassClass;
     }
 }

@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases;
 
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBoundaries;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBoundariesPerInlineSite;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBranches;
@@ -111,7 +110,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
     }
 
     protected String instrumentationFilter(OptionValues options) {
-        return getPolyglotOptionValue(options, PolyglotCompilerOptions.InstrumentFilter);
+        return options.get(PolyglotCompilerOptions.InstrumentFilter);
     }
 
     protected static void insertCounter(StructuredGraph graph, CoreProviders context, JavaConstant tableConstant,
@@ -383,11 +382,11 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
         public final int instrumentationTableSize;
 
         public InstrumentationConfiguration(OptionValues options) {
-            this.instrumentBranches = getPolyglotOptionValue(options, InstrumentBranches);
-            this.instrumentBranchesPerInlineSite = getPolyglotOptionValue(options, InstrumentBranchesPerInlineSite);
-            this.instrumentBoundaries = getPolyglotOptionValue(options, InstrumentBoundaries);
-            this.instrumentBoundariesPerInlineSite = getPolyglotOptionValue(options, InstrumentBoundariesPerInlineSite);
-            this.instrumentationTableSize = getPolyglotOptionValue(options, InstrumentationTableSize);
+            this.instrumentBranches = options.get(InstrumentBranches);
+            this.instrumentBranchesPerInlineSite = options.get(InstrumentBranchesPerInlineSite);
+            this.instrumentBoundaries = options.get(InstrumentBoundaries);
+            this.instrumentBoundariesPerInlineSite = options.get(InstrumentBoundariesPerInlineSite);
+            this.instrumentationTableSize = options.get(InstrumentationTableSize);
         }
     }
 

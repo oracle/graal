@@ -70,7 +70,7 @@ public class CompareContextsNode extends WasmBuiltinRootNode {
 
     @Override
     public String builtinNodeName() {
-        return TestutilModule.Names.RESET_CONTEXT;
+        return TestutilModule.Names.COMPARE_CONTEXTS;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -112,7 +112,7 @@ public class CompareContextsNode extends WasmBuiltinRootNode {
             byte first = (byte) firstMemory.load_i32_8s(this, ptr);
             byte last = (byte) lastMemory.load_i32_8s(this, ptr);
             if (first != last) {
-                long from = (ptr - 100) / 8 * 8;
+                int from = (ptr - 100) / 8 * 8;
                 throw new WasmExecutionException(this, "Memory mismatch.\n" +
                                 "-- Reference --\n" + firstMemory.hexView(from, 200) + "\n" +
                                 "-- Actual --\n" + firstMemory.hexView(from, 200) + "\n");

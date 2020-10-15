@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 void test1(FILE *file, va_list args) {
     vfprintf(file, "%d %f %ld %c %s %% %x %X %i\n", args);
@@ -43,8 +44,13 @@ void test2(FILE *file, ...) {
 }
 
 int main() {
-    char name[L_tmpnam];
-    FILE *file = fopen(tmpnam(name), "w");
+    char name[] = "vfprintf-XXXXXX";
+    int fd = mkstemp(name);
+    if (fd == -1) {
+        printf("Failed to create temporary file\n");
+        abort();
+    }
+    FILE *file = fdopen(fd, "w");
     if (file == NULL) {
         printf("Failed to open file\n");
         abort();

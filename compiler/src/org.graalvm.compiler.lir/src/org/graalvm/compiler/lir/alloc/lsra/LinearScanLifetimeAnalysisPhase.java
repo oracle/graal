@@ -28,6 +28,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.isCast;
 import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.debug.LIRGenerationDebugContext.getSourceForOperandFromDebugContext;
@@ -537,7 +538,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
         }
 
         Interval interval = allocator.getOrCreateInterval(operand);
-        if (!kind.equals(LIRKind.Illegal)) {
+        if (!kind.equals(LIRKind.Illegal) && !isCast(operand)) {
             interval.setKind(kind);
         }
 
@@ -557,7 +558,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
         }
 
         Interval interval = allocator.getOrCreateInterval(operand);
-        if (!kind.equals(LIRKind.Illegal)) {
+        if (!kind.equals(LIRKind.Illegal) && !isCast(operand)) {
             interval.setKind(kind);
         }
 

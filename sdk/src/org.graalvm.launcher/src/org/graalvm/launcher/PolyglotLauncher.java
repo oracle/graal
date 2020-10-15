@@ -194,7 +194,8 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
 
     private void launchImpl(List<String> argumentsList) {
         if (isAOT()) {
-            maybeNativeExec(argumentsList, true, Collections.emptyMap());
+            List<String> originalArgs = Collections.unmodifiableList(new ArrayList<>(argumentsList));
+            maybeNativeExec(originalArgs, argumentsList, true);
         }
 
         final Deque<String> arguments = new ArrayDeque<>(argumentsList);
@@ -426,7 +427,7 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
 
     private void runShell(Context.Builder contextBuilder) {
         try (Context context = contextBuilder.build();
-                        MultiLanguageShell polyglotShell = new MultiLanguageShell(context, System.in, System.out, mainLanguage)) {
+                        MultiLanguageShell polyglotShell = new MultiLanguageShell(context, mainLanguage)) {
             throw exit(polyglotShell.runRepl());
         } catch (IOException e) {
             throw abort(e);

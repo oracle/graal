@@ -24,7 +24,7 @@
  */
 package org.graalvm.tools.insight.test;
 
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -741,7 +741,7 @@ public class InsightObjectTest {
                 try {
                     ctx.returnValue(Collections.emptyMap());
                 } catch (RuntimeException ex) {
-                    assertTrue("Expecting TruffleException: " + ex, ex instanceof TruffleException);
+                    assertTrue("Expecting TruffleException: " + ex, ex instanceof AbstractTruffleException);
                 }
                 ctx.returnNow(42);
             };

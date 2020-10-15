@@ -1743,17 +1743,6 @@ suite = {
       "jacoco" : "exclude",
     },
 
-    "org.graalvm.compiler.truffle.common.processor" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.options.processor",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
-      "workingSets" : "Graal,Truffle",
-    },
-
     "org.graalvm.compiler.truffle.compiler" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -2281,7 +2270,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.processor",
         "org.graalvm.compiler.options.processor",
-        "org.graalvm.compiler.truffle.common.processor",
         "org.graalvm.compiler.serviceprovider.processor",
         "org.graalvm.compiler.nodeinfo.processor",
         "org.graalvm.compiler.replacements.processor",

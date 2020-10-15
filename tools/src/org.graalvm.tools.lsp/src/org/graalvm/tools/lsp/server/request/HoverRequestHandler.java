@@ -42,7 +42,6 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -156,7 +155,7 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
                 logger.fine("Trying coverage-based eval...");
                 evalResult = executableNode.execute(coverageData.getFrame());
             } catch (Exception e) {
-                if (!((e instanceof TruffleException) || (e instanceof ControlFlowException))) {
+                if (!(INTEROP.isException(e) || (e instanceof ControlFlowException))) {
                     e.printStackTrace(err);
                 }
                 return Hover.create(Collections.emptyList());

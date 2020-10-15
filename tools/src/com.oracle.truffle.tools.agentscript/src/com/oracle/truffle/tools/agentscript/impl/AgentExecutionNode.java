@@ -40,6 +40,7 @@ final class AgentExecutionNode extends ExecutionEventNode {
     @Node.Child private InteropLibrary enterDispatch;
     @Node.Child private InteropLibrary exitDispatch;
     @Node.Child private NodeLibrary nodeDispatch;
+    @Node.Child private InteropLibrary exceptionDispatch;
     private final Object enter;
     private final Object exit;
     private final EventContextObject ctx;
@@ -56,6 +57,9 @@ final class AgentExecutionNode extends ExecutionEventNode {
         }
         Node node = ctx.getInstrumentedNode();
         this.nodeDispatch = NodeLibrary.getFactory().create(node);
+        if (enter != null || exit != null) {
+            this.exceptionDispatch = InteropLibrary.getFactory().createDispatched(3);
+        }
         this.ctx = ctx;
         this.instrumentedNode = node;
     }
@@ -68,7 +72,7 @@ final class AgentExecutionNode extends ExecutionEventNode {
             } catch (InteropException ex) {
                 throw ctx.wrap(enter, 2, ex);
             } catch (RuntimeException ex) {
-                throw ctx.rethrow(ex);
+                throw ctx.rethrow(ex, exceptionDispatch);
             }
         }
     }
@@ -81,7 +85,7 @@ final class AgentExecutionNode extends ExecutionEventNode {
             } catch (InteropException ex) {
                 throw ctx.wrap(exit, 2, ex);
             } catch (RuntimeException ex) {
-                throw ctx.rethrow(ex);
+                throw ctx.rethrow(ex, exceptionDispatch);
             }
         }
     }
@@ -94,7 +98,7 @@ final class AgentExecutionNode extends ExecutionEventNode {
             } catch (InteropException ex) {
                 throw ctx.wrap(exit, 2, ex);
             } catch (RuntimeException ex) {
-                throw ctx.rethrow(ex);
+                throw ctx.rethrow(ex, exceptionDispatch);
             }
         }
     }

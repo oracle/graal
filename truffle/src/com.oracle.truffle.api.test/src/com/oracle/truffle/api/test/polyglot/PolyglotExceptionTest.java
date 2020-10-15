@@ -67,28 +67,22 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @SuppressWarnings("serial")
-    private static class TestGuestError extends RuntimeException implements TruffleException {
+    private static class TestGuestError extends AbstractTruffleException {
 
         TestGuestError() {
             super("MyError");
         }
-
-        public Node getLocation() {
-            return null;
-        }
-
     }
 
     @Test
@@ -172,7 +166,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         Value checkError = context.asValue(checkErrorObj);
 
         checkErrorObj.verifyError = (e) -> {
-            Assert.assertTrue(e instanceof TruffleException);
+            Assert.assertTrue(InteropLibrary.getUncached().isException(e));
             Assert.assertEquals("HostException", e.getClass().getSimpleName());
         };
         Assert.assertTrue(checkError.execute(throwError).asBoolean());

@@ -60,7 +60,7 @@ public class Memory extends Dictionary {
         this.memory = memory;
         addMembers(new Object[]{
                         "descriptor", this.descriptor,
-                        "grow", new Executable(args -> grow((Long) args[0])),
+                        "grow", new Executable(args -> grow((Integer) args[0])),
                         "buffer", new Executable(args -> new MemoryArrayBuffer(memory)),
         });
     }
@@ -69,17 +69,17 @@ public class Memory extends Dictionary {
         this(new UnsafeWasmMemory(initial(descriptor), maximum(descriptor)));
     }
 
-    private static long initial(Object descriptor) {
+    private static int initial(Object descriptor) {
         try {
-            return (Long) InteropLibrary.getUncached().readMember(descriptor, "initial");
+            return (int) InteropLibrary.getUncached().readMember(descriptor, "initial");
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid memory descriptor " + descriptor);
         }
     }
 
-    private static long maximum(Object descriptor) {
+    private static int maximum(Object descriptor) {
         try {
-            return (Long) InteropLibrary.getUncached().readMember(descriptor, "maximum");
+            return (int) InteropLibrary.getUncached().readMember(descriptor, "maximum");
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid memory descriptor " + descriptor);
         }
@@ -94,7 +94,7 @@ public class Memory extends Dictionary {
         return new WasmExecutionException(null, "Range error.");
     }
 
-    private long grow(long delta) {
+    private long grow(int delta) {
         final long pageSize = memory.pageSize();
         if (!memory.grow(delta)) {
             throw rangeError();

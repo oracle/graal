@@ -39,6 +39,7 @@ import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -117,7 +118,7 @@ public final class LoadModulesNode extends LLVMRootNode {
     final LLVMLanguage language;
     private boolean hasInitialised;
 
-    private enum LLVMLoadingPhase {
+    protected enum LLVMLoadingPhase {
         ALL,
         BUILD_SCOPES,
         INIT_SYMBOLS,
@@ -194,11 +195,11 @@ public final class LoadModulesNode extends LLVMRootNode {
                 for (int i = 0; i < dependenciesSource.size(); i++) {
                     if (dependenciesSource.get(i) instanceof Source) {
                         CallTarget callTarget = context.getEnv().parseInternal((Source) dependenciesSource.get(i));
-                        dependencies[i] = DirectCallNode.create(callTarget);
+                        dependencies[i] = insert(DirectCallNode.create(callTarget));
                         // The call targets are needed for initialising the scope.
                         callTargets[i] = callTarget;
                     } else if (dependenciesSource.get(i) instanceof CallTarget) {
-                        dependencies[i] = DirectCallNode.create((CallTarget) dependenciesSource.get(i));
+                        dependencies[i] = insert(DirectCallNode.create((CallTarget) dependenciesSource.get(i)));
                         // The call targets are needed for initialising the scope.
                         callTargets[i] = (CallTarget) dependenciesSource.get(i);
                     } else {
@@ -361,6 +362,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         }
     }
 
+    @ExplodeLoop
     private void executeInitialiseSymbol(LLVMContext context, BitSet visited) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);
@@ -374,6 +376,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         }
     }
 
+    @ExplodeLoop
     private void executeInitialiseExternal(LLVMContext context, BitSet visited, LLVMLocalScope localScope) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);
@@ -386,6 +389,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         }
     }
 
+    @ExplodeLoop
     private void executeInitialiseGlobals(LLVMContext context, BitSet visited, VirtualFrame frame) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);
@@ -398,6 +402,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         }
     }
 
+    @ExplodeLoop
     private void executeInitialiseOverwrite(LLVMContext context, BitSet visited, LLVMLocalScope localScope) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);
@@ -410,6 +415,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         initOverwrite.execute(context, localScope);
     }
 
+    @ExplodeLoop
     private void executeInitialiseContext(BitSet visited, VirtualFrame frame) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);
@@ -422,6 +428,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         }
     }
 
+    @ExplodeLoop
     private void executeInitialiseModule(LLVMContext context, BitSet visited, VirtualFrame frame) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);
@@ -434,6 +441,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         }
     }
 
+    @ExplodeLoop
     private void executeDone(LLVMContext context, BitSet visited) {
         if (!visited.get(bitcodeID)) {
             visited.set(bitcodeID);

@@ -72,6 +72,18 @@ public abstract class LLVMSameObjectNode extends LLVMNode {
         return aForeigns.isForeign(a) && bForeigns.isForeign(b) && compare.execute(aForeigns.asForeign(a), bForeigns.asForeign(b));
     }
 
+    static boolean fallbackGuard(Object a, Object b, LLVMAsForeignLibrary aForeigns, LLVMAsForeignLibrary bForeigns) {
+        return a != b && !(aForeigns.isForeign(a) && bForeigns.isForeign(b));
+    }
+
+    @Specialization(limit = "3", guards = "fallbackGuard(a, b, aForeigns, bForeigns)")
+    boolean doNotSame(Object a, Object b,
+                    @SuppressWarnings("unused") @CachedLibrary("a") LLVMAsForeignLibrary aForeigns,
+                    @SuppressWarnings("unused") @CachedLibrary("b") LLVMAsForeignLibrary bForeigns) {
+        assert a != b;
+        return false;
+    }
+
     @GenerateUncached
     abstract static class CompareForeignNode extends LLVMNode {
 

@@ -42,7 +42,7 @@ int main(void) {
 
     nwritten = writev(STDOUT_FILENO, iov, 2);
 
-    printf("written: %d\n", nwritten);
+    printf("written: %zd\n", nwritten);
 
     return 0;
 }

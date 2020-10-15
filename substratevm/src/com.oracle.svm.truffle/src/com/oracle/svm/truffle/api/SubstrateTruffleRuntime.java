@@ -27,20 +27,13 @@ package com.oracle.svm.truffle.api;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
@@ -51,7 +44,6 @@ import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.LoopNodeFactory;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -64,7 +56,6 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
@@ -78,8 +69,9 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.compiler.debug.DebugOptions;
 
-class SubstateTruffleOptions {
+class SubstrateTruffleOptions {
 
     @Option(help = "Enable support for Truffle background compilation")//
     static final HostedOptionKey<Boolean> TruffleMultiThreaded = new HostedOptionKey<>(true);
@@ -95,7 +87,7 @@ class SubstateTruffleOptions {
          * background compile queue. The latter is useful when background compilation is not needed,
          * but recurring callbacks (which depend on the safepoint mechanism) are required.
          */
-        return SubstrateOptions.MultiThreaded.getValue() && SubstateTruffleOptions.TruffleMultiThreaded.getValue();
+        return SubstrateOptions.MultiThreaded.getValue() && SubstrateTruffleOptions.TruffleMultiThreaded.getValue();
     }
 }
 
@@ -127,10 +119,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
-        truffleCompiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget), callTarget, true);
-        if (SubstateTruffleOptions.isMultiThreaded()) {
+        truffleCompiler.initialize(getOptionsForCompiler(callTarget), callTarget, true);
+        if (SubstrateTruffleOptions.isMultiThreaded()) {
             compileQueue = TruffleFeature.getSupport().createBackgroundCompileQueue(this);
-            RuntimeSupport.getRuntimeSupport().addTearDownHook(this::tearDown);
         }
         if (callTarget.engine.traceTransferToInterpreter) {
             if (!SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
@@ -139,6 +130,17 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             RuntimeOptionValues.singleton().update(Deoptimizer.Options.TraceDeoptimization, true);
         }
         installDefaultListeners();
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(this::teardown);
+    }
+
+    private void teardown() {
+        long timeout = SubstrateUtil.assertionsEnabled() ? DEBUG_TEAR_DOWN_TIMEOUT : PRODUCTION_TEAR_DOWN_TIMEOUT;
+        getCompileQueue().shutdownAndAwaitTermination(timeout);
+
+        TruffleCompiler tcp = truffleCompiler;
+        if (tcp != null) {
+            ((SubstrateTruffleCompiler) tcp).teardown();
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -166,15 +168,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public SubstrateTruffleCompiler newTruffleCompiler() {
         return TruffleFeature.getSupport().createTruffleCompiler(this);
-    }
-
-    private void tearDown() {
-        /*
-         * Runaway compilations should fail during testing, but should not cause crashes in
-         * production.
-         */
-        long timeout = SubstrateUtil.assertionsEnabled() ? DEBUG_TEAR_DOWN_TIMEOUT : PRODUCTION_TEAR_DOWN_TIMEOUT;
-        getCompileQueue().shutdownAndAwaitTermination(timeout);
     }
 
     @Override
@@ -280,7 +273,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
          */
         ensureInitializedAtRuntime(optimizedCallTarget);
 
-        if (SubstateTruffleOptions.isMultiThreaded()) {
+        if (SubstrateTruffleOptions.isMultiThreaded()) {
             return super.submitForCompilation(optimizedCallTarget, lastTierCompilation);
         }
 
@@ -288,10 +281,10 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             // Single threaded compilation does not require cancellation.
             doCompile(optimizedCallTarget, null);
         } catch (com.oracle.truffle.api.OptimizationFailedException e) {
-            if (TruffleRuntimeOptions.getPolyglotOptionValue(optimizedCallTarget.getOptionValues(), PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
+            if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
             }
-            if (SubstateTruffleOptions.TrufflePropagateCompilationErrors.getValue()) {
+            if (SubstrateTruffleOptions.TrufflePropagateCompilationErrors.getValue()) {
                 throw e;
             }
         }
@@ -301,14 +294,14 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public void finishCompilation(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task, boolean mayBeAsynchronous) {
-        if (SubstateTruffleOptions.isMultiThreaded()) {
+        if (SubstrateTruffleOptions.isMultiThreaded()) {
             super.finishCompilation(optimizedCallTarget, task, mayBeAsynchronous);
         }
     }
 
     @Override
     public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException {
-        if (SubstateTruffleOptions.isMultiThreaded()) {
+        if (SubstrateTruffleOptions.isMultiThreaded()) {
             super.waitForCompilation(optimizedCallTarget, timeout);
             return;
         }
@@ -322,47 +315,16 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public <T> T getOptions(Class<T> type) {
+    public <T> T getGraalOptions(Class<T> type) {
         if (type == OptionValues.class) {
             return type.cast(RuntimeOptionValues.singleton());
         }
-        return super.getOptions(type);
+        return super.getGraalOptions(type);
     }
 
     @Override
-    public <T> T convertOptions(Class<T> type, Map<String, Object> map) {
-        if (type == OptionValues.class) {
-            final EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
-            for (Map.Entry<String, Object> e : map.entrySet()) {
-                final String optionName = e.getKey();
-                final Object optionValue = e.getValue();
-                Optional<OptionDescriptor> descriptor = RuntimeOptionParser.singleton().getDescriptor(optionName);
-                if (descriptor.isPresent()) {
-                    OptionDescriptor desc = descriptor.get();
-                    Class<?> valueType = optionValue.getClass();
-                    if (desc.getOptionValueType().isAssignableFrom(valueType)) {
-                        values.put(desc.getOptionKey(), optionValue);
-                    } else {
-                        throw new IllegalArgumentException("Invalid type of option '" + optionName + "': required " + desc.getOptionValueType().getSimpleName() + ", got " + valueType);
-                    }
-                }
-            }
-            return type.cast(new OptionValues(values));
-
-        }
-        return super.convertOptions(type, map);
-    }
-
-    @Override
-    protected Map<String, Object> createInitialOptions() {
-        Map<String, Object> res = new HashMap<>();
-        UnmodifiableMapCursor<OptionKey<?>, Object> optionValues = RuntimeOptionValues.singleton().getMap().getEntries();
-        while (optionValues.advance()) {
-            final OptionKey<?> key = optionValues.getKey();
-            Object value = optionValues.getValue();
-            res.put(key.getName(), value);
-        }
-        return res;
+    protected boolean isPrintGraphEnabled() {
+        return DebugOptions.PrintGraph.getValue(getGraalOptions(OptionValues.class)) != DebugOptions.PrintGraphTarget.Disable;
     }
 
     @Platforms(HOSTED_ONLY.class)

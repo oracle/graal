@@ -36,7 +36,10 @@ import java.util.List;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
+import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
@@ -222,13 +225,21 @@ public final class LLVMSymbolReadResolver {
             unsupported(symbol);
         }
 
+        private final MetadataVisitor metadata = new MetadataVisitor() {
+            @Override
+            public void visit(MDString md) {
+                resolvedNode = nodeFactory.createLiteral(md.getString(), MetaType.UNKNOWN);
+            }
+
+            @Override
+            public void defaultAction(MDBaseNode v) {
+                resolvedNode = nodeFactory.createLiteral(null, MetaType.UNKNOWN);
+            }
+        };
+
         @Override
         public void visit(MetadataSymbol constant) {
-            // metadata is passed as argument to some dbg.* methods. Sulong resolves required
-            // metadata already during parsing and does not require such a value at runtime. We
-            // resolve this type to a constant value here to avoid having to identify all functions,
-            // like dbg.label, that receive metadata but are in practice noops at runtime.
-            resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(0, PrimitiveType.I32);
+            constant.getNode().accept(metadata);
         }
 
         @Override

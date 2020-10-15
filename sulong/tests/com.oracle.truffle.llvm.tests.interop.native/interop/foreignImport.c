@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 typedef void *VALUE;
 
@@ -57,8 +57,8 @@ int main() {
         return 220 + polyglot_as_i32(foreign->b);
     }
 
-    foreign->a = 101;
-    foreign->b = 102;
+    foreign->a = (void *) 101;
+    foreign->b = (void *) 102;
 
     return 0;
 }

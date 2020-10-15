@@ -6,6 +6,26 @@ CLSS public abstract interface java.io.Serializable
 CLSS public abstract interface java.lang.AutoCloseable
 meth public abstract void close() throws java.lang.Exception
 
+CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
+meth public abstract int compareTo({java.lang.Comparable%0})
+
+CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
+cons protected init(java.lang.String,int)
+intf java.io.Serializable
+intf java.lang.Comparable<{java.lang.Enum%0}>
+meth protected final java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected final void finalize()
+meth public final boolean equals(java.lang.Object)
+meth public final int compareTo({java.lang.Enum%0})
+meth public final int hashCode()
+meth public final int ordinal()
+meth public final java.lang.Class<{java.lang.Enum%0}> getDeclaringClass()
+meth public final java.lang.String name()
+meth public java.lang.String toString()
+meth public static <%0 extends java.lang.Enum<{%%0}>> {%%0} valueOf(java.lang.Class<{%%0}>,java.lang.String)
+supr java.lang.Object
+hfds name,ordinal
+
 CLSS public java.lang.Exception
 cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
 cons public init()
@@ -106,10 +126,10 @@ meth public org.graalvm.polyglot.Engine getEngine()
 meth public org.graalvm.polyglot.Value asValue(java.lang.Object)
 meth public org.graalvm.polyglot.Value eval(java.lang.String,java.lang.CharSequence)
 meth public org.graalvm.polyglot.Value eval(org.graalvm.polyglot.Source)
-meth public org.graalvm.polyglot.Value parse(java.lang.String,java.lang.CharSequence)
-meth public org.graalvm.polyglot.Value parse(org.graalvm.polyglot.Source)
 meth public org.graalvm.polyglot.Value getBindings(java.lang.String)
 meth public org.graalvm.polyglot.Value getPolyglotBindings()
+meth public org.graalvm.polyglot.Value parse(java.lang.String,java.lang.CharSequence)
+meth public org.graalvm.polyglot.Value parse(org.graalvm.polyglot.Source)
 meth public static org.graalvm.polyglot.Context getCurrent()
 meth public void close()
 meth public void close(boolean)
@@ -203,6 +223,7 @@ fld public final static org.graalvm.polyglot.HostAccess NONE
 innr public abstract interface static !annotation Export
 innr public abstract interface static !annotation Implementable
 innr public final Builder
+innr public final static !enum TargetMappingPrecedence
 meth public java.lang.String toString()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder(org.graalvm.polyglot.HostAccess)
@@ -212,6 +233,7 @@ hfds EMPTY,accessAnnotations,allowAllImplementations,allowArrayAccess,allowListA
 CLSS public final org.graalvm.polyglot.HostAccess$Builder
  outer org.graalvm.polyglot.HostAccess
 meth public <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.polyglot.HostAccess$Builder targetTypeMapping(java.lang.Class<{%%0}>,java.lang.Class<{%%1}>,java.util.function.Predicate<{%%0}>,java.util.function.Function<{%%0},{%%1}>)
+meth public <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.polyglot.HostAccess$Builder targetTypeMapping(java.lang.Class<{%%0}>,java.lang.Class<{%%1}>,java.util.function.Predicate<{%%0}>,java.util.function.Function<{%%0},{%%1}>,org.graalvm.polyglot.HostAccess$TargetMappingPrecedence)
 meth public org.graalvm.polyglot.HostAccess build()
 meth public org.graalvm.polyglot.HostAccess$Builder allowAccess(java.lang.reflect.Executable)
 meth public org.graalvm.polyglot.HostAccess$Builder allowAccess(java.lang.reflect.Field)
@@ -238,6 +260,16 @@ CLSS public abstract interface static !annotation org.graalvm.polyglot.HostAcces
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
+
+CLSS public final static !enum org.graalvm.polyglot.HostAccess$TargetMappingPrecedence
+ outer org.graalvm.polyglot.HostAccess
+fld public final static org.graalvm.polyglot.HostAccess$TargetMappingPrecedence HIGH
+fld public final static org.graalvm.polyglot.HostAccess$TargetMappingPrecedence HIGHEST
+fld public final static org.graalvm.polyglot.HostAccess$TargetMappingPrecedence LOW
+fld public final static org.graalvm.polyglot.HostAccess$TargetMappingPrecedence LOWEST
+meth public static org.graalvm.polyglot.HostAccess$TargetMappingPrecedence valueOf(java.lang.String)
+meth public static org.graalvm.polyglot.HostAccess$TargetMappingPrecedence[] values()
+supr java.lang.Enum<org.graalvm.polyglot.HostAccess$TargetMappingPrecedence>
 
 CLSS public final org.graalvm.polyglot.Instrument
 meth public <%0 extends java.lang.Object> {%%0} lookup(java.lang.Class<{%%0}>)
@@ -289,6 +321,7 @@ meth public boolean isGuestException()
 meth public boolean isHostException()
 meth public boolean isIncompleteSource()
 meth public boolean isInternalError()
+meth public boolean isInterrupted()
 meth public boolean isResourceExhausted()
 meth public boolean isSyntaxError()
 meth public int getExitStatus()
@@ -567,7 +600,6 @@ meth public org.graalvm.polyglot.io.ProcessHandler$Redirect getInputRedirect()
 meth public org.graalvm.polyglot.io.ProcessHandler$Redirect getOutputRedirect()
 supr java.lang.Object
 hfds cmd,cwd,environment,errorRedirect,inputRedirect,outputRedirect,redirectErrorStream
-hcls IOAccessImpl
 
 CLSS public final static org.graalvm.polyglot.io.ProcessHandler$Redirect
  outer org.graalvm.polyglot.io.ProcessHandler

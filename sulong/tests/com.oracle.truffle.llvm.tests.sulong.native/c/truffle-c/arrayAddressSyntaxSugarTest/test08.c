@@ -27,6 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdlib.h>
 
 char *g = "abc";
 char k[] = "abc";
@@ -46,7 +47,10 @@ int main() {
         exit(3);
     if (p == k)
         exit(4);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-compare"
     if (c == k)
+#pragma clang diagnostic pop
         exit(5);
     return 0;
 }

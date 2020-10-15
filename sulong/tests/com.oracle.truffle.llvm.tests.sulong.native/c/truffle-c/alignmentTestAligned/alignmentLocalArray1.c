@@ -35,7 +35,11 @@ int main() {
     short b;
     float c[10];
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
     short *ptr = &b;
+#pragma clang diagnostic pop
+
     if ((long) &a % __alignof__(char) != 0) {
         abort();
     }

@@ -37,27 +37,36 @@ Note that most options also require the additional `--experimental-options` flag
 `--engine.TraceCompilation` prints a line each time a method is compiled.
 
 ```
-[engine] opt done         EqualityConstraint.execute                                  |ASTSize      17/   17 |Time   134( 110+24  )ms |DirectCallNodes I    3/D    1 |GraalNodes   222/  266 |CodeSize          691 |CodeAddress 0x113dd1250 |Source octane-deltablue.js:528
+[engine] opt done     EqualityConstraint.execute                                  |AST   17|Time  134( 110+24  )ms |Inlined   3Y   1N|IR   222/  266|CodeSize    691|Addr 0x113dd1250|Src octane-deltablue.js:528
 ```
 
 `--engine.TraceCompilationDetail` also prints a line when compilation is queued, starts or completes.
 
 ```
-[engine] opt queued       BinaryConstraint.output                                     |ASTSize      19/   19 |Calls/Thres    1000/    3 |CallsAndLoop/Thres    1000/ 1000 |Source octane-deltablue.js:416
-[engine] opt start        BinaryConstraint.output                                     |ASTSize      19/   19 |Calls/Thres    1000/    3 |CallsAndLoop/Thres    1000/ 1000 |Source octane-deltablue.js:416
-[engine] opt queued       BinaryConstraint.input                                      |ASTSize      19/   19 |Calls/Thres    1000/    3 |CallsAndLoop/Thres    1000/ 1000 |Source octane-deltablue.js:409
-[engine] opt start        BinaryConstraint.input                                      |ASTSize      19/   19 |Calls/Thres    1000/    3 |CallsAndLoop/Thres    1000/ 1000 |Source octane-deltablue.js:409
-[engine] opt queued       OrderedCollection.at                                        |ASTSize      15/   15 |Calls/Thres    1000/    3 |CallsAndLoop/Thres    1000/ 1000 |Source octane-deltablue.js:67
+[engine] opt queued   BinaryConstraint.output                                     |AST   19|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:416
+[engine] opt start    BinaryConstraint.output                                     |AST   19|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:416
+[engine] opt queued   BinaryConstraint.input                                      |AST   19|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:409
+[engine] opt start    BinaryConstraint.input                                      |AST   19|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:409
+[engine] opt queued   OrderedCollection.at                                        |AST   15|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:67
 ... more queues ...
-[engine] opt done         BinaryConstraint.output                                     |ASTSize      19/   19 |Time   734( 420+314 )ms |DirectCallNodes I    0/D    0 |GraalNodes   110/  176 |CodeSize          565 |CodeAddress 0x1102cb190 |Source octane-deltablue.js:416
-[engine] opt start        OrderedCollection.at                                        |ASTSize      15/   15 |Calls/Thres   29924/    3 |CallsAndLoop/Thres   29924/ 1000 |Source octane-deltablue.js:67
-[engine] opt done         BinaryConstraint.input                                      |ASTSize      19/   19 |Time   740( 408+332 )ms |DirectCallNodes I    0/D    0 |GraalNodes   109/  166 |CodeSize          530 |CodeAddress 0x1102e8690 |Source octane-deltablue.js:409
+[engine] opt done     BinaryConstraint.output                                     |AST   19|Time  734( 420+314 )ms|Inlined   0Y   0N|IR   110/  176|CodeSize    565|Addr 0x1102cb190|Src octane-deltablue.js:416
+[engine] opt start    OrderedCollection.at                                        |AST   15|Calls/Thres   29924/    3|CallsAndLoop/Thres   29924/ 1000 |Src octane-deltablue.js:67
+[engine] opt done     BinaryConstraint.input                                      |AST   19|Time  740( 408+332 )ms|Inlined   0Y   0N|IR   109/  166|CodeSize    530|Addr 0x1102e8690|Src octane-deltablue.js:409
 ```
+
+A brief explanation of some of these fields:
+- `AST`: number of non-trivial AST nodes in this `CallTarget` (not counting inlined call targets)
+- `Calls/Thres`: number of calls / number of calls necessary to trigger optimization
+- `CallsAndLoop/Thres`: number of calls + number of loop iterations / number of those necessary to trigger optimization
+- `Time`: compilation time (in parentheses: time for partial evaluation + time for the rest of compilation)
+- `Inlined`: number of `DirectCallNode`s, both inlined (`Y`) or not (`N`)
+- `IR`: Number of Graal (Intermediate Representation) nodes after partial evalution / after compilation & lowering
+- `CodeSize`: size of the generated machine code 
 
 `--engine.TraceCompilationAST` prints the Truffle AST for each compilation.
 
 ```
-[engine] opt AST          OrderedCollection.size <split-57429b3a>                     |ASTSize      10/   10 |Calls/Thres   10559/    3 |CallsAndLoop/Thres   10559/ 1000
+[engine] opt AST      OrderedCollection.size <split-57429b3a>                     |AST   10|Calls/Thres   10559/    3|CallsAndLoop/Thres   10559/ 1000
   FunctionRootNode
     body = FunctionBodyNode
       body = DualNode
@@ -80,24 +89,24 @@ Note that most options also require the additional `--experimental-options` flag
 `--engine.TraceInlining` prints guest-language inlining decisions for each compilation.
 
 ```
-[engine] inline start     Plan.execute                                                |call diff        0.00 |Recursion Depth      0 |Explore/inline ratio     1.00 |IR Nodes         2704 |Frequency        1.00 |Truffle Callees      5 |Forced          false |Depth               0
-[engine] Inlined            Plan.size                                                 |call diff     -203.75 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          175 |Frequency      101.88 |Truffle Callees      1 |Forced          false |Depth               1
-[engine] Inlined              OrderedCollection.size <split-e13c02e>                  |call diff     -101.88 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          157 |Frequency      101.88 |Truffle Callees      0 |Forced          false |Depth               2
-[engine] Inlined            Plan.constraintAt                                         |call diff     -201.75 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          206 |Frequency      100.88 |Truffle Callees      1 |Forced          false |Depth               1
-[engine] Inlined              OrderedCollection.at                                    |call diff     -100.88 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          232 |Frequency      100.88 |Truffle Callees      0 |Forced          false |Depth               2
-[engine] Inlined            ScaleConstraint.execute                                   |call diff       -0.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          855 |Frequency        0.00 |Truffle Callees      0 |Forced          false |Depth               1
-[engine] Inlined            EqualityConstraint.execute                                |call diff     -299.63 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          295 |Frequency       99.88 |Truffle Callees      2 |Forced          false |Depth               1
-[engine] Inlined              BinaryConstraint.output <split-1e163df7>                |call diff      -99.88 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          259 |Frequency       99.88 |Truffle Callees      0 |Forced          false |Depth               2
-[engine] Inlined              BinaryConstraint.input <split-2dfade22>                 |call diff      -99.88 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          259 |Frequency       99.88 |Truffle Callees      0 |Forced          false |Depth               2
-[engine] Inlined            EditConstraint.execute                                    |call diff       -1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes           22 |Frequency        1.00 |Truffle Callees      0 |Forced          false |Depth               1
-[engine] inline done      Plan.execute                                                |call diff        0.00 |Recursion Depth      0 |Explore/inline ratio     1.00 |IR Nodes         2704 |Frequency        1.00 |Truffle Callees      5 |Forced          false |Depth               0
+[engine] inline start     Plan.execute                                                |call diff        0.00 |Recursion Depth      0 |Explore/inline ratio     1.00|IR Nodes         2704 |Frequency        1.00 |Truffle Callees      5 |Forced          false |Depth               0
+[engine] Inlined            Plan.size                                                 |call diff     -203.75 |Recursion Depth      0 |Explore/inline ratio      NaN|IR Nodes          175 |Frequency      101.88 |Truffle Callees      1 |Forced          false |Depth               1
+[engine] Inlined              OrderedCollection.size <split-e13c02e>                  |call diff     -101.88 |Recursion Depth      0 |Explore/inline ratio      NaN|IR Nodes          157 |Frequency      101.88 |Truffle Callees      0 |Forced          false |Depth               2
+[engine] Inlined            Plan.constraintAt                                         |call diff     -201.75 |Recursion Depth      0 |Explore/inline ratio      NaN|IR Nodes          206 |Frequency      100.88 |Truffle Callees      1 |Forced          false |Depth               1
+[engine] Inlined              OrderedCollection.at                                    |call diff     -100.88 |Recursion Depth      0 |Explore/inline ratio      NaN|IR Nodes          232 |Frequency      100.88 |Truffle Callees      0 |Forced          false |Depth               2
+[engine] Inlined            ScaleConstraint.execute                                   |call diff       -0.00 |Recursion Depth      0 |Explore/inline ratio      NaN|IR Nodes          855 |Frequency        0.00 |Truffle Callees      0 |Forced          false |Depth               1
+[engine] Inlined            EqualityConstraint.execute                                |call diff     -299.63 |Recursion Depth      0 |Explore/inline ratio      NaN|IR Nodes          295 |Frequency       99.88 |Truffle Callees      2 |Forced          false |Depth               1
+[engine] Inlined              BinaryConstraint.output <split-1e163df7>                |call diff      -99.88 |Recursion Depth      0 |Explore/inline ratio      NaN|IR Nodes          259 |Frequency       99.88 |Truffle Callees      0 |Forced          false |Depth               2
+[engine] Inlined              BinaryConstraint.input <split-2dfade22>                 |call diff      -99.88 |Recursion Depth      0 |Explore/inline ratio      NaN|IR Nodes          259 |Frequency       99.88 |Truffle Callees      0 |Forced          false |Depth               2
+[engine] Inlined            EditConstraint.execute                                    |call diff       -1.00 |Recursion Depth      0 |Explore/inline ratio      NaN|IR Nodes           22 |Frequency        1.00 |Truffle Callees      0 |Forced          false |Depth               1
+[engine] inline done      Plan.execute                                                |call diff        0.00 |Recursion Depth      0 |Explore/inline ratio     1.00|IR Nodes         2704 |Frequency        1.00 |Truffle Callees      5 |Forced          false |Depth               0
 ```
 
 `--engine.TraceSplitting` prints guest-language splitting decisions
 
 ```
-[engine] split   0-4310d43-1     Strength                                                    |ASTSize       6/    6 |Calls/Thres       2/    3 |CallsAndLoop/Thres       2/ 1000 |SourceSection /Users/christianhumer/graal/4dev/js-benchmarks/octane-deltablue.js~139:4062-4089
-[engine] split   1-4b0d79fc-1     Strength                                                    |ASTSize       6/    6 |Calls/Thres       2/    3 |CallsAndLoop/Thres       2/ 1000 |SourceSection /Users/christianhumer/graal/4dev/js-benchmarks/octane-deltablue.js~140:4119-4150
+[engine] split   0-6cd166b8-1     Strength                                                    |AST    6|Calls/Thres       2/    3|CallsAndLoop/Thres       2/ 1000|Src octane-deltablue.js:139
+[engine] split   1-4b0d79fc-1     Strength                                                    |AST    6|Calls/Thres       2/    3|CallsAndLoop/Thres       2/ 1000|Src octane-deltablue.js:140
 ```
 
 `--engine.TraceTransferToInterpreter` prints a stack trace on explicit internal invalidations.

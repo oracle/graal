@@ -94,7 +94,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
@@ -111,6 +110,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
 import com.oracle.truffle.polyglot.PolyglotLocals.AbstractContextLocal;
@@ -1362,7 +1362,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     }
 
     @SuppressWarnings("serial")
-    static final class CancelExecution extends ThreadDeath implements TruffleException {
+    static final class CancelExecution extends ThreadDeath {
 
         private final Node location;
         private final String cancelMessage;
@@ -1374,8 +1374,12 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             this.resourceLimit = resourceLimit;
         }
 
-        public Node getLocation() {
+        Node getLocation() {
             return location;
+        }
+
+        SourceSection getSourceLocation() {
+            return location == null ? null : location.getEncapsulatingSourceSection();
         }
 
         public boolean isResourceLimit() {
@@ -1390,11 +1394,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 return cancelMessage;
             }
         }
-
-        public boolean isCancelled() {
-            return true;
-        }
-
     }
 
     @Override
@@ -1687,7 +1686,12 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
             // fast-path -> same thread
             prev = PolyglotContextImpl.getSingleContextState().getContextThreadLocal().setReturnParent(context);
-            info.enter(this, context);
+            try {
+                info.enter(this, context);
+            } catch (Throwable t) {
+                PolyglotContextImpl.getSingleContextState().getContextThreadLocal().set(prev);
+                throw t;
+            }
         } else {
             // slow path -> changed thread
             if (singleThreadPerContext.isValid()) {
@@ -1707,15 +1711,18 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         assert polyglotContext.closed || polyglotContext.closingThread == Thread.currentThread() ||
                         PolyglotContextImpl.currentNotEntered() == polyglotContext : "Cannot leave context that is currently not entered. Forgot to enter or leave a context?";
         PolyglotThreadInfo info = getCachedThreadInfo(polyglotContext);
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
-            info.leave(this, polyglotContext);
-        } else {
-            if (singleThreadPerContext.isValid() && singleContext.isValid()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
+        try {
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
+                info.leave(this, polyglotContext);
+            } else {
+                if (singleThreadPerContext.isValid() && singleContext.isValid()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                polyglotContext.leaveThreadChanged();
             }
-            polyglotContext.leaveThreadChanged();
+        } finally {
+            PolyglotContextImpl.getSingleContextState().getContextThreadLocal().set(prev);
         }
-        PolyglotContextImpl.getSingleContextState().getContextThreadLocal().set(prev);
     }
 
     PolyglotThreadInfo getCachedThreadInfo(PolyglotContextImpl context) {

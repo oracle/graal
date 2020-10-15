@@ -25,7 +25,6 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
@@ -59,11 +58,9 @@ final class EventContextObject implements TruffleObject {
         return context.createError(ill);
     }
 
-    RuntimeException rethrow(RuntimeException ex) {
-        if (ex instanceof TruffleException) {
-            if (!((TruffleException) ex).isInternalError()) {
-                return context.createError(ex);
-            }
+    RuntimeException rethrow(RuntimeException ex, InteropLibrary interopLib) {
+        if (interopLib.isException(ex)) {
+            throw context.createError(ex);
         }
         throw ex;
     }

@@ -58,6 +58,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -1212,6 +1213,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             if (node instanceof StateSplit) {
                 FrameState stateAfter = ((StateSplit) node).stateAfter();
                 if (stateAfter != null) {
+                    assert !(node instanceof ExceptionObjectNode) : "ExceptionObjects cannot have a null FrameState";
                     ((StateSplit) node).setStateAfter(null);
                     // 2 nodes referencing the same frame state
                     if (stateAfter.isAlive()) {

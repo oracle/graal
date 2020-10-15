@@ -68,18 +68,11 @@ import static org.graalvm.libgraal.jni.JNIUtil.getInternalName;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
@@ -120,7 +113,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
     private final ResolvedJavaType classLoaderDelegate;
     private final OptionValues initialOptions;
-    private volatile Map<String, Object> cachedOptionsMap;
 
     private final ConcurrentHashMap<ResolvedJavaMethod, MethodCache> methodCache = new ConcurrentHashMap<>();
 
@@ -355,42 +347,11 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     }
 
     @Override
-    public Map<String, Object> getOptions() {
-        Map<String, Object> res = cachedOptionsMap;
-        if (res == null) {
-            res = new HashMap<>();
-            UnmodifiableMapCursor<OptionKey<?>, Object> optionValues = initialOptions.getMap().getEntries();
-            while (optionValues.advance()) {
-                final OptionKey<?> key = optionValues.getKey();
-                Object value = optionValues.getValue();
-                res.put(key.getName(), value);
-            }
-            cachedOptionsMap = res;
-        }
-        return res;
-    }
-
-    @Override
-    public <T> T getOptions(Class<T> optionValuesType) {
+    public <T> T getGraalOptions(Class<T> optionValuesType) {
         if (optionValuesType == OptionValues.class) {
             return optionValuesType.cast(initialOptions);
         }
-        return HotSpotTruffleCompilerRuntime.super.getOptions(optionValuesType);
-    }
-
-    @Override
-    public <T> T convertOptions(Class<T> optionValuesType, Map<String, Object> map) {
-        if (optionValuesType == OptionValues.class) {
-            final EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
-            final Iterable<OptionDescriptors> loader = OptionsParser.getOptionsLoader();
-            for (Map.Entry<String, Object> e : map.entrySet()) {
-                final String optionName = e.getKey();
-                final Object optionValue = e.getValue();
-                OptionsParser.parseOption(optionName, optionValue, values, loader);
-            }
-            return optionValuesType.cast(new OptionValues(values));
-        }
-        return HotSpotTruffleCompilerRuntime.super.convertOptions(optionValuesType, map);
+        return HotSpotTruffleCompilerRuntime.super.getGraalOptions(optionValuesType);
     }
 
     @Override

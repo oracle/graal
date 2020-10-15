@@ -1089,7 +1089,7 @@ public abstract class TruffleLanguage<C> {
      * @deprecated implement {@link com.oracle.truffle.api.interop.NodeLibrary} instead.
      */
     @Deprecated
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "deprecation"})
     protected Iterable<Scope> findLocalScopes(C context, Node node, Frame frame) {
         assert node != null;
         return LanguageAccessor.engineAccess().createDefaultLexicalScope(node, frame, (Class<? extends TruffleLanguage<?>>) getClass());
@@ -1142,6 +1142,7 @@ public abstract class TruffleLanguage<C> {
      * @since 0.30
      * @deprecated implement {@link #getScope(Object)} instead.
      */
+    @SuppressWarnings("deprecation")
     @Deprecated
     protected Iterable<Scope> findTopScopes(C context) {
         Object global = getLanguageGlobal(context);
@@ -3049,7 +3050,7 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public TruffleProcessBuilder newProcessBuilder(String... command) {
             if (!isCreateProcessAllowed()) {
-                throw new TruffleSecurityException("Process creation is not allowed, to enable it set Context.Builder.allowCreateProcess(true).");
+                throw new SecurityException("Process creation is not allowed, to enable it set Context.Builder.allowCreateProcess(true).");
             }
             FileSystemContext fs = getPublicFileSystemContext();
             List<String> cmd = new ArrayList<>(command.length);

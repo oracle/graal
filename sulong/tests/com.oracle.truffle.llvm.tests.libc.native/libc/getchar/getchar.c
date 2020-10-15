@@ -29,11 +29,15 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 int main() {
     int c;
     int oldStdin = dup(0);
     FILE *file = freopen(__FILE__, "r", stdin);
+    if (file == NULL) {
+        return 1;
+    }
     while ((c = getchar()) != EOF) {
         putchar(c);
     }

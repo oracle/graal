@@ -1591,8 +1591,11 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
     def benchSuiteName(self):
         return self.name()
 
+    def version(self):
+        return "1.1"
+
     def awfyLibraryName(self):
-        return "AWFY"
+        return "AWFY_{}".format(self.version())
 
     def awfyBenchmarkParam(self):
         return _awfyConfig.copy()

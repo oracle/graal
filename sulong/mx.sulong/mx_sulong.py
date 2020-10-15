@@ -105,6 +105,20 @@ basicLLVMDependencies = [
 ]
 
 
+def _lib_versioned(arg):
+    name, version = arg.split('.')
+    if mx.is_darwin():
+        return "lib" + name + "." + version + ".dylib"
+    elif mx.is_linux() or mx.is_openbsd() or mx.is_sunos():
+        return "lib" + name + ".so." + version
+    elif mx.is_windows():
+        return name + ".dll"
+    else:
+        mx.abort('unsupported os')
+
+mx_subst.results_substitutions.register_with_arg('libv', _lib_versioned)
+
+
 def _sulong_gate_testdist(title, test_dist, tasks, args, tags=None, testClasses=None, vmArgs=None):
     if tags is None:
         tags = [test_dist]

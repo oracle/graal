@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.TruffleRuntime;
@@ -411,6 +412,28 @@ public abstract class RootNode extends ExecutableNode {
      */
     protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {
         return null;
+    }
+
+    /**
+     * Translates the {@link TruffleStackTraceElement} into an interop object supporting the
+     * {@code hasExecutableName} and potentially {@code hasDeclaringMetaObject} and
+     * {@code hasSourceLocation} messages. An executable name must be provided, whereas the
+     * declaring meta object and source location is optional. Guest languages may typically return
+     * their function objects that typically already implement the required contracts.
+     * <p>
+     * The intention of this method is to provide a guest language object for other languages that
+     * they can inspect using interop. An implementation of this method is expected to not fail with
+     * a guest error. Implementations are allowed to do {@link ContextReference#get() context
+     * reference lookups} in the implementation of the method. This may be useful to access the
+     * function objects needed to resolve the stack trace element.
+     *
+     * @see TruffleStackTraceElement#getGuestObject() to access the guest object of a stack trace
+     *      element.
+     * @since 20.3
+     */
+    protected Object translateStackTraceElement(TruffleStackTraceElement element) {
+        Node location = element.getLocation();
+        return NodeAccessor.EXCEPTION.createDefaultStackTraceElementObject(element.getTarget().getRootNode(), location != null ? location.getEncapsulatingSourceSection() : null);
     }
 
     /**

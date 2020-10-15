@@ -143,22 +143,22 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
     public void testAssumptionInvalidation() throws Exception {
         testHelper(() -> createAssumptionNode("test assumption node", "becomes invalid"),
                         Collections.singletonMap("engine.TraceCompilation", "true"),
-                        new Pattern[]{Pattern.compile(".*opt invalidated.*Reason test assumption node becomes invalid.*")},
+                        new Pattern[]{Pattern.compile(".*opt inv.*Reason test assumption node becomes invalid.*")},
                         new Pattern[0],
                         null);
         testHelper(() -> createAssumptionNode(null, "becomes invalid"),
                         Collections.singletonMap("engine.TraceCompilation", "true"),
-                        new Pattern[]{Pattern.compile(".*opt invalidated.*Reason becomes invalid.*")},
+                        new Pattern[]{Pattern.compile(".*opt inv.*Reason becomes invalid.*")},
                         new Pattern[0],
                         null);
         testHelper(() -> createAssumptionNode("test assumption node", null),
                         Collections.singletonMap("engine.TraceCompilation", "true"),
-                        new Pattern[]{Pattern.compile(".*opt invalidated.*Reason test assumption node.*")},
+                        new Pattern[]{Pattern.compile(".*opt inv.*Reason test assumption node.*")},
                         new Pattern[0],
                         null);
         testHelper(() -> createAssumptionNode(null, null),
                         Collections.singletonMap("engine.TraceCompilation", "true"),
-                        new Pattern[]{Pattern.compile(".*opt invalidated.*Reason assumption invalidated.*")},
+                        new Pattern[]{Pattern.compile(".*opt inv.*Reason assumption invalidated.*")},
                         new Pattern[0],
                         null);
     }

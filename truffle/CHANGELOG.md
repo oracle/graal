@@ -8,7 +8,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added new specialization compilation mode that ignores "fast path" specializations and generates calls only to "slow path" specializations. This mode is intended for testing purposes to increase tests coverage. See [Specialization testing documentation](https://github.com/oracle/graal/blob/master/truffle/docs/SpecializationTesting.md) for more details.
 * Added [TruffleFile.readSymbolicLink](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#readSymbolicLink--) method to read the symbolic link target.
 * Added [ReportPolymorphism.Megamorphic](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Megamorphic.html) annotation for expressing the "report only megamorphic specializations" use case when reporting polymorphism.
-
 * Added new flags to inspect expansion during partial evaluation: `--engine.TraceMethodExpansion=truffleTier`, `--engine.TraceNodeExpansion=truffleTier`, `--engine.MethodExpansionStatistics=truffleTier` and `--engine.NodeExpansionStatistics=truffleTier`. Language implementations are encouraged to run with these flags enabled and investigate their output for unexpected results. See [Optimizing.md](https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md) for details.
 * Enabled by default the elastic allocation of Truffle compiler threads depending on the number of available processors, in both JVM and native modes. The old behavior, 1 or 2 compiler threads, can be explicitly enabled with `--engine.CompilerThreads=0`.
 * Added `ThreadsActivationListener` to listen to thread enter and leave events in instruments.
@@ -27,6 +26,32 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added utility method to find an instrumentable parent node [InstrumentableNode.findInstrumentableParent](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/InstrumentableNode.html#findInstrumentableParent-com.oracle.truffle.api.nodes.Node-).
 * Deprecated `DebugScope.getArguments()` without replacement. This API was added without use-case.
 * Added the [RootNode.isTrivial](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#isTrivial) method, for specifying root nodes that are always more efficient to inline than not to.
+* Added [ByteArraySupport](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/memory/ByteArraySupport.html): a helper class providing safe multi-byte primitive type accesses from byte arrays.
+* Added a new base class for Truffle exceptions, see [AbstractTruffleException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/exception/AbstractTruffleException.html). The original `TruffleException` has been deprecated. Added new interop messages for exception handling replacing the deprecated `TruffleException` methods.
+* Added a new base class for Truffle exceptions, see [AbstractTruffleException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/exception/AbstractTruffleException.html). The original `TruffleException` has been deprecated.
+* Added new messages to `InteropLibrary` related to exception handling:
+    * Added `getExceptionType(Object)` that allows to specify the type of an exception, e.g. PARSE_ERROR. 
+    * Added `isExceptionIncompleteSource(Object)` allows to specify whether the parse error contained unclosed brackets.
+    * Added `getExceptionExitStatus(Object)` allows to specify the exit status of an exception of type EXIT.
+    * Added `hasExceptionCause(Object)` and `getExceptionCause(Object)` to return the cause of this error
+    * Added `hasExceptionStackTrace(Object)` and `getExceptionStackTrace(Object)` to return the guest stack this of this error. 
+    * Added `hasExceptionMessage(Object)` and `getExceptionMessage(Object)` to provide an error message of the error.
+    * Added `hasExecutableName(Object)` and `getExecutableName(Object)` to provide a method name similar to what was provided in `RootNode.getName()` but for executable objects.
+    * Added `hasDeclaringMetaObject(Object)` and `getDeclaringMetaObject(Object)` to provide the meta object of the function. 
+* Language implementations are recommended to perform the following steps to upgrade their exception implementation:
+    * Convert non-internal guest language exceptions to `AbstractTruffleException`, internal errors should be refactored to no longer implement `TruffleException`.
+    * Export new interop messages directly on the `AbstractTruffleException` subclass if necessary. Consider exporting `getExceptionType(Object)`, `getExceptionExitStatus(Object)` and `isExceptionIncompleteSource(Object)`. For other interop messages the default implementation should be sufficient for most use-cases. Consider using `@ExportLibrary(delegateTo=...)` to forward to a guest object stored inside of the exception.
+    * Rewrite interop capable guest language try-catch nodes to the new interop pattern for handling exceptions. See `InteropLibrary#isException(Object)` for more information. 
+    * Implement the new method `RootNode.translateStackTraceElement` which allows guest languages to transform stack trace elements to accessible guest objects for other languages.
+    * Consider making executable interop objects of the guest language implement `InteropLibrary.hasExecutableName(Object)` and `InteropLibrary.hasDeclaringMetaObject(Object)`.
+    * Make exception printing in the guest language use `InteropLibrary.getExceptionMessage(Object)`, `InteropLibrary.getExceptionCause(Object)` and `InteropLibrary.getExceptionStackTrace(Object)` for foreign exceptions to print them in the style of the language.
+    * Make all exports of `InteropLibrary.throwException(Object)` throw an instance of `AbstractTruffleException`. This contract will be enforced in future versions when `TruffleException` will be removed.
+* Added [TruffleInstrument.Env.getEnteredContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#getEnteredContext--) returning the entered `TruffleContext`.
+
+* All Truffle Graal runtime options (-Dgraal.) which were deprecated in GraalVM 20.1 are removed. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-).
+* Deprecated the `com.oracle.truffle.api.object.dsl` API without replacement. The migration path is to use `DynamicObject` subclasses with the `com.oracle.truffle.api.object` API.
+* A node parameter now needs to be provided to TruffleContext.enter() and TruffleContext.leave(Object). The overloads without node parameter are deprecated. This is useful to allow the runtime to compile the enter and leave code better if a node is passed as argument. 
+* Added [DebuggerSession.suspendHere](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#suspendHere-com.oracle.truffle.api.nodes.Node-) to suspend immediately at the current location of the current execution thread.
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.

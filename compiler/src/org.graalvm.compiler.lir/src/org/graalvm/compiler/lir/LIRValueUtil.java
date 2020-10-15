@@ -39,14 +39,23 @@ import jdk.vm.ci.meta.Value;
 
 public final class LIRValueUtil {
 
+    /**
+     * Determine if the value, after removing an optional {@link CastValue cast}, is a variable.
+     * This method should always be used instead of an {@code instanceof Variable} check.
+     */
     public static boolean isVariable(Value value) {
         assert value != null;
-        return value instanceof Variable;
+        return stripCast(value) instanceof Variable;
     }
 
+    /**
+     * Return the value as a {@link Variable}, removing an optional {@link CastValue cast} from it.
+     * {@link #isVariable(Value)} must have returned {@code true} on this value. This method should
+     * always be used instead of a cast to {@link Variable}.
+     */
     public static Variable asVariable(Value value) {
         assert value != null;
-        return (Variable) value;
+        return (Variable) stripCast(value);
     }
 
     public static boolean isConstantValue(Value value) {
@@ -107,6 +116,15 @@ public final class LIRValueUtil {
 
     public static boolean sameRegister(Value v1, Value v2, Value v3) {
         return sameRegister(v1, v2) && sameRegister(v1, v3);
+    }
+
+    public static boolean isCast(Value value) {
+        assert value != null;
+        return value instanceof CastValue;
+    }
+
+    public static Value stripCast(Value value) {
+        return isCast(value) ? ((CastValue) value).underlyingValue() : value;
     }
 
     /**

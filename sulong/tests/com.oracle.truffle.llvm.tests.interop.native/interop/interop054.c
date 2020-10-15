@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 typedef void *VALUE;
 
@@ -42,6 +42,6 @@ int main() {
     void **pp = &global; // should not harm us, pp is in the frame
 
     void (*returnObject)(void *) = polyglot_import("returnObject");
-    returnObject(global);
+    returnObject(*pp);
     return 0;
 }

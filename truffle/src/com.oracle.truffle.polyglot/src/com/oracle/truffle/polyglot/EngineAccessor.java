@@ -90,6 +90,7 @@ import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
@@ -120,6 +121,7 @@ final class EngineAccessor extends Accessor {
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
     static final JDKSupport JDKSERVICES = ACCESSOR.jdkSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
+    static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
 
     private static List<AbstractClassLoaderSupplier> locatorLoaders() {
@@ -332,6 +334,12 @@ final class EngineAccessor extends Accessor {
         public TruffleContext getTruffleContext(Object polyglotLanguageContext) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
             return languageContext.context.currentTruffleContext;
+        }
+
+        @Override
+        public TruffleContext getCurrentCreatorTruffleContext() {
+            PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
+            return context != null ? context.creatorTruffleContext : null;
         }
 
         @SuppressWarnings("unchecked")
@@ -719,15 +727,54 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object enterInternalContext(Object polyglotLanguageContext) {
+        public Object enterInternalContext(Node node, Object polyglotLanguageContext) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotLanguageContext);
-            return context.engine.enter(context);
+            PolyglotEngineImpl engine = resolveEngine(node, context);
+            if (CompilerDirectives.isPartialEvaluationConstant(engine)) {
+                return engine.enter(context);
+            } else {
+                return enterInternalContextBoundary(context, engine);
+            }
+        }
+
+        @TruffleBoundary
+        private static Object enterInternalContextBoundary(PolyglotContextImpl context, PolyglotEngineImpl engine) {
+            return engine.enter(context);
         }
 
         @Override
-        public void leaveInternalContext(Object impl, Object prev) {
+        public void leaveInternalContext(Node node, Object impl, Object prev) {
+            CompilerAsserts.partialEvaluationConstant(node);
             PolyglotContextImpl context = ((PolyglotContextImpl) impl);
-            context.engine.leave(prev, context);
+            PolyglotEngineImpl engine = resolveEngine(node, context);
+            if (CompilerDirectives.isPartialEvaluationConstant(engine)) {
+                engine.leave(prev, context);
+            } else {
+                leaveInternalContextBoundary(prev, context, engine);
+            }
+        }
+
+        @TruffleBoundary
+        private static void leaveInternalContextBoundary(Object prev, PolyglotContextImpl context, PolyglotEngineImpl engine) {
+            engine.leave(prev, context);
+        }
+
+        private static PolyglotEngineImpl resolveEngine(Node node, PolyglotContextImpl context) {
+            PolyglotEngineImpl engine;
+            if (node != null) {
+                RootNode root = node.getRootNode();
+                if (root == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw new IllegalStateException("Passed node is not yet adopted. Adopt it first.");
+                }
+                CompilerAsserts.partialEvaluationConstant(root);
+                engine = (PolyglotEngineImpl) EngineAccessor.NODES.getPolyglotEngine(root);
+                CompilerAsserts.partialEvaluationConstant(engine);
+                assert engine != null : "root node engine must not be null";
+            } else {
+                engine = context.engine;
+            }
+            return engine;
         }
 
         @Override
@@ -940,8 +987,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object asHostObject(Object obj) {
             assert isHostObject(obj);
-            HostObject javaObject = (HostObject) obj;
-            return javaObject.obj;
+            return HostObject.valueOf(obj);
         }
 
         @Override

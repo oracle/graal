@@ -75,7 +75,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
         } catch (UnsupportedNativeTypeException e) {
             throw new IllegalStateException(e);
         }
-        return nfiContextExtension.getNativeFunction(context, "identity", String.format("(POINTER):%s", signature));
+        return nfiContextExtension.getNativeFunction("identity", String.format("(POINTER):%s", signature));
     }
 
     protected Object dispatchIdentity(long pointer) {

@@ -127,6 +127,7 @@ import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
+import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
@@ -313,6 +314,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerVolatileRead(((VolatileReadNode) n), tool);
             } else if (n instanceof VolatileWriteNode) {
                 lowerVolatileWrite(((VolatileWriteNode) n), tool);
+            } else if (n instanceof RegisterFinalizerNode) {
+                return;
             } else {
                 throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
             }
@@ -1319,5 +1322,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         n.replaceAtUsages(postMembar, InputType.Memory);
         WriteNode nonVolatileWrite = graph.add(new WriteNode(n.getAddress(), n.getLocationIdentity(), n.value(), n.getBarrierType()));
         graph.replaceFixedWithFixed(n, nonVolatileWrite);
+    }
+
+    @Override
+    public boolean supportsOptimizedFilling(OptionValues options) {
+        return false;
     }
 }

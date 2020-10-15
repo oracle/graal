@@ -17,7 +17,7 @@ Let us define a C struct for points and implement allocation functions:
 
 ```c
 // cpart.c
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -49,10 +49,10 @@ void printPoint(struct Point *p) {
 ```
 
 Make sure `LLVM_TOOLCHAIN` resolves to the GraalVM LLVM toolchain (`lli --print-toolchain-path`),
-then compile _cpart.c_ with (the polyglot-mock library defines the polyglot
+then compile _cpart.c_ with (the graalvm-llvm library defines the polyglot
 API functions used in the example):
 ```shell
-$LLVM_TOOLCHAIN/clang -shared cpart.c -lpolyglot-mock -o cpart.so
+$LLVM_TOOLCHAIN/clang -shared cpart.c -lgraalvm-llvm -o cpart.so
 ```
 
 You can access your C/C++ code from other languages like JavaScript:
@@ -105,13 +105,13 @@ Point<17.000000,42.000000>
 
 There are also lower level API functions for directly accessing polyglot values
 from C. See the [Polyglot Programming](https://www.graalvm.org/reference-manual/polyglot-programming/) reference
-and the documentation comments in `polyglot.h` for more details.
+and the documentation comments in `graalvm/llvm/polyglot.h` for more details.
 
 For example, this program allocates and accesses a Java array from C:
 
 ```c
 #include <stdio.h>
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 int main() {
     void *arrayType = polyglot_java_type("int[]");
@@ -126,7 +126,7 @@ int main() {
 Compile it to LLVM bitcode:
 
 ```shell
-$LLVM_TOOLCHAIN/clang polyglot.c -lpolyglot-mock -o polyglot
+$LLVM_TOOLCHAIN/clang polyglot.c -lgraalvm-llvm -o polyglot
 ```
 
 And run it, using the `--jvm` argument to run GraalVM in the JVM mode, since we are

@@ -48,7 +48,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -194,7 +193,7 @@ public class ComponentInstaller extends Launcher {
         });
     }
 
-    ComponentInstaller(String[] args) {
+    public ComponentInstaller(String[] args) {
         cmdlineParams = new LinkedList<>(Arrays.asList(args));
     }
 
@@ -247,7 +246,7 @@ public class ComponentInstaller extends Launcher {
         return input;
     }
 
-    void setInput(CommandInput input) {
+    protected void setInput(CommandInput input) {
         this.input = input;
     }
 
@@ -255,11 +254,11 @@ public class ComponentInstaller extends Launcher {
         return feedback;
     }
 
-    void setFeedback(Feedback feedback) {
+    protected void setFeedback(Feedback feedback) {
         this.feedback = feedback;
     }
 
-    Environment setupEnvironment(SimpleGetopt go) {
+    protected Environment setupEnvironment(SimpleGetopt go) {
         Environment e = new Environment(command, parameters, go.getOptValues());
         setInput(e);
         setFeedback(e);
@@ -825,10 +824,10 @@ public class ComponentInstaller extends Launcher {
     }
 
     public void launch(List<String> args) {
-        maybeNativeExec(args, false, new LinkedHashMap<>());
+        maybeNativeExec(args, args, false);
         // // Uncomment for debugging jvmmode launcher
         // if (System.getProperty("test.wrap") != null) {
-        // maybeExec(args, false, Collections.emptyMap(), VMType.Native);
+        // maybeExec(args, args, false, VMType.Native);
         // System.exit(
         // executeJVMMode(System.getProperty("java.class.path"), args, args) // NOI18N
         // );
@@ -878,15 +877,14 @@ public class ComponentInstaller extends Launcher {
      * 
      * @param jvmArgs JVM arguments for the process
      * @param remainingArgs program arguments
-     * @param polyglotOptions useless
      */
     @Override
-    protected void executeJVM(String classpath, List<String> jvmArgs, List<String> remainingArgs, Map<String, String> polyglotOptions) {
+    protected void executeJVM(String classpath, List<String> jvmArgs, List<String> remainingArgs) {
         if (SystemUtils.isWindows()) {
             int retcode = executeJVMMode(classpath, jvmArgs, remainingArgs);
             System.exit(retcode);
         } else {
-            super.executeJVM(classpath, jvmArgs, remainingArgs, polyglotOptions);
+            super.executeJVM(classpath, jvmArgs, remainingArgs);
         }
     }
 

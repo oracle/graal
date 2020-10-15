@@ -29,7 +29,7 @@
  */
 typedef unsigned int myUnsignedInt;
 
-int start() __attribute__((constructor)) {
+__attribute__((constructor)) int start() {
     myUnsignedInt typedefedVal = 15;
     const int constVal = 234;
     const myUnsignedInt cuVal = 128;

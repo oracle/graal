@@ -1,0 +1,65 @@
+{
+	"name": "micronaut",
+	"displayName": "Micronaut",
+	"description": "Micronaut support for VS Code",
+	"version": "0.0.1",
+	"license": "SEE LICENSE IN LICENSE.txt",
+	"publisher": "oracle-labs-graalvm",
+	"author": {
+		"name": "Oracle Labs"
+	},
+	"icon": "images/micronaut.png",
+	"homepage": "https://github.com/oracle/graal/blob/master/vscode/micronaut/README.md",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/oracle/graal.git"
+	},
+	"bugs": {
+		"url": "https://github.com/oracle/graal/issues"
+	},
+	"engines": {
+		"vscode": "^1.49.0"
+	},
+	"categories": [
+		"Programming Languages",
+		"Other"
+	],
+	"activationEvents": [
+		"onCommand:extension.micronaut.createProject"
+	],
+	"main": "./dist/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "extension.micronaut.createProject",
+				"title": "Create Micronaut Project",
+				"category": "Micronaut"
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "webpack --mode production",
+		"compile": "webpack --mode development",
+		"info": "webpack --display-modules",
+		"watch": "webpack --mode development --watch",
+		"test-compile": "tsc -p ./",
+		"lint": "tslint -p ./"
+	},
+	"dependencies": {
+		"decompress": "4.2.1"
+	},
+	"devDependencies": {
+		"@types/glob": "^7.1.1",
+		"@types/mocha": "^5.2.6",
+		"@types/node": "^10.12.21",
+		"@types/vscode": "^1.49.0",
+		"@types/decompress": "4.2.3",
+		"glob": "^7.1.4",
+		"mocha": "^6.1.4",
+		"typescript": "^3.3.1",
+		"tslint": "^5.12.1",
+		"ts-loader": "^6.2.1",
+		"webpack": "^4.42.0",
+		"webpack-cli": "^3.3.11"
+	}
+}

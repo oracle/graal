@@ -25,8 +25,11 @@
 package org.graalvm.compiler.lir.alloc.lsra;
 
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.lir.LIRValueUtil.isCast;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 
@@ -37,6 +40,7 @@ import java.util.EnumSet;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.CastValue;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.InstructionValueProcedure;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -49,6 +53,8 @@ import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
 
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -147,7 +153,7 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
          * considered when building the intervals if the interval is not live, colorLirOperand will
          * cause an assert on failure.
          */
-        Value result = colorLirOperand(op, (Variable) operand, mode);
+        Value result = colorLirOperand(op, asVariable(operand), mode);
         assert !allocator.hasCall(tempOpId) || isStackSlotValue(result) || isJavaConstant(result) || !allocator.isCallerSave(result) : "cannot have caller-save register operands at calls";
         return result;
     }
@@ -179,7 +185,18 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
         @Override
         public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
             if (isVariable(value)) {
-                return colorLirOperand(instruction, (Variable) value, mode);
+                Value location = colorLirOperand(instruction, asVariable(value), mode);
+                if (mode == OperandMode.USE && isCast(value)) {
+                    // Use the same location, but with the cast's kind.
+                    CastValue cast = (CastValue) value;
+                    if (isRegister(location)) {
+                        location = ((RegisterValue) location).getRegister().asValue(cast.getValueKind());
+                    } else if (location instanceof StackSlot) {
+                        StackSlot stackSlot = (StackSlot) location;
+                        location = StackSlot.get(cast.getValueKind(), stackSlot.getRawOffset(), stackSlot.getRawAddFrameSize());
+                    }
+                }
+                return location;
             }
             return value;
         }

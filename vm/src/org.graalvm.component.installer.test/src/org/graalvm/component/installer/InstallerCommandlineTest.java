@@ -63,7 +63,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
         }
 
         @Override
-        Environment setupEnvironment(SimpleGetopt go) {
+        protected Environment setupEnvironment(SimpleGetopt go) {
 
             Environment env = new Environment(getCommand(), getParameters(), go.getOptValues()) {
                 @Override

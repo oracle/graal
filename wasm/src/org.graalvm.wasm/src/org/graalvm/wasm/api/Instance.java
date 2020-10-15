@@ -239,11 +239,11 @@ public class Instance extends Dictionary {
             WasmFunction function = entry.getValue();
             final CallTarget target = instance.target(function.index());
             e.addMember(name, new Executable(args -> {
-                final Object prev = truffleContext.enter();
+                final Object prev = truffleContext.enter(null);
                 try {
                     return target.call(args);
                 } finally {
-                    truffleContext.leave(prev);
+                    truffleContext.leave(null, prev);
                 }
             }));
         }

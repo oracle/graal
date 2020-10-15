@@ -29,5 +29,8 @@
  */
 int main() {
     char t[] = "asdf";
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstring-compare"
     return "asdf" == t;
+#pragma clang diagnostic pop
 }

@@ -48,7 +48,7 @@ public class ExceptionHelpers {
 
     @StubCallingConvention
     @NeverInline("Exception slow path")
-    private static IllegalArgumentException throwIllegalArgumentException(String message) {
+    public static IllegalArgumentException throwIllegalArgumentException(String message) {
         throw new IllegalArgumentException(message, null);
     }
 

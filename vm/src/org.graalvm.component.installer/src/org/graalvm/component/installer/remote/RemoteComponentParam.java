@@ -107,8 +107,11 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
         if (fileLoader != null) {
             return fileLoader;
         }
-        return fileLoader = new DelegateMetaLoader(
-                        metadataFromLocal(downloadLocalFile()));
+        return fileLoader = doCreateFileLoader(metadataFromLocal(downloadLocalFile()));
+    }
+
+    protected MetadataLoader doCreateFileLoader(MetadataLoader delegate) {
+        return new DelegateMetaLoader(delegate);
     }
 
     /**
@@ -127,14 +130,22 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
             delegate.close();
         }
 
+        protected final ComponentInfo catalogInfo() {
+            return catalogInfo;
+        }
+
         @Override
         public ComponentInfo getComponentInfo() {
-            fileInfo = delegate.getComponentInfo();
-            if (remoteURL != null) {
-                fileInfo.setRemoteURL(remoteURL);
-            }
+            fileInfo = configureComponentInfo(delegate.getComponentInfo());
             complete = true;
             return fileInfo;
+        }
+
+        protected ComponentInfo configureComponentInfo(ComponentInfo info) {
+            if (remoteURL != null) {
+                info.setRemoteURL(remoteURL);
+            }
+            return info;
         }
 
         @Override
@@ -154,6 +165,12 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
 
         @Override
         public String getLicenseID() {
+            if (catalogInfo != null) {
+                String catalogLicense = catalogInfo.getLicensePath();
+                if (catalogLicense != null && catalogLicense.contains("://")) {
+                    return catalogLicense;
+                }
+            }
             return delegate.getLicenseID();
         }
 
@@ -286,6 +303,12 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
 
     @Override
     public String getLicenseID() {
+        String s = getLicensePath();
+        if (s != null && s.contains("://")) {
+            // special case, so that the package will not be downloaded, if the
+            // catalog specifies HTTP remote path.
+            return s;
+        }
         try {
             return createFileLoader().getLicenseID();
         } catch (IOException ex) {

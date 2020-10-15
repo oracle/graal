@@ -170,6 +170,8 @@ public abstract class Accessor {
         public abstract void forceAdoption(Node parent, Node child);
 
         public abstract boolean isTrivial(RootNode rootNode);
+
+        public abstract Object translateStackTraceElement(TruffleStackTraceElement stackTraceLement);
     }
 
     public abstract static class SourceSupport extends Support {
@@ -218,6 +220,7 @@ public abstract class Accessor {
         public abstract Object unwrapLegacyMetaObjectWrapper(Object receiver);
 
         public abstract boolean isScopeObject(Object receiver);
+
     }
 
     public abstract static class EngineSupport extends Support {
@@ -288,6 +291,8 @@ public abstract class Accessor {
 
         public abstract TruffleContext getTruffleContext(Object polyglotLanguageContext);
 
+        public abstract TruffleContext getCurrentCreatorTruffleContext();
+
         public abstract Object toGuestValue(Object obj, Object languageContext);
 
         public abstract Object getPolyglotEngine(Object polyglotLanguageInstance);
@@ -304,9 +309,9 @@ public abstract class Accessor {
 
         public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config);
 
-        public abstract Object enterInternalContext(Object polyglotContext);
+        public abstract Object enterInternalContext(Node node, Object polyglotContext);
 
-        public abstract void leaveInternalContext(Object polyglotContext, Object prev);
+        public abstract void leaveInternalContext(Node node, Object polyglotContext, Object prev);
 
         public abstract void closeContext(Object polyglotContext, boolean force, Node closeLocation, boolean resourceExhaused, String resourceExhausedReason);
 
@@ -567,6 +572,8 @@ public abstract class Accessor {
 
         public abstract Object getContext(Env env);
 
+        public abstract Object getPolyglotLanguageContext(Env env);
+
         public abstract TruffleLanguage<?> getSPI(Env env);
 
         public abstract InstrumentInfo createInstrument(Object polyglotInstrument, String id, String name, String version);
@@ -628,8 +635,6 @@ public abstract class Accessor {
         public abstract TruffleFile getTruffleFile(Object context, String path);
 
         public abstract TruffleFile getTruffleFile(Object context, URI uri);
-
-        public abstract SecurityException throwSecurityException(String message);
 
         public abstract FileSystem getFileSystem(TruffleFile truffleFile);
 
@@ -756,6 +761,49 @@ public abstract class Accessor {
         public abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
     }
 
+    public abstract static class ExceptionSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.exception.ExceptionAccessor$ExceptionSupportImpl";
+
+        protected ExceptionSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract Throwable getLazyStackTrace(Throwable exception);
+
+        public abstract void setLazyStackTrace(Throwable exception, Throwable stackTrace);
+
+        public abstract Object createDefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection);
+
+        public abstract boolean isException(Object receiver);
+
+        public abstract RuntimeException throwException(Object receiver);
+
+        public abstract Object getExceptionType(Object receiver);
+
+        public abstract boolean isExceptionIncompleteSource(Object receiver);
+
+        public abstract int getExceptionExitStatus(Object receiver);
+
+        public abstract boolean hasExceptionCause(Object receiver);
+
+        public abstract Object getExceptionCause(Object receiver);
+
+        public abstract boolean hasExceptionMessage(Object receiver);
+
+        public abstract Object getExceptionMessage(Object receiver);
+
+        public abstract boolean hasExceptionStackTrace(Object receiver);
+
+        public abstract Object getExceptionStackTrace(Object receiver);
+
+        public abstract boolean hasSourceLocation(Object receiver);
+
+        public abstract SourceSection getSourceLocation(Object receiver);
+
+        public abstract boolean assertGuestObject(Object guestObject);
+    }
+
     public abstract static class IOSupport extends Support {
 
         static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.io.IOAccessor$IOSupportImpl";
@@ -868,6 +916,7 @@ public abstract class Accessor {
         private static final Accessor.InstrumentSupport INSTRUMENT;
         private static final Accessor.SourceSupport SOURCE;
         private static final Accessor.InteropSupport INTEROP;
+        private static final Accessor.ExceptionSupport EXCEPTION;
         private static final Accessor.IOSupport IO;
         private static final Accessor.FrameSupport FRAMES;
         private static final Accessor.EngineSupport ENGINE;
@@ -881,6 +930,7 @@ public abstract class Accessor {
             INSTRUMENT = loadSupport(InstrumentSupport.IMPL_CLASS_NAME);
             SOURCE = loadSupport(SourceSupport.IMPL_CLASS_NAME);
             INTEROP = loadSupport(InteropSupport.IMPL_CLASS_NAME);
+            EXCEPTION = loadSupport(ExceptionSupport.IMPL_CLASS_NAME);
             IO = loadSupport(IOSupport.IMPL_CLASS_NAME);
             FRAMES = loadSupport(FrameSupport.IMPL_CLASS_NAME);
             ENGINE = loadSupport(EngineSupport.IMPL_CLASS_NAME);
@@ -910,6 +960,7 @@ public abstract class Accessor {
             case "com.oracle.truffle.api.instrumentation.InstrumentAccessor":
             case "com.oracle.truffle.api.source.SourceAccessor":
             case "com.oracle.truffle.api.interop.InteropAccessor":
+            case "com.oracle.truffle.api.exception.ExceptionAccessor":
             case "com.oracle.truffle.api.io.IOAccessor":
             case "com.oracle.truffle.api.frame.FrameAccessor":
             case "com.oracle.truffle.polyglot.EngineAccessor":
@@ -950,6 +1001,10 @@ public abstract class Accessor {
 
     public final InteropSupport interopSupport() {
         return Constants.INTEROP;
+    }
+
+    public final ExceptionSupport exceptionSupport() {
+        return Constants.EXCEPTION;
     }
 
     public final SourceSupport sourceSupport() {

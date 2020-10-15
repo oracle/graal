@@ -42,6 +42,8 @@ package com.oracle.truffle.api.instrumentation.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +53,7 @@ import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
@@ -59,6 +62,7 @@ import com.oracle.truffle.api.instrumentation.ThreadsActivationListener;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import org.graalvm.polyglot.PolyglotException;
 
 public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
 
@@ -81,11 +85,11 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
 
         c0.enter();
         TruffleContext ic0 = this.languageEnv.newContextBuilder().build();
-        Object prev = ic0.enter();
+        Object prev = ic0.enter(null);
         // look language handle on the context it is not the same as
         // the creator handle. The creator handle can be closed.
         ic0 = ProxyLanguage.getCurrentContext().getEnv().getContext();
-        ic0.leave(prev);
+        ic0.leave(null, prev);
 
         c0.leave();
 
@@ -112,35 +116,35 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
         assertList(entered);
         assertList(left);
 
-        prev = ic0.enter();
+        prev = ic0.enter(null);
         assertList(entered, ic0);
         assertList(left);
 
-        ic0.leave(prev);
+        ic0.leave(null, prev);
 
         assertList(entered, ic0);
         assertList(left, ic0);
 
-        prev = tc0.enter();
+        prev = tc0.enter(null);
         assertList(entered, ic0, tc0);
         assertList(left, ic0);
-        Object prev1 = ic0.enter();
+        Object prev1 = ic0.enter(null);
         assertList(entered, ic0, tc0, ic0);
         assertList(left, ic0);
 
-        ic0.leave(prev1);
+        ic0.leave(null, prev1);
         assertList(entered, ic0, tc0, ic0);
         assertList(left, ic0, ic0);
 
-        tc0.leave(prev);
+        tc0.leave(null, prev);
         assertList(entered, ic0, tc0, ic0);
         assertList(left, ic0, ic0, tc0);
 
         binding.dispose();
-        prev = tc0.enter();
-        prev1 = ic0.enter();
-        ic0.leave(prev1);
-        tc0.leave(prev);
+        prev = tc0.enter(null);
+        prev1 = ic0.enter(null);
+        ic0.leave(null, prev1);
+        tc0.leave(null, prev);
 
         assertList(entered, ic0, tc0, ic0);
         assertList(left, ic0, ic0, tc0);
@@ -335,6 +339,79 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
         context.leave();
         assertList(entered, to, to);
         assertList(left, to, to);
+    }
+
+    @Test
+    public void testExceptionFromOnEnterThread() {
+        testExceptionImpl(() -> {
+            try {
+                context.enter();
+                fail("Expected a PolyglotException");
+            } catch (PolyglotException pe) {
+                assertTrue(pe.isInternalError());
+            }
+            assertFails(() -> Context.getCurrent(), IllegalStateException.class);
+        }, true, false);
+    }
+
+    @Test
+    public void testExceptionFromOnLeaveThread() {
+        testExceptionImpl(() -> {
+            context.enter();
+            try {
+                context.leave();
+                fail("Expected a PolyglotException");
+            } catch (PolyglotException pe) {
+                assertTrue(pe.isInternalError());
+            }
+            assertFails(() -> Context.getCurrent(), IllegalStateException.class);
+        }, false, true);
+    }
+
+    @Test
+    public void testExceptionFromBoth() {
+        testExceptionImpl(() -> {
+            try {
+                context.enter();
+                fail("Expected a PolyglotException");
+            } catch (PolyglotException pe) {
+                assertTrue(pe.isInternalError());
+            }
+            assertFails(() -> Context.getCurrent(), IllegalStateException.class);
+        }, true, true);
+    }
+
+    private void testExceptionImpl(Runnable body, boolean throwOnEnter, boolean throwOnLeave) {
+        setupEnv(Context.create(), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            }
+        });
+
+        ThreadsActivationListener listener = new ThreadsActivationListener() {
+            @Override
+            public void onEnterThread(TruffleContext c) {
+                if (throwOnEnter) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw new RuntimeException();
+                }
+            }
+
+            @Override
+            public void onLeaveThread(TruffleContext c) {
+                if (throwOnLeave) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw new RuntimeException();
+                }
+            }
+        };
+        EventBinding<? extends ThreadsActivationListener> binding = instrumentEnv.getInstrumenter().attachThreadsActivationListener(listener);
+        try {
+            body.run();
+        } finally {
+            binding.dispose();
+        }
     }
 
     private static void assertList(List<TruffleContext> list, TruffleContext... expectedContexts) {

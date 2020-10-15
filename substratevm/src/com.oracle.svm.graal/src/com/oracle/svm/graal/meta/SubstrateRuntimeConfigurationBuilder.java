@@ -35,10 +35,12 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.SharedCodeCacheProvider;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
+import com.oracle.svm.graal.isolated.IsolateAwareCodeCacheProvider;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
@@ -84,6 +86,9 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
 
     @Override
     protected SharedCodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig) {
+        if (SubstrateOptions.supportCompileInIsolates()) {
+            return new IsolateAwareCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
+        }
         return new SubstrateCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
     }
 }

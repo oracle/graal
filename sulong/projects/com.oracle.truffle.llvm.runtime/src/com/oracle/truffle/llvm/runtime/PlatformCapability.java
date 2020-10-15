@@ -50,7 +50,7 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
 
     public abstract LLVMSyscallOperationNode createSyscallNode(long index);
 
-    public abstract String getPolyglotMockLibrary();
+    public abstract String getBuiltinsLibrary();
 
     public abstract String getLibrarySuffix();
 

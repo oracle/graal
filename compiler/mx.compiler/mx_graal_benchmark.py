@@ -57,6 +57,8 @@ _IMAGE_JMH_BENCHMARK_ARGS = [
     '-Dnative-image.benchmark.extra-profile-run-arg=-wi',
     '-Dnative-image.benchmark.extra-profile-run-arg=1',
     '-Dnative-image.benchmark.extra-profile-run-arg=-i5',
+
+    '-Dnative-image.benchmark.benchmark-suite-name=jmh',
 ]
 
 
@@ -409,7 +411,7 @@ class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite): # 
         return "graal-compiler"
 
     def extraVmArgs(self):
-        return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
+        return ['-XX:-UseJVMCIClassLoader'] + ['-Dnative-image.benchmark.benchmark-name=' + self.name()] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
 
 
 mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
@@ -418,7 +420,7 @@ mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
 class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite):
 
     def extraVmArgs(self):
-        return super(JMHJarGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
+        return super(JMHJarGraalCoreBenchmarkSuite, self).extraVmArgs() + ['-Dnative-image.benchmark.benchmark-name=' + self.name()] + _IMAGE_JMH_BENCHMARK_ARGS
 
     def name(self):
         return "jmh-jar"
@@ -436,7 +438,7 @@ mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
 class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
 
     def extraVmArgs(self):
-        return super(JMHDistGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
+        return super(JMHDistGraalCoreBenchmarkSuite, self).extraVmArgs() + ['-Dnative-image.benchmark.benchmark-name=' + self.name()] + _IMAGE_JMH_BENCHMARK_ARGS
 
     def name(self):
         return "jmh-dist"

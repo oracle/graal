@@ -86,11 +86,10 @@ Where `BASEDIR` is the current directory.
         "BASEDIR\a;BASEDIR\b;BASEDIR\c" <main_class>
     ```
 
-- `test.cmd foox --vm.fooy --vm.cp=bar --jvm.classpath=baz`
+- `test.cmd foox --vm.fooy --vm.cp=bar --vm.classpath=baz`
 
     expected:
     ```
-    '--jvm.*' options are deprecated, use '--vm.*' instead.
     "BASEDIR\<jre_bin>\java" <extra_jvm_args> -Dorg.graalvm.launcher.shell=true
         "-Dorg.graalvm.launcher.executablename=BASEDIR\test.cmd" -fooy -cp
         "BASEDIR\a;BASEDIR\b;BASEDIR\c;bar;baz" <main_class>  foox
@@ -203,15 +202,6 @@ Where `BASEDIR` is the current directory.
         "-Dorg.graalvm.launcher.executablename=BASEDIR\test.cmd" "-obscure=one two"
         -cp "BASEDIR\a;BASEDIR\b;BASEDIR\c" <main_class>
      ```
-
-- `test.cmd foo -vm.bar --native.x`
-
-    expected:
-    ```
-    The native version of test does not exist: cannot use '--native.x'.
-    If native-image is installed, you may build it with 'native-image
-        --macro:<macro_name>'.
-    ```
 
 - `test.cmd foo -vm.bar --native`
 

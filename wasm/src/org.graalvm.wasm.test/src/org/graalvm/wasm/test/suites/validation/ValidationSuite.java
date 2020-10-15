@@ -52,11 +52,12 @@ import org.graalvm.wasm.utils.cases.WasmCase;
 import org.graalvm.wasm.utils.cases.WasmCaseData;
 import org.graalvm.wasm.utils.cases.WasmStringCase;
 import org.junit.Test;
-
 import org.graalvm.wasm.test.WasmFileSuite;
 
+import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
+
 public class ValidationSuite extends WasmFileSuite {
-    private WasmCase[] testCases = {
+    private final WasmCase[] testCases = {
                     // # 3.2 Types
 
                     // ## 3.2.1 Limits
@@ -266,6 +267,14 @@ public class ValidationSuite extends WasmFileSuite {
                                     "Custom Section - excessive name length",
                                     "Declared section (0x00) size is incorrect: 4 should = 1.",
                                     "0061 736d 0100 0000 0001 0300 0100"),
+
+                    binaryCase(
+                                    "Export name - overlong encoding",
+                                    "Invalid UTF-8 encoding of the name at: 23",
+                                    // (func (export \"\\F0\\82\\82\\AC\")
+                                    // (result i32) i32.const 42)
+                                    // F0 82 82 AC is UTF-8 overlong encoding of Euro sign
+                                    "0061 736d 0100 0000 0105 0160 0001 7f03 0201 0007 0801 04F0 8282 AC00 000a 0601 0400 412a 0b")
     };
 
     private static Properties opts = SystemProperties.createFromOptions(
@@ -296,15 +305,5 @@ public class ValidationSuite extends WasmFileSuite {
 
     private static WasmBinaryCase binaryCase(String name, String errorMessage, String hexString) {
         return WasmCase.create(name, WasmCase.expectedThrows(errorMessage, WasmCaseData.ErrorType.Validation), hexStringToByteArray(hexString), opts);
-    }
-
-    private static byte[] hexStringToByteArray(String input) {
-        String s = input.replaceAll("\\s+", "");
-        int len = s.length();
-        byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4) + Character.digit(s.charAt(i + 1), 16));
-        }
-        return data;
     }
 }

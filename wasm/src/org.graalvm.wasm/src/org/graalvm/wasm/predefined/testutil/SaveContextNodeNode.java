@@ -66,7 +66,7 @@ public class SaveContextNodeNode extends WasmBuiltinRootNode {
 
     @Override
     public String builtinNodeName() {
-        return TestutilModule.Names.RESET_CONTEXT;
+        return TestutilModule.Names.SAVE_CONTEXT;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -75,9 +75,7 @@ public class SaveContextNodeNode extends WasmBuiltinRootNode {
         Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, only 0 or 1 memories can be saved.");
         final WasmMemory currentMemory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
         final GlobalRegistry globals = context.globals().duplicate();
-        final ContextState state = new ContextState(currentMemory, globals);
-
-        return state;
+        return new ContextState(currentMemory, globals);
     }
 
     static final class ContextState implements TruffleObject {

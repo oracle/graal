@@ -31,5 +31,5 @@ public interface ImageHeap {
 
     ImageHeapObject addLateToImageHeap(Object object, String reason);
 
-    ImageHeapObject addFillerObject(int remainingSpace);
+    ImageHeapObject addFillerObject(int size);
 }
