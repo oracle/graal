@@ -124,7 +124,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     static PolyglotImpl getInstance() {
         if (polyglotImpl == null) {
             /*
-             * This may happen if a polyglot impl was requested from truffle direclty and not using
+             * This may happen if a polyglot impl was requested from truffle directly and not using
              * the polyglot API. We initialize the polyglot API to make sure that initialization
              * order is always the same. We might need to change this if we want to decouple the
              * polyglot API in the future.
