@@ -362,11 +362,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return initialized;
     }
 
-    CallTarget parseCached(PolyglotLanguage accessingLanguage, Source source, String[] argumentNames, boolean forLanguage) throws AssertionError {
+    CallTarget parseCached(PolyglotLanguage accessingLanguage, Source source, String[] argumentNames) throws AssertionError {
         ensureInitialized(accessingLanguage);
         PolyglotSourceCache cache = lazy.sourceCache;
         assert cache != null;
-        return cache.parseCached(this, source, argumentNames, forLanguage);
+        return cache.parseCached(this, source, argumentNames);
     }
 
     Env requireEnv() {

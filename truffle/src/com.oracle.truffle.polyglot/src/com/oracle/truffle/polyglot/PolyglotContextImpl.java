@@ -909,7 +909,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 Source source = (Source) sourceImpl;
                 languageContext.checkAccess(null);
                 languageContext.ensureInitialized(null);
-                CallTarget target = languageContext.parseCached(null, source, null, false);
+                CallTarget target = languageContext.parseCached(null, source, null);
                 return languageContext.asValue(new PolyglotParsedEval(languageContext, source, target));
             } finally {
                 engine.leaveIfNeeded(prev, this);
@@ -929,7 +929,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 Source source = (Source) sourceImpl;
                 languageContext.checkAccess(null);
                 languageContext.ensureInitialized(null);
-                CallTarget target = languageContext.parseCached(null, source, null, false);
+                CallTarget target = languageContext.parseCached(null, source, null);
                 Object result = target.call(PolyglotImpl.EMPTY_ARGS);
                 Value hostValue;
                 try {
