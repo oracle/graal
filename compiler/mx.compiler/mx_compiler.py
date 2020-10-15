@@ -530,7 +530,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
         # metadata package was deprecated, exclude it
-        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java'], quietForNoPackages=True)
+        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java,com.oracle.truffle.api.object.dsl'], quietForNoPackages=True)
 
 
 def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
