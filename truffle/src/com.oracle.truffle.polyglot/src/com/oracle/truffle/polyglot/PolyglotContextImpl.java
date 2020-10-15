@@ -1067,19 +1067,24 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             engine.neverInterrupted.invalidate();
             long startMillis = System.currentTimeMillis();
             PolyglotContextImpl[] childContextsToInterrupt;
-            boolean waitForClose = false;
+            boolean waitForCloseOrInterrupt = false;
             while (true) {
-                if (waitForClose) {
+                if (waitForCloseOrInterrupt) {
                     closingLock.lock();
                     closingLock.unlock();
-                    waitForClose = false;
+                    waitForCloseOrInterrupt = false;
                 }
                 synchronized (this) {
                     if (closed) {
                         // already closed
                         return true;
                     }
-                    assert !interrupting : "Interrupting context resursively!";
+                    if (interrupting) {
+                        // currently interrupting on another thread -> wait for other thread to
+                        // complete interrupting
+                        waitForCloseOrInterrupt = true;
+                        continue;
+                    }
                     Thread localClosingThread = closingThread;
                     if (localClosingThread != null) {
                         if (localClosingThread == Thread.currentThread()) {
@@ -1088,7 +1093,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         } else {
                             // currently closing on another thread -> wait for other thread to
                             // complete closing
-                            waitForClose = true;
+                            waitForCloseOrInterrupt = true;
                             continue;
                         }
                     }
@@ -1282,12 +1287,12 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
          *
          * 4) The close was not yet performed and no thread is executing -> perform close
          */
-        boolean waitForClose = false;
+        boolean waitForCloseOrInterrupt = false;
         while (true) {
-            if (waitForClose) {
+            if (waitForCloseOrInterrupt) {
                 closingLock.lock();
                 closingLock.unlock();
-                waitForClose = false;
+                waitForCloseOrInterrupt = false;
             }
             synchronized (this) {
                 if (closed) {
@@ -1302,15 +1307,17 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     } else {
                         // currently canceling on another thread -> wait for other thread to
                         // complete closing
-                        waitForClose = true;
+                        waitForCloseOrInterrupt = true;
                         continue;
                     }
                 }
                 PolyglotThreadInfo threadInfo = getCurrentThreadInfo();
                 if (interrupting) {
+                    // currently interrupting on another thread
                     if (parent == null) {
-                        // interrupt operation holds the closingLock
-                        waitForClose = true;
+                        // interrupt operation holds the closingLock -> wait for the interrupt to
+                        // complete
+                        waitForCloseOrInterrupt = true;
                         continue;
                     } else if (!threadInfo.isActiveNotCancelled()) {
                         /*
