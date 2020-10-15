@@ -435,7 +435,7 @@ public abstract class RootNode extends ExecutableNode {
     protected Object translateStackTraceElement(TruffleStackTraceElement element) {
         Node location = element.getLocation();
         return NodeAccessor.EXCEPTION.createDefaultStackTraceElementObject(element.getTarget().getRootNode(), location != null ? location.getEncapsulatingSourceSection() : null);
-     }
+    }
 
     /**
      * Allows languages to perform actions before a root node is attempted to be compiled without
