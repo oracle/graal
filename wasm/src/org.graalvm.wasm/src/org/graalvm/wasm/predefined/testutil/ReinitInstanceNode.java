@@ -61,11 +61,11 @@ public class ReinitInstanceNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        assert args.length == 1;
+        assert args.length == 2 || args.length == 1;
         for (Object arg : args) {
             trace("argument: %s", arg);
         }
-        return reinitInstance((WasmInstance) args[0], context);
+        return reinitInstance((WasmInstance) args[0], args.length != 2 || (boolean) args[1], context);
     }
 
     @Override
@@ -74,8 +74,8 @@ public class ReinitInstanceNode extends WasmBuiltinRootNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static WasmVoidResult reinitInstance(WasmInstance anInstance, WasmContext context) {
-        context.reinitInstance(anInstance);
+    private static WasmVoidResult reinitInstance(WasmInstance anInstance, boolean reinitMemory, WasmContext context) {
+        context.reinitInstance(anInstance, reinitMemory);
         return WasmVoidResult.getInstance();
     }
 }
