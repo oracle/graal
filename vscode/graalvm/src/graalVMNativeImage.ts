@@ -11,6 +11,7 @@ import * as http from "http";
 import * as https from "https";
 import * as url from "url";
 import * as sax from "sax";
+import * as utils from "./utils";
 import { getGraalVMVersion } from './graalVMInstall';
 
 const URL_SEARCH: string = 'https://search.maven.org/solrsearch/select';
@@ -41,7 +42,7 @@ export async function addNativeImageToPOM() {
         }
     }
 
-    const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
+    const graalVMHome = utils.getGVMHome();
     const fullVersion: string | undefined = await getGraalVMVersion(graalVMHome);
     if (!fullVersion) {
         vscode.window.showErrorMessage("Cannot get the version information of the selected GraalVM.");

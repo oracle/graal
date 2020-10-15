@@ -20,15 +20,19 @@ const config = {
     },
     devtool: 'source-map',
     externals: {
-        vscode: "commonjs vscode" // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
+        vscode: "commonjs vscode", // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
+        bufferutil: "bufferutil",
+        "utf-8-validate": "utf-8-validate",
     },
     resolve: { // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-        extensions: ['.ts', '.js']
+        extensions: ['.ts', '.js'],
+        symlinks: false
     },
     module: {
         rules: [{
             test: /\.ts$/,
             exclude: /node_modules/,
+            include: path.resolve(__dirname, 'src'),
             use: [{
                 loader: 'ts-loader',
             }]

@@ -13,7 +13,25 @@ export function random(low: number, high: number): number {
     return Math.floor(Math.random() * (high - low) + low);
 }
 
-export function findExecutable(program: string, graalVMHome: string | undefined): string | undefined {
+export function getConf(key: string): vscode.WorkspaceConfiguration {
+	return vscode.workspace.getConfiguration(key);
+}
+
+export function getGVMConfig(gvmConfig?: vscode.WorkspaceConfiguration): vscode.WorkspaceConfiguration {
+	if (!gvmConfig) {
+		gvmConfig = getConf('graalvm');
+	}
+	return gvmConfig;
+}
+
+export function getGVMHome(gvmConfig?: vscode.WorkspaceConfiguration): string {
+	return getGVMConfig(gvmConfig).get('home') as string;
+}
+
+export function findExecutable(program: string, graalVMHome?: string): string | undefined {
+	if (!graalVMHome) {
+		graalVMHome = getGVMHome();
+	}
     if (graalVMHome) {
         let executablePath = path.join(graalVMHome, 'bin', program);
         if (process.platform === 'win32') {
