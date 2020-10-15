@@ -56,6 +56,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -88,7 +89,7 @@ public class SLDebugTest {
 
     @Before
     public void before() {
-        tester = new DebuggerTester();
+        tester = new DebuggerTester(Context.newBuilder().allowAllAccess(true));
     }
 
     @After
@@ -369,6 +370,73 @@ public class SLDebugTest {
                 assertEquals("120", event.getReturnValue().toDisplayString());
             });
 
+            expectDone();
+        }
+    }
+
+    public static class HostFunction implements Supplier<Object> {
+
+        private final DebuggerSession session;
+
+        public HostFunction(DebuggerSession session) {
+            this.session = session;
+        }
+
+        @Override
+        public Object get() {
+            Assert.assertTrue(session.suspendHere(null));
+            return 0;
+        }
+    }
+
+    @Test
+    public void testSuspendHereFromHost() {
+        Source testSource = slCode("function foo(hostCall) {\n" +
+                        "  hostCall();\n" +
+                        "}\n");
+        try (DebuggerSession session = startSession()) {
+
+            startEval(testSource);
+            expectDone();
+
+            HostFunction hostFunction = new HostFunction(session);
+            tester.startExecute(context -> {
+                Value foo = context.getBindings("sl").getMember("foo");
+                return foo.execute(hostFunction);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                // Suspended immediately at the host call
+                checkState(event, "foo", 2, true, "hostCall()", "hostCall", "Function").prepareContinue();
+                Assert.assertEquals("foo", event.getTopStackFrame().getName());
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testStepFromSuspendHere() {
+        Source testSource = slCode("function foo(hostCall) {\n" +
+                        "  hostCall();\n" +
+                        "  x = 5;\n" +
+                        "}\n");
+        try (DebuggerSession session = startSession()) {
+
+            startEval(testSource);
+            expectDone();
+
+            HostFunction hostFunction = new HostFunction(session);
+            tester.startExecute(context -> {
+                Value foo = context.getBindings("sl").getMember("foo");
+                return foo.execute(hostFunction);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                // Suspended immediately at the host call
+                checkState(event, "foo", 2, true, "hostCall()", "hostCall", "Function").prepareStepOver(1);
+                Assert.assertEquals("foo", event.getTopStackFrame().getName());
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, "foo", 3, true, "x = 5", "hostCall", "Function").prepareStepOver(1);
+            });
             expectDone();
         }
     }

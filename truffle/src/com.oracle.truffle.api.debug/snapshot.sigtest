@@ -232,6 +232,7 @@ intf java.io.Closeable
 meth public boolean isBreakpointsActive()
  anno 0 java.lang.Deprecated()
 meth public boolean isBreakpointsActive(com.oracle.truffle.api.debug.Breakpoint$Kind)
+meth public boolean suspendHere(com.oracle.truffle.api.nodes.Node)
 meth public com.oracle.truffle.api.debug.Breakpoint install(com.oracle.truffle.api.debug.Breakpoint)
 meth public com.oracle.truffle.api.debug.DebugScope getTopScope(java.lang.String)
 meth public com.oracle.truffle.api.debug.Debugger getDebugger()

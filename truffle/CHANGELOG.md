@@ -51,6 +51,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * All Truffle Graal runtime options (-Dgraal.) which were deprecated in GraalVM 20.1 are removed. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-).
 * Deprecated the `com.oracle.truffle.api.object.dsl` API without replacement. The migration path is to use `DynamicObject` subclasses with the `com.oracle.truffle.api.object` API.
 * A node parameter now needs to be provided to TruffleContext.enter() and TruffleContext.leave(Object). The overloads without node parameter are deprecated. This is useful to allow the runtime to compile the enter and leave code better if a node is passed as argument. 
+* Added [DebuggerSession.suspendHere](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#suspendHere-com.oracle.truffle.api.nodes.Node-) to suspend immediately at the current location of the current execution thread.
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.
