@@ -63,15 +63,10 @@ public class RuntimeCodeInfoMemory {
     private final ReentrantLock lock;
     private NonmovableArray<UntetheredCodeInfo> table;
     private int count;
-    private long usedBytes;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     RuntimeCodeInfoMemory() {
         lock = new ReentrantLock();
-    }
-
-    public long getUsedBytes() {
-        return usedBytes;
     }
 
     public int getCount() {
@@ -130,8 +125,7 @@ public class RuntimeCodeInfoMemory {
         } while (resized);
         NonmovableArrays.setWord(table, index, info);
         count++;
-        usedBytes = usedBytes + CodeInfoAccess.getCodeSize(info).rawValue() + CodeInfoAccess.getMetadataSize(info).rawValue();
-        assert count > 0 & usedBytes > 0;
+        assert count > 0 : "invalid counter value";
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -172,8 +166,7 @@ public class RuntimeCodeInfoMemory {
             if (entry.equal(info)) {
                 NonmovableArrays.setWord(table, index, WordFactory.zero());
                 count--;
-                usedBytes = usedBytes - CodeInfoAccess.getCodeSize(info).rawValue() - CodeInfoAccess.getMetadataSize(info).rawValue();
-                assert count >= 0 & usedBytes >= 0;
+                assert count >= 0 : "invalid counter value";
                 rehashAfterUnregisterAt(index);
                 return true;
             }

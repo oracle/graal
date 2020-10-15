@@ -37,8 +37,13 @@ import javax.management.ObjectName;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 
@@ -51,8 +56,11 @@ import sun.management.Util;
 public final class HeapImplMemoryMXBean implements MemoryMXBean, NotificationEmitter {
     static final long UNDEFINED_MEMORY_USAGE = -1L;
 
+    private final MemoryMXBeanCodeInfoVisitor codeInfoVisitor;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapImplMemoryMXBean() {
+        this.codeInfoVisitor = new MemoryMXBeanCodeInfoVisitor();
     }
 
     @Override
@@ -74,7 +82,9 @@ public final class HeapImplMemoryMXBean implements MemoryMXBean, NotificationEmi
 
     @Override
     public MemoryUsage getNonHeapMemoryUsage() {
-        long used = RuntimeCodeInfoMemory.singleton().getUsedBytes();
+        codeInfoVisitor.reset();
+        RuntimeCodeInfoMemory.singleton().walkRuntimeMethods(codeInfoVisitor);
+        long used = codeInfoVisitor.getRuntimeCodeInfoSize().rawValue();
         return new MemoryUsage(UNDEFINED_MEMORY_USAGE, used, used, UNDEFINED_MEMORY_USAGE);
     }
 
@@ -108,5 +118,28 @@ public final class HeapImplMemoryMXBean implements MemoryMXBean, NotificationEmi
     @Override
     public MBeanNotificationInfo[] getNotificationInfo() {
         return new MBeanNotificationInfo[0];
+    }
+
+    private static final class MemoryMXBeanCodeInfoVisitor implements CodeInfoVisitor {
+        private UnsignedWord runtimeCodeInfoSize;
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        MemoryMXBeanCodeInfoVisitor() {
+            reset();
+        }
+
+        public UnsignedWord getRuntimeCodeInfoSize() {
+            return runtimeCodeInfoSize;
+        }
+
+        public void reset() {
+            runtimeCodeInfoSize = WordFactory.zero();
+        }
+
+        @Override
+        public <T extends CodeInfo> boolean visitCode(T codeInfo) {
+            runtimeCodeInfoSize = runtimeCodeInfoSize.add(CodeInfoAccess.getCodeSize(codeInfo)).add(CodeInfoAccess.getMetadataSize(codeInfo));
+            return true;
+        }
     }
 }

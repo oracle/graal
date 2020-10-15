@@ -166,7 +166,7 @@ final class YoungGeneration extends Generation {
     void swapSpaces() {
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             assert getSurvivorFromSpaceAt(i).isEmpty() : "Survivor fromSpace should be empty.";
-            assert getSurvivorFromSpaceAt(i).getChunkBytes().equal(0);
+            assert getSurvivorFromSpaceAt(i).getChunkBytes().equal(0) : "Chunk bytes must be 0";
             getSurvivorFromSpaceAt(i).absorb(getSurvivorToSpaceAt(i));
         }
     }
