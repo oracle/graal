@@ -1151,13 +1151,13 @@ class GraalVmNativeProperties(GraalVmProject):
         return NativePropertiesBuildTask(self, args)
 
 
-def _java_properties_escape(s, split_long=None, key_length=0):
+def java_properties_escape(s, split_long=None, key_length=0):
     parts = []
     first = True
     if split_long and len(s) <= 80:
         split_long = False
     for c in s:
-        if c == ' :=' and first:
+        if c == ' ' and first:
             parts.append('\\')
             parts.append(c)
         elif c == '\t':
@@ -1168,7 +1168,7 @@ def _java_properties_escape(s, split_long=None, key_length=0):
             parts.append('\\r')
         elif c == '\f':
             parts.append('\\f')
-        elif c in '\\#!':
+        elif c in '\\#!:=':
             parts.append('\\')
             parts.append(c)
         elif split_long and c == split_long:
@@ -1320,14 +1320,14 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if myself.endswith('.pyc'):
                 myself = myself[:-1]
             _write_ln(u"# Generated with \u2764 by " + myself)
-            _write_ln(u'ImageName=' + _java_properties_escape(name))
-            _write_ln(u'ImagePath=' + _java_properties_escape("${.}/" + relpath(dirname(graalvm_image_destination), graalvm_location).replace(os.sep, '/')))
+            _write_ln(u'ImageName=' + java_properties_escape(name))
+            _write_ln(u'ImagePath=' + java_properties_escape("${.}/" + relpath(dirname(graalvm_image_destination), graalvm_location).replace(os.sep, '/')))
             if requires:
-                _write_ln(u'Requires=' + _java_properties_escape(' '.join(requires), ' ', len('Requires')))
+                _write_ln(u'Requires=' + java_properties_escape(' '.join(requires), ' ', len('Requires')))
             if isinstance(image_config, mx_sdk.LauncherConfig):
-                _write_ln(u'ImageClass=' + _java_properties_escape(image_config.main_class))
-            _write_ln(u'ImageClasspath=' + _java_properties_escape(':'.join(("${.}/" + e.replace(os.sep, '/') for e in location_classpath)), ':', len('ImageClasspath')))
-            _write_ln(u'Args=' + _java_properties_escape(' '.join(build_args), ' ', len('Args')))
+                _write_ln(u'ImageClass=' + java_properties_escape(image_config.main_class))
+            _write_ln(u'ImageClasspath=' + java_properties_escape(':'.join(("${.}/" + e.replace(os.sep, '/') for e in location_classpath)), ':', len('ImageClasspath')))
+            _write_ln(u'Args=' + java_properties_escape(' '.join(build_args), ' ', len('Args')))
         return self._contents
 
     def build(self):
