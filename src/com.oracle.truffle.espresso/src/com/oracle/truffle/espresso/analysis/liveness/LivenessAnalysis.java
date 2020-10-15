@@ -36,7 +36,10 @@ import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
 public class LivenessAnalysis {
@@ -107,17 +110,18 @@ public class LivenessAnalysis {
 
         // Using the live sets and history, build a set of action for each bci, such that it frees
         // as early as possible each dead local.
-        return new LivenessAnalysis(blockBoundaryFinder.result(), graph, method);
+        BCILocalActionRecord[] actions = buildResultFrom(blockBoundaryFinder.result(), graph, method);
+        boolean compiledCodeOnly = method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.COMPILED;
+        return new LivenessAnalysis(actions, compiledCodeOnly);
     }
 
-    private LivenessAnalysis(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
-        this.result = buildResultFrom(result, graph, method);
-        this.compiledCodeOnly = method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.COMPILED;
+    private LivenessAnalysis(BCILocalActionRecord[] result, boolean compiledCodeOnly) {
+        this.result = result;
+        this.compiledCodeOnly = compiledCodeOnly;
     }
 
     private LivenessAnalysis() {
-        this.result = null;
-        this.compiledCodeOnly = false;
+        this(null, false);
     }
 
     private static BCILocalActionRecord[] buildResultFrom(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
@@ -152,8 +156,17 @@ public class LivenessAnalysis {
         BitSet mergedEntryState = new BitSet(m.getMaxLocals());
         if (current == graph.entryBlock()) {
             // The entry block has the arguments as live variables.
-            for (int i = 0; i < m.getParameterCount() + (m.isStatic() ? 0 : 1); i++) {
-                mergedEntryState.set(i);
+            int pos = 0;
+            if (!m.isStatic()) {
+                mergedEntryState.set(0);
+                pos++;
+            }
+            for (int i = 0; i < m.getParameterCount(); i++) {
+                mergedEntryState.set(pos++);
+                JavaKind kind = Types.getJavaKind(Signatures.parameterType(m.getParsedSignature(), i));
+                if (kind.needsTwoSlots()) {
+                    mergedEntryState.set(pos++);
+                }
             }
         } else {
             for (int pred : current.predecessorsID()) {
