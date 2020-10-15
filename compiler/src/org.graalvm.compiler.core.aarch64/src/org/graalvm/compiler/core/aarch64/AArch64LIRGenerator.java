@@ -578,11 +578,21 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
      * RegisterValues (i.e. values corresponding to fixed physical registers) correctly, by not
      * creating an unnecessary move into a virtual register.
      *
-     * This avoids generating the following code: mov x0, x19 # x19 is fixed thread register ldr x0,
-     * [x0] instead of: ldr x0, [x19].
+     * This avoids generating the following code:
+     *
+     * <pre>
+     * mov x0, x19 # x19 is fixed thread register
+     * ldr x0, [x0]
+     * </pre>
+     *
+     * instead of:
+     *
+     * <pre>
+     * ldr x0, [x19]
+     * </pre>
      */
     protected AllocatableValue loadReg(Value val) {
-        if (!(val instanceof Variable || val instanceof RegisterValue)) {
+        if (!(LIRValueUtil.isVariable(val) || val instanceof RegisterValue)) {
             return emitMove(val);
         }
         return (AllocatableValue) val;

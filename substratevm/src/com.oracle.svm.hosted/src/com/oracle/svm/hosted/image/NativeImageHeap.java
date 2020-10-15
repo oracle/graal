@@ -641,14 +641,11 @@ public final class NativeImageHeap implements ImageHeap {
             return clazz;
         }
 
-        /**
-         * The offset of an object within a partition. <em>Probably you want
-         * {@link #getAddress()}</em>.
-         */
         @Override
-        public long getOffsetInPartition() {
+        public long getOffset() {
             assert offsetInPartition >= 0;
-            return offsetInPartition;
+            assert partition != null;
+            return partition.getStartOffset() + offsetInPartition;
         }
 
         @Override
@@ -657,11 +654,22 @@ public final class NativeImageHeap implements ImageHeap {
             this.offsetInPartition = value;
         }
 
+        @Override
+        public ImageHeapPartition getPartition() {
+            return partition;
+        }
+
+        @Override
+        public void setHeapPartition(ImageHeapPartition value) {
+            assert this.partition == null;
+            this.partition = value;
+        }
+
         /**
          * Returns the index into the {@link RelocatableBuffer} to which this object is written.
          */
         public int getIndexInBuffer(long index) {
-            long result = getPartition().getStartOffset() + getOffsetInPartition() + index;
+            long result = getOffset() + index;
             return NumUtil.safeToInt(result);
         }
 
@@ -676,16 +684,16 @@ public final class NativeImageHeap implements ImageHeap {
              * the beginning of the heap. So, all heap-base-relative addresses must be adjusted by
              * that offset.
              */
-            return Heap.getHeap().getImageHeapOffsetInAddressSpace() + getPartition().getStartOffset() + getOffsetInPartition();
+            return Heap.getHeap().getImageHeapOffsetInAddressSpace() + getOffset();
         }
 
         /**
          * Similar to {@link #getAddress()} but this method is typically used to get the address of
          * a field within an object.
          */
-        public long getAddress(long offset) {
-            assert offset >= 0 && offset < getSize() : "Index: " + offset + " out of bounds: [0 .. " + getSize() + ").";
-            return getAddress() + offset;
+        public long getAddress(long delta) {
+            assert delta >= 0 && delta < getSize() : "Index: " + delta + " out of bounds: [0 .. " + getSize() + ").";
+            return getAddress() + delta;
         }
 
         @Override
@@ -693,19 +701,8 @@ public final class NativeImageHeap implements ImageHeap {
             return size;
         }
 
-        @Override
-        public ImageHeapPartition getPartition() {
-            return partition;
-        }
-
         int getIdentityHashCode() {
             return identityHashCode;
-        }
-
-        @Override
-        public void setHeapPartition(ImageHeapPartition value) {
-            assert this.partition == null;
-            this.partition = value;
         }
 
         @Override

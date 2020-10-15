@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.CompareOperator;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
@@ -80,8 +81,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
-import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMSignedCastToLLVM80BitFloatNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToDoubleNodeGen.LLVMSignedCastToDoubleNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMDispatchBasicBlockNode;
@@ -150,6 +149,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMStackSaveNodeGe
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMTrapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmetic;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.GCCArithmeticNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMSimpleArithmeticPrimitiveNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowAndCarryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI16NodeGen;
@@ -178,6 +178,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorM
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMinNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorPackNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorSquareRootNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMMetaLiteralNode;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMMetaLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode.LLVMManagedPointerLiteralNode;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMDoubleLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMFloatLiteralNodeGen;
@@ -888,6 +890,8 @@ public class BasicNodeFactory implements NodeFactory {
                 default:
                     throw new AssertionError(value + " " + type);
             }
+        } else if (type instanceof MetaType) {
+            return LLVMMetaLiteralNodeGen.create(value);
         }
         throw new AssertionError(value + " " + type);
     }
@@ -1237,7 +1241,9 @@ public class BasicNodeFactory implements NodeFactory {
              *
              * These builtins shall not be used for regular function intrinsification!
              */
-            if (name.startsWith("llvm.")) {
+            if (name.startsWith("llvm.experimental.constrained.")) {
+                return getConstrainedFPBuiltin(declaration, args);
+            } else if (name.startsWith("llvm.")) {
                 return getLLVMBuiltin(declaration, args, callerArgumentCount);
             } else if (name.startsWith("__builtin_")) {
                 return getGccBuiltin(declaration, args);
@@ -1411,6 +1417,7 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.stackrestore":
                     return LLVMStackRestoreNodeGen.create(args[1]);
                 case "llvm.frameaddress":
+                case "llvm.frameaddress.p0i8":
                     return LLVMFrameAddressNodeGen.create(args[1]);
                 case "llvm.va_start":
                     return LLVMVAStartNodeGen.create(callerArgumentCount, args[1]);
@@ -1458,6 +1465,26 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.copysign.f80":
                     return LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen.create(args[1], args[2]);
 
+                case "llvm.uadd.sat.i8":
+                case "llvm.uadd.sat.i16":
+                case "llvm.uadd.sat.i32":
+                case "llvm.uadd.sat.i64":
+                    return LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.UNSIGNED_ADD_SAT, args[1], args[2]);
+                case "llvm.usub.sat.i8":
+                case "llvm.usub.sat.i16":
+                case "llvm.usub.sat.i32":
+                case "llvm.usub.sat.i64":
+                    return LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.UNSIGNED_SUB_SAT, args[1], args[2]);
+                case "llvm.sadd.sat.i8":
+                case "llvm.sadd.sat.i16":
+                case "llvm.sadd.sat.i32":
+                case "llvm.sadd.sat.i64":
+                    return LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.SIGNED_ADD_SAT, args[1], args[2]);
+                case "llvm.ssub.sat.i8":
+                case "llvm.ssub.sat.i16":
+                case "llvm.ssub.sat.i32":
+                case "llvm.ssub.sat.i64":
+                    return LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.SIGNED_SUB_SAT, args[1], args[2]);
                 case "llvm.uadd.with.overflow.i8":
                 case "llvm.uadd.with.overflow.i16":
                 case "llvm.uadd.with.overflow.i32":
@@ -1546,56 +1573,6 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMX86_Pmovmskb128NodeGen.create(args[1]);
                 case "llvm.x86.sse2.movmsk.pd":
                     return LLVMX86_MovmskpdNodeGen.create(args[1]);
-                case "llvm.experimental.constrained.fpext.f64":
-                case "llvm.experimental.constrained.fpext.f64.f32":
-                    return LLVMSignedCastToDoubleNodeGen.create(args[1]);
-                case "llvm.experimental.constrained.fpext.f80":
-                case "llvm.experimental.constrained.fpext.f80.f64":
-                    return LLVMSignedCastToLLVM80BitFloatNodeGen.create(args[1]);
-
-                /*
-                 * We ignore the two meta-arguments of the binary arithmetic
-                 * llvm.experimental.constrained builtins as they are just hints by compiler to
-                 * optimization passes. They inform the passes on possible assumptions about the
-                 * current rounding mode and floating point exceptions (FPE) behavior.
-                 *
-                 * Nonetheless, as the values of rounding mode or the FPE behavior other than
-                 * "round.tonearest" and "fpexcept.ignore", which are the default and currently the
-                 * only supported ones, indicate that the code may want to ensure a specific
-                 * rounding of numbers or respond to FPE, we should issue some "unsupported FP mode"
-                 * warning when parsing bitcode.
-                 */
-
-                case "llvm.experimental.constrained.fadd.f32":
-                    return LLVMFloatArithmeticNodeGen.create(ArithmeticOperation.ADD, args[1], args[2]);
-                case "llvm.experimental.constrained.fadd.f64":
-                    return LLVMDoubleArithmeticNodeGen.create(ArithmeticOperation.ADD, args[1], args[2]);
-                case "llvm.experimental.constrained.fadd.f80":
-                    return LLVMFP80ArithmeticNodeGen.create(ArithmeticOperation.ADD, args[1], args[2]);
-                case "llvm.experimental.constrained.fsub.f32":
-                    return LLVMFloatArithmeticNodeGen.create(ArithmeticOperation.SUB, args[1], args[2]);
-                case "llvm.experimental.constrained.fsub.f64":
-                    return LLVMDoubleArithmeticNodeGen.create(ArithmeticOperation.SUB, args[1], args[2]);
-                case "llvm.experimental.constrained.fsub.f80":
-                    return LLVMFP80ArithmeticNodeGen.create(ArithmeticOperation.SUB, args[1], args[2]);
-                case "llvm.experimental.constrained.fmul.f32":
-                    return LLVMFloatArithmeticNodeGen.create(ArithmeticOperation.MUL, args[1], args[2]);
-                case "llvm.experimental.constrained.fmul.f64":
-                    return LLVMDoubleArithmeticNodeGen.create(ArithmeticOperation.MUL, args[1], args[2]);
-                case "llvm.experimental.constrained.fmul.f80":
-                    return LLVMFP80ArithmeticNodeGen.create(ArithmeticOperation.MUL, args[1], args[2]);
-                case "llvm.experimental.constrained.fdiv.f32":
-                    return LLVMFloatArithmeticNodeGen.create(ArithmeticOperation.DIV, args[1], args[2]);
-                case "llvm.experimental.constrained.fdiv.f64":
-                    return LLVMDoubleArithmeticNodeGen.create(ArithmeticOperation.DIV, args[1], args[2]);
-                case "llvm.experimental.constrained.fdiv.f80":
-                    return LLVMFP80ArithmeticNodeGen.create(ArithmeticOperation.DIV, args[1], args[2]);
-                case "llvm.experimental.constrained.frem.f32":
-                    return LLVMFloatArithmeticNodeGen.create(ArithmeticOperation.REM, args[1], args[2]);
-                case "llvm.experimental.constrained.frem.f64":
-                    return LLVMDoubleArithmeticNodeGen.create(ArithmeticOperation.REM, args[1], args[2]);
-                case "llvm.experimental.constrained.frem.f80":
-                    return LLVMFP80ArithmeticNodeGen.create(ArithmeticOperation.REM, args[1], args[2]);
                 default:
                     break;
             }
@@ -1617,6 +1594,84 @@ public class BasicNodeFactory implements NodeFactory {
 
         if ("llvm.is.constant".equals(intrinsicName)) {
             return LLVMIsConstantNodeGen.create(args[1]);
+        }
+
+        return LLVMX86_MissingBuiltin.create(declaration.getName());
+    }
+
+    private static CompareOperator getCompareOp(LLVMExpressionNode expr) {
+        LLVMMetaLiteralNode meta = (LLVMMetaLiteralNode) expr;
+        String op = (String) meta.getMetadata();
+        switch (op) {
+            case "oeq":
+                return CompareOperator.FP_ORDERED_EQUAL;
+            case "ogt":
+                return CompareOperator.FP_ORDERED_GREATER_THAN;
+            case "oge":
+                return CompareOperator.FP_ORDERED_GREATER_OR_EQUAL;
+            case "olt":
+                return CompareOperator.FP_ORDERED_LESS_THAN;
+            case "ole":
+                return CompareOperator.FP_ORDERED_LESS_OR_EQUAL;
+            case "one":
+                return CompareOperator.FP_ORDERED_NOT_EQUAL;
+            case "ord":
+                return CompareOperator.FP_ORDERED;
+            case "ueq":
+                return CompareOperator.FP_UNORDERED_EQUAL;
+            case "ugt":
+                return CompareOperator.FP_UNORDERED_GREATER_THAN;
+            case "uge":
+                return CompareOperator.FP_UNORDERED_GREATER_OR_EQUAL;
+            case "ult":
+                return CompareOperator.FP_UNORDERED_LESS_THAN;
+            case "ule":
+                return CompareOperator.FP_UNORDERED_LESS_OR_EQUAL;
+            case "une":
+                return CompareOperator.FP_UNORDERED_NOT_EQUAL;
+            case "uno":
+                return CompareOperator.FP_UNORDERED;
+            default:
+                throw new LLVMParserException("unsupported fp compare op: " + op);
+        }
+    }
+
+    private static final int CONSTRAINED_PREFIX_LEN = "llvm.experimental.constrained.".length();
+
+    private LLVMExpressionNode getConstrainedFPBuiltin(FunctionDeclaration declaration, LLVMExpressionNode[] args) {
+        /*
+         * We ignore the two meta-arguments of the binary arithmetic llvm.experimental.constrained
+         * builtins as they are just hints by compiler to optimization passes. They inform the
+         * passes on possible assumptions about the current rounding mode and floating point
+         * exceptions behavior. Other than that, they have exactly the same semantics as normal
+         * floating point operations.
+         */
+        assert declaration.getName().startsWith("llvm.experimental.constrained.");
+        int typeIndex = declaration.getName().indexOf('.', CONSTRAINED_PREFIX_LEN);
+        String name = declaration.getName().substring(CONSTRAINED_PREFIX_LEN, typeIndex);
+        Type retType = declaration.getType().getReturnType();
+
+        switch (name) {
+            case "fadd":
+                return createScalarArithmeticOp(ArithmeticOperation.ADD, retType, args[1], args[2]);
+            case "fsub":
+                return createScalarArithmeticOp(ArithmeticOperation.SUB, retType, args[1], args[2]);
+            case "fmul":
+                return createScalarArithmeticOp(ArithmeticOperation.MUL, retType, args[1], args[2]);
+            case "fdiv":
+                return createScalarArithmeticOp(ArithmeticOperation.DIV, retType, args[1], args[2]);
+            case "frem":
+                return createScalarArithmeticOp(ArithmeticOperation.REM, retType, args[1], args[2]);
+            case "fptoui":
+            case "uitofp":
+                return CommonNodeFactory.createUnsignedCast(args[1], retType);
+            case "fpext":
+            case "fptosi":
+            case "sitofp":
+            case "fptrunc":
+                return CommonNodeFactory.createSignedCast(args[1], retType);
+            case "fcmp":
+                return CommonNodeFactory.createComparison(getCompareOp(args[3]), retType, args[1], args[2]);
         }
 
         return LLVMX86_MissingBuiltin.create(declaration.getName());

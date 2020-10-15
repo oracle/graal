@@ -276,9 +276,14 @@ public class CatalogIterable implements ComponentIterable {
         }
 
         @Override
+        public FileDownloader configureRelatedDownloader(FileDownloader dn) {
+            return configurer.processDownloader(getCatalogInfo(), dn);
+        }
+
+        @Override
         protected FileDownloader createDownloader() {
             FileDownloader d = super.createDownloader();
-            return configurer.processDownloader(getCatalogInfo(), d);
+            return configureRelatedDownloader(d);
         }
 
         @Override
@@ -290,7 +295,6 @@ public class CatalogIterable implements ComponentIterable {
             }
             FileComponent fc = new FileIterable.FileComponent(localFile.toFile(), isVerifyJars(), serial, getFeedback());
             return fc.createFileLoader();
-            // return channel.createLocalFileLoader(getCatalogInfo(), localFile, isVerifyJars());
         }
 
         @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
-import com.oracle.truffle.api.object.dsl.Layout;
 
 import java.math.BigInteger;
 
@@ -52,7 +51,8 @@ import org.junit.Assert;
 
 public class InheritanceTest {
 
-    @Layout
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.object.dsl.Layout
     public interface BaseLayout {
 
         DynamicObject createBase(int a);
@@ -69,7 +69,8 @@ public class InheritanceTest {
 
     }
 
-    @Layout
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.object.dsl.Layout
     public interface MiddleLayout extends BaseLayout {
 
         DynamicObject createMiddle(int a, String b);
@@ -86,7 +87,8 @@ public class InheritanceTest {
 
     }
 
-    @Layout
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.object.dsl.Layout
     public interface TopLayout extends MiddleLayout {
 
         DynamicObject createTop(int a, String b, BigInteger c);

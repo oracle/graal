@@ -42,7 +42,6 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -58,6 +57,7 @@ import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.SpeculationLog;
 
 import java.lang.ref.WeakReference;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
 
@@ -197,7 +197,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             compilable.call(arguments);
         } catch (IgnoreError e) {
         }
-        OptionValues options = getOptions();
+        OptionValues options = getGraalOptions();
         DebugContext debug = getDebugContext(options);
         lastDebug = debug;
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
@@ -215,8 +215,8 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         }
     }
 
-    protected OptionValues getOptions() {
-        OptionValues options = TruffleCompilerOptions.getOptions();
+    protected OptionValues getGraalOptions() {
+        OptionValues options = TruffleCompilerRuntime.getRuntime().getGraalOptions(OptionValues.class);
         if (preventDumping) {
             options = new OptionValues(options, DumpOnError, false);
         }

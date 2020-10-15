@@ -305,7 +305,7 @@ public interface TruffleCompilerRuntime {
      * @since 20.1.0
      */
     default void logEvent(CompilableTruffleAST compilable, int depth, String event, String subject, Map<String, Object> properties, String message) {
-        String formattedMessage = formatEvent(depth, event, 16, subject, 60, properties, 20);
+        String formattedMessage = formatEvent(depth, event, 12, subject, 60, properties, 0);
         if (message != null) {
             formattedMessage = String.format("%s%n%s", formattedMessage, message);
         }
@@ -363,7 +363,7 @@ public interface TruffleCompilerRuntime {
                 if (value == null) {
                     continue;
                 }
-                sb.append('|');
+                sb.append("|");
                 sb.append(property);
 
                 String valueString;
@@ -376,7 +376,7 @@ public interface TruffleCompilerRuntime {
                 }
 
                 int length = Math.max(1, propertyWidth - property.length());
-                sb.append(String.format(" %" + length + "s ", valueString));
+                sb.append(String.format(" %" + length + "s", valueString));
             }
         }
         return sb.toString();
@@ -405,26 +405,11 @@ public interface TruffleCompilerRuntime {
     ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required);
 
     /**
-     * Gets the option values for this runtime as a map from option name to option value.
-     */
-    Map<String, Object> getOptions();
-
-    /**
-     * Gets the option values for this runtime in an instance of {@code type}.
+     * Gets the Graal option values for this runtime in an instance of {@code type}.
      *
      * @throws IllegalArgumentException if this runtime does not support {@code type}
      */
-    default <T> T getOptions(Class<T> type) {
-        throw new IllegalArgumentException(getClass().getName() + " can not return option values of type " + type.getName());
-    }
-
-    /**
-     * Convert option values in name/value pairs to an instance of {@code type}.
-     *
-     * @param map input option values as {@link String} names to values
-     * @throws IllegalArgumentException if this runtime does not support {@code type}
-     */
-    default <T> T convertOptions(Class<T> type, Map<String, Object> map) {
+    default <T> T getGraalOptions(Class<T> type) {
         throw new IllegalArgumentException(getClass().getName() + " can not return option values of type " + type.getName());
     }
 

@@ -1,12 +1,13 @@
 # Native Image Maven Plugin
 
 To simplify the generation of native images, Native Image now works out
-of [Maven](https://maven.apache.org/what-is-maven.html) with the [Native Image Maven Plugin](https://search.maven.org/artifact/com.oracle.substratevm/native-image-maven-plugin/).
+of [Maven](https://maven.apache.org/what-is-maven.html) with the [Native Image Maven Plugin](https://search.maven.org/artifact/org.graalvm.nativeimage/native-image-maven-plugin).
 
 One can build a native image directly with Maven
 using the `mvn package` command without running the `native-image` command as a
 separate step. It is sufficient to add `native-image-maven-plugin` into the
 `<plugins>` section of the `pom.xml` file:
+
 ```xml
 <plugin>
     <groupId>org.graalvm.nativeimage</groupId>
@@ -29,6 +30,7 @@ separate step. It is sufficient to add `native-image-maven-plugin` into the
     </configuration>
 </plugin>
 ```
+
 Then add the `org.graalvm.sdk` library dependency in the `<dependencies>` list:
 
 ```xml

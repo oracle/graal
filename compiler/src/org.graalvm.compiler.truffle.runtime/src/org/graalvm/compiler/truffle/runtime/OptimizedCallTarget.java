@@ -588,7 +588,19 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     public final <T> T getOptionValue(OptionKey<T> key) {
-        return TruffleRuntimeOptions.getPolyglotOptionValue(getOptionValues(), key);
+        return getOptionValues().get(key);
+    }
+
+    /**
+     * Returns <code>true</code> if this target can be compiled in principle, else
+     * <code>false</code>.
+     */
+    final boolean acceptForCompilation() {
+        return engine.acceptForCompilation(getRootNode());
+    }
+
+    final boolean isCompilationFailed() {
+        return compilationFailed;
     }
 
     /**
@@ -794,7 +806,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         if (action.ordinal() >= ExceptionAction.Print.ordinal()) {
             GraalTruffleRuntime rt = runtime();
             Map<String, Object> properties = new LinkedHashMap<>();
-            properties.put("ASTSize", getNonTrivialNodeCount());
+            properties.put("AST", getNonTrivialNodeCount());
             rt.logEvent(this, 0, "opt fail", toString(), properties, serializedException.get());
             if (action == ExceptionAction.ExitVM) {
                 String reason;
@@ -1463,4 +1475,5 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     final void setNonTrivialNodeCount(int nonTrivialNodeCount) {
         this.cachedNonTrivialNodeCount = nonTrivialNodeCount;
     }
+
 }

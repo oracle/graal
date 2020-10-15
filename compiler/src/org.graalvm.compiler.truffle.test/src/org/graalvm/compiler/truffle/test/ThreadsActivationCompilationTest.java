@@ -32,6 +32,7 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
@@ -49,14 +50,17 @@ public class ThreadsActivationCompilationTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").build());
 
         AtomicReference<Boolean> compiledEnter = new AtomicReference<>();
-        compiledEnter.set(Boolean.FALSE);
         AtomicReference<Boolean> compiledLeave = new AtomicReference<>();
+        compiledEnter.set(Boolean.FALSE);
         compiledLeave.set(Boolean.FALSE);
+        Assumption singleContext = Truffle.getRuntime().createAssumption();
         instrumentEnv.getInstrumenter().attachThreadsActivationListener(new ThreadsActivationListener() {
             @Override
             public void onLeaveThread(TruffleContext c) {
-                CompilerAsserts.partialEvaluationConstant(c);
-                CompilerAsserts.partialEvaluationConstant(this);
+                if (singleContext.isValid()) {
+                    CompilerAsserts.partialEvaluationConstant(c);
+                    CompilerAsserts.partialEvaluationConstant(this);
+                }
                 if (CompilerDirectives.inCompiledCode()) {
                     compiledLeave.set(Boolean.TRUE);
                 }
@@ -64,8 +68,10 @@ public class ThreadsActivationCompilationTest extends AbstractPolyglotTest {
 
             @Override
             public void onEnterThread(TruffleContext c) {
-                CompilerAsserts.partialEvaluationConstant(c);
-                CompilerAsserts.partialEvaluationConstant(this);
+                if (singleContext.isValid()) {
+                    CompilerAsserts.partialEvaluationConstant(c);
+                    CompilerAsserts.partialEvaluationConstant(this);
+                }
                 if (CompilerDirectives.inCompiledCode()) {
                     compiledEnter.set(Boolean.TRUE);
                 }
@@ -73,18 +79,38 @@ public class ThreadsActivationCompilationTest extends AbstractPolyglotTest {
         });
 
         context.enter();
-        TruffleContext tc = ProxyLanguage.getCurrentContext().getEnv().getContext();
+
+        compiledEnter.set(Boolean.FALSE);
+        compiledLeave.set(Boolean.FALSE);
+
         OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                Object prev = tc.enter();
-                tc.leave(prev);
+                TruffleContext tc = (TruffleContext) frame.getArguments()[0];
+                Object prev = tc.enter(this);
+
+                if (CompilerDirectives.inCompiledCode()) {
+                    if (!compiledEnter.get()) {
+                        CompilerDirectives.shouldNotReachHere();
+                    }
+                }
+
+                tc.leave(this, prev);
+
+                if (CompilerDirectives.inCompiledCode()) {
+                    if (!compiledLeave.get()) {
+                        CompilerDirectives.shouldNotReachHere();
+                    }
+                }
                 return null;
             }
         });
-        target.call();
+        TruffleContext tc = ProxyLanguage.getCurrentContext().getEnv().getContext();
+        singleContext.invalidate();
+        target.call(tc);
         target.compile(true);
-        target.call();
+        assertTrue(target.isValidLastTier());
+        target.call(tc);
 
         assertTrue(target.isValidLastTier());
         assertTrue(compiledEnter.get());

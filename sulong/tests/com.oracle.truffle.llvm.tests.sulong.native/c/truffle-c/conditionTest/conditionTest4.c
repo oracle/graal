@@ -32,12 +32,17 @@ int main() {
     if (0 && sum++) {
         sum += 2;
     }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconstant-logical-operand"
     if (1 && 2 && 3 && 4 && 5) {
         sum += 4;
     }
     if (5 && 4 && 3 && 0) {
         sum += 8;
     }
+#pragma clang diagnostic pop
+
     if (!sum && !sum) {
         sum += 16;
     }

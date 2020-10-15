@@ -28,9 +28,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URL;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -41,6 +44,7 @@ import org.graalvm.component.installer.UserAbortException;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.MetadataLoader;
+import org.graalvm.component.installer.remote.FileDownloader;
 
 /**
  * License console "dialog" driver.
@@ -101,6 +105,10 @@ public class LicensePresenter {
         this.licensesToAccept = licenseIDs;
     }
 
+    public Map<String, List<MetadataLoader>> getLicensesToAccept() {
+        return licensesToAccept;
+    }
+
     public void filterAcceptedLicenses() {
         for (String licId : new ArrayList<>(licensesToAccept.keySet())) {
             Collection<MetadataLoader> loaders = licensesToAccept.get(licId);
@@ -139,7 +147,7 @@ public class LicensePresenter {
             if (list == null) {
                 list = feedback.l10n("INSTALL_LicenseComponentStart", ci.getName());
             } else {
-                list = feedback.l10n("INSTALL_LicenseComponentCont", ci.getName());
+                list = feedback.l10n("INSTALL_LicenseComponentCont", list, ci.getName());
             }
         }
         return list;
@@ -182,39 +190,37 @@ public class LicensePresenter {
         if (userInput == Feedback.AUTO_YES) {
             return true;
         }
-        Pattern p = Pattern.compile(feedback.l10n("INSTALL_AcceptPromptResponseYes"), Pattern.CASE_INSENSITIVE);
+        Pattern p = Pattern.compile(feedback.l10n("INSTALL_AcceptPromptResponseYes@"), Pattern.CASE_INSENSITIVE);
         return p.matcher(userInput).matches();
     }
 
     boolean isRead(String userInput) {
-        Pattern p = Pattern.compile(feedback.l10n("INSTALL_AcceptPromptResponseRead"), Pattern.CASE_INSENSITIVE);
+        Pattern p = Pattern.compile(feedback.l10n("INSTALL_AcceptPromptResponseRead@"), Pattern.CASE_INSENSITIVE);
         return p.matcher(userInput).matches();
     }
 
-    boolean processUserInputForList() {
+    int processUserInputForList() {
         String userInput = feedback.acceptLine(true);
-        Pattern p = Pattern.compile(feedback.l10n("INSTALL_AcceptPromptResponseAbort"), Pattern.CASE_INSENSITIVE);
+        Pattern p = Pattern.compile(feedback.l10n("INSTALL_AcceptPromptResponseAbort@"), Pattern.CASE_INSENSITIVE);
         if (p.matcher(userInput).matches()) {
             throw new UserAbortException();
         }
         if (isYes(userInput)) {
             acceptAllLicenses();
             state = State.NONE;
-            return true;
+            return 0;
         }
-        List<String> ids = new ArrayList<>(licensesToAccept.keySet());
+
         if (!ALL_NUMBERS.matcher(userInput).matches()) {
-            feedback.output("INSTALL_LicenseNumberInvalidEntry", ids.size());
-            return false;
+            feedback.output("INSTALL_LicenseNumberInvalidEntry", licensesToAccept.size());
+            return -1;
         }
         int n = Integer.parseInt(userInput);
-        if (n < 0 || n > ids.size()) {
-            feedback.output("INSTALL_LicenseNumberOutOfRange", ids.size());
-            return false;
+        if (n < 0 || n > licensesToAccept.size()) {
+            feedback.output("INSTALL_LicenseNumberOutOfRange", licensesToAccept.size());
+            return -1;
         }
-        displayLicenseId = ids.get(n - 1);
-        state = State.LICENSE;
-        return true;
+        return n;
     }
 
     void acceptLicense(String licenseId) {
@@ -266,6 +272,12 @@ public class LicensePresenter {
         }
     }
 
+    boolean isLicenseRemote(String licenseId) {
+        MetadataLoader ldr = licensesToAccept.get(licenseId).get(0);
+        String licPath = ldr.getLicensePath();
+        return licPath.contains("://"); // NOI18N
+    }
+
     /**
      * Loads license text from the archive.
      * 
@@ -275,6 +287,40 @@ public class LicensePresenter {
      */
     String loadLicenseText(String licenseId) throws IOException {
         MetadataLoader ldr = licensesToAccept.get(licenseId).get(0);
+        if (isLicenseRemote(licenseId)) {
+            return downloadLicenseText(licenseId, ldr);
+        } else {
+            return loadFileLicenseText(ldr);
+        }
+    }
+
+    private Map<String, String> remoteLicenseContents = new HashMap<>();
+
+    String downloadLicenseText(String id, MetadataLoader ldr) throws IOException {
+        String c = remoteLicenseContents.get(id);
+        if (c != null) {
+            return c;
+        }
+        String t = ldr.getLicenseType();
+        String label;
+
+        if (!t.equals(ldr.getLicensePath())) {
+            label = feedback.l10n("INSTALL_DownloadLicenseName", t);
+        } else {
+            label = feedback.l10n("INSTALL_DownloadLicenseFile");
+        }
+        FileDownloader dn = new FileDownloader(
+                        label,
+                        new URL(ldr.getLicensePath()),
+                        feedback);
+
+        dn.download();
+        c = String.join("\n", Files.readAllLines(dn.getLocalFile().toPath())); // NOI18N
+        remoteLicenseContents.put(id, c);
+        return c;
+    }
+
+    String loadFileLicenseText(MetadataLoader ldr) throws IOException {
         // may require a download of the archive
         try (Archive a = ldr.getArchive()) {
             String licensePath = ldr.getLicensePath();
@@ -324,7 +370,18 @@ public class LicensePresenter {
     void singleStep() throws IOException {
         switch (state) {
             case LISTINPUT:
-                processUserInputForList();
+                int choice = processUserInputForList();
+                switch (choice) {
+                    case -1:
+                        break;
+                    case 0:
+                        state = State.NONE;
+                        break;
+                    default:
+                        List<String> ids = new ArrayList<>(licensesToAccept.keySet());
+                        displayLicenseId = ids.get(choice - 1);
+                        state = State.LICENSE;
+                }
                 break;
             case SINGLE:
                 displaySingleLicense();

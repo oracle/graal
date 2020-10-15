@@ -99,7 +99,8 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 @GenerateLibrary(defaultExportLookupEnabled = true, dynamicDispatchEnabled = false)
 public abstract class DynamicObjectLibrary extends Library {
 
-    static final LibraryFactory<DynamicObjectLibrary> FACTORY = LibraryFactory.resolve(DynamicObjectLibrary.class);
+    private static final LibraryFactory<DynamicObjectLibrary> FACTORY = LibraryFactory.resolve(DynamicObjectLibrary.class);
+    private static final DynamicObjectLibrary UNCACHED = FACTORY.getUncached();
 
     /**
      * @since 20.2.0
@@ -124,7 +125,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @since 20.2.0
      */
     public static DynamicObjectLibrary getUncached() {
-        return getFactory().getUncached();
+        return UNCACHED;
     }
 
     /**

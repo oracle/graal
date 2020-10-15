@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 #include <stdlib.h>
 
 typedef struct {
@@ -45,11 +45,11 @@ PyObject *getPyObjectImplicitType() {
     PyMemoryViewObject *obj = (PyMemoryViewObject *) malloc(sizeof(PyMemoryViewObject));
     obj->base.ob_refcnt = 1;
     obj->flags = 42;
-    return obj;
+    return (PyObject *) obj;
 }
 
 PyObject *getPyObjectExplicitType() {
-    PyMemoryViewObject *obj = getPyObjectImplicitType();
+    PyMemoryViewObject *obj = (PyMemoryViewObject *) getPyObjectImplicitType();
     return polyglot_from_PyMemoryViewObject(obj);
 }
 

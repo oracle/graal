@@ -370,6 +370,7 @@ meth public !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.
 meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.InstrumentInfo,java.lang.Class<{%%0}>)
 meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Class<{%%0}>)
 meth public boolean isEngineRoot(com.oracle.truffle.api.nodes.RootNode)
+meth public com.oracle.truffle.api.TruffleContext getEnteredContext()
 meth public com.oracle.truffle.api.TruffleFile getTruffleFile(java.lang.String)
 meth public com.oracle.truffle.api.TruffleFile getTruffleFile(java.net.URI)
 meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.Class<?>)

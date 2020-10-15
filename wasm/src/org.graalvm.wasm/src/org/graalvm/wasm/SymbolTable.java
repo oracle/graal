@@ -47,6 +47,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -57,6 +58,8 @@ import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.exception.WasmLinkerException;
+import org.graalvm.wasm.memory.ByteArrayWasmMemory;
+import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryException;
 import org.graalvm.wasm.collection.ByteArrayList;
@@ -775,7 +778,8 @@ public abstract class SymbolTable {
         validateSingleMemory();
         memory = new MemoryInfo(initSize, maxSize);
         module().addLinkAction((context, instance) -> {
-            final int memoryIndex = context.memories().allocateMemory(memory);
+            final BiFunction<Integer, Integer, WasmMemory> makeMemory = context.environment().getOptions().get(WasmOptions.UseUnsafeMemory) ? UnsafeWasmMemory::new : ByteArrayWasmMemory::new;
+            final int memoryIndex = context.memories().allocateMemory(memory, makeMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);
             instance.setMemory(allocatedMemory);
         });
@@ -784,7 +788,7 @@ public abstract class SymbolTable {
     public void allocateExternalMemory(WasmMemory externalMemory) {
         checkNotParsed();
         validateSingleMemory();
-        memory = new MemoryInfo((int) externalMemory.pageSize(), (int) externalMemory.maxPageSize());
+        memory = new MemoryInfo(externalMemory.pageSize(), externalMemory.maxPageSize());
         module().addLinkAction((context, instance) -> {
             final int memoryIndex = context.memories().allocateExternalMemory(externalMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);

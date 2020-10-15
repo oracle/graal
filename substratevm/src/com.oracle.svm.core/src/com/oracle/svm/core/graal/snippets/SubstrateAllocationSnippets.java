@@ -132,10 +132,11 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter boolean maybeUnroll,
                     @ConstantParameter boolean supportsBulkZeroing,
+                    @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedHub = checkHub(hub);
         Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), length, arrayBaseOffset, log2ElementSize, fillContents,
-                        emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, profilingData);
+                        emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
 
@@ -149,7 +150,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Snippet
     public Object allocateArrayDynamic(DynamicHub elementType, int length, @ConstantParameter boolean fillContents, @ConstantParameter boolean emitMemoryBarrier,
-                    @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter AllocationProfilingData profilingData) {
+                    @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedArrayHub = getCheckedArrayHub(elementType);
 
         int layoutEncoding = checkedArrayHub.getLayoutEncoding();
@@ -157,7 +158,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
 
         Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedArrayHub), WordFactory.nullPointer(), length, arrayBaseOffset, log2ElementSize, fillContents,
-                        emitMemoryBarrier, false, supportsBulkZeroing, profilingData);
+                        emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
 
@@ -503,6 +504,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", length.isConstant());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, type));
 
                 template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -567,6 +569,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("fillContents", node.fillContents());
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, null));
 
                 template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);

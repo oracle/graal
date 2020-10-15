@@ -192,6 +192,7 @@ public class InstallCommand implements InstallerCommand {
             if (validateBeforeInstall) {
                 return 0;
             }
+            executeStep(this::acceptLicenses, false);
             executeStep(this::completeInstallers, false);
             executeStep(this::acceptLicenses, false);
             executeStep(this::doInstallation, false);
@@ -216,9 +217,27 @@ public class InstallCommand implements InstallerCommand {
         return 0;
     }
 
+    /**
+     * License IDs processed by the user.
+     */
+    private Set<String> processedLicenses = new HashSet<>();
+
+    /**
+     * Licenses, which must be accepted at most before the installation.
+     */
     private Map<String, List<MetadataLoader>> licensesToAccept = new LinkedHashMap<>();
 
+    /**
+     * Adds a license to be accepted. Does not add a license ID that has been already processed in
+     * previous round(s).
+     * 
+     * @param id license ID
+     * @param ldr loader that can deliver the license details.
+     */
     void addLicenseToAccept(String id, MetadataLoader ldr) {
+        if (processedLicenses.contains(id)) {
+            return;
+        }
         licensesToAccept.computeIfAbsent(id, (x) -> new ArrayList<>()).add(ldr);
     }
 
@@ -466,9 +485,9 @@ public class InstallCommand implements InstallerCommand {
                 continue;
             }
             if (registerComponent(inst, p)) {
+                addLicenseToAccept(inst, ldr);
                 if (p.isComplete()) {
                     // null realInstaller will be handled in completeInstallers() later.
-                    addLicenseToAccept(inst, ldr);
                     realInstallers.put(p, inst);
                 } else {
                     realInstallers.put(p, null);
@@ -716,14 +735,34 @@ public class InstallCommand implements InstallerCommand {
 
     }
 
+    CommandInput getInput() {
+        return input;
+    }
+
+    Feedback getFeedback() {
+        return feedback;
+    }
+
+    Map<String, List<MetadataLoader>> getLicensesToAccept() {
+        return licensesToAccept;
+    }
+
+    protected LicensePresenter createLicensePresenter() {
+        return new LicensePresenter(feedback, input.getLocalRegistry(), licensesToAccept);
+    }
+
     /**
      * Forces the user to accept the licenses.
      * 
      * @throws IOException
      */
     void acceptLicenses() throws IOException {
-        // disabled for 20.1 release
-        // new LicensePresenter(feedback, input.getLocalRegistry(), licensesToAccept).run();
+        if (licensesToAccept.isEmpty()) {
+            return;
+        }
+        createLicensePresenter().run();
+        processedLicenses.addAll(licensesToAccept.keySet());
+        licensesToAccept.clear();
     }
 
     public Set<String> getUnresolvedDependencies() {

@@ -262,7 +262,7 @@ public class LLVMFunctionCode {
                 LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
                 assert !intrinsicProvider.isIntrinsified(descriptor.getLLVMFunction().getName());
                 if (nfiContextExtension != null) {
-                    NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getLLVMFunction().getName());
+                    NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(descriptor.getLLVMFunction().getName());
                     if (nativeFunction != null) {
                         descriptor.define(new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
                         return;

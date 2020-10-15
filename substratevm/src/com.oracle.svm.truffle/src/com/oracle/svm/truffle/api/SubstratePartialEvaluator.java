@@ -40,6 +40,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.PEGraphDecoder.SpecialCallTargetCacheKey;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.substitutions.TruffleDecodingPlugins;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -100,6 +101,7 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     protected InvocationPlugins createDecodingInvocationPlugins(Plugins parent) {
         InvocationPlugins decodingInvocationPlugins = new InvocationPlugins();
         registerTruffleInvocationPlugins(decodingInvocationPlugins, false);
+        TruffleDecodingPlugins.registerInvocationPlugins(decodingInvocationPlugins, providers);
         decodingInvocationPlugins.closeRegistration();
         return decodingInvocationPlugins;
     }

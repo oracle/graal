@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
-
 import java.util.Comparator;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -112,7 +110,7 @@ final class DefaultInliningPolicy implements InliningPolicy {
     }
 
     private void inline(CallTree tree) {
-        final int inliningBudget = getPolyglotOptionValue(options, PolyglotCompilerOptions.InliningInliningBudget);
+        final int inliningBudget = options.get(PolyglotCompilerOptions.InliningInliningBudget);
         final PriorityQueue<CallNode> inlineQueue = getQueue(tree, CallNode.State.Expanded);
         CallNode candidate;
         while ((candidate = inlineQueue.poll()) != null) {
@@ -131,8 +129,8 @@ final class DefaultInliningPolicy implements InliningPolicy {
     }
 
     private void expand(CallTree tree) {
-        final int expansionBudget = getPolyglotOptionValue(options, PolyglotCompilerOptions.InliningExpansionBudget);
-        final int maximumRecursiveInliningValue = getPolyglotOptionValue(options, PolyglotCompilerOptions.InliningRecursionDepth);
+        final int expansionBudget = options.get(PolyglotCompilerOptions.InliningExpansionBudget);
+        final int maximumRecursiveInliningValue = options.get(PolyglotCompilerOptions.InliningRecursionDepth);
         expandedCount = tree.getRoot().getIR().getNodeCount();
         final PriorityQueue<CallNode> expandQueue = getQueue(tree, CallNode.State.Cutoff);
         CallNode candidate;

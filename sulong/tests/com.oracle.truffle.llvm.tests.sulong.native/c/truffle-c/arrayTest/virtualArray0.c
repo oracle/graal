@@ -28,15 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-int main() {
-    int i = 0;
-    int sum = 0;
-    for (i = 5; i < 50; i++) {
-        sum += foo();
-        sum += foo2();
-    }
-    return sum / 11;
-}
+#include <stdlib.h>
 
 int foo() {
     int a[3];
@@ -51,5 +43,17 @@ int foo2() {
     a[0] = 1;
     a[1] = 2;
     a[2] = 3;
-    return a[0] + a[1] + a[2];
+    int res = a[0] + a[1] + a[2];
+    free(a);
+    return res;
+}
+
+int main() {
+    int i = 0;
+    int sum = 0;
+    for (i = 5; i < 50; i++) {
+        sum += foo();
+        sum += foo2();
+    }
+    return sum / 11;
 }

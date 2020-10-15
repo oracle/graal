@@ -165,8 +165,8 @@ public final class FileDownloader {
         if (!displayProgress) {
             return;
         }
-        progressString = new StringBuilder(feedback.l10n("MSG_DownloadProgress")); // NOI18N
-        signChar = feedback.l10n("MSG_DownloadProgressSignChar").charAt(0); // NOI18N
+        progressString = new StringBuilder(feedback.l10n("MSG_DownloadProgress@")); // NOI18N
+        signChar = feedback.l10n("MSG_DownloadProgressSignChar@").charAt(0); // NOI18N
         startPos = progressString.toString().indexOf(' ');
         StringBuilder bs = new StringBuilder(progressString.length());
         for (int i = 0; i < progressString.length(); i++) {

@@ -35,7 +35,13 @@ int main() {
     unsigned long out;
     unsigned int i;
 
+    printf("Writing %zu elements of value %d (byte %d)\n", sizeof(buf), 0xCC, (char) 0xCC);
+
     memset(buf, 0xCC, sizeof(buf));
+    printf("buf (before):");
+    for (i = 0; i < 16; i++)
+        printf(" %02X", buf[i]);
+    printf("\n");
 
     __asm__("cld\n"
             "lea %1, %%rdi\n"
@@ -46,9 +52,11 @@ int main() {
             : "=r"(out)
             : "m"(buf[2])
             : "rax", "rcx", "rdi");
-    printf("buf:");
+
+    printf("buf (after): ");
     for (i = 0; i < 16; i++)
         printf(" %02X", buf[i]);
     printf("\n");
+
     return (out == ((unsigned long) &buf[12]));
 }

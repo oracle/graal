@@ -50,21 +50,30 @@ import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.RemoteInfoProcessor;
 
 public class WebCatalog implements SoftwareChannel {
     private final String urlString;
     private final SoftwareChannelSource source;
 
     private URL catalogURL;
-    private CommandInput input;
     private Feedback feedback;
     private ComponentRegistry local;
     private ComponentStorage storage;
     private RuntimeException savedException;
+    private RemoteInfoProcessor remoteProcessor = RemoteInfoProcessor.NONE;
 
     public WebCatalog(String u, SoftwareChannelSource source) {
         this.urlString = u;
         this.source = source;
+    }
+
+    public RemoteInfoProcessor getRemoteProcessor() {
+        return remoteProcessor;
+    }
+
+    public void setRemoteProcessor(RemoteInfoProcessor remoteProcessor) {
+        this.remoteProcessor = remoteProcessor;
     }
 
     protected static boolean acceptURLScheme(String scheme, String urlSpec) {
@@ -88,11 +97,12 @@ public class WebCatalog implements SoftwareChannel {
     }
 
     public void init(CommandInput in, Feedback out) {
-        assert this.input == null;
+        init(in.getLocalRegistry(), out);
+    }
 
-        this.input = in;
+    public void init(ComponentRegistry aLocal, Feedback out) {
         this.feedback = out.withBundle(WebCatalog.class);
-        this.local = in.getLocalRegistry();
+        this.local = aLocal;
     }
 
     @Override
@@ -117,8 +127,10 @@ public class WebCatalog implements SoftwareChannel {
         Properties props = new Properties();
         // create the storage. If the init fails, but process will not terminate, the storage will
         // serve no components on the next call.
-        RemotePropertiesStorage newStorage = new RemotePropertiesStorage(feedback, local, props, sb.toString(), null, catalogURL);
-
+        RemotePropertiesStorage newStorage = createPropertiesStorage(feedback, local, props, sb.toString(), catalogURL);
+        if (remoteProcessor != null) {
+            newStorage.setRemoteProcessor(remoteProcessor);
+        }
         Properties loadProps = new Properties();
         FileDownloader dn;
         try {
@@ -148,7 +160,7 @@ public class WebCatalog implements SoftwareChannel {
         oldGraalPref.append('.');
 
         String graalVersionString = graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION).toLowerCase();
-        String normalizedVersion = input.getLocalRegistry().getGraalVersion().toString();
+        String normalizedVersion = local.getGraalVersion().toString();
 
         StringBuilder graalPref = new StringBuilder(oldGraalPref);
 
@@ -194,6 +206,12 @@ public class WebCatalog implements SoftwareChannel {
         }
         props.putAll(loadProps);
         return newStorage;
+    }
+
+    protected RemotePropertiesStorage createPropertiesStorage(Feedback aFeedback,
+                    ComponentRegistry aLocal, Properties props, String selector, URL baseURL) {
+        return new RemotePropertiesStorage(
+                        aFeedback, aLocal, props, selector, null, baseURL);
     }
 
     @Override

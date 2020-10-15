@@ -46,4 +46,12 @@ public final class WasmTestOptions {
     public static final String TEST_FILTER = System.getProperty("wasmtest.testFilter");
     public static final String LOG_LEVEL = System.getProperty("wasmtest.logLevel");
     public static final String STORE_CONSTANTS_POLICY = System.getProperty("wasmtest.storeConstantsPolicy");
+    public static final String OFFICIAL_TESTS_DIR = System.getProperty("wasmtest.officialTestsDir");
+    public static final boolean OFFICIAL_TESTS_RUN_ALL = flag("wasmtest.officialTestsRunAll");
+    public static final boolean OFFICIAL_TESTS_LOG = flag("wasmtest.officialTestsLog");
+
+    private static boolean flag(String name) {
+        String value = System.getProperty(name);
+        return value != null && !value.equals("") && !value.equals("false");
+    }
 }

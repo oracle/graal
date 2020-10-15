@@ -1064,6 +1064,18 @@ public class NativeImage {
         }
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
+        boolean afterOption = false;
+        for (String arg : customJavaArgs) {
+            if (arg.startsWith("-")) {
+                afterOption = true;
+            } else {
+                if (!afterOption) {
+                    NativeImage.showError("Found invalid image builder Java VM argument: " + arg);
+                } else {
+                    afterOption = false;
+                }
+            }
+        }
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
 
         /* Perform option consolidation of imageBuilderArgs */

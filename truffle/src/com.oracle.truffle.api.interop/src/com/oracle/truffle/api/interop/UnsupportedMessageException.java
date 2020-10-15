@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleException;
 
 /**
  * An exception thrown if a {@link TruffleObject} does not support a interop message. If this
@@ -96,8 +95,9 @@ public final class UnsupportedMessageException extends InteropException {
      * provided as cause. The cause can then be used by the source language as new exception cause
      * if the {@link InteropException} is translated to a source language error. If the
      * {@link InteropException} is discarded, then the cause will most likely get discarded by the
-     * source language as well. Note that the cause must be of type {@link TruffleException} in
-     * addition to {@link Throwable} otherwise an {@link IllegalArgumentException} is thrown.
+     * source language as well. Note that the cause must be of type
+     * {@link com.oracle.truffle.api.TruffleException} in addition to {@link Throwable} otherwise an
+     * {@link IllegalArgumentException} is thrown.
      * <p>
      * This method is designed to be used in {@link CompilerDirectives#inCompiledCode() compiled}
      * code paths.
@@ -105,6 +105,7 @@ public final class UnsupportedMessageException extends InteropException {
      * @param cause the guest language exception that caused the error.
      * @since 20.2
      */
+    @SuppressWarnings("deprecation")
     public static UnsupportedMessageException create(Throwable cause) {
         return new UnsupportedMessageException(cause);
     }

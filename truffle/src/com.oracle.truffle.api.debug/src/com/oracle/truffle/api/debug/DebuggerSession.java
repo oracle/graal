@@ -66,6 +66,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.debug.Breakpoint.BreakpointConditionFailure;
 import com.oracle.truffle.api.debug.DebuggerNode.InputValuesProvider;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -181,6 +182,7 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class DebuggerSession implements Closeable {
 
     private static final AtomicInteger SESSIONS = new AtomicInteger(0);
+    private static final ThreadLocal<Boolean> inEvalInContext = new ThreadLocal<>();
 
     static final Set<SuspendAnchor> ANCHOR_SET_BEFORE = Collections.singleton(SuspendAnchor.BEFORE);
     static final Set<SuspendAnchor> ANCHOR_SET_AFTER = Collections.singleton(SuspendAnchor.AFTER);
@@ -1149,7 +1151,7 @@ public final class DebuggerSession implements Closeable {
             }
         }
         if (s.isKill()) {   // ComposedStrategy can become kill
-            throw new KillException(source.getContext().getInstrumentedNode());
+            performKill(source.getContext().getInstrumentedNode());
         }
         return newReturnValue;
     }
@@ -1205,13 +1207,22 @@ public final class DebuggerSession implements Closeable {
 
         setSteppingStrategy(currentThread, strategy, true);
         if (strategy.isKill()) {
-            throw new KillException(context.getInstrumentedNode());
+            performKill(context.getInstrumentedNode());
         } else if (strategy.isUnwind()) {
             ThreadDeath unwind = context.createUnwind(null, syntaxElementsBinding);
             ((SteppingStrategy.Unwind) strategy).unwind = unwind;
             throw unwind;
         }
         return newReturnValue;
+    }
+
+    private void performKill(Node location) {
+        if (Boolean.TRUE.equals(inEvalInContext.get())) {
+            throw new KillException(location);
+        } else {
+            TruffleContext truffleContext = debugger.getEnv().getEnteredContext();
+            truffleContext.closeCancelled(location, KillException.MESSAGE);
+        }
     }
 
     private List<DebuggerNode> collectDebuggerNodes(DebuggerNode source, SuspendAnchor suspendAnchor) {
@@ -1296,6 +1307,7 @@ public final class DebuggerSession implements Closeable {
             frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
         }
         try {
+            inEvalInContext.set(Boolean.TRUE);
             return evalInContext(ev, node, frame, code);
         } catch (KillException kex) {
             throw new DebugException(ev.getSession(), "Evaluation was killed.", null, true, null);
@@ -1308,6 +1320,8 @@ public final class DebuggerSession implements Closeable {
                 language = root.getLanguageInfo();
             }
             throw new DebugException(ev.getSession(), ex, language, null, true, null);
+        } finally {
+            inEvalInContext.remove();
         }
     }
 

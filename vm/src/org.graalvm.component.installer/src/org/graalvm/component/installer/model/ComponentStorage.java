@@ -59,4 +59,5 @@ public interface ComponentStorage {
     Set<ComponentInfo> loadComponentMetadata(String id) throws IOException;
 
     Map<String, String> loadGraalVersionInfo();
+
 }

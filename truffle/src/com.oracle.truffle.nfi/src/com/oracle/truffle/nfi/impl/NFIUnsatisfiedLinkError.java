@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,28 +40,25 @@
  */
 package com.oracle.truffle.nfi.impl;
 
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
  * The unsatisfied link error should show as non-internal error to the user.
  */
-@SuppressWarnings("serial")
-class NFIUnsatisfiedLinkError extends java.lang.UnsatisfiedLinkError implements TruffleException {
 
-    private final Node location;
+@SuppressWarnings("serial")
+@ExportLibrary(InteropLibrary.class)
+final class NFIUnsatisfiedLinkError extends AbstractTruffleException {
 
     NFIUnsatisfiedLinkError(String message) {
         this(message, null);
     }
 
     NFIUnsatisfiedLinkError(String message, Node location) {
-        super(message);
-        this.location = location;
-    }
-
-    public Node getLocation() {
-        return location;
+        super(message, location);
     }
 
     @Override

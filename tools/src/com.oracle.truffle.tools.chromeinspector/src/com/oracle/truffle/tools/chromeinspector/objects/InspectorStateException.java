@@ -24,26 +24,13 @@
  */
 package com.oracle.truffle.tools.chromeinspector.objects;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-class InspectorStateException extends RuntimeException implements TruffleException {
+class InspectorStateException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 1205823327748715981L;
 
     InspectorStateException(String message) {
         super(message);
     }
-
-    @Override
-    public Node getLocation() {
-        return null;
-    }
-
-    @Override
-    @SuppressWarnings("sync-override")
-    public Throwable fillInStackTrace() {
-        return this;
-    }
-
 }

@@ -59,7 +59,6 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropException;
@@ -225,10 +224,18 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                 if (!evalResult.isError()) {
                     fillCompletionsFromTruffleObject(completions, surrogate.getLanguageInfo(), evalResult.getResult());
                 } else {
-                    if (evalResult.getResult() instanceof TruffleException) {
-                        TruffleException te = (TruffleException) evalResult.getResult();
+                    Object result = evalResult.getResult();
+                    if (result != null && INTEROP.isException(result)) {
+                        SourceSection sourceLocation;
+                        String exceptionMessage;
+                        try {
+                            sourceLocation = INTEROP.hasSourceLocation(result) ? INTEROP.getSourceLocation(result) : null;
+                            exceptionMessage = INTEROP.hasExceptionMessage(result) ? INTEROP.asString(INTEROP.getExceptionMessage(result)) : null;
+                        } catch (UnsupportedMessageException um) {
+                            throw CompilerDirectives.shouldNotReachHere(um);
+                        }
                         throw DiagnosticsNotification.create(surrogate.getUri(),
-                                        Diagnostic.create(SourceUtils.sourceSectionToRange(te.getSourceLocation()), "An error occurred during execution: " + te.toString(),
+                                        Diagnostic.create(SourceUtils.sourceSectionToRange(sourceLocation), "An error occurred during execution: " + exceptionMessage,
                                                         DiagnosticSeverity.Warning, null, "Graal", null));
                     } else {
                         ((Exception) evalResult.getResult()).printStackTrace(err);

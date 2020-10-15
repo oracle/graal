@@ -1541,7 +1541,12 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             LLVMValueRef convert;
             switch (op.getCategory()) {
                 case FloatingPointToInteger:
-                    convert = builder.buildFPToSI(getVal(inputVal), destType);
+                    /* NaNs are converted to 0 in Java, but are undefined in LLVM */
+                    LLVMValueRef value = getVal(inputVal);
+                    LLVMValueRef isNan = builder.buildCompare(Condition.NE, value, value, true);
+                    LLVMValueRef converted = builder.buildFPToSI(getVal(inputVal), destType);
+                    LLVMValueRef zero = builder.constantInteger(0, LLVMIRBuilder.integerTypeWidth(destType));
+                    convert = builder.buildSelect(isNan, zero, converted);
                     break;
                 case IntegerToFloatingPoint:
                     convert = builder.buildSIToFP(getVal(inputVal), destType);

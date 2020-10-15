@@ -29,6 +29,8 @@
  */
 #include <stdlib.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsupported-visibility"
 volatile int i1 __attribute__((visibility("protected")));
 volatile int i2 __attribute__((visibility("default")));
 volatile int i3 __attribute__((visibility("hidden")));

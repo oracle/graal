@@ -50,6 +50,10 @@ final class InteropAccessor extends Accessor {
 
     static final InteropAccessor ACCESSOR = new InteropAccessor();
 
+    static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
+
+    static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
+
     private InteropAccessor() {
     }
 
@@ -122,7 +126,6 @@ final class InteropAccessor extends Accessor {
             }
             return receiver;
         }
-
     }
 
     static final class EmptyTruffleObject implements TruffleObject {

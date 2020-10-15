@@ -56,6 +56,7 @@ import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.emscripten.EmscriptenModule;
+import org.graalvm.wasm.predefined.spectest.SpectestModule;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiModule;
 
@@ -67,6 +68,7 @@ public abstract class BuiltinModule {
         pm.put("emscripten", new EmscriptenModule());
         pm.put("testutil", new TestutilModule());
         pm.put("wasi_snapshot_preview1", new WasiModule());
+        pm.put("spectest", new SpectestModule());
     }
 
     public static WasmInstance createBuiltinInstance(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {

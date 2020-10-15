@@ -30,11 +30,11 @@
 int main() {
     long adr = 0;
     int sum = 0;
-    sum += adr > &adr;
-    sum += adr < &adr;
-    sum += adr >= &adr;
-    sum += adr <= &adr;
-    sum += adr == &adr;
-    sum += adr != &adr;
+    sum += adr > (long) &adr;
+    sum += adr < (long) &adr;
+    sum += adr >= (long) &adr;
+    sum += adr <= (long) &adr;
+    sum += adr == (long) &adr;
+    sum += adr != (long) &adr;
     return sum;
 }

@@ -102,6 +102,10 @@ final class LanguageAccessor extends Accessor {
         return ACCESSOR.interopSupport();
     }
 
+    static ExceptionSupport exceptionAccess() {
+        return ACCESSOR.exceptionSupport();
+    }
+
     static IOSupport ioAccess() {
         return ACCESSOR.ioSupport();
     }
@@ -176,6 +180,11 @@ final class LanguageAccessor extends Accessor {
             } else {
                 return null;
             }
+        }
+
+        @Override
+        public Object getPolyglotLanguageContext(Env env) {
+            return env.getPolyglotLanguageContext();
         }
 
         @Override
@@ -572,11 +581,6 @@ final class LanguageAccessor extends Accessor {
         @Override
         public TruffleLogger getLogger(String id, String loggerName, Object loggers) {
             return TruffleLogger.getLogger(id, loggerName, (TruffleLogger.LoggerCache) loggers);
-        }
-
-        @Override
-        public SecurityException throwSecurityException(String message) {
-            throw new TruffleSecurityException(message);
         }
 
         @Override

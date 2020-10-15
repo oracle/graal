@@ -45,7 +45,7 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -56,6 +56,8 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
@@ -118,21 +120,20 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
         } catch (DiagnosticsNotification e) {
             throw e;
         } catch (Exception e) {
-            if (e instanceof TruffleException) {
-                Node location = ((TruffleException) e).getLocation();
-                URI uriOfErronousSource = null;
-                if (location != null) {
-                    SourceSection sourceSection = location.getEncapsulatingSourceSection();
-                    if (sourceSection != null) {
-                        uriOfErronousSource = sourceSection.getSource().getURI();
-                    }
+            InteropLibrary interopLib = InteropLibrary.getUncached();
+            if (interopLib.isException(e)) {
+                SourceSection sourceSection;
+                try {
+                    sourceSection = interopLib.hasSourceLocation(e) ? interopLib.getSourceLocation(e) : null;
+                } catch (UnsupportedMessageException um) {
+                    throw CompilerDirectives.shouldNotReachHere(um);
                 }
-
+                URI uriOfErronousSource = sourceSection != null ? sourceSection.getSource().getURI() : null;
                 if (uriOfErronousSource == null) {
                     uriOfErronousSource = uri;
                 }
                 throw DiagnosticsNotification.create(uriOfErronousSource,
-                                Diagnostic.create(SourceUtils.getRangeFrom((TruffleException) e), e.getMessage(), DiagnosticSeverity.Error, null, "Coverage analysis", null));
+                                Diagnostic.create(SourceUtils.getRangeFrom(e, interopLib), e.getMessage(), DiagnosticSeverity.Error, null, "Coverage analysis", null));
             }
 
             throw e;

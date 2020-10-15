@@ -142,7 +142,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportMemory() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Memory memory = new Memory(new MemoryDescriptor(1L, 4L));
+            final Memory memory = new Memory(new MemoryDescriptor(1, 4));
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultMemory", memory
@@ -152,9 +152,9 @@ public class WasmJsApiSuite {
             final Instance instance = instantiatedSource.instance();
             try {
                 final Executable initZero = (Executable) instance.exports().readMember("initZero");
-                Assert.assertEquals("Must be zero initially.", 0, memory.wasmMemory().load_i32(null, 0L));
+                Assert.assertEquals("Must be zero initially.", 0, memory.wasmMemory().load_i32(null, 0));
                 initZero.executeFunction(new Object[0]);
-                Assert.assertEquals("Must be 174 after initialization.", 174, memory.wasmMemory().load_i32(null, 0L));
+                Assert.assertEquals("Must be 174 after initialization.", 174, memory.wasmMemory().load_i32(null, 0));
             } catch (UnknownIdentifierException e) {
                 throw new RuntimeException(e);
             }
@@ -170,7 +170,7 @@ public class WasmJsApiSuite {
             try {
                 final Memory memory = (Memory) instance.exports().readMember("memory");
                 final Executable readZero = (Executable) instance.exports().readMember("readZero");
-                memory.wasmMemory().store_i32(null, 0L, 174);
+                memory.wasmMemory().store_i32(null, 0, 174);
                 final Object result = readZero.executeFunction(new Object[0]);
                 Assert.assertEquals("Must be 174.", 174, result);
             } catch (UnknownIdentifierException e) {
@@ -259,6 +259,21 @@ public class WasmJsApiSuite {
                 Assert.assertEquals("Must be 2345 initially.", 2345, getGlobal.executeFunction(new Object[0]));
                 setGlobal.executeFunction(new Object[]{25});
                 Assert.assertEquals("Must be 25 later.", 25, getGlobal.executeFunction(new Object[0]));
+            } catch (UnknownIdentifierException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testInstantiateWithUnicodeExport() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithUnicodeExport, null);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final Executable euroSignFn = (Executable) instance.exports().readMember("\u20AC");
+                Assert.assertEquals("Result should be 42", 42, euroSignFn.executeFunction(new Object[0]));
             } catch (UnknownIdentifierException e) {
                 throw new RuntimeException(e);
             }
@@ -463,4 +478,13 @@ public class WasmJsApiSuite {
                     (byte) 0x61, (byte) 0x6c, (byte) 0x01, (byte) 0x09, (byte) 0x67, (byte) 0x65, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c,
                     (byte) 0x02, (byte) 0x07, (byte) 0x02, (byte) 0x00, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x00,
     };
+
+    // (module (func (export "\E2\82\AC") (result i32) i32.const 42))
+    // E2 82 AC is UTF-8 encoding of Euro sign
+    private static final byte[] binaryWithUnicodeExport = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x7f, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x07, (byte) 0x07, (byte) 0x01, (byte) 0x03, (byte) 0xe2, (byte) 0x82, (byte) 0xac,
+                    (byte) 0x00, (byte) 0x00, (byte) 0x0a, (byte) 0x06, (byte) 0x01, (byte) 0x04, (byte) 0x00, (byte) 0x41, (byte) 0x2a, (byte) 0x0b
+    };
+
 }

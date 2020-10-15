@@ -40,12 +40,11 @@
  */
 package org.graalvm.wasm;
 
-import static org.graalvm.wasm.WasmUtil.unsignedInt32ToLong;
-
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.CallIndirect;
 import org.graalvm.wasm.constants.ExportIdentifier;
@@ -54,6 +53,7 @@ import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.constants.Instructions;
 import org.graalvm.wasm.constants.LimitsPrefix;
 import org.graalvm.wasm.constants.Section;
+import org.graalvm.wasm.exception.BinaryParserException;
 import org.graalvm.wasm.exception.WasmLinkerException;
 import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -64,10 +64,15 @@ import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.Node;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+
+import static org.graalvm.wasm.WasmUtil.unsignedInt32ToLong;
 
 /**
  * Simple recursive-descend parser for the binary WebAssembly format.
@@ -1206,7 +1211,6 @@ public class BinaryParser extends BinaryStreamParser {
                 // Reading of the data segment is called after linking, so initialize the memory
                 // directly.
                 final WasmMemory memory = linkedInstance.memory();
-                memory.validateAddress(null, offsetAddress, byteLength);
                 for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                     byte b = read1();
                     memory.store_i32_8(null, offsetAddress + writeOffset, b);
@@ -1316,8 +1320,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private int readTargetOffset(ExecutionState state) {
-        int value = readUnsignedInt32(state);
-        return value;
+        return readUnsignedInt32(state);
     }
 
     private byte readExportType() {
@@ -1373,11 +1376,23 @@ public class BinaryParser extends BinaryStreamParser {
 
     private String readName() {
         int nameLength = readVectorLength();
-        byte[] name = new byte[nameLength];
-        for (int i = 0; i != nameLength; ++i) {
-            name[i] = read1();
+        int afterNameOffset = nameLength + offset;
+        if (afterNameOffset < 0 || data.length < afterNameOffset) {
+            throw BinaryParserException.format("The binary is truncated at: %d", data.length);
         }
-        return new String(name, StandardCharsets.US_ASCII);
+
+        // Decode and verify UTF-8 encoding of the name
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+        decoder.onMalformedInput(CodingErrorAction.REPORT);
+        decoder.onUnmappableCharacter(CodingErrorAction.REPORT);
+        CharBuffer result;
+        try {
+            result = decoder.decode(ByteBuffer.wrap(data, offset, nameLength));
+        } catch (CharacterCodingException ex) {
+            throw BinaryParserException.format("Invalid UTF-8 encoding of the name at: %d", offset);
+        }
+        offset += nameLength;
+        return result.toString();
     }
 
     protected int readUnsignedInt32() {
@@ -1447,7 +1462,7 @@ public class BinaryParser extends BinaryStreamParser {
      * Reset the state of the globals in a module that had already been parsed and linked.
      */
     @SuppressWarnings("unused")
-    void resetGlobalState(WasmContext context, WasmInstance instance) {
+    public void resetGlobalState(WasmContext context, WasmInstance instance) {
         int globalIndex = 0;
         if (tryJumpToSection(Section.IMPORT)) {
             int numImports = readVectorLength();
@@ -1530,11 +1545,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    void resetMemoryState(WasmContext context, WasmInstance instance, boolean zeroMemory) {
-        final WasmMemory memory = instance.memory();
-        if (memory != null && zeroMemory) {
-            memory.clear();
-        }
+    public void resetMemoryState(WasmContext context, WasmInstance instance) {
         if (tryJumpToSection(Section.DATA)) {
             readDataSection(context, instance);
         }

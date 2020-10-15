@@ -41,8 +41,8 @@
 package org.graalvm.wasm.predefined.testutil;
 
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.predefined.BuiltinModule;
@@ -60,7 +60,8 @@ public class TestutilModule extends BuiltinModule {
     }
 
     public static class Names {
-        public static final String RESET_CONTEXT = "__testutil_reset_context";
+        public static final String REINIT_INSTANCE = "__testutil_reinit_instance";
+        public static final String RESET_MEMORIES = "__testutil_reset_memories";
         public static final String SAVE_CONTEXT = "__testutil_save_context";
         public static final String COMPARE_CONTEXTS = "__testutil_compare_contexts";
         public static final String RUN_CUSTOM_INITIALIZATION = "__testutil_run_custom_initialization";
@@ -91,7 +92,8 @@ public class TestutilModule extends BuiltinModule {
 
         // Note: in the following methods, the types are not important here, since these methods
         // are not accessed by Wasm code.
-        defineFunction(instance, Names.RESET_CONTEXT, types(), types(), new ResetContextNode(language, instance));
+        defineFunction(instance, Names.RESET_MEMORIES, types(), types(), new ResetMemoriesNode(language, instance));
+        defineFunction(instance, Names.REINIT_INSTANCE, types(), types(), new ReinitInstanceNode(language, instance));
         defineFunction(instance, Names.SAVE_CONTEXT, types(), types(), new SaveContextNodeNode(language, instance));
         defineFunction(instance, Names.COMPARE_CONTEXTS, types(), types(), new CompareContextsNode(language, instance));
         defineFunction(instance, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitializationNode(language));

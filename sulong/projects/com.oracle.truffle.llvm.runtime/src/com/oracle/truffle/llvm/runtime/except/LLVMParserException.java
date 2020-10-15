@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,9 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.except;
 
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+
 /**
  * Exception during parsing of LLVM bitcode.
  */
+@ExportLibrary(InteropLibrary.class)
 public class LLVMParserException extends LLVMException {
 
     private static final long serialVersionUID = 1L;
@@ -40,8 +46,8 @@ public class LLVMParserException extends LLVMException {
         super(null, message);
     }
 
-    @Override
-    public boolean isSyntaxError() {
-        return true;
+    @ExportMessage
+    ExceptionType getExceptionType() {
+        return ExceptionType.PARSE_ERROR;
     }
 }

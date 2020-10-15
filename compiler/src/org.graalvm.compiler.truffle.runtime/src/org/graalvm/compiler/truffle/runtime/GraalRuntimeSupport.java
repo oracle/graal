@@ -74,9 +74,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     @Override
     public boolean isGuestCallStackFrame(StackTraceElement e) {
-        return (e.getMethodName().equals(OptimizedCallTarget.EXECUTE_ROOT_NODE_METHOD_NAME) && e.getClassName().equals(OptimizedCallTarget.class.getName())) ||
-                        (e.getMethodName().equals(CALL_INLINED_METHOD_NAME) &&
-                                        e.getClassName().equals(GraalRuntimeSupport.class.getName()));
+        return e.getMethodName().equals(OptimizedCallTarget.EXECUTE_ROOT_NODE_METHOD_NAME) && e.getClassName().equals(OptimizedCallTarget.class.getName());
 
     }
 

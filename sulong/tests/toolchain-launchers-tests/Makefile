@@ -103,12 +103,12 @@ PRINT_TEST=@echo Running toolchain test $@
 obj/main.o: CFLAGS+=-v
 obj/main.o: QUIETLY_REDIR$(MX_VERBOSE)= > /dev/null 2>&1
 # require libployglot
-polyglot_biginteger.out: LDFLAGS+=-lpolyglot-mock
-polyglot_biginteger.comp-and-link.out: LDFLAGS+=-lpolyglot-mock
-polyglot_biginteger.ld-linked.out: LDFLAGS+=-lpolyglot-mock
-polyglot_biginteger_cxx.out: LDFLAGS+=-lpolyglot-mock
-polyglot_biginteger_cxx.comp-and-link.out: LDFLAGS+=-lpolyglot-mock
-polyglot_biginteger_cxx.ld-linked.out: LDFLAGS+=-lpolyglot-mock
+polyglot_biginteger.out: LDFLAGS+=-lgraalvm-llvm
+polyglot_biginteger.comp-and-link.out: LDFLAGS+=-lgraalvm-llvm
+polyglot_biginteger.ld-linked.out: LDFLAGS+=-lgraalvm-llvm
+polyglot_biginteger_cxx.out: LDFLAGS+=-lgraalvm-llvm
+polyglot_biginteger_cxx.comp-and-link.out: LDFLAGS+=-lgraalvm-llvm
+polyglot_biginteger_cxx.ld-linked.out: LDFLAGS+=-lgraalvm-llvm
 
 # normal compilation (with -fLTO, i.e., result is bitcode file)
 obj/%.o: src/%.c

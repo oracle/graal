@@ -193,10 +193,14 @@ meth public boolean isEntered()
 meth public com.oracle.truffle.api.TruffleContext getParent()
 meth public int hashCode()
 meth public java.lang.Object enter()
+ anno 0 java.lang.Deprecated()
+meth public java.lang.Object enter(com.oracle.truffle.api.nodes.Node)
 meth public void close()
 meth public void closeCancelled(com.oracle.truffle.api.nodes.Node,java.lang.String)
 meth public void closeResourceExhausted(com.oracle.truffle.api.nodes.Node,java.lang.String)
+meth public void leave(com.oracle.truffle.api.nodes.Node,java.lang.Object)
 meth public void leave(java.lang.Object)
+ anno 0 java.lang.Deprecated()
 supr java.lang.Object
 hfds CONTEXT_ASSERT_STACK,EMPTY,closeable,polyglotContext
 
@@ -208,16 +212,27 @@ supr java.lang.Object
 hfds config,sourceEnvironment
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleException
+ anno 0 java.lang.Deprecated()
 meth public abstract com.oracle.truffle.api.nodes.Node getLocation()
+ anno 0 java.lang.Deprecated()
 meth public boolean isCancelled()
+ anno 0 java.lang.Deprecated()
 meth public boolean isExit()
+ anno 0 java.lang.Deprecated()
 meth public boolean isIncompleteSource()
+ anno 0 java.lang.Deprecated()
 meth public boolean isInternalError()
+ anno 0 java.lang.Deprecated()
 meth public boolean isSyntaxError()
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.source.SourceSection getSourceLocation()
+ anno 0 java.lang.Deprecated()
 meth public int getExitStatus()
+ anno 0 java.lang.Deprecated()
 meth public int getStackTraceElementLimit()
+ anno 0 java.lang.Deprecated()
 meth public java.lang.Object getExceptionObject()
+ anno 0 java.lang.Deprecated()
 
 CLSS public final com.oracle.truffle.api.TruffleFile
 fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Boolean> IS_DIRECTORY
@@ -623,6 +638,7 @@ CLSS public final com.oracle.truffle.api.TruffleStackTraceElement
 meth public com.oracle.truffle.api.RootCallTarget getTarget()
 meth public com.oracle.truffle.api.frame.Frame getFrame()
 meth public com.oracle.truffle.api.nodes.Node getLocation()
+meth public java.lang.Object getGuestObject()
 meth public static com.oracle.truffle.api.TruffleStackTraceElement create(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.RootCallTarget,com.oracle.truffle.api.frame.Frame)
 supr java.lang.Object
 hfds frame,location,target
@@ -763,6 +779,24 @@ meth public java.lang.Process start() throws java.io.IOException
 meth public org.graalvm.polyglot.io.ProcessHandler$Redirect createRedirectToStream(java.io.OutputStream)
 supr java.lang.Object
 hfds clearEnvironment,cmd,cwd,env,errorRedirect,fileSystem,inheritIO,inputRedirect,outputRedirect,polyglotLanguageContext,redirectErrorStream
+
+CLSS public abstract com.oracle.truffle.api.memory.ByteArraySupport
+meth public abstract byte getByte(byte[],int)
+meth public abstract double getDouble(byte[],int)
+meth public abstract float getFloat(byte[],int)
+meth public abstract int getInt(byte[],int)
+meth public abstract long getLong(byte[],int)
+meth public abstract short getShort(byte[],int)
+meth public abstract void putByte(byte[],int,byte)
+meth public abstract void putDouble(byte[],int,double)
+meth public abstract void putFloat(byte[],int,float)
+meth public abstract void putInt(byte[],int,int)
+meth public abstract void putLong(byte[],int,long)
+meth public abstract void putShort(byte[],int,short)
+meth public final boolean inBounds(byte[],int,int)
+meth public static com.oracle.truffle.api.memory.ByteArraySupport bigEndian()
+meth public static com.oracle.truffle.api.memory.ByteArraySupport littleEndian()
+supr java.lang.Object
 
 CLSS public abstract com.oracle.truffle.api.nodes.BlockNode<%0 extends com.oracle.truffle.api.nodes.Node>
 cons protected init({com.oracle.truffle.api.nodes.BlockNode%0}[])
@@ -1167,6 +1201,7 @@ meth protected boolean isInstrumentable()
 meth protected boolean isTrivial()
 meth protected com.oracle.truffle.api.nodes.RootNode cloneUninitialized()
 meth protected final void setCallTarget(com.oracle.truffle.api.RootCallTarget)
+meth protected java.lang.Object translateStackTraceElement(com.oracle.truffle.api.TruffleStackTraceElement)
 meth protected java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> findAsynchronousFrames(com.oracle.truffle.api.frame.Frame)
 meth public abstract java.lang.Object execute(com.oracle.truffle.api.frame.VirtualFrame)
 meth public boolean isCaptureFramesForTrace()

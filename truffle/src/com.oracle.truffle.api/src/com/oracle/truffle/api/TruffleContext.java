@@ -62,13 +62,13 @@ import com.oracle.truffle.api.nodes.Node;
  * language context is {@link TruffleLanguage#createContext(Env) created} eagerly and can be
  * accessed using a {@link ContextReference context reference} or statically with
  * {@link TruffleLanguage#getCurrentContext(Class)} after the context was
- * {@link TruffleContext#enter() entered}.
+ * {@link TruffleContext#enter(Node) entered}.
  * <p>
  * The configuration for each language context is inherited from its parent/creator context. In
  * addition to that {@link Builder#config(String, Object) config} parameters can be passed to new
  * language context instance of the current language. The configuration of other installed languages
  * cannot be modified. To run guest language code in a context, the context needs to be first
- * {@link #enter() entered} and then {@link #leave(Object) left}. The context should be
+ * {@link #enter(Node) entered} and then {@link #leave(Node, Object) left}. The context should be
  * {@link #close() closed} when it is no longer needed. If the context is not closed explicitly,
  * then it is automatically closed together with the parent context.
  * <p>
@@ -149,15 +149,29 @@ public final class TruffleContext implements AutoCloseable {
     }
 
     /**
+     * @since 0.27
+     * @deprecated use {@link #enter(Node)} instead and pass in the node context is possible.
+     */
+    @Deprecated
+    public Object enter() {
+        return enter(null);
+    }
+
+    /**
      * Enters this context and returns an object representing the previous context. Calls to enter
-     * must be followed by a call to {@link #leave(Object)} in a finally block and the previous
-     * context must be passed as an argument. It is allowed to enter a context multiple times from
-     * the same thread. If the context is currently not entered by any thread then it is allowed be
-     * entered by an arbitrary thread. Entering the context from two or more different threads at
-     * the same time is possible, unless one of the loaded languages denies access to the thread, in
-     * which case an {@link IllegalStateException} is thrown. The result of the enter function is
-     * unspecified and must only be passed to {@link #leave(Object)}. The result value must not be
-     * stored permanently.
+     * must be followed by a call to {@link #leave(Node, Object)} in a finally block and the
+     * previous context must be passed as an argument. It is allowed to enter a context multiple
+     * times from the same thread. If the context is currently not entered by any thread then it is
+     * allowed be entered by an arbitrary thread. Entering the context from two or more different
+     * threads at the same time is possible, unless one of the loaded languages denies access to the
+     * thread, in which case an {@link IllegalStateException} is thrown. The result of the enter
+     * function is unspecified and must only be passed to {@link #leave(Node, Object)}. The result
+     * value must not be stored permanently.
+     * <p>
+     * An adopted node may be passed to allow perform optimizations on the fast-path. If a
+     * <code>null</code> node is passed then entering a context will result in a
+     * {@link TruffleBoundary boundary} call in compiled code. If the provided node is not adopted
+     * an {@link IllegalArgumentException} is thrown.
      * <p>
      * Entering a language context is designed for compilation and is most efficient if the
      * {@link TruffleContext context} instance is compilation final.
@@ -165,12 +179,13 @@ public final class TruffleContext implements AutoCloseable {
      * <p>
      * Example usage: {@link TruffleContextSnippets#executeInContext}
      *
-     * @see #leave(Object)
-     * @since 0.27
+     * @see #leave(Node, Object)
+     * @since 20.3
      */
-    public Object enter() {
+    public Object enter(Node node) {
         try {
-            Object prev = LanguageAccessor.engineAccess().enterInternalContext(polyglotContext);
+            CompilerAsserts.partialEvaluationConstant(node);
+            Object prev = LanguageAccessor.engineAccess().enterInternalContext(node, polyglotContext);
             if (CONTEXT_ASSERT_STACK != null) {
                 verifyEnter(prev);
             }
@@ -200,10 +215,10 @@ public final class TruffleContext implements AutoCloseable {
     /**
      * Returns <code>true</code> if the context is currently active on the current thread, else
      * <code>false</code>. Checks whether the context has been previously entered by this thread
-     * with {@link #enter()} and hasn't been left yet with {@link #leave(java.lang.Object)} methods.
-     * Multiple contexts can be active on a single thread. See {@link #isEntered()} for checking
-     * whether it is the top-most entered context. This method is thread-safe and may be used from
-     * multiple threads.
+     * with {@link #enter(Node)} and hasn't been left yet with
+     * {@link #leave(Node, java.lang.Object)} methods. Multiple contexts can be active on a single
+     * thread. See {@link #isEntered()} for checking whether it is the top-most entered context.
+     * This method is thread-safe and may be used from multiple threads.
      *
      * @since 20.3
      */
@@ -231,21 +246,36 @@ public final class TruffleContext implements AutoCloseable {
     }
 
     /**
+     * @since 0.27
+     * @deprecated use {@link #leave(Node, Object)} instead and pass in the node context if
+     *             possible.
+     */
+    @Deprecated
+    public void leave(Object prev) {
+        leave(null, prev);
+    }
+
+    /**
      * Leaves this context and sets the previous context as the new current context.
+     * <p>
+     * An adopted node may be passed to allow perform optimizations on the fast-path. If a
+     * <code>null</code> node is passed then entering a context will result in a
+     * {@link TruffleBoundary boundary} call in compiled code. If the node is not adopted an
+     * {@link IllegalArgumentException} is thrown.
      * <p>
      * Leaving a language context is designed for compilation and is most efficient if the
      * {@link TruffleContext context} instance is compilation final.
      *
-     * @param prev the previous context returned by {@link #enter()}
-     * @see #enter()
-     * @since 0.27
+     * @param prev the previous context returned by {@link #enter(Node)}
+     * @see #enter(Node)
+     * @since 20.3
      */
-    public void leave(Object prev) {
+    public void leave(Node node, Object prev) {
         try {
             if (CONTEXT_ASSERT_STACK != null) {
                 verifyLeave(prev);
             }
-            LanguageAccessor.engineAccess().leaveInternalContext(polyglotContext, prev);
+            LanguageAccessor.engineAccess().leaveInternalContext(node, polyglotContext, prev);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }
@@ -269,8 +299,8 @@ public final class TruffleContext implements AutoCloseable {
 
     /**
      * Closes this context and disposes its resources. Closes this context and disposes its
-     * resources. A context cannot be closed if it is currently {@link #enter() entered} or active
-     * by any thread. If a closed context is attempted to be accessed or entered, then an
+     * resources. A context cannot be closed if it is currently {@link #enter(Node) entered} or
+     * active by any thread. If a closed context is attempted to be accessed or entered, then an
      * {@link IllegalStateException} is thrown. If the context is not closed explicitly, then it is
      * automatically closed together with the parent context. If an attempt to close a context was
      * successful then consecutive calls to close have no effect.
@@ -297,17 +327,16 @@ public final class TruffleContext implements AutoCloseable {
 
     /**
      * Force closes the context as cancelled and stops all the execution on all active threads using
-     * a {@link TruffleException#isCancelled() cancelled} exception. If this context is not
-     * currently {@link #isEntered() entered} on the current thread then this method waits until the
-     * close operation is complete and {@link #isClosed()} returns <code>true</code>, else it throws
-     * the cancelled exception upon its completion of this method. If an attempt to close a context
-     * was successful then consecutive calls to close have no effect.
+     * a {@link ThreadDeath} exception. If this context is not currently {@link #isEntered()
+     * entered} on the current thread then this method waits until the close operation is complete
+     * and {@link #isClosed()} returns <code>true</code>, else it throws the cancelled exception
+     * upon its completion of this method. If an attempt to close a context was successful then
+     * consecutive calls to close have no effect.
      * <p>
      * If forced and this context currently {@link #isEntered() entered} on the current thread and
      * no other context is entered on the current thread then this method directly throws a
-     * {@link TruffleException} error that is marked {@link TruffleException#isCancelled()
-     * cancelled} instead of completing to indicate that the current thread should be stopped. The
-     * thrown {@link TruffleException} is must not be caught by the guest language and freely
+     * {@link ThreadDeath} error instead of completing to indicate that the current thread should be
+     * stopped. The thrown {@link ThreadDeath} must not be caught by the guest language and freely
      * propagated to the guest application to cancel the execution on the current thread. If a
      * context is {@link #isActive() active} on the current thread, but not {@link #isEntered()
      * entered}, then an {@link IllegalStateException} is thrown, as parent contexts that are active
@@ -414,21 +443,24 @@ class TruffleContextSnippets {
     }
     abstract class MyLanguage extends TruffleLanguage<MyContext> {
     }
+    static
     // BEGIN: TruffleContextSnippets#executeInContext
-    void executeInContext(Env env) {
-        MyContext outerLangContext = getContext();
+    final class MyNode extends Node {
+        void executeInContext(Env env) {
+            MyContext outerLangContext = getContext();
 
-        TruffleContext innerContext = env.newContextBuilder().build();
-        Object p = innerContext.enter();
-        try {
-            MyContext innerLangContext = getContext();
+            TruffleContext innerContext = env.newContextBuilder().build();
+            Object p = innerContext.enter(this);
+            try {
+                MyContext innerLangContext = getContext();
 
-            assert outerLangContext != innerLangContext;
-        } finally {
-            innerContext.leave(p);
+                assert outerLangContext != innerLangContext;
+            } finally {
+                innerContext.leave(this, p);
+            }
+            assert outerLangContext == getContext();
+            innerContext.close();
         }
-        assert outerLangContext == getContext();
-        innerContext.close();
     }
     private static MyContext getContext() {
         return TruffleLanguage.getCurrentContext(MyLanguage.class);

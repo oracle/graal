@@ -29,6 +29,9 @@
  */
 int main() {
     int a;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-value"
     &a;
+#pragma clang diagnostic pop
     return 3;
 }

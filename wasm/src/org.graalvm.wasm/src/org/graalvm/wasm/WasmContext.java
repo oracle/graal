@@ -40,16 +40,16 @@
  */
 package org.graalvm.wasm;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.predefined.BuiltinModule;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public final class WasmContext {
     private final Env env;
@@ -58,7 +58,7 @@ public final class WasmContext {
     private final GlobalRegistry globals;
     private final TableRegistry tableRegistry;
     private final Linker linker;
-    private Map<String, WasmInstance> moduleInstances;
+    private final Map<String, WasmInstance> moduleInstances;
     private int moduleNameCount;
 
     public static WasmContext getCurrent() {
@@ -72,7 +72,7 @@ public final class WasmContext {
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();
-        this.linker = new Linker(language);
+        this.linker = new Linker();
         this.moduleNameCount = 0;
         instantiateBuiltinInstances();
     }
@@ -171,5 +171,18 @@ public final class WasmContext {
         reader.readInstance(this, instance);
         this.register(instance);
         return instance;
+    }
+
+    public void reinitInstance(WasmInstance instance) {
+        // Note: this is not a complete and correct instantiation as defined in
+        // https://webassembly.github.io/spec/core/exec/modules.html#instantiation
+        // For testing only.
+        final BinaryParser reader = new BinaryParser(language, instance.module());
+        reader.resetGlobalState(this, instance);
+        reader.resetMemoryState(this, instance);
+        final WasmFunction startFunction = instance.symbolTable().startFunction();
+        if (startFunction != null) {
+            instance.target(startFunction.index());
+        }
     }
 }

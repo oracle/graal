@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,19 +29,13 @@
  */
 package com.oracle.truffle.llvm.nfi;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-final class SulongNFIException extends RuntimeException implements TruffleException {
+final class SulongNFIException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 1L;
 
     SulongNFIException(String message) {
         super(message);
-    }
-
-    @Override
-    public Node getLocation() {
-        return null;
     }
 }

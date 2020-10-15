@@ -29,9 +29,15 @@ import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.InstallerStopException;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringWriter;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -287,12 +293,65 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
 
     @Override
     public String getLicensePath() {
+        if (info != null) {
+            return info.getLicensePath();
+        }
         return licensePath;
     }
 
+    /**
+     * License digest or URL.
+     */
+    private String cachedLicenseID;
+
     @Override
     public String getLicenseID() {
-        return null;
+        if (cachedLicenseID != null) {
+            return cachedLicenseID;
+        }
+        String licPath = getLicensePath();
+        if (licPath == null) {
+            return null;
+        } else if (licPath.contains("://")) { // NOI18N
+            return licPath;
+        }
+        Archive.FileEntry foundEntry = null;
+
+        for (Archive.FileEntry fe : getArchive()) {
+            if (getLicensePath().equals(fe.getName())) {
+                foundEntry = fe;
+                break;
+            }
+        }
+        if (foundEntry == null) {
+            throw feedback.failure("ERROR_CannotComputeLicenseID", null, licPath);
+        }
+
+        ByteBuffer bb = ByteBuffer.allocate(Integer.getInteger("org.graalvm.component.installer.fileReadBuffer", 4096));
+        MessageDigest dg;
+        String licId;
+
+        try {
+            dg = MessageDigest.getInstance("SHA-256"); // NOI18N
+        } catch (NoSuchAlgorithmException ex) {
+            throw feedback.failure("ERROR_CannotComputeLicenseID", ex, foundEntry.getName());
+        }
+        try (InputStream is = getArchive().getInputStream(foundEntry);
+                        ReadableByteChannel rch = Channels.newChannel(is)) {
+            while (true) {
+                int read = rch.read(bb);
+                if (read < 0) {
+                    break;
+                }
+                bb.flip();
+                dg.update(bb);
+                bb.clear();
+            }
+            licId = SystemUtils.fingerPrint(dg.digest(), false);
+        } catch (IOException ex) {
+            throw feedback.failure("ERROR_CannotComputeLicenseID", ex, foundEntry.getName());
+        }
+        return cachedLicenseID = licId;
     }
 
     @Override

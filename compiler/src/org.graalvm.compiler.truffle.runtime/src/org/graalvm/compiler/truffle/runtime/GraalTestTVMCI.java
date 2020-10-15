@@ -71,7 +71,7 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTar
 
         private synchronized void init(OptimizedCallTarget target) {
             if (debug == null) {
-                final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler(target);
+                final Map<String, Object> optionsMap = GraalTruffleRuntime.getOptionsForCompiler(target);
                 debug = runtime.getTruffleCompiler(target).openDebugContext(optionsMap, null);
                 /*
                  * Open a dump group around all compilations happening during the execution of a
