@@ -146,7 +146,7 @@ public class SubstrateOptions {
     public static final class GCGroup implements APIOptionGroup {
         @Override
         public String name() {
-            return "-gc";
+            return "gc";
         }
 
         @Override
