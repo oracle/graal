@@ -1381,7 +1381,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                         long cancelTimeoutMillis = timeout != Duration.ZERO ? timeout.toMillis() : 0;
                         boolean success = true;
                         for (PolyglotContextImpl context : localContexts) {
-                            if (!context.waitForThreads(true, true, startMillis, cancelTimeoutMillis)) {
+                            if (!context.waitForThreads(startMillis, cancelTimeoutMillis)) {
                                 success = false;
                             }
                         }

@@ -54,8 +54,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1281,6 +1281,7 @@ final class EngineAccessor extends Accessor {
             return context.isActive(Thread.currentThread());
         }
 
+        @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
         @Override
         @CompilerDirectives.TruffleBoundary
         public void closeContext(Object impl, boolean force, Node closeLocation, boolean resourceExhaused, String resourceExhausedReason) {
@@ -1297,8 +1298,25 @@ final class EngineAccessor extends Accessor {
                     throw context.createCancelException(closeLocation);
                 }
             } else {
-                if (context.isActiveNotCancelled()) {
-                    throw new IllegalStateException("The context is currently active and cannot be closed. Make sure no thread is running or call closeCancelled on the context to resolve this.");
+                synchronized (context) {
+                    if (!context.interrupting) {
+                        if (context.isActiveNotCancelled()) {
+                            throw new IllegalStateException(
+                                            "The context is currently active and cannot be closed. Make sure no thread is running or call closeCancelled on the context to resolve this.");
+                        }
+                    } else {
+                        /*
+                         * In case of interrupt, wait for other threads to be interrupted,
+                         * otherwise, we could unnecessarily throw an exception, because interrupt
+                         * operation interrupting the thread that does close sooner than all the
+                         * other threads is normal.
+                         */
+                        PolyglotThreadInfo info = context.getCurrentThreadInfo();
+                        if (info.isActiveNotCancelled() || !context.waitForThreads(context.interruptStartMillis, context.interruptTimeoutMillis)) {
+                            throw new IllegalStateException(
+                                            "The context is currently active and cannot be closed. Make sure no thread is running or call closeCancelled on the context to resolve this.");
+                        }
+                    }
                 }
                 context.closeImpl(false, false, true);
             }
