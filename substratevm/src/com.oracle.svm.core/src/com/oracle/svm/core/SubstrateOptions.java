@@ -155,7 +155,7 @@ public class SubstrateOptions {
         }
     }
 
-    @APIOption(name = "serial", group = GCGroup.class, customHelp = "Simple serial garbage collector")//
+    @APIOption(name = "serial", group = GCGroup.class, customHelp = "Serial garbage collector")//
     @Option(help = "Use a card remembered set heap for GC")//
     public static final HostedOptionKey<Boolean> UseCardRememberedSetHeap = new HostedOptionKey<>(true);
 
