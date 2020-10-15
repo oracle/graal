@@ -1841,7 +1841,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         long x = pop(frame, stackPointer);
                         stackPointer--;
                         long y = pop(frame, stackPointer);
-                        long result = y / x;
+                        long result;
+                        if (x == -1 && y == Long.MIN_VALUE) {
+                            throw WasmTrap.format(this, "integer overflow");
+                        } else {
+                            result = y / x;
+                        }
                         push(frame, stackPointer, result);
                         stackPointer++;
                         trace("push 0x%016X / 0x%016X = 0x%016X (%d) [i64]", y, x, result, result);
@@ -2438,6 +2443,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     private static String translateErrorMessage(String message) {
         switch (message) {
             case "/ by zero":
+                return "integer divide by zero";
+            case "BigInteger divide by zero":
                 return "integer divide by zero";
             default:
                 return message;
