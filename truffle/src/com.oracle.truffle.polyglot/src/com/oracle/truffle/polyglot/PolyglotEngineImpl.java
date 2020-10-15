@@ -318,15 +318,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         RUNTIME.onEngineCreate(this, this.runtimeData);
     }
 
-    boolean notifyClosing() {
-        return RUNTIME.onEngineClosing(this.runtimeData);
-    }
-
-    void notifyClosed() {
-        ENGINES.remove(this);
-        RUNTIME.onEngineClosed(this.runtimeData);
-    }
-
     PolyglotEngineImpl(PolyglotEngineImpl prototype) {
         super(prototype.impl);
         this.messageInterceptor = prototype.messageInterceptor;
@@ -1092,7 +1083,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
                     contexts.clear();
 
-                    if (notifyClosing()) {
+                    if (RUNTIME.onEngineClosing(this.runtimeData)) {
                         return;
                     }
                 }
@@ -1133,6 +1124,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 }
 
                 if (!inShutdownHook) {
+                    RUNTIME.onEngineClosed(this.runtimeData);
+
                     Object loggers = getEngineLoggers();
                     if (loggers != null) {
                         LANGUAGE.closeEngineLoggers(loggers);
@@ -1147,10 +1140,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     if (runtimeData != null) {
                         EngineAccessor.RUNTIME.flushCompileQueue(runtimeData);
                     }
-                    // don't commit to the close if still running as this might cause races in the
-                    // executing
-                    // context.
-                    notifyClosed();
+                    ENGINES.remove(this);
                 } else if (logHandler != null) {
                     // called from shutdown hook, at least flush the logging handler
                     logHandler.flush();
