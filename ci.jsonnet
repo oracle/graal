@@ -170,7 +170,26 @@ local espresso_benchmark(env, suite, host_jvm=_host_jvm(env), host_jvm_config=_h
         ),
         ['bench-uploader.py', 'bench-results.json'],
     ],
-    timelimit: '3:00:00',
+    timelimit: '2:00:00',
+  };
+
+local _graal_host_jvm_config(env) = if std.endsWith(env, '-ce') then 'graal-core' else 'graal-enterprise';
+
+local graal_benchmark(env, suite, host_jvm='server', host_jvm_config=_graal_host_jvm_config(env), extra_args=[]) =
+  clone_graal(env) +
+  build_espresso(env) +
+  {
+    run+: [
+        _mx(env, ['benchmark',
+            '--results-file', 'bench-results.json',
+            suite,
+            '--',
+            '--jvm=' + host_jvm, '--jvm-config=' + host_jvm_config,
+          ] + extra_args
+        ),
+        ['bench-uploader.py', 'bench-results.json'],
+    ],
+    timelimit: '1:00:00',
   };
 
 local espresso_minheap_benchmark(env, suite, guest_jvm_config) =
@@ -268,6 +287,11 @@ local awfy = 'awfy:*';
     #jdk8_bench_linux              + espresso_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=false))     + {name: 'espresso-bench-jvm-ee-scala_dacapo-jdk8-linux-amd64'},
     #jdk8_bench_linux              + espresso_benchmark('native-ce', scala_dacapo_jvm_fast(warmup=false))  + {name: 'espresso-bench-native-ce-scala_dacapo-jdk8-linux-amd64'},
     jdk8_bench_linux              + espresso_benchmark('native-ee', scala_dacapo_jvm_fast(warmup=false))  + {name: 'espresso-bench-native-ee-scala_dacapo-jdk8-linux-amd64'},
+
+
+    // Scala DaCapo (Graal CE/EE) warmup benchmarks
+    jdk8_bench_linux              + graal_benchmark('jvm-ce', scala_dacapo_jvm_fast(warmup=true))  + {name: 'bench-graal-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
+    jdk8_bench_linux              + graal_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=true))  + {name: 'bench-graal-ee-scala_dacapo_warmup-jdk8-linux-amd64'},
 
     // On-demand
     jdk8_on_demand_linux          + espresso_minheap_benchmark('jvm-ce', awfy, 'infinite-overhead')       + {name: 'espresso-jvm-ce-awfy-minheap-infinite-ovh-jdk8-linux-amd64'},
