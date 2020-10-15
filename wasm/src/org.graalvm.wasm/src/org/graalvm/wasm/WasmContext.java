@@ -173,13 +173,15 @@ public final class WasmContext {
         return instance;
     }
 
-    public void reinitInstance(WasmInstance instance) {
+    public void reinitInstance(WasmInstance instance, boolean reinitMemory) {
         // Note: this is not a complete and correct instantiation as defined in
         // https://webassembly.github.io/spec/core/exec/modules.html#instantiation
         // For testing only.
         final BinaryParser reader = new BinaryParser(language, instance.module());
         reader.resetGlobalState(this, instance);
-        reader.resetMemoryState(this, instance);
+        if (reinitMemory) {
+            reader.resetMemoryState(this, instance);
+        }
         final WasmFunction startFunction = instance.symbolTable().startFunction();
         if (startFunction != null) {
             instance.target(startFunction.index());

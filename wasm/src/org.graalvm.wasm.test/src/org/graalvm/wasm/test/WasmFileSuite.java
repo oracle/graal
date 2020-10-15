@@ -188,11 +188,12 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                     }
 
                     // Reset context state.
-                    if (iterationNeedsStateCheck(i + 1) || requiresZeroMemory) {
+                    boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
+                    if (reinitMemory) {
                         resetMemories.execute();
                     }
                     for (final Value instance : instances) {
-                        reinitInstance.execute(instance);
+                        reinitInstance.execute(instance, reinitMemory);
                     }
 
                     validateResult(testCase.data().resultValidator(), result, capturedStdout);
