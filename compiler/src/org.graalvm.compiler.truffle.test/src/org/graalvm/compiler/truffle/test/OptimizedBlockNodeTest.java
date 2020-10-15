@@ -532,7 +532,10 @@ public class OptimizedBlockNodeTest {
         context.getBindings("sl").getMember(name).execute();
         context.enter();
         try {
-            return ((OptimizedCallTarget) SLLanguage.getCurrentContext().getFunctionRegistry().getFunction(name).getCallTarget());
+            OptimizedCallTarget target = ((OptimizedCallTarget) SLLanguage.getCurrentContext().getFunctionRegistry().getFunction(name).getCallTarget());
+            // we invalidate to make sure the call counts are updated.
+            target.invalidate(null, "invalidate for test");
+            return target;
         } finally {
             context.leave();
         }
