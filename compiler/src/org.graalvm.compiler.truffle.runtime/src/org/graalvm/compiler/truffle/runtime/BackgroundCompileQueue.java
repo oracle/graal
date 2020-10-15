@@ -154,22 +154,6 @@ public class BackgroundCompileQueue {
         return new TruffleCompilerThreadFactory(threadNamePrefix, runtime);
     }
 
-    public void cancelAllTasks() {
-        synchronized (this) {
-            PriorityBlockingQueue<Runnable> localQueue = this.compilationQueue;
-            if (localQueue != null) {
-                localQueue.removeAll(localQueue);
-                compilationExecutorService.shutdown();
-                try {
-                    compilationExecutorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
-                } catch (InterruptedException e) {
-                }
-                this.compilationExecutorService = null;
-                this.compilationQueue = null;
-            }
-        }
-    }
-
     public CancellableCompileTask submitTask(Priority priority, OptimizedCallTarget target, Request request) {
         final WeakReference<OptimizedCallTarget> targetReference = new WeakReference<>(target);
         CancellableCompileTask cancellable = new CancellableCompileTask(targetReference, priority == Priority.LAST_TIER);
