@@ -162,6 +162,15 @@ public abstract class Source {
 
     private volatile TextMap textMap;
     private volatile URI computedURI;
+    /*
+     * We use the original polyglot source as an e polyglot embedding API indicato whether we should
+     * continue to hold on to caches(ASTs, code) related to this source. If this reference is strong
+     * it would keep that polyglot reference potentially always alive, because Truffle sources are
+     * interned.
+     *
+     * If no one is referencing the polyglot source anymore we can assume that no one relies on the
+     * identity of the original polyglot source. So we can just as well free it.
+     */
     volatile WeakReference<org.graalvm.polyglot.Source> cachedPolyglotSource;
 
     abstract Object getSourceId();
