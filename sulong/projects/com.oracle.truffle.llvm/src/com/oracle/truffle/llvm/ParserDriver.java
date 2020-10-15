@@ -51,7 +51,6 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.DefaultLibraryLocator;
-import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.InternalLibraryLocator;
@@ -404,10 +403,9 @@ final class ParserDriver {
     }
 
     /**
-     * Converts the {@link BinaryParserResult#getLibraries() dependencies} of a
-     * {@link BinaryParserResult} first into {@link ExternalLibrary}s and then into either a
-     * {@link Source} or a {@link CallTarget}, if the library has already been parsed. Finally they
-     * are added into the list of dependencies for this library.
+     * Converts the {@link BinaryParserResult#getLibraries() dependencies} of a {@link Source} or a
+     * {@link CallTarget}, if the library has already been parsed. Finally they are added into the
+     * list of dependencies for this library.
      */
     private void processDependencies(String libraryName, TruffleFile libFile, BinaryParserResult binaryParserResult) {
         for (String lib : context.preprocessDependencies(binaryParserResult.getLibraries(), libFile)) {
