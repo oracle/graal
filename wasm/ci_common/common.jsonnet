@@ -69,7 +69,7 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   aarch64: {
     capabilities+: ['aarch64'],
-    timelimit: '1:00:00'
+    timelimit: '1:30:00'
   },
 
   eclipse: {
