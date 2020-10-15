@@ -177,10 +177,11 @@ public final class CoverageTracker implements AutoCloseable {
     }
 
     /**
-     * TODO.
+     * Destructive read of the coverage data thus far (i.e. since beginning execution or or last
+     * reset)
      * 
-     * @return the coverage gathered thus far.
-     * @since 19.3.0
+     * @return the coverage gathered since last reset or beginning of execution.
+     * @since 20.3.0
      */
     public synchronized SourceCoverage[] resetCoverage() {
         SourceCoverage[] coverages = sourceCoverage(mapping(true));
