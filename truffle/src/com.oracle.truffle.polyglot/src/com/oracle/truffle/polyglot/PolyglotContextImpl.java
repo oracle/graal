@@ -1714,7 +1714,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                                         context.getContextInitialized(language, null);
                                         LOG.log(Level.FINE, "Pre-initialized context for language: {0}", language.getId());
                                     } else {
-                                        LOG.log(Level.WARNING, "Language {0} cannot be pre-initialized as it does not override TruffleLanguage.patchContext method.", languageId);
+                                        // only print warning when the context preinitialized was
+                                        // configured explicitly and not through engine caching
+                                        if (language.isFirstInstance()) {
+                                            LOG.log(Level.WARNING, "Language {0} cannot be pre-initialized as it does not override TruffleLanguage.patchContext method.", languageId);
+                                        }
                                     }
                                 }
                             }
