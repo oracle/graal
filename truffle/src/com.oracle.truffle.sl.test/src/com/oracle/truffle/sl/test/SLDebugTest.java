@@ -150,14 +150,6 @@ public class SLDebugTest {
         checkDebugValues(msg, valMap, expected);
     }
 
-    private static void checkDebugValues(String msg, Iterable<DebugValue> values, String... expected) {
-        Map<String, DebugValue> valMap = new HashMap<>();
-        for (DebugValue value : values) {
-            valMap.put(value.getName(), value);
-        }
-        checkDebugValues(msg, valMap, expected);
-    }
-
     private static void checkDebugValues(String msg, Map<String, DebugValue> valMap, String... expected) {
         String message = String.format("Frame %s expected %s got %s", msg, Arrays.toString(expected), valMap.toString());
         Assert.assertEquals(message, expected.length / 2, valMap.size());

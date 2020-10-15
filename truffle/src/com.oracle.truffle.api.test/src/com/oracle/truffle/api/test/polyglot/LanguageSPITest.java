@@ -466,7 +466,7 @@ public class LanguageSPITest {
                 LanguageContext outerLangContext = LanguageSPITestLanguage.getContext();
                 Object config = new Object();
                 TruffleContext innerContext = env.newContextBuilder().config("config", config).build();
-                Object p = innerContext.enter();
+                Object p = innerContext.enter(null);
                 LanguageContext innerLangContext = LanguageSPITestLanguage.getContext();
                 try {
 
@@ -485,7 +485,7 @@ public class LanguageSPITest {
                     if (assertions) {
                         boolean leaveFailed = false;
                         try {
-                            innerContext.leave("foo");
+                            innerContext.leave(null, "foo");
                         } catch (AssertionError e) {
                             leaveFailed = true;
                         }
@@ -494,13 +494,13 @@ public class LanguageSPITest {
                         }
                     }
                 } finally {
-                    innerContext.leave(p);
+                    innerContext.leave(null, p);
                 }
                 assertSame(outerLangContext, LanguageSPITestLanguage.getContext());
                 innerContext.close();
 
                 try {
-                    innerContext.enter();
+                    innerContext.enter(null);
                     fail("cannot be entered after closing");
                 } catch (IllegalStateException e) {
                 }
@@ -542,13 +542,13 @@ public class LanguageSPITest {
 
                         TruffleContext truffleContext = env.getContext();
                         // attach the Thread
-                        Object prev = truffleContext.enter();
+                        Object prev = truffleContext.enter(null);
                         try {
                             // execute Truffle code
                             env.parsePublic(source).call();
                         } finally {
                             // detach the Thread
-                            truffleContext.leave(prev);
+                            truffleContext.leave(null, prev);
                         }
                     } catch (Throwable t) {
                         error[0] = t;
@@ -566,7 +566,7 @@ public class LanguageSPITest {
                 boolean leaveFailed = false;
                 try {
                     TruffleContext truffleContext = env.getContext();
-                    truffleContext.leave(null);
+                    truffleContext.leave(null, null);
                 } catch (AssertionError e) {
                     leaveFailed = true;
                 }
@@ -586,9 +586,9 @@ public class LanguageSPITest {
         LanguageContext returnedInnerContext = eval(context, new Function<Env, Object>() {
             public Object apply(Env env) {
                 TruffleContext innerContext = env.newContextBuilder().build();
-                Object p = innerContext.enter();
+                Object p = innerContext.enter(null);
                 LanguageContext innerLangContext = LanguageSPITestLanguage.getContext();
-                innerContext.leave(p);
+                innerContext.leave(null, p);
                 return env.asGuestValue(innerLangContext);
             }
         }).asHostObject();
@@ -768,7 +768,7 @@ public class LanguageSPITest {
         assertEquals(source1.getCharacters(), lang.parseCalled.get(0).getCharacters());
 
         TruffleContext innerContext = env.newContextBuilder().build();
-        Object prev = innerContext.enter();
+        Object prev = innerContext.enter(null);
         Env innerEnv = MultiContextLanguage.getCurrentContext().env;
         innerEnv.parsePublic(truffleSource1);
         assertEquals(1, lang.parseCalled.size());
@@ -784,7 +784,7 @@ public class LanguageSPITest {
         innerEnv.parsePublic(truffleSource2);
         assertEquals(2, lang.parseCalled.size());
 
-        innerContext.leave(prev);
+        innerContext.leave(null, prev);
         innerContext.close();
 
         context.eval(source2);
@@ -820,7 +820,7 @@ public class LanguageSPITest {
         assertEquals(source1.getCharacters(), lang.parseCalled.get(0).getCharacters());
 
         TruffleContext innerContext = env.newContextBuilder().build();
-        Object prev = innerContext.enter();
+        Object prev = innerContext.enter(null);
 
         MultiContextLanguage innerLang = OneContextLanguage.getCurrentLanguage();
         assertNotSame(innerLang, lang);
@@ -837,7 +837,7 @@ public class LanguageSPITest {
         innerEnv.parsePublic(truffleSource2);
         assertEquals(2, innerLang.parseCalled.size());
 
-        innerContext.leave(prev);
+        innerContext.leave(null, prev);
         innerContext.close();
 
         assertEquals(1, lang.parseCalled.size());

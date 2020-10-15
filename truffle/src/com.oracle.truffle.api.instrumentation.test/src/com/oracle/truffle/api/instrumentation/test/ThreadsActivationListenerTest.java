@@ -85,11 +85,11 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
 
         c0.enter();
         TruffleContext ic0 = this.languageEnv.newContextBuilder().build();
-        Object prev = ic0.enter();
+        Object prev = ic0.enter(null);
         // look language handle on the context it is not the same as
         // the creator handle. The creator handle can be closed.
         ic0 = ProxyLanguage.getCurrentContext().getEnv().getContext();
-        ic0.leave(prev);
+        ic0.leave(null, prev);
 
         c0.leave();
 
@@ -116,35 +116,35 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
         assertList(entered);
         assertList(left);
 
-        prev = ic0.enter();
+        prev = ic0.enter(null);
         assertList(entered, ic0);
         assertList(left);
 
-        ic0.leave(prev);
+        ic0.leave(null, prev);
 
         assertList(entered, ic0);
         assertList(left, ic0);
 
-        prev = tc0.enter();
+        prev = tc0.enter(null);
         assertList(entered, ic0, tc0);
         assertList(left, ic0);
-        Object prev1 = ic0.enter();
+        Object prev1 = ic0.enter(null);
         assertList(entered, ic0, tc0, ic0);
         assertList(left, ic0);
 
-        ic0.leave(prev1);
+        ic0.leave(null, prev1);
         assertList(entered, ic0, tc0, ic0);
         assertList(left, ic0, ic0);
 
-        tc0.leave(prev);
+        tc0.leave(null, prev);
         assertList(entered, ic0, tc0, ic0);
         assertList(left, ic0, ic0, tc0);
 
         binding.dispose();
-        prev = tc0.enter();
-        prev1 = ic0.enter();
-        ic0.leave(prev1);
-        tc0.leave(prev);
+        prev = tc0.enter(null);
+        prev1 = ic0.enter(null);
+        ic0.leave(null, prev1);
+        tc0.leave(null, prev);
 
         assertList(entered, ic0, tc0, ic0);
         assertList(left, ic0, ic0, tc0);
