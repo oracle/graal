@@ -1,10 +1,10 @@
-From 9cf46c329d6c0640038501b17ed763a5acb5b23c Mon Sep 17 00:00:00 2001
+From 7ca960f1229f544c6de3c6263a41d63736cf01e5 Mon Sep 17 00:00:00 2001
 From: Loic Ottet <loic.ottet@oracle.com>
 Date: Mon, 1 Jul 2019 16:23:12 +0200
-Subject: [PATCH 4/4] [GR-17224][Statepoints] Implemented statepoints for ARM
+Subject: [PATCH 2/4] [GR-17224][Statepoints] Implemented statepoints for ARM
 
 ---
- llvm/lib/Target/AArch64/AArch64AsmPrinter.cpp |  43 ++
+ llvm/lib/Target/AArch64/AArch64AsmPrinter.cpp |  46 ++
  .../Target/AArch64/AArch64FrameLowering.cpp   |  21 +-
  .../Target/AArch64/AArch64ISelLowering.cpp    |   1 +
  llvm/lib/Target/AArch64/AArch64InstrInfo.cpp  |   7 +
@@ -19,7 +19,7 @@ Subject: [PATCH 4/4] [GR-17224][Statepoints] Implemented statepoints for ARM
  .../AArch64/statepoint-stackmap-format.ll     | 504 ++++++++++++++++++
  .../CodeGen/AArch64/statepoint-uniqueing.ll   |  95 ++++
  .../test/CodeGen/AArch64/statepoint-vector.ll | 187 +++++++
- 15 files changed, 1830 insertions(+), 9 deletions(-)
+ 15 files changed, 1833 insertions(+), 9 deletions(-)
  create mode 100644 llvm/test/CodeGen/AArch64/fast-isel-gc-intrinsics.ll
  create mode 100644 llvm/test/CodeGen/AArch64/statepoint-allocas.ll
  create mode 100644 llvm/test/CodeGen/AArch64/statepoint-call-lowering.ll
@@ -31,10 +31,10 @@ Subject: [PATCH 4/4] [GR-17224][Statepoints] Implemented statepoints for ARM
  create mode 100644 llvm/test/CodeGen/AArch64/statepoint-vector.ll
 
 diff --git a/llvm/lib/Target/AArch64/AArch64AsmPrinter.cpp b/llvm/lib/Target/AArch64/AArch64AsmPrinter.cpp
-index c415d972dc0c..87ae473f0a04 100644
+index 6da089d1859a..b87bd6a28a9b 100644
 --- a/llvm/lib/Target/AArch64/AArch64AsmPrinter.cpp
 +++ b/llvm/lib/Target/AArch64/AArch64AsmPrinter.cpp
-@@ -94,6 +94,8 @@ public:
+@@ -95,6 +95,8 @@ public:
                       const MachineInstr &MI);
    void LowerPATCHPOINT(MCStreamer &OutStreamer, StackMaps &SM,
                         const MachineInstr &MI);
@@ -43,7 +43,7 @@ index c415d972dc0c..87ae473f0a04 100644
  
    void LowerPATCHABLE_FUNCTION_ENTER(const MachineInstr &MI);
    void LowerPATCHABLE_FUNCTION_EXIT(const MachineInstr &MI);
-@@ -829,6 +831,44 @@ void AArch64AsmPrinter::LowerPATCHPOINT(MCStreamer &OutStreamer, StackMaps &SM,
+@@ -936,6 +938,47 @@ void AArch64AsmPrinter::LowerPATCHPOINT(MCStreamer &OutStreamer, StackMaps &SM,
      EmitToStreamer(OutStreamer, MCInstBuilder(AArch64::HINT).addImm(0));
  }
  
@@ -82,13 +82,16 @@ index c415d972dc0c..87ae473f0a04 100644
 +                   MCInstBuilder(CallOpcode).addOperand(CallTargetMCOp));
 +  }
 +
-+  SM.recordStatepoint(MI);
++  auto &Ctx = OutStreamer.getContext();
++  MCSymbol *MILabel = Ctx.createTempSymbol();
++  OutStreamer.EmitLabel(MILabel);
++  SM.recordStatepoint(*MILabel, MI);
 +}
 +
  void AArch64AsmPrinter::EmitFMov0(const MachineInstr &MI) {
-   unsigned DestReg = MI.getOperand(0).getReg();
+   Register DestReg = MI.getOperand(0).getReg();
    if (STI->hasZeroCycleZeroingFP() && !STI->hasZeroCycleZeroingFPWorkaround()) {
-@@ -1071,6 +1111,9 @@ void AArch64AsmPrinter::EmitInstruction(const MachineInstr *MI) {
+@@ -1198,6 +1241,9 @@ void AArch64AsmPrinter::EmitInstruction(const MachineInstr *MI) {
    case TargetOpcode::PATCHPOINT:
      return LowerPATCHPOINT(*OutStreamer, SM, *MI);
  
@@ -99,10 +102,10 @@ index c415d972dc0c..87ae473f0a04 100644
      LowerPATCHABLE_FUNCTION_ENTER(*MI);
      return;
 diff --git a/llvm/lib/Target/AArch64/AArch64FrameLowering.cpp b/llvm/lib/Target/AArch64/AArch64FrameLowering.cpp
-index 8c6e5cbd5c13..914b45195bd5 100644
+index ea3e800a1ad2..1f050065f230 100644
 --- a/llvm/lib/Target/AArch64/AArch64FrameLowering.cpp
 +++ b/llvm/lib/Target/AArch64/AArch64FrameLowering.cpp
-@@ -2214,17 +2214,22 @@ void AArch64FrameLowering::processFunctionBeforeFrameFinalized(
+@@ -2649,17 +2649,22 @@ void AArch64FrameLowering::processFunctionBeforeFrameFinalized(
        .addImm(0);
  }
  
@@ -128,16 +131,16 @@ index 8c6e5cbd5c13..914b45195bd5 100644
 +    return MFI.getObjectOffset(FI);
 +  } else {
 +    return resolveFrameIndexReference(MF, FI, FrameReg, /*PreferFP=*/false,
-+                                      /*ForSimm=*/false);
++                                      /*ForSimm=*/false).getBytes();
 +  }
  }
  
  /// The parent frame offset (aka dispFrame) is only used on X86_64 to retrieve
 diff --git a/llvm/lib/Target/AArch64/AArch64ISelLowering.cpp b/llvm/lib/Target/AArch64/AArch64ISelLowering.cpp
-index 03923878fd51..ec00938c34bc 100644
+index 23f05eaad944..862f863d3fe0 100644
 --- a/llvm/lib/Target/AArch64/AArch64ISelLowering.cpp
 +++ b/llvm/lib/Target/AArch64/AArch64ISelLowering.cpp
-@@ -1334,6 +1334,7 @@ MachineBasicBlock *AArch64TargetLowering::EmitInstrWithCustomInserter(
+@@ -1498,6 +1498,7 @@ MachineBasicBlock *AArch64TargetLowering::EmitInstrWithCustomInserter(
  
    case TargetOpcode::STACKMAP:
    case TargetOpcode::PATCHPOINT:
@@ -146,10 +149,10 @@ index 03923878fd51..ec00938c34bc 100644
  
    case AArch64::CATCHRET:
 diff --git a/llvm/lib/Target/AArch64/AArch64InstrInfo.cpp b/llvm/lib/Target/AArch64/AArch64InstrInfo.cpp
-index fa9e5d808c4f..2847d56ebcb3 100644
+index 54f3f7c10132..790912bcd856 100644
 --- a/llvm/lib/Target/AArch64/AArch64InstrInfo.cpp
 +++ b/llvm/lib/Target/AArch64/AArch64InstrInfo.cpp
-@@ -108,6 +108,13 @@ unsigned AArch64InstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
+@@ -107,6 +107,13 @@ unsigned AArch64InstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
      NumBytes = PatchPointOpers(&MI).getNumPatchBytes();
      assert(NumBytes % 4 == 0 && "Invalid number of NOP bytes requested!");
      break;
@@ -164,24 +167,24 @@ index fa9e5d808c4f..2847d56ebcb3 100644
      // This gets lowered to an instruction sequence which takes 16 bytes
      NumBytes = 16;
 diff --git a/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp b/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
-index 6d5a4e3d2f76..800d5fdcb1fb 100644
+index 14f839cd4f81..6d6eee64038e 100644
 --- a/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
 +++ b/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
-@@ -451,7 +451,8 @@ void AArch64RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
+@@ -465,7 +465,8 @@ void AArch64RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
  
    // Special handling of dbg_value, stackmap and patchpoint instructions.
    if (MI.isDebugValue() || MI.getOpcode() == TargetOpcode::STACKMAP ||
 -      MI.getOpcode() == TargetOpcode::PATCHPOINT) {
 +      MI.getOpcode() == TargetOpcode::PATCHPOINT ||
 +      MI.getOpcode() == TargetOpcode::STATEPOINT) {
-     Offset = TFI->resolveFrameIndexReference(MF, FrameIndex, FrameReg,
-                                              /*PreferFP=*/true,
-                                              /*ForSimm=*/false);
+     StackOffset Offset =
+         TFI->resolveFrameIndexReference(MF, FrameIndex, FrameReg,
+                                         /*PreferFP=*/true,
 diff --git a/llvm/lib/Target/AArch64/AArch64TargetTransformInfo.cpp b/llvm/lib/Target/AArch64/AArch64TargetTransformInfo.cpp
-index 301bf72d5239..54b3d7836cf2 100644
+index 4724d6b8daea..77221ef2ffed 100644
 --- a/llvm/lib/Target/AArch64/AArch64TargetTransformInfo.cpp
 +++ b/llvm/lib/Target/AArch64/AArch64TargetTransformInfo.cpp
-@@ -182,6 +182,10 @@ int AArch64TTIImpl::getIntImmCost(Intrinsic::ID IID, unsigned Idx,
+@@ -189,6 +189,10 @@ int AArch64TTIImpl::getIntImmCostIntrin(Intrinsic::ID IID, unsigned Idx,
      if ((Idx < 4) || (Imm.getBitWidth() <= 64 && isInt<64>(Imm.getSExtValue())))
        return TTI::TCC_Free;
      break;
@@ -423,7 +426,7 @@ index 000000000000..d57ace087baa
 +; CHECK: .p2align	3
 diff --git a/llvm/test/CodeGen/AArch64/statepoint-call-lowering.ll b/llvm/test/CodeGen/AArch64/statepoint-call-lowering.ll
 new file mode 100644
-index 000000000000..19412b6fced6
+index 000000000000..d813bfca16e5
 --- /dev/null
 +++ b/llvm/test/CodeGen/AArch64/statepoint-call-lowering.ll
 @@ -0,0 +1,250 @@
@@ -590,12 +593,12 @@ index 000000000000..19412b6fced6
 +define i1 @test_cross_bb(i32 addrspace(1)* %a, i1 %external_cond) gc "statepoint-example" {
 +; CHECK-LABEL: test_cross_bb:
 +; CHECK:       // %bb.0: // %entry
-+; CHECK-NEXT:    str x20, [sp, #-32]!
-+; CHECK-NEXT:    stp x19, x30, [sp, #16]
++; CHECK-NEXT:    str x30, [sp, #-32]!
++; CHECK-NEXT:    stp x20, x19, [sp, #16]
 +; CHECK-NEXT:    .cfi_def_cfa_offset 32
-+; CHECK-NEXT:    .cfi_offset w30, -8
-+; CHECK-NEXT:    .cfi_offset w19, -16
-+; CHECK-NEXT:    .cfi_offset w20, -32
++; CHECK-NEXT:    .cfi_offset w19, -8
++; CHECK-NEXT:    .cfi_offset w20, -16
++; CHECK-NEXT:    .cfi_offset w30, -32
 +; CHECK-NEXT:    mov w20, w1
 +; CHECK-NEXT:    str  x0, [sp, #8]
 +; CHECK-NEXT:    bl return_i1
@@ -610,8 +613,8 @@ index 000000000000..19412b6fced6
 +; CHECK-NEXT:  .LBB8_2: // %right
 +; CHECK-NEXT:    mov w0, #1
 +; CHECK-NEXT:  .LBB8_3: // %right
-+; CHECK-NEXT:    ldp x19, x30, [sp, #16]
-+; CHECK-NEXT:    ldr x20, [sp], #32
++; CHECK-NEXT:    ldp x20, x19, [sp, #16]
++; CHECK-NEXT:    ldr x30, [sp], #32
 +; CHECK-NEXT:    ret
 +entry:
 +  %safepoint_token = tail call token (i64, i32, i1 ()*, i32, i32, ...) @llvm.experimental.gc.statepoint.p0f_i1f(i64 0, i32 0, i1 ()* @return_i1, i32 0, i32 0, i32 0, i32 0, i32 addrspace(1)* %a)
@@ -791,7 +794,7 @@ index 000000000000..7ac1545a5c7d
 +declare i32 addrspace(1)* addrspace(1)* @llvm.experimental.gc.relocate.p1p1i32(token, i32, i32) #3
 diff --git a/llvm/test/CodeGen/AArch64/statepoint-invoke.ll b/llvm/test/CodeGen/AArch64/statepoint-invoke.ll
 new file mode 100644
-index 000000000000..d5175ec0f40f
+index 000000000000..717381d65bf4
 --- /dev/null
 +++ b/llvm/test/CodeGen/AArch64/statepoint-invoke.ll
 @@ -0,0 +1,265 @@
@@ -899,10 +902,10 @@ index 000000000000..d5175ec0f40f
 +; CHECK-LABEL: test_same_val:
 +; CHECK:       // %bb.0: // %entry
 +; CHECK-NEXT:    sub sp, sp, #32
-+; CHECK-NEXT:    stp x19, x30, [sp, #16]
++; CHECK-NEXT:    stp x30, x19, [sp, #16]
 +; CHECK-NEXT:    .cfi_def_cfa_offset 32
-+; CHECK-NEXT:    .cfi_offset w30, -8
-+; CHECK-NEXT:    .cfi_offset w19, -16
++; CHECK-NEXT:    .cfi_offset w19, -8
++; CHECK-NEXT:    .cfi_offset w30, -16
 +; CHECK-NEXT:    mov w19, w0
 +; CHECK-NEXT:    tbz w0, #0, .LBB2_3
 +; CHECK-NEXT:  // %bb.1: // %left
@@ -928,7 +931,7 @@ index 000000000000..d5175ec0f40f
 +; CHECK-NEXT:    tst w19, #0x1
 +; CHECK-NEXT:    csel x0, x8, x9, ne
 +; CHECK-NEXT:  .LBB2_6: // %normal_return
-+; CHECK-NEXT:    ldp  x19, x30, [sp, #16]
++; CHECK-NEXT:    ldp  x30, x19, [sp, #16]
 +; CHECK-NEXT:    add  sp, sp, #32
 +; CHECK-NEXT:    ret
 +; CHECK-NEXT:  .LBB2_7: // %exceptional_return.right
@@ -2007,5 +2010,5 @@ index 000000000000..c9b402893210
 +declare i8 addrspace(1)* @llvm.experimental.gc.relocate.p1i8(token, i32, i32)
 +declare <2 x i8 addrspace(1)*> @llvm.experimental.gc.relocate.v2p1i8(token, i32, i32)
 -- 
-2.20.1
+2.28.0
 

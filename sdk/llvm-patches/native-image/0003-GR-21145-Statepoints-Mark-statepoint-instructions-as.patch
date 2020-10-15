@@ -1,7 +1,7 @@
-From 80b1d876fd4296b48433de5b66eaebe551897508 Mon Sep 17 00:00:00 2001
+From f9539da2e76ac217c8693fc853a85be472c4c02b Mon Sep 17 00:00:00 2001
 From: Loic Ottet <loic.ottet@oracle.com>
 Date: Wed, 12 Feb 2020 14:04:45 +0100
-Subject: [PATCH 5/5] [GR-21145][Statepoints] Mark statepoint instructions as
+Subject: [PATCH 3/4] [GR-21145][Statepoints] Mark statepoint instructions as
  clobbering LR on AArch64
 
 ---
@@ -9,32 +9,34 @@ Subject: [PATCH 5/5] [GR-21145][Statepoints] Mark statepoint instructions as
  .../Target/AArch64/AArch64ClobberLRPass.cpp   | 71 +++++++++++++++++++
  .../Target/AArch64/AArch64TargetMachine.cpp   |  3 +
  llvm/lib/Target/AArch64/CMakeLists.txt        |  1 +
- 4 files changed, 77 insertions(+)
+ llvm/test/CodeGen/AArch64/O0-pipeline.ll      |  1 +
+ llvm/test/CodeGen/AArch64/O3-pipeline.ll      |  1 +
+ 6 files changed, 79 insertions(+)
  create mode 100644 llvm/lib/Target/AArch64/AArch64ClobberLRPass.cpp
 
 diff --git a/llvm/lib/Target/AArch64/AArch64.h b/llvm/lib/Target/AArch64/AArch64.h
-index 6965403a25a..65ec05db681 100644
+index ac765ebcddc0..c82a71cb971f 100644
 --- a/llvm/lib/Target/AArch64/AArch64.h
 +++ b/llvm/lib/Target/AArch64/AArch64.h
-@@ -57,6 +57,7 @@ createAArch64InstructionSelector(const AArch64TargetMachine &,
-                                  AArch64Subtarget &, AArch64RegisterBankInfo &);
- FunctionPass *createAArch64PreLegalizeCombiner();
- FunctionPass *createAArch64StackTaggingPass();
+@@ -58,6 +58,7 @@ createAArch64InstructionSelector(const AArch64TargetMachine &,
+ FunctionPass *createAArch64PreLegalizeCombiner(bool IsOptNone);
+ FunctionPass *createAArch64StackTaggingPass(bool MergeInit);
+ FunctionPass *createAArch64StackTaggingPreRAPass();
 +FunctionPass *createAArch64ClobberLRPass();
  
  void initializeAArch64A53Fix835769Pass(PassRegistry&);
  void initializeAArch64A57FPLoadBalancingPass(PassRegistry&);
-@@ -80,6 +81,7 @@ void initializeFalkorHWPFFixPass(PassRegistry&);
- void initializeFalkorMarkStridedAccessesLegacyPass(PassRegistry&);
+@@ -82,6 +83,7 @@ void initializeFalkorMarkStridedAccessesLegacyPass(PassRegistry&);
  void initializeLDTLSCleanupPass(PassRegistry&);
  void initializeAArch64StackTaggingPass(PassRegistry&);
+ void initializeAArch64StackTaggingPreRAPass(PassRegistry&);
 +void initializeAArch64ClobberLRPass(PassRegistry&);
  } // end namespace llvm
  
  #endif
 diff --git a/llvm/lib/Target/AArch64/AArch64ClobberLRPass.cpp b/llvm/lib/Target/AArch64/AArch64ClobberLRPass.cpp
 new file mode 100644
-index 00000000000..91b1a542327
+index 000000000000..91b1a5423275
 --- /dev/null
 +++ b/llvm/lib/Target/AArch64/AArch64ClobberLRPass.cpp
 @@ -0,0 +1,71 @@
@@ -111,19 +113,19 @@ index 00000000000..91b1a542327
 +}
 \ No newline at end of file
 diff --git a/llvm/lib/Target/AArch64/AArch64TargetMachine.cpp b/llvm/lib/Target/AArch64/AArch64TargetMachine.cpp
-index 86546148049..dc9c146f085 100644
+index 115a7da8a6d9..a278994f4777 100644
 --- a/llvm/lib/Target/AArch64/AArch64TargetMachine.cpp
 +++ b/llvm/lib/Target/AArch64/AArch64TargetMachine.cpp
-@@ -180,6 +180,7 @@ extern "C" void LLVMInitializeAArch64Target() {
-   initializeLDTLSCleanupPass(*PR);
+@@ -185,6 +185,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeAArch64Target() {
    initializeAArch64SpeculationHardeningPass(*PR);
    initializeAArch64StackTaggingPass(*PR);
+   initializeAArch64StackTaggingPreRAPass(*PR);
 +  initializeAArch64ClobberLRPass(*PR);
  }
  
  //===----------------------------------------------------------------------===//
-@@ -555,6 +556,8 @@ void AArch64PassConfig::addPreRegAlloc() {
-     // be register coaleascer friendly.
+@@ -586,6 +587,8 @@ void AArch64PassConfig::addPreRegAlloc() {
+     // be register coalescer friendly.
      addPass(&PeepholeOptimizerID);
    }
 +
@@ -132,10 +134,10 @@ index 86546148049..dc9c146f085 100644
  
  void AArch64PassConfig::addPostRegAlloc() {
 diff --git a/llvm/lib/Target/AArch64/CMakeLists.txt b/llvm/lib/Target/AArch64/CMakeLists.txt
-index 3154ed03bd4..b0b13a91681 100644
+index 103925d45d51..080b2feb08d3 100644
 --- a/llvm/lib/Target/AArch64/CMakeLists.txt
 +++ b/llvm/lib/Target/AArch64/CMakeLists.txt
-@@ -27,6 +27,7 @@ add_llvm_target(AArch64CodeGen
+@@ -29,6 +29,7 @@ add_llvm_target(AArch64CodeGen
    AArch64CallingConvention.cpp
    AArch64CallLowering.cpp
    AArch64CleanupLocalDynamicTLSPass.cpp
@@ -143,6 +145,30 @@ index 3154ed03bd4..b0b13a91681 100644
    AArch64CollectLOH.cpp
    AArch64CondBrTuning.cpp
    AArch64ConditionalCompares.cpp
+diff --git a/llvm/test/CodeGen/AArch64/O0-pipeline.ll b/llvm/test/CodeGen/AArch64/O0-pipeline.ll
+index 9b7e2f6dd288..745647cb7344 100644
+--- a/llvm/test/CodeGen/AArch64/O0-pipeline.ll
++++ b/llvm/test/CodeGen/AArch64/O0-pipeline.ll
+@@ -53,6 +53,7 @@
+ ; CHECK-NEXT:       AArch64 Instruction Selection
+ ; CHECK-NEXT:       Finalize ISel and expand pseudo-instructions
+ ; CHECK-NEXT:       Local Stack Slot Allocation
++; CHECK-NEXT:       AArch64 statepoint LR clobbering pass
+ ; CHECK-NEXT:       Eliminate PHI nodes for register allocation
+ ; CHECK-NEXT:       Two-Address instruction pass
+ ; CHECK-NEXT:       Fast Register Allocator
+diff --git a/llvm/test/CodeGen/AArch64/O3-pipeline.ll b/llvm/test/CodeGen/AArch64/O3-pipeline.ll
+index bf489cbbae65..d710c5a115b2 100644
+--- a/llvm/test/CodeGen/AArch64/O3-pipeline.ll
++++ b/llvm/test/CodeGen/AArch64/O3-pipeline.ll
+@@ -118,6 +118,7 @@
+ ; CHECK-NEXT:       Peephole Optimizations
+ ; CHECK-NEXT:       Remove dead machine instructions
+ ; CHECK-NEXT:       AArch64 Dead register definitions
++; CHECK-NEXT:       AArch64 statepoint LR clobbering pass
+ ; CHECK-NEXT:       Detect Dead Lanes
+ ; CHECK-NEXT:       Process Implicit Definitions
+ ; CHECK-NEXT:       Remove unreachable machine basic blocks
 -- 
-2.21.1 (Apple Git-122.3)
+2.28.0
 

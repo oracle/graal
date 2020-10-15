@@ -7,6 +7,8 @@ New features:
 
 Changes:
 
+* Updated LLVM toolchain to version 10.0.0.
+
 * Moved `polyglot.h` to `graalvm/llvm/polyglot.h` and `llvm/api/toolchain.h` to `graalvm/llvm/toolchain-api.h`.
   The old header locations are deprecated, and will be removed in a future release.
 
