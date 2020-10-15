@@ -824,10 +824,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @Override
     public final void onCompilationFailed(Supplier<String> serializedException, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
         if (graphTooBig) {
-            /*
-             * The idea is that if the compilation failed because of too many compilations we retry
-             * after block compilations completed.
-             */
             if (computeBlockCompilations()) {
                 // retry compilation
                 return;
