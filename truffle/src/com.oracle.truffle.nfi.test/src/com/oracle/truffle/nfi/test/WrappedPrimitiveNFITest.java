@@ -85,8 +85,14 @@ public class WrappedPrimitiveNFITest extends NFITest {
     });
 
     private final TestCallback verifyObject = new TestCallback(2, (args) -> {
-        Assert.assertSame("arg 1", argument, args[0]);
-        Assert.assertSame("arg 2", argument, args[1]);
+        if (argument instanceof TruffleObject) {
+            Assert.assertSame("arg 1", argument, args[0]);
+            Assert.assertSame("arg 2", argument, args[1]);
+        } else {
+            // everything else is considered a value type by Truffle, so identity can be lost
+            Assert.assertEquals("arg 1", argument, args[0]);
+            Assert.assertEquals("arg 2", argument, args[1]);
+        }
         return argument;
     });
 
