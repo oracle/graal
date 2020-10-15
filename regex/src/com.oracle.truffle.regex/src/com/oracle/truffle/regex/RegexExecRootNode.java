@@ -63,6 +63,10 @@ public abstract class RegexExecRootNode extends RegexBodyNode {
         assert args.length == 2;
         Object input = args[0];
         int fromIndex = (int) args[1];
+        if (fromIndex < 0 || fromIndex > inputLength(input)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalArgumentException(String.format("got illegal fromIndex value: %d. fromIndex must be >= 0 and <= input length (%d)", fromIndex, inputLength(input)));
+        }
         return execute(input, adjustFromIndex(fromIndex, input));
     }
 
