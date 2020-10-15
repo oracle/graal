@@ -94,6 +94,9 @@ public abstract class Heap {
      */
     public abstract boolean walkCollectedHeapObjects(ObjectVisitor visitor);
 
+    /** Returns the number of classes in the heap. */
+    public abstract int getClassCount();
+
     /** Return a list of all the classes in the heap. */
     public abstract List<Class<?>> getClassList();
 

@@ -359,7 +359,11 @@ public final class HeapImpl extends Heap {
         return log;
     }
 
-    /** Return a list of all the classes in the heap. */
+    @Override
+    public int getClassCount() {
+        return imageHeapInfo.dynamicHubCount;
+    }
+
     @Override
     public List<Class<?>> getClassList() {
         /* Two threads might race to set classList, but they compute the same result. */
@@ -368,6 +372,7 @@ public final class HeapImpl extends Heap {
             ImageHeapWalker.walkRegions(imageHeapInfo, new ClassListBuilderVisitor(list));
             classList = Collections.unmodifiableList(list);
         }
+        assert classList.size() == imageHeapInfo.dynamicHubCount;
         return classList;
     }
 

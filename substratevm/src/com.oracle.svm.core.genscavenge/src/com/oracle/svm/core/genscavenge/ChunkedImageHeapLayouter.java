@@ -71,10 +71,10 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
         for (ChunkedImageHeapPartition partition : getPartitions()) {
             partition.layout(allocator);
         }
-        return populateInfoObjects();
+        return populateInfoObjects(imageHeap.countDynamicHubs());
     }
 
-    private ImageHeapLayoutInfo populateInfoObjects() {
+    private ImageHeapLayoutInfo populateInfoObjects(int dynamicHubCount) {
         // Determine writable start boundary from chunks: a chunk that contains writable objects
         // must also have a writable card table
         long writableBegin = getWritablePrimitive().getStartOffset();
@@ -96,7 +96,7 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
         heapInfo.initialize(getReadOnlyPrimitive().firstObject, getReadOnlyPrimitive().lastObject, getReadOnlyReference().firstObject, getReadOnlyReference().lastObject,
                         getReadOnlyRelocatable().firstObject, getReadOnlyRelocatable().lastObject, getWritablePrimitive().firstObject, getWritablePrimitive().lastObject,
                         getWritableReference().firstObject, getWritableReference().lastObject, getWritableHuge().firstObject, getWritableHuge().lastObject,
-                        getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, writableBegin, firstWritableUnalignedChunk);
+                        getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, writableBegin, firstWritableUnalignedChunk, dynamicHubCount);
 
         long writableEnd = getWritableHuge().getStartOffset() + getWritableHuge().getSize();
         long writableSize = writableEnd - writableBegin;
