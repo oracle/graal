@@ -34,7 +34,6 @@
 int main() {
     char arr[100];
     strcpy(arr, "hello world!");
-    int start = strlen(arr);
     char *result = strcat(arr, " appended string");
     if (result != arr) {
         abort();

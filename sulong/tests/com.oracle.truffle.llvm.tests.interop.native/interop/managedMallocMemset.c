@@ -36,12 +36,12 @@ typedef void *VALUE;
 
 int main() {
     VALUE *array = truffle_managed_malloc(sizeof(VALUE) * 4);
-    for (int i = 0; i < 4; i++) {
+    for (long i = 0; i < 4; i++) {
         array[i] = (VALUE)(i + 1);
     }
     memset(array + 1, 0, 2 * sizeof(VALUE));
 
-    if (array[0] == 1 && array[1] == NULL && array[2] == NULL && array[3] == 4) {
+    if ((long) array[0] == 1L && array[1] == NULL && array[2] == NULL && (long) array[3] == 4L) {
         return 0;
     } else {
         for (int i = 0; i < 4; i++) {

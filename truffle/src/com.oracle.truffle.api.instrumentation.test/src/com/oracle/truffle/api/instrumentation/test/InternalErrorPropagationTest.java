@@ -152,11 +152,11 @@ public class InternalErrorPropagationTest extends AbstractPolyglotTest {
     }
 
     private static void triggerParseFailure(TruffleLanguage.Env env, TruffleContext c) {
-        Object prev = c.enter();
+        Object prev = c.enter(null);
         try {
             env.parsePublic(Source.newBuilder(OTHER_LANGUAGE, "", "").build());
         } finally {
-            c.leave(prev);
+            c.leave(null, prev);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,7 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-int main() {
-    int a = 1, b = 2, c = 3, d = 4;
-    return a + 2 + 3 + 4;
+package com.oracle.truffle.llvm.runtime.nodes.literals;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+
+/**
+ * This node represents a literal metadata string. Some LLVM builtins accept metadata string
+ * arguments. This must never be used at runtime, the argument needs to be consumed by the node
+ * factory.
+ */
+public abstract class LLVMMetaLiteralNode extends LLVMExpressionNode {
+
+    private final Object meta;
+
+    LLVMMetaLiteralNode(Object meta) {
+        this.meta = meta;
+    }
+
+    public Object getMetadata() {
+        return meta;
+    }
+
+    @Specialization
+    public Object doError() {
+        throw CompilerDirectives.shouldNotReachHere("Unexpected metadata access at runtime");
+    }
 }

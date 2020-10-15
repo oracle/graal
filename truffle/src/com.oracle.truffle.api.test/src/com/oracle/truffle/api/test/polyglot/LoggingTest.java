@@ -420,13 +420,13 @@ public class LoggingTest {
             @Override
             public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
                 TruffleContext tc = context.getEnv().newContextBuilder().build();
-                final Object prev = tc.enter();
+                final Object prev = tc.enter(null);
                 try {
                     for (TruffleLogger logger : loggers) {
                         logger.log(Level.FINEST, "INNER: " + logger.getName());
                     }
                 } finally {
-                    tc.leave(prev);
+                    tc.leave(null, prev);
                     tc.close();
                 }
                 return true;

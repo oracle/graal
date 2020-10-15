@@ -34,7 +34,10 @@ int foo() {
 int main() {
     int i = 0;
     while (i < 5) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
         int a = foo();
+#pragma clang diagnostic pop
         i++;
     }
     return foo();

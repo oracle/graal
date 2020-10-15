@@ -25,8 +25,6 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import static org.graalvm.compiler.truffle.common.TruffleOutputGroup.GROUP_ID;
-import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraph;
-import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.Disable;
 
 import java.io.CharArrayWriter;
 import java.io.PrintWriter;
@@ -110,12 +108,12 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.LayoutFactory;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import java.util.HashMap;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -125,10 +123,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.services.Services;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal. There is only one per VM.
  */
+
 public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
     private static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
@@ -151,11 +153,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private final GraalTVMCI tvmci = new GraalTVMCI();
 
     private volatile GraalTestTVMCI testTvmci;
-
-    /**
-     * Option values initialized from Truffle compiler runtime.
-     */
-    @NativeImageReinitialize private volatile Map<String, Object> initialOptions;
 
     /**
      * Utility method that casts the singleton {@link TruffleRuntime}.
@@ -242,26 +239,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return optimizedAssumption.registerDependency();
     }
 
-    @Override
-    public final Map<String, Object> getOptions() {
-        Map<String, Object> res = initialOptions;
-        if (res == null) {
-            synchronized (this) {
-                res = initialOptions;
-                if (res == null) {
-                    res = createInitialOptions();
-                    initialOptions = res;
-                }
-            }
-        }
-        return res;
-    }
-
     protected abstract JavaConstant forObject(Object object);
 
     protected abstract <T> T asObject(Class<T> type, JavaConstant constant);
 
-    protected abstract Map<String, Object> createInitialOptions();
+    protected abstract boolean isPrintGraphEnabled();
 
     public abstract TruffleCompiler newTruffleCompiler();
 
@@ -421,15 +403,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         TraceASTCompilationListener.install(this);
         JFRListener.install(this);
         TruffleSplittingStrategy.installListener(this);
-        installShutdownHooks();
-    }
-
-    protected void installShutdownHooks() {
-        addShutdownHook(this::shutdown);
-    }
-
-    protected void addShutdownHook(Runnable hook) {
-        Runtime.getRuntime().addShutdownHook(new Thread(hook));
+        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
     }
 
     protected void lookupCallMethods(MetaAccessProvider metaAccess) {
@@ -634,7 +608,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         listeners.remove(listener);
     }
 
-    protected void shutdown() {
+    private void shutdown() {
         getListener().onShutdown();
         TruffleCompiler tcp = truffleCompiler;
         if (tcp != null) {
@@ -663,14 +637,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         try {
             TruffleCompiler compiler = getTruffleCompiler(callTarget);
             try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
-                final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler(callTarget);
+                final Map<String, Object> optionsMap = getOptionsForCompiler(callTarget);
                 try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
                     compilationStarted = true;
                     listeners.onCompilationStarted(callTarget);
                     TruffleInlining inlining = createInliningPlan(callTarget, task);
                     try (AutoCloseable s = debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget))) {
                         // Open the "Truffle::methodName" dump group if dumping is enabled.
-                        try (TruffleOutputGroup o = TruffleDebugOptions.getValue(PrintGraph) == Disable ? null
+                        try (TruffleOutputGroup o = !isPrintGraphEnabled() ? null
                                         : TruffleOutputGroup.open(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation))) {
                             // Create "AST" and "Call Tree" groups if dumping is enabled.
                             maybeDumpTruffleTree(debug, callTarget, inlining);
@@ -1074,5 +1048,41 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      */
     protected long getCompilerIdleDelay(@SuppressWarnings("unused") OptimizedCallTarget callTarget) {
         return 0;
+    }
+
+    /**
+     * Returns OptimizedCallTarget's {@link PolyglotCompilerOptions} as a {@link Map}. The returned
+     * map can be passed as a {@code options} to the {@link TruffleCompiler} methods.
+     */
+    public static Map<String, Object> getOptionsForCompiler(OptimizedCallTarget callTarget) {
+        Map<String, Object> map = new HashMap<>();
+        OptionValues values = callTarget == null ? null : callTarget.getOptionValues();
+
+        for (OptionDescriptor desc : PolyglotCompilerOptions.getDescriptors()) {
+            final OptionKey<?> key = desc.getKey();
+            if (values.hasBeenSet(key)) {
+                Object value = values.get(key);
+                if (!isPrimitiveType(value)) {
+                    value = GraalRuntimeAccessor.ENGINE.getUnparsedOptionValue(values, key);
+                }
+                if (value != null) {
+                    map.put(desc.getName(), value);
+                }
+            }
+        }
+        return map;
+    }
+
+    private static boolean isPrimitiveType(Object value) {
+        Class<?> valueClass = value.getClass();
+        return valueClass == Boolean.class ||
+                        valueClass == Byte.class ||
+                        valueClass == Short.class ||
+                        valueClass == Character.class ||
+                        valueClass == Integer.class ||
+                        valueClass == Long.class ||
+                        valueClass == Float.class ||
+                        valueClass == Double.class ||
+                        valueClass == String.class;
     }
 }

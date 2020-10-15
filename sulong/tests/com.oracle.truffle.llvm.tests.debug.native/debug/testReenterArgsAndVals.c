@@ -39,11 +39,11 @@ int fnc(int n, int m) {
     return x;
 }
 
-int main(int argc, char **argv) {
+int main(__attribute__((unused)) int argc, __attribute__((unused)) char **argv) {
     int i = 10;
     return fnc(i = i + 1, 20);
 }
 
-void start() __attribute__((constructor)) {
+__attribute__((constructor)) void start() {
     main(0, NULL);
 }

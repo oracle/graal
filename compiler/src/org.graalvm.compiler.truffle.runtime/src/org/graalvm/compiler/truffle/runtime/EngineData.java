@@ -57,7 +57,6 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
-import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getPolyglotOptionValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -159,41 +158,39 @@ public final class EngineData {
         this.engineOptions = options;
 
         // splitting options
-        this.splitting = getPolyglotOptionValue(options, Splitting) &&
-                        getPolyglotOptionValue(options, Mode) != EngineModeEnum.LATENCY;
-        this.splittingAllowForcedSplits = getPolyglotOptionValue(options, SplittingAllowForcedSplits);
-        this.splittingDumpDecisions = getPolyglotOptionValue(options, SplittingDumpDecisions);
-        this.splittingMaxCalleeSize = getPolyglotOptionValue(options, SplittingMaxCalleeSize);
-        this.splittingMaxPropagationDepth = getPolyglotOptionValue(options, SplittingMaxPropagationDepth);
-        this.splittingTraceEvents = getPolyglotOptionValue(options, SplittingTraceEvents);
-        this.traceSplittingSummary = getPolyglotOptionValue(options, TraceSplittingSummary);
-        this.traceSplits = getPolyglotOptionValue(options, TraceSplitting);
-        this.splittingGrowthLimit = getPolyglotOptionValue(options, SplittingGrowthLimit);
+        this.splitting = options.get(Splitting) && options.get(Mode) != EngineModeEnum.LATENCY;
+        this.splittingAllowForcedSplits = options.get(SplittingAllowForcedSplits);
+        this.splittingDumpDecisions = options.get(SplittingDumpDecisions);
+        this.splittingMaxCalleeSize = options.get(SplittingMaxCalleeSize);
+        this.splittingMaxPropagationDepth = options.get(SplittingMaxPropagationDepth);
+        this.splittingTraceEvents = options.get(SplittingTraceEvents);
+        this.traceSplittingSummary = options.get(TraceSplittingSummary);
+        this.traceSplits = options.get(TraceSplitting);
+        this.splittingGrowthLimit = options.get(SplittingGrowthLimit);
 
         // inlining options
-        this.inlining = getPolyglotOptionValue(options, Inlining) &&
-                        getPolyglotOptionValue(options, Mode) != EngineModeEnum.LATENCY;
+        this.inlining = options.get(Inlining) && options.get(Mode) != EngineModeEnum.LATENCY;
 
         // compilation options
-        this.compilation = getPolyglotOptionValue(options, Compilation);
-        this.compileOnly = getPolyglotOptionValue(options, CompileOnly);
-        this.compileImmediately = getPolyglotOptionValue(options, CompileImmediately);
-        this.multiTier = getPolyglotOptionValue(options, MultiTier);
+        this.compilation = options.get(Compilation);
+        this.compileOnly = options.get(CompileOnly);
+        this.compileImmediately = options.get(CompileImmediately);
+        this.multiTier = options.get(MultiTier);
 
-        this.returnTypeSpeculation = getPolyglotOptionValue(options, ReturnTypeSpeculation);
-        this.argumentTypeSpeculation = getPolyglotOptionValue(options, ArgumentTypeSpeculation);
-        this.traceCompilation = getPolyglotOptionValue(options, TraceCompilation);
-        this.traceCompilationDetails = getPolyglotOptionValue(options, TraceCompilationDetails);
-        this.backgroundCompilation = getPolyglotOptionValue(options, BackgroundCompilation);
+        this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
+        this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);
+        this.traceCompilation = options.get(TraceCompilation);
+        this.traceCompilationDetails = options.get(TraceCompilationDetails);
+        this.backgroundCompilation = options.get(BackgroundCompilation);
         this.callThresholdInInterpreter = computeCallThresholdInInterpreter(options);
         this.callAndLoopThresholdInInterpreter = computeCallAndLoopThresholdInInterpreter(options);
         this.callThresholdInFirstTier = computeCallThresholdInFirstTier(options);
         this.callAndLoopThresholdInFirstTier = computeCallAndLoopThresholdInFirstTier(options);
-        this.callTargetStatisticDetails = getPolyglotOptionValue(options, CompilationStatisticDetails);
-        this.callTargetStatistics = getPolyglotOptionValue(options, CompilationStatistics) || this.callTargetStatisticDetails;
+        this.callTargetStatisticDetails = options.get(CompilationStatisticDetails);
+        this.callTargetStatistics = options.get(CompilationStatistics) || this.callTargetStatisticDetails;
         this.statisticsListener = this.callTargetStatistics ? StatisticsListener.createEngineListener(GraalTruffleRuntime.getRuntime()) : null;
-        this.profilingEnabled = getPolyglotOptionValue(options, Profiling);
-        this.traceTransferToInterpreter = getPolyglotOptionValue(options, TraceTransferToInterpreter);
+        this.profilingEnabled = options.get(Profiling);
+        this.traceTransferToInterpreter = options.get(TraceTransferToInterpreter);
         this.compilationFailureAction = computeCompilationFailureAction(options);
         validateOptions();
         parsedCompileOnly = null;
@@ -264,17 +261,17 @@ public final class EngineData {
     }
 
     private static ExceptionAction computeCompilationFailureAction(OptionValues options) {
-        ExceptionAction action = getPolyglotOptionValue(options, CompilationFailureAction);
-        if (action.ordinal() < ExceptionAction.Print.ordinal() && getPolyglotOptionValue(options, CompilationExceptionsArePrinted)) {
+        ExceptionAction action = options.get(CompilationFailureAction);
+        if (action.ordinal() < ExceptionAction.Print.ordinal() && options.get(CompilationExceptionsArePrinted)) {
             action = ExceptionAction.Print;
         }
-        if (action.ordinal() < ExceptionAction.Throw.ordinal() && getPolyglotOptionValue(options, CompilationExceptionsAreThrown)) {
+        if (action.ordinal() < ExceptionAction.Throw.ordinal() && options.get(CompilationExceptionsAreThrown)) {
             action = ExceptionAction.Throw;
         }
-        if (action.ordinal() < ExceptionAction.ExitVM.ordinal() && getPolyglotOptionValue(options, CompilationExceptionsAreFatal)) {
+        if (action.ordinal() < ExceptionAction.ExitVM.ordinal() && options.get(CompilationExceptionsAreFatal)) {
             action = ExceptionAction.ExitVM;
         }
-        if (action.ordinal() < ExceptionAction.ExitVM.ordinal() && !getPolyglotOptionValue(options, PerformanceWarningsAreFatal).isEmpty()) {
+        if (action.ordinal() < ExceptionAction.ExitVM.ordinal() && !options.get(PerformanceWarningsAreFatal).isEmpty()) {
             action = ExceptionAction.ExitVM;
         }
         return action;
@@ -291,9 +288,9 @@ public final class EngineData {
             return 0;
         }
         if (multiTier) {
-            return Math.min(getPolyglotOptionValue(options, FirstTierMinInvokeThreshold), getPolyglotOptionValue(options, FirstTierCompilationThreshold));
+            return Math.min(options.get(FirstTierMinInvokeThreshold), options.get(FirstTierCompilationThreshold));
         } else {
-            return Math.min(getPolyglotOptionValue(options, MinInvokeThreshold), getPolyglotOptionValue(options, CompilationThreshold));
+            return Math.min(options.get(MinInvokeThreshold), options.get(CompilationThreshold));
         }
     }
 
@@ -302,9 +299,9 @@ public final class EngineData {
             return 0;
         }
         if (multiTier) {
-            return getPolyglotOptionValue(options, FirstTierCompilationThreshold);
+            return options.get(FirstTierCompilationThreshold);
         } else {
-            return getPolyglotOptionValue(options, CompilationThreshold);
+            return options.get(CompilationThreshold);
         }
     }
 
@@ -312,14 +309,14 @@ public final class EngineData {
         if (compileImmediately) {
             return 0;
         }
-        return Math.min(getPolyglotOptionValue(options, MinInvokeThreshold), getPolyglotOptionValue(options, CompilationThreshold));
+        return Math.min(options.get(MinInvokeThreshold), options.get(CompilationThreshold));
     }
 
     private int computeCallAndLoopThresholdInFirstTier(OptionValues options) {
         if (compileImmediately) {
             return 0;
         }
-        return getPolyglotOptionValue(options, CompilationThreshold);
+        return options.get(CompilationThreshold);
     }
 
     public TruffleLogger getEngineLogger() {

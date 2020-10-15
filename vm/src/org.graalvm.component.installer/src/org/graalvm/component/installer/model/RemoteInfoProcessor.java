@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.common;
-
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+package org.graalvm.component.installer.model;
 
 /**
- * Denotes a companion class with options shared between the Truffle runtime and Truffle compiler.
- *
- * The {@code org.graalvm.compiler.truffle.common.processor.SharedTruffleOptionsProcessor} processor
- * produces the companion class.
+ * Interface to decorate ComponentInfo for remote installables.
+ * 
+ * @author sdedic
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
-public @interface SharedTruffleOptions {
+public interface RemoteInfoProcessor {
+    ComponentInfo decorateComponent(ComponentInfo info);
 
-    /**
-     * The name of the companion class.
-     */
-    String name();
-
-    /**
-     * Specifies if the companion class is in the Truffle runtime or Truffle compiler.
-     */
-    boolean runtime();
+    RemoteInfoProcessor NONE = new RemoteInfoProcessor() {
+        @Override
+        public ComponentInfo decorateComponent(ComponentInfo info) {
+            return info;
+        }
+    };
 }

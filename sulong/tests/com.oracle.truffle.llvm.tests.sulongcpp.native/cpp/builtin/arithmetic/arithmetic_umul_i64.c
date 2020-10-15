@@ -32,7 +32,7 @@
 bool __builtin_mul_overflow(unsigned long, unsigned long, unsigned long *);
 #endif
 
-int main(int argc, const char **argv) {
+int main() {
     unsigned long res;
 
 #ifndef __clang__

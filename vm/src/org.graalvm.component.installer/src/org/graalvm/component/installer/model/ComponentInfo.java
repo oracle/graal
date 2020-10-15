@@ -252,7 +252,7 @@ public final class ComponentInfo {
         hash = 37 * hash + Objects.hashCode(this.id);
         hash = 37 * hash + Objects.hashCode(this.version);
         if (remoteURL != null) {
-            hash = 37 * hash + Objects.hashCode(this.remoteURL);
+            hash = 37 * hash + Objects.hashCode(this.remoteURL.toString());
         }
         if (origin != null) {
             hash = 37 * hash + Objects.hashCode(this.origin);
@@ -279,7 +279,7 @@ public final class ComponentInfo {
         if (!Objects.equals(this.version, other.version)) {
             return false;
         }
-        if (!Objects.equals(this.remoteURL, other.remoteURL)) {
+        if (!Objects.equals(this.remoteURL.toString(), other.remoteURL.toString())) {
             return false;
         }
         if (!Objects.equals(this.origin, other.origin)) {

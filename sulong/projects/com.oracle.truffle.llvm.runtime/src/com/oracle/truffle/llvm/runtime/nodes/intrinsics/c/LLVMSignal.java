@@ -208,11 +208,11 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
                 if (isRunning.get()) {
                     try {
                         TruffleContext truffleContext = context.getEnv().getContext();
-                        Object p = truffleContext.enter();
+                        Object p = truffleContext.enter(null);
                         try {
                             InteropLibrary.getFactory().getUncached().execute(handler, signal.getNumber());
                         } finally {
-                            truffleContext.leave(p);
+                            truffleContext.leave(null, p);
                         }
                     } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                         throw new AssertionError(e);

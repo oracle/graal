@@ -42,13 +42,13 @@ int main() {
     if (!is_handle(p1)) {
         return 1;
     }
-    if (!is_handle(l_p1)) {
+    if (!is_handle((void *) l_p1)) {
         return 2;
     }
     if (!is_handle(p2)) {
         return 3;
     }
-    if (!is_handle(l_p2)) {
+    if (!is_handle((void *) l_p2)) {
         return 4;
     }
     if (is_handle(p)) {

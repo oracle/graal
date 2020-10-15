@@ -35,7 +35,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -155,12 +154,6 @@ import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.Fore
  * library.
  */
 public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
-    private final ExternalLibrary library = ExternalLibrary.internalFromName("SulongIntrinsics", false);
-
-    @Override
-    public ExternalLibrary getLibrary() {
-        return library;
-    }
 
     @Override
     @TruffleBoundary

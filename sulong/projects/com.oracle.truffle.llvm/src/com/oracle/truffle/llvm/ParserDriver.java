@@ -37,6 +37,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.initialization.LoadModulesNode;
+import com.oracle.truffle.llvm.initialization.LoadNativeNode;
 import com.oracle.truffle.llvm.parser.LLVMParser;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -50,7 +51,6 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.DefaultLibraryLocator;
-import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.InternalLibraryLocator;
@@ -136,16 +136,18 @@ final class ParserDriver {
      * @return calltarget
      */
     private CallTarget parseWithDependencies(Source source, ByteSequence bytes) {
-
         insertDefaultDependencies(source.getName());
         // Process the bitcode file and its dependencies in the dynamic linking order
         LLVMParserResult result = parseLibraryWithSource(source, bytes);
         if (result == null) {
             // If result is null, then the file parsed does not contain bitcode.
             // The NFI can handle it later if it's a native file.
-            addLibraryToNFI(source.getName(), source.getPath());
+            CallTarget callTarget = parseNativeLibrary(source.getName(), source.getPath());
             // An empty call target is returned for native libraries.
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+            if (callTarget == null) {
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+            }
+            return createNativeLibraryCallTarget(source.getName(), callTarget);
         }
         // ensures the library of the source is not native
         if (context.isInternalLibraryFile(result.getRuntime().getFile())) {
@@ -163,26 +165,18 @@ final class ParserDriver {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private void addLibraryToNFI(String name, String libPath) {
+    private CallTarget parseNativeLibrary(String libName, String libPath) {
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
         if (nfiContextExtension != null) {
-            if (nfiContextExtension.containNativeLibrary(name, libPath)) {
-                // return if the library is already in the nfi context extension.
-                return;
-            }
-            // Need to create the external library here.
-            ExternalLibrary library;
-            TruffleFile file = DefaultLibraryLocator.INSTANCE.locate(context, name, "<native library>");
+            TruffleFile file = DefaultLibraryLocator.INSTANCE.locate(context, libName, "<native library>");
             if (file == null) {
                 // Unable to locate the library -> will go to native
-                Path path = Paths.get(libPath);
-                LibraryLocator.traceDelegateNative(context, path);
-                library = ExternalLibrary.createFromPath(path, true, context.isInternalLibraryPath(path));
-            } else {
-                library = ExternalLibrary.createFromFile(file, true, context.isInternalLibraryFile(file));
+                LibraryLocator.traceDelegateNative(context, libPath);
+                file = context.getEnv().getInternalTruffleFile(libPath);
             }
-            nfiContextExtension.addNativeLibrary(library);
+            return nfiContextExtension.parseNativeLibrary(file, context);
         }
+        return null;
     }
 
     /**
@@ -202,9 +196,9 @@ final class ParserDriver {
                     if (calls != null) {
                         dependencies.add(calls);
                     } else {
-                        Source source = createDependencySource(sulongLibraryName, null, false, file);
-                        if (source != null) {
-                            dependencies.add(source);
+                        Object sourceOrCallTarget = createDependencySource(sulongLibraryName, null, false, file);
+                        if (sourceOrCallTarget != null && !dependencies.contains(sourceOrCallTarget)) {
+                            dependencies.add(sourceOrCallTarget);
                         }
                     }
                 }
@@ -225,9 +219,9 @@ final class ParserDriver {
                     } else {
                         // for native libraries, the path is the same as the library's name. The NFI
                         // will figure out the path.
-                        Source source = createDependencySource(externalLibraryName, externalLibraryName, true, file);
-                        if (source != null) {
-                            dependencies.add(source);
+                        Object sourceOrCallTarget = createDependencySource(externalLibraryName, externalLibraryName, true, file);
+                        if (sourceOrCallTarget != null && !dependencies.contains(sourceOrCallTarget)) {
+                            dependencies.add(sourceOrCallTarget);
                         }
                     }
                 }
@@ -409,10 +403,9 @@ final class ParserDriver {
     }
 
     /**
-     * Converts the {@link BinaryParserResult#getLibraries() dependencies} of a
-     * {@link BinaryParserResult} first into {@link ExternalLibrary}s and then into either a
-     * {@link Source} or a {@link CallTarget}, if the library has already been parsed. Finally they
-     * are added into the list of dependencies for this library.
+     * Converts the {@link BinaryParserResult#getLibraries() dependencies} of a {@link Source} or a
+     * {@link CallTarget}, if the library has already been parsed. Finally they are added into the
+     * list of dependencies for this library.
      */
     private void processDependencies(String libraryName, TruffleFile libFile, BinaryParserResult binaryParserResult) {
         for (String lib : context.preprocessDependencies(binaryParserResult.getLibraries(), libFile)) {
@@ -421,30 +414,32 @@ final class ParserDriver {
                 // only create a source if the library has not already been parsed.
                 TruffleFile file = createTruffleFile(lib, null, binaryParserResult.getLocator(), "<dependency library>");
                 CallTarget calls = language.getCachedLibrary(file.getPath());
-                if (calls != null) {
+                if (calls != null && !dependencies.contains(calls)) {
                     dependencies.add(calls);
                 } else {
-                    Source source = createDependencySource(lib, lib, true, file);
+                    Object sourceOrCallTarget = createDependencySource(lib, lib, true, file);
                     // A source is null if it's a native library, which will be added to the NFI
                     // context extension instead.
-                    if (!dependencies.contains(source) && source != null) {
-                        dependencies.add(source);
+                    if (sourceOrCallTarget != null && !dependencies.contains(sourceOrCallTarget)) {
+                        dependencies.add(sourceOrCallTarget);
                     }
                 }
             }
         }
     }
 
-    private Source createDependencySource(String libName, String libPath, boolean isNative, TruffleFile file) {
+    private Object createDependencySource(String libName, String libPath, boolean isNative, TruffleFile file) {
         assert file != null;
         if (!file.isRegularFile()) {
             if (!isNative) {
                 throw new LLVMParserException("'" + file.getName() + "' is not a file or does not exist.");
             } else {
-                // If the file or the path of the file does not exists, then assume that this is not
-                // a bitcode file, but a native file and the NFI is going to handle it.
-                addLibraryToNFI(libName, libPath);
-                return null;
+                CallTarget callTarget = parseNativeLibrary(libName, libPath);
+                // null is returned if the NFIContextExtension does not exists.
+                if (callTarget == null) {
+                    return null;
+                }
+                return createNativeLibraryCallTarget(libName, callTarget);
             }
         }
 
@@ -496,6 +491,22 @@ final class ParserDriver {
             // check if the functions should be resolved eagerly or lazyly.
             boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING);
             LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context, dependencies, source, language);
+            return Truffle.getRuntime().createCallTarget(loadModules);
+        }
+    }
+
+    /**
+     * Creates the call target of the load native module node, which initialise the native library.
+     *
+     * @param name the name of the library
+     * @return the call target for initialising the library.
+     */
+    private CallTarget createNativeLibraryCallTarget(String name, CallTarget callTarget) {
+        if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
+            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+        } else {
+            // check if the functions should be resolved eagerly or lazyly.
+            LoadNativeNode loadModules = LoadNativeNode.create(name, new FrameDescriptor(), context, language, callTarget);
             return Truffle.getRuntime().createCallTarget(loadModules);
         }
     }

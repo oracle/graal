@@ -260,13 +260,13 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         assertLookupsNoSharing();
 
         TruffleContext innerContext = Shared.getCurrentContext().env.newContextBuilder().build();
-        Object prev = innerContext.enter();
+        Object prev = innerContext.enter(null);
         try {
             Context.getCurrent().initialize(EXCLUSIVE_LANGUAGE);
             Context.getCurrent().initialize(SHARED_LANGUAGE);
             assertLookupsInnerContext();
         } finally {
-            innerContext.leave(prev);
+            innerContext.leave(null, prev);
         }
         assertLookupsInnerContext();
         context.leave();

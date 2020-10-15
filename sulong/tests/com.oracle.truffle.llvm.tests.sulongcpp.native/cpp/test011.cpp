@@ -64,7 +64,7 @@ int foo(int a) {
     return a;
 }
 
-int main(int argc, char *argv[]) {
+int main() {
     try {
         foo(0);
         return 0;

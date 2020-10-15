@@ -29,7 +29,9 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
+import static org.graalvm.compiler.lir.LIRValueUtil.stripCast;
 import static org.graalvm.compiler.lir.phases.LIRPhase.Options.LIROptimization;
 
 import java.util.ArrayList;
@@ -275,14 +277,15 @@ public class LinearScan {
      * the {@linkplain Variable variables} and {@linkplain RegisterValue registers} being processed
      * by this allocator.
      */
-    int operandNumber(Value operand) {
+    int operandNumber(Value op) {
+        Value operand = stripCast(op);
         if (isRegister(operand)) {
             int number = asRegister(operand).number;
             assert number < firstVariableNumber;
             return number;
         }
         assert isVariable(operand) : operand;
-        return firstVariableNumber + ((Variable) operand).index;
+        return firstVariableNumber + asVariable(operand).index;
     }
 
     /**

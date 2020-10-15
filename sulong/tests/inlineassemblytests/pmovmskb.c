@@ -29,6 +29,7 @@
  */
 
 #include <stdint.h>
+#include <stdio.h>
 
 typedef uint8_t vec4 __attribute__((vector_size(16)));
 

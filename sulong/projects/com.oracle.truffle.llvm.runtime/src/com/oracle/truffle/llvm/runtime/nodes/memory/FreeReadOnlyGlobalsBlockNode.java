@@ -45,7 +45,7 @@ public final class FreeReadOnlyGlobalsBlockNode extends LLVMNode implements LLVM
 
     public FreeReadOnlyGlobalsBlockNode(LLVMContext context) {
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        this.freeGlobalsBlock = nfiContextExtension.getNativeFunction(context, "__sulong_free_globals_block", "(POINTER):VOID");
+        this.freeGlobalsBlock = nfiContextExtension.getNativeFunction("__sulong_free_globals_block", "(POINTER):VOID");
         this.interop = InteropLibrary.getFactory().create(freeGlobalsBlock);
     }
 

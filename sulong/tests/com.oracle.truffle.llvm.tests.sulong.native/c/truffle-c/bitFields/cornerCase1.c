@@ -27,11 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+; /* A declaration needs to be put before the pragma, otherwise the pragma stays unterminated (i.e. unpopped) */
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wbitfield-constant-conversion"
 struct {
     unsigned char a : 1;
     unsigned char b : 3;
     unsigned char c : 3;
 } x = { 3, 1, 2 };
+#pragma clang diagnostic pop
 
 int main() {
     return x.a + x.b + x.c;

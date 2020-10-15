@@ -34,7 +34,7 @@ struct _point {
     double y;
 };
 
-int foo(double y0, double y1, double y2, ...) {
+int foo(__attribute__((unused)) double y0, __attribute__((unused)) double y1, double y2, ...) {
     va_list argp;
 
     va_start(argp, y2);

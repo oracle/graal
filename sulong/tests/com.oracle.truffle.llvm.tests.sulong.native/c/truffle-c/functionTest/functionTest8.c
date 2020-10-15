@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-int foo2(int a, int b, int c, int d) {
+int foo2(int a, __attribute__((unused)) int b, int c, __attribute__((unused)) int d) {
     int e = 5;
     return a + c + e;
 }

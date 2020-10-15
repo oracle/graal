@@ -34,7 +34,7 @@
 
 #define SWAP(n) (((n) << 24) | (((n) &0xff00) << 8) | (((n) >> 8) & 0xff00) | ((n) >> 24))
 
-int main(int argc, char **argv) {
+int main() {
     // Avoid LLVM pre-calculating everything at compile time.
     srand(time(0));
     unsigned int x[16];
@@ -45,6 +45,6 @@ int main(int argc, char **argv) {
         *buf = SWAP(*buf);
         buf++;
     }
-    volatile unsigned int y = x[0];
+    __attribute__((unused)) volatile unsigned int y = x[0];
     exit(0);
 }

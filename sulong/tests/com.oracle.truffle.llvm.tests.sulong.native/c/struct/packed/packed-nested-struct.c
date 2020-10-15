@@ -47,7 +47,7 @@ struct test {
 };
 
 int main() {
-    struct test t = { { 1, 2, 3 }, 4, 5 };
+    struct test t = { { 1, 2, 3, 0, 0 }, 4, 5, 0 };
     long base = (long) &t;
     int a_offset = (long) &t.a - base;
     if (a_offset != 8) {

@@ -139,14 +139,18 @@ void display(struct node *r, FILE *f) {
         fprintf(f, d, r->data);
         r = r->next;
     }
-    fprintf(f, ne);
+    fprintf(f, "%s", ne);
 }
 
 int main() {
     FILE *f = fopen("output", "w");
     head = NULL;
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
     char s[] = "Size of the list is %d\n";
     char d[] = "Deleted? %d \n";
+#pragma clang diagnostic pop
 
     insert(5);
     display(head, f);
