@@ -28,6 +28,7 @@ import mx_espresso
 from mx_benchmark import GuestVm, JavaVm
 from mx_java_benchmarks import ScalaDaCapoBenchmarkSuite
 
+
 _suite = mx.suite('espresso')
 
 
@@ -146,6 +147,9 @@ scala_dacapo_warmup_iterations = {
 
 class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
     """Scala DaCapo (warmup) benchmark suite implementation."""
+
+    def daCapoPath(self):
+        return mx.distribution("DACAPO_SCALA_WARMUP").path
 
     def name(self):
         return "scala-dacapo-warmup"

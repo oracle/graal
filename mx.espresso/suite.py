@@ -109,14 +109,14 @@ suite = {
 
     "projects": {
 
-	"com.oracle.truffle.espresso.polyglot": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-            ],
-            "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso",
-	},
+        "com.oracle.truffle.espresso.polyglot": {
+                "subDir": "src",
+                "sourceDirs": ["src"],
+                "dependencies": [
+                ],
+                "javaCompliance": "1.8+",
+                "checkstyle": "com.oracle.truffle.espresso",
+        },
 
         "com.oracle.truffle.espresso": {
             "subDir": "src",
@@ -359,6 +359,17 @@ suite = {
                 }
             },
         },
+
+        "com.oracle.truffle.espresso.dacapo": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "testProject": True,
+            "dependencies": [
+                "java-benchmarks:DACAPO_SCALA",
+            ],
+            "javaCompliance": "8+",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
     },
 
     # ------------- distributions
@@ -520,6 +531,16 @@ suite = {
                 "com.oracle.truffle.espresso.polyglot"
             ],
             "description": "Espresso polyglot API",
+        },
+
+        "DACAPO_SCALA_WARMUP": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.dacapo",
+                "java-benchmarks:DACAPO_SCALA",
+            ],
+            "manifestEntries": "<manifestEntries:DACAPO_SCALA>",            
+            "description": "Scala DaCapo with WallTime callback",
         },
     }
 }
