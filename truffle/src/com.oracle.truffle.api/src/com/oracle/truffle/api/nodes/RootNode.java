@@ -459,10 +459,10 @@ public abstract class RootNode extends ExecutableNode {
      * unknown a <code>null</code> return or argument type should be used. The type
      * <code>Object</code> type should not be used in that case.
      * <p>
-     * This method is invoked when no context is currently {@link TruffleContext#enter() entered}
-     * therefore no guest application code must be executed. The execution might happen on any
-     * thread, even threads unknown to the guest language implementation. It is allowed to create
-     * new {@link CallTarget call targets} during preparation of the root node or perform
+     * This method is invoked when no context is currently {@link TruffleContext#enter(Node)
+     * entered} therefore no guest application code must be executed. The execution might happen on
+     * any thread, even threads unknown to the guest language implementation. It is allowed to
+     * create new {@link CallTarget call targets} during preparation of the root node or perform
      * modifications to the {@link TruffleLanguage language} of this root node.
      *
      * @since 20.3
