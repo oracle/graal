@@ -21,6 +21,8 @@
 # questions.
 #
 
+import re
+
 import mx
 import mx_benchmark
 import mx_espresso
@@ -190,10 +192,32 @@ class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disab
                                 newEntry["metric.name"] = key
                                 results.append(newEntry)
 
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        super_rules = super(ScalaDaCapoWarmupBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+        return super_rules + [
+            mx_benchmark.StdOutRule(
+                r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) walltime [0-9]+ : (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+                {
+                    "benchmark": ("<benchmark>", str),
+                    "bench-suite": self.benchSuiteName(),
+                    "vm": "jvmci",
+                    "config.name": "default",
+                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
+                    "metric.name": "walltime",
+                    "metric.value": ("<time>", int),
+                    "metric.unit": "ms",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": ("$iteration", int)
+                }
+            )
+        ]
+
     def run(self, benchmarks, bmSuiteArgs):
         results = super(ScalaDaCapoWarmupBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
-        self.accumulateResults(results)
-        self.warmupResults(results, scala_dacapo_warmup_iterations)
+        # self.accumulateResults(results)
+        self.warmupResults(results, scala_dacapo_warmup_iterations, 'walltime')
         return results
 
 mx_benchmark.add_bm_suite(ScalaDaCapoWarmupBenchmarkSuite())
