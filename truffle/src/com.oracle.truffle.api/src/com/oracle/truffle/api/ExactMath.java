@@ -41,8 +41,7 @@
 package com.oracle.truffle.api;
 
 /**
- * This class contains methods that will be part of java.lang.Math starting with JDK 8. Until JDK 8
- * is release, we duplicate them here because they are generally useful for dynamic language
+ * This class contains exact math related methods that are generally useful for dynamic language
  * implementations.
  *
  * @since 0.8 or earlier
