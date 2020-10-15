@@ -65,7 +65,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
             target = onInterpreterCall(target);
         }
         if (GraalCompilerDirectives.inFirstTier()) {
-            callCount++;
+            incrementCallCount();
         }
         try {
             return target.callDirect(this, arguments);
@@ -155,7 +155,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
      *         made during this interpreter call, the argument target otherwise.
      */
     private OptimizedCallTarget onInterpreterCall(OptimizedCallTarget target) {
-        callCount++;
+        incrementCallCount();
         if (target.isNeedsSplit() && !splitDecided) {
             // We intentionally avoid locking here because worst case is a double decision printed
             // and preventing that is not worth the performance impact of locking
@@ -164,6 +164,11 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
             return getCurrentCallTarget();
         }
         return target;
+    }
+
+    private void incrementCallCount() {
+        int calls = this.callCount;
+        this.callCount = calls == Integer.MAX_VALUE ? calls : ++calls;
     }
 
     /** Used by the splitting strategy to install new targets. */
