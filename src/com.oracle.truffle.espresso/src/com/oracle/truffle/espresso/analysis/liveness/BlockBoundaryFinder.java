@@ -148,8 +148,8 @@ public final class BlockBoundaryFinder extends BlockIteratorClosure implements B
             }
         }
         BitSet endState = getEndState(processor.idToBlock(blockID), processor);
-        for (int i = 0; i < maxLocals; i++) {
-            if (!treated.get(i) && endState.get(i)) {
+        for (int i : Util.bitSetIterator(endState)) {
+            if (!treated.get(i)) {
                 // One of the successor needs the local
                 entryLiveSet.set(i);
             }

@@ -148,7 +148,8 @@ public final class GraphBuilder {
         int[] successors = null;
         boolean isRet = false;
         boolean traps = false;
-        for (int bci = 0; bci < status.length; bci++) {
+        int bci = 0;
+        while (bci < status.length) {
             if (bci != 0 && isStatus(bci, BLOCK_START)) {
                 assert temp[id] == null;
                 assert id == readBlockID(start);
@@ -175,6 +176,7 @@ public final class GraphBuilder {
                 assert successors == null;
                 successors = EMPTY_SUCCESSORS;
             }
+            bci = bs.nextBCI(bci);
         }
         temp[id] = createTempBlock(id, start, successors, isRet, status.length, traps);
 

@@ -104,7 +104,7 @@ public final class LoopPropagatorClosure extends BlockIteratorClosure {
                     lives.add(boundaries.entryFor(s));
                 }
             }
-            BitSet merged = (Util.mergeBitSets(lives, boundaries.maxLocals()));
+            BitSet merged = Util.mergeBitSets(lives, boundaries.maxLocals());
             if (toPropagate == null) {
                 toPropagate = merged;
             } else {

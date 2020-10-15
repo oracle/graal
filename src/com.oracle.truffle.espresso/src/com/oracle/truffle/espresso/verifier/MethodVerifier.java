@@ -280,6 +280,8 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.perf.AutoTimer;
+import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
@@ -291,6 +293,8 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
  * given for lesser versions, they are ignored. No fallback for classfile v.50
  */
 public final class MethodVerifier implements ContextAccess {
+    public static final DebugTimer VERIFIER_TIMER = DebugTimer.create("verifier");
+
     // Class info
     private final Klass thisKlass;
     private final RuntimeConstantPool pool;
@@ -586,7 +590,9 @@ public final class MethodVerifier implements ContextAccess {
             }
             throw new ClassFormatError("Concrete method has no code attribute: " + m);
         }
-        new MethodVerifier(codeAttribute, m).verify();
+        try (AutoTimer t = AutoTimer.time(VERIFIER_TIMER)) {
+            new MethodVerifier(codeAttribute, m).verify();
+        }
     }
 
     private void initVerifier() {

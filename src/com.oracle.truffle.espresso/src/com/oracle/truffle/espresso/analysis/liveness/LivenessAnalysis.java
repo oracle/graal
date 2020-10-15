@@ -32,6 +32,7 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.BlockIterator;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.GraphBuilder;
+import com.oracle.truffle.espresso.analysis.Util;
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
@@ -41,8 +42,18 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.perf.AutoTimer;
+import com.oracle.truffle.espresso.perf.DebugTimer;
 
 public class LivenessAnalysis {
+
+    public static final DebugTimer LIVENESS_TIMER = DebugTimer.create("liveness");
+    public static final DebugTimer BUILDER_TIMER = DebugTimer.create("builder");
+    public static final DebugTimer LOADSTORE_TIMER = DebugTimer.create("loadStore");
+    public static final DebugTimer STATE_TIMER = DebugTimer.create("state");
+    public static final DebugTimer PROPAGATE_TIMER = DebugTimer.create("propagation");
+    public static final DebugTimer ACTION_TIMER = DebugTimer.create("action");
+
     public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis() {
         @Override
         public void performPreBCI(VirtualFrame frame, int bci, BytecodeNode node) {
@@ -78,41 +89,57 @@ public class LivenessAnalysis {
         if (method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.DISABLED) {
             return NO_ANALYSIS;
         }
+        try (AutoTimer liveness = AutoTimer.time(LIVENESS_TIMER)) {
+            Graph<? extends LinkedBlock> graph;
+            try (AutoTimer builder = AutoTimer.time(BUILDER_TIMER)) {
+                graph = GraphBuilder.build(method);
+            }
 
-        Graph<? extends LinkedBlock> graph = GraphBuilder.build(method);
+            // Transform the graph into a more manageable graph consisting of only the history of
+            // load/stores.
+            LoadStoreFinder loadStoreClosure;
+            try (AutoTimer loadStore = AutoTimer.time(LOADSTORE_TIMER)) {
+                loadStoreClosure = new LoadStoreFinder(graph);
+                BlockIterator.analyze(method, graph, loadStoreClosure);
+            }
 
-        // Transform the graph into a more manageable graph consisting of only the history of
-        // load/stores.
-        LoadStoreFinder loadStoreClosure = new LoadStoreFinder(graph);
-        BlockIterator.analyze(method, graph, loadStoreClosure);
+            // Computes the entry/end live sets for each variable for each block.
+            BlockBoundaryFinder blockBoundaryFinder;
+            try (AutoTimer boundary = AutoTimer.time(STATE_TIMER)) {
+                blockBoundaryFinder = new BlockBoundaryFinder(method, loadStoreClosure.result());
+                DepthFirstBlockIterator.analyze(method, graph, blockBoundaryFinder);
+            }
 
-        // Computes the entry/end live sets for each variable for each block.
-        BlockBoundaryFinder blockBoundaryFinder = new BlockBoundaryFinder(method, loadStoreClosure.result());
-        DepthFirstBlockIterator.analyze(method, graph, blockBoundaryFinder);
+            try (AutoTimer propagation = AutoTimer.time(PROPAGATE_TIMER)) {
+                // Forces loop ends to inherit the loop entry state, and propagates the changes.
+                LoopPropagatorClosure loopPropagation = new LoopPropagatorClosure(graph, blockBoundaryFinder.result());
+                while (loopPropagation.process(graph)) {
+                    /*
+                     * This loop should iterate at MOST exactly the maximum number of nested loops
+                     * in the method.
+                     *
+                     * The reasoning is the following:
+                     *
+                     * - The only reason a new iteration is required is when a loop entry's state
+                     * gets modified by the previous iteration.
+                     *
+                     * - This can happen only if a new live variable gets propagated from an outer
+                     * loop.
+                     *
+                     * - Which means that we do not need to re-propagate the state of the outermost
+                     * loop.
+                     */
+                }
+            }
 
-        // Forces loop ends to inherit the loop entry state, and propagates the changes.
-        LoopPropagatorClosure loopPropagation = new LoopPropagatorClosure(graph, blockBoundaryFinder.result());
-        while (loopPropagation.process(graph)) {
-            /*
-             * This loop should iterate at MOST exactly the maximum number of nested loops in the
-             * method.
-             *
-             * The reasoning is the following:
-             *
-             * - The only reason a new iteration is required is when a loop entry's state gets
-             * modified by the previous iteration.
-             *
-             * - This can happen only if a new live variable gets propagated from an outer loop.
-             *
-             * - Which means that we do not need to re-propagate the state of the outermost loop.
-             */
+            // Using the live sets and history, build a set of action for each bci, such that it
+            // frees as early as possible each dead local.
+            try (AutoTimer actionFinder = AutoTimer.time(ACTION_TIMER)) {
+                BCILocalActionRecord[] actions = buildResultFrom(blockBoundaryFinder.result(), graph, method);
+                boolean compiledCodeOnly = method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.COMPILED;
+                return new LivenessAnalysis(actions, compiledCodeOnly);
+            }
         }
-
-        // Using the live sets and history, build a set of action for each bci, such that it frees
-        // as early as possible each dead local.
-        BCILocalActionRecord[] actions = buildResultFrom(blockBoundaryFinder.result(), graph, method);
-        boolean compiledCodeOnly = method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.COMPILED;
-        return new LivenessAnalysis(actions, compiledCodeOnly);
     }
 
     private LivenessAnalysis(BCILocalActionRecord[] result, boolean compiledCodeOnly) {
@@ -146,7 +173,7 @@ public class LivenessAnalysis {
 
         // Locals inherited from merging predecessors, but are not needed down the line can be
         // killed on block entry.
-        killLocalsOnBlockEntry(actions, helper, blockID, m, current, mergedEntryState);
+        killLocalsOnBlockEntry(actions, helper, blockID, current, mergedEntryState);
 
         // Replay history in reverse to seek the last load for each variable.
         replayHistory(actions, helper, blockID);
@@ -171,21 +198,19 @@ public class LivenessAnalysis {
         } else {
             for (int pred : current.predecessorsID()) {
                 BitSet predState = helper.endFor(pred);
-                for (int i = 0; i < m.getMaxLocals(); i++) {
-                    if (predState.get(i)) {
-                        mergedEntryState.set(i);
-                    }
+                for (int i : Util.bitSetIterator(predState)) {
+                    mergedEntryState.set(i);
                 }
             }
         }
         return mergedEntryState;
     }
 
-    private static void killLocalsOnBlockEntry(BCILocalActionRecord[] actions, BlockBoundaryResult helper, int blockID, Method m, LinkedBlock current, BitSet mergedEntryState) {
+    private static void killLocalsOnBlockEntry(BCILocalActionRecord[] actions, BlockBoundaryResult helper, int blockID, LinkedBlock current, BitSet mergedEntryState) {
         ArrayList<LocalVariableAction> startActions = new ArrayList<>();
         BitSet entryState = helper.entryFor(blockID);
-        for (int i = 0; i < m.getMaxLocals(); i++) {
-            if (mergedEntryState.get(i) && !entryState.get(i)) {
+        for (int i : Util.bitSetIterator(mergedEntryState)) {
+            if (!entryState.get(i)) {
                 startActions.add(NullOutAction.get(i));
             }
         }
@@ -221,9 +246,11 @@ public class LivenessAnalysis {
                     if (!endState.get(r.local)) {
                         // Store is not used: can be killed immediately.
                         recordAction(actions, r.bci, NullOutAction.get(r.local), false);
+                    } else {
+                        // Store for this variable kills the local between here and the previous
+                        // usage
+                        endState.clear(r.local);
                     }
-                    // Store for this variable kills the local between here and the previous usage
-                    endState.clear(r.local);
                     break;
             }
         }
