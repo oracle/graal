@@ -174,7 +174,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
      * True if the runtime wants to store the resulting code when the engine is closed. This means
      * that strong references for source caches should be used.
      */
-    boolean storeEngine; // effectively final
+    boolean storeEngine; // modified on patch
     Handler logHandler;     // effectively final
     final Exception createdLocation = DEBUG_MISSING_CLOSE ? new Exception() : null;
     private final EconomicSet<ContextWeakReference> contexts = EconomicSet.create(Equivalence.IDENTITY);
@@ -471,6 +471,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.logHandler = newLogHandler;
         this.engineOptionValues = engineOptions;
         this.logLevels = newLogConfig.logLevels;
+        this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
         INSTRUMENT.patchInstrumentationHandler(instrumentationHandler, newOut, newErr, newIn);
 
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
