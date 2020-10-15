@@ -40,7 +40,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.tools.profiler.impl.ProfilerException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 

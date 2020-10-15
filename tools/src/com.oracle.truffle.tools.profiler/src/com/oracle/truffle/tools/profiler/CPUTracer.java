@@ -32,7 +32,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import com.oracle.truffle.tools.profiler.impl.ProfilerException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 

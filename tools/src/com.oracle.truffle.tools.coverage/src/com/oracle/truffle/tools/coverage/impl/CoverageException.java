@@ -24,19 +24,13 @@
  */
 package com.oracle.truffle.tools.coverage.impl;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-public class CoverageException extends RuntimeException implements TruffleException {
+class CoverageException extends AbstractTruffleException {
 
     private static final long serialVersionUID = -658136962028990564L;
 
-    public CoverageException(String message) {
+    CoverageException(String message) {
         super(message);
-    }
-
-    @Override
-    public Node getLocation() {
-        return null;
     }
 }

@@ -22,21 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.profiler.impl;
+package com.oracle.truffle.tools.profiler;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-public class ProfilerException extends RuntimeException implements TruffleException {
+class ProfilerException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 7860704745778916358L;
 
-    public ProfilerException(String s) {
+    ProfilerException(String s) {
         super(s);
-    }
-
-    @Override
-    public Node getLocation() {
-        return null;
     }
 }
