@@ -404,6 +404,12 @@ public class CheckGraalIntrinsics extends GraalTest {
             }
         }
 
+        if (!config.useElectronicCodeBookEncryptDecrypt()) {
+            add(toBeInvestigated,
+                            "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I",
+                            "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
+        }
+
         if (isJDK13OrHigher()) {
             add(toBeInvestigated,
                             "java/lang/Math.abs(I)I",
@@ -420,8 +426,6 @@ public class CheckGraalIntrinsics extends GraalTest {
 
         if (isJDK14OrHigher()) {
             add(toBeInvestigated,
-                            "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I",
-                            "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I",
                             "java/math/BigInteger.shiftLeftImplWorker([I[IIII)V",
                             "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
         }
