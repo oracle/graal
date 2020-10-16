@@ -24,14 +24,14 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.selectGraalVMHome', (installation?: Installation) => {
 		selectInstalledGraalVM(installation ? installation.home : undefined);
 	}));
-	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.installGraalVM', (path?: string) => {
-		installGraalVM(context.globalStoragePath, path);
+	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.installGraalVM', () => {
+		installGraalVM(context.extensionPath);
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.addExistingGraalVM', () => {
 		addExistingGraalVM();
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.installGraalVMComponent', (component: string | Component, homeFolder?: string) => {
-		installGraalVMComponent(component, homeFolder);
+		installGraalVMComponent(component, homeFolder, context.extensionPath);
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.uninstallGraalVMComponent', (component: string | Component, homeFolder?: string) => {
 		uninstallGraalVMComponent(component, homeFolder);
