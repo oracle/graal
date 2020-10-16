@@ -2,9 +2,9 @@
 
 To add debug info to a generated native image, add the flag
 `-H:GenerateDebugInfo=<N>` to the native image command line (where `N` is
-a positive integer value and the default value `0` means generate no
-debug info). For example:
-```
+a positive integer value -- the default value `0` means generate no
+debug info). For example,
+```shell
 javac Hello.java
 native-image -H:GenerateDebugInfo=1 Hello
 ```
@@ -34,7 +34,7 @@ source locations). However, source layouts do vary and it may not be
 possible to find all sources. Hence, users can specify the location of
 source files explicitly on the command line using option
 `DebugInfoSourceSearchPath`:
-```
+```shell
 javac --source-path apps/greeter/src \
     -d apps/greeter/classes org/my/greeter/*Greeter.java
 javac -cp apps/greeter/classes \
@@ -51,7 +51,7 @@ to this option can be either an absolute or relative path. It can
 identify either a directory, a source JAR, or a source zip file. It is
 also possible to specify several source roots at once using a comma
 separator:
-```
+```shell
 native-image -H:GenerateDebugInfo=1 \
     -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
     -cp apps/target/hello.jar:apps/target/greeter.jar \
@@ -62,9 +62,9 @@ located under local directory sources. The `DebugInfoSourceCacheRoot`
 option can be used to specify an alternative location for the top level
 directory. As an example, the following variant of the previous
 command specifies the same target but employs an absolute path:
-```
+```shell
 SOURCE_CACHE_ROOT=$PWD/sources
-mx native-image -H:GenerateDebugInfo=1 \
+native-image -H:GenerateDebugInfo=1 \
     -H:DebugInfoSourceCacheRoot=$SOURCE_CACHE_ROOT \
     -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
     -cp apps/target/hello.jar:apps/target/greeter.jar \
@@ -196,7 +196,7 @@ cache. You will need to ensure that any new subdirectory you add to
 sources are being included.
 
 You can also add extra directories to the search path using the `set directories` command:
-```
+```shell
 (gdb) set directories /path/to/my/sources/:/path/to/my/other/sources
 ```
 Note that the GNU Debugger does not understand zip format file systems so any extra entries you

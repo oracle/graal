@@ -3,7 +3,7 @@
 By default, the native image builder will not integrate any of the resources which are on the classpath during the generation into the final image.
 To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or the corresponding ClassLoader methods) return specific resources (instead of null), the resources that should be accessible at image run time need to be explicitly specified. This can be done via a configuration file such as the following:
 
-```
+```json
 {
   "resources": [
     {"pattern": "<Java regexp that matches resource(s) to be included in the image>"},
@@ -13,8 +13,8 @@ To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or
 }
 ```
 
-The configuration file's path must be provided to the native image builder with `-H:ResourceConfigurationFiles=/path/to/resource-config.json`. Alternatively, individual resource paths can also be specified directly to `native-image`:
-```
+The configuration file's path must be provided to `native-image` with `-H:ResourceConfigurationFiles=/path/to/resource-config.json`. Alternatively, individual resource paths can also be specified directly to `native-image`:
+```shell
 native-image -H:IncludeResources=<Java regexp that matches resources to be included in the image> ...
 ```
 The `-H:IncludeResources` option can be passed several times to define more than one regexp to match resources.
@@ -61,7 +61,7 @@ Native Image needs ahead-of-time knowledge of the resource bundles your applicat
 }
 ```
 
-Alternatively, bundles can be specified directly as options to the native image builder as follows:
-```
+Alternatively, bundles can be specified directly as options to `native-image` as follows:
+```shell
 native-image -H:IncludeResourceBundles=your.pgk.Bundle,another.pkg.Resource,etc.Bundle ...
 ```

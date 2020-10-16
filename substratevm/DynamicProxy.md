@@ -30,17 +30,18 @@ class ProxyFactory {
     }
 }
 ```
-Note: the analysis operates on Graal graphs and not source code.
+Note: The analysis operates on compiler graphs and not source code.
 Therefore the following ways to declare and populate an array are equivalent from the point of view of the analysis:
-```
+
+```java
 private static final Class<?>[] interfacesArrayPreInitialized = new Class<?>[]{java.util.Comparator.class};
 ```
 
-```
+```java
 private static final Class<?>[] interfacesArrayLiteral = {java.util.Comparator.class};
 ```
 
-```
+```java
 private static final Class<?>[] interfacesArrayPostInitialized = new Class<?>[1];
 static {
     interfacesArrayPostInitialized[0] = java.util.Comparator.class;
@@ -64,17 +65,17 @@ class ProxyFactory {
 }
 ```
 
-Note: just like with constant arrays, the following ways to declare and populate an array are equivalent from the point of view of the analysis:
-```
+Note: Just like with constant arrays, the following ways to declare and populate an array are equivalent from the point of view of the analysis:
+```java
 Class<?>[] interfaces = new Class<?>[]{java.util.Comparator.class};
 ```
 
-```
+```java
 Class<?>[] interfaces = new Class<?>[1];
 interfaces[0] = Question.class;
 ```
 
-```
+```java
 Class<?>[] interfaces = {java.util.Comparator.class};
 ```
 

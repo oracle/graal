@@ -1,6 +1,8 @@
-# Native Image Configuration
+# Native Image Build Configuration
 
-* [Properties File Format](#properties-file-format)
+* [Embedding a Configuration File](#embedding-a-configuration-file)
+* [Configuration File Format](#configuration-file-format)
+* [Memory Configuration for Native Image Build](#memory-configuration-for-native-image-build)
 * [Runtime vs Build-Time Initialization](#runtime-vs-build-time-initialization)
 * [Assisted Configuration of Native Image Builds](#assisted-configuration-of-native-image-builds)
 * [Building Native Image with Java Reflection Example](#building-native-image-with-java-reflection-example)
@@ -8,13 +10,15 @@
 
 Native Image supports a wide range of options to configure a native image build process.
 
+## Embedding a Configuration File
+
 A recommended way to provide configuration is to embed a
 **native-image.properties** file into a project JAR file. The Native Image builder
 will automatically pick up all configuration options provided anywhere below the
 resource location `META-INF/native-image/` and use it to construct
 `native-image` command line arguments.
 
-To avoid a situation where constituent parts of a non-trivial project are built
+To avoid a situation when constituent parts of a project are built
 with overlapping configurations, it is recommended to use "subdirectories" within
 `META-INF/native-image`. That way a JAR file built from multiple maven projects
 cannot suffer from overlapping `native-image` configurations. For example:
@@ -23,7 +27,7 @@ cannot suffer from overlapping `native-image` configurations. For example:
 
 The JAR file that contains `foo` and `bar` will then contain both configurations
 without conflicting with one another. Therefore the recommended layout for
-storing native-image configuration data in JAR files is the following:
+storing native image configuration data in JAR files is the following:
 ```
 META-INF/
 └── native-image
@@ -32,23 +36,30 @@ META-INF/
             └── native-image.properties
 ```
 
-Note that the use of `${.}` in a native-image.properties file expands to the
+Note that the use of `${.}` in a _native-image.properties_ file expands to the
 resource location that contains that exact configuration file. This can be
-useful if the native-image.properties file wants to refer to resources within
-its subfolder, for example,
-`-H:SubstitutionResources=${.}/substitutions.json`.
+useful if the _native-image.properties_ file wants to refer to resources within
+its "subfolder", for example, `-H:SubstitutionResources=${.}/substitutions.json`.
+Always make sure to use the option variants that take resources, i.e., use
+`-H:ResourceConfigurationResources` instead of `-H:ResourceConfigurationFiles`.
+Other options that are known to work in this context are:
+* `-H:DynamicProxyConfigurationResources`
+* `-H:JNIConfigurationResources`
+* `-H:ReflectionConfigurationResources`
+* `-H:ResourceConfigurationResources`
+* `-H:SubstitutionResources`
 
 By having such a composable _native-image.properties_ file, building an image
 does not require any additional arguments specified on command line. It is
 sufficient to just run the following command:
-```
+```shell
 $JAVA_HOME/bin/native-image -jar target/<name>.jar
 ```
 
 To debug which configuration data gets applied for the image building, use `native-image --verbose`. This will show from where `native-image` picks up the
 configurations to construct the final composite configuration command line
 options for the native image builder.
-```
+```shell
 native-image --verbose -jar build/basic-app-0.1-all.jar
 Apply jar:file://~/build/basic-app-0.1-all.jar!/META-INF/native-image/io.netty/common/native-image.properties
 Apply jar:file://~/build/basic-app-0.1-all.jar!/META-INF/native-image/io.netty/buffer/native-image.properties
@@ -63,7 +74,8 @@ Executing [
 
 Typical examples of `META-INF/native-image` based native image configuration can be found in [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/tree/master/native-image-configure-examples).
 
-### Properties File Format
+## Configuration File Format
+
 A `native-image.properties` file is a regular Java properties file that can be
 used to specify native image configurations. The following properties are
 supported.
@@ -114,6 +126,27 @@ NativeImageArgs = --configurations-path /home/user/custom-image-configs \
                   -O1
 ```
 
+## Memory Configuration for Native Image Build
+
+The native image build runs on the Java HotSpot VM and uses the memory management of the underlying platform.
+The usual Java HotSpot command-line options for garbage collection apply to the native image builder.
+
+During the native image build, the representation of a whole program is created to
+figure out which classes and methods will be used at run time. It is a
+computationally intensive process. The default values for memory usage at image build time are:
+```
+-Xss10M \
+-Xms1G \
+```
+These defaults can be changed by passing `-J + <jvm option for memory>` to the native image builder.
+
+The `-Xmx` value is computed by using 80% of the physical memory size, but no more than 14G per server.
+Providing a larger value for `-Xmx` on command line is possible, e.g., `-J-Xmx26G`.
+
+By default, image building uses of up to 32 threads (but not more than the number of processors available). For custom values `-H:NumberOfThreads=...` can be used.
+
+Check other related options to the native image builder from the `native-image --expert-options-all` list.
+
 ## Runtime vs Build-Time Initialization
 
 Building your application into a native image allows you to decide which parts
@@ -140,8 +173,8 @@ For more information, continue reading to the [Class Initialization in Native Im
 Native images are built ahead of runtime and their build relies on a static analysis of which code will be reachable. However, this analysis cannot always completely predict all usages of the Java Native Interface (JNI), Java Reflection, Dynamic Proxy objects (`java.lang.reflect.Proxy`), or class path resources (`Class.getResource`). Undetected usages of these dynamic features need to be provided to the `native-image` tool in the form of configuration files.
 
 In order to make preparing these configuration files easier and more convenient, GraalVM provides an _agent_ that tracks all usages of dynamic features of an execution on a regular Java VM. It can be enabled on the command line of the GraalVM `java` command:
-```
-$GRAALVM_HOME/bin/java -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/ ...
+```shell
+$JAVA_HOME/bin/java -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/ ...
 ```
 
 Note that `-agentlib` must be specified _before_ a `-jar` option or a class name or any application parameters in the `java` command line.
@@ -149,8 +182,8 @@ Note that `-agentlib` must be specified _before_ a `-jar` option or a class name
 During execution, the agent interfaces with the Java VM to intercept all calls that look up classes, methods, fields, resources, or request proxy accesses. The agent then generates the files `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json` in the specified output directory, which is `/path/to/config-dir/` in the example above. The generated files are standalone configuration files in _JSON_ format which contain all intercepted dynamic accesses.
 
 It can be necessary to run the target application more than once with different inputs to trigger separate execution paths for a better coverage of dynamic accesses. The agent supports this with the `config-merge-dir` option which adds the intercepted accesses to an existing set of configuration files:
-```
-$GRAALVM_HOME/bin/java -agentlib:native-image-agent=config-merge-dir=/path/to/config-dir/ ...
+```shell
+$JAVA_HOME/bin/java -agentlib:native-image-agent=config-merge-dir=/path/to/config-dir/ ...
                                                               ^^^^^
 ```
 
@@ -161,8 +194,8 @@ By default the agent will write the configuration files after the JVM process te
 - `config-write-initial-delay-secs`: the number of seconds before the first write is schedule for execution. Supports only integer values greater or equal to zero. Enabled only if `config-write-period-secs` is greater than zero.
 
 For example:
-```
-$GRAALVM_HOMEbin/java -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/,config-write-period-secs=300,config-write-initial-delay-secs=5 ...
+```shell
+$JAVA_HOME/bin/java -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/,config-write-period-secs=300,config-write-initial-delay-secs=5 ...
 ```
 
 It is advisable to manually review the generated configuration files. Because the agent observes only code that was executed, the resulting configurations can be missing elements that are used in other code paths. It could also make sense to simplify the generated configurations to make any future manual maintenance easier.
@@ -209,7 +242,7 @@ arguments. Providing any other class or method name on the command line leads to
 an exception.
 
 Having compiled the example, invoke each method:
-```
+```shell
 $JAVA_HOME/bin/javac ReflectionExample.java
 $JAVA_HOME/bin/java ReflectionExample StringReverser reverse "hello"
 olleh
@@ -218,7 +251,7 @@ HELLO
 ```
 
 Build a native image normally, without a reflection configuration file, and run a resulting image:
-```
+```shell
 $JAVA_HOME/bin/native-image ReflectionExample
 [reflectionexample:59625]    classlist:     467.66 ms
 ...
@@ -230,18 +263,18 @@ agent to write a configuration file to be later fed into the native image
 build together.
 
 1. Create a directory `META-INF/native-image` in the working directory:
-```
+```shell
 mkdir -p META-INF/native-image
 ```
 
 2. Enable the agent and pass necessary command line arguments:
-```
+```shell
 $JAVA_HOME/bin/java -agentlib:native-image-agent=config-output-dir=META-INF/native-image ReflectionExample StringReverser reverse "hello"
 ```
 This command creates a _reflection-config.json_ file which makes the `StringReverser` class and the `reverse()` method accessible via reflection. The _jni-config.json_, _proxy-config.json_ , and _resource-config.json_ configuration files are written in that directory too.
 
 3. Build a native image:
-```
+```shell
 $JAVA_HOME/bin/native-image --no-fallback ReflectionExample
 ```
 The native image builder automatically picks up configuration files in the
@@ -251,7 +284,7 @@ file or via the `-cp` flag. It will help to avoid confusion for IDE users where 
 directory structure is defined by the tool.
 
 4. Test the methods, but remember that you have not run the tracing agent twice to create a configuration that supports both:
-```
+```shell
 ./reflectionexample StringReverser reverse "hello"
 olleh
 ./reflectionexample  StringCapitalizer capitalize "hello"
@@ -268,7 +301,7 @@ are possible in a native image. You can either manually edit the
 _reflection-config.json_ file, or re-run the tracing agent to transform the
 existing configuration file, or extend it by using `config-merge-dir` option:
 
-```
+```shell
 $JAVA_HOME/bin/java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image ReflectionExample StringCapitalizer capitalize "hello"
 ```
 Note, the different `config-merge-dir` option instructs the agent to extend the
@@ -315,7 +348,7 @@ A directory containing configuration files that is not part of the class path ca
 ### Injecting the Agent via the Process Environment
 
 Altering the `java` command line to inject the agent can prove to be difficult if the Java process is launched by an application or script file, or if Java is even embedded in an existing process. In that case, it is also possible to inject the agent via the `JAVA_TOOL_OPTIONS` environment variable. This environment variable can be picked up by multiple Java processes which run at the same time, in which case each agent must write to a separate output directory with `config-output-dir`. (The next section describes how to merge sets of configuration files.) In order to use separate paths with a single global `JAVA_TOOL_OPTIONS` variable, the agent's output path options support placeholders:
-```
+```shell
 export JAVA_TOOL_OPTIONS="java -agentlib:native-image-agent=config-output-dir=/path/to/config-output-dir-{pid}-{datetime}/"
 ```
 
@@ -324,12 +357,12 @@ The `{pid}` placeholder is replaced with the process identifier, while `{datetim
 ### The Configuration Tool
 
 When using the agent in multiple processes at the same time as described in the previous section, `config-output-dir` is a safe option, but results in multiple sets of configuration files. The `native-image-configure` tool can be used to merge these configuration files. This tool must first be built with:
-```
+```shell
 native-image --tool:native-image-configure
 ```
 
 Then, the tool can be used to merge sets of configuration files as follows:
-```
+```shell
 native-image-configure generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/
 ```
 
@@ -340,18 +373,18 @@ An arbitrary number of `--input-dir` arguments with sets of configuration files 
 ### Trace Files
 
 In the examples above, `native-image-agent` has been used to both keep track of the dynamic accesses in a Java VM and then to generate a set of configuration files from them. However, for a better understanding of the execution, the agent can also write a _trace file_ in JSON format that contains each individual access:
-```
-$GRAALVM_HOME/bin/java -agentlib:native-image-agent=trace-output=/path/to/trace-file.json ...
+```shell
+$JAVA_HOME/bin/java -agentlib:native-image-agent=trace-output=/path/to/trace-file.json ...
 ```
 
 The `native-image-configure` tool can transform trace files to configuration files that can be used in native image builds. The following command reads and processes `trace-file.json` and generates a set of configuration files in directory `/path/to/config-dir/`:
-```
+```shell
 native-image-configure generate --trace-input=/path/to/trace-file.json --output-dir=/path/to/config-dir/
 ```
 
 ### Interoperability
 
 Although the agent is distributed with GraalVM, it uses the JVM Tool Interface (JVMTI) and can potentially be used with other JVMs that support JVMTI. In this case, it is necessary to provide the absolute path of the agent:
-```
+```shell
 /path/to/some/java -agentpath:/path/to/graalvm/jre/lib/amd64/libnative-image-agent.so=<options> ...
 ```

@@ -40,24 +40,6 @@ This flag is translated to either `-ea -esa` or `-da -dsa` for the HotSpot VM.
   generates a directory for temporary files during a native image generation.
 If this option is specified, the temporary files are not deleted so that you can inspect them after the native image generation.
 
-### Garbage Collection Options
-* `-Xmn=`
-  sets the size of the young generation (the amount of memory that can be allocated without triggering a GC).
-Value is specified in bytes, and the suffix `k`, `m`, or `g` can be used for scaling.
-* `-Xmx=`
-  sets the maximum heap size in bytes.
-Value is specified in bytes, and the suffix `k`, `m`, or `g` can be used for scaling.
-Note that this is not the maximum amount of consumed memory, because during GC the system can request more temporary memory.
-* `-Xms=`
-  sets the minimum heap size in bytes.
-Value is specified in bytes, and the suffix `k`, `m`, or `g` can be used for scaling.
-Unused heap space will be retained for future heap usage, rather than being returned to the operating system.
-* `-R:[+|-]PrintGC`
-  prints summary GC information after each collection.
-* `-R:[+|-]VerboseGC`
-  prints more information about the heap before and after each
-  collection.
-
 ### Control the Main Entry Points
 * `-H:Kind=[EXECUTABLE | SHARED_LIBRARY]`:
   generates an executable with a main entry point, or a shared library with all entry points that are marked via `@CEntryPoint`.
