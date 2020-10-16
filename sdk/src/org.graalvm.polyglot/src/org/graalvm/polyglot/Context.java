@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -778,13 +779,15 @@ public final class Context implements AutoCloseable {
      *            of the context to be finished. Setting the duration to {@link Duration#ZERO 0}
      *            means wait indefinitely.
      * @throws IllegalStateException in case the context is entered in the current thread.
-     * @return <code>true</code> if the interrupt was successful, i.e., all threads were finished
-     *         within the specified time limit.
+     * @throws TimeoutException in case the interrupt was not successful, i.e., not all threads were
+     *             finished within the specified time limit.
      *
      * @since 20.3
      */
-    public boolean interrupt(Duration timeout) {
-        return impl.interrupt(this, timeout);
+    public void interrupt(Duration timeout) throws TimeoutException {
+        if (!impl.interrupt(this, timeout)) {
+            throw new TimeoutException("Interrupt timed out.");
+        }
     }
 
     /**

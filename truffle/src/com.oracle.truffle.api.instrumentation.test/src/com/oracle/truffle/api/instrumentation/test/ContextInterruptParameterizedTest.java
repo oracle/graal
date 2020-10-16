@@ -55,6 +55,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -131,7 +132,7 @@ public class ContextInterruptParameterizedTest {
     @Parameterized.Parameter(5) public boolean closeAfterInterrupt;
 
     @Test
-    public void testInterrupt() throws InterruptedException, IOException, ExecutionException {
+    public void testInterrupt() throws InterruptedException, IOException, ExecutionException, TimeoutException {
         ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
         CountDownLatch allCancelledLatch = new CountDownLatch(nThreads + 1);
         List<Context> contexts = new ArrayList<>();
@@ -204,7 +205,7 @@ public class ContextInterruptParameterizedTest {
             for (int i = 0; i < nThreads; i++) {
                 if (multiContext || i == 0) {
                     Context context = contexts.get(i);
-                    Assert.assertTrue(context.interrupt(Duration.ofSeconds(50)));
+                    context.interrupt(Duration.ofSeconds(50));
                 }
             }
             allCancelledLatch.countDown();

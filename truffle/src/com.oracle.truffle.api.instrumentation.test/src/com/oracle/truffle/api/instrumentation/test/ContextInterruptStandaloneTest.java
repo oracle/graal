@@ -51,6 +51,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.polyglot.Context;
@@ -98,7 +99,11 @@ public class ContextInterruptStandaloneTest {
                     if (rnd.nextBoolean()) {
                         context.close(true);
                     } else {
-                        context.interrupt(Duration.ofSeconds(50));
+                        try {
+                            context.interrupt(Duration.ofSeconds(50));
+                        } catch (TimeoutException te) {
+                            throw new RuntimeException(te);
+                        }
                     }
                 }));
             }
@@ -142,7 +147,12 @@ public class ContextInterruptStandaloneTest {
                 context.eval(source);
             }));
             passLatch.await();
-            Assert.assertFalse(context.interrupt(Duration.ofSeconds(1)));
+            try {
+                context.interrupt(Duration.ofSeconds(1));
+                Assert.fail();
+            } catch (TimeoutException te) {
+                Assert.assertEquals("Interrupt timed out.", te.getMessage());
+            }
             interruptFinished.set(true);
             interruptFinishLatch.countDown();
             for (Future<?> future : futures) {
@@ -166,8 +176,13 @@ public class ContextInterruptStandaloneTest {
         Context[] context = new Context[1];
         context[0] = Context.create();
         try {
-            attachListener(() -> context[0].interrupt(Duration.ofSeconds(100)),
-                            getInstrumentEnv(context[0].getEngine()));
+            attachListener(() -> {
+                try {
+                    context[0].interrupt(Duration.ofSeconds(100));
+                } catch (TimeoutException te) {
+                    throw new RuntimeException(te);
+                }
+            }, getInstrumentEnv(context[0].getEngine()));
             context[0].initialize(InstrumentationTestLanguage.ID);
             Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "LOOP(infinity,CONSTANT(42))", "SelfInterruptingScript").build();
             context[0].eval(source);
@@ -188,6 +203,9 @@ public class ContextInterruptStandaloneTest {
             attachListener(() -> {
                 try {
                     context[0].interrupt(Duration.ofSeconds(100));
+                } catch (TimeoutException te) {
+                    polyglotThreadException[0] = te;
+                    throw new RuntimeException(te);
                 } catch (Exception e) {
                     polyglotThreadException[0] = e;
                     throw e;
@@ -209,9 +227,9 @@ public class ContextInterruptStandaloneTest {
     }
 
     @Test
-    public void testInterruptCurrentThreadNotEntered() {
+    public void testInterruptCurrentThreadNotEntered() throws TimeoutException {
         try (Context context = Context.create()) {
-            Assert.assertTrue(context.interrupt(Duration.ofSeconds(100)));
+            context.interrupt(Duration.ofSeconds(100));
         }
     }
 

@@ -587,7 +587,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             currentThreadInfo = PolyglotThreadInfo.NULL;
         } else {
             currentThreadInfo = info;
-            if (engine.singleThreadPerContext.isValid() && engine.singleContext.isValid()) {
+            if (engine.singleThreadPerContext.isValid() && engine.singleContext.isValid() && engine.neverInterrupted.isValid()) {
                 constantCurrentThreadInfo = info;
             }
         }

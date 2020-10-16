@@ -159,12 +159,12 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             }
         } else {
             this.cancelled = (exception instanceof CancelExecution) || isLegacyTruffleExceptionCancelled(exception);
-            this.internal = !cancelled && !resourceExhausted;
+            this.interrupted = exception != null && exception.getCause() instanceof InterruptedException;
+            this.internal = !interrupted && !cancelled && !resourceExhausted;
             this.syntaxError = false;
             this.incompleteSource = false;
             this.exit = isLegacyTruffleExceptionExit(exception);
             this.exitStatus = exit ? getLegacyTruffleExceptionExitStatus(exception) : 0;
-            this.interrupted = exception != null && exception.getCause() instanceof InterruptedException;
             com.oracle.truffle.api.source.SourceSection location = exception instanceof CancelExecution ? ((CancelExecution) exception).getSourceLocation()
                             : getLegacyTruffleExceptionSourceLocation(exception);
             this.sourceLocation = location != null ? newSourceSection(location) : null;
