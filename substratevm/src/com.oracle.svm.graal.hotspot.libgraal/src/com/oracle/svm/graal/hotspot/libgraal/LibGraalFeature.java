@@ -142,6 +142,7 @@ import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
+import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSignature;
@@ -476,6 +477,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             throw VMError.shouldNotReachHere(ex);
         }
 
+        // Force construction of all stubs so the types are known.
         HotSpotHostForeignCallsProvider foreignCalls = getReplacements().getProviders().getForeignCalls();
         for (Stub stub : foreignCalls.getStubs()) {
             foreignCalls.lookupForeignCall(stub.getLinkage().getDescriptor());
@@ -581,6 +583,10 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
     static native Annotation[] getMethodAnnotationsInternal(ResolvedJavaMethod javaMethod);
 }
 
+/**
+ * {@link HotSpotConstantReflectionProvider#forObject} can only be used to wrap compiler objects so
+ * interpose to return a {@link SnippetObjectConstant}.
+ */
 @TargetClass(className = "jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_jdk_vm_ci_hotspot_HotSpotConstantReflectionProvider {
 

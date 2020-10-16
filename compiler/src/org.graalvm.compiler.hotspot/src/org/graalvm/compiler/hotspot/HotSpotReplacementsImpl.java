@@ -85,7 +85,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         if (IS_BUILDING_NATIVE_IMAGE || UseEncodedGraphs.getValue(options)) {
             synchronized (HotSpotReplacementsImpl.class) {
                 if (snippetEncoder == null) {
-                    snippetEncoder = new SymbolicSnippetEncoder(this);
+                    snippetEncoder = new SymbolicSnippetEncoder(this, options);
                 }
             }
         }

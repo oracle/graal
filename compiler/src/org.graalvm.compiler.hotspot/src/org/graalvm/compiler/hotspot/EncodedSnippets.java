@@ -30,7 +30,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.UseEncodedGraphs;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
@@ -177,7 +176,7 @@ public class EncodedSnippets {
     }
 
     ResolvedJavaType lookupSnippetType(Class<?> clazz) {
-        return Objects.requireNonNull(snippetTypes.get(clazz));
+        return snippetTypes.get(clazz);
     }
 
     public void visitImmutable(Consumer<Object> visitor) {
@@ -281,7 +280,7 @@ public class EncodedSnippets {
 
         @Override
         public JavaConstant forObject(Object object) {
-            return delegate.forObject(object);
+            return new SnippetObjectConstant(object);
         }
 
         @Override
@@ -291,6 +290,9 @@ public class EncodedSnippets {
 
         @Override
         public JavaConstant forBoxed(JavaKind kind, Object value) {
+            if (kind == JavaKind.Object) {
+                return forObject(value);
+            }
             return delegate.forBoxed(kind, value);
         }
 
