@@ -209,7 +209,8 @@ public final class DebuggerSession implements Closeable {
     private volatile boolean suspendAll;
     private final StableBoolean stepping = new StableBoolean(false);
     private final StableBoolean ignoreLanguageContextInitialization = new StableBoolean(false);
-    private boolean includeInternal = false;
+    private volatile boolean includeInternal = false;
+    private volatile boolean showHostStackFrames = false;
     private Predicate<Source> sourceFilter;
     @CompilationFinal private volatile Assumption suspensionFilterUnchanged = Truffle.getRuntime().createAssumption("Unchanged suspension filter");
     private final StableBoolean alwaysHaltBreakpointsActive = new StableBoolean(true);
@@ -324,6 +325,23 @@ public final class DebuggerSession implements Closeable {
                 return polyglotBindings.getProperty(name);
             }
         };
+    }
+
+    /**
+     * Set to provide host information in stack traces. When <code>true</code>,
+     * {@link DebugStackFrame#isHost() host frames} and {@link DebugStackTraceElement#isHost() host
+     * trace elements} are provided, when available.
+     *
+     * @since 20.3
+     * @see DebugStackFrame#isHost()
+     * @see DebugStackTraceElement#isHost()
+     */
+    public void setShowHostStackFrames(boolean showHostStackFrames) {
+        this.showHostStackFrames = showHostStackFrames;
+    }
+
+    boolean isShowHostStackFrames() {
+        return showHostStackFrames;
     }
 
     /**

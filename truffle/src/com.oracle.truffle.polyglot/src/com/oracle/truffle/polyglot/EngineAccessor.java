@@ -61,6 +61,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -1302,6 +1303,12 @@ final class EngineAccessor extends Accessor {
                 }
                 context.closeImpl(false, false, true);
             }
+        }
+
+        @Override
+        public <T, G> Iterator<T> mergeHostGuestFrames(StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage, Function<StackTraceElement, T> hostFrameConvertor,
+                        Function<G, T> guestFrameConvertor) {
+            return new PolyglotExceptionImpl.MergedHostGuestIterator<>(hostStack, guestFrames, inHostLanguage, hostFrameConvertor, guestFrameConvertor);
         }
 
         @Override

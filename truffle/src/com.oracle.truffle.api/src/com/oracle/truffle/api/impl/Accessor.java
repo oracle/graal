@@ -511,6 +511,9 @@ public abstract class Accessor {
 
         public abstract boolean isContextClosed(Object polyglotContext);
 
+        public abstract <T, G> Iterator<T> mergeHostGuestFrames(StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage, Function<StackTraceElement, T> hostFrameConvertor,
+                        Function<G, T> guestFrameConvertor);
+
         public abstract Iterable<com.oracle.truffle.api.Scope> findLibraryLocalScopesToLegacy(Node node, Frame frame);
 
         public abstract Iterable<com.oracle.truffle.api.Scope> topScopesToLegacy(Object scope);
