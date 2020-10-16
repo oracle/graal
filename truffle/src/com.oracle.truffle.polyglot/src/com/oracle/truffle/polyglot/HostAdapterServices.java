@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
@@ -64,6 +68,17 @@ public final class HostAdapterServices {
     static final int BOOTSTRAP_VALUE_INVOKE_MEMBER = 1 << 0;
     static final int BOOTSTRAP_VALUE_EXECUTE = 1 << 1;
     static final int BOOTSTRAP_VARARGS = 1 << 2;
+
+    /**
+     * Annotation used by the to mark public constructors, methods and fields in generated classes
+     * that should be accessible by the guest application.
+     *
+     * @see org.graalvm.polyglot.HostAccess.Export
+     */
+    @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD})
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface Export {
+    }
 
     private HostAdapterServices() {
     }

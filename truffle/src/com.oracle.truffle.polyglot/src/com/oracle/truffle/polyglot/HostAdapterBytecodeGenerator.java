@@ -65,8 +65,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+
 import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.FieldVisitor;
 import com.oracle.truffle.api.impl.asm.Handle;
@@ -182,7 +182,7 @@ final class HostAdapterBytecodeGenerator {
     private static final String GET_CLASS_LOADER_NAME = "getClassLoader";
     private static final String GET_CLASS_LOADER_DESCRIPTOR = Type.getMethodDescriptor(CLASS_LOADER_TYPE);
 
-    private static final String HOST_EXPORT_ANNOTATION_DESCRIPTOR = Type.getDescriptor(HostAccess.Export.class);
+    private static final String HOST_EXPORT_ANNOTATION_DESCRIPTOR = Type.getDescriptor(HostAdapterServices.Export.class);
 
     // ASM handle to the bootstrap method
     private static final Handle BOOTSTRAP_HANDLE = new Handle(H_INVOKESTATIC, Type.getInternalName(HostAdapterServices.class), "bootstrap",
