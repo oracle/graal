@@ -114,6 +114,7 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInlineAllCallees;
+import com.oracle.svm.core.annotate.AlwaysInlineSelectCallees;
 import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
@@ -635,6 +636,10 @@ public class CompileQueue {
         if (callee.compilationInfo.isTrivialMethod()) {
             return true;
         }
+        AlwaysInlineSelectCallees selectCallees = getCallerAnnotation(invoke, AlwaysInlineSelectCallees.class);
+        if (selectCallees != null && Arrays.stream(selectCallees.callees()).anyMatch(c -> c.equals(callee.getQualifiedName()))) {
+            return true;
+        }
         return false;
     }
 
@@ -656,13 +661,18 @@ public class CompileQueue {
     }
 
     public static boolean callerAnnotatedWith(Invoke invoke, Class<? extends Annotation> annotationClass) {
+        return getCallerAnnotation(invoke, annotationClass) != null;
+    }
+
+    private static <T extends Annotation> T getCallerAnnotation(Invoke invoke, Class<T> annotationClass) {
         for (FrameState state = invoke.stateAfter(); state != null; state = state.outerFrameState()) {
             assert state.getMethod() != null : state;
-            if (state.getMethod().getAnnotation(annotationClass) != null) {
-                return true;
+            T annotation = state.getMethod().getAnnotation(annotationClass);
+            if (annotation != null) {
+                return annotation;
             }
         }
-        return false;
+        return null;
     }
 
     protected void compileAll() throws InterruptedException {

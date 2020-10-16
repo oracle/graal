@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.annotate;
 
 import java.lang.annotation.ElementType;
@@ -30,19 +31,24 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * In an annotated method, all statically bindable callee methods are inlined (unless the callee is
- * annotated with {@link NeverInline}). The inlining is performed recursively. Be careful, it can
- * get out of control easily. If you need more fine-grained control over inlining, consider using
- * {@link AlwaysInlineSelectCallees}.
- *
+ * In a method annotated with this, the methods specified in {@link #callees} are inlined, unless
+ * they are annotated with {@link NeverInline}.
+ * 
  * This annotation exists primarily for testing purposes.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
-public @interface AlwaysInlineAllCallees {
+public @interface AlwaysInlineSelectCallees {
 
     /**
      * Documents the reason why the annotated code must have all callees inlined.
      */
-    String value();
+    String reason();
+
+    /**
+     * List of callee methods to always inline. These should be qualified names, e.g.
+     * {@code "java.lang.String.length()"} or
+     * {@code "java.lang.StringBuilder.append(java.lang.String)"}
+     */
+    String[] callees();
 }
