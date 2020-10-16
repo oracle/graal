@@ -48,8 +48,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import org.graalvm.polyglot.Value;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
@@ -59,16 +57,16 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 final class HostAdapterFactory {
 
     @TruffleBoundary
-    static Class<?> getAdapterClassFor(HostClassCache hostClassCache, Class<?>[] types, Value classOverrides) {
-        return getAdapterClassForCommon(hostClassCache, types, classOverrides, null);
+    static Class<?> getAdapterClassFor(HostClassCache hostClassCache, Class<?>[] types, ClassLoader classLoader, Object classOverrides) {
+        return getAdapterClassForCommon(hostClassCache, types, classLoader, classOverrides);
     }
 
     @TruffleBoundary
-    static Class<?> getAdapterClassFor(HostClassCache hostClassCache, Class<?> type) {
-        return getAdapterClassForCommon(hostClassCache, new Class<?>[]{type}, null, null);
+    static Class<?> getAdapterClassFor(HostClassCache hostClassCache, Class<?> type, ClassLoader classLoader) {
+        return getAdapterClassForCommon(hostClassCache, new Class<?>[]{type}, classLoader, null);
     }
 
-    static Class<?> getAdapterClassForCommon(HostClassCache hostClassCache, Class<?>[] types, Value classOverrides, ClassLoader classLoader) {
+    static Class<?> getAdapterClassForCommon(HostClassCache hostClassCache, Class<?>[] types, ClassLoader classLoader, Object classOverrides) {
         assert types.length > 0;
         CompilerAsserts.neverPartOfCompilation();
 
@@ -105,13 +103,12 @@ final class HostAdapterFactory {
         return generateAdapterClassFor(superClass, interfaces, commonLoader, hostClassCache, classOverrides);
     }
 
-    private static Class<?> generateAdapterClassFor(Class<?> superClass, List<Class<?>> interfaces, ClassLoader commonLoader, HostClassCache hostClassCache, Value classOverrides) {
-        boolean classOverride = classOverrides != null && classOverrides.hasMembers();
+    private static Class<?> generateAdapterClassFor(Class<?> superClass, List<Class<?>> interfaces, ClassLoader commonLoader, HostClassCache hostClassCache, Object classOverrides) {
+        boolean classOverride = classOverrides != null;
         HostAdapterBytecodeGenerator bytecodeGenerator = new HostAdapterBytecodeGenerator(superClass, interfaces, commonLoader, hostClassCache, classOverride);
         HostAdapterClassLoader generatedClassLoader = bytecodeGenerator.createAdapterClassLoader();
 
-        Value classOverridesValue = classOverride ? classOverrides : null;
-        return generatedClassLoader.generateClass(commonLoader, classOverridesValue);
+        return generatedClassLoader.generateClass(commonLoader, classOverrides);
     }
 
     @TruffleBoundary

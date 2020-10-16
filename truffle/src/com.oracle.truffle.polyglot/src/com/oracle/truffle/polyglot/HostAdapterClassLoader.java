@@ -52,6 +52,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.function.Supplier;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 
@@ -81,7 +82,7 @@ final class HostAdapterClassLoader {
      * @param parentLoader the parent class loader for the generated class loader
      * @return the generated adapter class
      */
-    Class<?> generateClass(ClassLoader parentLoader, Value classOverrides) {
+    Class<?> generateClass(ClassLoader parentLoader, Object classOverrides) {
         try {
             return Class.forName(className, true, createClassLoader(parentLoader, classOverrides));
         } catch (final ClassNotFoundException e) {
@@ -89,16 +90,17 @@ final class HostAdapterClassLoader {
         }
     }
 
-    private ClassLoader createClassLoader(final ClassLoader parentLoader, final Value classOverrides) {
+    private ClassLoader createClassLoader(final ClassLoader parentLoader, final Object classOverrides) {
         return new CLImpl(parentLoader, classOverrides);
     }
 
     final class CLImpl extends SecureClassLoader implements Supplier<Value> {
-        private final ClassLoader myLoader = getClass().getClassLoader();
-        private final Value classOverrides;
+        private final ClassLoader internalLoader;
+        private final Object classOverrides;
 
-        private CLImpl(final ClassLoader parentLoader, final Value classOverrides) {
+        private CLImpl(final ClassLoader parentLoader, final Object classOverrides) {
             super(parentLoader);
+            this.internalLoader = CLImpl.class.getClassLoader();
             this.classOverrides = classOverrides;
         }
 
@@ -120,7 +122,7 @@ final class HostAdapterClassLoader {
         }
 
         private Class<?> loadInternalClass(final String name) throws ClassNotFoundException {
-            return myLoader != null ? myLoader.loadClass(name) : Class.forName(name, false, myLoader);
+            return internalLoader != null ? internalLoader.loadClass(name) : Class.forName(name, false, internalLoader);
         }
 
         @Override
@@ -136,7 +138,7 @@ final class HostAdapterClassLoader {
 
         @Override
         public Value get() {
-            return classOverrides;
+            return Context.getCurrent().asValue(classOverrides);
         }
     }
 

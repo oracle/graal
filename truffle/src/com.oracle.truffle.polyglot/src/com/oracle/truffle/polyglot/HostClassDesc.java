@@ -59,8 +59,10 @@ import java.util.function.BiFunction;
 
 import org.graalvm.polyglot.Value;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.HostMethodDesc.OverloadedMethod;
 import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod;
 
@@ -519,18 +521,23 @@ final class HostClassDesc {
         return getMembers().functionalMethod;
     }
 
-    public AdapterResult getAdapter() {
-        AdapterResult a = adapter;
-        if (a == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
-                a = adapter;
-                if (a == null) {
-                    adapter = a = makeAdapter();
-                }
-            }
+    public AdapterResult getAdapter(HostContext hostContext) {
+        AdapterResult result = adapter;
+        if (result == null) {
+            result = getOrSetAdapter(hostContext);
         }
-        return a;
+        return result;
+    }
+
+    private AdapterResult getOrSetAdapter(HostContext hostContext) {
+        CompilerAsserts.neverPartOfCompilation();
+        synchronized (this) {
+            AdapterResult result = adapter;
+            if (result == null) {
+                adapter = result = makeAdapter(hostContext);
+            }
+            return result;
+        }
     }
 
     @Override
@@ -538,10 +545,10 @@ final class HostClassDesc {
         return "JavaClass[" + type.getCanonicalName() + "]";
     }
 
-    private AdapterResult makeAdapter() {
+    private AdapterResult makeAdapter(HostContext hostContext) {
         Class<?> adapterClass;
         try {
-            adapterClass = HostAdapterFactory.getAdapterClassFor(cache, type);
+            adapterClass = HostAdapterFactory.getAdapterClassFor(cache, type, hostContext.getClassloader());
         } catch (PolyglotEngineException ex) {
             return new AdapterResult(ex);
         } catch (IllegalArgumentException ex) {
