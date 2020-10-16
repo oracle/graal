@@ -128,6 +128,61 @@ public final class SpecializationData extends TemplateMethod {
         return uncachedSpecialization;
     }
 
+    public boolean needsVirtualFrame() {
+        if (getFrame() != null && ElementUtils.typeEquals(getFrame().getType(), types.VirtualFrame)) {
+            // not supported for frames
+            return true;
+        }
+        return false;
+    }
+
+    public boolean needsTruffleBoundary() {
+        for (CacheExpression cache : caches) {
+            if (cache.isAlwaysInitialized() && cache.isRequiresBoundary()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean needsPushEncapsulatingNode() {
+        for (CacheExpression cache : caches) {
+            if (cache.isAlwaysInitialized() && cache.isRequiresBoundary() && cache.isCachedLibrary()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isAnyLibraryBoundInGuard() {
+        for (CacheExpression cache : getCaches()) {
+            if (!cache.isCachedLibrary()) {
+                continue;
+            }
+            if (isLibraryBoundInGuard(cache)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isLibraryBoundInGuard(CacheExpression cachedLibrary) {
+        if (!cachedLibrary.isCachedLibrary()) {
+            return false;
+        }
+        for (GuardExpression guard : getGuards()) {
+            if (guard.isLibraryAcceptsGuard()) {
+                continue;
+            }
+            for (CacheExpression cacheExpression : getBoundCaches(guard.getExpression(), true)) {
+                if (cacheExpression.getParameter().equals(cachedLibrary.getParameter())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public boolean isTrivialExpression(DSLExpression expression) {
         Set<ExecutableElement> boundMethod = expression.findBoundExecutableElements();
         ProcessorContext context = ProcessorContext.getInstance();

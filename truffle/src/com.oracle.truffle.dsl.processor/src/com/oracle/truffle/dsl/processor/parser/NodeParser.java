@@ -2403,7 +2403,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 defaultExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, defaultExpression, expression);
                 cachedLibrary.setDefaultExpression(defaultExpression);
 
-                DSLExpression uncachedExpression = new DSLExpression.Call(resolveCall, "getUncached",
+                DSLExpression uncachedExpression;
+                /*
+                 * If libraries are bound in guards then uncached guards are on the fast path
+                 * therefore only the dispatched uncached version should be used.
+                 */
+                uncachedExpression = new DSLExpression.Call(resolveCall, "getUncached",
                                 Arrays.asList(receiverExpression));
                 cachedLibrary.setUncachedExpression(uncachedExpression);
 

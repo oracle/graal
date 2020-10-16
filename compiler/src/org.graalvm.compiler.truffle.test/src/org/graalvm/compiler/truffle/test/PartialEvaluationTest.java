@@ -169,6 +169,10 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         }
     }
 
+    protected StructuredGraph partialEval(RootNode root, Object... arguments) {
+        return partialEval((OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root), arguments, INVALID_COMPILATION_ID);
+    }
+
     protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments) {
         return partialEval(compilable, arguments, INVALID_COMPILATION_ID);
     }
