@@ -170,10 +170,10 @@ public final class WasmContext {
         reader.resetGlobalState(this, instance);
         if (reinitMemory) {
             reader.resetMemoryState(this, instance);
-        }
-        final WasmFunction startFunction = instance.symbolTable().startFunction();
-        if (startFunction != null) {
-            instance.target(startFunction.index());
+            final WasmFunction startFunction = instance.symbolTable().startFunction();
+            if (startFunction != null) {
+                instance.target(startFunction.index()).call();
+            }
         }
     }
 }
