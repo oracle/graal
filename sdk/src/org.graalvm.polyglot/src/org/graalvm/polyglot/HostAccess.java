@@ -637,9 +637,11 @@ public final class HostAccess {
         }
 
         /**
-         * Allow guest languages to implement any Java interface.
+         * Allow guest languages to implement any Java interface and extend any Java class.
          *
          * @see HostAccess#ALL
+         * @see #allowImplementations(Class)
+         * @see #allowImplementationsAnnotatedBy(Class)
          * @since 19.0
          */
         public Builder allowAllImplementations(boolean allow) {
@@ -650,9 +652,11 @@ public final class HostAccess {
         /**
          * Allow implementations of types annotated with the given annotation. For the
          * {@link HostAccess#EXPLICIT explicit} host access present the {@link Implementable}
-         * annotation is configured for this purpose.
+         * annotation is configured for this purpose. Applies to interfaces and classes.
          *
          * @see HostAccess.Implementable
+         * @see #allowImplementations(Class)
+         * @see Value#as(Class)
          * @since 19.0
          */
         public Builder allowImplementationsAnnotatedBy(Class<? extends Annotation> annotation) {
@@ -667,14 +671,17 @@ public final class HostAccess {
         /**
          * Allow implementations of this type by the guest language.
          *
+         * @param type an interface that may be implemented or a class that may be extended.
+         * @see #allowImplementationsAnnotatedBy(Class)
+         * @see Value#as(Class)
          * @since 19.0
          */
-        public Builder allowImplementations(Class<?> interfaceClass) {
-            Objects.requireNonNull(interfaceClass);
+        public Builder allowImplementations(Class<?> type) {
+            Objects.requireNonNull(type);
             if (implementableTypes == null) {
                 implementableTypes = EconomicSet.create(Equivalence.IDENTITY);
             }
-            implementableTypes.add(interfaceClass);
+            implementableTypes.add(type);
             return this;
         }
 
