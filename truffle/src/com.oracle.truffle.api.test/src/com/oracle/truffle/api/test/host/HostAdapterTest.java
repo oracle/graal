@@ -243,8 +243,39 @@ public class HostAdapterTest {
         }
     }
 
+    @Test
+    public void testHostAdapterWithCustomHostAccess() throws InteropException {
+        Class<?>[] supertypes = new Class<?>[]{Extensible.class, Interface.class};
+        try (TestContext c = new TestContext((b) -> b.allowHostAccess(minimalHostAccessAllowImplementations(supertypes)))) {
+            TruffleLanguage.Env env = c.env;
+            Object adapter = env.createHostAdapterClass(supertypes);
+            Map<String, Object> impl = new HashMap<>();
+            impl.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl");
+            impl.put("baseMethod", (ProxyExecutable) (args) -> "baseMethodImpl");
+            impl.put("defaultMethod", (ProxyExecutable) (args) -> "defaultMethodImpl");
+            Object guestObject = env.asGuestValue(ProxyObject.fromMap(impl));
+            Object instance = INTEROP.instantiate(adapter, guestObject);
+
+            assertEquals("abstractMethodImpl", INTEROP.invokeMember(instance, "abstractMethod"));
+            assertEquals("baseMethodImpl", INTEROP.invokeMember(instance, "baseMethod"));
+            assertEquals("defaultMethodImpl", INTEROP.invokeMember(instance, "defaultMethod"));
+
+            // get guest object via 'this' member
+            Object thisInstance = INTEROP.readMember(instance, "this");
+            assertEquals(guestObject, thisInstance);
+        }
+    }
+
     private static HostAccess explicitHostAccessAllowImplementations(Class<?>... types) {
         HostAccess.Builder b = HostAccess.newBuilder(HostAccess.EXPLICIT);
+        for (Class<?> type : types) {
+            b.allowImplementations(type);
+        }
+        return b.build();
+    }
+
+    private static HostAccess minimalHostAccessAllowImplementations(Class<?>... types) {
+        HostAccess.Builder b = HostAccess.newBuilder();
         for (Class<?> type : types) {
             b.allowImplementations(type);
         }
