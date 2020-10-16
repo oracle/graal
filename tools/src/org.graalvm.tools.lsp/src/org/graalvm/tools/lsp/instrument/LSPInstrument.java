@@ -261,7 +261,6 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
     private static final class ContextAwareExecutorImpl implements ContextAwareExecutor {
         private final Context.Builder contextBuilder;
         static final String WORKER_THREAD_ID = "LS Context-aware Worker";
-        Context currentContext = null;
         Context lastNestedContext = null;
         private volatile WeakReference<Thread> workerThread = new WeakReference<>(null);
         /**
@@ -305,9 +304,6 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
                     return CompletableFuture.completedFuture(future.get(timeoutMillis, TimeUnit.MILLISECONDS));
                 } catch (TimeoutException e) {
                     future.cancel(true);
-                    if (currentContext != null) {
-                        currentContext.close(true);
-                    }
                     try {
                         return CompletableFuture.completedFuture(onTimeoutTask.call());
                     } catch (Exception timeoutTaskException) {
@@ -334,25 +330,26 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
 
                 @Override
                 public T call() throws Exception {
+                    Context context;
                     if (cached) {
                         if (lastNestedContext == null) {
                             lastNestedContext = contextBuilder.build();
                         }
-                        currentContext = lastNestedContext;
+                        context = lastNestedContext;
                     } else {
-                        currentContext = contextBuilder.build();
+                        context = contextBuilder.build();
                     }
 
                     try {
-                        currentContext.enter();
+                        context.enter();
                         try {
                             return taskWithResult.call();
                         } finally {
-                            currentContext.leave();
+                            context.leave();
                         }
                     } finally {
                         if (!cached) {
-                            currentContext.close();
+                            context.close();
                         }
                     }
                 }
