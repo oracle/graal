@@ -266,6 +266,80 @@ public class HostAdapterTest {
         }
     }
 
+    @Test
+    public void testStackedHostAdaptersWithClassOverrides() throws InteropException {
+        Class<?>[] supertypes = new Class<?>[]{Extensible.class, Interface.class};
+        try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAllImplementations(true).build()))) {
+            TruffleLanguage.Env env = c.env;
+            Map<String, Object> impl1 = new HashMap<>();
+            impl1.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl1");
+            impl1.put("baseMethod", (ProxyExecutable) (args) -> "baseMethodImpl1");
+            impl1.put("defaultMethod", (ProxyExecutable) (args) -> "defaultMethodImpl1");
+            Object guestObject1 = env.asGuestValue(ProxyObject.fromMap(impl1));
+            Object adapterClass1 = env.createHostAdapterClassWithStaticOverrides(supertypes, guestObject1);
+            Object parent = INTEROP.instantiate(adapterClass1);
+
+            assertEquals("abstractMethodImpl1", INTEROP.invokeMember(parent, "abstractMethod"));
+            assertEquals("baseMethodImpl1", INTEROP.invokeMember(parent, "baseMethod"));
+            assertEquals("defaultMethodImpl1", INTEROP.invokeMember(parent, "defaultMethod"));
+
+            Map<String, Object> impl2 = new HashMap<>();
+            impl2.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl2");
+            impl2.put("baseMethod", (ProxyExecutable) (args) -> "baseMethodImpl2");
+            impl2.put("defaultMethod", (ProxyExecutable) (args) -> "defaultMethodImpl2");
+            Object guestObject2 = env.asGuestValue(ProxyObject.fromMap(impl2));
+            Object adapterClass2 = env.createHostAdapterClass(new Class<?>[]{Interface.class, (Class<?>) env.asHostObject(adapterClass1)});
+            Object instance = INTEROP.instantiate(adapterClass2, guestObject2);
+
+            assertEquals("abstractMethodImpl2", INTEROP.invokeMember(instance, "abstractMethod"));
+            assertEquals("baseMethodImpl2", INTEROP.invokeMember(instance, "baseMethod"));
+            assertEquals("defaultMethodImpl2", INTEROP.invokeMember(instance, "defaultMethod"));
+
+            // call super methods directly via 'super' member
+            Object superInstance = INTEROP.readMember(instance, "super");
+            assertEquals("abstractMethodImpl1", INTEROP.invokeMember(superInstance, "abstractMethod"));
+            assertEquals("baseMethodImpl1", INTEROP.invokeMember(superInstance, "baseMethod"));
+            assertEquals("defaultMethodImpl1", INTEROP.invokeMember(superInstance, "defaultMethod"));
+        }
+    }
+
+    @Test
+    public void testStackedHostAdaptersWithoutClassOverrides() throws InteropException {
+        Class<?>[] supertypes = new Class<?>[]{Extensible.class, Interface.class};
+        try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAllImplementations(true).build()))) {
+            TruffleLanguage.Env env = c.env;
+            Map<String, Object> impl1 = new HashMap<>();
+            impl1.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl1");
+            impl1.put("baseMethod", (ProxyExecutable) (args) -> "baseMethodImpl1");
+            impl1.put("defaultMethod", (ProxyExecutable) (args) -> "defaultMethodImpl1");
+            Object guestObject1 = env.asGuestValue(ProxyObject.fromMap(impl1));
+            Object adapterClass1 = env.createHostAdapterClass(supertypes);
+            Object parent = INTEROP.instantiate(adapterClass1, guestObject1);
+
+            assertEquals("abstractMethodImpl1", INTEROP.invokeMember(parent, "abstractMethod"));
+            assertEquals("baseMethodImpl1", INTEROP.invokeMember(parent, "baseMethod"));
+            assertEquals("defaultMethodImpl1", INTEROP.invokeMember(parent, "defaultMethod"));
+
+            Map<String, Object> impl2 = new HashMap<>();
+            impl2.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl2");
+            impl2.put("baseMethod", (ProxyExecutable) (args) -> "baseMethodImpl2");
+            impl2.put("defaultMethod", (ProxyExecutable) (args) -> "defaultMethodImpl2");
+            Object guestObject2 = env.asGuestValue(ProxyObject.fromMap(impl2));
+            Object adapterClass2 = env.createHostAdapterClass(new Class<?>[]{Interface.class, (Class<?>) env.asHostObject(adapterClass1)});
+            Object instance = INTEROP.instantiate(adapterClass2, guestObject1, guestObject2);
+
+            assertEquals("abstractMethodImpl2", INTEROP.invokeMember(instance, "abstractMethod"));
+            assertEquals("baseMethodImpl2", INTEROP.invokeMember(instance, "baseMethod"));
+            assertEquals("defaultMethodImpl2", INTEROP.invokeMember(instance, "defaultMethod"));
+
+            // call super methods directly via 'super' member
+            Object superInstance = INTEROP.readMember(instance, "super");
+            assertEquals("abstractMethodImpl1", INTEROP.invokeMember(superInstance, "abstractMethod"));
+            assertEquals("baseMethodImpl1", INTEROP.invokeMember(superInstance, "baseMethod"));
+            assertEquals("defaultMethodImpl1", INTEROP.invokeMember(superInstance, "defaultMethod"));
+        }
+    }
+
     private static HostAccess explicitHostAccessAllowImplementations(Class<?>... types) {
         HostAccess.Builder b = HostAccess.newBuilder(HostAccess.EXPLICIT);
         for (Class<?> type : types) {
