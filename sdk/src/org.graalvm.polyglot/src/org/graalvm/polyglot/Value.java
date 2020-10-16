@@ -948,10 +948,17 @@ public final class Value {
      * <li>Any interface if the value {@link #hasMembers() has members} and the interface type is
      * {@link HostAccess.Implementable implementable}. Each interface method maps to one
      * {@link #getMember(String) member} of the value. Whenever a method of the interface is
-     * executed a member with the method or field name must exist otherwise a
-     * {@link UnsupportedOperationException} is thrown when the method is executed. A member If one
-     * of the parameters cannot be mapped to the target type a {@link ClassCastException} or a
-     * {@link NullPointerException} is thrown.
+     * executed a member with the method or field name must exist otherwise an
+     * {@link UnsupportedOperationException} is thrown when the method is executed. If one of the
+     * parameters or the return value cannot be mapped to the target type a
+     * {@link ClassCastException} or a {@link NullPointerException} is thrown.
+     * <li>JVM only: Any abstract class with an accessible default constructor if the value
+     * {@link #hasMembers() has members} and the class is {@link HostAccess.Implementable
+     * implementable}. Each interface method maps to one {@link #getMember(String) member} of the
+     * value. Whenever an abstract method of the class is executed a member with the method or field
+     * name must exist otherwise an {@link UnsupportedOperationException} is thrown when the method
+     * is executed. If one of the parameters or the return value cannot be mapped to the target type
+     * a {@link ClassCastException} or a {@link NullPointerException} is thrown.
      * <li>Custom
      * {@link HostAccess.Builder#targetTypeMapping(Class, Class, java.util.function.Predicate, Function)
      * target type mappings} specified in the {@link HostAccess} configuration with precedence
@@ -966,16 +973,20 @@ public final class Value {
      * assert context.eval("js", "undefined").as(Object.class) == null;
      * assert context.eval("js", "'foobar'").as(String.class).equals("foobar");
      * assert context.eval("js", "42").as(Integer.class) == 42;
-     * assert context.eval("js", "{foo:'bar'}").as(Map.class).get("foo").equals("bar");
+     * assert context.eval("js", "({foo:'bar'})").as(Map.class).get("foo").equals("bar");
      * assert context.eval("js", "[42]").as(List.class).get(0).equals(42);
      * assert ((Map&lt;String, Object>)context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
      *
      * &#64;FunctionalInterface interface IntFunction { int foo(int value); }
-     * assert context.eval("js", "(function(a){a})").as(IntFunction.class).foo(42) == 42;
+     * assert context.eval("js", "(function(a){return a})").as(IntFunction.class).foo(42).asInt() == 42;
      *
      * &#64;FunctionalInterface interface StringListFunction { int foo(List&lt;String&gt; value); }
-     * assert context.eval("js", "(function(a){a.length})").as(StringListFunction.class)
-     *                                                     .foo(new String[]{"42"}) == 1;
+     * assert context.eval("js", "(function(a){return a.length})")
+     *               .as(StringListFunction.class).foo(new String[]{"42"}).asInt() == 1;
+     *
+     * public abstract class AbstractClass { public AbstractClass() {} int foo(int value); }
+     * assert context.eval("js", "({foo: function(a){return a}})")
+     *               .as(AbstractClass.class).foo(42).asInt() == 42;
      * </pre>
      *
      * <h3>Object target type mapping</h3>
