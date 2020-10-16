@@ -110,10 +110,10 @@ final class JNIInvocationInterface {
             static void enter(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
                 if (!SubstrateOptions.SpawnIsolates.getValue()) {
                     int error = CEntryPointActions.enterIsolate((Isolate) CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
-                    if (error != CEntryPointErrors.UNINITIALIZED_ISOLATE) {
-                        if (error == CEntryPointErrors.NO_ERROR) {
-                            CEntryPointActions.leave();
-                        }
+                    if (error == CEntryPointErrors.NO_ERROR) {
+                        CEntryPointActions.leave();
+                        CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_EEXIST());
+                    } else if (error != CEntryPointErrors.UNINITIALIZED_ISOLATE) {
                         CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_EEXIST());
                     }
                 }

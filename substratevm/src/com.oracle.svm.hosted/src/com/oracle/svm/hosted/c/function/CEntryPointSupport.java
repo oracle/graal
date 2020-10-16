@@ -25,9 +25,12 @@
 package com.oracle.svm.hosted.c.function;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -53,6 +56,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CEntryPointPrologueBailoutNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode.UtilityAction;
+import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -158,6 +162,16 @@ public class CEntryPointSupport implements GraalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 b.add(new CEntryPointUtilityNode(UtilityAction.FailFatally, arg1, arg2));
+
+                /*
+                 * FailFatally does not return, so we can cut out any control flow afterwards and
+                 * set the probability of the IfNode that leads to this branch.
+                 */
+                DeadEndNode deadEndNode = b.add(new DeadEndNode());
+                AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(deadEndNode);
+                if (prevBegin != null && prevBegin.predecessor() instanceof IfNode) {
+                    ((IfNode) prevBegin.predecessor()).setProbability(prevBegin, BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY);
+                }
                 return true;
             }
         });
