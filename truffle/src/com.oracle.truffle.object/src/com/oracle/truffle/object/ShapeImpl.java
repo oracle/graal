@@ -102,7 +102,7 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     protected final LayoutImpl layout;
     /** @since 0.17 or earlier */
-    protected final com.oracle.truffle.api.object.ObjectType objectType;
+    protected final Object objectType;
     /** @since 0.17 or earlier */
     protected final ShapeImpl parent;
     /** @since 0.17 or earlier */
@@ -177,7 +177,7 @@ public abstract class ShapeImpl extends Shape {
     private ShapeImpl(Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap, Transition transitionFromParent, int objectArraySize, int objectFieldSize,
                     int primitiveFieldSize, int primitiveArraySize, boolean hasPrimitiveArray, int flags, Assumption singleContextAssumption) {
         this.layout = (LayoutImpl) layout;
-        this.objectType = (com.oracle.truffle.api.object.ObjectType) Objects.requireNonNull(objectType);
+        this.objectType = Objects.requireNonNull(objectType);
         this.propertyMap = Objects.requireNonNull(propertyMap);
         this.root = parent != null ? parent.getRoot() : this;
         this.parent = parent;
@@ -948,25 +948,33 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @Override
     public com.oracle.truffle.api.object.ObjectType getObjectType() {
-        return objectType;
+        return (com.oracle.truffle.api.object.ObjectType) objectType;
     }
 
     @Override
     public Object getDynamicType() {
-        return getObjectType();
+        return objectType;
     }
 
     @TruffleBoundary
     @Override
-    protected Shape setDynamicType(Object newObjectType) {
+    protected ShapeImpl setDynamicType(Object newObjectType) {
         Objects.requireNonNull(newObjectType, "dynamicType");
-        if (!(newObjectType instanceof ObjectType)) {
-            throw new IllegalArgumentException("dynamicType must be an instance of ObjectType");
-        }
         if (getDynamicType() == newObjectType) {
             return this;
         }
-        return changeType((ObjectType) newObjectType);
+        if (getLayout().isLegacyLayout() && !(newObjectType instanceof ObjectType)) {
+            throw new IllegalArgumentException("dynamicType must be an instance of ObjectType");
+        }
+        ObjectTypeTransition transition = new ObjectTypeTransition(newObjectType);
+        ShapeImpl cachedShape = queryTransition(transition);
+        if (cachedShape != null) {
+            return cachedShape;
+        }
+
+        ShapeImpl newShape = createShape(layout, sharedData, this, newObjectType, propertyMap, transition, allocator(), flags);
+        addDirectTransition(transition, newShape);
+        return newShape;
     }
 
     /** @since 0.17 or earlier */
@@ -1071,18 +1079,7 @@ public abstract class ShapeImpl extends Shape {
     @Override
     @TruffleBoundary
     public final ShapeImpl changeType(ObjectType newObjectType) {
-        if (getObjectType() == newObjectType) {
-            return this;
-        }
-        ObjectTypeTransition transition = new ObjectTypeTransition(newObjectType);
-        ShapeImpl cachedShape = queryTransition(transition);
-        if (cachedShape != null) {
-            return cachedShape;
-        }
-
-        ShapeImpl newShape = createShape(layout, sharedData, this, newObjectType, propertyMap, transition, allocator(), flags);
-        addDirectTransition(transition, newShape);
-        return newShape;
+        return setDynamicType(newObjectType);
     }
 
     @TruffleBoundary

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,39 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.object.dsl.test;
+package com.oracle.truffle.object.basic.test;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.ObjectType;
-
-import org.junit.Assert;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 
 @SuppressWarnings("deprecation")
-public class ObjectTypeSuperclassTest {
-
-    public static class ObjectTypeSuperclass extends ObjectType {
-
-    }
-
-    @com.oracle.truffle.api.object.dsl.Layout(objectTypeSuperclass = ObjectTypeSuperclass.class)
-    public interface ObjectTypeSuperclassTestLayout {
-
-        DynamicObject createObjectTypeSuperclassTest(int value);
-
-        int getValue(DynamicObject object);
-
-        void setValue(DynamicObject object, int value);
-
-    }
-
-    private static final ObjectTypeSuperclassTestLayout LAYOUT = ObjectTypeSuperclassTestLayoutImpl.INSTANCE;
+public class LegacyObjectTypeTest extends AbstractLibraryTest {
 
     @Test
-    public void testInstanceOf() {
-        final DynamicObject object = LAYOUT.createObjectTypeSuperclassTest(14);
-        Assert.assertTrue(object.getShape().getObjectType() instanceof ObjectTypeSuperclass);
+    public void testIllegalObjectType() {
+        final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
+        final Shape rootShape = layout.createShape(new ObjectType());
+        DynamicObject obj = rootShape.newInstance();
+        // dynamic type needs to be an instance of ObjectType for the legacy layout.
+        assertFails(() -> DynamicObjectLibrary.getUncached().setDynamicType(obj, new Object()), IllegalArgumentException.class);
     }
 
 }

@@ -180,7 +180,7 @@ meth public void putDouble(com.oracle.truffle.api.object.DynamicObject,java.lang
 meth public void putInt(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,int)
 meth public void putLong(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,long)
 supr com.oracle.truffle.api.library.Library
-hfds FACTORY
+hfds FACTORY,UNCACHED
 
 CLSS public final com.oracle.truffle.api.object.FinalLocationException
 cons public init()
@@ -383,6 +383,7 @@ meth public abstract com.oracle.truffle.api.object.DynamicObject newInstance()
 meth public abstract com.oracle.truffle.api.object.DynamicObjectFactory createFactory()
 meth public abstract com.oracle.truffle.api.object.Layout getLayout()
 meth public abstract com.oracle.truffle.api.object.ObjectType getObjectType()
+ anno 0 java.lang.Deprecated()
 meth public abstract com.oracle.truffle.api.object.Property getLastProperty()
 meth public abstract com.oracle.truffle.api.object.Property getProperty(java.lang.Object)
 meth public abstract com.oracle.truffle.api.object.Shape addProperty(com.oracle.truffle.api.object.Property)

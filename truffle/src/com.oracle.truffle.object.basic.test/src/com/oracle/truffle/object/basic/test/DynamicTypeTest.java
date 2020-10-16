@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,39 +38,49 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.object.dsl.test;
+package com.oracle.truffle.object.basic.test;
+
+import static org.junit.Assert.assertSame;
+
+import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
-import org.junit.Assert;
+@RunWith(Parameterized.class)
+public class DynamicTypeTest extends AbstractParametrizedLibraryTest {
 
-@SuppressWarnings("deprecation")
-public class ObjectTypeSuperclassTest {
-
-    public static class ObjectTypeSuperclass extends ObjectType {
-
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return Arrays.asList(TestRun.values());
     }
-
-    @com.oracle.truffle.api.object.dsl.Layout(objectTypeSuperclass = ObjectTypeSuperclass.class)
-    public interface ObjectTypeSuperclassTestLayout {
-
-        DynamicObject createObjectTypeSuperclassTest(int value);
-
-        int getValue(DynamicObject object);
-
-        void setValue(DynamicObject object, int value);
-
-    }
-
-    private static final ObjectTypeSuperclassTestLayout LAYOUT = ObjectTypeSuperclassTestLayoutImpl.INSTANCE;
 
     @Test
-    public void testInstanceOf() {
-        final DynamicObject object = LAYOUT.createObjectTypeSuperclassTest(14);
-        Assert.assertTrue(object.getShape().getObjectType() instanceof ObjectTypeSuperclass);
+    public void testDynamicTypeCanBeAnyObject() {
+        Object dynamicType = new Object();
+        Shape emptyShape = Shape.newBuilder().dynamicType(dynamicType).build();
+        TestDynamicObjectMinimal obj = new TestDynamicObjectMinimal(emptyShape);
+        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, obj);
+        assertSame(dynamicType, lib.getDynamicType(obj));
+        dynamicType = new Object();
+        lib.setDynamicType(obj, dynamicType);
+        assertSame(dynamicType, lib.getDynamicType(obj));
+    }
+
+    @Test
+    public void testDynamicTypeCannotBeNull() {
+        assertFails(() -> Shape.newBuilder().dynamicType(null).build(), NullPointerException.class);
+        Shape emptyShape = Shape.newBuilder().dynamicType(new Object()).build();
+        TestDynamicObjectMinimal obj = new TestDynamicObjectMinimal(emptyShape);
+        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, obj);
+        assertFails(() -> lib.setDynamicType(obj, null), NullPointerException.class);
     }
 
 }

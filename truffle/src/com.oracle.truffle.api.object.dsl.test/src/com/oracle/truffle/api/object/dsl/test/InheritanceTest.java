@@ -49,9 +49,9 @@ import java.math.BigInteger;
 
 import org.junit.Assert;
 
+@SuppressWarnings("deprecation")
 public class InheritanceTest {
 
-    @SuppressWarnings("deprecation")
     @com.oracle.truffle.api.object.dsl.Layout
     public interface BaseLayout {
 
@@ -69,7 +69,6 @@ public class InheritanceTest {
 
     }
 
-    @SuppressWarnings("deprecation")
     @com.oracle.truffle.api.object.dsl.Layout
     public interface MiddleLayout extends BaseLayout {
 
@@ -87,7 +86,6 @@ public class InheritanceTest {
 
     }
 
-    @SuppressWarnings("deprecation")
     @com.oracle.truffle.api.object.dsl.Layout
     public interface TopLayout extends MiddleLayout {
 

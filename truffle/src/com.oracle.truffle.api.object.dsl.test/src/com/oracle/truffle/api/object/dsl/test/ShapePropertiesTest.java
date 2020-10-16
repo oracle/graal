@@ -48,9 +48,9 @@ import com.oracle.truffle.api.object.ObjectType;
 
 import org.junit.Assert;
 
+@SuppressWarnings("deprecation")
 public class ShapePropertiesTest {
 
-    @SuppressWarnings("deprecation")
     @com.oracle.truffle.api.object.dsl.Layout
     public interface ShapePropertiesTestLayout {
 
