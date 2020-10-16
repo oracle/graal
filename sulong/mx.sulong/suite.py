@@ -612,6 +612,9 @@ suite = {
         "include/graalvm/llvm/toolchain-api.h",
         "include/graalvm/llvm/internal/handles-impl.h",
         "include/graalvm/llvm/internal/polyglot-impl.h",
+        # for source compatibility
+        "include/polyglot.h",
+        "include/llvm/api/toolchain.h",
       ],
       "buildDependencies" : [
         "SULONG_TOOLCHAIN_LAUNCHERS",
@@ -1328,9 +1331,6 @@ suite = {
         "./include/" : [
           "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm/include/*"
         ],
-        # for source compatibility
-        "./include/polyglot.h" : "link:graalvm/llvm/polyglot.h",
-        "./include/llvm/api/toolchain.h" : "link:../../graalvm/llvm/toolchain-api.h",
       },
       "license" : "BSD-new",
     },
