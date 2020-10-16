@@ -503,7 +503,7 @@ _scala_daCapo_exclude_lib = {
     'scalap'      : ['scala-library-2.8.0.jar'],
     'scaladoc'    : ['scala-library-2.8.0.jar'],
     'scalatest'   : ['scala-library-2.8.0.jar'],
-    'scalaxb'     : ['scala-library-2.8.0.jar'],
+    'scalaxb'     : ['scala-library-2.8.0.jar', 'crimson-1.1.3.jar'],
     'tmt'         : ['scala-library-2.8.0.jar'],
     'scalac'      : ['scala-library-2.8.0.jar'],
 }
