@@ -1298,6 +1298,13 @@ final class EngineAccessor extends Accessor {
                     throw context.createCancelException(closeLocation);
                 }
             } else {
+                if (context.isActiveNotCancelled(false)) {
+                    /*
+                     * Polyglot threads are still allowed to run at this point. They are required to
+                     * be finished after finalizeContext.
+                     */
+                    throw new IllegalStateException("The context is currently active and cannot be closed. Make sure no thread is running or call closeCancelled on the context to resolve this.");
+                }
                 context.closeImpl(false, false, true);
             }
         }
