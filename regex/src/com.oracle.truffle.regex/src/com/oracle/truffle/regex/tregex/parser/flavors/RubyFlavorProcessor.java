@@ -757,7 +757,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 parens();
                 break;
             case '^':
-                emitSnippet("(?:^|(?<=[\\r\\n]))");
+                emitSnippet("(?:^|(?<=[\\r\\n])(?=.))");
                 lastTerm = TermCategory.Assertion;
                 break;
             case '$':
