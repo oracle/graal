@@ -756,7 +756,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @SuppressWarnings("try")
     public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
-        Priority priority = lastTierCompilation ? Priority.LAST_TIER : Priority.FIRST_TIER;
+        Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
         return getCompileQueue().submitTask(priority, optimizedCallTarget, new BackgroundCompileQueue.Request() {
             @Override
             protected void execute(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef) {
