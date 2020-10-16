@@ -72,10 +72,10 @@ import com.oracle.svm.util.ModuleSupport;
 public final class ResourcesFeature implements Feature {
 
     public static class Options {
-        @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)
+        @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
         public static final HostedOptionKey<String[]> IncludeResources = new HostedOptionKey<>(new String[0]);
 
-        @Option(help = "Regexp to match names of resources to be excluded from the image.", type = OptionType.User)
+        @Option(help = "Regexp to match names of resources to be excluded from the image.", type = OptionType.User)//
         public static final HostedOptionKey<String[]> ExcludeResources = new HostedOptionKey<>(new String[0]);
     }
 
@@ -180,10 +180,10 @@ public final class ResourcesFeature implements Feature {
 
     private static Pattern[] compilePatterns(Set<String> patterns) {
         return patterns.stream()
-                .filter(s -> s.length() > 0)
-                .map(Pattern::compile)
-                .collect(Collectors.toList())
-                .toArray(new Pattern[]{});
+                        .filter(s -> s.length() > 0)
+                        .map(Pattern::compile)
+                        .collect(Collectors.toList())
+                        .toArray(new Pattern[]{});
     }
 
     @Override

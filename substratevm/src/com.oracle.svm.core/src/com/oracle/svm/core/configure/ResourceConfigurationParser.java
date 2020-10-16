@@ -47,7 +47,6 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         parseTopLevelObject(asMap(json, "first level of document must be an object"));
     }
 
-    @SuppressWarnings("unchecked")
     private void parseTopLevelObject(Map<String, Object> obj) {
         Object resourcesObject = null;
         Object bundlesObject = null;
