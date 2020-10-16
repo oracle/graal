@@ -29,12 +29,24 @@ import java.util.Map;
 
 import com.oracle.truffle.api.source.Source;
 
-public interface LSPServer {
+/**
+ * Provides access to the GraalLS from within {@link LSPExtension}s.
+ */
+public interface LSPServerAccessor {
 
+    /**
+     * Get a map of fileURIs to languageIds for all files currently open in the LSP client.
+     */
     Map<URI, String> getOpenFileURI2LangId();
 
+    /**
+     * Instruct the GraalLS to send a custom notification to the LSP client.
+     */
     void sendCustomNotification(String method, Object params);
 
+    /**
+     * Get the {@link Source} for a given {@link URI}. Returns {@code null} if no source was found.
+     */
     Source getSource(URI uri);
 
 }

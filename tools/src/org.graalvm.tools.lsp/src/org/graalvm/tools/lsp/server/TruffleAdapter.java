@@ -44,7 +44,7 @@ import java.util.logging.Level;
 
 import org.graalvm.tools.api.lsp.LSPCommand;
 import org.graalvm.tools.api.lsp.LSPExtension;
-import org.graalvm.tools.api.lsp.LSPServer;
+import org.graalvm.tools.api.lsp.LSPServerAccessor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 import org.graalvm.tools.lsp.server.request.AbstractRequestHandler;
@@ -100,7 +100,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     private CoverageRequestHandler coverageHandler;
     private HighlightRequestHandler highlightHandler;
     private List<LSPCommand> extensionCommands;
-    private LSPServer lspServer;
+    private LSPServerAccessor lspServer;
     private TextDocumentSurrogateMap surrogateMap;
     private final LanguageTriggerCharacters completionTriggerCharacters = new LanguageTriggerCharacters();
     private final LanguageTriggerCharacters signatureTriggerCharacters = new LanguageTriggerCharacters();
@@ -436,7 +436,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
         };
     }
 
-    public void initializeLSPServer(LSPServer server) {
+    public void initializeLSPServer(LSPServerAccessor server) {
         this.lspServer = server;
     }
 

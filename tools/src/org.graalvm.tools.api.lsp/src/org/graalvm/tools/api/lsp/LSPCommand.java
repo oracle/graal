@@ -28,16 +28,32 @@ import java.util.List;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 
+/**
+ * Command interface provided by a {@link LSPExtension}.
+ */
 public interface LSPCommand {
 
+    /**
+     * Get the name of the command.
+     */
     String getName();
 
-    Object execute(LSPServer server, Env env, List<Object> arguments);
+    /**
+     * Execute the command.
+     */
+    Object execute(LSPServerAccessor server, Env env, List<Object> arguments);
 
+    /**
+     * Define a timeout for the execution of the command.
+     */
     default int getTimeoutMillis() {
         return -1;
     }
 
+    /**
+     * Fallback behavior in case the command's execution exceeded the timeout. Only required if
+     * {@link #getTimeoutMillis()} is overridden and returns a value greater zero.
+     */
     default Object onTimeout(List<Object> arguments) {
         String argumentString = String.join(", ", arguments.toArray(new String[0]));
         if (getTimeoutMillis() > 0) {

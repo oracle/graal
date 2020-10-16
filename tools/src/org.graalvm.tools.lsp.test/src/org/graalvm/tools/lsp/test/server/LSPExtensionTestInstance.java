@@ -29,7 +29,7 @@ import java.util.List;
 
 import org.graalvm.tools.api.lsp.LSPCommand;
 import org.graalvm.tools.api.lsp.LSPExtension;
-import org.graalvm.tools.api.lsp.LSPServer;
+import org.graalvm.tools.api.lsp.LSPServerAccessor;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
@@ -43,13 +43,18 @@ public class LSPExtensionTestInstance extends TruffleInstrument implements LSPEx
         return Arrays.asList(new LSPExtensionTestSimpleCommand(), new LSPExtensionTestTimeoutCommand());
     }
 
+    @Override
+    protected void onCreate(Env env) {
+        env.registerService(this);
+    }
+
     private static class LSPExtensionTestSimpleCommand implements LSPCommand {
 
         public String getName() {
             return COMMAND_SIMPLE;
         }
 
-        public Object execute(LSPServer server, Env env, List<Object> arguments) {
+        public Object execute(LSPServerAccessor server, Env env, List<Object> arguments) {
             return arguments.size();
         }
     }
@@ -60,7 +65,7 @@ public class LSPExtensionTestInstance extends TruffleInstrument implements LSPEx
             return COMMAND_TIMEOUT;
         }
 
-        public Object execute(LSPServer server, Env env, List<Object> arguments) {
+        public Object execute(LSPServerAccessor server, Env env, List<Object> arguments) {
             try {
                 Thread.sleep(getTimeoutMillis() * 2);
             } catch (InterruptedException e) {
@@ -76,10 +81,5 @@ public class LSPExtensionTestInstance extends TruffleInstrument implements LSPEx
         public Object onTimeout(List<Object> arguments) {
             return arguments.get(0);
         }
-    }
-
-    @Override
-    protected void onCreate(Env env) {
-        env.registerService(this);
     }
 }

@@ -46,7 +46,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.tools.api.lsp.LSPServer;
+import org.graalvm.tools.api.lsp.LSPServerAccessor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 import org.graalvm.tools.lsp.server.types.CodeAction;
@@ -148,7 +148,7 @@ public final class LanguageServerImpl extends LanguageServer {
         commands.add(GET_COVERAGE);
         capabilities.setExecuteCommandProvider(ExecuteCommandOptions.create(commands));
 
-        truffleAdapter.initializeLSPServer(new LSPServer() {
+        truffleAdapter.initializeLSPServer(new LSPServerAccessor() {
 
             public void sendCustomNotification(String method, Object params) {
                 client.sendCustomNotification(method, params);

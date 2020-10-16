@@ -42,30 +42,41 @@ import org.junit.Test;
 public class LSPExtensionTest extends TruffleLSPTest {
 
     @Test
-    public void lspExtensionTest() {
+    public void getExtensionCommandNamesTest() {
         Collection<String> names = truffleAdapter.getExtensionCommandNames();
         assertEquals(names.size(), new LSPExtensionTestInstance().getCommands().size());
         assertTrue(names.contains(LSPExtensionTestInstance.COMMAND_SIMPLE));
         assertTrue(names.contains(LSPExtensionTestInstance.COMMAND_TIMEOUT));
+    }
 
-        List<Object> dummyArguments = Arrays.asList(true, false, 42);
-        ExecuteCommandParams params1 = createParameters(LSPExtensionTestInstance.COMMAND_SIMPLE, dummyArguments);
-        Future<?> future1 = truffleAdapter.createExtensionCommand(params1);
+    @Test
+    public void simpleCommandTest() {
+        List<Object> dummyArguments = createDummyArguments();
+        ExecuteCommandParams params = createParameters(LSPExtensionTestInstance.COMMAND_SIMPLE, dummyArguments);
+        Future<?> future = truffleAdapter.createExtensionCommand(params);
         try {
-            Object result = future1.get();
+            Object result = future.get(2, TimeUnit.SECONDS);
             assertTrue(result instanceof Integer && ((int) result) == dummyArguments.size());
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
             fail("" + e);
         }
+    }
 
-        ExecuteCommandParams params2 = createParameters(LSPExtensionTestInstance.COMMAND_TIMEOUT, dummyArguments);
-        Future<?> future2 = truffleAdapter.createExtensionCommand(params2);
+    @Test
+    public void timeoutCommandTest() {
+        List<Object> dummyArguments = createDummyArguments();
+        ExecuteCommandParams params = createParameters(LSPExtensionTestInstance.COMMAND_TIMEOUT, dummyArguments);
+        Future<?> future = truffleAdapter.createExtensionCommand(params);
         try {
-            Object result = future2.get(2, TimeUnit.SECONDS);
+            Object result = future.get(2, TimeUnit.SECONDS);
             assertTrue(result == dummyArguments.get(0));
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             fail("" + e);
         }
+    }
+
+    private static List<Object> createDummyArguments() {
+        return Arrays.asList(true, false, 42);
     }
 
     private static ExecuteCommandParams createParameters(String command, List<Object> arguments) {

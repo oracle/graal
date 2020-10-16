@@ -26,8 +26,17 @@ package org.graalvm.tools.api.lsp;
 
 import java.util.List;
 
+/**
+ * Service interface that Truffle instruments can provide to extend the GraalLS with additional
+ * commands.
+ *
+ * @since 1.0
+ */
 public interface LSPExtension {
 
+    /**
+     * Get a list of all {@link LSPCommand}s provided by the service.
+     */
     List<LSPCommand> getCommands();
 
 }
