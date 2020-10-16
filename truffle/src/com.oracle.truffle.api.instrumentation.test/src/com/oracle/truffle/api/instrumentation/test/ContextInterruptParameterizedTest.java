@@ -231,6 +231,9 @@ public class ContextInterruptParameterizedTest {
                     }
                 }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
         } finally {
             for (int i = 0; i < nThreads; i++) {
                 if (multiContext || i == 0) {
