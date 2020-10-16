@@ -47,6 +47,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         parseTopLevelObject(asMap(json, "first level of document must be an object"));
     }
 
+    @SuppressWarnings("unchecked")
     private void parseTopLevelObject(Map<String, Object> obj) {
         Object resourcesObject = null;
         Object bundlesObject = null;
@@ -60,9 +61,35 @@ public class ResourceConfigurationParser extends ConfigurationParser {
             }
         }
         if (resourcesObject != null) {
-            List<Object> resources = asList(resourcesObject, "Attribute 'resources' must be a list of resources");
-            for (Object object : resources) {
-                parseEntry(object, "pattern", registry::addResources, "resource descriptor object", "'resources' list");
+            if (resourcesObject instanceof Map) { // New format
+                Object includesObject = null;
+                Object excludesObject = null;
+                for (Map.Entry<String, Object> pair : ((Map<String, Object>) resourcesObject).entrySet()) {
+                    if ("includes".equals(pair.getKey())) {
+                        includesObject = pair.getValue();
+                    } else if ("excludes".equals(pair.getKey())) {
+                        excludesObject = pair.getValue();
+                    } else {
+                        throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: name) in resource definition");
+                    }
+                }
+
+                List<Object> includes = asList(includesObject, "Attribute 'includes' must be a list of resources");
+                for (Object object : includes) {
+                    parseEntry(object, "pattern", registry::addResources, "resource descriptor object", "'includes' list");
+                }
+
+                if (excludesObject != null) {
+                    List<Object> excludes = asList(excludesObject, "Attribute 'excludes' must be a list of resources");
+                    for (Object object : excludes) {
+                        parseEntry(object, "pattern", registry::ignoreResources, "resource descriptor object", "'excludes' list");
+                    }
+                }
+            } else { // Old format: may be deprecated in future versions
+                List<Object> resources = asList(resourcesObject, "Attribute 'resources' must be a list of resources");
+                for (Object object : resources) {
+                    parseEntry(object, "pattern", registry::addResources, "resource descriptor object", "'resources' list");
+                }
             }
         }
         if (bundlesObject != null) {
