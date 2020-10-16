@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,26 +40,26 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
+
+import java.util.Map;
 
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings({"static-method", "unused"})
-public final class WasmVoidResult implements TruffleObject {
-    private static WasmVoidResult instance;
+@SuppressWarnings({"unused", "static-method"})
+public class WasmScope implements TruffleObject {
+    private Map<String, WasmInstance> instances;
 
-    static {
-        instance = new WasmVoidResult();
-    }
-
-    private WasmVoidResult() {
-    }
-
-    public static WasmVoidResult getInstance() {
-        return instance;
+    public WasmScope(Map<String, WasmInstance> instances) {
+        this.instances = instances;
     }
 
     @ExportMessage
@@ -73,18 +73,74 @@ public final class WasmVoidResult implements TruffleObject {
     }
 
     @ExportMessage
-    boolean hasMetaObject() {
+    boolean hasMembers() {
         return true;
     }
 
     @ExportMessage
-    Object getMetaObject() {
-        return WasmType.VOID;
+    @CompilerDirectives.TruffleBoundary
+    Object readMember(String member) throws UnknownIdentifierException {
+        Object value = instances.get(member);
+        if (value != null) {
+            return value;
+        }
+        throw UnknownIdentifierException.create(member);
     }
 
-    @ExportMessage(name = "toDisplayString")
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    boolean isMemberReadable(String member) {
+        return instances.containsKey(member);
+    }
+
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return new InstanceNamesObject(instances.keySet().toArray());
+    }
+
+    @ExportMessage
+    boolean isScope() {
+        return true;
+    }
+
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "wasm-void-result";
+        return "wasm-global-scope";
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    static final class InstanceNamesObject implements TruffleObject {
+
+        private final Object[] names;
+
+        InstanceNamesObject(Object[] names) {
+            this.names = names;
+        }
+
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < names.length;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return names.length;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index, @Cached BranchProfile error) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(index)) {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            return names[(int) index];
+        }
+    }
 }

@@ -52,7 +52,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.graalvm.wasm.ValueTypes.I32_TYPE;
+import static org.graalvm.wasm.WasmType.I32_TYPE;
 
 public class TestutilModule extends BuiltinModule {
     public static class Options {

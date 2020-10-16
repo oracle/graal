@@ -287,9 +287,9 @@ public class WasmJsApiSuite {
         Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binaryWithExports), "main");
         Source source = sourceBuilder.build();
         context.eval(source);
-        Value main = context.getBindings("wasm").getMember("main");
+        Value main = context.getBindings("wasm").getMember("main").getMember("main");
         main.execute();
-        Value run = context.getBindings("wasm").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+        Value run = context.getBindings("wasm").getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
         run.execute(new GuestCode(testCase));
     }
 
