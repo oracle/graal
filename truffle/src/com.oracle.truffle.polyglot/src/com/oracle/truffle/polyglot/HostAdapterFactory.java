@@ -43,10 +43,7 @@ package com.oracle.truffle.polyglot;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -99,7 +96,14 @@ final class HostAdapterFactory {
         }
         superClass = superClass != null ? superClass : Object.class;
 
-        ClassLoader commonLoader = classLoader != null ? classLoader : getCommonClassLoader(types);
+        // If the superclass is an adapter class, we need to use its class loader as the parent.
+        ClassLoader commonLoader = getCommonClassLoader(classLoader, superClass);
+
+        // Fail early if the class loader cannot load all supertypes.
+        if (!classLoaderCanSee(commonLoader, types)) {
+            throw PolyglotEngineException.illegalArgument("Could not determine a class loader that can see all types: " + Arrays.toString(types));
+        }
+
         return generateAdapterClassFor(superClass, interfaces, commonLoader, hostClassCache, classOverrides);
     }
 
@@ -148,21 +152,14 @@ final class HostAdapterFactory {
         return true;
     }
 
-    private static ClassLoader getCommonClassLoader(Class<?>[] types) {
-        if (types.length == 1) {
-            return types[0].getClassLoader();
-        }
-        Map<ClassLoader, Boolean> distinctLoaders = new HashMap<>();
-        for (Class<?> type : types) {
-            ClassLoader loader = type.getClassLoader();
-            if (distinctLoaders.computeIfAbsent(loader, new Function<ClassLoader, Boolean>() {
-                public Boolean apply(ClassLoader cl) {
-                    return classLoaderCanSee(cl, types);
-                }
-            })) {
-                return loader;
+    private static ClassLoader getCommonClassLoader(ClassLoader classLoader, Class<?> superclass) {
+        if (superclass != Object.class) {
+            ClassLoader superclassLoader = superclass.getClassLoader();
+            if (HostAdapterClassLoader.isGeneratedClassLoader(superclassLoader)) {
+                return superclassLoader;
             }
         }
-        throw PolyglotEngineException.illegalArgument("Could not determine a class loader that can see all types: " + Arrays.toString(types));
+        return classLoader;
     }
+
 }

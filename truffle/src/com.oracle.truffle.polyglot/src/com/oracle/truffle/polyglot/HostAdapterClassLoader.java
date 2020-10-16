@@ -94,7 +94,11 @@ final class HostAdapterClassLoader {
     }
 
     static boolean isAdapterInstance(Object adapter) {
-        return adapter.getClass().getClassLoader() instanceof GeneratedClassLoader;
+        return isGeneratedClassLoader(adapter.getClass().getClassLoader());
+    }
+
+    static boolean isGeneratedClassLoader(ClassLoader classLoader) {
+        return classLoader instanceof GeneratedClassLoader;
     }
 
     final class GeneratedClassLoader extends SecureClassLoader implements Supplier<Value> {
