@@ -168,8 +168,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     @CompilationFinal volatile PolyglotThreadInfo constantCurrentThreadInfo = PolyglotThreadInfo.NULL;
 
     volatile boolean interrupting;
-    volatile long interruptTimeoutMillis;
-    volatile long interruptStartMillis;
 
     /*
      * While canceling the context can no longer be entered. The context goes from canceling into
@@ -297,8 +295,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.creatorTruffleContext = EngineAccessor.LANGUAGE.createTruffleContext(this, true);
         this.currentTruffleContext = EngineAccessor.LANGUAGE.createTruffleContext(this, false);
         this.interrupting = parent.interrupting;
-        this.interruptStartMillis = parent.interruptStartMillis;
-        this.interruptTimeoutMillis = parent.interruptTimeoutMillis;
         if (!parent.config.logLevels.isEmpty()) {
             EngineAccessor.LANGUAGE.configureLoggers(this, parent.config.logLevels, getAllLoggers(engine));
         }
@@ -1039,7 +1035,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    private void interruptChildContexts(long startMillis, long timeoutMillis) {
+    private void interruptChildContexts() {
         PolyglotContextImpl[] childContextsToInterrupt;
         synchronized (this) {
             PolyglotThreadInfo info = getCurrentThreadInfo();
@@ -1047,13 +1043,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 throw PolyglotEngineException.illegalState("Cannot interrupt context from a thread where its child context is active.");
             }
             interrupting = true;
-            interruptStartMillis = startMillis;
-            interruptTimeoutMillis = timeoutMillis;
             setCachedThreadInfo(PolyglotThreadInfo.NULL);
             childContextsToInterrupt = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
         }
         for (PolyglotContextImpl childCtx : childContextsToInterrupt) {
-            childCtx.interruptChildContexts(startMillis, timeoutMillis);
+            childCtx.interruptChildContexts();
         }
     }
 
@@ -1102,8 +1096,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         throw PolyglotEngineException.illegalState("Cannot interrupt context from a thread where the context is active.");
                     }
                     interrupting = true;
-                    interruptStartMillis = startMillis;
-                    interruptTimeoutMillis = timeout.toMillis();
                     setCachedThreadInfo(PolyglotThreadInfo.NULL);
                     childContextsToInterrupt = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
                     /*
@@ -1118,10 +1110,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
             try {
                 for (PolyglotContextImpl childCtx : childContextsToInterrupt) {
-                    childCtx.interruptChildContexts(startMillis, timeout.toMillis());
+                    childCtx.interruptChildContexts();
                 }
 
-                return engine.getCancelHandler().cancel(Collections.singletonList(this), interruptStartMillis, timeout);
+                return engine.getCancelHandler().cancel(Collections.singletonList(this), startMillis, timeout);
             } finally {
                 try {
                     PolyglotContextImpl[] childContextsToFinishInterrupt;
@@ -1319,13 +1311,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         // complete
                         waitForCloseOrInterrupt = true;
                         continue;
-                    } else if (!threadInfo.isActiveNotCancelled()) {
-                        /*
-                         * Wait for other threads to be interrupted, otherwise, close may fail
-                         * because of other threads running. Interrupt operation interrupting the
-                         * thread that does close sooner than all the other threads is normal.
-                         */
-                        waitForThreads(interruptStartMillis, interruptTimeoutMillis);
                     }
                 }
 

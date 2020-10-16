@@ -1680,30 +1680,36 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @TruffleBoundary
         private void joinSpawnedThreads() {
             InstrumentContext context = lookupContextReference(InstrumentationTestLanguage.class).get();
-            List<Thread> threads;
-            do {
-                threads = new ArrayList<>();
-                synchronized (context.spawnedThreads) {
-                    for (Thread t : context.spawnedThreads) {
-                        if (t.isAlive()) {
-                            threads.add(t);
-                        }
-                    }
-                }
-                for (Thread t : threads) {
-                    try {
-                        t.join();
-                    } catch (InterruptedException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            } while (!threads.isEmpty());
+            InstrumentationTestLanguage.joinSpawnedThreads(context, false);
         }
 
         @Override
         protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new JoinNode(cloneUninitialized(children, materializedTags));
         }
+    }
+
+    private static void joinSpawnedThreads(InstrumentContext context, boolean noInterrupt) {
+        List<Thread> threads;
+        do {
+            threads = new ArrayList<>();
+            synchronized (context.spawnedThreads) {
+                for (Thread t : context.spawnedThreads) {
+                    if (t.isAlive()) {
+                        threads.add(t);
+                    }
+                }
+            }
+            for (Thread t : threads) {
+                try {
+                    t.join();
+                } catch (InterruptedException ex) {
+                    if (!noInterrupt) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            }
+        } while (!threads.isEmpty());
     }
 
     private static class RecursiveCallNode extends InstrumentedNode {
@@ -3157,6 +3163,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public String fileExtension() {
             return FILENAME_EXTENSION;
         }
+    }
+
+    @Override
+    protected void finalizeContext(InstrumentContext context) {
+        joinSpawnedThreads(context, true);
     }
 }
 

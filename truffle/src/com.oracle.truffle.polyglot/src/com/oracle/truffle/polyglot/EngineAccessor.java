@@ -77,6 +77,7 @@ import org.graalvm.polyglot.io.ProcessHandler;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
@@ -87,7 +88,6 @@ import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
@@ -102,11 +102,11 @@ import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
-import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotSource.EmbedderFileSystemContext;
 
 final class EngineAccessor extends Accessor {
@@ -1298,26 +1298,6 @@ final class EngineAccessor extends Accessor {
                     throw context.createCancelException(closeLocation);
                 }
             } else {
-                synchronized (context) {
-                    if (!context.interrupting) {
-                        if (context.isActiveNotCancelled()) {
-                            throw new IllegalStateException(
-                                            "The context is currently active and cannot be closed. Make sure no thread is running or call closeCancelled on the context to resolve this.");
-                        }
-                    } else {
-                        /*
-                         * In case of interrupt, wait for other threads to be interrupted,
-                         * otherwise, we could unnecessarily throw an exception, because interrupt
-                         * operation interrupting the thread that does close sooner than all the
-                         * other threads is normal.
-                         */
-                        PolyglotThreadInfo info = context.getCurrentThreadInfo();
-                        if (info.isActiveNotCancelled() || !context.waitForThreads(context.interruptStartMillis, context.interruptTimeoutMillis)) {
-                            throw new IllegalStateException(
-                                            "The context is currently active and cannot be closed. Make sure no thread is running or call closeCancelled on the context to resolve this.");
-                        }
-                    }
-                }
                 context.closeImpl(false, false, true);
             }
         }
