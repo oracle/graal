@@ -91,37 +91,50 @@ final class HostAdapterClassLoader {
     }
 
     private ClassLoader createClassLoader(final ClassLoader parentLoader, final Object classOverrides) {
-        return new CLImpl(parentLoader, classOverrides);
+        return new GeneratedClassLoader(parentLoader, classOverrides);
     }
 
-    final class CLImpl extends SecureClassLoader implements Supplier<Value> {
+    static boolean isAdapterInstance(Object adapter) {
+        return adapter.getClass().getClassLoader() instanceof GeneratedClassLoader;
+    }
+
+    final class GeneratedClassLoader extends SecureClassLoader implements Supplier<Value> {
         private final ClassLoader internalLoader;
         private final Object classOverrides;
 
-        private CLImpl(final ClassLoader parentLoader, final Object classOverrides) {
+        private GeneratedClassLoader(final ClassLoader parentLoader, final Object classOverrides) {
             super(parentLoader);
-            this.internalLoader = CLImpl.class.getClassLoader();
+            this.internalLoader = GeneratedClassLoader.class.getClassLoader();
             this.classOverrides = classOverrides;
         }
 
         @Override
         public Class<?> loadClass(final String name, final boolean resolve) throws ClassNotFoundException {
-            try {
-                return super.loadClass(name, resolve);
-            } catch (final SecurityException se) {
-                /*
-                 * we may be implementing an interface or extending a class that was loaded by a
-                 * loader that prevents package.access. If so, it'd throw SecurityException for
-                 * internal classes used by generated adapter classes.
-                 */
-                if (VISIBLE_INTERNAL_CLASS_NAMES.contains(name)) {
-                    return loadInternalClass(name);
+            // bypass the parent class loader for the generated class and allowed internal classes.
+            if (name.equals(className)) {
+                return loadGeneratedClass(name, resolve);
+            }
+            if (VISIBLE_INTERNAL_CLASS_NAMES.contains(name)) {
+                return loadInternalClass(name);
+            }
+            return super.loadClass(name, resolve);
+        }
+
+        private Class<?> loadGeneratedClass(final String name, final boolean resolve) throws ClassNotFoundException {
+            synchronized (getClassLoadingLock(name)) {
+                Class<?> c = findLoadedClass(name);
+                if (c == null) {
+                    c = findClass(name);
                 }
-                throw se;
+                if (resolve) {
+                    resolveClass(c);
+                }
+                return c;
             }
         }
 
         private Class<?> loadInternalClass(final String name) throws ClassNotFoundException {
+            assert VISIBLE_INTERNAL_CLASS_NAMES.contains(name);
             return internalLoader != null ? internalLoader.loadClass(name) : Class.forName(name, false, internalLoader);
         }
 
@@ -129,9 +142,6 @@ final class HostAdapterClassLoader {
         protected Class<?> findClass(final String name) throws ClassNotFoundException {
             if (name.equals(className)) {
                 return defineClass(name, classBytes, 0, classBytes.length, GENERATED_PROTECTION_DOMAIN);
-            }
-            if (VISIBLE_INTERNAL_CLASS_NAMES.contains(name)) {
-                return loadInternalClass(name);
             }
             throw new ClassNotFoundException(name);
         }

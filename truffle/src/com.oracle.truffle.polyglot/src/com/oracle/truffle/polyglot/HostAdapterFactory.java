@@ -125,7 +125,7 @@ final class HostAdapterFactory {
 
     @TruffleBoundary
     static boolean isAdapterInstance(Object adapter) {
-        return adapter.getClass().getClassLoader() instanceof HostAdapterClassLoader.CLImpl;
+        return HostAdapterClassLoader.isAdapterInstance(adapter);
     }
 
     private static boolean classLoaderCanSee(ClassLoader loader, Class<?> clazz) {
