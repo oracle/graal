@@ -866,11 +866,18 @@ CLSS public abstract com.oracle.truffle.api.nodes.ExecutableNode
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>)
 meth public abstract java.lang.Object execute(com.oracle.truffle.api.frame.VirtualFrame)
 meth public final <%0 extends com.oracle.truffle.api.TruffleLanguage> {%%0} getLanguage(java.lang.Class<{%%0}>)
- anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.nodes.LanguageInfo getLanguageInfo()
 supr com.oracle.truffle.api.nodes.Node
 hfds GENERIC,engineRef,referenceCache
 hcls ReferenceCache
+
+CLSS public final com.oracle.truffle.api.nodes.ExecutionSignature
+fld public final static com.oracle.truffle.api.nodes.ExecutionSignature GENERIC
+meth public java.lang.Class<?> getReturnType()
+meth public java.lang.Class<?>[] getArgumentTypes()
+meth public static com.oracle.truffle.api.nodes.ExecutionSignature create(java.lang.Class<?>,java.lang.Class<?>[])
+supr java.lang.Object
+hfds argumentTypes,returnType
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.ExplodeLoop
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
@@ -1199,6 +1206,7 @@ cons protected init(com.oracle.truffle.api.TruffleLanguage<?>,com.oracle.truffle
 meth protected boolean isCloneUninitializedSupported()
 meth protected boolean isInstrumentable()
 meth protected boolean isTrivial()
+meth protected com.oracle.truffle.api.nodes.ExecutionSignature prepareForAOT()
 meth protected com.oracle.truffle.api.nodes.RootNode cloneUninitialized()
 meth protected final void setCallTarget(com.oracle.truffle.api.RootCallTarget)
 meth protected java.lang.Object translateStackTraceElement(com.oracle.truffle.api.TruffleStackTraceElement)
@@ -1282,7 +1290,7 @@ meth public static java.lang.String findLanguage(java.net.URL) throws java.io.IO
 meth public static java.lang.String findMimeType(com.oracle.truffle.api.TruffleFile) throws java.io.IOException
 meth public static java.lang.String findMimeType(java.net.URL) throws java.io.IOException
 supr java.lang.Object
-hfds ALLOW_IO,BUFFER_SIZE,BYTE_SEQUENCE_CLASS,CONTENT_UNSET,EMPTY,MAX_BUFFER_SIZE,NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE,SOURCES,URI_SCHEME,computedURI,polyglotSource,textMap
+hfds ALLOW_IO,BUFFER_SIZE,BYTE_SEQUENCE_CLASS,CONTENT_UNSET,EMPTY,MAX_BUFFER_SIZE,NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE,SOURCES,URI_SCHEME,cachedPolyglotSource,computedURI,textMap
 
 CLSS public final com.oracle.truffle.api.source.Source$LiteralBuilder
  outer com.oracle.truffle.api.source.Source

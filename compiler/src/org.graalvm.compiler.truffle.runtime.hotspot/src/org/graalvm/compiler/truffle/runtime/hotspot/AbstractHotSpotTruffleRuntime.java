@@ -348,7 +348,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    protected BackgroundCompileQueue getCompileQueue() {
+    public BackgroundCompileQueue getCompileQueue() {
         return lazy();
     }
 
@@ -425,7 +425,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     @Override
     public final boolean isProfilingEnabled() {
         if (profilingEnabled == null) {
-            profilingEnabled = getEngineData(null).profilingEnabled;
+            return true;
         }
         return profilingEnabled;
     }

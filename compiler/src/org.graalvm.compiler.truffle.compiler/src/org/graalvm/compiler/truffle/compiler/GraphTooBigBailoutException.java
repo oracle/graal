@@ -22,19 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.debug;
+package org.graalvm.compiler.truffle.compiler;
 
-import com.oracle.truffle.api.impl.Accessor;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
 
-final class CompilerDebugAccessor extends Accessor {
+import jdk.vm.ci.code.BailoutException;
 
-    private static final CompilerDebugAccessor ACCESSOR = new CompilerDebugAccessor();
+@SuppressWarnings("serial")
+public final class GraphTooBigBailoutException extends PermanentBailoutException {
 
-    private CompilerDebugAccessor() {
-    }
-
-    static JDKSupport jdkServicesAccessor() {
-        return ACCESSOR.jdkSupport();
+    GraphTooBigBailoutException(BailoutException cause) {
+        super(cause.getMessage(), cause);
     }
 
 }

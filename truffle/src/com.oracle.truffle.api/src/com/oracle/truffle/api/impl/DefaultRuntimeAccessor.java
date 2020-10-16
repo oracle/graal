@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.util.function.Function;
+
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.Node;
@@ -75,7 +78,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public OptionDescriptors getCompilerOptionDescriptors() {
+        public OptionDescriptors getEngineOptionDescriptors() {
             return OptionDescriptors.EMPTY;
         }
 
@@ -96,11 +99,8 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public void reloadEngineOptions(Object runtimeData, OptionValues optionValues) {
-        }
-
-        @Override
         public void onEngineClosed(Object runtimeData) {
+
         }
 
         @Override
@@ -141,6 +141,36 @@ final class DefaultRuntimeAccessor extends Accessor {
 
         @Override
         public void reportPolymorphicSpecialize(Node source) {
+        }
+
+        @Override
+        public Object createRuntimeData(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
+            return null;
+        }
+
+        @Override
+        public Object tryLoadCachedEngine(OptionValues runtimeData, Function<String, TruffleLogger> loggerFactory) {
+            return null;
+        }
+
+        @Override
+        public void onEngineCreate(Object engine, Object runtimeData) {
+
+        }
+
+        @Override
+        public boolean isStoreEnabled(OptionValues options) {
+            return false;
+        }
+
+        @Override
+        public void onEnginePatch(Object runtimeData, OptionValues options, Function<String, TruffleLogger> loggerFactory) {
+
+        }
+
+        @Override
+        public boolean onEngineClosing(Object runtimeData) {
+            return false;
         }
 
     }

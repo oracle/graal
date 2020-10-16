@@ -379,8 +379,8 @@ final class TruffleFromLibGraalEntryPoints {
     }
 
     @TruffleFromLibGraal(OnCompilationFailed)
-    static void onCompilationFailed(Object compilable, Supplier<String> serializedException, boolean bailout, boolean permanentBailout) {
-        ((CompilableTruffleAST) compilable).onCompilationFailed(serializedException, bailout, permanentBailout);
+    static void onCompilationFailed(Object compilable, Supplier<String> serializedException, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
+        ((CompilableTruffleAST) compilable).onCompilationFailed(serializedException, bailout, permanentBailout, graphTooBig);
     }
 
     @TruffleFromLibGraal(OnSuccess)

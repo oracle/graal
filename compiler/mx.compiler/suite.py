@@ -2350,6 +2350,7 @@ suite = {
           "org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider",
           "org.graalvm.compiler.truffle.runtime.LoopNodeFactory",
           "org.graalvm.compiler.truffle.runtime.TruffleTypes",
+          "org.graalvm.compiler.truffle.runtime.EngineCacheSupport",
           "org.graalvm.home.HomeFinder",
         ],
         "requiresConcealed" : {

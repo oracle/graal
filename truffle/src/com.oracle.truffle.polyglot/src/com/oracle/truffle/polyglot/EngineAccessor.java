@@ -61,8 +61,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -73,7 +71,6 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 
@@ -109,6 +106,7 @@ import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
+import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotSource.EmbedderFileSystemContext;
 
 final class EngineAccessor extends Accessor {
@@ -175,6 +173,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public TruffleLanguage.ContextReference<Object> getCurrentContextReference(Object polyglotLanguage) {
             return ((PolyglotLanguage) polyglotLanguage).getContextReference();
+        }
+
+        @Override
+        public boolean hasCurrentContext() {
+            return PolyglotContextImpl.currentNotEntered() != null;
         }
 
         @Override
@@ -245,17 +248,8 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public org.graalvm.polyglot.SourceSection createSourceSection(Object polyglotObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl) {
-            return createSourceSectionStatic(source, sectionImpl);
-        }
-
-        static org.graalvm.polyglot.SourceSection createSourceSectionStatic(org.graalvm.polyglot.Source source, SourceSection sectionImpl) {
-            org.graalvm.polyglot.Source polyglotSource = source;
-            APIAccess apiAccess = PolyglotImpl.getInstance().getAPIAccess();
-            if (polyglotSource == null) {
-                Source sourceImpl = sectionImpl.getSource();
-                polyglotSource = apiAccess.newSource(sourceImpl.getLanguage(), sourceImpl);
-            }
-            return apiAccess.newSourceSection(polyglotSource, sectionImpl);
+            PolyglotImpl impl = ((VMObject) polyglotObject).getImpl();
+            return impl.getPolyglotSourceSection(sectionImpl);
         }
 
         @Override
@@ -748,7 +742,7 @@ final class EngineAccessor extends Accessor {
             PolyglotContextImpl context = ((PolyglotContextImpl) impl);
             PolyglotEngineImpl engine = resolveEngine(node, context);
             if (CompilerDirectives.isPartialEvaluationConstant(engine)) {
-                engine.leave(prev, context);
+                engine.leave((PolyglotContextImpl) prev, context);
             } else {
                 leaveInternalContextBoundary(prev, context, engine);
             }
@@ -756,7 +750,7 @@ final class EngineAccessor extends Accessor {
 
         @TruffleBoundary
         private static void leaveInternalContextBoundary(Object prev, PolyglotContextImpl context, PolyglotEngineImpl engine) {
-            engine.leave(prev, context);
+            engine.leave((PolyglotContextImpl) prev, context);
         }
 
         private static PolyglotEngineImpl resolveEngine(Node node, PolyglotContextImpl context) {
@@ -883,18 +877,32 @@ final class EngineAccessor extends Accessor {
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T> T getOrCreateRuntimeData(Object polyglotEngine, BiFunction<OptionValues, Function<String, TruffleLogger>, T> constructor) {
-            if (polyglotEngine == null) {
-                OptionValues engineOptionValues = PolyglotEngineImpl.getEngineOptionsWithNoEngine();
-                String defaultLogFile = System.getProperty(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + PolyglotEngineImpl.LOG_FILE_OPTION);
-                return constructor.apply(engineOptionValues, PolyglotLoggers.createEngineLoggerProvider(defaultLogFile));
+        public <T> T getOrCreateRuntimeData(Object polyglotEngine) {
+            PolyglotEngineImpl useEngine = (PolyglotEngineImpl) polyglotEngine;
+            if (useEngine == null) {
+                useEngine = PolyglotEngineImpl.getFallbackEngine();
             }
+            return (T) useEngine.runtimeData;
+        }
 
-            final PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;
-            if (engine.runtimeData == null) {
-                engine.runtimeData = constructor.apply(engine.engineOptionValues, engine.engineLoggerSupplier);
-            }
-            return (T) engine.runtimeData;
+        @Override
+        public OptionValues getEngineOptionValues(Object polyglotEngine) {
+            return ((PolyglotEngineImpl) polyglotEngine).engineOptionValues;
+        }
+
+        @Override
+        public Collection<CallTarget> findCallTargets(Object polyglotEngine) {
+            return INSTRUMENT.getLoadedCallTargets(((PolyglotEngineImpl) polyglotEngine).instrumentationHandler);
+        }
+
+        @Override
+        public void preinitializeContext(Object polyglotEngine) {
+            ((PolyglotEngineImpl) polyglotEngine).preInitialize();
+        }
+
+        @Override
+        public Object getEngineLock(Object polyglotEngine) {
+            return ((PolyglotEngineImpl) polyglotEngine).lock;
         }
 
         @Override
@@ -1377,4 +1385,5 @@ final class EngineAccessor extends Accessor {
             return classLoaderRef.get();
         }
     }
+
 }

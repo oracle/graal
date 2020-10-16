@@ -86,6 +86,11 @@ final class SubSourceImpl extends Source {
     }
 
     @Override
+    Object getSourceKey() {
+        return key;
+    }
+
+    @Override
     public String getName() {
         return key.base.getName();
     }

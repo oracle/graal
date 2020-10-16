@@ -53,6 +53,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated the `com.oracle.truffle.api.object.dsl` API without replacement. The migration path is to use `DynamicObject` subclasses with the `com.oracle.truffle.api.object` API.
 * A node parameter now needs to be provided to TruffleContext.enter() and TruffleContext.leave(Object). The overloads without node parameter are deprecated. This is useful to allow the runtime to compile the enter and leave code better if a node is passed as argument. 
 * Added [DebuggerSession.suspendHere](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#suspendHere-com.oracle.truffle.api.nodes.Node-) to suspend immediately at the current location of the current execution thread.
+* Added [RootNode.prepareForAOT](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#prepareForAOT) that allows to initialize root nodes for compilation that were not yet executed.
+* Removed deprecation for `RootNode.getLanguage(Class<?>)`, it is still useful to efficiently access the associated language of a root node.
+* Block node partial compilation is no longer eagerly triggered but only when the `--engine.MaximumGraalNodeCount` limit was reached once for a call target.
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.

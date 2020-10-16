@@ -110,16 +110,16 @@ final class PolyglotContextThreadLocal extends ThreadLocal<Object> {
 
     @Override
     public void set(Object value) {
-        setReturnParent(value);
+        setReturnParent((PolyglotContextImpl) value);
     }
 
-    Object setReturnParent(Object value) {
+    PolyglotContextImpl setReturnParent(PolyglotContextImpl value) {
         if (singleThread.isValid()) {
-            Object prev;
+            PolyglotContextImpl prev;
             if (Thread.currentThread() == activeSingleThread) {
                 prev = this.activeSingleContext;
-                this.activeSingleContext = (PolyglotContextImpl) value;
-                this.activeSingleContextNonVolatile = (PolyglotContextImpl) value;
+                this.activeSingleContext = value;
+                this.activeSingleContextNonVolatile = value;
             } else {
                 CompilerDirectives.transferToInterpreter();
                 prev = setReturnParentSlowPath(value);
@@ -156,35 +156,35 @@ final class PolyglotContextThreadLocal extends ThreadLocal<Object> {
     }
 
     @TruffleBoundary
-    private Object setTLReturnParent(Object context) {
+    private PolyglotContextImpl setTLReturnParent(PolyglotContextImpl context) {
         Thread current = Thread.currentThread();
         if (current instanceof PolyglotThread) {
             PolyglotThread polyglotThread = ((PolyglotThread) current);
-            Object prev = polyglotThread.context;
+            PolyglotContextImpl prev = polyglotThread.context;
             polyglotThread.context = context;
             return prev;
         } else {
             Object prev = super.get();
             super.set(context);
-            return prev;
+            return (PolyglotContextImpl) prev;
         }
     }
 
-    private synchronized Object setReturnParentSlowPath(Object context) {
+    private synchronized PolyglotContextImpl setReturnParentSlowPath(PolyglotContextImpl context) {
         if (!singleThread.isValid()) {
             return setTLReturnParent(context);
         }
         Thread currentThread = Thread.currentThread();
         Thread storeThread = activeSingleThread;
-        Object prev = this.activeSingleContext;
+        PolyglotContextImpl prev = this.activeSingleContext;
         if (currentThread == storeThread) {
-            this.activeSingleContext = (PolyglotContextImpl) context;
-            this.activeSingleContextNonVolatile = (PolyglotContextImpl) context;
+            this.activeSingleContext = context;
+            this.activeSingleContextNonVolatile = context;
         } else {
             if (storeThread == null) {
                 this.activeSingleThread = currentThread;
-                this.activeSingleContext = (PolyglotContextImpl) context;
-                this.activeSingleContextNonVolatile = (PolyglotContextImpl) context;
+                this.activeSingleContext = context;
+                this.activeSingleContextNonVolatile = context;
             } else {
                 this.singleThread.invalidate();
                 return setTLReturnParent(context);

@@ -185,10 +185,22 @@ final class InstrumentationHandler {
     }
 
     void onLoad(RootNode root) {
-        if (!InstrumentAccessor.nodesAccess().isInstrumentable(root)) {
+        if (TRACE) {
+            String name = root.getName();
+            if (name == null) {
+                name = root.getClass().getName();
+            }
+            String lang = "None";
+            LanguageInfo info = root.getLanguageInfo();
+            if (info != null) {
+                lang = info.getId();
+            }
+            trace("ON-LOAD: %-5s CallTarget: %s%n", lang, name);
+        }
+
+        if (InstrumentAccessor.nodesAccess().getPolyglotEngine(root) == null) {
             return;
         }
-        assert root.getLanguageInfo() != null;
 
         loadedRoots.add(root);
 
@@ -207,7 +219,6 @@ final class InstrumentationHandler {
         if (!InstrumentAccessor.nodesAccess().isInstrumentable(root)) {
             return;
         }
-        assert root.getLanguageInfo() != null;
 
         executedRoots.add(root);
 

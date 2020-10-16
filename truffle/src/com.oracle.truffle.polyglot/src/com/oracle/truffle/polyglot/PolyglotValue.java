@@ -42,7 +42,6 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.RUNTIME;
-import static com.oracle.truffle.polyglot.EngineAccessor.SOURCE;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -78,7 +77,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.polyglot.EngineAccessor.EngineImpl;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToHostValueNode;
@@ -837,6 +835,9 @@ abstract class PolyglotValue extends AbstractValueImpl {
     @Override
     public SourceSection getSourceLocation(Object receiver) {
         try {
+            if (languageContext == null) {
+                return null;
+            }
             Object prev = hostEnter(languageContext);
             try {
                 InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
@@ -850,7 +851,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 if (result == null) {
                     return null;
                 }
-                return EngineImpl.createSourceSectionStatic(SOURCE.getPolyglotSource(result.getSource()), result);
+                return languageContext.getImpl().getPolyglotSourceSection(result);
             } finally {
                 hostLeave(languageContext, prev);
             }

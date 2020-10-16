@@ -73,12 +73,14 @@ public class BackgroundCompileQueue {
     }
 
     private ExecutorService getExecutorService(OptimizedCallTarget callTarget) {
-        if (compilationExecutorService != null) {
-            return compilationExecutorService;
+        ExecutorService service = this.compilationExecutorService;
+        if (service != null) {
+            return service;
         }
         synchronized (this) {
-            if (compilationExecutorService != null) {
-                return compilationExecutorService;
+            service = this.compilationExecutorService;
+            if (service != null) {
+                return service;
             }
             if (shutdown) {
                 throw new RejectedExecutionException("The BackgroundCompileQueue is shutdown");

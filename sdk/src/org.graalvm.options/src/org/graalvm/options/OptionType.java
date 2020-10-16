@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -301,7 +301,42 @@ public final class OptionType<T> {
      */
     @SuppressWarnings("unchecked")
     public static <T> OptionType<T> defaultType(Class<T> clazz) {
-        return (OptionType<T>) DEFAULTTYPES.get(clazz);
+        OptionType<T> type = (OptionType<T>) DEFAULTTYPES.get(clazz);
+        if (type != null) {
+            return type;
+        }
+        if (Enum.class.isAssignableFrom(clazz)) {
+            return defaultEnumType(clazz);
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> OptionType<T> defaultEnumType(Class<T> clazz) {
+        return new OptionType<>(clazz.getSimpleName(), new Function<String, T>() {
+            @SuppressWarnings("rawtypes")
+            public T apply(String t) {
+                Class<? extends Enum> enumType = (Class<? extends Enum>) clazz;
+                try {
+                    if (t != null) {
+                        return (T) Enum.valueOf(enumType, t);
+                    }
+                    // fallthrough to failed
+                } catch (IllegalArgumentException e) {
+                    // fallthrough to failed
+                }
+                StringBuilder b = new StringBuilder();
+                String sep = "";
+                for (Enum constant : enumType.getEnumConstants()) {
+                    b.append(sep);
+                    b.append('\'');
+                    b.append(constant.name());
+                    b.append('\'');
+                    sep = ", ";
+                }
+                throw new IllegalArgumentException("Invalid option value '" + t + "'. Valid options values are: " + b.toString());
+            }
+        });
     }
 
     boolean isOptionMap() {
