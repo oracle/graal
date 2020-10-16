@@ -333,6 +333,9 @@ public final class CPUSampler implements Closeable {
      */
     public synchronized void setDelay(long delay) {
         enterChangeConfig();
+        if (delay < 1) {
+            throw new ProfilerException(String.format("Invalid delay %s.", delay));
+        }
         this.delay = delay;
     }
 
