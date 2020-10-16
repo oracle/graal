@@ -61,9 +61,9 @@ public class AArch64HostedPatcher implements Feature {
                     @Override
                     public void accept(CodeAnnotation annotation) {
                         if (annotation instanceof SingleInstructionAnnotation) {
-                            compilationResult.addAnnotation(new SingleInstructionHostedPatcher(annotation.instructionPosition, (SingleInstructionAnnotation) annotation));
+                            compilationResult.addAnnotation(new SingleInstructionHostedPatcher((SingleInstructionAnnotation) annotation));
                         } else if (annotation instanceof AArch64MacroAssembler.MovSequenceAnnotation) {
-                            compilationResult.addAnnotation(new MovSequenceHostedPatcher(annotation.instructionPosition, (AArch64MacroAssembler.MovSequenceAnnotation) annotation));
+                            compilationResult.addAnnotation(new MovSequenceHostedPatcher((AArch64MacroAssembler.MovSequenceAnnotation) annotation));
                         } else if (annotation instanceof AArch64MacroAssembler.AdrpLdrMacroInstruction) {
                             compilationResult.addAnnotation(new AdrpLdrMacroInstructionHostedPatcher((AArch64MacroAssembler.AdrpLdrMacroInstruction) annotation));
                         } else if (annotation instanceof AArch64MacroAssembler.AdrpAddMacroInstruction) {
@@ -79,8 +79,8 @@ public class AArch64HostedPatcher implements Feature {
 class SingleInstructionHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
     private final SingleInstructionAnnotation annotation;
 
-    SingleInstructionHostedPatcher(int instructionStartPosition, SingleInstructionAnnotation annotation) {
-        super(instructionStartPosition);
+    SingleInstructionHostedPatcher(SingleInstructionAnnotation annotation) {
+        super(annotation.instructionPosition);
         this.annotation = annotation;
     }
 
@@ -185,8 +185,8 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
 class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
     private final AArch64MacroAssembler.MovSequenceAnnotation annotation;
 
-    MovSequenceHostedPatcher(int instructionStartPosition, AArch64MacroAssembler.MovSequenceAnnotation annotation) {
-        super(instructionStartPosition);
+    MovSequenceHostedPatcher(AArch64MacroAssembler.MovSequenceAnnotation annotation) {
+        super(annotation.instructionPosition);
         this.annotation = annotation;
     }
 

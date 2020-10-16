@@ -46,6 +46,7 @@ import org.graalvm.compiler.code.DataSection.Data;
 import org.graalvm.compiler.code.DataSection.RawData;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.DataPointerConstant;
 import org.graalvm.compiler.debug.DebugContext;
@@ -115,34 +116,12 @@ public class CompilationResultBuilder {
         }
     }
 
-    /**
-     * Wrapper for a code annotation that was produced by the {@link Assembler}.
-     */
-    public static final class AssemblerAnnotation extends CodeAnnotation {
-
-        public final Assembler.CodeAnnotation assemblerCodeAnnotation;
-
-        public AssemblerAnnotation(Assembler.CodeAnnotation assemblerCodeAnnotation) {
-            super(assemblerCodeAnnotation.instructionPosition);
-            this.assemblerCodeAnnotation = assemblerCodeAnnotation;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return this == obj;
-        }
-
-        @Override
-        public String toString() {
-            return assemblerCodeAnnotation.toString();
-        }
-    }
-
     public final Assembler asm;
     public final DataBuilder dataBuilder;
     public final CompilationResult compilationResult;
     public final Register uncompressedNullRegister;
     public final TargetDescription target;
+    public final CodeGenProviders providers;
     public final CodeCacheProvider codeCache;
     public final ForeignCallsProvider foreignCalls;
     public final FrameMap frameMap;
@@ -195,8 +174,7 @@ public class CompilationResultBuilder {
      */
     private boolean needsMHDeoptHandler = false;
 
-    public CompilationResultBuilder(CodeCacheProvider codeCache,
-                    ForeignCallsProvider foreignCalls,
+    public CompilationResultBuilder(CodeGenProviders providers,
                     FrameMap frameMap,
                     Assembler asm,
                     DataBuilder dataBuilder,
@@ -205,8 +183,7 @@ public class CompilationResultBuilder {
                     DebugContext debug,
                     CompilationResult compilationResult,
                     Register uncompressedNullRegister) {
-        this(codeCache,
-                        foreignCalls,
+        this(providers,
                         frameMap,
                         asm,
                         dataBuilder,
@@ -218,8 +195,7 @@ public class CompilationResultBuilder {
                         EconomicMap.create(Equivalence.DEFAULT));
     }
 
-    public CompilationResultBuilder(CodeCacheProvider codeCache,
-                    ForeignCallsProvider foreignCalls,
+    public CompilationResultBuilder(CodeGenProviders providers,
                     FrameMap frameMap,
                     Assembler asm,
                     DataBuilder dataBuilder,
@@ -229,9 +205,10 @@ public class CompilationResultBuilder {
                     CompilationResult compilationResult,
                     Register uncompressedNullRegister,
                     EconomicMap<Constant, Data> dataCache) {
-        this.target = codeCache.getTarget();
-        this.codeCache = codeCache;
-        this.foreignCalls = foreignCalls;
+        this.target = providers.getCodeCache().getTarget();
+        this.providers = providers;
+        this.codeCache = providers.getCodeCache();
+        this.foreignCalls = providers.getForeignCalls();
         this.frameMap = frameMap;
         this.asm = asm;
         this.dataBuilder = dataBuilder;

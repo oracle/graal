@@ -37,7 +37,7 @@ import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
 import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
@@ -52,7 +52,6 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentation;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
 
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -63,10 +62,10 @@ public class SPARCTruffleCallBoundaryInstumentationFactory extends TruffleCallBo
     public CompilationResultBuilderFactory create(MetaAccessProvider metaAccess, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
         return new TruffleCompilationResultBuilderFactory(metaAccess, config, registers) {
             @Override
-            public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
+            public CompilationResultBuilder createBuilder(CodeGenProviders providers, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
                             FrameContext frameContext,
                             OptionValues options, DebugContext debug, CompilationResult compilationResult, Register nullRegister) {
-                return new TruffleCallBoundaryInstrumentation(metaAccess, codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, config, registers) {
+                return new TruffleCallBoundaryInstrumentation(providers, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, config, registers) {
                     @Override
                     protected void injectTailCallCode(int installedCodeOffset, int entryPointOffset) {
                         SPARCMacroAssembler masm = (SPARCMacroAssembler) this.asm;

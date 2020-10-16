@@ -273,4 +273,21 @@ final class IsolateAwareConstantReflectionProvider extends SubstrateConstantRefl
         // Hubs exist in the image heap and are identical across isolates
         return super.asJavaClass(type);
     }
+
+    @Override
+    public int getImageHeapOffset(JavaConstant constant) {
+        if (constant instanceof IsolatedObjectConstant) {
+            ConstantData constantData = StackValue.get(ConstantData.class);
+            ConstantDataConverter.fromCompiler(constant, constantData);
+            return getImageHeapOffset0(IsolatedCompileContext.get().getClient(), constantData);
+        }
+        return super.getImageHeapOffset(constant);
+    }
+
+    @CEntryPoint
+    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    private static int getImageHeapOffset0(@SuppressWarnings("unused") ClientIsolateThread client, ConstantData constantData) {
+        Constant constant = ConstantDataConverter.toClient(constantData);
+        return getImageHeapOffsetInternal((SubstrateObjectConstant) constant);
+    }
 }

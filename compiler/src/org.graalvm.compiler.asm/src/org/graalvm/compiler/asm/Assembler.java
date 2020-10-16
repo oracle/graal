@@ -42,14 +42,6 @@ import jdk.vm.ci.code.TargetDescription;
 public abstract class Assembler {
 
     public abstract static class CodeAnnotation {
-        /**
-         * The position (bytes from the beginning of the method) of the annotated instruction.
-         */
-        public final int instructionPosition;
-
-        protected CodeAnnotation(int instructionStartPosition) {
-            this.instructionPosition = instructionStartPosition;
-        }
     }
 
     public final TargetDescription target;
