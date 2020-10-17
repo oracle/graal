@@ -163,6 +163,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
         return inlineNotify && notifyAllAddress != 0;
     }
 
+    public boolean useElectronicCodeBookEncryptDecrypt() {
+        return electronicCodeBookDecryptAES != 0 && electronicCodeBookEncryptAES != 0;
+    }
+
     public final boolean useG1GC = getFlag("UseG1GC", Boolean.class);
     public final boolean useCMSGC = getFlag("UseConcMarkSweepGC", Boolean.class);
 
@@ -681,7 +685,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final long checkcastArraycopyUninit = getFieldValue("StubRoutines::_checkcast_arraycopy_uninit", Long.class, "address");
     public final long unsafeArraycopy = getFieldValue("StubRoutines::_unsafe_arraycopy", Long.class, "address");
     public final long genericArraycopy = getFieldValue("StubRoutines::_generic_arraycopy", Long.class, "address");
-
+    public final long electronicCodeBookDecryptAES = getFieldValue("StubRoutines::_electronicCodeBook_decryptAESCrypt", Long.class, "address", 0L);
+    public final long electronicCodeBookEncryptAES = getFieldValue("StubRoutines::_electronicCodeBook_encryptAESCrypt", Long.class, "address", 0L);
     // Allocation stubs that throw an exception when allocation fails
     public final long newInstanceAddress = getAddress("JVMCIRuntime::new_instance");
     public final long newArrayAddress = getAddress("JVMCIRuntime::new_array");
