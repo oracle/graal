@@ -38,6 +38,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.Target_java_nio_Buffer;
 import com.oracle.svm.core.util.VMError;
 
 /**
