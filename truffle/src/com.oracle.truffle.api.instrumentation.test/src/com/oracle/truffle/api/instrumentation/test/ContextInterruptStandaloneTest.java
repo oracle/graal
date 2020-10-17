@@ -59,6 +59,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -67,11 +68,13 @@ import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 
 public class ContextInterruptStandaloneTest {
 
     @Test
     public void testParallelCloseAndInterrupt() throws InterruptedException, IOException, ExecutionException {
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
         ExecutorService executorService = Executors.newFixedThreadPool(10);
         try (Context context = Context.create()) {
             context.initialize(InstrumentationTestLanguage.ID);

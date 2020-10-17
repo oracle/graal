@@ -62,11 +62,13 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 
 @RunWith(Parameterized.class)
 public class ContextInterruptParameterizedTest {
@@ -133,6 +135,7 @@ public class ContextInterruptParameterizedTest {
 
     @Test
     public void testInterrupt() throws InterruptedException, IOException, ExecutionException, TimeoutException {
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
         ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
         CountDownLatch allCancelledLatch = new CountDownLatch(nThreads + 1);
         List<Context> contexts = new ArrayList<>();
