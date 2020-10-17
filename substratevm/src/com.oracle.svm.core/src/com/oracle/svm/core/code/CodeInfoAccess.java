@@ -152,6 +152,7 @@ public final class CodeInfoAccess {
         return cast(info).getCodeSize();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getMetadataSize(CodeInfo info) {
         CodeInfoImpl impl = cast(info);
         return SizeOf.unsigned(CodeInfo.class)

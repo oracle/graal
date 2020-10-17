@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.image;
+package com.oracle.svm.core.jdk;
 
-import java.util.Collection;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
 
-public interface ImageHeap {
-    Collection<? extends ImageHeapObject> getObjects();
-
-    ImageHeapObject addLateToImageHeap(Object object, String reason);
-
-    ImageHeapObject addFillerObject(int size);
-
-    int countDynamicHubs();
+@TargetClass(className = "java.nio.Buffer")
+public final class Target_java_nio_Buffer {
+    @Alias public long address;
 }
