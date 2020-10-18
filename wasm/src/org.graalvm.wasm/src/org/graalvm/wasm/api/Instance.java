@@ -90,7 +90,14 @@ public class Instance extends Dictionary {
     }
 
     private WasmInstance instantiateModule(WasmContext context) {
-        final HashMap<String, ImportModule> importModules = readImportModules();
+        final HashMap<String, ImportModule> importModules;
+        // Import object comes from the parent context
+        Object prev = truffleContext.getParent().enter(null);
+        try {
+            importModules = readImportModules();
+        } finally {
+            truffleContext.getParent().leave(null, prev);
+        }
         return instantiateCore(context, importModules);
     }
 

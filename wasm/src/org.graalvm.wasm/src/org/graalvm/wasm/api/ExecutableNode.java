@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -62,10 +63,15 @@ public class ExecutableNode extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+        // Imported executables come from the parent context
+        TruffleContext truffleContext = context.environment().getContext().getParent();
+        Object prev = truffleContext.enter(this);
         try {
             return InteropLibrary.getUncached().execute(executable, frame.getArguments());
         } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
             throw WasmTrap.format(this, "Call failed: %s", e.getMessage());
+        } finally {
+            truffleContext.leave(this, prev);
         }
     }
 
