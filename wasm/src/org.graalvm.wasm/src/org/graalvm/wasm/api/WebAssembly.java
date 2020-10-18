@@ -66,16 +66,9 @@ public class WebAssembly extends Dictionary {
         }
     }
 
-    public WebAssemblyInstantiatedSource instantiateStreaming(byte[] source, Dictionary importObject) {
-        return instantiate(source, importObject);
-    }
-
     @SuppressWarnings("unused")
     public Module compile(byte[] source) {
         return new Module(currentContext, source);
     }
 
-    public Module compileStreaming(byte[] source) {
-        return compile(source);
-    }
 }
