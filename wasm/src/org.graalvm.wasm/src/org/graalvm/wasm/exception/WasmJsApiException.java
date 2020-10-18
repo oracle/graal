@@ -65,6 +65,13 @@ public class WasmJsApiException extends AbstractTruffleException {
         this.kind = kind;
     }
 
+    @TruffleBoundary
+    public WasmJsApiException(Kind kind, String message, Throwable cause) {
+        super(message, cause, UNLIMITED_STACK_TRACE, null);
+        CompilerAsserts.neverPartOfCompilation();
+        this.kind = kind;
+    }
+
     public Kind kind() {
         return kind;
     }

@@ -41,13 +41,29 @@
 package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.exception.WasmJsApiException;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
 
     public WebAssembly(WasmContext currentContext) {
         this.currentContext = currentContext;
+        addMember("compile", new Executable(args -> compile(args)));
+        addMember("instantiate", new Executable(args -> instantiate(args)));
+    }
+
+    private Object instantiate(Object[] args) {
+        checkArgumentCount(args, 2);
+        Object source = args[0];
+        Object importObject = args[1];
+        if (source instanceof Module) {
+            return instantiate((Module) source, importObject);
+        } else {
+            return instantiate(toBytes(source), importObject);
+        }
     }
 
     public WebAssemblyInstantiatedSource instantiate(byte[] source, Object importObject) {
@@ -66,9 +82,50 @@ public class WebAssembly extends Dictionary {
         }
     }
 
+    private Object compile(Object[] args) {
+        checkArgumentCount(args, 1);
+        return compile(toBytes(args[0]));
+    }
+
     @SuppressWarnings("unused")
     public Module compile(byte[] source) {
         return new Module(currentContext, source);
+    }
+
+    private static void checkArgumentCount(Object[] args, int requiredCount) {
+        if (args.length < requiredCount) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Insufficient number of arguments");
+        }
+    }
+
+    private static byte[] toBytes(Object source) {
+        InteropLibrary interop = InteropLibrary.getUncached(source);
+        if (interop.hasArrayElements(source)) {
+            try {
+                long size = interop.getArraySize(source);
+                if (size == (int) size) {
+                    byte[] bytes = new byte[(int) size];
+                    for (int i = 0; i < bytes.length; i++) {
+                        Object element = interop.readArrayElement(source, i);
+                        if (element instanceof Number) {
+                            bytes[i] = ((Number) element).byteValue();
+                        } else {
+                            bytes[i] = InteropLibrary.getUncached(element).asByte(element);
+                        }
+                    }
+                    return bytes;
+                }
+            } catch (InteropException iex) {
+                throw cannotConvertToBytesError(iex);
+            }
+        }
+        throw cannotConvertToBytesError(null);
+    }
+
+    private static WasmJsApiException cannotConvertToBytesError(Throwable cause) {
+        WasmJsApiException.Kind kind = WasmJsApiException.Kind.TypeError;
+        String message = "Cannot convert to bytes";
+        return (cause == null) ? new WasmJsApiException(kind, message) : new WasmJsApiException(kind, message, cause);
     }
 
 }
