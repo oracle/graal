@@ -59,7 +59,6 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
 import org.graalvm.wasm.api.Global;
-import org.graalvm.wasm.api.GlobalDescriptor;
 import org.graalvm.wasm.api.ImportExportKind;
 import org.graalvm.wasm.api.Instance;
 import org.graalvm.wasm.api.Memory;
@@ -228,7 +227,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportGlobal() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Global global = new Global(new GlobalDescriptor("i32", false), 17);
+            final Global global = new Global("i32", false, 17);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultGlobal", global
