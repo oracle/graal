@@ -44,6 +44,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.exception.BinaryParserException;
 import org.graalvm.wasm.exception.WasmJsApiException;
 
 public class WebAssembly extends Dictionary {
@@ -53,6 +54,7 @@ public class WebAssembly extends Dictionary {
         this.currentContext = currentContext;
         addMember("compile", new Executable(args -> compile(args)));
         addMember("instantiate", new Executable(args -> instantiate(args)));
+        addMember("validate", new Executable(args -> validate(args)));
     }
 
     private Object instantiate(Object[] args) {
@@ -90,6 +92,20 @@ public class WebAssembly extends Dictionary {
     @SuppressWarnings("unused")
     public Module compile(byte[] source) {
         return new Module(currentContext, source);
+    }
+
+    private boolean validate(Object[] args) {
+        checkArgumentCount(args, 1);
+        return validate(toBytes(args[0]));
+    }
+
+    private boolean validate(byte[] bytes) {
+        try {
+            compile(bytes);
+            return true;
+        } catch (BinaryParserException ex) {
+            return false;
+        }
     }
 
     private static void checkArgumentCount(Object[] args, int requiredCount) {
