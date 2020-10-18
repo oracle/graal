@@ -61,6 +61,12 @@ public class WebAssembly extends Dictionary {
         addMember("Memory", new Executable(args -> createMemory(args)));
         addMember("Table", new Executable(args -> createTable(args)));
         addMember("Global", new Executable(args -> createGlobal(args)));
+
+        Dictionary module = new Dictionary();
+        module.addMember("exports", new Executable(args -> moduleExports(args)));
+        module.addMember("imports", new Executable(args -> moduleImports(args)));
+        module.addMember("customSections", new Executable(args -> moduleCustomSections(args)));
+        addMember("Module", module);
     }
 
     private Object instantiate(Object[] args) {
@@ -223,6 +229,28 @@ public class WebAssembly extends Dictionary {
         }
 
         return new Global(valueType, mutable, wasmValue);
+    }
+
+    private static Module toModule(Object[] args) {
+        checkArgumentCount(args, 1);
+        if (args[0] instanceof Module) {
+            return (Module) args[0];
+        } else {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be Module");
+        }
+    }
+
+    private static Object moduleExports(Object[] args) {
+        return toModule(args).exports();
+    }
+
+    private static Object moduleImports(Object[] args) {
+        return toModule(args).imports();
+    }
+
+    private static Object moduleCustomSections(Object[] args) {
+        checkArgumentCount(args, 2);
+        return toModule(args).customSections(args[1]);
     }
 
 }
