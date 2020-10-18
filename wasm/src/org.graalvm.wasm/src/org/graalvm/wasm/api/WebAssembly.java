@@ -43,9 +43,12 @@ package org.graalvm.wasm.api;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.exception.BinaryParserException;
 import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.memory.UnsafeWasmMemory;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -55,6 +58,9 @@ public class WebAssembly extends Dictionary {
         addMember("compile", new Executable(args -> compile(args)));
         addMember("instantiate", new Executable(args -> instantiate(args)));
         addMember("validate", new Executable(args -> validate(args)));
+        addMember("Memory", new Executable(args -> createMemory(args)));
+        addMember("Table", new Executable(args -> createTable(args)));
+        addMember("Global", new Executable(args -> createGlobal(args)));
     }
 
     private Object instantiate(Object[] args) {
@@ -142,6 +148,81 @@ public class WebAssembly extends Dictionary {
         WasmJsApiException.Kind kind = WasmJsApiException.Kind.TypeError;
         String message = "Cannot convert to bytes";
         return (cause == null) ? new WasmJsApiException(kind, message) : new WasmJsApiException(kind, message, cause);
+    }
+
+    private static int[] toSizeLimits(Object[] args) {
+        if (args.length == 0) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Initial argument is required");
+        }
+
+        int initial;
+        try {
+            initial = InteropLibrary.getUncached().asInt(args[0]);
+        } catch (UnsupportedMessageException ex) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Initial argument must be convertible to int");
+        }
+
+        int maximum;
+        if (args.length == 1) {
+            maximum = -1;
+        } else {
+            try {
+                maximum = InteropLibrary.getUncached().asInt(args[1]);
+            } catch (UnsupportedMessageException ex) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Maximum argument must be convertible to int");
+            }
+        }
+
+        return new int[]{initial, maximum};
+    }
+
+    private static Object createMemory(Object[] args) {
+        int[] limits = toSizeLimits(args);
+        return new Memory(new UnsafeWasmMemory(limits[0], limits[1]));
+    }
+
+    private static Object createTable(Object[] args) {
+        int[] limits = toSizeLimits(args);
+        return new Table(new WasmTable(limits[0], limits[1]));
+    }
+
+    private static Object createGlobal(Object[] args) {
+        checkArgumentCount(args, 3);
+
+        String valueType;
+        try {
+            valueType = InteropLibrary.getUncached().asString(args[0]);
+        } catch (UnsupportedMessageException ex) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument (value type) must be convertible to String");
+        }
+
+        boolean mutable;
+        try {
+            mutable = InteropLibrary.getUncached().asBoolean(args[1]);
+        } catch (UnsupportedMessageException ex) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument (mutable) must be convertible to boolean");
+        }
+
+        Object value = args[2];
+        InteropLibrary valueInterop = InteropLibrary.getUncached(value);
+        Object wasmValue;
+        try {
+            if ("i32".equals(valueType)) {
+                wasmValue = valueInterop.asInt(value);
+            } else if ("i64".equals(valueType)) {
+                wasmValue = valueInterop.asLong(value);
+            } else if ("f32".equals(valueType)) {
+                wasmValue = valueInterop.asFloat(value);
+            } else if ("f64".equals(valueType)) {
+                wasmValue = valueInterop.asDouble(value);
+            } else {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
+            }
+        } catch (UnsupportedMessageException ex) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Cannot convert value to the specified value type");
+        }
+
+        return new Global(valueType, mutable, wasmValue);
     }
 
 }
