@@ -18,6 +18,9 @@ public interface Metric {
         return Optional.empty();
     }
 
+    default void reset() {
+    }
+
     default String unit() {
         return "";
     }

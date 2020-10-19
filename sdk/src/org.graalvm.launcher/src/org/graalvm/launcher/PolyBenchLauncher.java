@@ -84,11 +84,13 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
             }
             switch (parts[0]) {
                 case "--path":
+                    this.config.path = parts[1];
                     sourceContent = Source.newBuilder(languageId(parts[1]), new File(parts[1]));
                     break;
                 case "--execution-mode":
                     switch (parts[1]) {
                         case "interpreter":
+                            config.mode = "interpreter";
                             setInterpreterOnly(polyglotOptions);
                             break;
                         default:
@@ -138,25 +140,38 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
         final Context.Builder contextBuilder = Context.newBuilder().options(polyglotOptions);
         contextBuilder.allowAllAccess(true);
 
-        if (sourceContent == null) {
-            throw abort("Must specify path to the source file with --path.");
-        }
+        validateArguments();
 
         runHarness(contextBuilder);
     }
 
+    private void validateArguments() {
+        if (sourceContent == null) {
+            throw abort("Must specify path to the source file with --path.");
+        }
+    }
+
     private void runHarness(Context.Builder contextBuilder) {
+        log("::: Starting " + config.path + " :::");
+        log(config.toString());
+        log("");
+
         try (Context context = contextBuilder.build()) {
             try {
                 log("::: Parsing :::");
                 final Source source = sourceContent.build();
                 context.eval(source);
+                log("Parsing completed.");
+                log("");
 
                 log("::: Running warmup :::");
                 repeatIterations(context, source.getLanguage(), true, config.warmupIterations);
+                log("");
 
                 log("::: Running :::");
+                metric.reset();
                 repeatIterations(context, source.getLanguage(), false, config.iterations);
+                log("");
             } catch (Throwable t) {
                 throw abort(t);
             }
@@ -189,9 +204,9 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
 
         final Optional<Double> value = metric.reportAfterAll();
         if (value.isPresent()) {
+            log("------");
             log((warmup ? "after warmup: " : "after run: ") + round(value.get()) + " " + metric.unit());
         }
-        log("");
     }
 
     private Value lookup(Context context, String languageId, String memberName) {

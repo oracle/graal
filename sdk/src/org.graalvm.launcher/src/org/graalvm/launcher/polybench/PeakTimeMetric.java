@@ -21,10 +21,16 @@ public class PeakTimeMetric implements Metric {
     public void afterIteration(boolean warmup, int iteration, Config config) {
         endTime = System.nanoTime();
 
-        if (!warmup) {
-            totalTime += endTime - startTime;
-            totalIterations++;
-        }
+        totalTime += endTime - startTime;
+        totalIterations++;
+    }
+
+    @Override
+    public void reset() {
+        startTime = 0L;
+        endTime = 0L;
+        totalTime = 0L;
+        totalIterations = 0;
     }
 
     @Override
