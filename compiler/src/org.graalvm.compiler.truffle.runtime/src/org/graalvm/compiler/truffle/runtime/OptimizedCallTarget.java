@@ -504,7 +504,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return intCallCount >= engine.callThresholdInInterpreter //
                         && intLoopCallCount >= engine.callAndLoopThresholdInInterpreter //
                         && !compilationFailed //
-                        && !isSubmittedForCompilation();
+                        && !isSubmittedForCompilation()
+                        /*
+                         * Compilation of OSR loop call target is scheduled in
+                         * OptimizedOSRLoopNode#compileImpl.
+                         */
+                        && !(getRootNode() instanceof OSRRootNode);
     }
 
     public final boolean shouldCompile() {

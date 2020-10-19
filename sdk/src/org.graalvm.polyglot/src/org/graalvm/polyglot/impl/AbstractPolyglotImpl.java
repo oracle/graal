@@ -410,6 +410,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void close(Context sourceContext, boolean interuptExecution);
 
+        public abstract boolean interrupt(Context sourceContext, Duration timeout);
+
         public abstract Value asValue(Object hostValue);
 
         public abstract void explicitEnter(Context sourceContext);
