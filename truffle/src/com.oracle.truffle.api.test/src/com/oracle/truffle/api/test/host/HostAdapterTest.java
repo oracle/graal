@@ -269,7 +269,7 @@ public class HostAdapterTest {
     @Test
     public void testStackedHostAdaptersWithClassOverrides() throws InteropException {
         Class<?>[] supertypes = new Class<?>[]{Extensible.class, Interface.class};
-        try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAllImplementations(true).build()))) {
+        try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAllImplementations(true).allowAllClassImplementations(true).build()))) {
             TruffleLanguage.Env env = c.env;
             Map<String, Object> impl1 = new HashMap<>();
             impl1.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl1");
@@ -306,7 +306,7 @@ public class HostAdapterTest {
     @Test
     public void testStackedHostAdaptersWithoutClassOverrides() throws InteropException {
         Class<?>[] supertypes = new Class<?>[]{Extensible.class, Interface.class};
-        try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAllImplementations(true).build()))) {
+        try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAllImplementations(true).allowAllClassImplementations(true).build()))) {
             TruffleLanguage.Env env = c.env;
             Map<String, Object> impl1 = new HashMap<>();
             impl1.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl1");
