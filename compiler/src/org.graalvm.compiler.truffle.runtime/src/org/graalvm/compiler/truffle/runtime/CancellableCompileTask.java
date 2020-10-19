@@ -31,7 +31,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
@@ -156,16 +155,19 @@ public final class CancellableCompileTask implements TruffleCompilationTask, Cal
         return null;
     }
 
-    static class RequestFutureTask extends FutureTask<Void> implements Comparable<RequestFutureTask> {
+    /**
+     * TODO: explain why this is needed.
+     */
+    static class ExecutorServiceWrapper extends FutureTask<Void> implements Comparable<ExecutorServiceWrapper> {
         final CancellableCompileTask compileTask;
 
-        RequestFutureTask(CancellableCompileTask compileTask) {
+        ExecutorServiceWrapper(CancellableCompileTask compileTask) {
             super(compileTask);
             this.compileTask = compileTask;
         }
 
         @Override
-        public int compareTo(RequestFutureTask that) {
+        public int compareTo(ExecutorServiceWrapper that) {
             return this.compileTask.compareTo(that.compileTask);
         }
 
