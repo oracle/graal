@@ -31,6 +31,9 @@ import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.impl.Method;
 
+/**
+ * Breadth-first iteration over a graph's blocks.
+ */
 public class BlockIterator implements AnalysisProcessor {
     public enum BlockProcessResult {
         SKIP,
@@ -92,7 +95,7 @@ public class BlockIterator implements AnalysisProcessor {
         }
     }
 
-    protected boolean push(LinkedBlock block) {
+    protected final boolean push(LinkedBlock block) {
         if (isEnqueued(block) || isDone(block)) {
             return false;
         }
@@ -101,14 +104,14 @@ public class BlockIterator implements AnalysisProcessor {
         return true;
     }
 
-    protected LinkedBlock pop() {
+    protected final LinkedBlock pop() {
         LinkedBlock res = queue.pop();
         assert isEnqueued(res);
         enqueued.clear(res.id());
         return res;
     }
 
-    protected LinkedBlock peek() {
+    protected final LinkedBlock peek() {
         return queue.peek();
     }
 
@@ -117,22 +120,22 @@ public class BlockIterator implements AnalysisProcessor {
     }
 
     @Override
-    public boolean isDone(int blockID) {
+    public final boolean isDone(int blockID) {
         return done.get(blockID);
     }
 
     @Override
-    public boolean isInProcess(int blockID) {
+    public final boolean isInProcess(int blockID) {
         return enqueued.get(blockID);
     }
 
     @Override
-    public LinkedBlock idToBlock(int id) {
+    public final LinkedBlock idToBlock(int id) {
         return graph.get(id);
     }
 
     @Override
-    public List<LinkedBlock> findLoop(int block) {
+    public final List<LinkedBlock> findLoop(int block) {
         return queue.findLoop(block);
     }
 

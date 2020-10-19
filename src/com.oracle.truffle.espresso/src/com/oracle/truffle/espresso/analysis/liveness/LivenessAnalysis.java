@@ -64,23 +64,28 @@ public class LivenessAnalysis {
         }
     };
 
-    // TODO: Split array to save an header.
+    /**
+     * Contains 2 entries per BCI: the action to perform on entering the BCI (for nulling out locals
+     * when jumping into a block), and one for the action to perform after executing the bytecode
+     * (/ex: Nulling out a local once it has been loaded and no other load requires it).
+     */
     @CompilerDirectives.CompilationFinal(dimensions = 1) //
-    private final BCILocalActionRecord[] result;
+    private final LocalVariableAction[] result;
     private final boolean compiledCodeOnly;
 
     public void performPreBCI(VirtualFrame frame, int bci, BytecodeNode node) {
-        if (compiledCodeOnly && CompilerDirectives.inCompiledCode()) {
-            if (result != null && result[bci] != null) {
-                result[bci].pre(frame, node);
-            }
-        }
+        doAction(frame, bci, node, true);
     }
 
     public void performPostBCI(VirtualFrame frame, int bci, BytecodeNode node) {
+        doAction(frame, bci, node, false);
+    }
+
+    private void doAction(VirtualFrame frame, int bci, BytecodeNode node, boolean preAction) {
         if (compiledCodeOnly && CompilerDirectives.inCompiledCode()) {
-            if (result != null && result[bci] != null) {
-                result[bci].post(frame, node);
+            int index = getIndex(bci, preAction);
+            if (result != null && result[index] != null) {
+                result[index].execute(frame, node);
             }
         }
     }
@@ -135,14 +140,14 @@ public class LivenessAnalysis {
             // Using the live sets and history, build a set of action for each bci, such that it
             // frees as early as possible each dead local.
             try (AutoTimer actionFinder = AutoTimer.time(ACTION_TIMER)) {
-                BCILocalActionRecord[] actions = buildResultFrom(blockBoundaryFinder.result(), graph, method);
+                LocalVariableAction[] actions = buildResultFrom(blockBoundaryFinder.result(), graph, method);
                 boolean compiledCodeOnly = method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.COMPILED;
                 return new LivenessAnalysis(actions, compiledCodeOnly);
             }
         }
     }
 
-    private LivenessAnalysis(BCILocalActionRecord[] result, boolean compiledCodeOnly) {
+    private LivenessAnalysis(LocalVariableAction[] result, boolean compiledCodeOnly) {
         this.result = result;
         this.compiledCodeOnly = compiledCodeOnly;
     }
@@ -151,21 +156,15 @@ public class LivenessAnalysis {
         this(null, false);
     }
 
-    private static BCILocalActionRecord[] buildResultFrom(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
-        BCILocalActionRecord[] actions = new BCILocalActionRecord[method.getCode().length];
+    private static LocalVariableAction[] buildResultFrom(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
+        LocalVariableAction[] actions = new LocalVariableAction[method.getCode().length * 2];
         for (int id = 0; id < graph.totalBlocks(); id++) {
             processBlock(actions, result, id, graph, method);
-        }
-        for (int i = 0; i < actions.length; i++) {
-            BCILocalActionRecord action = actions[i];
-            if (action != null && action.hasMulti()) {
-                action.freeze();
-            }
         }
         return actions;
     }
 
-    private static void processBlock(BCILocalActionRecord[] actions, BlockBoundaryResult helper, int blockID, Graph<? extends LinkedBlock> graph, Method m) {
+    private static void processBlock(LocalVariableAction[] actions, BlockBoundaryResult helper, int blockID, Graph<? extends LinkedBlock> graph, Method m) {
         LinkedBlock current = graph.get(blockID);
 
         // merge the state from all predecessors
@@ -206,26 +205,26 @@ public class LivenessAnalysis {
         return mergedEntryState;
     }
 
-    private static void killLocalsOnBlockEntry(BCILocalActionRecord[] actions, BlockBoundaryResult helper, int blockID, LinkedBlock current, BitSet mergedEntryState) {
-        ArrayList<LocalVariableAction> startActions = new ArrayList<>();
+    private static void killLocalsOnBlockEntry(LocalVariableAction[] actions, BlockBoundaryResult helper, int blockID, LinkedBlock current, BitSet mergedEntryState) {
+        ArrayList<Integer> startActions = new ArrayList<>();
         BitSet entryState = helper.entryFor(blockID);
         for (int i : Util.bitSetIterator(mergedEntryState)) {
             if (!entryState.get(i)) {
-                startActions.add(NullOutAction.get(i));
+                startActions.add(i);
             }
         }
         if (!startActions.isEmpty()) {
             LocalVariableAction startAction;
             if (startActions.size() == 1) {
-                startAction = startActions.get(0);
+                startAction = NullOutAction.get(startActions.get(0));
             } else {
-                startAction = new MultiAction.TempMultiAction(startActions);
+                startAction = new MultiAction(Util.toIntArray(startActions));
             }
             recordAction(actions, current.start(), startAction, true);
         }
     }
 
-    private static void replayHistory(BCILocalActionRecord[] actions, BlockBoundaryResult helper, int blockID) {
+    private static void replayHistory(LocalVariableAction[] actions, BlockBoundaryResult helper, int blockID) {
         BitSet endState = helper.endFor(blockID);
         if (endState == null) {
             // unreachable
@@ -256,12 +255,17 @@ public class LivenessAnalysis {
         }
     }
 
-    private static void recordAction(BCILocalActionRecord[] actions, int bci, LocalVariableAction action, boolean preAction) {
-        BCILocalActionRecord current = actions[bci];
-        if (current == null) {
-            current = new BCILocalActionRecord();
-            actions[bci] = current;
+    private static void recordAction(LocalVariableAction[] actions, int bci, LocalVariableAction action, boolean preAction) {
+        int index = getIndex(bci, preAction);
+        LocalVariableAction toInsert = action;
+        if (actions[index] != null) {
+            // 2 actions for a single BCI: access to a 2 slot local (long/double).
+            toInsert = actions[index].merge(toInsert);
         }
-        current.register(action, preAction);
+        actions[index] = toInsert;
+    }
+
+    private static int getIndex(int bci, boolean preAction) {
+        return 2 * bci + (preAction ? 0 : 1);
     }
 }

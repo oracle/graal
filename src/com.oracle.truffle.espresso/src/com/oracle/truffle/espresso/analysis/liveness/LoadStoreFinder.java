@@ -76,6 +76,10 @@ import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 
+/**
+ * Examines each block's opodes to find all relevant history for Liveness analysis (ie: finds LOADs,
+ * STOREs and IINCs).
+ */
 public final class LoadStoreFinder extends BlockIteratorClosure {
 
     private final History[] blockHistory;

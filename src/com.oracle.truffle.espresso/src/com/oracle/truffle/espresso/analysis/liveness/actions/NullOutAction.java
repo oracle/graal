@@ -38,7 +38,12 @@ public final class NullOutAction extends LocalVariableAction {
         if (local < MAX_CACHE) {
             LocalVariableAction res = CACHE[local];
             if (res == null) {
-                res = CACHE[local] = new NullOutAction(local);
+                synchronized (CACHE) {
+                    res = CACHE[local];
+                    if (res == null) {
+                        res = CACHE[local] = new NullOutAction(local);
+                    }
+                }
             }
             return res;
         } else {
@@ -52,12 +57,21 @@ public final class NullOutAction extends LocalVariableAction {
 
     @Override
     public void execute(VirtualFrame frame, BytecodeNode node) {
-        node.nullOutLocalObject(frame, local);
+        node.freeLocal(frame, local);
     }
 
     @Override
     public String toString() {
         return local + "";
+    }
+
+    @Override
+    public LocalVariableAction merge(LocalVariableAction other) {
+        if (other instanceof MultiAction) {
+            return other.merge(this);
+        }
+        assert other instanceof NullOutAction;
+        return new MultiAction(new int[]{this.local, ((NullOutAction) other).local});
     }
 
     public int local() {

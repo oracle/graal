@@ -40,6 +40,14 @@ import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 
+/**
+ * Glues together loop entries and loop ends by forcing loop ends to have an end state that is a
+ * super set of the loop entry state. This means that any local that must be alive on loop entry
+ * should also be alive when looping back.
+ * <p>
+ * Once this is enforced, the changes are propagated upwards the graph to maintain consistency
+ * between a block's end and its successors entry.
+ */
 public final class LoopPropagatorClosure extends BlockIteratorClosure {
     private final BlockBoundaryResult boundaries;
 

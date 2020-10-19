@@ -28,4 +28,6 @@ import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
 public abstract class LocalVariableAction {
     public abstract void execute(VirtualFrame frame, BytecodeNode node);
+
+    public abstract LocalVariableAction merge(LocalVariableAction other);
 }

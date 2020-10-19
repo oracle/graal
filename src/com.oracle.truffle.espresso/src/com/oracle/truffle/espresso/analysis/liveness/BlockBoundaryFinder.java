@@ -41,6 +41,11 @@ import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.impl.Method;
 
+/**
+ * Does a single pass over all blocks in order to find the set of local variables that is alive at
+ * block entry and at block end. This phase does not handle loops, and does the mostly wrong
+ * speculation that loop entry states are empty.
+ */
 public final class BlockBoundaryFinder extends BlockIteratorClosure implements BlockBoundaryResult, BlockLogger {
     private final int maxLocals;
     private final int totalBlocks;

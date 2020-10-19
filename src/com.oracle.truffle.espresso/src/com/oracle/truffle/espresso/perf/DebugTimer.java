@@ -70,7 +70,9 @@ public abstract class DebugTimer {
 
         @Override
         protected void doReport() {
-            System.err.println(name + " avg: " + (clock.get() / counter.get()));
+            long count = counter.get();
+            long avg = (count == 0) ? 0 : (clock.get() / count);
+            System.err.println(name + " avg: " + avg);
         }
     }
 

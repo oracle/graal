@@ -23,12 +23,22 @@
 
 package com.oracle.truffle.espresso.analysis;
 
+import com.oracle.truffle.espresso.analysis.BlockIterator.BlockProcessResult;
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 
 public abstract class BlockIteratorClosure {
-    public abstract BlockIterator.BlockProcessResult processBlock(LinkedBlock b, BytecodeStream bs, AnalysisProcessor processor);
+    /**
+     * The return value of this method controls the behavior of when blocks are pushed to the
+     * working queue of the {@link DepthFirstBlockIterator}. If a block is not ready to be
+     * processed, this method should return {@link BlockProcessResult#SKIP}, else, the method should
+     * return {@link BlockProcessResult#DONE}.
+     * <p>
+     * Otherwise, if this closure is to be used with the {@link BlockIterator}, it should always
+     * return {@link BlockProcessResult#DONE}.
+     */
+    public abstract BlockProcessResult processBlock(LinkedBlock b, BytecodeStream bs, AnalysisProcessor processor);
 
     public int[] getSuccessors(LinkedBlock b) {
         return b.successorsID();

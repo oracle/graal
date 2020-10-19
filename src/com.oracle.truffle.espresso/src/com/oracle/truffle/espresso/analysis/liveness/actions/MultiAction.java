@@ -23,15 +23,12 @@
 
 package com.oracle.truffle.espresso.analysis.liveness.actions;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.espresso.analysis.Util;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
 public final class MultiAction extends LocalVariableAction {
@@ -45,7 +42,7 @@ public final class MultiAction extends LocalVariableAction {
     @ExplodeLoop
     public void execute(VirtualFrame frame, BytecodeNode node) {
         for (int local : actions) {
-            node.nullOutLocalObject(frame, local);
+            node.freeLocal(frame, local);
         }
     }
 
@@ -54,32 +51,21 @@ public final class MultiAction extends LocalVariableAction {
         return Arrays.toString(actions);
     }
 
-    public static class TempMultiAction extends LocalVariableAction {
-        private final ArrayList<Integer> actions;
-
-        @Override
-        public void execute(VirtualFrame frame, BytecodeNode node) {
-            throw EspressoError.shouldNotReachHere();
-        }
-
-        public void add(LocalVariableAction action) {
-            assert action instanceof NullOutAction;
-            actions.add(((NullOutAction) action).local());
-        }
-
-        public TempMultiAction() {
-            this.actions = new ArrayList<>();
-        }
-
-        public TempMultiAction(ArrayList<LocalVariableAction> actions) {
-            this.actions = new ArrayList<>();
-            for (LocalVariableAction action : actions) {
-                add(action);
-            }
-        }
-
-        public MultiAction freeze() {
-            return new MultiAction(Util.toIntArray(actions));
+    @Override
+    public LocalVariableAction merge(LocalVariableAction other) {
+        int[] locals;
+        if (other instanceof MultiAction) {
+            MultiAction multi = (MultiAction) other;
+            locals = new int[this.actions.length + multi.actions.length];
+            System.arraycopy(this.actions, 0, locals, 0, this.actions.length);
+            System.arraycopy(multi.actions, 0, locals, this.actions.length, multi.actions.length);
+            return new MultiAction(locals);
+        } else {
+            assert other instanceof NullOutAction;
+            locals = new int[this.actions.length + 1];
+            System.arraycopy(this.actions, 0, locals, 0, this.actions.length);
+            locals[locals.length - 1] = ((NullOutAction) other).local();
+            return new MultiAction(locals);
         }
     }
 }

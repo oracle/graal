@@ -27,6 +27,9 @@ import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.impl.Method;
 
+/**
+ * Depth-first iteration over a graph's blocks.
+ */
 public final class DepthFirstBlockIterator extends BlockIterator {
     private final IntArrayIterator[] successors;
 

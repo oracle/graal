@@ -37,4 +37,9 @@ public final class NoAction extends LocalVariableAction {
     public void execute(VirtualFrame frame, BytecodeNode node) {
         /* nop */
     }
+
+    @Override
+    public LocalVariableAction merge(LocalVariableAction other) {
+        return other;
+    }
 }
