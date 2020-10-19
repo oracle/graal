@@ -42,30 +42,23 @@ package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import org.graalvm.wasm.exception.WasmJsApiException;
 
 @ExportLibrary(InteropLibrary.class)
 public class Global extends Dictionary {
-    private final Object descriptor;
     private final ValueType valueType;
     private final boolean mutable;
     private Object value;
 
-    public Global(Object descriptor, Object value) {
-        this.descriptor = descriptor;
-        try {
-            this.valueType = ValueType.valueOf((String) InteropLibrary.getUncached().readMember(descriptor, "value"));
-            this.mutable = (boolean) InteropLibrary.getUncached().readMember(descriptor, "mutable");
-        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid global descriptor: " + descriptor);
-        }
+    public Global(String valueType, boolean mutable, Object value) {
+        this.valueType = ValueType.valueOf(valueType);
+        this.mutable = mutable;
         setInternal(value);
         addMembers(new Object[]{
-                        "descriptor", this.descriptor,
-                        "valueOf", new Executable(args -> get()),
-                        "value", value,
+                        "descriptor", new GlobalDescriptor(valueType, mutable),
+                        "valueOf", new Executable(args -> get())
         });
     }
 
@@ -116,4 +109,41 @@ public class Global extends Dictionary {
                 break;
         }
     }
+
+    @ExportMessage
+    @Override
+    public boolean isMemberReadable(String member) {
+        return "value".equals(member) || super.isMemberReadable(member);
+    }
+
+    @ExportMessage
+    public boolean isMemberModifiable(String member) {
+        return "value".equals(member);
+    }
+
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    public boolean isMemberInsertable(String member) {
+        return false;
+    }
+
+    @ExportMessage
+    @Override
+    public Object readMember(String member) throws UnknownIdentifierException {
+        if ("value".equals(member)) {
+            return get();
+        } else {
+            return super.readMember(member);
+        }
+    }
+
+    @ExportMessage
+    public void writeMember(String member, Object newValue) throws UnknownIdentifierException {
+        if ("value".equals(member)) {
+            set(newValue);
+        } else {
+            throw unknown(member);
+        }
+    }
+
 }

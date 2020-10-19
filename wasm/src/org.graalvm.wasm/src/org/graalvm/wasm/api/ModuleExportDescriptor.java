@@ -48,13 +48,16 @@ public class ModuleExportDescriptor extends Dictionary {
     private final String name;
     private final ImportExportKind kind;
 
-    public ModuleExportDescriptor(String name, String kind) {
+    public ModuleExportDescriptor(String name, String kind, String type) {
         this.name = name;
         this.kind = ImportExportKind.parse(kind);
         addMembers(new Object[]{
                         "name", this.name,
                         "kind", this.kind.name(),
         });
+        if (type != null) {
+            addMember("type", type);
+        }
     }
 
     public String name() {

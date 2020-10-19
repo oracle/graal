@@ -135,7 +135,7 @@ public class Table extends Dictionary {
     }
 
     public Object get(int index) {
-        if (index > table.size()) {
+        if (index >= table.size()) {
             throw rangeError();
         }
         final Object function = table.get(index);
@@ -143,7 +143,7 @@ public class Table extends Dictionary {
     }
 
     public Object set(int index, Object element) {
-        if (index > table.size()) {
+        if (index >= table.size()) {
             throw rangeError();
         }
         table.set(index, new WasmFunctionInstance(null, Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
