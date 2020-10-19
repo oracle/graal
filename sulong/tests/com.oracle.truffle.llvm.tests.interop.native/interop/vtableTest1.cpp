@@ -40,7 +40,7 @@ class A {
 
 int A::foo(int x) {return 0;} //dummy
 
-POLYGLOT_DECLARE_CLASS(A);
+POLYGLOT_DECLARE_TYPE(A);
 
 int evaluateDirectly(A* a, int x) {
 	return a->foo(x);

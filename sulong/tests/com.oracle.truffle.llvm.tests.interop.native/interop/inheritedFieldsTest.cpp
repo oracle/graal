@@ -37,7 +37,7 @@ class A {
 		A();
 };
 
-POLYGLOT_DECLARE_CLASS(A);
+POLYGLOT_DECLARE_TYPE(A);
 
 class B: public A {
 	public:
@@ -45,7 +45,7 @@ class B: public A {
 		B();
 };
 
-POLYGLOT_DECLARE_CLASS(B);
+POLYGLOT_DECLARE_TYPE(B);
 
 A::A(){a=3;}
 B::B():A(){b=4;}
