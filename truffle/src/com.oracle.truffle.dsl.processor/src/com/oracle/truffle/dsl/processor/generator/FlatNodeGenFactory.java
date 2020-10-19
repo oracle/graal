@@ -3058,6 +3058,10 @@ public class FlatNodeGenFactory {
             }
 
             FrameState innerFrameState = frameState;
+
+            BlockState nonBoundaryIfCount = BlockState.NONE;
+
+            CodeTreeBuilder innerBuilder;
             if (extractInBoundary) {
                 innerFrameState = frameState.copy();
                 for (CacheExpression cache : specialization.getCaches()) {
@@ -3065,23 +3069,27 @@ public class FlatNodeGenFactory {
                         setCacheInitialized(innerFrameState, specialization, cache, false);
                     }
                 }
-            }
-
-            if (specialization != null) {
-                cachedTriples.addAll(initializeCaches(innerFrameState, frameState.getMode(), group, specialization.getCaches(), true, false));
-            }
-
-            BlockState nonBoundaryIfCount = BlockState.NONE;
-            final CodeTreeBuilder innerBuilder;
-            if (extractInBoundary) {
                 nonBoundaryIfCount = nonBoundaryIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(nonBoundaryGuards), false));
                 innerBuilder = extractInBoundaryMethod(builder, frameState, specialization);
+
+                for (NodeExecutionData execution : specialization.getNode().getChildExecutions()) {
+                    int index = forType.getVarArgsIndex(execution.getIndex());
+                    if (index != -1) {
+                        LocalVariable var = innerFrameState.getValue(execution);
+                        innerFrameState.set(execution, var.accessWith(CodeTreeBuilder.singleString(var.getName())));
+                    }
+                }
+
             } else if (pushEncapsulatingNode) {
                 innerBuilder = builder;
                 nonBoundaryIfCount = IfTriple.materialize(innerBuilder, IfTriple.optimize(nonBoundaryGuards), false);
             } else {
                 innerBuilder = builder;
                 cachedTriples.addAll(0, nonBoundaryGuards);
+            }
+
+            if (specialization != null) {
+                cachedTriples.addAll(initializeCaches(innerFrameState, frameState.getMode(), group, specialization.getCaches(), true, false));
             }
 
             if (pushEncapsulatingNode && !libraryInGuard) {

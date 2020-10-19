@@ -320,7 +320,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
         node.getFields().addAll(parseFields(lookupTypes, members));
         node.getChildren().addAll(parseChildren(node, lookupTypes, members));
-        node.getChildExecutions().addAll(parseExecutions(node.getFields(), node.getChildren(), members));
+        node.getChildExecutions().addAll(parseExecutions(node, node.getFields(), node.getChildren(), members));
         node.getExecutableTypes().addAll(parseExecutableTypeData(node, members, node.getSignatureSize(), context.getFrameTypes(), false));
 
         initializeExecutableTypes(node);
@@ -1235,7 +1235,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     }
 
-    private List<NodeExecutionData> parseExecutions(List<NodeFieldData> fields, List<NodeChildData> children, List<? extends Element> elements) {
+    private List<NodeExecutionData> parseExecutions(@SuppressWarnings("unused") NodeData node, List<NodeFieldData> fields, List<NodeChildData> children, List<? extends Element> elements) {
         List<ExecutableElement> methods = ElementFilter.methodsIn(elements);
         boolean hasVarArgs = false;
         int maxSignatureSize = 0;
@@ -2403,12 +2403,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 defaultExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, defaultExpression, expression);
                 cachedLibrary.setDefaultExpression(defaultExpression);
 
-                DSLExpression uncachedExpression;
-                /*
-                 * If libraries are bound in guards then uncached guards are on the fast path
-                 * therefore only the dispatched uncached version should be used.
-                 */
-                uncachedExpression = new DSLExpression.Call(resolveCall, "getUncached",
+                DSLExpression uncachedExpression = new DSLExpression.Call(resolveCall, "getUncached",
                                 Arrays.asList(receiverExpression));
                 cachedLibrary.setUncachedExpression(uncachedExpression);
 

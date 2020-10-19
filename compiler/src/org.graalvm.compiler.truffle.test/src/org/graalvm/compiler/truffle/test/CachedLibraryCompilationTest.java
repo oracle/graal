@@ -29,6 +29,7 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.truffle.test.CachedLibraryCompilationTestFactory.FrameNodeGen;
 import org.graalvm.compiler.truffle.test.CachedLibraryCompilationTestFactory.GuardNodeGen;
 import org.graalvm.compiler.truffle.test.CachedLibraryCompilationTestFactory.NoGuardNodeGen;
+import org.graalvm.compiler.truffle.test.CachedLibraryCompilationTestFactory.VarArgsLibraryNodeGen;
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Assert;
@@ -160,6 +161,40 @@ public class CachedLibraryCompilationTest extends PartialEvaluationTest {
 
         StructuredGraph graph = partialEval(testRoot);
         Assert.assertEquals(2, graph.getNodes(MethodCallTargetNode.TYPE).count());
+    }
+
+    @Test
+    public void testVarArgsLibraryNode() {
+        RootNode testRoot = new RootNode(null) {
+            @Child VarArgsLibraryNode node = VarArgsLibraryNodeGen.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return node.execute(42, 11, 31);
+            }
+        };
+
+        StructuredGraph graph = partialEval(testRoot);
+        Assert.assertEquals(4, graph.getNodes(MethodCallTargetNode.TYPE).count());
+    }
+
+    abstract static class VarArgsLibraryNode extends Node {
+
+        static int LIMIT = 0;
+
+        protected abstract Object execute(Object arg0, Object... args);
+
+        @Specialization(guards = {"lib1.fitsInByte(arg1)", "lib2.fitsInByte(arg2)"}, limit = "LIMIT")
+        int varargs(@SuppressWarnings("unused") Object arg0, Object arg1, Object arg2,
+                        @CachedLibrary("arg1") InteropLibrary lib1,
+                        @CachedLibrary("arg2") InteropLibrary lib2) {
+            try {
+                return lib1.asInt(arg1) + lib2.asInt(arg2);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
     }
 
 }
