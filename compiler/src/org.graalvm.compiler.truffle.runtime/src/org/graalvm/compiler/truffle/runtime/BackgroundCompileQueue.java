@@ -240,14 +240,13 @@ public class BackgroundCompileQueue {
         // nop
     }
 
-    // TODO: public only for tests
-    public static class Priority {
+    static class Priority {
 
         public static final Priority INITIALIZATION = new Priority(0, Tier.INITIALIZATION);
         final Tier tier;
         final int value;
 
-        public Priority(int value, Tier tier) {
+        Priority(int value, Tier tier) {
             this.value = value;
             this.tier = tier;
         }

@@ -48,11 +48,11 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private volatile boolean cancelled;
     private volatile boolean started;
 
-    public static CompilationTask initializationTask(WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action) {
+    static CompilationTask initializationTask(WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action) {
         return new CompilationTask(BackgroundCompileQueue.Priority.INITIALIZATION, targetRef, action, 0);
     }
 
-    public static CompilationTask compilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, GraalTruffleRuntime runtime, long id) {
+    static CompilationTask compilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, GraalTruffleRuntime runtime, long id) {
         return new CompilationTask(priority, targetRef, runtime.compilationAction, id);
     }
 

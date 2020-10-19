@@ -28,8 +28,6 @@ import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COM
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 
-import java.lang.ref.WeakReference;
-
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
@@ -42,13 +40,11 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
-import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
@@ -84,7 +80,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         CompilationIdentifier compilationId = getCompilationId(compilable);
         StructuredGraph graph = partialEval(compilable, arguments, compilationId);
         this.lastCompilationResult = getTruffleCompiler(compilable).compilePEGraph(graph, methodName, null, compilable, asCompilationRequest(compilationId), null,
-                        newTask(compilable));
+                        newTask());
         this.lastCompiledGraph = graph;
         return compilable;
     }
@@ -99,13 +95,13 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 CompilationIdentifier expectedId = getCompilationId(expectedTarget);
                 StructuredGraph expectedGraph = partialEval(expectedTarget, arguments, expectedId);
                 getTruffleCompiler(expectedTarget).compilePEGraph(expectedGraph, "expectedTest", getSuite(expectedTarget), expectedTarget, asCompilationRequest(expectedId), null,
-                                newTask(expectedTarget));
+                                newTask());
                 removeFrameStates(expectedGraph);
 
                 CompilationIdentifier actualId = getCompilationId(actualTarget);
                 StructuredGraph actualGraph = partialEval(actualTarget, arguments, actualId);
                 getTruffleCompiler(actualTarget).compilePEGraph(actualGraph, "actualTest", getSuite(actualTarget), actualTarget, asCompilationRequest(actualId), null,
-                                newTask(actualTarget));
+                                newTask());
                 removeFrameStates(actualGraph);
                 assertEquals(expectedGraph, actualGraph, true, true);
                 return;
@@ -122,9 +118,18 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         }
     }
 
-    private static CompilationTask newTask(OptimizedCallTarget target) {
-        return CompilationTask.compilationTask(new BackgroundCompileQueue.Priority(0, BackgroundCompileQueue.Priority.Tier.LAST), new WeakReference<>(target),
-                        ((GraalTruffleRuntime) Truffle.getRuntime()), 0);
+    private static TruffleCompilationTask newTask() {
+        return new TruffleCompilationTask() {
+            @Override
+            public boolean isCancelled() {
+                return false;
+            }
+
+            @Override
+            public boolean isLastTier() {
+                return true;
+            }
+        };
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root, Object[] arguments) {
@@ -135,7 +140,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             try {
                 CompilationIdentifier compilationId = getCompilationId(compilable);
                 StructuredGraph actual = partialEval(compilable, arguments, compilationId);
-                getTruffleCompiler(compilable).compilePEGraph(actual, methodName, getSuite(compilable), compilable, asCompilationRequest(compilationId), null, newTask(compilable));
+                getTruffleCompiler(compilable).compilePEGraph(actual, methodName, getSuite(compilable), compilable, asCompilationRequest(compilationId), null, newTask());
                 removeFrameStates(actual);
                 StructuredGraph expected = parseForComparison(methodName, actual.getDebug());
                 removeFrameStates(expected);
@@ -179,7 +184,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     protected void compile(OptimizedCallTarget compilable, StructuredGraph graph) {
         String methodName = "test";
         CompilationIdentifier compilationId = getCompilationId(compilable);
-        getTruffleCompiler(compilable).compilePEGraph(graph, methodName, getSuite(compilable), compilable, asCompilationRequest(compilationId), null, newTask(compilable));
+        getTruffleCompiler(compilable).compilePEGraph(graph, methodName, getSuite(compilable), compilable, asCompilationRequest(compilationId), null, newTask());
     }
 
     @SuppressWarnings("try")
