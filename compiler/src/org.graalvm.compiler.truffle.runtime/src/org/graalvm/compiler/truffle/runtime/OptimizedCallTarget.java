@@ -262,10 +262,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * It is only set to non-null in {@link #compile(boolean)} in a synchronized block.
      *
      * It is only {@linkplain #resetCompilationTask() set to null} by the
-     * {@linkplain CompilationTask task} itself when: 1) The task is canceled before the
-     * compilation has started, or 2) The compilation has finished (successfully or not). Canceling
-     * the task after the compilation has started does not reset the task until the compilation
-     * finishes.
+     * {@linkplain CompilationTask task} itself when: 1) The task is canceled before the compilation
+     * has started, or 2) The compilation has finished (successfully or not). Canceling the task
+     * after the compilation has started does not reset the task until the compilation finishes.
      */
     private volatile CompilationTask compilationTask;
 

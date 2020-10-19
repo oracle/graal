@@ -52,7 +52,6 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         return new CompilationTask(BackgroundCompileQueue.Priority.INITIALIZATION, targetRef, action, 0);
     }
 
-
     public static CompilationTask compilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, GraalTruffleRuntime runtime, long id) {
         return new CompilationTask(priority, targetRef, runtime.compilationAction, id);
     }
