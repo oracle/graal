@@ -117,6 +117,6 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTar
     @SuppressWarnings("try")
     @Override
     public void finishWarmup(GraalTestContext testContext, OptimizedCallTarget callTarget) {
-        truffleRuntime.doCompile(callTarget, new CancellableCompileTask(new WeakReference<>(callTarget), true));
+        truffleRuntime.doCompile(callTarget, new CancellableCompileTask(priority, new WeakReference<>(callTarget), request, id));
     }
 }

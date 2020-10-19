@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -209,9 +210,9 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                 localTask = initializationTask;
                 if (localTask == null && !truffleCompilerInitialized) {
                     rethrowTruffleCompilerInitializationException();
-                    initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
+                    initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BiConsumer<CancellableCompileTask, WeakReference<OptimizedCallTarget>>() {
                         @Override
-                        protected void execute(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef) {
+                        public void accept(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef) {
                             synchronized (lock) {
                                 initializeTruffleCompiler(firstCallTarget);
                                 assert truffleCompilerInitialized || truffleCompilerInitializationException != null;

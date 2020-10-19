@@ -75,17 +75,17 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments) {
-        return compileHelper(methodName, root, arguments, true);
+        return compileHelper(methodName, root, arguments);
     }
 
     protected CompilationResult lastCompilationResult;
 
-    protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments, boolean lastTierCompilation) {
+    protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments) {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) (Truffle.getRuntime()).createCallTarget(root);
         CompilationIdentifier compilationId = getCompilationId(compilable);
         StructuredGraph graph = partialEval(compilable, arguments, compilationId);
         this.lastCompilationResult = getTruffleCompiler(compilable).compilePEGraph(graph, methodName, null, compilable, asCompilationRequest(compilationId), null,
-                        new CancellableCompileTask(new WeakReference<>(compilable), lastTierCompilation));
+                        new CancellableCompileTask(priority, new WeakReference<>(compilable), request, id));
         this.lastCompiledGraph = graph;
         return compilable;
     }
@@ -100,13 +100,13 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 CompilationIdentifier expectedId = getCompilationId(expectedTarget);
                 StructuredGraph expectedGraph = partialEval(expectedTarget, arguments, expectedId);
                 getTruffleCompiler(expectedTarget).compilePEGraph(expectedGraph, "expectedTest", getSuite(expectedTarget), expectedTarget, asCompilationRequest(expectedId), null,
-                                new CancellableCompileTask(new WeakReference<>(expectedTarget), true));
+                                new CancellableCompileTask(priority, new WeakReference<>(expectedTarget), request, id));
                 removeFrameStates(expectedGraph);
 
                 CompilationIdentifier actualId = getCompilationId(actualTarget);
                 StructuredGraph actualGraph = partialEval(actualTarget, arguments, actualId);
                 getTruffleCompiler(actualTarget).compilePEGraph(actualGraph, "actualTest", getSuite(actualTarget), actualTarget, asCompilationRequest(actualId), null,
-                                new CancellableCompileTask(new WeakReference<>(actualTarget), true));
+                                new CancellableCompileTask(priority, new WeakReference<>(actualTarget), request, id));
                 removeFrameStates(actualGraph);
                 assertEquals(expectedGraph, actualGraph, true, true);
                 return;
@@ -132,7 +132,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 CompilationIdentifier compilationId = getCompilationId(compilable);
                 StructuredGraph actual = partialEval(compilable, arguments, compilationId);
                 getTruffleCompiler(compilable).compilePEGraph(actual, methodName, getSuite(compilable), compilable, asCompilationRequest(compilationId), null,
-                                new CancellableCompileTask(new WeakReference<>(compilable), true));
+                                new CancellableCompileTask(priority, new WeakReference<>(compilable), request, id));
                 removeFrameStates(actual);
                 StructuredGraph expected = parseForComparison(methodName, actual.getDebug());
                 removeFrameStates(expected);
@@ -177,7 +177,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         String methodName = "test";
         CompilationIdentifier compilationId = getCompilationId(compilable);
         getTruffleCompiler(compilable).compilePEGraph(graph, methodName, getSuite(compilable), compilable, asCompilationRequest(compilationId), null,
-                        new CancellableCompileTask(new WeakReference<>(compilable), true));
+                        new CancellableCompileTask(priority, new WeakReference<>(compilable), request, id));
     }
 
     DebugContext lastDebug;

@@ -25,36 +25,38 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import java.lang.ref.WeakReference;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
-public final class CancellableCompileTask implements TruffleCompilationTask {
-    private final WeakReference<OptimizedCallTarget> targetRef;
-    private final boolean lastTierCompilation;
+public final class CancellableCompileTask implements TruffleCompilationTask, Callable<Void>, Comparable<CancellableCompileTask> {
+
+    final WeakReference<OptimizedCallTarget> targetRef;
+    private final BackgroundCompileQueue.Priority priority;
+    private final boolean multiTier;
+    private final boolean priorityQueue;
+    private final long id;
+    private final BiConsumer<CancellableCompileTask, WeakReference<OptimizedCallTarget>> action;
     private volatile Future<?> future;
     private volatile boolean cancelled;
     private volatile boolean started;
 
-    public CancellableCompileTask(WeakReference<OptimizedCallTarget> targetRef, boolean lastTierCompilation) {
+    public CancellableCompileTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef,
+                    BiConsumer<CancellableCompileTask, WeakReference<OptimizedCallTarget>> request, long id) {
+        this.priority = priority;
         this.targetRef = targetRef;
-        this.lastTierCompilation = lastTierCompilation;
-    }
-
-    // This cannot be done in the constructor because the CancellableCompileTask needs to be
-    // passed down to the compiler through a Runnable inner class.
-    // This means it must be final and initialized before the future can be set.
-    void setFuture(Future<?> future) {
-        synchronized (this) {
-            if (this.future == null) {
-                this.future = future;
-            } else {
-                throw new IllegalStateException("The future should not be re-set.");
-            }
-        }
+        this.action = request;
+        this.id = id;
+        OptimizedCallTarget target = targetRef.get();
+        priorityQueue = target != null && target.getOptionValue(PolyglotCompilerOptions.PriorityQueue);
+        multiTier = target != null && target.getOptionValue(PolyglotCompilerOptions.MultiTier);
     }
 
     public void awaitCompletion(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
@@ -99,15 +101,76 @@ public final class CancellableCompileTask implements TruffleCompilationTask {
 
     @Override
     public boolean isLastTier() {
-        return lastTierCompilation;
+        return priority.tier == BackgroundCompileQueue.Priority.Tier.LAST;
     }
 
     public Future<?> getFuture() {
         return future;
     }
 
+    // This cannot be done in the constructor because the CancellableCompileTask needs to be
+    // passed down to the compiler through a Runnable inner class.
+    // This means it must be final and initialized before the future can be set.
+    void setFuture(Future<?> future) {
+        synchronized (this) {
+            if (this.future == null) {
+                this.future = future;
+            } else {
+                throw new IllegalStateException("The future should not be re-set.");
+            }
+        }
+    }
+
     @Override
     public String toString() {
         return "CompileTask[" + future + "]";
+    }
+
+    /**
+     * We only want priority for the "escape from interpreter" compilations. If multi tier is
+     * enabled, that means *only* first tier compilations, otherwise it means last tier.
+     */
+    private boolean priorityQueueEnabled() {
+        return priorityQueue && ((multiTier && priority.tier == BackgroundCompileQueue.Priority.Tier.FIRST) || (!multiTier && priority.tier == BackgroundCompileQueue.Priority.Tier.LAST));
+    }
+
+    @Override
+    public int compareTo(CancellableCompileTask that) {
+        int tierCompare = priority.tier.compareTo(that.priority.tier);
+        if (tierCompare != 0) {
+            return tierCompare;
+        }
+        if (priorityQueueEnabled()) {
+            int valueCompare = -1 * Long.compare(priority.value, that.priority.value);
+            if (valueCompare != 0) {
+                return valueCompare;
+            }
+        }
+        return Long.compare(this.id, that.id);
+    }
+
+    @Override
+    public Void call() throws Exception {
+        action.accept(this, targetRef);
+        return null;
+    }
+
+    static class RequestFutureTask extends FutureTask<Void> implements Comparable<RequestFutureTask> {
+        final CancellableCompileTask compileTask;
+
+        RequestFutureTask(CancellableCompileTask compileTask) {
+            super(compileTask);
+            this.compileTask = compileTask;
+        }
+
+        @Override
+        public int compareTo(RequestFutureTask that) {
+            return this.compileTask.compareTo(that.compileTask);
+        }
+
+        @Override
+        public String toString() {
+            return "Future(" + compileTask + ")";
+        }
     }
 }
