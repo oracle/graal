@@ -94,10 +94,9 @@ The following restrictions and differences to native execution (i.e., bitcode co
 
 ### Limitations and Differences to Managed Execution on Top of GraalVM Enterprise
 
-The managed execution for LLVM bitcode is GraalVM Enterprise Edition feature and can be enabled with the `--llvm.managed` command line option. In the managed mode, GraalVM's LLVM interpreter prevents access to unmanaged
-memory and uncontrolled calls to native code and operating system functionality.
-The allocations are performed in the managed Java heap, and accesses to the
-surrounding system are routed through proper Language API and Java API calls.
+The managed execution for LLVM bitcode is a GraalVM Enterprise Edition feature and can be enabled with the `--llvm.managed` command line option.
+In managed mode, the GraalVM LLVM runtime prevents access to unmanaged memory and uncontrolled calls to native code and operating system functionality.
+The allocations are performed in the managed Java heap, and accesses to the surrounding system are routed through proper Language API and Java API calls.
 
 All the restrictions from the default native LLVM execution on GraalVM apply to the managed execution, but with the following differences/changes:
 
@@ -126,4 +125,4 @@ All the restrictions from the default native LLVM execution on GraalVM apply to 
  * Floating point arithmetics
    * 80-bit floating points only use 64-bit floating point precision.
  * Dynamic linking
-   * The interaction with the LLVM bitcode dynamic linker is not supported, e.g., dlsym/dlopen cannot be used. This does not allow for the loading of  native code.
+   * The interaction with the LLVM bitcode dynamic linker is not supported, e.g., dlsym/dlopen cannot be used. This does not allow to load native code.

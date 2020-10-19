@@ -15,7 +15,7 @@ Define a C struct for points and implement allocation functions in a file named 
 
 ```c
 // cpart.c
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 #include <stdlib.h>
 #include <stdio.h>

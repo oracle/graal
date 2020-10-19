@@ -5,7 +5,7 @@ As a first step, you have to compile a program to LLVM bitcode using some LLVM c
 
 ## File Format
 
-While the GraalVM's LLVM runtime can execute [plain bitcode files](https://llvm.org/docs/BitCodeFormat.html),
+While the GraalVM LLVM runtime can execute [plain bitcode files](https://llvm.org/docs/BitCodeFormat.html),
 the preferred format is a _native executable_ with _embedded bitcode_.
 The executable file formats differ on Linux and macOS.
 Linux by default uses ELF files.

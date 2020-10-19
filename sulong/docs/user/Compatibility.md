@@ -21,7 +21,5 @@ recommended flags by default.
 Generally, all optimization levels should work, but for a better result, it is
 recommended to compile the bitcode with the optimization level `-O1`.
 
-Cross-language interoperability will only work when bitcode is compiled
-with debug information enabled (`-g`), and the `-mem2reg` optimization is
-performed on bitcode (compiled with at least `-O1`, or explicitly determined using the
-`opt` tool).
+For cross-language interoperability, the `-mem2reg` optimization is required.
+There are two ways to get that, either compile with at least `-O1`, or use the `opt` tool to apply the `-mem2reg` optimization manually.
