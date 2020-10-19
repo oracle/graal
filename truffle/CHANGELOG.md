@@ -49,7 +49,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Make all exports of `InteropLibrary.throwException(Object)` throw an instance of `AbstractTruffleException`. This contract will be enforced in future versions when `TruffleException` will be removed.
 * Added [TruffleInstrument.Env.getEnteredContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#getEnteredContext--) returning the entered `TruffleContext`.
 * Added [DebuggerSession.setShowHostStackFrames](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#setShowHostStackFrames-boolean-) and host `DebugStackFrame` and `DebugStackTraceElement`. This is useful for debugging of applications that use host interop.
-
 * All Truffle Graal runtime options (-Dgraal.) which were deprecated in GraalVM 20.1 are removed. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-).
 * Deprecated the `com.oracle.truffle.api.object.dsl` API without replacement. The migration path is to use `DynamicObject` subclasses with the `com.oracle.truffle.api.object` API.
 * A node parameter now needs to be provided to TruffleContext.enter() and TruffleContext.leave(Object). The overloads without node parameter are deprecated. This is useful to allow the runtime to compile the enter and leave code better if a node is passed as argument. 
@@ -58,6 +57,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Removed deprecation for `RootNode.getLanguage(Class<?>)`, it is still useful to efficiently access the associated language of a root node.
 * Block node partial compilation is no longer eagerly triggered but only when the `--engine.MaximumGraalNodeCount` limit was reached once for a call target.
 * Lifted the restriction that the dynamic type of a `DynamicObject` needs to be an instance of `ObjectType`, allowing any non-null object. Deprecated `Shape.getObjectType()` that has been replaced by `Shape.getDynamicType()`.
+* Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters. 
 
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.
