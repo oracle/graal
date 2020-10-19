@@ -38,12 +38,12 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
-
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implements Virtualizable {
@@ -76,6 +76,9 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
                 }
 
                 ValueNode dataEntry = tool.getEntry(dataVirtual, frameSlotIndex);
+                if (dataEntry.getStackKind() == JavaKind.Illegal) {
+                    throw new BailoutException(true, "Frame virtualization reads an illegal value.");
+                }
                 if (dataEntry.getStackKind() == getStackKind()) {
                     tool.replaceWith(dataEntry);
                     return;

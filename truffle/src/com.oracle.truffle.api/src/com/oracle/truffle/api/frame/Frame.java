@@ -256,4 +256,12 @@ public interface Frame {
      * @since 0.8 or earlier
      */
     boolean isDouble(FrameSlot slot);
+
+    /**
+     * Frees the given slot in the frame. Subsequent reads to this slot with no stores in-between
+     * will fail.
+     * 
+     * @since 20.3
+     */
+    void free(FrameSlot slot);
 }

@@ -430,6 +430,14 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return getTag(slot) == DOUBLE_TAG;
     }
 
+    @Override
+    public void free(FrameSlot slot) {
+        int slotIndex = getFrameSlotIndex(slot);
+        verifySet(slotIndex, ILLEGAL_TAG);
+        setObjectUnsafe(slotIndex, slot, null);
+        setLongUnsafe(slotIndex, slot, 0L);
+    }
+
     @SuppressWarnings({"unchecked", "unused"})
     private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
         return (T) value;

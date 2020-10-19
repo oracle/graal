@@ -207,4 +207,10 @@ class ReadOnlyFrame implements Frame {
     public boolean isDouble(FrameSlot slot) {
         return delegate.isDouble(slot);
     }
+
+    @Override
+    @TruffleBoundary
+    public void free(FrameSlot slot) {
+        throw newReadonlyAssertionError();
+    }
 }

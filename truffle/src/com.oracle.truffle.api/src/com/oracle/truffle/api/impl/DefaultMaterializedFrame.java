@@ -184,4 +184,9 @@ final class DefaultMaterializedFrame implements MaterializedFrame {
     public boolean isDouble(FrameSlot slot) {
         return wrapped.isDouble(slot);
     }
+
+    @Override
+    public void free(FrameSlot slot) {
+        wrapped.free(slot);
+    }
 }
