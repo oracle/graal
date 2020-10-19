@@ -40,7 +40,6 @@ import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -76,9 +75,6 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
                 }
 
                 ValueNode dataEntry = tool.getEntry(dataVirtual, frameSlotIndex);
-                if (dataEntry.getStackKind() == JavaKind.Illegal) {
-                    throw new BailoutException(true, "Frame virtualization reads an illegal value.");
-                }
                 if (dataEntry.getStackKind() == getStackKind()) {
                     tool.replaceWith(dataEntry);
                     return;

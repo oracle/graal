@@ -263,5 +263,5 @@ public interface Frame {
      * 
      * @since 20.3
      */
-    void free(FrameSlot slot);
+    void clear(FrameSlot slot);
 }

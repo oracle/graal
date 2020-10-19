@@ -186,7 +186,7 @@ final class DefaultMaterializedFrame implements MaterializedFrame {
     }
 
     @Override
-    public void free(FrameSlot slot) {
-        wrapped.free(slot);
+    public void clear(FrameSlot slot) {
+        wrapped.clear(slot);
     }
 }

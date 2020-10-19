@@ -431,7 +431,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     @Override
-    public void free(FrameSlot slot) {
+    public void clear(FrameSlot slot) {
         int slotIndex = getFrameSlotIndex(slot);
         verifySet(slotIndex, ILLEGAL_TAG);
         setObjectUnsafe(slotIndex, slot, null);

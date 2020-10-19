@@ -567,7 +567,7 @@ public class TruffleGraphBuilderPlugins {
             }
         });
 
-        r.register2("free", Receiver.class, new ResolvedJavaSymbol(types.classFrameSlot), new InvocationPlugin() {
+        r.register2("clear", Receiver.class, new ResolvedJavaSymbol(types.classFrameSlot), new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot) {
                 TruffleCompilerRuntime runtime = getRuntime();
