@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot;
+package com.oracle.truffle.polyglot.hostadapters;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -51,6 +51,8 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 import java.util.Arrays;
+import java.util.Objects;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Value;
 
@@ -58,13 +60,14 @@ import org.graalvm.polyglot.Value;
  * Provides static utility services to generated host adapter classes. This class needs to be public
  * and accessible so that its methods can be called from the generated class.
  */
-public final class HostAdapterServices {
+final class HostAdapterServices {
     private static final MethodType VALUE_EXECUTE_METHOD_TYPE = MethodType.methodType(Value.class, Object[].class);
     private static final MethodType VALUE_EXECUTE_VOID_METHOD_TYPE = MethodType.methodType(void.class, Object[].class);
     private static final MethodType VALUE_INVOKE_MEMBER_METHOD_TYPE = MethodType.methodType(Value.class, String.class, Object[].class);
     private static final MethodType VALUE_AS_METHOD_TYPE = MethodType.methodType(Object.class, Class.class);
     private static final MethodType CONCAT_ARRAYS_METHOD_TYPE = MethodType.methodType(Object[].class, Object[].class, Object.class);
 
+    // Keep in sync with constants in HostAdapterBytecodeGenerator
     static final int BOOTSTRAP_VALUE_INVOKE_MEMBER = 1 << 0;
     static final int BOOTSTRAP_VALUE_EXECUTE = 1 << 1;
     static final int BOOTSTRAP_VARARGS = 1 << 2;
@@ -77,7 +80,7 @@ public final class HostAdapterServices {
      */
     @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD})
     @Retention(RetentionPolicy.RUNTIME)
-    public @interface Export {
+    @interface Export {
     }
 
     private HostAdapterServices() {
@@ -92,10 +95,9 @@ public final class HostAdapterServices {
      *
      * @return the guest object used to define methods for the class being initialized.
      */
+    @SuppressWarnings("unchecked")
     public static Value getClassOverrides(ClassLoader classLoader) {
-        final Value overrides = HostAdapterClassLoader.getClassOverrides(classLoader);
-        assert overrides != null;
-        return overrides;
+        return Objects.requireNonNull(((Supplier<Value>) classLoader).get());
     }
 
     /**
@@ -128,7 +130,7 @@ public final class HostAdapterServices {
     }
 
     /**
-     * @see HostAdapterBytecodeGenerator#emitIsFunction
+     * Checks if the {@link Value} is executable.
      */
     public static boolean isFunction(final Object obj) {
         return obj instanceof Value && ((Value) obj).canExecute();

@@ -154,9 +154,8 @@ final class HostAdapterFactory {
 
     private static ClassLoader getCommonClassLoader(ClassLoader classLoader, Class<?> superclass) {
         if (superclass != Object.class) {
-            ClassLoader superclassLoader = superclass.getClassLoader();
-            if (HostAdapterClassLoader.isGeneratedClassLoader(superclassLoader)) {
-                return superclassLoader;
+            if (HostAdapterClassLoader.isGeneratedClass(superclass)) {
+                return superclass.getClassLoader();
             }
         }
         return classLoader;

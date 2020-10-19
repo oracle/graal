@@ -173,7 +173,7 @@ final class HostAdapterBytecodeGenerator {
     private static final String WRAP_THROWABLE_METHOD_NAME = "wrapThrowable";
     private static final String WRAP_THROWABLE_METHOD_DESCRIPTOR = Type.getMethodDescriptor(RUNTIME_EXCEPTION_TYPE, THROWABLE_TYPE);
 
-    private static final String SERVICES_CLASS_TYPE_NAME = Type.getInternalName(HostAdapterServices.class);
+    private static final String SERVICES_CLASS_TYPE_NAME = HostAdapterClassLoader.SERVICE_CLASS_NAME.replace('.', '/');
     private static final String RUNTIME_EXCEPTION_TYPE_NAME = RUNTIME_EXCEPTION_TYPE.getInternalName();
     private static final String ERROR_TYPE_NAME = Type.getInternalName(Error.class);
     private static final String THROWABLE_TYPE_NAME = THROWABLE_TYPE.getInternalName();
@@ -182,23 +182,25 @@ final class HostAdapterBytecodeGenerator {
     private static final String GET_CLASS_LOADER_NAME = "getClassLoader";
     private static final String GET_CLASS_LOADER_DESCRIPTOR = Type.getMethodDescriptor(CLASS_LOADER_TYPE);
 
-    private static final String HOST_EXPORT_ANNOTATION_DESCRIPTOR = Type.getDescriptor(HostAdapterServices.Export.class);
-
     // ASM handle to the bootstrap method
-    private static final Handle BOOTSTRAP_HANDLE = new Handle(H_INVOKESTATIC, Type.getInternalName(HostAdapterServices.class), "bootstrap",
+    private static final Handle BOOTSTRAP_HANDLE = new Handle(H_INVOKESTATIC, SERVICES_CLASS_TYPE_NAME, "bootstrap",
                     MethodType.methodType(CallSite.class, Lookup.class, String.class, MethodType.class, int.class).toMethodDescriptorString(), false);
+
+    // Keep in sync with constants in HostAdapterServices
+    static final int BOOTSTRAP_VALUE_INVOKE_MEMBER = 1 << 0;
+    static final int BOOTSTRAP_VALUE_EXECUTE = 1 << 1;
+    static final int BOOTSTRAP_VARARGS = 1 << 2;
 
     /*
      * Package used when the adapter can't be defined in the adaptee's package (either because it's
      * sealed, or because it's a java.* package.
      */
-    private static final String ADAPTER_PACKAGE_PREFIX = "com/oracle/truffle/polyglot/javaadapters/";
+    private static final String ADAPTER_PACKAGE_PREFIX = "com/oracle/truffle/polyglot/hostadapters/";
     /*
      * Class name suffix used to append to the adaptee class name, when it can be defined in the
      * adaptee's package.
      */
     private static final String ADAPTER_CLASS_NAME_SUFFIX = "$$Adapter";
-    private static final String JAVA_PACKAGE_PREFIX = "java/";
     private static final int MAX_GENERATED_TYPE_NAME_LENGTH = 255;
 
     private static final String DELEGATE_FIELD_NAME = "delegate";
@@ -307,7 +309,6 @@ final class HostAdapterBytecodeGenerator {
 
     private void generatePublicDelegateField() {
         FieldVisitor fw = cw.visitField(ACC_PUBLIC | ACC_FINAL, PUBLIC_DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR, null, null);
-        fw.visitAnnotation(HOST_EXPORT_ANNOTATION_DESCRIPTOR, true);
         fw.visitEnd();
     }
 
@@ -339,15 +340,12 @@ final class HostAdapterBytecodeGenerator {
          * implemented interface or Object.
          */
         final Class<?> namingType = superType == Object.class ? (interfaces.isEmpty() ? Object.class : interfaces.get(0)) : superType;
-        final Package pkg = namingType.getPackage();
-        final String namingTypeName = Type.getInternalName(namingType);
-        final StringBuilder buf = new StringBuilder();
-        if (namingTypeName.startsWith(JAVA_PACKAGE_PREFIX) || pkg == null || pkg.isSealed()) {
-            // Can't define new classes in java.* packages
-            buf.append(ADAPTER_PACKAGE_PREFIX).append(namingTypeName);
-        } else {
-            buf.append(namingTypeName).append(ADAPTER_CLASS_NAME_SUFFIX);
+        String namingTypeName = namingType.getSimpleName();
+        if (namingTypeName.isEmpty()) {
+            namingTypeName = "Adapter";
         }
+        final StringBuilder buf = new StringBuilder();
+        buf.append(ADAPTER_PACKAGE_PREFIX).append(namingTypeName);
         final Iterator<Class<?>> it = interfaces.iterator();
         if (superType == Object.class && it.hasNext()) {
             it.next(); // Skip first interface, it was used to primarily name the adapter
@@ -356,6 +354,7 @@ final class HostAdapterBytecodeGenerator {
         while (it.hasNext()) {
             buf.append("$$").append(it.next().getSimpleName());
         }
+        buf.append(ADAPTER_CLASS_NAME_SUFFIX);
         return buf.toString().substring(0, Math.min(MAX_GENERATED_TYPE_NAME_LENGTH, buf.length()));
     }
 
@@ -464,9 +463,6 @@ final class HostAdapterBytecodeGenerator {
         final String methodDescriptor = Type.getMethodDescriptor(originalCtorType.getReturnType(), argTypes);
         final InstructionAdapter mv = new InstructionAdapter(cw.visitMethod(ACC_PUBLIC | (ctor.isVarArgs() ? ACC_VARARGS : 0), INIT, methodDescriptor, null, null));
 
-        // @HostAccess.Export
-        mv.visitAnnotation(HOST_EXPORT_ANNOTATION_DESCRIPTOR, true);
-
         mv.visitCode();
         emitSuperConstructorCall(mv, originalCtorType.getDescriptor());
 
@@ -508,9 +504,6 @@ final class HostAdapterBytecodeGenerator {
         // scriptObj, args...).
         String signature = Type.getMethodDescriptor(originalCtorType.getReturnType(), newArgTypes);
         final InstructionAdapter mv = new InstructionAdapter(cw.visitMethod(ACC_PUBLIC, INIT, signature, null, null));
-
-        // @HostAccess.Export
-        mv.visitAnnotation(HOST_EXPORT_ANNOTATION_DESCRIPTOR, true);
 
         mv.visitCode();
         // First, invoke super constructor with original arguments.
@@ -641,13 +634,10 @@ final class HostAdapterBytecodeGenerator {
 
         final InstructionAdapter mv = new InstructionAdapter(cw.visitMethod(getAccessModifiers(method), name, methodDesc, null, exceptionNames));
 
-        // @HostAccess.Export
-        mv.visitAnnotation(HOST_EXPORT_ANNOTATION_DESCRIPTOR, true);
-
         mv.visitCode();
 
         final Type asmReturnType = Type.getType(type.returnType());
-        final int bootstrapFlags = method.isVarArgs() ? HostAdapterServices.BOOTSTRAP_VARARGS : 0;
+        final int bootstrapFlags = method.isVarArgs() ? BOOTSTRAP_VARARGS : 0;
 
         final Label defaultBehavior = new Label();
         final Label hasMethod = new Label();
@@ -683,7 +673,7 @@ final class HostAdapterBytecodeGenerator {
                 mv.visitLabel(tryBlockStart);
 
                 // Invoke the target method handle
-                mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, HostAdapterServices.BOOTSTRAP_VALUE_EXECUTE | bootstrapFlags);
+                mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_EXECUTE | bootstrapFlags);
 
                 final Label tryBlockEnd = new Label();
                 mv.visitLabel(tryBlockEnd);
@@ -752,7 +742,7 @@ final class HostAdapterBytecodeGenerator {
         mv.visitLabel(tryBlockStart);
 
         // Invoke the target method handle
-        mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, HostAdapterServices.BOOTSTRAP_VALUE_INVOKE_MEMBER | bootstrapFlags);
+        mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_INVOKE_MEMBER | bootstrapFlags);
 
         final Label tryBlockEnd = new Label();
         mv.visitLabel(tryBlockEnd);
@@ -835,9 +825,6 @@ final class HostAdapterBytecodeGenerator {
         final String name = mi.getName();
 
         final InstructionAdapter mv = new InstructionAdapter(cw.visitMethod(getAccessModifiers(method), SUPER_PREFIX + name, methodDesc, null, getExceptionNames(method.getExceptionTypes())));
-
-        // @HostAccess.Export
-        mv.visitAnnotation(HOST_EXPORT_ANNOTATION_DESCRIPTOR, true);
 
         mv.visitCode();
 

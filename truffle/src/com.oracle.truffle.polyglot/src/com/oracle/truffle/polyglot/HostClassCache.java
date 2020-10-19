@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -206,11 +206,14 @@ final class HostClassCache {
      * Generated class members are always accessible, i.e., members of implementable interfaces and
      * classes are implicitly exported through their implementations.
      */
-    private static boolean isGeneratedClassMember(AnnotatedElement member) {
+    private static boolean isGeneratedClassMember(Member member) {
         if (TruffleOptions.AOT) {
             return false;
         }
-        return member.isAnnotationPresent(HostAdapterServices.Export.class);
+        if (HostAdapterClassLoader.isGeneratedClass(member.getDeclaringClass())) {
+            return true;
+        }
+        return false;
     }
 
     boolean isArrayAccess() {
