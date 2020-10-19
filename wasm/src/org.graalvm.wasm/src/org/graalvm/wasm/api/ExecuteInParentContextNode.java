@@ -53,10 +53,10 @@ import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public class ExecutableNode extends WasmBuiltinRootNode {
+public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
     private final Object executable;
 
-    public ExecutableNode(WasmLanguage language, WasmInstance instance, Object executable) {
+    public ExecuteInParentContextNode(WasmLanguage language, WasmInstance instance, Object executable) {
         super(language, instance);
         this.executable = executable;
     }
