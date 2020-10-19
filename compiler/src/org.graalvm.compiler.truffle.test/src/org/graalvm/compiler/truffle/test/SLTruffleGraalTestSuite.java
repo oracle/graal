@@ -43,7 +43,7 @@ import com.oracle.truffle.sl.test.SLTestRunner;
 import com.oracle.truffle.sl.test.SLTestSuite;
 
 @RunWith(SLTestRunner.class)
-@SLTestSuite(value = {"sl"}, options = {"engine.BackgroundCompilation", "false", "engine.CompilationThreshold", "10", "engine.CompileImmediately", "false"})
+@SLTestSuite(value = {"sl"}, options = {"engine.BackgroundCompilation", "false", "engine.CompilationThreshold", "10", "engine.MultiTier", "false", "engine.CompileImmediately", "false"})
 public class SLTruffleGraalTestSuite {
 
     public static void main(String[] args) throws Exception {

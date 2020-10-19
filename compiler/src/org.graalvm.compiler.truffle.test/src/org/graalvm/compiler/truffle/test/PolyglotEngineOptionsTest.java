@@ -97,7 +97,8 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
     }
 
     private void testCompilationThreshold(int iterations, String compilationThresholdOption, Runnable doWhile) {
-        Context ctx = setupContext(compilationThresholdOption == null ? new String[0] : new String[]{"engine.CompilationThreshold", compilationThresholdOption});
+        Context ctx = setupContext(compilationThresholdOption == null ? new String[]{"engine.MultiTier", "false"}
+                        : new String[]{"engine.CompilationThreshold", compilationThresholdOption, "engine.MultiTier", "false"});
         ctx.eval("sl", "function test() {}");
         SLFunction test = SLLanguage.getCurrentContext().getFunctionRegistry().getFunction("test");
 
