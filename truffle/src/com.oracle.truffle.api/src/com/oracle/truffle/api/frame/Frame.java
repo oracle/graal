@@ -258,7 +258,7 @@ public interface Frame {
     boolean isDouble(FrameSlot slot);
 
     /**
-     * Frees the given slot in the frame. Subsequent reads to this slot with no stores in-between
+     * Clears the given slot in the frame. Subsequent reads to this slot with no stores in-between
      * will fail.
      * 
      * @since 20.3
