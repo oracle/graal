@@ -91,7 +91,8 @@ public class Instance extends Dictionary {
 
     private WasmInstance instantiateModule(WasmContext context) {
         final HashMap<String, ImportModule> importModules;
-        // Import object comes from the parent context
+        // To read the content of the import object, we need to enter the parent context that this
+        // import object originates from.
         Object prev = truffleContext.getParent().enter(null);
         try {
             importModules = readImportModules();
