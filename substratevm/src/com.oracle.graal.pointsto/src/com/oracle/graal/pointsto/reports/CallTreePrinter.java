@@ -141,7 +141,7 @@ public final class CallTreePrinter {
     }
 
     private final BigBang bigbang;
-    private final Map<AnalysisMethod, MethodNode> methodToNode;
+    protected final Map<AnalysisMethod, MethodNode> methodToNode;
 
     public CallTreePrinter(BigBang bigbang) {
         this.bigbang = bigbang;
