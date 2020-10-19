@@ -24,12 +24,12 @@
  */
 
 // @formatter:off
-package com.oracle.svm.core.jdk8.containers.cgroupv2;
+package com.oracle.svm.core.containers.cgroupv2;
 
 import java.nio.file.Paths;
 
-import com.oracle.svm.core.jdk8.containers.CgroupSubsystem;
-import com.oracle.svm.core.jdk8.containers.CgroupSubsystemController;
+import com.oracle.svm.core.containers.CgroupSubsystem;
+import com.oracle.svm.core.containers.CgroupSubsystemController;
 
 public class CgroupV2SubsystemController implements CgroupSubsystemController {
 

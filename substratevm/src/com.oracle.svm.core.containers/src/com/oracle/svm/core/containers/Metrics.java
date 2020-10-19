@@ -23,7 +23,7 @@
  * questions.
  */
 // @formatter:off
-package com.oracle.svm.core.jdk8.containers;
+package com.oracle.svm.core.containers;
 
 import java.lang.reflect.Method;
 
@@ -57,7 +57,7 @@ public interface Metrics {
      */
     public static Metrics systemMetrics() {
         try {
-            Class<?> c = Class.forName("com.oracle.svm.core.jdk8.containers.CgroupMetrics");
+            Class<?> c = Class.forName("com.oracle.svm.core.containers.CgroupMetrics");
             Method m = c.getMethod("getInstance");
             return (Metrics) m.invoke(null);
         } catch (ClassNotFoundException e) {

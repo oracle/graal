@@ -24,11 +24,11 @@
  */
 
 // @formatter:off
-package com.oracle.svm.core.jdk8.containers.cgroupv1;
+package com.oracle.svm.core.containers.cgroupv1;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.jdk8.containers.CgroupSubsystem;
-import com.oracle.svm.core.jdk8.containers.CgroupSubsystemController;
+import com.oracle.svm.core.containers.CgroupSubsystem;
+import com.oracle.svm.core.containers.CgroupSubsystemController;
 
 public class CgroupV1SubsystemController implements CgroupSubsystemController {
 

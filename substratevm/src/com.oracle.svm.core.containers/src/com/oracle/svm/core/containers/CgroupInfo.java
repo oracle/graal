@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Red Hat Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,52 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
 
-import static com.oracle.svm.core.Containers.UNKNOWN;
+// @formatter:off
+package com.oracle.svm.core.containers;
 
-import com.oracle.svm.core.jdk8.containers.Container;
-import com.oracle.svm.core.jdk8.containers.Metrics;
+import com.oracle.svm.core.SubstrateUtil;
 
-/** JDK 8 version of {@link ContainerInfo}. */
-final class ContainerInfo {
-    private final Metrics metrics = Container.metrics();
+/**
+ * Data structure to hold info from /proc/self/cgroup
+ *
+ * man 7 cgroups
+ *
+ * @see CgroupSubsystemFactory
+ */
+class CgroupInfo {
 
-    boolean isContainerized() {
-        return metrics != null;
+    private final String name;
+    private final int hierarchyId;
+    private final boolean enabled;
+
+    private CgroupInfo(String name, int hierarchyId, boolean enabled) {
+        this.name = name;
+        this.hierarchyId = hierarchyId;
+        this.enabled = enabled;
     }
 
-    long getCpuQuota() {
-        return isContainerized() ? metrics.getCpuQuota() : UNKNOWN;
+    String getName() {
+        return name;
     }
 
-    long getCpuPeriod() {
-        return isContainerized() ? metrics.getCpuPeriod() : UNKNOWN;
+    int getHierarchyId() {
+        return hierarchyId;
     }
 
-    long getCpuShares() {
-        return isContainerized() ? metrics.getCpuShares() : UNKNOWN;
+    boolean isEnabled() {
+        return enabled;
     }
 
-    long getMemoryLimit() {
-        return isContainerized() ? metrics.getMemoryLimit() : UNKNOWN;
+    static CgroupInfo fromCgroupsLine(String line) {
+        String[] tokens = SubstrateUtil.split(line, "\t");
+        if (tokens.length != 4) {
+            return null;
+        }
+        // discard 3'rd field, num_cgroups
+        return new CgroupInfo(tokens[0] /* name */,
+                              Integer.parseInt(tokens[1]) /* hierarchyId */,
+                              (Integer.parseInt(tokens[3]) == 1) /* enabled */);
     }
+
 }

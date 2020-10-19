@@ -24,17 +24,17 @@
  */
 
 // @formatter:off
-package com.oracle.svm.core.jdk8.containers.cgroupv1;
+package com.oracle.svm.core.containers.cgroupv1;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.jdk8.containers.CgroupSubsystem;
-import com.oracle.svm.core.jdk8.containers.CgroupSubsystemController;
-import com.oracle.svm.core.jdk8.containers.CgroupUtil;
-import com.oracle.svm.core.jdk8.containers.CgroupV1Metrics;
+import com.oracle.svm.core.containers.CgroupSubsystem;
+import com.oracle.svm.core.containers.CgroupSubsystemController;
+import com.oracle.svm.core.containers.CgroupUtil;
+import com.oracle.svm.core.containers.CgroupV1Metrics;
 
 public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
     private CgroupV1MemorySubSystemController memory;

@@ -203,7 +203,7 @@ class ContainersFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         RuntimeClassInitializationSupport classInitSupport = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-        classInitSupport.initializeAtRunTime("com.oracle.svm.core.jdk8.containers.cgroupv1.CgroupV1Subsystem", "for cgroup support");
-        classInitSupport.initializeAtRunTime("com.oracle.svm.core.jdk8.containers.cgroupv2.CgroupV2Subsystem", "for cgroup support");
+        classInitSupport.initializeAtRunTime("com.oracle.svm.core.containers.cgroupv1.CgroupV1Subsystem", "for cgroup support");
+        classInitSupport.initializeAtRunTime("com.oracle.svm.core.containers.cgroupv2.CgroupV2Subsystem", "for cgroup support");
     }
 }

@@ -24,7 +24,7 @@
  */
 
 // @formatter:off
-package com.oracle.svm.core.jdk8.containers;
+package com.oracle.svm.core.containers;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -33,8 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import com.oracle.svm.core.jdk8.containers.cgroupv1.CgroupV1Subsystem;
-import com.oracle.svm.core.jdk8.containers.cgroupv2.CgroupV2Subsystem;
+import com.oracle.svm.core.containers.cgroupv1.CgroupV1Subsystem;
+import com.oracle.svm.core.containers.cgroupv2.CgroupV2Subsystem;
 
 public class CgroupSubsystemFactory {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Red Hat Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 // @formatter:off
-package com.oracle.svm.core.jdk8.containers;
+package com.oracle.svm.core.containers;
 
-/*
- * @author bobv
- * @since 11
+/**
+ * Marker interface for cgroup-based metrics
+ *
  */
-
-public class Container {
-
-    private Container() { }
+public interface CgroupSubsystem extends Metrics {
 
     /**
-     * Returns the platform specific Container Metrics class or
-     * null if not supported on this platform.
-     *
-     * @return Metrics instance or null if not supported
+     * Returned for metrics of type long if the underlying implementation
+     * has determined that no limit is being imposed.
      */
-    public static Metrics metrics() {
-        return Metrics.systemMetrics();
-    }
+    public static final long LONG_RETVAL_UNLIMITED = -1;
+
 }

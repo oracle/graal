@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Red Hat Inc.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core;
 
-// @formatter:off
-package com.oracle.svm.core.jdk8.containers.cgroupv1;
+import static com.oracle.svm.core.Containers.UNKNOWN;
 
-public class CgroupV1MemorySubSystemController extends CgroupV1SubsystemController {
+import com.oracle.svm.core.containers.Container;
+import com.oracle.svm.core.containers.Metrics;
 
-    private boolean hierarchical;
+/** JDK 8 version of {@link ContainerInfo}. */
+final class ContainerInfo {
+    private final Metrics metrics = Container.metrics();
 
-    public CgroupV1MemorySubSystemController(String root, String mountPoint) {
-        super(root, mountPoint);
+    boolean isContainerized() {
+        return metrics != null;
     }
 
-    boolean isHierarchical() {
-        return hierarchical;
+    long getCpuQuota() {
+        return isContainerized() ? metrics.getCpuQuota() : UNKNOWN;
     }
 
-    void setHierarchical(boolean hierarchical) {
-        this.hierarchical = hierarchical;
+    long getCpuPeriod() {
+        return isContainerized() ? metrics.getCpuPeriod() : UNKNOWN;
     }
 
+    long getCpuShares() {
+        return isContainerized() ? metrics.getCpuShares() : UNKNOWN;
+    }
+
+    long getMemoryLimit() {
+        return isContainerized() ? metrics.getMemoryLimit() : UNKNOWN;
+    }
 }

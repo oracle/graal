@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Red Hat Inc.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,52 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 // @formatter:off
-package com.oracle.svm.core.jdk8.containers;
+package com.oracle.svm.core.containers;
 
-import com.oracle.svm.core.SubstrateUtil;
-
-/**
- * Data structure to hold info from /proc/self/cgroup
- *
- * man 7 cgroups
- *
- * @see CgroupSubsystemFactory
+/*
+ * @author bobv
+ * @since 11
  */
-class CgroupInfo {
 
-    private final String name;
-    private final int hierarchyId;
-    private final boolean enabled;
+public class Container {
 
-    private CgroupInfo(String name, int hierarchyId, boolean enabled) {
-        this.name = name;
-        this.hierarchyId = hierarchyId;
-        this.enabled = enabled;
+    private Container() { }
+
+    /**
+     * Returns the platform specific Container Metrics class or
+     * null if not supported on this platform.
+     *
+     * @return Metrics instance or null if not supported
+     */
+    public static Metrics metrics() {
+        return Metrics.systemMetrics();
     }
-
-    String getName() {
-        return name;
-    }
-
-    int getHierarchyId() {
-        return hierarchyId;
-    }
-
-    boolean isEnabled() {
-        return enabled;
-    }
-
-    static CgroupInfo fromCgroupsLine(String line) {
-        String[] tokens = SubstrateUtil.split(line, "\t");
-        if (tokens.length != 4) {
-            return null;
-        }
-        // discard 3'rd field, num_cgroups
-        return new CgroupInfo(tokens[0] /* name */,
-                              Integer.parseInt(tokens[1]) /* hierarchyId */,
-                              (Integer.parseInt(tokens[3]) == 1) /* enabled */);
-    }
-
 }

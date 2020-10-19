@@ -24,7 +24,7 @@
  */
 
 // @formatter:off
-package com.oracle.svm.core.jdk8.containers;
+package com.oracle.svm.core.containers;
 
 /**
  *

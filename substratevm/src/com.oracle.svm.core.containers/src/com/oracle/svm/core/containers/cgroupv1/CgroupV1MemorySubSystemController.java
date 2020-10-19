@@ -24,18 +24,22 @@
  */
 
 // @formatter:off
-package com.oracle.svm.core.jdk8.containers;
+package com.oracle.svm.core.containers.cgroupv1;
 
-/**
- * Marker interface for cgroup-based metrics
- *
- */
-public interface CgroupSubsystem extends Metrics {
+public class CgroupV1MemorySubSystemController extends CgroupV1SubsystemController {
 
-    /**
-     * Returned for metrics of type long if the underlying implementation
-     * has determined that no limit is being imposed.
-     */
-    public static final long LONG_RETVAL_UNLIMITED = -1;
+    private boolean hierarchical;
+
+    public CgroupV1MemorySubSystemController(String root, String mountPoint) {
+        super(root, mountPoint);
+    }
+
+    boolean isHierarchical() {
+        return hierarchical;
+    }
+
+    void setHierarchical(boolean hierarchical) {
+        this.hierarchical = hierarchical;
+    }
 
 }

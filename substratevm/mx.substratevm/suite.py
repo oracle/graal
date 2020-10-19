@@ -168,6 +168,16 @@ suite = {
             "workingSets": "SVM",
         },
 
+        "com.oracle.svm.core.containers": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": ["com.oracle.svm.core"],
+            "overlayTarget": "com.oracle.svm.core",
+            "javaCompliance": "8+",
+            "workingSets": "SVM",
+            "spotbugs": "false",
+        },
+
         "com.oracle.svm.core.jdk8": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -176,16 +186,6 @@ suite = {
             "javaCompliance": "8",
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
-        },
-
-        "com.oracle.svm.core.jdk8.containers": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
-            "overlayTarget": "com.oracle.svm.core",
-            "javaCompliance": "8+",
-            "workingSets": "SVM",
-            "spotbugs": "false",
         },
 
         "com.oracle.svm.core.jdk11": {

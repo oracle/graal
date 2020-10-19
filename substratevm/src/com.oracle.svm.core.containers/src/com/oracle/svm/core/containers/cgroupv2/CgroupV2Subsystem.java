@@ -24,7 +24,7 @@
  */
 
 // @formatter:off
-package com.oracle.svm.core.jdk8.containers.cgroupv2;
+package com.oracle.svm.core.containers.cgroupv2;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -33,9 +33,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.jdk8.containers.CgroupSubsystem;
-import com.oracle.svm.core.jdk8.containers.CgroupSubsystemController;
-import com.oracle.svm.core.jdk8.containers.CgroupUtil;
+import com.oracle.svm.core.containers.CgroupSubsystem;
+import com.oracle.svm.core.containers.CgroupSubsystemController;
+import com.oracle.svm.core.containers.CgroupUtil;
 
 public class CgroupV2Subsystem implements CgroupSubsystem {
 
