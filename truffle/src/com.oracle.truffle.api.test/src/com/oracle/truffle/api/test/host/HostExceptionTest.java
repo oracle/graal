@@ -88,6 +88,7 @@ public class HostExceptionTest {
     private Context context;
     private Env env;
     private Class<? extends Throwable> expectedException;
+    private Consumer<Throwable> customExceptionVerfier;
     private boolean checkHostExceptionElements;
 
     @Before
@@ -128,6 +129,7 @@ public class HostExceptionTest {
     public void after() {
         context.leave();
         context.close();
+        customExceptionVerfier = null;
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -442,6 +444,32 @@ public class HostExceptionTest {
         assertFalse(otherClass.isMetaInstance(result));
     }
 
+    @Test
+    public void testHostExceptionIsHostSymbol() {
+        expectedException = RuntimeException.class;
+        customExceptionVerfier = (t) -> {
+            assertFalse(env.isHostSymbol(t));
+        };
+        Value catcher = context.eval(ProxyLanguage.ID, "catcher");
+        Runnable thrower = HostExceptionTest::thrower;
+        catcher.execute(thrower);
+    }
+
+    @Test
+    public void testHostExceptionWithContext() {
+        expectedException = RuntimeException.class;
+        Value catcher = context.eval(ProxyLanguage.ID, "catcher");
+        Runnable thrower = HostExceptionTest::thrower;
+        Value exception = catcher.execute(thrower);
+        try (Context ctx2 = Context.create()) {
+            ctx2.getPolyglotBindings().putMember("foo", exception);
+            Value foo = ctx2.getPolyglotBindings().getMember("foo");
+            assertTrue(foo.isException());
+            assertTrue(foo.isHostObject());
+            assertThat(foo.asHostObject(), instanceOf(expectedException));
+        }
+    }
+
     static void shouldHaveThrown(Class<? extends Throwable> expected) {
         fail("Expected a " + expected + " but none was thrown");
     }
@@ -524,6 +552,9 @@ public class HostExceptionTest {
             assertTrue(InteropLibrary.getUncached().isMetaInstance(env.asHostSymbol(Throwable.class), ex));
         } catch (UnsupportedMessageException e) {
             throw new AssertionError(e);
+        }
+        if (customExceptionVerfier != null) {
+            customExceptionVerfier.accept(ex);
         }
         return ex;
     }

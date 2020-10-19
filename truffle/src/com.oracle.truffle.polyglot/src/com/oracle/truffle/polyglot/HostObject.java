@@ -125,8 +125,19 @@ final class HostObject implements TruffleObject {
         return obj instanceof HostObject || obj instanceof HostException;
     }
 
-    HostObject withContext(PolyglotLanguageContext context) {
-        return new HostObject(this.obj, context, this.extraInfo);
+    static boolean isHostObjectInstance(Object obj) {
+        return obj instanceof HostObject;
+    }
+
+    static Object withContext(Object obj, PolyglotLanguageContext context) {
+        if (obj instanceof HostObject) {
+            HostObject hostObject = (HostObject) obj;
+            return new HostObject(hostObject.obj, context, hostObject.extraInfo);
+        } else if (obj instanceof HostException) {
+            return new HostException(((HostException) obj).getOriginal(), context.context);
+        } else {
+            throw CompilerDirectives.shouldNotReachHere("Parameter must be HostObject or HostException.");
+        }
     }
 
     static boolean isJavaInstance(Class<?> targetType, Object javaObject) {
