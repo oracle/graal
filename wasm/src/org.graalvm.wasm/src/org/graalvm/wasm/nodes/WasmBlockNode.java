@@ -2018,7 +2018,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     case F32_TRUNC: {
                         stackPointer--;
                         float x = popAsFloat(frame, stackPointer);
-                        float result = (int) x;
+                        float result = (float) (x < 0.0 ? Math.ceil(x) : Math.floor(x));
                         pushFloat(frame, stackPointer, result);
                         stackPointer++;
                         trace("f32.trunc(%f) = %f", x, result);
@@ -2168,7 +2168,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     case F64_TRUNC: {
                         stackPointer--;
                         double x = popAsDouble(frame, stackPointer);
-                        double result = (long) x;
+                        double result = x < 0.0 ? Math.ceil(x) : Math.floor(x);
                         pushDouble(frame, stackPointer, result);
                         stackPointer++;
                         trace("f64.trunc(%f) = %f", x, result);
@@ -2278,8 +2278,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         trace("push wrap_i64(0x%016X) = 0x%08X (%d) [i32]", x, result, result);
                         break;
                     }
-                    case I32_TRUNC_F32_S:
-                    case I32_TRUNC_F32_U: {
+                    case I32_TRUNC_F32_U:
+                        // TODO(mbovel): fix this case
+                    case I32_TRUNC_F32_S: {
                         stackPointer--;
                         float x = popAsFloat(frame, stackPointer);
                         int result = (int) x;
@@ -2316,8 +2317,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         trace("push extend_i32_u(0x%08X) = 0x%016X (%d) [i64]", x, result, result);
                         break;
                     }
-                    case I64_TRUNC_F32_S:
-                    case I64_TRUNC_F32_U: {
+                    case I64_TRUNC_F32_U:
+                        // TODO(mbovel): fix this case
+                    case I64_TRUNC_F32_S: {
                         stackPointer--;
                         float x = popAsFloat(frame, stackPointer);
                         long result = (long) x;
