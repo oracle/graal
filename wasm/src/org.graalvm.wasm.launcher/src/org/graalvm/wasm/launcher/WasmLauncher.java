@@ -58,7 +58,9 @@ import java.util.Set;
 public class WasmLauncher extends AbstractLanguageLauncher {
     private File file = null;
     private VersionAction versionAction = VersionAction.None;
+    private String customEntryPoint = null;
     private String[] programArguments = null;
+    private ArrayList<String> argumentErrors = null;
 
     public static void main(String[] args) {
         new WasmLauncher().launch(args);
@@ -69,6 +71,7 @@ public class WasmLauncher extends AbstractLanguageLauncher {
         final ListIterator<String> argIterator = arguments.listIterator();
         final ArrayList<String> unrecognizedArguments = new ArrayList<>();
         final List<String> programArgumentsList = new ArrayList<>();
+        argumentErrors = new ArrayList<>();
 
         while (argIterator.hasNext()) {
             final String argument = argIterator.next();
@@ -81,7 +84,16 @@ public class WasmLauncher extends AbstractLanguageLauncher {
                         versionAction = VersionAction.PrintAndExit;
                         break;
                     default:
-                        unrecognizedArguments.add(argument);
+                        if (argument.startsWith("--entry-point=")) {
+                            String[] parts = argument.split("=", 2);
+                            if (parts[1].isEmpty()) {
+                                argumentErrors.add("Must specify function name after --entry-point.");
+                            } else {
+                                customEntryPoint = parts[1];
+                            }
+                        } else {
+                            unrecognizedArguments.add(argument);
+                        }
                         break;
                 }
             } else {
@@ -91,7 +103,7 @@ public class WasmLauncher extends AbstractLanguageLauncher {
             }
         }
 
-        // collect the program args:
+        // Collect the program arguments.
         while (argIterator.hasNext()) {
             programArgumentsList.add(argIterator.next());
         }
@@ -102,6 +114,9 @@ public class WasmLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected void validateArguments(Map<String, String> polyglotOptions) {
+        for (String error : argumentErrors) {
+            System.err.println(error);
+        }
         if (versionAction != VersionAction.PrintAndExit) {
             if (file == null) {
                 throw abort("Must specify the binary name.");
@@ -124,9 +139,9 @@ public class WasmLauncher extends AbstractLanguageLauncher {
             runVersionAction(versionAction, context.getEngine());
             context.eval(Source.newBuilder(getLanguageId(), file).build());
 
-            Value entryPoint = context.getBindings(getLanguageId()).getMember("_start");
+            Value entryPoint = detectEntryPoint(context);
             if (entryPoint == null) {
-                throw abort("No start function found, cannot start program.");
+                throw abort("No entry-point function found, cannot start program.");
             }
 
             entryPoint.execute();
@@ -139,6 +154,17 @@ public class WasmLauncher extends AbstractLanguageLauncher {
         } catch (IOException e) {
             throw abort(String.format("Error loading file '%s': %s", file, e.getMessage()));
         }
+    }
+
+    private Value detectEntryPoint(Context context) {
+        if (customEntryPoint != null) {
+            return context.getBindings(getLanguageId()).getMember("main").getMember(customEntryPoint);
+        }
+        Value candidate = context.getBindings(getLanguageId()).getMember("main").getMember("_start");
+        if (candidate == null) {
+            candidate = context.getBindings(getLanguageId()).getMember("main").getMember("_main");
+        }
+        return candidate;
     }
 
     @Override
