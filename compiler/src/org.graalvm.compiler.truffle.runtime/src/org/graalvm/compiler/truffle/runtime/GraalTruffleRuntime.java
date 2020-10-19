@@ -138,10 +138,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
     private static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
     // TODO Public only for tests, should be package private
-    public final BiConsumer<CancellableCompileTask, WeakReference<OptimizedCallTarget>> compilationAction = new BiConsumer<CancellableCompileTask, WeakReference<OptimizedCallTarget>>() {
+    public final Consumer<CancellableCompileTask> compilationAction = new Consumer<CancellableCompileTask>() {
         @Override
-        public void accept(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef) {
-            OptimizedCallTarget callTarget = targetRef.get();
+        public void accept(CancellableCompileTask task) {
+            OptimizedCallTarget callTarget = task.targetRef.get();
             if (callTarget != null && task.start()) {
                 try {
                     doCompile(callTarget, task);

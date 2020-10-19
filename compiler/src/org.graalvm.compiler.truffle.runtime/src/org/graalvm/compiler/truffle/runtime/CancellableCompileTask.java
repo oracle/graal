@@ -32,6 +32,7 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
@@ -43,16 +44,16 @@ public final class CancellableCompileTask implements TruffleCompilationTask, Cal
     private final boolean multiTier;
     private final boolean priorityQueue;
     private final long id;
-    private final BiConsumer<CancellableCompileTask, WeakReference<OptimizedCallTarget>> action;
+    private final Consumer<CancellableCompileTask> action;
     private volatile Future<?> future;
     private volatile boolean cancelled;
     private volatile boolean started;
 
     public CancellableCompileTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef,
-                    BiConsumer<CancellableCompileTask, WeakReference<OptimizedCallTarget>> request, long id) {
+                    Consumer<CancellableCompileTask> action, long id) {
         this.priority = priority;
         this.targetRef = targetRef;
-        this.action = request;
+        this.action = action;
         this.id = id;
         OptimizedCallTarget target = targetRef.get();
         priorityQueue = target != null && target.getOptionValue(PolyglotCompilerOptions.PriorityQueue);
@@ -151,7 +152,7 @@ public final class CancellableCompileTask implements TruffleCompilationTask, Cal
 
     @Override
     public Void call() throws Exception {
-        action.accept(this, targetRef);
+        action.accept(this);
         return null;
     }
 

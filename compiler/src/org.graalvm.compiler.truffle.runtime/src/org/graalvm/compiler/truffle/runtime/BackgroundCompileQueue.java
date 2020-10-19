@@ -39,7 +39,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
@@ -55,11 +55,11 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
  */
 public class BackgroundCompileQueue {
 
+    protected final GraalTruffleRuntime runtime;
     private final AtomicLong idCounter;
     private volatile ThreadPoolExecutor compilationExecutorService;
     private volatile IdlingPriorityBlockingQueue<Runnable> compilationQueue;
     private boolean shutdown = false;
-    protected final GraalTruffleRuntime runtime;
     private long delayMillis;
 
     public BackgroundCompileQueue(GraalTruffleRuntime runtime) {
@@ -155,7 +155,7 @@ public class BackgroundCompileQueue {
         return new TruffleCompilerThreadFactory(threadNamePrefix, runtime);
     }
 
-    public CancellableCompileTask submitTask(Priority priority, OptimizedCallTarget target, BiConsumer<CancellableCompileTask, WeakReference<OptimizedCallTarget>> action) {
+    public CancellableCompileTask submitTask(Priority priority, OptimizedCallTarget target, Consumer<CancellableCompileTask> action) {
         final WeakReference<OptimizedCallTarget> targetReference = new WeakReference<>(target);
         CancellableCompileTask cancellable = new CancellableCompileTask(priority, targetReference, action, nextId());
         cancellable.setFuture(getExecutorService(target).submit(cancellable));
@@ -222,22 +222,27 @@ public class BackgroundCompileQueue {
         }
     }
 
+    /**
+     * Called when a compiler thread becomes idle for more than {@code delayMillis}.
+     */
+    protected void compilerThreadIdled() {
+        // nop
+    }
+
     public static class Priority {
+
+        public static final Priority INITIALIZATION = new Priority(0, Tier.INITIALIZATION);
+        final Tier tier;
+        final int value;
+        public Priority(int value, Tier tier) {
+            this.value = value;
+            this.tier = tier;
+        }
 
         public enum Tier {
             INITIALIZATION,
             FIRST,
             LAST
-        }
-
-        public static final Priority INITIALIZATION = new Priority(0, Tier.INITIALIZATION);
-
-        final Tier tier;
-        final int value;
-
-        public Priority(int value, Tier tier) {
-            this.value = value;
-            this.tier = tier;
         }
 
     }
@@ -303,13 +308,6 @@ public class BackgroundCompileQueue {
             // Fallback to blocking version.
             return super.take();
         }
-    }
-
-    /**
-     * Called when a compiler thread becomes idle for more than {@code delayMillis}.
-     */
-    protected void compilerThreadIdled() {
-        // nop
     }
 
 }
