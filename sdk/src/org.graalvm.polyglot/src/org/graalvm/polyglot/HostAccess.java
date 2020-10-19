@@ -660,6 +660,10 @@ public final class HostAccess {
 
         /**
          * Allow guest languages to implement any Java interface.
+         * <p>
+         * Note that implementations implicitly export all their methods, i.e., allowing
+         * implementations of a type implies allowing access its methods via its implementations,
+         * regardless of whether the methods have been explicitly exported.
          *
          * @see HostAccess#ALL
          * @see #allowImplementations(Class)
@@ -674,6 +678,10 @@ public final class HostAccess {
         /**
          * Allow guest languages to implement (extend) any Java class. Note that the default host
          * type mappings and {@link Value#as(Class)} only implement abstract classes.
+         * <p>
+         * Note that implementations implicitly export all their methods, i.e., allowing
+         * implementations of a type implies allowing access its methods via its implementations,
+         * regardless of whether the methods have been explicitly exported.
          *
          * @see HostAccess#ALL
          * @see #allowImplementations(Class)
@@ -690,6 +698,10 @@ public final class HostAccess {
          * Allow implementations of types annotated with the given annotation. For the
          * {@link HostAccess#EXPLICIT explicit} host access present the {@link Implementable}
          * annotation is configured for this purpose. Applies to interfaces and classes.
+         * <p>
+         * Note that implementations implicitly export all their methods, i.e., allowing
+         * implementations of a type implies allowing access its methods via its implementations,
+         * regardless of whether the methods have been explicitly exported.
          *
          * @see HostAccess.Implementable
          * @see #allowImplementations(Class)
@@ -707,6 +719,10 @@ public final class HostAccess {
 
         /**
          * Allow implementations of this type by the guest language.
+         * <p>
+         * Note that implementations implicitly export all their methods, i.e., allowing
+         * implementations of a type implies allowing access its methods via its implementations,
+         * regardless of whether the methods have been explicitly exported.
          *
          * @param type an interface that may be implemented or a class that may be extended.
          * @see #allowImplementationsAnnotatedBy(Class)
