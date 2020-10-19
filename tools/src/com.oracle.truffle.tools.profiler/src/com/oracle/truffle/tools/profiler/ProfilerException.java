@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,38 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.coverage;
+package com.oracle.truffle.tools.profiler;
 
-import java.util.concurrent.atomic.AtomicLong;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
+class ProfilerException extends AbstractTruffleException {
 
-public class CountingCoverageNode extends AbstractCoverageNode {
+    private static final long serialVersionUID = 7860704745778916358L;
 
-    private final AtomicLong count = new AtomicLong(0);
-
-    CountingCoverageNode(SourceSection sourceSection, Node instrumentedNode, boolean isRoot, boolean isStatement) {
-        super(sourceSection, instrumentedNode, isRoot, isStatement);
-    }
-
-    @Override
-    boolean isCovered() {
-        return count.get() != 0;
-    }
-
-    @Override
-    void reset() {
-        count.set(0);
-    }
-
-    @Override
-    protected void onEnter(VirtualFrame frame) {
-        this.count.incrementAndGet();
-    }
-
-    long getCount() {
-        return count.get();
+    ProfilerException(String s) {
+        super(s);
     }
 }
