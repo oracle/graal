@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
-import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -34,7 +33,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -45,7 +43,7 @@ import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue.Priority;
-import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
+import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -145,7 +143,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     private final List<ResolvedJavaMethod> truffleCallBoundaryMethods;
-    private volatile CancellableCompileTask initializationTask;
+    private volatile CompilationTask initializationTask;
     private volatile boolean truffleCompilerInitialized;
     private volatile Throwable truffleCompilerInitializationException;
 
@@ -204,16 +202,16 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         if (truffleCompilerInitialized) {
             return;
         }
-        CancellableCompileTask localTask = initializationTask;
+        CompilationTask localTask = initializationTask;
         if (localTask == null) {
             final Object lock = this;
             synchronized (lock) {
                 localTask = initializationTask;
                 if (localTask == null && !truffleCompilerInitialized) {
                     rethrowTruffleCompilerInitializationException();
-                    initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new Consumer<CancellableCompileTask>() {
+                    initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new Consumer<CompilationTask>() {
                         @Override
-                        public void accept(CancellableCompileTask task) {
+                        public void accept(CompilationTask task) {
                             synchronized (lock) {
                                 initializeTruffleCompiler(firstCallTarget);
                                 assert truffleCompilerInitialized || truffleCompilerInitializationException != null;

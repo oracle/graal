@@ -135,7 +135,7 @@ public class BackgroundCompileQueue {
                             compilationQueue, factory) {
                 @Override
                 protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
-                    return (RunnableFuture<T>) new CancellableCompileTask.ExecutorServiceWrapper((CancellableCompileTask) callable);
+                    return (RunnableFuture<T>) new CompilationTask.ExecutorServiceWrapper((CompilationTask) callable);
                 }
             };
 
@@ -155,9 +155,9 @@ public class BackgroundCompileQueue {
         return new TruffleCompilerThreadFactory(threadNamePrefix, runtime);
     }
 
-    public CancellableCompileTask submitTask(Priority priority, OptimizedCallTarget target, Consumer<CancellableCompileTask> action) {
+    public CompilationTask submitTask(Priority priority, OptimizedCallTarget target, Consumer<CompilationTask> action) {
         final WeakReference<OptimizedCallTarget> targetReference = new WeakReference<>(target);
-        CancellableCompileTask cancellable = new CancellableCompileTask(priority, targetReference, action, nextId());
+        CompilationTask cancellable = new CompilationTask(priority, targetReference, action, nextId());
         cancellable.setFuture(getExecutorService(target).submit(cancellable));
         return cancellable;
     }
@@ -172,7 +172,7 @@ public class BackgroundCompileQueue {
             BlockingQueue<Runnable> queue = ((ThreadPoolExecutor) threadPool).getQueue();
             int count = 0;
             for (Runnable runnable : queue) {
-                CancellableCompileTask.ExecutorServiceWrapper task = (CancellableCompileTask.ExecutorServiceWrapper) runnable;
+                CompilationTask.ExecutorServiceWrapper task = (CompilationTask.ExecutorServiceWrapper) runnable;
                 if (!task.isCancelled() && !task.compileTask.isCancelled()) {
                     count++;
                 }
@@ -194,8 +194,8 @@ public class BackgroundCompileQueue {
             return Collections.emptyList();
         }
         List<OptimizedCallTarget> queuedTargets = new ArrayList<>();
-        CancellableCompileTask.ExecutorServiceWrapper[] array = queue.toArray(new CancellableCompileTask.ExecutorServiceWrapper[0]);
-        for (CancellableCompileTask.ExecutorServiceWrapper futureTask : array) {
+        CompilationTask.ExecutorServiceWrapper[] array = queue.toArray(new CompilationTask.ExecutorServiceWrapper[0]);
+        for (CompilationTask.ExecutorServiceWrapper futureTask : array) {
             OptimizedCallTarget target = futureTask.compileTask.targetRef.get();
             if (target != null && target.engine == engine) {
                 queuedTargets.add(target);

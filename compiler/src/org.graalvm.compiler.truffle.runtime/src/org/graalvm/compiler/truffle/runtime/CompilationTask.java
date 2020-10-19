@@ -36,20 +36,19 @@ import java.util.function.Consumer;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
-public final class CancellableCompileTask implements TruffleCompilationTask, Callable<Void>, Comparable<CancellableCompileTask> {
+final class CompilationTask implements TruffleCompilationTask, Callable<Void>, Comparable<CompilationTask> {
 
     final WeakReference<OptimizedCallTarget> targetRef;
     private final BackgroundCompileQueue.Priority priority;
     private final boolean multiTier;
     private final boolean priorityQueue;
     private final long id;
-    private final Consumer<CancellableCompileTask> action;
+    private final Consumer<CompilationTask> action;
     private volatile Future<?> future;
     private volatile boolean cancelled;
     private volatile boolean started;
 
-    public CancellableCompileTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef,
-                    Consumer<CancellableCompileTask> action, long id) {
+    CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
         this.priority = priority;
         this.targetRef = targetRef;
         this.action = action;
@@ -135,7 +134,7 @@ public final class CancellableCompileTask implements TruffleCompilationTask, Cal
     }
 
     @Override
-    public int compareTo(CancellableCompileTask that) {
+    public int compareTo(CompilationTask that) {
         int tierCompare = priority.tier.compareTo(that.priority.tier);
         if (tierCompare != 0) {
             return tierCompare;
@@ -159,9 +158,9 @@ public final class CancellableCompileTask implements TruffleCompilationTask, Cal
      * TODO: explain why this is needed.
      */
     static class ExecutorServiceWrapper extends FutureTask<Void> implements Comparable<ExecutorServiceWrapper> {
-        final CancellableCompileTask compileTask;
+        final CompilationTask compileTask;
 
-        ExecutorServiceWrapper(CancellableCompileTask compileTask) {
+        ExecutorServiceWrapper(CompilationTask compileTask) {
             super(compileTask);
             this.compileTask = compileTask;
         }

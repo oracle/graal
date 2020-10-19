@@ -43,7 +43,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
-import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
+import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -59,7 +59,6 @@ import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.SpeculationLog;
 
 import java.lang.ref.WeakReference;
-import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
@@ -127,8 +126,8 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         }
     }
 
-    private CancellableCompileTask newTask(OptimizedCallTarget actualTarget) {
-        return new CancellableCompileTask(new BackgroundCompileQueue.Priority(0, BackgroundCompileQueue.Priority.Tier.LAST), new WeakReference<>(actualTarget),
+    private CompilationTask newTask(OptimizedCallTarget actualTarget) {
+        return new CompilationTask(new BackgroundCompileQueue.Priority(0, BackgroundCompileQueue.Priority.Tier.LAST), new WeakReference<>(actualTarget),
                         ((GraalTruffleRuntime) Truffle.getRuntime()).compilationAction, 0);
     }
 

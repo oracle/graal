@@ -30,7 +30,6 @@ import java.io.CharArrayWriter;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,7 +41,6 @@ import java.util.ServiceLoader;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 
@@ -138,9 +136,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
     private static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
     // TODO Public only for tests, should be package private
-    public final Consumer<CancellableCompileTask> compilationAction = new Consumer<CancellableCompileTask>() {
+    public final Consumer<CompilationTask> compilationAction = new Consumer<CompilationTask>() {
         @Override
-        public void accept(CancellableCompileTask task) {
+        public void accept(CompilationTask task) {
             OptimizedCallTarget callTarget = task.targetRef.get();
             if (callTarget != null && task.start()) {
                 try {
@@ -770,7 +768,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public abstract BackgroundCompileQueue getCompileQueue();
 
     @SuppressWarnings("try")
-    public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
+    public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
         return getCompileQueue().submitTask(priority, optimizedCallTarget, compilationAction);
 
@@ -783,7 +781,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return enabled;
     }
 
-    public void finishCompilation(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task, boolean mayBeAsynchronous) {
+    public void finishCompilation(OptimizedCallTarget optimizedCallTarget, CompilationTask task, boolean mayBeAsynchronous) {
 
         if (!mayBeAsynchronous) {
             try {
@@ -802,7 +800,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
-    private static void uninterruptibleWaitForCompilation(CancellableCompileTask task) throws ExecutionException {
+    private static void uninterruptibleWaitForCompilation(CompilationTask task) throws ExecutionException {
         // We want to keep the interrupt bit if we are interrupted.
         // But we also want to maintain the semantics of foreground compilation:
         // waiting for the compilation to finish, even if it takes long,
@@ -825,7 +823,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException {
-        CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
+        CompilationTask task = optimizedCallTarget.getCompilationTask();
         if (task != null) {
             try {
                 task.awaitCompletion(timeout, TimeUnit.MILLISECONDS);
