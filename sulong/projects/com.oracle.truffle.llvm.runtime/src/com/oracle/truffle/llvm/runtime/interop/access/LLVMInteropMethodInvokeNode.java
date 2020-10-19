@@ -63,7 +63,7 @@ public abstract class LLVMInteropMethodInvokeNode extends LLVMNode {
             vtable = ((Clazz) vtable.type).findMember(0);
             o = interop.readMember(o, vtable.name);
         }
-        return vtableAccessNode.execute(o, method, virtualIndex, arguments);
+        return vtableAccessNode.execute(o, virtualIndex, arguments);
     }
 
     @SuppressWarnings("unused")

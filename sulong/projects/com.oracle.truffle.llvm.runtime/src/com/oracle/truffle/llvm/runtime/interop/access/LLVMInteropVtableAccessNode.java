@@ -36,33 +36,25 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Value;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
 public abstract class LLVMInteropVtableAccessNode extends LLVMNode {
-    abstract Object execute(Object vtablePointer, LLVMInteropType.Method method, long virtualIndex, Object[] arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException;
+    abstract Object execute(Object vtablePointer, long virtualIndex, Object[] arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException;
 
     public static LLVMInteropVtableAccessNode create() {
         return LLVMInteropVtableAccessNodeGen.create();
     }
 
     @Specialization
-    Object doPointer(LLVMPointer vtablePointer, LLVMInteropType.Method method, long virtualIndex, Object[] arguments, @CachedLibrary(limit = "5") InteropLibrary interop)
+    Object doPointer(LLVMPointer vtablePointer, long virtualIndex, Object[] arguments, @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        LLVMMemory memory = LLVMLanguage.getLanguage().getLLVMMemory();
 
         LLVMPointer vtableElementPointer = vtablePointer.increment(virtualIndex * 8);
-        LLVMNativePointer maPointer = LLVMNativePointer.cast(vtableElementPointer);
-        final long methodAddress = memory.getI64(this, maPointer);
-        LLVMInteropType methodPointerType = LLVMInteropType.Value.pointer(method, 64);
-        LLVMPointer methodPointer = LLVMNativePointer.create(methodAddress).export(methodPointerType);
-
-        return interop.execute(methodPointer, arguments);
+        LLVMLoadNode llvmLoadNode = insert(LLVMLoadNode.create(LLVMInteropType.ValueKind.POINTER));
+        return interop.execute(llvmLoadNode.executeWithTarget(vtableElementPointer), arguments);
     }
 
 }
