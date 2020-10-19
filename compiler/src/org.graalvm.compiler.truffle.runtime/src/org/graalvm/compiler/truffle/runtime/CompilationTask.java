@@ -36,7 +36,7 @@ import java.util.function.Consumer;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
-final class CompilationTask implements TruffleCompilationTask, Callable<Void>, Comparable<CompilationTask> {
+public final class CompilationTask implements TruffleCompilationTask, Callable<Void>, Comparable<CompilationTask> {
 
     final WeakReference<OptimizedCallTarget> targetRef;
     private final BackgroundCompileQueue.Priority priority;
@@ -48,7 +48,8 @@ final class CompilationTask implements TruffleCompilationTask, Callable<Void>, C
     private volatile boolean cancelled;
     private volatile boolean started;
 
-    CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
+    // TODO: public because of tests.
+    public CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
         this.priority = priority;
         this.targetRef = targetRef;
         this.action = action;

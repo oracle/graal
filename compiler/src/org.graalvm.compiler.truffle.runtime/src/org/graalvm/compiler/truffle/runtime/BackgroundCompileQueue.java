@@ -134,6 +134,7 @@ public class BackgroundCompileQueue {
                             keepAliveTime, TimeUnit.MILLISECONDS,
                             compilationQueue, factory) {
                 @Override
+                @SuppressWarnings({"unchecked"})
                 protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
                     return (RunnableFuture<T>) new CompilationTask.ExecutorServiceWrapper((CompilationTask) callable);
                 }
@@ -172,8 +173,8 @@ public class BackgroundCompileQueue {
             BlockingQueue<Runnable> queue = ((ThreadPoolExecutor) threadPool).getQueue();
             int count = 0;
             for (Runnable runnable : queue) {
-                CompilationTask.ExecutorServiceWrapper task = (CompilationTask.ExecutorServiceWrapper) runnable;
-                if (!task.isCancelled() && !task.compileTask.isCancelled()) {
+                CompilationTask.ExecutorServiceWrapper wrapper = (CompilationTask.ExecutorServiceWrapper) runnable;
+                if (!wrapper.isCancelled() && !wrapper.compileTask.isCancelled()) {
                     count++;
                 }
             }
@@ -195,8 +196,8 @@ public class BackgroundCompileQueue {
         }
         List<OptimizedCallTarget> queuedTargets = new ArrayList<>();
         CompilationTask.ExecutorServiceWrapper[] array = queue.toArray(new CompilationTask.ExecutorServiceWrapper[0]);
-        for (CompilationTask.ExecutorServiceWrapper futureTask : array) {
-            OptimizedCallTarget target = futureTask.compileTask.targetRef.get();
+        for (CompilationTask.ExecutorServiceWrapper wrapper : array) {
+            OptimizedCallTarget target = wrapper.compileTask.targetRef.get();
             if (target != null && target.engine == engine) {
                 queuedTargets.add(target);
             }
