@@ -156,11 +156,21 @@ public class BackgroundCompileQueue {
         return new TruffleCompilerThreadFactory(threadNamePrefix, runtime);
     }
 
-    public CompilationTask submitTask(Priority priority, OptimizedCallTarget target, Consumer<CompilationTask> action) {
+    private CompilationTask submitTask(CompilationTask compilationTask) {
+        compilationTask.setFuture(getExecutorService(compilationTask.targetRef.get()).submit(compilationTask));
+        return compilationTask;
+    }
+
+    public CompilationTask submitCompilation(Priority priority, OptimizedCallTarget target) {
         final WeakReference<OptimizedCallTarget> targetReference = new WeakReference<>(target);
-        CompilationTask cancellable = new CompilationTask(priority, targetReference, action, nextId());
-        cancellable.setFuture(getExecutorService(target).submit(cancellable));
-        return cancellable;
+        CompilationTask compilationTask = CompilationTask.compilationTask(priority, targetReference, runtime, nextId());
+        return submitTask(compilationTask);
+    }
+
+    public CompilationTask submitInitialization(OptimizedCallTarget target, Consumer<CompilationTask> action) {
+        final WeakReference<OptimizedCallTarget> targetReference = new WeakReference<>(target);
+        CompilationTask initializationTask = CompilationTask.initializationTask(targetReference, action);
+        return submitTask(initializationTask);
     }
 
     private long nextId() {
@@ -230,6 +240,7 @@ public class BackgroundCompileQueue {
         // nop
     }
 
+    // TODO: public only for tests
     public static class Priority {
 
         public static final Priority INITIALIZATION = new Priority(0, Tier.INITIALIZATION);

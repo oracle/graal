@@ -122,9 +122,9 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         }
     }
 
-    private CompilationTask newTask(OptimizedCallTarget actualTarget) {
-        return new CompilationTask(new BackgroundCompileQueue.Priority(0, BackgroundCompileQueue.Priority.Tier.LAST), new WeakReference<>(actualTarget),
-                        ((GraalTruffleRuntime) Truffle.getRuntime()).compilationAction, 0);
+    private static CompilationTask newTask(OptimizedCallTarget target) {
+        return CompilationTask.compilationTask(new BackgroundCompileQueue.Priority(0, BackgroundCompileQueue.Priority.Tier.LAST), new WeakReference<>(target),
+                        ((GraalTruffleRuntime) Truffle.getRuntime()), 0);
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root, Object[] arguments) {

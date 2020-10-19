@@ -48,8 +48,16 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private volatile boolean cancelled;
     private volatile boolean started;
 
-    // TODO: public because of tests.
-    public CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
+    public static CompilationTask initializationTask(WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action) {
+        return new CompilationTask(BackgroundCompileQueue.Priority.INITIALIZATION, targetRef, action, 0);
+    }
+
+
+    public static CompilationTask compilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, GraalTruffleRuntime runtime, long id) {
+        return new CompilationTask(priority, targetRef, runtime.compilationAction, id);
+    }
+
+    private CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
         this.priority = priority;
         this.targetRef = targetRef;
         this.action = action;

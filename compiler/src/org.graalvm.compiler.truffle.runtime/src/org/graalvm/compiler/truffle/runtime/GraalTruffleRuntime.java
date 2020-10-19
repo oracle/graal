@@ -135,8 +135,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     private static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
     private static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
-    // TODO Public only for tests, should be package private
-    public final Consumer<CompilationTask> compilationAction = new Consumer<CompilationTask>() {
+    final Consumer<CompilationTask> compilationAction = new Consumer<CompilationTask>() {
         @Override
         public void accept(CompilationTask task) {
             OptimizedCallTarget callTarget = task.targetRef.get();
@@ -770,7 +769,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @SuppressWarnings("try")
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
-        return getCompileQueue().submitTask(priority, optimizedCallTarget, compilationAction);
+        return getCompileQueue().submitCompilation(priority, optimizedCallTarget);
 
     }
 
