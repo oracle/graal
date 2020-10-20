@@ -82,7 +82,7 @@ public class LivenessAnalysis {
     }
 
     private void doAction(VirtualFrame frame, int bci, BytecodeNode node, boolean preAction) {
-        if (compiledCodeOnly && CompilerDirectives.inCompiledCode()) {
+        if (!compiledCodeOnly || CompilerDirectives.inCompiledCode()) {
             int index = getIndex(bci, preAction);
             if (result != null && result[index] != null) {
                 result[index].execute(frame, node);
