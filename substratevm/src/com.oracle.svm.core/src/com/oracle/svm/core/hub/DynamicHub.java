@@ -1336,12 +1336,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         /* See open/src/hotspot/share/prims/jvm.cpp#1522. */
     }
 
-    @Substitute //
+    @KeepOriginal //
     @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings({"unused"})
-    List<Method> getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes) {
-        throw VMError.unsupportedFeature("JDK11OrLater: DynamicHub.getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes)");
-    }
+    private native List<Method> getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes);
 
     @Substitute
     @TargetElement(onlyWith = JDK11OrLater.class)
