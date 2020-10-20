@@ -52,6 +52,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.StackSlot;
@@ -70,24 +71,19 @@ import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class HotSpotCompiledCodeBuilder {
-    public static class Options {
-        // @formatter:off
-        @Option(help = "Controls whether the source position information of snippets and method substitutions" +
-                " are exposed to HotSpot.  Can be useful when profiling to get more precise position information.")
-        public static final OptionKey<Boolean> ShowSubstitutionSourceInfo = new OptionKey<>(false);
-    }
-
-    public static HotSpotCompiledCode createCompiledCode(CodeCacheProvider codeCache, ResolvedJavaMethod method, HotSpotCompilationRequest compRequest, CompilationResult compResult, OptionValues options) {
+    public static HotSpotCompiledCode createCompiledCode(CodeCacheProvider codeCache, ResolvedJavaMethod method, HotSpotCompilationRequest compRequest, CompilationResult compResult,
+                    OptionValues options) {
         String name = compResult.getName();
 
         byte[] targetCode = compResult.getTargetCode();
         int targetCodeSize = compResult.getTargetCodeSize();
 
         Site[] sites = getSortedSites(compResult, options, codeCache.shouldDebugNonSafepoints() && method != null);
+        assert verifySiteMethods(sites);
 
         Assumption[] assumptions = compResult.getAssumptions();
 
-        ResolvedJavaMethod[] methods = compResult.getMethods();
+        ResolvedJavaMethod[] methods = filterMethods(compResult.getMethods());
 
         List<CodeAnnotation> annotations = compResult.getCodeAnnotations();
         Comment[] comments = new Comment[annotations.size()];
@@ -139,84 +135,62 @@ public class HotSpotCompiledCodeBuilder {
                 jvmciCompileState = 0L;
             }
             return new HotSpotCompiledNmethod(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, isImmutablePIC,
-                    totalFrameSize, customStackArea, hsMethod, entryBCI, id, jvmciCompileState, hasUnsafeAccess);
+                            totalFrameSize, customStackArea, hsMethod, entryBCI, id, jvmciCompileState, hasUnsafeAccess);
         } else {
             return new HotSpotCompiledCode(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, isImmutablePIC,
-                    totalFrameSize, customStackArea);
+                            totalFrameSize, customStackArea);
         }
     }
 
-    static class SiteComparator implements Comparator<Site> {
-
-        /**
-         * Defines an order for sorting {@link Infopoint}s based on their
-         * {@linkplain Infopoint#reason reasons}. This is used to choose which infopoint to preserve
-         * when multiple infopoints collide on the same PC offset. A negative order value implies a
-         * non-optional infopoint (i.e., must be preserved).
-         */
-        static final Map<InfopointReason, Integer> HOTSPOT_INFOPOINT_SORT_ORDER = new EnumMap<>(InfopointReason.class);
-
-        static {
-            HOTSPOT_INFOPOINT_SORT_ORDER.put(InfopointReason.SAFEPOINT, -4);
-            HOTSPOT_INFOPOINT_SORT_ORDER.put(InfopointReason.CALL, -3);
-            HOTSPOT_INFOPOINT_SORT_ORDER.put(InfopointReason.IMPLICIT_EXCEPTION, -2);
-            HOTSPOT_INFOPOINT_SORT_ORDER.put(InfopointReason.METHOD_START, 2);
-            HOTSPOT_INFOPOINT_SORT_ORDER.put(InfopointReason.METHOD_END, 3);
-            HOTSPOT_INFOPOINT_SORT_ORDER.put(InfopointReason.BYTECODE_POSITION, 4);
-        }
-
-        static int ord(Infopoint info) {
-            return HOTSPOT_INFOPOINT_SORT_ORDER.get(info.reason);
-        }
-
-        static int checkCollision(Infopoint i1, Infopoint i2) {
-            int o1 = ord(i1);
-            int o2 = ord(i2);
-            if (o1 < 0 && o2 < 0) {
-                throw new GraalError("Non optional infopoints cannot collide: %s and %s", i1, i2);
-            }
-            return o1 - o2;
-        }
-
-        /**
-         * Records whether any two {@link Infopoint}s had the same {@link Infopoint#pcOffset}.
-         */
-        boolean sawCollidingInfopoints;
-
-        @Override
-        public int compare(Site s1, Site s2) {
-            if (s1.pcOffset == s2.pcOffset) {
-                // Marks must come first since patching a call site
-                // may need to know the mark denoting the call type
-                // (see uses of CodeInstaller::_next_call_type).
-                boolean s1IsMark = s1 instanceof Mark;
-                boolean s2IsMark = s2 instanceof Mark;
-                if (s1IsMark != s2IsMark) {
-                    return s1IsMark ? -1 : 1;
-                }
-
-                // Infopoints must group together so put them after
-                // other Site types.
-                boolean s1IsInfopoint = s1 instanceof Infopoint;
-                boolean s2IsInfopoint = s2 instanceof Infopoint;
-                if (s1IsInfopoint != s2IsInfopoint) {
-                    return s1IsInfopoint ? 1 : -1;
-                }
-
-                if (s1IsInfopoint) {
-                    sawCollidingInfopoints = true;
-                    return checkCollision((Infopoint) s1, (Infopoint) s2);
+    /**
+     * Ensure that only real {@link HotSpotResolvedJavaMethod HotSpotResolvedJavaMethods} appear in
+     * debug info.
+     */
+    private static boolean verifySiteMethods(Site[] sites) {
+        for (Site site : sites) {
+            if (site instanceof Infopoint) {
+                Infopoint infopoint = (Infopoint) site;
+                if (infopoint.debugInfo != null) {
+                    BytecodeFrame frame = infopoint.debugInfo.frame();
+                    while (frame != null) {
+                        assert frame.getMethod() instanceof HotSpotResolvedJavaMethod;
+                        frame = frame.caller();
+                    }
                 }
             }
-            return s1.pcOffset - s2.pcOffset;
         }
+        return true;
     }
 
+    private static ResolvedJavaMethod[] filterMethods(ResolvedJavaMethod[] methods) {
+        if (methods != null) {
+            ArrayList<ResolvedJavaMethod> hsMethods = null;
+            int i = 0;
+            while (i < methods.length) {
+                ResolvedJavaMethod method = methods[i];
+                if (hsMethods != null) {
+                    if (method instanceof HotSpotResolvedJavaMethod) {
+                        hsMethods.add(method);
+                    }
+                } else if (!(method instanceof HotSpotResolvedJavaMethod)) {
+                    hsMethods = new ArrayList<>();
+                    i = 0;
+                    continue;
+                }
+                i++;
+            }
+            if (hsMethods != null) {
+                return hsMethods.toArray(new ResolvedJavaMethod[hsMethods.size()]);
+            }
+        }
+
+        return methods;
+    }
 
     /**
      * @return the list of {@link Mark marks} converted from the {@link CodeMark CodeMarks}.
      */
-    private static  List<Mark> getTranslatedMarks(List<CodeMark> codeMarks) {
+    private static List<Mark> getTranslatedMarks(List<CodeMark> codeMarks) {
         if (codeMarks.isEmpty()) {
             return emptyList();
         }
@@ -236,7 +210,7 @@ public class HotSpotCompiledCodeBuilder {
      */
     private static Site[] getSortedSites(CompilationResult target, OptionValues options, boolean includeSourceInfo) {
         List<Site> sites = new ArrayList<>(
-                target.getExceptionHandlers().size() + target.getInfopoints().size() + target.getDataPatches().size() + target.getMarks().size() + target.getSourceMappings().size());
+                        target.getExceptionHandlers().size() + target.getInfopoints().size() + target.getDataPatches().size() + target.getMarks().size() + target.getSourceMappings().size());
         sites.addAll(target.getExceptionHandlers());
         sites.addAll(target.getInfopoints());
         sites.addAll(target.getDataPatches());
@@ -313,6 +287,9 @@ public class HotSpotCompiledCodeBuilder {
                     sourcePosition = sourcePosition.trim();
                     assert verifyTrim(sourcePosition);
                 }
+                while (sourcePosition != null && !(sourcePosition.getMethod() instanceof HotSpotResolvedJavaMethod)) {
+                    sourcePosition = sourcePosition.getCaller();
+                }
                 if (sourcePosition != null) {
                     assert !anyMatch(sites, s -> source.getStartOffset() <= s.pcOffset && s.pcOffset <= source.getEndOffset());
                     sourcePositionSites.add(new Infopoint(source.getEndOffset(), new DebugInfo(sourcePosition), InfopointReason.BYTECODE_POSITION));
@@ -353,5 +330,78 @@ public class HotSpotCompiledCodeBuilder {
             assert !sp.isSubstitution();
         }
         return true;
+    }
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Controls whether the source position information of snippets and method substitutions" +
+                " are exposed to HotSpot.  Can be useful when profiling to get more precise position information.")
+        public static final OptionKey<Boolean> ShowSubstitutionSourceInfo = new OptionKey<>(false);
+    }
+
+    static class SiteComparator implements Comparator<Site> {
+
+        /**
+         * Defines an order for sorting {@link Infopoint}s based on their
+         * {@linkplain Infopoint#reason reasons}. This is used to choose which infopoint to preserve
+         * when multiple infopoints collide on the same PC offset. A negative order value implies a
+         * non-optional infopoint (i.e., must be preserved).
+         */
+        static final Map<InfopointReason, Integer> HOTSPOT_INFOPOINT_SORT_ORDER = new EnumMap<>(InfopointReason.class);
+
+        static {
+            HOTSPOT_INFOPOINT_SORT_ORDER.put(InfopointReason.SAFEPOINT, -4);
+            HOTSPOT_INFOPOINT_SORT_ORDER.put(InfopointReason.CALL, -3);
+            HOTSPOT_INFOPOINT_SORT_ORDER.put(InfopointReason.IMPLICIT_EXCEPTION, -2);
+            HOTSPOT_INFOPOINT_SORT_ORDER.put(InfopointReason.METHOD_START, 2);
+            HOTSPOT_INFOPOINT_SORT_ORDER.put(InfopointReason.METHOD_END, 3);
+            HOTSPOT_INFOPOINT_SORT_ORDER.put(InfopointReason.BYTECODE_POSITION, 4);
+        }
+
+        /**
+         * Records whether any two {@link Infopoint}s had the same {@link Infopoint#pcOffset}.
+         */
+        boolean sawCollidingInfopoints;
+
+        static int ord(Infopoint info) {
+            return HOTSPOT_INFOPOINT_SORT_ORDER.get(info.reason);
+        }
+
+        static int checkCollision(Infopoint i1, Infopoint i2) {
+            int o1 = ord(i1);
+            int o2 = ord(i2);
+            if (o1 < 0 && o2 < 0) {
+                throw new GraalError("Non optional infopoints cannot collide: %s and %s", i1, i2);
+            }
+            return o1 - o2;
+        }
+
+        @Override
+        public int compare(Site s1, Site s2) {
+            if (s1.pcOffset == s2.pcOffset) {
+                // Marks must come first since patching a call site
+                // may need to know the mark denoting the call type
+                // (see uses of CodeInstaller::_next_call_type).
+                boolean s1IsMark = s1 instanceof Mark;
+                boolean s2IsMark = s2 instanceof Mark;
+                if (s1IsMark != s2IsMark) {
+                    return s1IsMark ? -1 : 1;
+                }
+
+                // Infopoints must group together so put them after
+                // other Site types.
+                boolean s1IsInfopoint = s1 instanceof Infopoint;
+                boolean s2IsInfopoint = s2 instanceof Infopoint;
+                if (s1IsInfopoint != s2IsInfopoint) {
+                    return s1IsInfopoint ? 1 : -1;
+                }
+
+                if (s1IsInfopoint) {
+                    sawCollidingInfopoints = true;
+                    return checkCollision((Infopoint) s1, (Infopoint) s2);
+                }
+            }
+            return s1.pcOffset - s2.pcOffset;
+        }
     }
 }

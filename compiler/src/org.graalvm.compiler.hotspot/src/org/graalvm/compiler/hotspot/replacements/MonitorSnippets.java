@@ -134,6 +134,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -689,7 +690,7 @@ public class MonitorSnippets implements Snippets {
     }
 
     @Snippet
-    private static void checkCounter(@ConstantParameter String errMsg) {
+    private static void checkCounter(@ConstantParameter CStringConstant errMsg) {
         final Word counter = MonitorCounterNode.counter();
         final int count = counter.readInt(0, MONITOR_COUNTER_LOCATION);
         if (count != 0) {
@@ -888,7 +889,7 @@ public class MonitorSnippets implements Snippets {
                         graph.addBeforeFixed(ret, invoke);
 
                         Arguments args = new Arguments(checkCounter, graph.getGuardsStage(), tool.getLoweringStage());
-                        args.addConst("errMsg", msg);
+                        args.addConst("errMsg", new CStringConstant(msg));
                         inlineeGraph = template(invoke, args).copySpecializedGraph(graph.getDebug());
                         InliningUtil.inline(invoke, inlineeGraph, false, null);
                     }

@@ -534,7 +534,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @TruffleBoundary
     static <T extends Throwable> PolyglotException guestToHostException(PolyglotLanguageContext languageContext, T e) {
-        assert !(e instanceof PolyglotException) : "polyglot exceptions must not be thrown to the host";
+        assert !(e instanceof PolyglotException) : "polyglot exceptions must not be thrown to the host: " + e;
         PolyglotEngineException.rethrow(e);
 
         if (languageContext == null) {
@@ -570,7 +570,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     static <T extends Throwable> PolyglotException guestToHostException(PolyglotEngineImpl engine, T e) {
-        assert !(e instanceof PolyglotException) : "polyglot exceptions must not be thrown to the host";
+        assert !(e instanceof PolyglotException) : "polyglot exceptions must not be thrown to the host: " + e;
         PolyglotEngineException.rethrow(e);
 
         APIAccess access = engine.getAPIAccess();
@@ -586,7 +586,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @TruffleBoundary
     static <T extends Throwable> PolyglotException guestToHostException(PolyglotImpl polyglot, T e) {
-        assert !(e instanceof PolyglotException) : "polyglot exceptions must not be thrown to the host";
+        assert !(e instanceof PolyglotException) : "polyglot exceptions must not be thrown to the host: " + e;
         PolyglotEngineException.rethrow(e);
 
         APIAccess access = polyglot.getAPIAccess();

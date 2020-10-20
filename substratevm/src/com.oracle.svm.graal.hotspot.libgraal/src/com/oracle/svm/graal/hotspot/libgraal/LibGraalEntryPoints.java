@@ -110,6 +110,16 @@ public final class LibGraalEntryPoints {
 
     private static final ThreadLocal<CachedOptions> cachedOptions = new ThreadLocal<>();
 
+    public static boolean hasLibGraalIsolatePeer() {
+        return hasLibGraalIsolatePeer;
+    }
+
+    /**
+     * Indicates whether this runtime has an associated peer runtime that it must be unregistered
+     * from during shutdown.
+     */
+    private static boolean hasLibGraalIsolatePeer;
+
     private static OptionValues decodeOptions(long address, int size, int hash) {
         CachedOptions options = cachedOptions.get();
         if (options == null || options.hash != hash) {
@@ -154,6 +164,7 @@ public final class LibGraalEntryPoints {
                     PointerBase jclass,
                     @CEntryPoint.IsolateThreadContext long isolateThreadId) {
         try {
+            hasLibGraalIsolatePeer = true;
             return IsolateUtil.getIsolateID();
         } catch (Throwable t) {
             return 0L;
