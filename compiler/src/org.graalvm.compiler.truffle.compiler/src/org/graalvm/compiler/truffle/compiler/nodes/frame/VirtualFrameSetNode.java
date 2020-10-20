@@ -56,13 +56,10 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
         ValueNode tagAlias = tool.getAlias(frame.virtualFrameTagArray);
         ValueNode dataAlias = tool.getAlias(
                         TruffleCompilerRuntime.getRuntime().getJavaKindForFrameSlotKind(accessTag) == JavaKind.Object ? frame.virtualFrameObjectArray : frame.virtualFramePrimitiveArray);
-        ValueNode counterpartAlias = tool.getAlias(
-                        TruffleCompilerRuntime.getRuntime().getJavaKindForFrameSlotKind(accessTag) == JavaKind.Object ? frame.virtualFramePrimitiveArray : frame.virtualFrameObjectArray);
 
         if (tagAlias instanceof VirtualObjectNode && dataAlias instanceof VirtualObjectNode) {
             VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
             VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
-            VirtualObjectNode counterPartVirtual = (VirtualObjectNode) counterpartAlias;
 
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
                 tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag));
@@ -70,8 +67,7 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
                 ValueNode dataEntry = tool.getEntry(dataVirtual, frameSlotIndex);
                 if (dataEntry.getStackKind() == value.getStackKind()) {
                     if (tool.setVirtualEntry(dataVirtual, frameSlotIndex, value, value.getStackKind(), -1)) {
-                        tool.setVirtualEntry(counterPartVirtual, frameSlotIndex,
-                                        ConstantNode.defaultForKind(counterPartVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex), graph()));
+                        clearCounterpart(tool);
                         tool.delete();
                         return;
                     }
@@ -85,4 +81,17 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
          */
         insertDeoptimization(tool);
     }
+
+    private void clearCounterpart(VirtualizerTool tool) {
+        ValueNode counterpartAlias = tool.getAlias(
+                        TruffleCompilerRuntime.getRuntime().getJavaKindForFrameSlotKind(accessTag) == JavaKind.Object
+                                        ? frame.virtualFramePrimitiveArray
+                                        : frame.virtualFrameObjectArray);
+        if (counterpartAlias instanceof VirtualObjectNode) {
+            VirtualObjectNode counterPartVirtual = (VirtualObjectNode) counterpartAlias;
+            tool.setVirtualEntry(counterPartVirtual, frameSlotIndex,
+                            ConstantNode.defaultForKind(counterPartVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex), graph()));
+        }
+    }
+
 }
