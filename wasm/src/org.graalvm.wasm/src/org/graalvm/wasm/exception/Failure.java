@@ -42,25 +42,25 @@
 package org.graalvm.wasm.exception;
 
 public enum Failure {
-    EXIT(FailureType.EXIT, "program exited"),
+    EXIT(Type.EXIT, "program exited"),
 
-    UNSPECIFIED_TRAP(FailureType.TRAP, "unspecified"),
-    INT_DIVIDE_BY_ZERO(FailureType.TRAP, "integer divide by zero"),
-    INT_OVERFLOW(FailureType.TRAP, "integer overflow"),
+    UNSPECIFIED_TRAP(Type.TRAP, "unspecified"),
+    INT_DIVIDE_BY_ZERO(Type.TRAP, "integer divide by zero"),
+    INT_OVERFLOW(Type.TRAP, "integer overflow"),
 
-    UNSPECIFIED_EXHAUSTION(FailureType.EXHAUSTION, "unspecified"),
+    UNSPECIFIED_EXHAUSTION(Type.EXHAUSTION, "unspecified"),
 
-    UNSPECIFIED_MALFORMED(FailureType.MALFORMED, "unspecified"),
+    UNSPECIFIED_MALFORMED(Type.MALFORMED, "unspecified"),
 
-    UNSPECIFIED_INVALID(FailureType.INVALID, "unspecified"),
-    RETURN_STACK_SIZE_MISMATCH(FailureType.INVALID, "type mismatch"),
+    UNSPECIFIED_INVALID(Type.INVALID, "unspecified"),
+    RETURN_STACK_SIZE_MISMATCH(Type.INVALID, "type mismatch"),
 
-    UNSPECIFIED_UNLINKABLE(FailureType.UNLINKABLE, "unspecified"),
+    UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),
 
-    UNSPECIFIED_INTERNAL(FailureType.INTERNAL, "unspecified"),
-    OTHER_ARITHMETIC_EXCEPTION(FailureType.INTERNAL, "non-standard arithmetic exception");
+    UNSPECIFIED_INTERNAL(Type.INTERNAL, "unspecified"),
+    OTHER_ARITHMETIC_EXCEPTION(Type.INTERNAL, "non-standard arithmetic exception");
 
-    public enum FailureType {
+    public enum Type {
         EXIT("exit"),
         TRAP("trap"),
         EXHAUSTION("exhaustion"),
@@ -71,15 +71,15 @@ public enum Failure {
 
         public final String name;
 
-        FailureType(String name) {
+        Type(String name) {
             this.name = name;
         }
     }
 
-    public final FailureType type;
+    public final Type type;
     public final String name;
 
-    Failure(FailureType type, String name) {
+    Failure(Type type, String name) {
         this.type = type;
         this.name = name;
     }
