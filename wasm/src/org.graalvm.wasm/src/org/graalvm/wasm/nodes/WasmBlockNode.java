@@ -1644,7 +1644,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         int x = popInt(frame, stackPointer);
                         stackPointer--;
                         int y = popInt(frame, stackPointer);
-                        if (y == Integer.MIN_VALUE && x == -1) {
+                        if (x == -1 && y == Integer.MIN_VALUE) {
                             throw WasmException.create(Failure.INT_OVERFLOW, this);
                         }
                         int result = y / x;
@@ -1839,7 +1839,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         long x = pop(frame, stackPointer);
                         stackPointer--;
                         long y = pop(frame, stackPointer);
-                        if (y == Long.MIN_VALUE && x == -1) {
+                        if (x == -1 && y == Long.MIN_VALUE) {
                             throw WasmException.create(Failure.INT_OVERFLOW, this);
                         }
                         final long result = y / x;
