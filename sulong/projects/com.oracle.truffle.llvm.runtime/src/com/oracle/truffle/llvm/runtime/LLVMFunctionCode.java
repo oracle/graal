@@ -40,7 +40,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCodeFactory.ResolveFunctionNodeGen;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
@@ -66,11 +65,9 @@ public class LLVMFunctionCode {
     }
 
     private final AssumedValue<Function> function;
-    private final LLVMContext context;
     private final LLVMFunction llvmFunction;
 
-    public LLVMFunctionCode(LLVMContext context, LLVMFunction llvmFunction) {
-        this.context = context;
+    public LLVMFunctionCode(LLVMFunction llvmFunction) {
         this.llvmFunction = llvmFunction;
         this.function = new AssumedValue<>("LLVMFunctionRuntime.initialFunction", llvmFunction.getFunction());
     }
@@ -246,30 +243,8 @@ public class LLVMFunctionCode {
     public static final class UnresolvedFunction extends Function {
 
         @Override
-        void resolve(LLVMFunctionCode descriptor) {
-            CompilerAsserts.neverPartOfCompilation();
-            // we already did the initial function resolution after parsing but further native
-            // libraries could have been loaded in the meantime
-            LLVMContext context = descriptor.getContext();
-            synchronized (context) {
-                // synchronize on the context: only one thread is allowed to resolve symbols
-                if (descriptor.getFunction() != this) {
-                    // another thread was faster, nothing to do
-                    return;
-                }
-
-                NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-                LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-                assert !intrinsicProvider.isIntrinsified(descriptor.getLLVMFunction().getName());
-                if (nfiContextExtension != null) {
-                    NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(descriptor.getLLVMFunction().getName());
-                    if (nativeFunction != null) {
-                        descriptor.define(new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
-                        return;
-                    }
-                }
-            }
-            throw new LLVMLinkerException(String.format("External function %s cannot be found.", descriptor.getLLVMFunction().getName()));
+        void resolve(LLVMFunctionCode functionCode) {
+            throw new LLVMLinkerException(String.format("Unresolved external function %s cannot be found.", functionCode.getLLVMFunction().getName()));
         }
 
         @Override
@@ -345,14 +320,14 @@ public class LLVMFunctionCode {
 
     public void define(LLVMIntrinsicProvider intrinsicProvider, NodeFactory nodeFactory) {
         Intrinsic intrinsification = new Intrinsic(intrinsicProvider, llvmFunction.getName(), nodeFactory);
-        define(new IntrinsicFunction(intrinsification, getFunction().getSourceType()), true);
+        define(new IntrinsicFunction(intrinsification, getFunction().getSourceType()));
     }
 
     public void define(Function newFunction) {
-        define(newFunction, false);
+        setFunction(newFunction);
     }
 
-    private void define(Function newFunction, boolean allowReplace) {
+    /*private void define(Function newFunction, boolean allowReplace) {
         assert newFunction != null;
         if (!isDefined() || allowReplace) {
             setFunction(newFunction);
@@ -360,7 +335,7 @@ public class LLVMFunctionCode {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Found multiple definitions of function " + llvmFunction.getName() + ".");
         }
-    }
+    }*/
 
     public RootCallTarget getLLVMIRFunctionSlowPath() {
         CompilerAsserts.neverPartOfCompilation();
@@ -403,10 +378,6 @@ public class LLVMFunctionCode {
 
     public Function getFunction() {
         return function.get();
-    }
-
-    public LLVMContext getContext() {
-        return context;
     }
 
     public LLVMFunction getLLVMFunction() {

@@ -36,19 +36,18 @@ import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 final class ImportsProcessor implements MetadataVisitor {
 
-    static void process(MetadataValueList metadata, LLVMContext context, DebugInfoCache cache) {
-        metadata.consumeExportedScopes(new ImportsProcessor(context, cache));
+    static void process(MetadataValueList metadata, DebugInfoCache cache) {
+        metadata.consumeExportedScopes(new ImportsProcessor(cache));
     }
 
-    private final LLVMContext context;
     private final DebugInfoCache cache;
 
-    private ImportsProcessor(LLVMContext context, DebugInfoCache cache) {
-        this.context = context;
+    private ImportsProcessor(DebugInfoCache cache) {
         this.cache = cache;
     }
 
@@ -67,7 +66,7 @@ final class ImportsProcessor implements MetadataVisitor {
         if (name == null) {
             return;
         }
-
+        final LLVMContext context = LLVMLanguage.getContext();
         final LLVMSourceLocation importedScope = context.getSourceContext().getExportedScope(name);
         if (importedScope != null) {
             cache.importScope(scopeNode, importedScope);

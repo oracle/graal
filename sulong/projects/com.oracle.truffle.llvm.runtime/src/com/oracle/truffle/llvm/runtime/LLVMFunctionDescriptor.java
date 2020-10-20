@@ -126,11 +126,11 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
         return functionCode;
     }
 
-    public LLVMFunctionDescriptor(LLVMContext context, LLVMFunction llvmFunction) {
+    public LLVMFunctionDescriptor(LLVMContext context, LLVMFunction llvmFunction, LLVMFunctionCode functionCode) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
-        this.functionCode = new LLVMFunctionCode(context, llvmFunction);
         this.llvmFunction = llvmFunction;
+        this.functionCode = functionCode;
     }
 
     @Override

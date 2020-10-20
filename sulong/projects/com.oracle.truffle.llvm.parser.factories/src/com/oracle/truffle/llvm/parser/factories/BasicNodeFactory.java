@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.CompareOperator;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackFromFrameNodeGen;
@@ -149,9 +150,9 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMStackSaveNodeGe
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMTrapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmetic;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.GCCArithmeticNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMSimpleArithmeticPrimitiveNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowAndCarryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMSimpleArithmeticPrimitiveNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI16NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI32NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI64NodeGen;
@@ -199,8 +200,8 @@ import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFacto
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI8VectorLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMPointerVectorLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.AllocateGlobalsBlockNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.AllocateReadOnlyGlobalsBlockNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.FreeReadOnlyGlobalsBlockNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.AllocateReadOnlyGlobalsBlockNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.FreeReadOnlyGlobalsBlockNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMCompareExchangeNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMFenceNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNodeGen;
@@ -211,7 +212,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVarArgCompoundAddressNod
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.NativeMemSetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMoveNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.ProtectReadOnlyGlobalsBlockNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ProtectReadOnlyGlobalsBlockNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMArrayLiteralNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMStructArrayLiteralNodeGen;
@@ -1157,7 +1158,8 @@ public class BasicNodeFactory implements NodeFactory {
         LLVMIRFunction function = new LLVMIRFunction(Truffle.getRuntime().createCallTarget(assemblyRoot), null);
         LLVMFunction functionDetail = LLVMFunction.create("<asm>", function, new FunctionType(MetaType.UNKNOWN, 0, false), LLVMSymbol.INVALID_INDEX, LLVMSymbol.INVALID_INDEX,
                         false, assemblyRoot.getName());
-        LLVMFunctionDescriptor asm = context.createFunctionDescriptor(functionDetail);
+        // The function descriptor.
+        LLVMFunctionDescriptor asm = new LLVMFunctionDescriptor(null, functionDetail, new LLVMFunctionCode(functionDetail));
         LLVMManagedPointerLiteralNode asmFunction = LLVMManagedPointerLiteralNodeGen.create(LLVMManagedPointer.create(asm));
 
         return LLVMCallNode.create(new FunctionType(MetaType.UNKNOWN, argTypes, false), asmFunction, args, false);
@@ -1835,7 +1837,7 @@ public class BasicNodeFactory implements NodeFactory {
     public LLVMAllocateNode createAllocateGlobalsBlock(StructureType structType, boolean readOnly) {
         try {
             if (readOnly) {
-                return new AllocateReadOnlyGlobalsBlockNode(context, structType, dataLayout);
+                return AllocateReadOnlyGlobalsBlockNodeGen.create(structType, dataLayout);
             } else {
                 return AllocateGlobalsBlockNode.create(structType, dataLayout);
             }
@@ -1846,13 +1848,13 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMMemoryOpNode createProtectGlobalsBlock() {
-        return new ProtectReadOnlyGlobalsBlockNode(context);
+        return ProtectReadOnlyGlobalsBlockNodeGen.create();
     }
 
     @Override
     public LLVMMemoryOpNode createFreeGlobalsBlock(boolean readOnly) {
         if (readOnly) {
-            return new FreeReadOnlyGlobalsBlockNode(context);
+            return FreeReadOnlyGlobalsBlockNodeGen.create();
         } else {
             return LLVMFreeNodeGen.create(null);
         }

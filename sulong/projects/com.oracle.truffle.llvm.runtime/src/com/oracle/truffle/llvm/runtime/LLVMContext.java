@@ -145,7 +145,13 @@ public final class LLVMContext {
     private final LLVMPThreadContext pThreadContext;
 
     private LLVMFunction sulongInitContext;
+    private LLVMFunctionCode sulongInitContextCode;
     private LLVMFunction sulongDisposeContext;
+
+    // globals block function
+    @CompilationFinal Object freeGlobalsBlockFunction;
+    @CompilationFinal Object allocateGlobalsBlockFunction;
+    @CompilationFinal Object protectGlobalsBlockFunction;
 
     private boolean initialized;
     private boolean cleanupNecessary;
@@ -167,8 +173,8 @@ public final class LLVMContext {
             functionDescriptors.put(pointer, desc);
         }
 
-        synchronized LLVMFunctionDescriptor create(LLVMFunction functionDetail) {
-            return new LLVMFunctionDescriptor(LLVMContext.this, functionDetail);
+        synchronized LLVMFunctionDescriptor create(LLVMFunction functionDetail, LLVMFunctionCode functionCode) {
+            return new LLVMFunctionDescriptor(LLVMContext.this, functionDetail, functionCode);
         }
     }
 
@@ -228,6 +234,7 @@ public final class LLVMContext {
 
     public void setSulongInitContext(LLVMFunction function) {
         this.sulongInitContext = function;
+        this.sulongInitContextCode = new LLVMFunctionCode(sulongInitContext);
     }
 
     public void setSulongDisposeContext(LLVMFunction function) {
@@ -387,7 +394,7 @@ public final class LLVMContext {
         if (sulongInitContext == null) {
             throw new IllegalStateException("Context cannot be initialized:" + SULONG_INIT_CONTEXT + " was not found");
         }
-        return InitializeContextNodeGen.create(createFunctionDescriptor(sulongInitContext));
+        return InitializeContextNodeGen.create(createFunctionDescriptor(sulongInitContext, sulongInitContextCode));
     }
 
     public Toolchain getToolchain() {
@@ -517,6 +524,33 @@ public final class LLVMContext {
                 }
             });
         }
+    }
+
+    public Object getFreeReadOnlyGlobalsBlockFunction() {
+        if (freeGlobalsBlockFunction == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            NFIContextExtension nfiContextExtension = getContextExtensionOrNull(NFIContextExtension.class);
+            freeGlobalsBlockFunction = nfiContextExtension.getNativeFunction("__sulong_free_globals_block", "(POINTER):VOID");
+        }
+        return freeGlobalsBlockFunction;
+    }
+
+    public Object getProtectReadOnlyGlobalsBlockFunction() {
+        if (protectGlobalsBlockFunction == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            NFIContextExtension nfiContextExtension = getContextExtensionOrNull(NFIContextExtension.class);
+            protectGlobalsBlockFunction = nfiContextExtension.getNativeFunction("__sulong_protect_readonly_globals_block", "(POINTER):VOID");
+        }
+        return protectGlobalsBlockFunction;
+    }
+
+    public Object getAllocateGlobalsBlockFunction() {
+        if (allocateGlobalsBlockFunction == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            NFIContextExtension nfiContextExtension = getContextExtensionOrNull(NFIContextExtension.class);
+            allocateGlobalsBlockFunction = nfiContextExtension.getNativeFunction("__sulong_allocate_globals_block", "(UINT64):POINTER");
+        }
+        return allocateGlobalsBlockFunction;
     }
 
     void dispose(LLVMMemory memory) {
@@ -721,8 +755,8 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public LLVMFunctionDescriptor createFunctionDescriptor(LLVMFunction functionDetail) {
-        return functionPointerRegistry.create(functionDetail);
+    public LLVMFunctionDescriptor createFunctionDescriptor(LLVMFunction functionDetail, LLVMFunctionCode functionCode) {
+        return functionPointerRegistry.create(functionDetail, functionCode);
     }
 
     @TruffleBoundary

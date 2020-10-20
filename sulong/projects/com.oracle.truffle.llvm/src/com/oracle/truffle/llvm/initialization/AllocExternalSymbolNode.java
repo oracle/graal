@@ -236,9 +236,11 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             abstract static class AllocExternalFunctionNode extends AllocExistingGlobalSymbolsNode {
 
                 private final NodeFactory nodeFactory;
+                private final LLVMFunctionCode functionCode;
 
-                AllocExternalFunctionNode(LLVMSymbol symbol, NodeFactory nodeFactory) {
+                AllocExternalFunctionNode(LLVMSymbol symbol, LLVMFunctionCode functionCode, NodeFactory nodeFactory) {
                     super(symbol);
+                    this.functionCode = functionCode;
                     this.nodeFactory = nodeFactory;
                 }
 
@@ -250,7 +252,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                                 LLVMIntrinsicProvider intrinsicProvider,
                                 @SuppressWarnings("unused") NFIContextExtension nfiContextExtension,
                                 @CachedContext(LLVMLanguage.class) LLVMContext context) {
-                    LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction());
+                    LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), functionCode);
                     functionDescriptor.getFunctionCode().define(intrinsicProvider, nodeFactory);
                     return LLVMManagedPointer.create(functionDescriptor);
                 }
@@ -274,7 +276,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                                 @CachedContext(LLVMLanguage.class) LLVMContext context) {
                     NFIContextExtension.NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(symbol.getName());
                     if (nativeFunction != null) {
-                        LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction());
+                        LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), new LLVMFunctionCode(symbol.asFunction()));
                         functionDescriptor.getFunctionCode().define(new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
                         return LLVMManagedPointer.create(functionDescriptor);
                     }

@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
@@ -38,15 +37,13 @@ import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
 public final class LLVMParserRuntime {
-    private final LLVMContext context;
     private final LLVMScope fileScope;
     private final NodeFactory nodeFactory;
     private final int bitcodeID;
     private final TruffleFile file;
     private final String libName;
 
-    public LLVMParserRuntime(LLVMContext context, LLVMScope fileScope, NodeFactory nodeFactory, int bitcodeID, TruffleFile file, String libName) {
-        this.context = context;
+    public LLVMParserRuntime(LLVMScope fileScope, NodeFactory nodeFactory, int bitcodeID, TruffleFile file, String libName) {
         this.fileScope = fileScope;
         this.nodeFactory = nodeFactory;
         this.bitcodeID = bitcodeID;
@@ -60,10 +57,6 @@ public final class LLVMParserRuntime {
 
     public String getLibraryName() {
         return libName;
-    }
-
-    public LLVMContext getContext() {
-        return context;
     }
 
     public LLVMScope getFileScope() {
