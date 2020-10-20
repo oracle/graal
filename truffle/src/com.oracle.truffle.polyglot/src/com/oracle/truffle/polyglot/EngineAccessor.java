@@ -103,7 +103,7 @@ import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.polyglot.HostClassDesc.AdapterResult;
+import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
@@ -1324,17 +1324,11 @@ final class EngineAccessor extends Accessor {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
             PolyglotEngineImpl engine = languageContext.getEngine();
             HostContext hostContext = languageContext.context.getHostContextImpl();
-            if (types.length == 1 && classOverrides == null) {
-                HostClassDesc classDesc = HostClassDesc.forClass(engine, types[0]);
-                AdapterResult adapter = classDesc.getAdapter(hostContext);
-                if (adapter.isSuccess()) {
-                    return asHostSymbol(polyglotLanguageContext, adapter.getAdapterClass());
-                } else {
-                    throw adapter.throwException();
-                }
+            AdapterResult adapter = HostAdapterFactory.getAdapterClassFor(engine, hostContext, types, classOverrides);
+            if (!adapter.isSuccess()) {
+                throw adapter.throwException();
             }
-            Class<?> adapterClass = HostAdapterFactory.getAdapterClassFor(engine.getHostClassCache(), types, hostContext.getClassloader(), classOverrides);
-            return asHostSymbol(polyglotLanguageContext, adapterClass);
+            return asHostSymbol(polyglotLanguageContext, adapter.getAdapterClass());
         }
 
         @Override

@@ -53,15 +53,13 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
-
-import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.HostMethodDesc.OverloadedMethod;
 import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod;
@@ -534,7 +532,7 @@ final class HostClassDesc {
         synchronized (this) {
             AdapterResult result = adapter;
             if (result == null) {
-                adapter = result = makeAdapter(hostContext);
+                adapter = result = HostAdapterFactory.makeAdapterClassFor(cache, type, hostContext.getClassloader());
             }
             return result;
         }
@@ -543,78 +541,6 @@ final class HostClassDesc {
     @Override
     public String toString() {
         return "JavaClass[" + type.getCanonicalName() + "]";
-    }
-
-    private AdapterResult makeAdapter(HostContext hostContext) {
-        Class<?> adapterClass;
-        try {
-            adapterClass = HostAdapterFactory.getAdapterClassFor(cache, type, hostContext.getClassloader());
-        } catch (PolyglotEngineException ex) {
-            return new AdapterResult(ex);
-        } catch (IllegalArgumentException ex) {
-            return new AdapterResult(PolyglotEngineException.illegalArgument(ex));
-        }
-
-        assert isAllowsImplementation();
-        HostClassDesc classDesc = cache.forClass(adapterClass);
-        HostMethodDesc constructor = classDesc.lookupConstructor();
-        HostMethodDesc.SingleMethod valueConstructor = null;
-        if (constructor != null) {
-            for (HostMethodDesc.SingleMethod overload : constructor.getOverloads()) {
-                if (overload.getParameterCount() == 1 && overload.getParameterTypes()[0] == Value.class) {
-                    valueConstructor = overload;
-                    break;
-                }
-            }
-            return new AdapterResult(adapterClass, constructor, valueConstructor);
-        } else {
-            return new AdapterResult(PolyglotEngineException.illegalArgument("No accessible constructor: " + type.getCanonicalName()));
-        }
-    }
-
-    static final class AdapterResult {
-        private final Class<?> adapterClass;
-        private final HostMethodDesc constructor;
-        private final HostMethodDesc.SingleMethod valueConstructor;
-        private final PolyglotEngineException exception;
-
-        AdapterResult(Class<?> adapterClass, HostMethodDesc constructor, HostMethodDesc.SingleMethod valueConstructor) {
-            this.adapterClass = Objects.requireNonNull(adapterClass);
-            this.constructor = constructor;
-            this.valueConstructor = valueConstructor;
-            this.exception = null;
-        }
-
-        AdapterResult(PolyglotEngineException exception) {
-            this.adapterClass = null;
-            this.constructor = null;
-            this.valueConstructor = null;
-            this.exception = exception;
-        }
-
-        Class<?> getAdapterClass() {
-            return adapterClass;
-        }
-
-        HostMethodDesc getConstructor() {
-            return constructor;
-        }
-
-        HostMethodDesc.SingleMethod getValueConstructor() {
-            return valueConstructor;
-        }
-
-        boolean isSuccess() {
-            return constructor != null;
-        }
-
-        boolean isAutoConvertible() {
-            return valueConstructor != null;
-        }
-
-        PolyglotEngineException throwException() {
-            throw exception;
-        }
     }
 
 }
