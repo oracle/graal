@@ -440,13 +440,6 @@ public abstract class LLVMInteropType implements TruffleObject {
             }
             return m;
         }
-
-        public void print() {
-            for (long i = 0; i < table.size(); i++) {
-                System.out.printf("%3d %s\n", i, table.get(i).getLinkageName());
-            }
-        }
-
     }
 
     @ExportLibrary(value = InteropLibrary.class)
