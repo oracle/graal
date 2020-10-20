@@ -113,7 +113,7 @@ public class SLInspectProfileTest {
         tester.sendMessage("{\"id\":2,\"method\":\"Profiler.enable\"}");
         assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
         assertFalse(tester.shouldWaitForClose());
-        tester.sendMessage("{\"id\":3,\"method\":\"Profiler.startPreciseCoverage\"}");
+        tester.sendMessage("{\"id\":3,\"method\":\"Profiler.startPreciseCoverage\",\"params\":{\"callCount\":true}}");
         assertEquals("{\"result\":{},\"id\":3}", tester.getMessages(true).trim());
         assertTrue(tester.shouldWaitForClose());
         tester.sendMessage("{\"id\":4,\"method\":\"Profiler.takePreciseCoverage\"}");
@@ -144,7 +144,7 @@ public class SLInspectProfileTest {
         tester.sendMessage("{\"id\":2,\"method\":\"Profiler.enable\"}");
         assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
         assertFalse(tester.shouldWaitForClose());
-        tester.sendMessage("{\"id\":3,\"method\":\"Profiler.startPreciseCoverage\",\"params\":{\"detailed\":true}}");
+        tester.sendMessage("{\"id\":3,\"method\":\"Profiler.startPreciseCoverage\",\"params\":{\"callCount\":true,\"detailed\":true}}");
         assertEquals("{\"result\":{},\"id\":3}", tester.getMessages(true).trim());
         assertTrue(tester.shouldWaitForClose());
         tester.sendMessage("{\"id\":4,\"method\":\"Profiler.takePreciseCoverage\"}");
