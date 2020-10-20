@@ -2027,7 +2027,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     case F32_NEAREST: {
                         stackPointer--;
                         float x = popAsFloat(frame, stackPointer);
-                        float result = Math.round(x);
+                        float result = (float) Math.rint(x);
                         pushFloat(frame, stackPointer, result);
                         stackPointer++;
                         trace("f32.nearest(%f) = %f", x, result);
@@ -2177,7 +2177,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     case F64_NEAREST: {
                         stackPointer--;
                         double x = popAsDouble(frame, stackPointer);
-                        double result = Math.round(x);
+                        double result = Math.rint(x);
                         pushDouble(frame, stackPointer, result);
                         stackPointer++;
                         trace("f64.nearest(%f) = %f", x, result);
