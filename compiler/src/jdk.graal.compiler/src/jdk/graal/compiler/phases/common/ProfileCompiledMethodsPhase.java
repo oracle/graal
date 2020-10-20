@@ -192,15 +192,14 @@ public class ProfileCompiledMethodsPhase extends Phase {
     }
 
     private static boolean hasInvoke(Collection<HIRBlock> blocks) {
-        boolean hasInvoke = false;
         for (HIRBlock block : blocks) {
             for (FixedNode fixed : block.getNodes()) {
                 if (fixed instanceof Invoke) {
-                    hasInvoke = true;
+                    return true;
                 }
             }
         }
-        return hasInvoke;
+        return false;
     }
 
     @Override
