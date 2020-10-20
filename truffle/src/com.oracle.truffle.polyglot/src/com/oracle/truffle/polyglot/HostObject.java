@@ -1225,11 +1225,11 @@ final class HostObject implements TruffleObject {
         if (isClass()) {
             Class<?> c = asClass();
             if (HostObject.isInstance(other)) {
-                HostObject otherHost = ((HostObject) other);
-                if (otherHost.isNull()) {
+                Object otherHostObj = HostObject.valueOf(other);
+                if (otherHostObj == null) {
                     return false;
                 } else {
-                    return c.isInstance(otherHost.obj);
+                    return c.isInstance(otherHostObj);
                 }
             } else if (PolyglotProxy.isProxyGuestObject(other)) {
                 PolyglotProxy otherHost = (PolyglotProxy) other;
