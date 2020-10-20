@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
@@ -57,6 +58,7 @@ import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.ArrayIndexOfDispatchNode;
 import org.graalvm.compiler.replacements.DefaultJavaLoweringProvider;
 import org.graalvm.compiler.replacements.IsArraySnippets;
 import org.graalvm.compiler.replacements.SnippetCounter.Group;
@@ -133,9 +135,17 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     public void lower(Node n, LoweringTool tool) {
         if (n instanceof AssertionNode) {
             lowerAssertionNode((AssertionNode) n);
+        } else if (n instanceof ArrayIndexOfDispatchNode) {
+            lowerArrayIndexOf((ArrayIndexOfDispatchNode) n);
         } else {
             super.lower(n, tool);
         }
+    }
+
+    private void lowerArrayIndexOf(ArrayIndexOfDispatchNode dispatchNode) {
+        StructuredGraph graph = dispatchNode.graph();
+        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, dispatchNode.getStubCallDescriptor(), dispatchNode.getStubCallArgs()));
+        graph.replaceFixed(dispatchNode, call);
     }
 
     @Override

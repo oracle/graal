@@ -25,18 +25,18 @@
 package org.graalvm.compiler.hotspot.amd64;
 
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.hotspot.ArrayIndexOfStub;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
-import org.graalvm.compiler.hotspot.stubs.SnippetStub;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfNode;
 
 import jdk.vm.ci.meta.JavaKind;
 
-public class AMD64ArrayIndexOfStub extends SnippetStub {
+public class AMD64ArrayIndexOfStub extends ArrayIndexOfStub {
 
     public AMD64ArrayIndexOfStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super(linkage.getDescriptor().getName(), options, providers, linkage);
+        super(options, providers, linkage);
     }
 
     @Snippet
@@ -52,11 +52,6 @@ public class AMD64ArrayIndexOfStub extends SnippetStub {
     @Snippet
     private static int indexOfTwoConsecutiveCharsCompact(byte[] array, int arrayLength, int fromIndex, int searchValue) {
         return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, true, array, arrayLength, fromIndex, searchValue);
-    }
-
-    @Snippet
-    private static int indexOf1Byte(byte[] array, int arrayLength, int fromIndex, byte v1) {
-        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1);
     }
 
     @Snippet
@@ -92,11 +87,6 @@ public class AMD64ArrayIndexOfStub extends SnippetStub {
     @Snippet
     private static int indexOf4Chars(char[] array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4) {
         return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3, v4);
-    }
-
-    @Snippet
-    private static int indexOf1CharCompact(byte[] array, int arrayLength, int fromIndex, char v1) {
-        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1);
     }
 
     @Snippet

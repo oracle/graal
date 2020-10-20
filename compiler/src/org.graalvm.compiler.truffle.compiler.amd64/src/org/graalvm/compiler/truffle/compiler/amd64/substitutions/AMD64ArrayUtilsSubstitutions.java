@@ -113,7 +113,7 @@ public class AMD64ArrayUtilsSubstitutions {
 
     private static int indexOfChar(byte[] array, int arrayLength, int fromIndex, char[] chars) {
         if (chars.length == 1) {
-            return AMD64ArrayIndexOf.indexOf1Char(array, arrayLength, fromIndex, chars[0]);
+            return AMD64ArrayIndexOf.indexOf1CharCompact(array, arrayLength, fromIndex, chars[0]);
         } else if (chars.length == 2) {
             return AMD64ArrayIndexOf.indexOf2Chars(array, arrayLength, fromIndex, chars[0], chars[1]);
         } else if (chars.length == 3) {
@@ -199,7 +199,7 @@ public class AMD64ArrayUtilsSubstitutions {
                 if (JDK9StringSubstitutions.isCompactString(haystack)) {
                     return needle <= 0xff ? AMD64ArrayIndexOf.indexOf1Byte(value, maxIndex, fromIndex, (byte) needle) : -1;
                 }
-                return AMD64ArrayIndexOf.indexOf1Char(value, maxIndex, fromIndex, needle);
+                return AMD64ArrayIndexOf.indexOf1CharCompact(value, maxIndex, fromIndex, needle);
             }
             if (JDK9StringSubstitutions.isCompactString(haystack)) {
                 return (needle ^ mask) <= 0xff ? AMD64ArrayIndexOfWithMaskNode.indexOfWithMask(value, maxIndex, fromIndex, (byte) needle, (byte) mask) : -1;

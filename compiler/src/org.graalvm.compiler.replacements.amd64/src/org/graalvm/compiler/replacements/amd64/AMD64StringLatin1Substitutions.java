@@ -25,8 +25,8 @@
 package org.graalvm.compiler.replacements.amd64;
 
 import static org.graalvm.compiler.api.directives.GraalDirectives.LIKELY_PROBABILITY;
-import static org.graalvm.compiler.api.directives.GraalDirectives.UNLIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.SLOWPATH_PROBABILITY;
+import static org.graalvm.compiler.api.directives.GraalDirectives.UNLIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayBaseOffset;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayIndexScale;
@@ -34,9 +34,9 @@ import static org.graalvm.compiler.replacements.ReplacementsUtil.charArrayBaseOf
 import static org.graalvm.compiler.replacements.ReplacementsUtil.charArrayIndexScale;
 
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
-import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.replacements.StringLatin1Substitutions;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
@@ -44,7 +44,6 @@ import org.graalvm.word.Pointer;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 // JaCoCo Exclude
 
@@ -54,10 +53,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * Since JDK 9.
  */
 @ClassSubstitution(className = "java.lang.StringLatin1", optional = true)
-public class AMD64StringLatin1Substitutions {
-
-    /** Marker value for the {@link InjectedParameter} injected parameter. */
-    static final MetaAccessProvider INJECTED = null;
+public class AMD64StringLatin1Substitutions extends StringLatin1Substitutions {
 
     private static Word pointer(byte[] target) {
         return Word.objectToTrackedPointer(target).add(byteArrayBaseOffset(INJECTED));

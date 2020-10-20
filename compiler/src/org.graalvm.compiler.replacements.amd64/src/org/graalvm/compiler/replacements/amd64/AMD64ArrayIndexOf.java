@@ -25,8 +25,9 @@
 package org.graalvm.compiler.replacements.amd64;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
+import org.graalvm.compiler.replacements.ArrayIndexOf;
 
-public class AMD64ArrayIndexOf {
+public class AMD64ArrayIndexOf extends ArrayIndexOf {
 
     public static final ForeignCallSignature STUB_INDEX_OF_TWO_CONSECUTIVE_BYTES = new ForeignCallSignature(
                     "indexOfTwoConsecutiveBytes", int.class, byte[].class, int.class, int.class, int.class);
@@ -34,8 +35,6 @@ public class AMD64ArrayIndexOf {
                     "indexOfTwoConsecutiveChars", int.class, char[].class, int.class, int.class, int.class);
     public static final ForeignCallSignature STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS_COMPACT = new ForeignCallSignature(
                     "indexOfTwoConsecutiveCharsCompact", int.class, byte[].class, int.class, int.class, int.class);
-    public static final ForeignCallSignature STUB_INDEX_OF_1_BYTE = new ForeignCallSignature(
-                    "indexOf1Byte", int.class, byte[].class, int.class, int.class, byte.class);
     public static final ForeignCallSignature STUB_INDEX_OF_2_BYTES = new ForeignCallSignature(
                     "indexOf2Bytes", int.class, byte[].class, int.class, int.class, byte.class, byte.class);
     public static final ForeignCallSignature STUB_INDEX_OF_3_BYTES = new ForeignCallSignature(
@@ -50,8 +49,6 @@ public class AMD64ArrayIndexOf {
                     "indexOf3Chars", int.class, char[].class, int.class, int.class, char.class, char.class, char.class);
     public static final ForeignCallSignature STUB_INDEX_OF_4_CHARS = new ForeignCallSignature(
                     "indexOf4Chars", int.class, char[].class, int.class, int.class, char.class, char.class, char.class, char.class);
-    public static final ForeignCallSignature STUB_INDEX_OF_1_CHAR_COMPACT = new ForeignCallSignature(
-                    "indexOf1CharCompact", int.class, byte[].class, int.class, int.class, char.class);
     public static final ForeignCallSignature STUB_INDEX_OF_2_CHARS_COMPACT = new ForeignCallSignature(
                     "indexOf2CharsCompact", int.class, byte[].class, int.class, int.class, char.class, char.class);
     public static final ForeignCallSignature STUB_INDEX_OF_3_CHARS_COMPACT = new ForeignCallSignature(
@@ -72,10 +69,6 @@ public class AMD64ArrayIndexOf {
     public static int indexOfTwoConsecutiveChars(byte[] array, int arrayLength, int fromIndex, char c1, char c2) {
         int searchValue = (c2 << Character.SIZE) | c1;
         return AMD64ArrayIndexOfDispatchNode.indexOf2ConsecutiveChars(STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS_COMPACT, array, arrayLength, fromIndex, searchValue);
-    }
-
-    public static int indexOf1Byte(byte[] array, int arrayLength, int fromIndex, byte b) {
-        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_1_BYTE, array, arrayLength, fromIndex, b);
     }
 
     public static int indexOf2Bytes(byte[] array, int arrayLength, int fromIndex, byte b1, byte b2) {
@@ -104,10 +97,6 @@ public class AMD64ArrayIndexOf {
 
     public static int indexOf4Chars(char[] array, int arrayLength, int fromIndex, char c1, char c2, char c3, char c4) {
         return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_4_CHARS, array, arrayLength, fromIndex, c1, c2, c3, c4);
-    }
-
-    public static int indexOf1Char(byte[] array, int arrayLength, int fromIndex, char c) {
-        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_1_CHAR_COMPACT, array, arrayLength, fromIndex, c);
     }
 
     public static int indexOf2Chars(byte[] array, int arrayLength, int fromIndex, char c1, char c2) {

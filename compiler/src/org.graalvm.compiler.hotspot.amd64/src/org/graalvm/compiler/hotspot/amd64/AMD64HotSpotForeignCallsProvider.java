@@ -105,8 +105,6 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         link(new AMD64ArrayIndexOfStub(options, providers,
                         registerStubCall(AMD64ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
         link(new AMD64ArrayIndexOfStub(options, providers,
-                        registerStubCall(AMD64ArrayIndexOf.STUB_INDEX_OF_1_BYTE, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new AMD64ArrayIndexOfStub(options, providers,
                         registerStubCall(AMD64ArrayIndexOf.STUB_INDEX_OF_2_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
         link(new AMD64ArrayIndexOfStub(options, providers,
                         registerStubCall(AMD64ArrayIndexOf.STUB_INDEX_OF_3_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
@@ -120,8 +118,6 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
                         registerStubCall(AMD64ArrayIndexOf.STUB_INDEX_OF_3_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
         link(new AMD64ArrayIndexOfStub(options, providers,
                         registerStubCall(AMD64ArrayIndexOf.STUB_INDEX_OF_4_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
-        link(new AMD64ArrayIndexOfStub(options, providers,
-                        registerStubCall(AMD64ArrayIndexOf.STUB_INDEX_OF_1_CHAR_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
         link(new AMD64ArrayIndexOfStub(options, providers,
                         registerStubCall(AMD64ArrayIndexOf.STUB_INDEX_OF_2_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
         link(new AMD64ArrayIndexOfStub(options, providers,

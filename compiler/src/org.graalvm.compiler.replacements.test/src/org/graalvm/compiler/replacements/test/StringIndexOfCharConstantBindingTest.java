@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.replacements.test;
 
-import static org.junit.Assume.assumeTrue;
-
-import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -35,22 +32,12 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
-import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.junit.Before;
 import org.junit.Test;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class StringIndexOfCharConstantBindingTest extends StringIndexOfCharTest {
-
-    @Before
-    public void checkAMD64() {
-        Architecture arch = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget().arch;
-        assumeTrue("skipping AMD64 specific test", arch instanceof AMD64);
-    }
 
     Object[] constantArgs;
 

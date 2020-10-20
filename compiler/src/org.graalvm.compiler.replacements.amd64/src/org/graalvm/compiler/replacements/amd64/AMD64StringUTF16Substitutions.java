@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
+import org.graalvm.compiler.replacements.StringUTF16Substitutions;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
@@ -57,7 +58,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * Since JDK 9.
  */
 @ClassSubstitution(className = "java.lang.StringUTF16", optional = true)
-public class AMD64StringUTF16Substitutions {
+public class AMD64StringUTF16Substitutions extends StringUTF16Substitutions {
     /**
      * Marker value for the {@link InjectedParameter} injected parameter.
      */
@@ -65,11 +66,6 @@ public class AMD64StringUTF16Substitutions {
 
     private static int length(byte[] value) {
         return value.length >> 1;
-    }
-
-    @MethodSubstitution
-    public static int indexOfCharUnsafe(byte[] value, int ch, int fromIndex, int max) {
-        return AMD64ArrayIndexOf.indexOf1Char(value, max, fromIndex, (char) ch);
     }
 
     private static Word pointer(byte[] target) {
@@ -92,7 +88,7 @@ public class AMD64StringUTF16Substitutions {
         ReplacementsUtil.dynamicAssert(targetCount <= length(target), "StringUTF16.indexOfUnsafe invalid args: targetCount > length(target)");
         ReplacementsUtil.dynamicAssert(sourceCount >= targetCount, "StringUTF16.indexOfUnsafe invalid args: sourceCount < targetCount");
         if (targetCount == 1) {
-            return AMD64ArrayIndexOf.indexOf1Char(source, sourceCount, fromIndex, getChar(target, 0));
+            return AMD64ArrayIndexOf.indexOf1CharCompact(source, sourceCount, fromIndex, getChar(target, 0));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             int offset = fromIndex;
@@ -125,7 +121,7 @@ public class AMD64StringUTF16Substitutions {
         ReplacementsUtil.dynamicAssert(targetCount <= target.length, "StringUTF16.indexOfLatin1Unsafe invalid args: targetCount > length(target)");
         ReplacementsUtil.dynamicAssert(sourceCount >= targetCount, "StringUTF16.indexOfLatin1Unsafe invalid args: sourceCount < targetCount");
         if (targetCount == 1) {
-            return AMD64ArrayIndexOf.indexOf1Char(source, sourceCount, fromIndex, (char) Byte.toUnsignedInt(target[0]));
+            return AMD64ArrayIndexOf.indexOf1CharCompact(source, sourceCount, fromIndex, (char) Byte.toUnsignedInt(target[0]));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             int offset = fromIndex;
