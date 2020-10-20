@@ -149,4 +149,26 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
     private static CodePointer allocateCodeMemory0(@SuppressWarnings("unused") IsolateThread targetIsolate, UnsignedWord size) {
         return RuntimeCodeInfoAccess.allocateCodeMemory(size);
     }
+
+    @Override
+    protected void makeCodeMemoryReadOnly(Pointer start, long size) {
+        makeCodeMemoryReadOnly0(targetIsolate, start, size);
+    }
+
+    @CEntryPoint
+    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    private static void makeCodeMemoryReadOnly0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, long size) {
+        RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, WordFactory.unsigned(size));
+    }
+
+    @Override
+    protected void makeCodeMemoryWriteableNonExecutable(Pointer start, long size) {
+        makeCodeMemoryWriteableNonExecutable0(targetIsolate, start, size);
+    }
+
+    @CEntryPoint
+    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    private static void makeCodeMemoryWriteableNonExecutable0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, long size) {
+        RuntimeCodeInfoAccess.makeCodeMemoryWriteableNonExecutable((CodePointer) start, WordFactory.unsigned(size));
+    }
 }
