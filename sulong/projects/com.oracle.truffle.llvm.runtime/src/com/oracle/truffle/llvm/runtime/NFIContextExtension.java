@@ -43,6 +43,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeWrapper;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -65,6 +66,7 @@ public final class NFIContextExtension implements ContextExtension {
     private final TruffleLanguage.Env env;
 
     public NFIContextExtension(Env env) {
+        assert env.getOptions().get(SulongEngineOption.ENABLE_NFI);
         this.env = env;
     }
 

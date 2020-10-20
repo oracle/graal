@@ -118,7 +118,7 @@ public final class LLVMContext {
 
     private final LLVMSourceContext sourceContext;
 
-    @CompilationFinal private List<ContextExtension> contextExtensions;
+    @CompilationFinal(dimensions = 1) private ContextExtension[] contextExtensions;
     @CompilationFinal private Env env;
     private final LLVMScope globalScope;
     private final ArrayList<LLVMLocalScope> localScopes;
@@ -263,7 +263,7 @@ public final class LLVMContext {
     }
 
     @SuppressWarnings("unchecked")
-    void initialize(List<ContextExtension> contextExtens) {
+    void initialize(ContextExtension[] contextExtens) {
         this.initializeContextCalled = true;
         assert this.threadingStack == null;
         this.contextExtensions = contextExtens;
@@ -287,7 +287,7 @@ public final class LLVMContext {
             addLibraryPath(internalLibraryPath.toString());
         }
 
-        for (ContextExtension ext : getContextExtensions()) {
+        for (ContextExtension ext : contextExtensions) {
             ext.initialize(this);
         }
 
@@ -316,34 +316,28 @@ public final class LLVMContext {
         }
     }
 
-    private List<ContextExtension> getContextExtensions() {
-        verifyContextExtensionsInitialized();
-        return contextExtensions;
+    ContextExtension getContextExtension(int index) {
+        CompilerAsserts.partialEvaluationConstant(index);
+        return contextExtensions[index];
     }
 
     public <T extends ContextExtension> T getContextExtension(Class<T> type) {
-        T result = getContextExtensionOrNull(type);
-        if (result != null) {
-            return result;
+        CompilerAsserts.neverPartOfCompilation();
+        ContextExtension.Key<T> key = language.lookupContextExtension(type);
+        if (key == null) {
+            throw new IllegalStateException("Context extension of type " + type.getSimpleName() + " not found");
+        } else {
+            return key.get(this);
         }
-        throw new IllegalStateException("No context extension for: " + type);
     }
 
     public <T extends ContextExtension> T getContextExtensionOrNull(Class<T> type) {
         CompilerAsserts.neverPartOfCompilation();
-        verifyContextExtensionsInitialized();
-        for (ContextExtension ce : contextExtensions) {
-            if (ce.extensionClass() == type) {
-                return type.cast(ce);
-            }
-        }
-        return null;
-    }
-
-    private void verifyContextExtensionsInitialized() {
-        CompilerAsserts.neverPartOfCompilation();
-        if (contextExtensions == null) {
-            throw new IllegalStateException("LLVMContext is not yet initialized");
+        ContextExtension.Key<T> key = language.lookupContextExtension(type);
+        if (key == null) {
+            return null;
+        } else {
+            return key.get(this);
         }
     }
 
