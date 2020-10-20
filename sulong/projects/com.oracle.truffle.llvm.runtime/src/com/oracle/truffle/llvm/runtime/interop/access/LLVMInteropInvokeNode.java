@@ -65,7 +65,9 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
         return invoke.execute(receiver, method, type, methodObject, virtualIndex, selfPackNode.execute(receiver, arguments));
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * @param type
+     */
     @Specialization
     Object doStruct(LLVMPointer receiver, LLVMInteropType.Struct type, String member, Object[] arguments,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
@@ -74,7 +76,12 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
         return interop.execute(readMember, arguments);
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * @param receiver
+     * @param type
+     * @param member
+     * @param arguments
+     */
     @Fallback
     Object doError(LLVMPointer receiver, LLVMInteropType type, String member, Object[] arguments) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();

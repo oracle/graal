@@ -60,15 +60,13 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropInvokeNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Clazz;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Method;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Struct;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetIndexPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;<<<<<<<HEAD
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;=======>>>>>>>restructure invokeMember message
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
 
@@ -77,6 +75,7 @@ import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
 @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = com.oracle.truffle.llvm.spi.ReferenceLibrary.class, receiverType = LLVMPointerImpl.class)
 @SuppressWarnings({"static-method", "deprecation"})
+
 // implements deprecated ReferenceLibrary for backwards compatibility
 abstract class CommonPointerLibraries {
     @ExportMessage
@@ -266,71 +265,6 @@ abstract class CommonPointerLibraries {
         return false;
     }
 
-<<<<<<< HEAD
-    @ExportMessage
-    @ImportStatic(LLVMLanguage.class)
-    static class InvokeMember {
-        /**
-         * @param member
-         * @param context
-         * @param clazz
-         * @param method
-         * @param argCount
-         * @param methodName
-         * @param llvmFunction
-         * @see InteropLibrary#invokeMember(Object, String, Object[])
-         */
-        @Specialization(guards = {"asClazz(receiver)==clazz", "member.equals(methodName)", "argCount==arguments.length"}, assumptions = "getLanguage().singleContextAssumption")
-        static Object doCached(LLVMPointerImpl receiver, String member, Object[] arguments,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context,
-                        @CachedLibrary(limit = "5") InteropLibrary interop,
-                        @Cached(value = "asClazz(receiver)") LLVMInteropType.Clazz clazz,
-                        @Cached(value = "clazz.findMethodByArguments(receiver, member, arguments)") Method method,
-                        @Cached(value = "arguments.length") int argCount,
-                        @Cached(value = "method.getName()") String methodName,
-                        @Cached(value = "getLLVMFunction(context, method, clazz, member)") LLVMFunction llvmFunction)
-                        throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            Object[] newArguments = addSelfObject(receiver, arguments);
-            return interop.execute(context.getSymbol(llvmFunction), newArguments);
-        }
-
-        @Specialization(replaces = "doCached")
-
-        static Object doResolve(LLVMPointerImpl receiver, String member, Object[] arguments,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context,
-                        @CachedLibrary(limit = "5") InteropLibrary interop,
-                        @Cached LLVMDynAccessSymbolNode dynAccessSymbolNode)
-                        throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException {
-            Object[] newArguments = addSelfObject(receiver, arguments);
-            LLVMInteropType.Clazz newClazz = asClazz(receiver);
-            Method newMethod = newClazz.findMethodByArgumentsWithSelf(member, arguments);
-            LLVMFunction newLLVMFunction = getLLVMFunction(context, newMethod, newClazz, member);
-            Object newReceiver = dynAccessSymbolNode.execute(newLLVMFunction);
-            return interop.execute(newReceiver, newArguments);
-        }
-    }
-
-    static LLVMFunction getLLVMFunction(LLVMContext context, Method method, Clazz clazz, String member) {
-        return context.getGlobalScope().getFunction(method.getLinkageName());
-    }
-
-    static Object invokeVirtualMethod(Method method, Object[] arguments, LLVMPointerImpl receiver)
-                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        // TODO pichristoph restructure in nodes (getElementPtrNode, ...)
-        LLVMMemory memory = LLVMLanguage.getLanguage().getLLVMMemory();
-
-        final long vtableAddress = memory.getI64(null, receiver.asNative());
-        final long methodOffset = method.getVirtualIndex() * 8;
-        final long methodAddress = memory.getI64(null, vtableAddress + methodOffset);
-        final long topOffset = memory.getI64(null, vtableAddress - 16);
-        arguments[0] = new LLVMPointerImpl(null, receiver.asNative() + topOffset, receiver.getExportType());
-        LLVMPointerImpl methodPointer = new LLVMPointerImpl(null, methodAddress, null);
-
-        return InteropLibrary.getUncached(methodPointer).execute(methodPointer, arguments);
-    }
-
-=======
->>>>>>> restructure invokeMember message
     static LLVMInteropType.Clazz asClazz(LLVMPointerImpl receiver) throws UnsupportedMessageException {
         LLVMInteropType type = receiver.getExportType();
         if (!(type instanceof LLVMInteropType.Clazz)) {
@@ -346,8 +280,11 @@ abstract class CommonPointerLibraries {
         return invoke.execute(receiver, receiver.getExportType(), member, arguments);
     }
 
+    /**
+     * @param receiver
+     * @param ident
+     */
     @ExportMessage
-    @SuppressWarnings("unused")
     static boolean isMemberInsertable(LLVMPointerImpl receiver, String ident) {
         return false;
     }

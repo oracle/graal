@@ -267,7 +267,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         @TruffleBoundary
         public StructMember findMember(int startOffset) {
             for (StructMember member : members) {
-                if (member.getStartOffset() == startOffset) {
+                if (member.startOffset == startOffset) {
                     return member;
                 }
             }

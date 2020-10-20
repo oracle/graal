@@ -27,41 +27,53 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
- 
-#include<polyglot.h>
+
+#include <polyglot.h>
 
 class A {
-	public:
-		A();
-		virtual int foo1();
-		virtual int foo2();
+public:
+    A();
+    virtual int foo1();
+    virtual int foo2();
 };
-	
+
 POLYGLOT_DECLARE_TYPE(A);
 
 class B : public A {
-	public:
-		B();
-		int foo1() override;
-		virtual int foo2();
-		virtual int foo3();	
+public:
+    B();
+    int foo1() override;
+    virtual int foo2() override;
+    virtual int foo3();
 };
 
-A::A() {}
-B::B():A() {}
-
-int A::foo1() {return 1;}
-int A::foo2() {return 2;}
-int B::foo1() {return 11;}
-int B::foo2() {return 12;}
-int B::foo3() {return 13;}
-
-void* preparePolyglotA() {
-	A* a = new A();
-	return polyglot_from_A(a);
+A::A() {
+}
+B::B() : A() {
 }
 
-void* preparePolyglotBasA() {
-	A* a = new B();
-	return polyglot_from_A(a);
+int A::foo1() {
+    return 1;
+}
+int A::foo2() {
+    return 2;
+}
+int B::foo1() {
+    return 11;
+}
+int B::foo2() {
+    return 12;
+}
+int B::foo3() {
+    return 13;
+}
+
+void *preparePolyglotA() {
+    A *a = new A();
+    return polyglot_from_A(a);
+}
+
+void *preparePolyglotBasA() {
+    A *a = new B();
+    return polyglot_from_A(a);
 }

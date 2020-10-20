@@ -55,7 +55,7 @@ public abstract class LLVMForeignGetMemberPointerNode extends LLVMNode {
         return pointer.increment(member.startOffset).export(member.type);
     }
 
-    @Specialization(guards = {"cachedMember != null", "cachedMember.getStruct() == struct", "cachedIdent.equals(ident)"})
+    @Specialization(guards = {"cachedMember != null", "cachedMember.struct == struct", "cachedIdent.equals(ident)"})
     LLVMPointer doCached(@SuppressWarnings("unused") LLVMInteropType.Struct struct, LLVMPointer pointer, @SuppressWarnings("unused") String ident,
                     @Cached("ident") @SuppressWarnings("unused") String cachedIdent,
                     @Cached("struct.findMember(cachedIdent)") LLVMInteropType.StructMember cachedMember) {

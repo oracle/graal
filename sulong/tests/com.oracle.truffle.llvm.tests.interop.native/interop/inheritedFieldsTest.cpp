@@ -32,33 +32,37 @@
 #include <polyglot.h>
 
 class A {
-	public:
-		int a;
-		A();
+public:
+    int a;
+    A();
 };
 
 POLYGLOT_DECLARE_TYPE(A);
 
-class B: public A {
-	public:
-		int b;
-		B();
+class B : public A {
+public:
+    int b;
+    B();
 };
 
 POLYGLOT_DECLARE_TYPE(B);
 
-A::A(){a=3;}
-B::B():A(){b=4;}
-
-void* prepareA() {
-	A* a = (A*) malloc(sizeof(A));
-	a->a=3;
-	return polyglot_from_A(a);
+A::A() {
+    a = 3;
+}
+B::B() : A() {
+    b = 4;
 }
 
-void* prepareB() {
-	B* b = (B*) malloc(sizeof(B));
-	b->a=3;
-	b->b=4;
-	return polyglot_from_B(b);
+void *prepareA() {
+    A *a = (A *) malloc(sizeof(A));
+    a->a = 3;
+    return polyglot_from_A(a);
+}
+
+void *prepareB() {
+    B *b = (B *) malloc(sizeof(B));
+    b->a = 3;
+    b->b = 4;
+    return polyglot_from_B(b);
 }

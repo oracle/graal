@@ -52,7 +52,10 @@ public abstract class LLVMInteropMethodInvokeNode extends LLVMNode {
         return LLVMInteropMethodInvokeNodeGen.create();
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * @param methodName
+     * @param method
+     */
     @Specialization(guards = "virtualIndex>=0")
     Object doVirtualCall(LLVMPointer receiver, String methodName, LLVMInteropType.Clazz type, Method method, long virtualIndex, Object[] arguments, @CachedLibrary(limit = "5") InteropLibrary interop,
                     @Cached LLVMInteropVtableAccessNode vtableAccessNode)
@@ -66,7 +69,9 @@ public abstract class LLVMInteropMethodInvokeNode extends LLVMNode {
         return vtableAccessNode.execute(o, virtualIndex, arguments);
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * @param virtualIndex
+     */
     @Specialization(guards = "virtualIndex<0")
     Object doNonvirtualCall(LLVMPointer receiver, String methodName, LLVMInteropType.Clazz type, Method method, long virtualIndex, Object[] arguments, @Cached LLVMInteropNonvirtualCallNode call)
                     throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
