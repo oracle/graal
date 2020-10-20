@@ -518,14 +518,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object profiledPERoot(Object[] originalArguments) {
-        if (GraalCompilerDirectives.inFirstTier()) {
-            if (firstTierCall()) {
-                // synchronous compiles may trigger this case.
-                CompilerDirectives.transferToInterpreter();
-                return doInvoke(originalArguments);
-            }
-        }
         Object[] args = originalArguments;
+        if (GraalCompilerDirectives.inFirstTier()) {
+            firstTierCall();
+        }
         if (CompilerDirectives.inCompiledCode()) {
             args = injectArgumentsProfile(originalArguments);
         }
