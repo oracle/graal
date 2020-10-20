@@ -64,6 +64,12 @@ public class Assert {
         }
     }
 
+    public static void assertIntGreaterOrEqual(int n1, int n2, String message, Failure failure) throws WasmException {
+        if (n1 < n2) {
+            fail(format("%s: %d should be >= %d.", message, n1, n2), failure);
+        }
+    }
+
     public static void assertIntLessOrEqual(int n1, int n2, String message, Failure failure) throws WasmException {
         if (n1 > n2) {
             fail(format("%s: %d should be <= %d.", message, n1, n2), failure);

@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -39,64 +39,9 @@
 ;; SOFTWARE.
 ;;
 (module
+    (type $nothing (func))
     (func (export "_main") (result i32)
-        (local $i i32) (local $div_3_count  i32) (local $div_12_count i32) (local $div_60_count i32)
-        i32.const 0
-        local.set $i
-        block $wrapper
-            loop $loop
-                block ;; useless block to check profile offsets computation
-                    local.get $i
-                    i32.const 1200
-                    i32.eq
-                    br_if $wrapper
-                    local.get $i
-                    i32.const 1
-                    i32.add
-                    local.set $i
-
-                    local.get $i
-                    i32.const 3
-                    i32.rem_u
-                    i32.const 0
-                    i32.ne
-                    br_if $loop
-                    local.get $div_3_count
-                    i32.const 1
-                    i32.add
-                    local.set $div_3_count
-                end
-
-                local.get $i
-                i32.const 4
-                i32.rem_u
-                i32.const 0
-                i32.ne
-                br_if $loop
-                local.get $div_12_count
-                i32.const 1
-                i32.add
-                local.set $div_12_count
-
-                local.get $i
-                i32.const 5
-                i32.rem_u
-                i32.const 0
-                i32.ne
-                br_if $loop
-                local.get $div_60_count
-                i32.const 1
-                i32.add
-                local.set $div_60_count
-
-                br $loop
-            end
-            unreachable
-        end
-        local.get $div_60_count ;; == 20
-        local.get $div_12_count ;; == 100
-        local.get $div_3_count ;; == 400
-        i32.add
-        i32.add
+        (block $B0 (type $nothing) (drop (i32.const 32)))
+        (i32.const 42)
     )
 )
