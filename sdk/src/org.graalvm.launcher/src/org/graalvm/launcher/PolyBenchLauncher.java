@@ -171,12 +171,12 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
                 log("");
 
                 log("::: Running warmup :::");
-                repeatIterations(context, source.getLanguage(), true, config.warmupIterations);
+                repeatIterations(context, source.getLanguage(), source.getName(), true, config.warmupIterations);
                 log("");
 
                 log("::: Running :::");
                 metric.reset();
-                repeatIterations(context, source.getLanguage(), false, config.iterations);
+                repeatIterations(context, source.getLanguage(), source.getName(), false, config.iterations);
                 log("");
             } catch (Throwable t) {
                 throw abort(t);
@@ -192,7 +192,7 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
         return String.format("%.2f", v);
     }
 
-    private void repeatIterations(Context context, String languageId, boolean warmup, int iterations) {
+    private void repeatIterations(Context context, String languageId, String name, boolean warmup, int iterations) {
         Value run = lookup(context, languageId, "run");
 
         for (int i = 0; i < iterations; i++) {
@@ -204,14 +204,14 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
 
             final Optional<Double> value = metric.reportAfterIteration(config);
             if (value.isPresent()) {
-                log("iteration " + i + ": " + round(value.get()) + " " + metric.unit());
+                log("[" + name + "] iteration " + i + ": " + round(value.get()) + " " + metric.unit());
             }
         }
 
         final Optional<Double> value = metric.reportAfterAll();
         if (value.isPresent()) {
             log("------");
-            log((warmup ? "after warmup: " : "after run: ") + round(value.get()) + " " + metric.unit());
+            log("[" + name + "] " + (warmup ? "after warmup: " : "after run: ") + round(value.get()) + " " + metric.unit());
         }
     }
 
