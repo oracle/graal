@@ -382,7 +382,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 // libeden.so must be the first library loaded in the isolated namespace.
                 TruffleObject edenLibrary = loadLibraryInternal(Collections.singletonList(props.espressoLibraryPath()), "eden", true);
                 ctypeInit = NativeLibrary.lookupAndBind(edenLibrary, "ctypeInit",
-                        "(): void");
+                                "(): void");
             } else {
                 ctypeInit = null;
             }
@@ -561,7 +561,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     public void ctypeInit() {
         if (ctypeInit == null) {
-            return ;
+            return;
         }
         try {
             getUncached().execute(ctypeInit);
