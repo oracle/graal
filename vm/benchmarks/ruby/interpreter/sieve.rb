@@ -1,6 +1,6 @@
 
 def run()
-  number = 400000
+  number = 600000
 
   primes = Array.new(number + 1)
 

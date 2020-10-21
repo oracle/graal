@@ -1,7 +1,7 @@
 
 int run() {
   int i;
-  int number = 400000;
+  int number = 600000;
   int primes[number + 1];
 
   for (i = 2; i <= number; i++) {

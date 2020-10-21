@@ -1,7 +1,7 @@
 
 function run() {
   let i;
-  let number = 400000;
+  let number = 600000;
   let primes = new Array(number + 1);
 
   for (i = 2; i <= number; i++) {
