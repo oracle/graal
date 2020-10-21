@@ -249,6 +249,7 @@ final class Target_java_lang_Runtime {
     public void runFinalization() {
     }
 
+    @NeverInline("Workaround for GR-26489")
     @Substitute
     @Platforms(InternalPlatform.PLATFORM_JNI.class)
     private int availableProcessors() {
