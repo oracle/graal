@@ -327,16 +327,6 @@ public class LLVMFunctionCode {
         setFunction(newFunction);
     }
 
-    /*private void define(Function newFunction, boolean allowReplace) {
-        assert newFunction != null;
-        if (!isDefined() || allowReplace) {
-            setFunction(newFunction);
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Found multiple definitions of function " + llvmFunction.getName() + ".");
-        }
-    }*/
-
     public RootCallTarget getLLVMIRFunctionSlowPath() {
         CompilerAsserts.neverPartOfCompilation();
         return getLLVMIRFunction(ResolveFunctionNodeGen.getUncached());

@@ -43,15 +43,14 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class ProtectReadOnlyGlobalsBlockNode extends LLVMNode implements LLVMMemoryOpNode {
 
-    public ProtectReadOnlyGlobalsBlockNode(){
+    public ProtectReadOnlyGlobalsBlockNode() {
     }
 
     @Specialization(limit = "1")
     public void execute(LLVMPointer ptr,
-                        @SuppressWarnings("unused")
-                        @CachedContext(LLVMLanguage.class) LLVMContext ctx,
-                        @Bind("ctx.getProtectReadOnlyGlobalsBlockFunction()") Object protextGlobalsBlock,
-                        @CachedLibrary("protextGlobalsBlock") InteropLibrary interop) {
+                    @SuppressWarnings("unused") @CachedContext(LLVMLanguage.class) LLVMContext ctx,
+                    @Bind("ctx.getProtectReadOnlyGlobalsBlockFunction()") Object protextGlobalsBlock,
+                    @CachedLibrary("protextGlobalsBlock") InteropLibrary interop) {
         try {
             interop.execute(protextGlobalsBlock, ptr);
         } catch (InteropException ex) {

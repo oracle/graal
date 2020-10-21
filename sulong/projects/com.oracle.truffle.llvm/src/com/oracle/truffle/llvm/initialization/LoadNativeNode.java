@@ -45,8 +45,7 @@ public final class LoadNativeNode extends RootNode {
 
     final String sourceName;
     final TruffleFile file;
-    @CompilerDirectives.CompilationFinal
-    TruffleLanguage.ContextReference<LLVMContext> ctxRef;
+    @CompilerDirectives.CompilationFinal TruffleLanguage.ContextReference<LLVMContext> ctxRef;
 
     private LoadNativeNode(String name, FrameDescriptor rootFrame, LLVMLanguage language, TruffleFile file) {
         super(language, rootFrame);

@@ -54,17 +54,15 @@ public abstract class AllocateReadOnlyGlobalsBlockNode extends LLVMNode implemen
         try {
             this.size = type.getSize(dataLayout);
             this.toNative = LLVMToNativeNode.createToNativeWithTarget();
-        }
-        catch (TypeOverflowException ex) {
+        } catch (TypeOverflowException ex) {
             throw new IllegalStateException(ex);
         }
     }
 
     @Specialization(limit = "1")
-    public LLVMPointer executeWithTarget(@SuppressWarnings("unused")
-                                         @CachedContext(LLVMLanguage.class) LLVMContext ctx,
-                                         @Bind("ctx.getAllocateGlobalsBlockFunction()") Object allocateGlobalsBlock,
-                                         @CachedLibrary("allocateGlobalsBlock") InteropLibrary interop) {
+    public LLVMPointer executeWithTarget(@SuppressWarnings("unused") @CachedContext(LLVMLanguage.class) LLVMContext ctx,
+                    @Bind("ctx.getAllocateGlobalsBlockFunction()") Object allocateGlobalsBlock,
+                    @CachedLibrary("allocateGlobalsBlock") InteropLibrary interop) {
         try {
             Object ret = interop.execute(allocateGlobalsBlock, size);
             return toNative.executeWithTarget(ret);

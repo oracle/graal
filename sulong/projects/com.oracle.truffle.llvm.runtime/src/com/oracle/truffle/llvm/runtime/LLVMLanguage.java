@@ -34,7 +34,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionDescriptors;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -49,6 +48,7 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.config.Configuration;
@@ -61,9 +61,16 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprPar
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE}, //
@@ -326,6 +333,57 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         // TODO (PLi): The globals loaded by the context needs to be freed manually.
         LLVMMemory memory = getLLVMMemory();
         context.dispose(memory);
+    }
+
+    static class FreeGlobalsNode extends RootNode {
+
+        @Child LLVMMemoryOpNode freeRo;
+        @Child LLVMMemoryOpNode freeRw;
+
+        final ContextReference<LLVMContext> ctx;
+
+        public FreeGlobalsNode(LLVMLanguage language, NodeFactory nodeFactory) {
+            super(language);
+            this.ctx = lookupContextReference(LLVMLanguage.class);
+            this.freeRo = nodeFactory.createFreeGlobalsBlock(true);
+            this.freeRw = nodeFactory.createFreeGlobalsBlock(false);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            // Executed in dispose(), therefore can read unsynchronized
+            LLVMContext context = ctx.get();
+            for (LLVMPointer store : context.globalsReadOnlyStore.getValues()) {
+                if (store != null) {
+                    freeRo.execute(store);
+                }
+            }
+            for (int i = 0; i < context.globalsNonPointerStore.size(); i++) {
+                LLVMPointer store = getElement(context.globalsNonPointerStore, i);
+                if (store != null) {
+                    freeRw.execute(store);
+                }
+            }
+            return null;
+        }
+
+        @CompilerDirectives.TruffleBoundary(allowInlining = true)
+        private static LLVMPointer getElement(ArrayList<LLVMPointer> list, int idx) {
+            return list.get(idx);
+        }
+    }
+
+    private CallTarget freeGlobalBlocks;
+
+    protected void initFreeGlobalBlocks(NodeFactory nodeFactory) {
+        // lazily initialized, this is not necessary if there are no global blocks allocated
+        if (freeGlobalBlocks == null) {
+            freeGlobalBlocks = Truffle.getRuntime().createCallTarget(new FreeGlobalsNode(this, nodeFactory));
+        }
+    }
+
+    public CallTarget getFreeGlobalBlocks() {
+        return freeGlobalBlocks;
     }
 
     public AtomicInteger getRawRunnerID() {

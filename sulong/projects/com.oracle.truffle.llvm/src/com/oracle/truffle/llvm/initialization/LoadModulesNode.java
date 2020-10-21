@@ -150,7 +150,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         this.initContext = null;
         String moduleName = parserResult.getRuntime().getLibraryName();
         this.initSymbols = new InitializeSymbolsNode(parserResult, parserResult.getRuntime().getNodeFactory(), lazyParsing,
-                isInternalSulongLibrary, moduleName);
+                        isInternalSulongLibrary, moduleName);
         this.initScopes = new InitializeScopeNode(parserResult);
         this.initExternals = new InitializeExternalNode(parserResult);
         this.initGlobals = new InitializeGlobalNode(rootFrame, parserResult, moduleName);

@@ -106,12 +106,12 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
     }
 
     @BeforeClass
-    public static void createEngine(){
+    public static void createEngine() {
         engine = Engine.newBuilder().build();
     }
 
     @AfterClass
-    public static void disposeEngine(){
+    public static void disposeEngine() {
         engine.close();
     }
 

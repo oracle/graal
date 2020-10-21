@@ -144,7 +144,8 @@ public class ProcessUtil {
         return executeSulongTestMainSameEngine(bitcodeFile, args, options, captureOutput, Engine.newBuilder().build());
     }
 
-    public static ProcessResult executeSulongTestMainSameEngine(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput, Engine engine) throws IOException {
+    public static ProcessResult executeSulongTestMainSameEngine(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput, Engine engine)
+                    throws IOException {
         if (TestOptions.TEST_AOT_IMAGE == null) {
             org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.ID, bitcodeFile).build();
             Builder builder = Context.newBuilder();

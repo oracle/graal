@@ -43,15 +43,14 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class FreeReadOnlyGlobalsBlockNode extends LLVMNode implements LLVMMemoryOpNode {
 
-    public FreeReadOnlyGlobalsBlockNode(){
+    public FreeReadOnlyGlobalsBlockNode() {
     }
 
     @Specialization(limit = "1")
     public void execute(LLVMPointer ptr,
-                        @SuppressWarnings("unused")
-                        @CachedContext(LLVMLanguage.class) LLVMContext ctx,
-                        @Bind("ctx.getFreeReadOnlyGlobalsBlockFunction()") Object freeGlobalsBlock,
-                        @CachedLibrary("freeGlobalsBlock") InteropLibrary interop) {
+                    @SuppressWarnings("unused") @CachedContext(LLVMLanguage.class) LLVMContext ctx,
+                    @Bind("ctx.getFreeReadOnlyGlobalsBlockFunction()") Object freeGlobalsBlock,
+                    @CachedLibrary("freeGlobalsBlock") InteropLibrary interop) {
         try {
             interop.execute(freeGlobalsBlock, ptr);
         } catch (InteropException ex) {

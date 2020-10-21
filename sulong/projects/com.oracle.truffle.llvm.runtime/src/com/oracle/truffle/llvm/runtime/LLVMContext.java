@@ -35,15 +35,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
@@ -59,7 +56,6 @@ import com.oracle.truffle.llvm.runtime.instruments.trace.LLVMTracerInstrument;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.HandleContainer;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
@@ -102,8 +98,8 @@ public final class LLVMContext {
     // The list contains all the symbols declared from the same symbol defined.
     private final ConcurrentHashMap<LLVMPointer, List<LLVMSymbol>> symbolsReverseMap = new ConcurrentHashMap<>();
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
-    private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
-    private final EconomicMap<Integer, LLVMPointer> globalsReadOnlyStore = EconomicMap.create();
+    protected final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
+    protected final EconomicMap<Integer, LLVMPointer> globalsReadOnlyStore = EconomicMap.create();
     private final Object globalsStoreLock = new Object();
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
@@ -491,41 +487,6 @@ public final class LLVMContext {
         }
     }
 
-    private CallTarget freeGlobalBlocks;
-
-    @TruffleBoundary(allowInlining = true)
-    private static LLVMPointer getElement(ArrayList<LLVMPointer> list, int idx) {
-        return list.get(idx);
-    }
-
-    private void initFreeGlobalBlocks(NodeFactory nodeFactory) {
-        // lazily initialized, this is not necessary if there are no global blocks allocated
-        if (freeGlobalBlocks == null) {
-            freeGlobalBlocks = Truffle.getRuntime().createCallTarget(new RootNode(language) {
-
-                @Child LLVMMemoryOpNode freeRo = nodeFactory.createFreeGlobalsBlock(true);
-                @Child LLVMMemoryOpNode freeRw = nodeFactory.createFreeGlobalsBlock(false);
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    // Executed in dispose(), therefore can read unsynchronized
-                    for (LLVMPointer store : globalsReadOnlyStore.getValues()) {
-                        if (store != null) {
-                            freeRo.execute(store);
-                        }
-                    }
-                    for (int i = 0; i < globalsNonPointerStore.size(); i++) {
-                        LLVMPointer store = getElement(globalsNonPointerStore, i);
-                        if (store != null) {
-                            freeRw.execute(store);
-                        }
-                    }
-                    return null;
-                }
-            });
-        }
-    }
-
     public Object getFreeReadOnlyGlobalsBlockFunction() {
         if (freeGlobalsBlockFunction == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -560,9 +521,9 @@ public final class LLVMContext {
             threadingStack.freeMainStack(memory);
         }
 
-        if (freeGlobalBlocks != null) {
+        if (language.getFreeGlobalBlocks() != null) {
             // free the space allocated for non-pointer globals
-            freeGlobalBlocks.call();
+            language.getFreeGlobalBlocks().call();
         }
 
         // free the space which might have been when putting pointer-type globals into native memory
@@ -896,7 +857,7 @@ public final class LLVMContext {
     @TruffleBoundary
     public void registerReadOnlyGlobals(int id, LLVMPointer nonPointerStore, NodeFactory nodeFactory) {
         synchronized (globalsStoreLock) {
-            initFreeGlobalBlocks(nodeFactory);
+            language.initFreeGlobalBlocks(nodeFactory);
             globalsReadOnlyStore.put(id, nonPointerStore);
         }
     }
@@ -911,7 +872,7 @@ public final class LLVMContext {
     @TruffleBoundary
     public void registerGlobals(LLVMPointer nonPointerStore, NodeFactory nodeFactory) {
         synchronized (globalsStoreLock) {
-            initFreeGlobalBlocks(nodeFactory);
+            language.initFreeGlobalBlocks(nodeFactory);
             globalsNonPointerStore.add(nonPointerStore);
         }
     }
