@@ -38,6 +38,7 @@ import mx_sdk_vm_impl
 _suite = mx.suite('vm')
 _native_image_vm_registry = mx_benchmark.VmRegistry('NativeImage', 'ni-vm')
 _gu_vm_registry = mx_benchmark.VmRegistry('GraalUpdater', 'gu-vm')
+_polybench_vm_registry = mx_benchmark.VmRegistry('PolyBench', 'polybench-vm')
 
 class GraalVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, name, config_name, extra_java_args, extra_launcher_args):
@@ -654,12 +655,66 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return mx_benchmark.js_vm_registry
 
 
+class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
+    def __init__(self):
+        super(PolyBenchBenchmarkSuite, self).__init__()
+        self._extensions = [".js", ".rb", ".wasm"]
+        self._benchmarks = []
+        for group in ["interpreter"]:
+            for (path, dirs, files) in os.walk(os.path.join(_suite.dir, "benchmarks", group)):
+                for file in files:
+                    if os.path.splitext(file)[1] in self._extensions:
+                        self._benchmarks.append(group + "/" + file)
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "vm"
+
+    def name(self):
+        return "polybench"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return self._benchmarks
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if len(benchmarks) != 1:
+            mx.abort("Can only specify one benchmark at a time.")
+        benchmark_path = os.path.join(_suite.dir, "benchmarks", benchmarks[0])
+        return ["--metric=peak-time", "--execution-mode=interpreter", "--path=" + benchmark_path]
+
+    def get_vm_registry(self):
+        return _polybench_vm_registry
+
+    def rules(self, output, benchmarks, bmSuiteArgs):
+        return [
+            mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
+                "benchmark": ("<name>", str),
+                "metric.better": "lower",
+                "metric.name": "time",
+                "metric.unit": ("<unit>", str),
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": 0,
+            })
+        ]
+
+
+class PolyBenchVm(GraalVm):
+    def run(self, cwd, args):
+        return self.run_launcher('polybench', args, cwd)
+
+
 mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='native-image', benchmarks={'js': ['--language:js']}, registry=_native_image_vm_registry))
 mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='gu', benchmarks={'js': ['js'], 'libpolyglot': ['libpolyglot']}, registry=_gu_vm_registry))
 mx_benchmark.add_bm_suite(AgentScriptJsBenchmarkSuite())
-
+mx_benchmark.add_bm_suite(PolyBenchBenchmarkSuite())
 
 def register_graalvm_vms():
+    _polybench_vm_registry.add_vm(PolyBenchVm("graalvm", "default", [], []))
+
     default_host_vm_name = mx_sdk_vm_impl.graalvm_dist_name().lower().replace('_', '-')
     host_vm_names = ([default_host_vm_name.replace('-java8', '')] if '-java8' in default_host_vm_name else []) + [default_host_vm_name]
     for host_vm_name in host_vm_names:
