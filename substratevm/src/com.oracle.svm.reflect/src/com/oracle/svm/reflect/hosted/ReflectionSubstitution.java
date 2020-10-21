@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
@@ -56,6 +57,9 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Processor for a set of {@link ReflectionSubstitutionType}.
+ */
 final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitutionType> {
 
     private static final String PROXY_NAME_SEPARATOR = "_";
@@ -228,7 +232,7 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         ReflectionSubstitutionType subst = getSubstitutionType(original);
         if (subst == null) {
             Member member = typeToMember.get(original);
-            subst = new ReflectionSubstitutionType(original, member);
+            subst = ImageSingletons.lookup(ReflectionSubstitutionType.Factory.class).create(original, member);
             addSubstitutionType(original, subst);
         }
         return subst;
