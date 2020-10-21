@@ -142,12 +142,15 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     private final @Pointer TruffleObject realloc;
     private final @Pointer TruffleObject free;
     private final @Pointer TruffleObject ctypeInit;
-    private final @Pointer TruffleObject get_SIZE_MAX;
+    private final @Pointer TruffleObject getSizeMax;
 
     private static final Map<String, JniSubstitutor.Factory> jniMethods = buildJniMethods();
 
     private final WeakHandles<Field> fieldIds = new WeakHandles<>();
     private final WeakHandles<Method> methodIds = new WeakHandles<>();
+
+    // The maximum value supported by the native size_t e.g. SIZE_MAX.
+    private long cachedSizeMax = 0;
 
     Method getMethod(long handle) {
         return methodIds.getObject(handle);
@@ -387,20 +390,20 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             disposeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary, "disposeNativeContext",
                             "(env, pointer): void");
 
-            get_SIZE_MAX = NativeLibrary.lookupAndBind(nespressoLibrary, "get_SIZE_MAX",
-                    "(): sint64");
+            getSizeMax = NativeLibrary.lookupAndBind(nespressoLibrary, "get_SIZE_MAX",
+                            "(): sint64");
 
-            assert SIZE_MAX() > Integer.MAX_VALUE : "size_t must be 64-bit wide";
+            assert sizeMax() > Integer.MAX_VALUE : "size_t must be 64-bit wide";
 
             malloc = NativeLibrary.lookupAndBind(nespressoLibrary, "allocateMemory",
-                    "(sint64): pointer"); // void*(size_t)
+                            "(sint64): pointer"); // void*(size_t)
             realloc = NativeLibrary.lookupAndBind(nespressoLibrary, "reallocateMemory",
-                    "(pointer, sint64): pointer"); // void*(void*,size_t)
+                            "(pointer, sint64): pointer"); // void*(void*,size_t)
             free = NativeLibrary.lookupAndBind(nespressoLibrary, "freeMemory",
-                    "(pointer): void"); // void(void*)
+                            "(pointer): void"); // void(void*)
 
             ctypeInit = NativeLibrary.lookupAndBind(nespressoLibrary, "ctypeInit",
-                    "(): void");
+                            "(): void");
 
             // Varargs native bindings.
             popBoolean = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_boolean", "(pointer): sint8");
@@ -564,17 +567,15 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         }
     }
 
-    private long SIZE_MAX = 0;
-
-    public long SIZE_MAX() {
-        long result = SIZE_MAX;
+    public long sizeMax() {
+        long result = cachedSizeMax;
         if (result == 0) {
             try {
-                result = (long) getUncached().execute(get_SIZE_MAX);
+                result = (long) getUncached().execute(getSizeMax);
                 if (result < 0) {
                     result = Long.MAX_VALUE;
                 }
-                SIZE_MAX = result;
+                cachedSizeMax = result;
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere(e);

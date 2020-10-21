@@ -220,7 +220,8 @@ public final class Target_java_lang_Thread {
                     try {
                         try {
                             if (meta.getContext().IsolatedNamespace) {
-                                // Initialize TLS related to __ctype_b_loc to avoid crashes on glibc.
+                                // Initialize TLS related to __ctype_b_loc to avoid crashes on
+                                // glibc.
                                 meta.getContext().getJNI().ctypeInit();
                             }
                             // Execute the payload

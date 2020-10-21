@@ -437,7 +437,7 @@ public final class Target_sun_misc_Unsafe {
         if (meta.getContext().IsolatedNamespace) {
             // alloc/free within the isolated native namespace.
             JniEnv jni = meta.getContext().getJNI();
-            if (length < 0 || length > jni.SIZE_MAX()) {
+            if (length < 0 || length > jni.sizeMax()) {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
             }
             TruffleObject result = jni.malloc(length);
@@ -449,7 +449,7 @@ public final class Target_sun_misc_Unsafe {
                 throw EspressoError.shouldNotReachHere(e);
             }
             // malloc may return anything for 0-sized allocations.
-            if (ptr == 0L && length > 0 ) {
+            if (ptr == 0L && length > 0) {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "malloc returned NULL");
             }
             return ptr;
@@ -486,7 +486,7 @@ public final class Target_sun_misc_Unsafe {
         if (meta.getContext().IsolatedNamespace) {
             // alloc/free within the isolated native namespace.
             JniEnv jni = meta.getContext().getJNI();
-            if (bytes < 0 || bytes > jni.SIZE_MAX()) {
+            if (bytes < 0 || bytes > jni.sizeMax()) {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
             }
             TruffleObject result = jni.realloc(RawPointer.create(address), bytes);
@@ -498,7 +498,7 @@ public final class Target_sun_misc_Unsafe {
                 throw EspressoError.shouldNotReachHere(e);
             }
             // realloc may return anything for 0-sized allocations.
-            if (ptr == 0L && bytes > 0 ) {
+            if (ptr == 0L && bytes > 0) {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "realloc returned NULL");
             }
             return ptr;
