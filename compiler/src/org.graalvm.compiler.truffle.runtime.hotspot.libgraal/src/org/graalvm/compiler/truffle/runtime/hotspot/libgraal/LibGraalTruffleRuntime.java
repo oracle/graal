@@ -59,7 +59,9 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     @SuppressWarnings("try")
     LibGraalTruffleRuntime() {
-        runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
+        try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+            runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
+        }
     }
 
     long handle() {
