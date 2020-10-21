@@ -237,6 +237,11 @@ suite = {
                         "ldlibs" : ["-ldl"],
                     },
                 },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "Linux-only",
+                    },
+                },
             },
         },
 
