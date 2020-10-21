@@ -55,22 +55,26 @@ public class AbstractRuntimeCodeInstaller {
         // The tether is acquired when it is created.
         Object tether = RuntimeCodeInfoAccess.beforeInstallInCurrentIsolate(codeInfo, installedCode);
         try {
-            Throwable[] errorBox = {null};
-            JavaVMOperation.enqueueBlockingSafepoint("Install code", () -> {
-                try {
-                    CodeInfoTable.getRuntimeCodeCache().addMethod(codeInfo);
-                    CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
-                    platformHelper().performCodeSynchronization(codeInfo);
-                    installedCode.setAddress(codeStart.rawValue(), method);
-                } catch (Throwable e) {
-                    errorBox[0] = e;
-                }
-            });
-            if (errorBox[0] != null) {
-                throw rethrow(errorBox[0]);
-            }
+            doInstallPreparedAndTethered(method, codeInfo, installedCode);
         } finally {
             CodeInfoAccess.releaseTether(codeInfo, tether);
+        }
+    }
+
+    protected static void doInstallPreparedAndTethered(SharedMethod method, CodeInfo codeInfo, SubstrateInstalledCode installedCode) {
+        Throwable[] errorBox = {null};
+        JavaVMOperation.enqueueBlockingSafepoint("Install code", () -> {
+            try {
+                CodeInfoTable.getRuntimeCodeCache().addMethod(codeInfo);
+                CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
+                platformHelper().performCodeSynchronization(codeInfo);
+                installedCode.setAddress(codeStart.rawValue(), method);
+            } catch (Throwable e) {
+                errorBox[0] = e;
+            }
+        });
+        if (errorBox[0] != null) {
+            throw rethrow(errorBox[0]);
         }
     }
 

@@ -48,6 +48,7 @@ import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * This class contains methods that only make sense for runtime compiled code.
@@ -66,7 +67,7 @@ public final class RuntimeCodeInfoAccess {
     }
 
     public static void initialize(CodeInfo info, Pointer codeStart, int codeSize, int dataOffset, int dataSize, int codeAndDataMemorySize,
-                    int tier, NonmovableArray<InstalledCodeObserverHandle> observerHandles, boolean freeArraysOnRelease) {
+                    int tier, NonmovableArray<InstalledCodeObserverHandle> observerHandles, boolean allObjectsAreInImageHeap) {
 
         CodeInfoImpl impl = cast(info);
         impl.setCodeStart((CodePointer) codeStart);
@@ -76,7 +77,7 @@ public final class RuntimeCodeInfoAccess {
         impl.setCodeAndDataMemorySize(WordFactory.unsigned(codeAndDataMemorySize));
         impl.setTier(tier);
         impl.setCodeObserverHandles(observerHandles);
-        impl.setFreeArraysOnRelease(freeArraysOnRelease);
+        impl.setAllObjectsAreInImageHeap(allObjectsAreInImageHeap);
     }
 
     public static void setCodeObjectConstantsInfo(CodeInfo info, NonmovableArray<Byte> refMapEncoding, long refMapIndex) {
@@ -120,8 +121,12 @@ public final class RuntimeCodeInfoAccess {
 
     public static CodeInfoTether beforeInstallInCurrentIsolate(CodeInfo info, SubstrateInstalledCode installedCode) {
         CodeInfoTether tether = new CodeInfoTether(true);
-        setObjectData(info, tether, installedCode.getName(), installedCode);
+        beforeInstallInCurrentIsolate(info, installedCode, tether);
         return tether;
+    }
+
+    public static void beforeInstallInCurrentIsolate(CodeInfo info, SubstrateInstalledCode installedCode, CodeInfoTether tether) {
+        setObjectData(info, tether, installedCode.getName(), installedCode);
     }
 
     @Uninterruptible(reason = "Makes the object data visible to the GC.")
@@ -134,6 +139,10 @@ public final class RuntimeCodeInfoAccess {
             // after setting all the object data, notify the GC
             Heap.getHeap().getRuntimeCodeInfoGCSupport().registerObjectFields(info);
         }
+    }
+
+    public static boolean areAllObjectsOnImageHeap(CodeInfo info) {
+        return cast(info).getAllObjectsAreInImageHeap();
     }
 
     /**
@@ -252,10 +261,30 @@ public final class RuntimeCodeInfoAccess {
             Heap.getHeap().getRuntimeCodeInfoGCSupport().unregisterRuntimeCodeInfo(info);
         }
 
-        if (cast(info).getFreeArraysOnRelease()) {
+        if (!cast(info).getAllObjectsAreInImageHeap()) {
             forEachArray(info, RELEASE_ACTION);
         }
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(info);
+    }
+
+    private static final NonmovableArrayAction GUARANTEE_ALL_OBJECTS_IN_IMAGE_HEAP_ACTION = new NonmovableArrayAction() {
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+        public void apply(NonmovableArray<?> arg) {
+            NonmovableObjectArray<?> array = (NonmovableObjectArray<?>) arg;
+            if (array.isNonNull()) {
+                int length = NonmovableArrays.lengthOf(array);
+                for (int i = 0; i < length; i++) {
+                    Object obj = NonmovableArrays.getObject(array, i);
+                    VMError.guarantee(obj == null || Heap.getHeap().isInImageHeap(obj));
+                }
+            }
+        }
+    };
+
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public static void guaranteeAllObjectsInImageHeap(CodeInfo info) {
+        forEachObjectArray(info, GUARANTEE_ALL_OBJECTS_IN_IMAGE_HEAP_ACTION);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)

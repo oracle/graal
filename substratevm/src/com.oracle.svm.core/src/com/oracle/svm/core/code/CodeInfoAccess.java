@@ -173,22 +173,25 @@ public final class CodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getMetadataSize(CodeInfo info) {
+    public static UnsignedWord getNativeMetadataSize(CodeInfo info) {
         CodeInfoImpl impl = cast(info);
-        return SizeOf.unsigned(CodeInfo.class)
-                        .add(NonmovableArrays.byteSizeOf(impl.getObjectFields()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getCodeInfoIndex()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getCodeInfoEncodings()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getStackReferenceMapEncoding()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoEncodings()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoObjectConstants()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceClasses()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceMethodNames()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoNames()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationStartOffsets()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationEncodings()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationObjectConstants()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getCodeConstantsReferenceMapEncoding()));
+        UnsignedWord size = SizeOf.unsigned(CodeInfo.class);
+        if (!impl.getAllObjectsAreInImageHeap()) {
+            size = size.add(NonmovableArrays.byteSizeOf(impl.getObjectFields()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getCodeInfoIndex()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getCodeInfoEncodings()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getStackReferenceMapEncoding()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoEncodings()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoObjectConstants()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceClasses()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceMethodNames()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoNames()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationStartOffsets()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationEncodings()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationObjectConstants()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getCodeConstantsReferenceMapEncoding()));
+        }
+        return size;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

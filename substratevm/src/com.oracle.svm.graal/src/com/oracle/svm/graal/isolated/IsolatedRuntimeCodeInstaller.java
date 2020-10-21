@@ -108,7 +108,7 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
         // A freshly allocated CodeInfo object is protected from the GC until the tether is set.
         CodeInfo codeInfo = RuntimeCodeInfoAccess.allocateMethodInfo();
         doPrepareInstall(adjuster, codeInfo);
-        IsolatedRuntimeMethodInfoAccess.guaranteeAllObjectsInImageHeap(codeInfo);
+        RuntimeCodeInfoAccess.guaranteeAllObjectsInImageHeap(codeInfo);
 
         CodeInstallInfo installInfo = UnmanagedMemory.malloc(SizeOf.get(CodeInstallInfo.class));
         installInfo.setCodeInfo(codeInfo);
