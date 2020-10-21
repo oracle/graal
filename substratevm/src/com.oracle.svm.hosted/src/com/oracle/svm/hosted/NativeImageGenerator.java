@@ -1215,9 +1215,11 @@ public class NativeImageGenerator {
                         arrayEqualsSubstitution);
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
+        OptionValues options = aUniverse.hostVM().options();
         ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
                         explicitUnsafeNullChecks, /* registerForeignCallMath */false,
-                        SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JavaVersionUtil.JAVA_SPEC >= 11,
+                        GraalOptions.EmitJDK8StringSubstitutions.getValue(options) && JavaVersionUtil.JAVA_SPEC < 9,
+                        GraalOptions.EmitJDK9PlusStringSubstitutions.getValue(options) && JavaVersionUtil.JAVA_SPEC >= 9,
                         JavaVersionUtil.JAVA_SPEC >= 11);
 
         /*

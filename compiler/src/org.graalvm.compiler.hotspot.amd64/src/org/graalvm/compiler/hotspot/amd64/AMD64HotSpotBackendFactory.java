@@ -27,6 +27,7 @@ package org.graalvm.compiler.hotspot.amd64;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -91,7 +92,10 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
                         replacements,
                         options,
                         target);
-        AMD64GraphBuilderPlugins.register(plugins, replacements, (AMD64) target.arch, false, JavaVersionUtil.JAVA_SPEC >= 9, config.useFMAIntrinsics);
+        AMD64GraphBuilderPlugins.register(plugins, replacements, (AMD64) target.arch, false,
+                        GraalOptions.EmitJDK8StringSubstitutions.getValue(options) && JavaVersionUtil.JAVA_SPEC < 9,
+                        GraalOptions.EmitJDK9PlusStringSubstitutions.getValue(options) && JavaVersionUtil.JAVA_SPEC >= 9,
+                        config.useFMAIntrinsics);
         return plugins;
     }
 

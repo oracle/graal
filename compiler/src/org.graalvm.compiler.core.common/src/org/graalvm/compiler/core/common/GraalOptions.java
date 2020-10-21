@@ -282,4 +282,10 @@ public final class GraalOptions {
 
     @Option(help = "String.indexOf invocations will be evaluated at compile time if the receiver is a constant and its length is lower than this value.", type = OptionType.Expert)
     public static final OptionKey<Integer> StringIndexOfLimit = new OptionKey<>(4096);
+
+    @Option(help = "Emit substitutions for JDK 8 String method", type = OptionType.Debug)//
+    public static final OptionKey<Boolean> EmitJDK8StringSubstitutions = new OptionKey<>(true);
+
+    @Option(help = "Emit substitutions for JDK 9+ String methods", type = OptionType.Debug)//
+    public static final OptionKey<Boolean> EmitJDK9PlusStringSubstitutions = new OptionKey<>(true);
 }

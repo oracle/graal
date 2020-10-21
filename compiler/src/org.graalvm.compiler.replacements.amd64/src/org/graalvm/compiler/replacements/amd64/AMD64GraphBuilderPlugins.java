@@ -77,13 +77,12 @@ import sun.misc.Unsafe;
 
 public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
-    public void register(Plugins plugins, Replacements replacements, Architecture architecture, boolean explicitUnsafeNullChecks,
-                    boolean registerForeignCallMath, boolean emitJDK9StringSubstitutions, boolean useFMAIntrinsics) {
-        register(plugins, replacements, (AMD64) architecture, explicitUnsafeNullChecks, emitJDK9StringSubstitutions, useFMAIntrinsics);
+    public void register(Plugins plugins, Replacements replacements, Architecture architecture, boolean explicitUnsafeNullChecks, boolean registerForeignCallMath, boolean emitJDK8StringSubstitutions,
+                    boolean emitJDK9StringSubstitutions, boolean useFMAIntrinsics) {
+        register(plugins, replacements, (AMD64) architecture, explicitUnsafeNullChecks, emitJDK8StringSubstitutions, emitJDK9StringSubstitutions, useFMAIntrinsics);
     }
 
-    public static void register(Plugins plugins, Replacements replacements, AMD64 arch, boolean explicitUnsafeNullChecks,
-                    boolean emitJDK9StringSubstitutions,
+    public static void register(Plugins plugins, Replacements replacements, AMD64 arch, boolean explicitUnsafeNullChecks, boolean emitJDK8StringSubstitutions, boolean emitJDK9StringSubstitutions,
                     boolean useFMAIntrinsics) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
@@ -95,7 +94,9 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerPlatformSpecificUnsafePlugins(invocationPlugins, replacements, explicitUnsafeNullChecks,
                                 new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object, JavaKind.Boolean, JavaKind.Byte, JavaKind.Short, JavaKind.Char, JavaKind.Float, JavaKind.Double});
                 registerUnsafePlugins(invocationPlugins, replacements, explicitUnsafeNullChecks);
-                registerStringPlugins(invocationPlugins, replacements);
+                if (emitJDK8StringSubstitutions) {
+                    registerStringPlugins(invocationPlugins, replacements);
+                }
                 if (emitJDK9StringSubstitutions) {
                     registerStringLatin1Plugins(invocationPlugins, replacements);
                     registerStringUTF16Plugins(invocationPlugins, replacements);

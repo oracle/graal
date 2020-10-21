@@ -66,7 +66,7 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
     @Override
     public void register(Plugins plugins, Replacements replacements, Architecture arch, boolean explicitUnsafeNullChecks, boolean registerMathPlugins,
-                    boolean emitJDK9StringSubstitutions, boolean useFMAIntrinsics) {
+                    boolean emitJDK8StringSubstitutions, boolean emitJDK9StringSubstitutions, boolean useFMAIntrinsics) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override

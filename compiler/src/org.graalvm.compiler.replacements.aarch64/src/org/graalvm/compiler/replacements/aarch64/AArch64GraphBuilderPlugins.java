@@ -68,7 +68,7 @@ import sun.misc.Unsafe;
 public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
     public void register(Plugins plugins, Replacements replacements, Architecture arch, boolean explicitUnsafeNullChecks, boolean registerForeignCallMath,
-                    boolean emitJDK9StringSubstitutions, boolean useFMAIntrinsics) {
+                    boolean emitJDK8StringSubstitutions, boolean emitJDK9StringSubstitutions, boolean useFMAIntrinsics) {
         register(plugins, replacements, explicitUnsafeNullChecks, registerForeignCallMath, emitJDK9StringSubstitutions, useFMAIntrinsics);
     }
 
