@@ -46,8 +46,8 @@ import org.graalvm.compiler.phases.common.ReassociationPhase;
 import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
-import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 
 /**
  * This class enumerates the most important platform-independent optimizations in the GraalVM CE
@@ -142,14 +142,14 @@ public enum CEOptimization {
     FloatingReads(GraalOptions.OptFloatingReads, FloatingReadPhase.class),
 
     /**
-     * {@link EarlyReadEliminationPhase} tries to remove redundant memory access operations (e.g.,
+     * {@link ReadEliminationPhase} tries to remove redundant memory access operations (e.g.,
      * successive reads of the same Java field are redundant). Its uses a control-flow sensitive
      * analysis.
      *
      * This phase is enabled by default and can be disabled with
      * {@link GraalOptions#OptReadElimination}.
      */
-    ReadElimination(GraalOptions.OptReadElimination, EarlyReadEliminationPhase.class),
+    ReadElimination(GraalOptions.OptReadElimination, ReadEliminationPhase.class),
 
     /**
      * {@link PartialEscapePhase} is a control flow sensitive algorithm that can replace object and
