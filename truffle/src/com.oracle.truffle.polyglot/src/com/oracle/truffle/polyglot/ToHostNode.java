@@ -88,13 +88,15 @@ abstract class ToHostNode extends Node {
     /** Wrap executable into functional interface proxy. */
     static final int FUNCTION_PROXY = 3;
     /** Wrap object with members into arbitrary interface proxy. */
-    static final int OBJECT_PROXY = 4;
+    static final int OBJECT_PROXY_IFACE = 4;
+    /** Wrap object with members into arbitrary interface or class proxy. */
+    static final int OBJECT_PROXY_CLASS = 5;
     /** Host object to interface proxy conversion. */
-    static final int HOST_PROXY = 5;
+    static final int HOST_PROXY = 6;
     /** Reserved for target type mappings with lowest. */
-    static final int LOWEST = 6;
+    static final int LOWEST = 7;
 
-    static final int[] PRIORITIES = {HIGHEST, STRICT, LOOSE, FUNCTION_PROXY, OBJECT_PROXY, HOST_PROXY, LOWEST};
+    static final int[] PRIORITIES = {HIGHEST, STRICT, LOOSE, FUNCTION_PROXY, OBJECT_PROXY_IFACE, OBJECT_PROXY_CLASS, HOST_PROXY, LOWEST};
 
     public abstract Object execute(Object value, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext, boolean useTargetMapping);
 
@@ -119,10 +121,11 @@ abstract class ToHostNode extends Node {
         if (languagecontext == null) {
             return false;
         }
-        if (!type.isInterface()) {
+        if (!HostInteropReflect.isAbstractType(type)) {
             return false;
         }
-        return languagecontext.getEngine().getHostClassCache().forClass(type).isAllowsImplementation();
+        HostClassDesc classDesc = languagecontext.getEngine().getHostClassCache().forClass(type);
+        return classDesc.isAllowsImplementation() && classDesc.isAllowedTargetType();
     }
 
     @Specialization(replaces = "doCached")
@@ -320,7 +323,8 @@ abstract class ToHostNode extends Node {
                 if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) &&
                                 (interop.isExecutable(value) || interop.isInstantiable(value)) && checkAllowsImplementation(targetType, allowsImplementation, languageContext)) {
                     return true;
-                } else if (priority >= OBJECT_PROXY && targetType.isInterface() && interop.hasMembers(value) &&
+                } else if (((priority >= OBJECT_PROXY_IFACE && targetType.isInterface()) || (priority >= OBJECT_PROXY_CLASS && HostInteropReflect.isAbstractType(targetType))) &&
+                                interop.hasMembers(value) &&
                                 checkAllowsImplementation(targetType, allowsImplementation, languageContext)) {
                     return true;
                 } else {
@@ -551,11 +555,15 @@ abstract class ToHostNode extends Node {
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be an exception.");
             }
-        } else if (allowsImplementation && targetType.isInterface()) {
+        } else if (allowsImplementation && HostInteropReflect.isAbstractType(targetType)) {
             if (HostInteropReflect.isFunctionalInterface(targetType) && (interop.isExecutable(value) || interop.isInstantiable(value))) {
                 obj = HostInteropReflect.asJavaFunction(targetType, value, languageContext);
             } else if (interop.hasMembers(value)) {
-                obj = HostInteropReflect.newProxyInstance(targetType, value, languageContext);
+                if (targetType.isInterface()) {
+                    obj = HostInteropReflect.newProxyInstance(targetType, value, languageContext);
+                } else {
+                    obj = HostInteropReflect.newAdapterInstance(targetType, value, languageContext);
+                }
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have members.");
             }

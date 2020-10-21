@@ -125,10 +125,6 @@ final class HostObject implements TruffleObject {
         return obj instanceof HostObject || obj instanceof HostException;
     }
 
-    static boolean isInstance(TruffleObject obj) {
-        return obj instanceof HostObject || obj instanceof HostException;
-    }
-
     HostObject withContext(PolyglotLanguageContext context) {
         return new HostObject(this.obj, context, this.extraInfo);
     }
@@ -197,7 +193,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    final class KeysArray implements TruffleObject {
+    static final class KeysArray implements TruffleObject {
 
         @CompilationFinal(dimensions = 1) private final String[] keys;
 
@@ -274,6 +270,8 @@ final class HostObject implements TruffleObject {
             }
         } else if (isClass() && HostInteropReflect.CLASS_TO_STATIC.equals(name)) {
             return HostObject.forStaticClass(asClass(), languageContext);
+        } else if (HostInteropReflect.ADAPTER_SUPER_MEMBER.equals(name) && HostAdapterFactory.isAdapterInstance(this.obj)) {
+            return HostAdapterFactory.getSuperAdapter(this);
         }
         error.enter();
         throw UnknownIdentifierException.create(name);

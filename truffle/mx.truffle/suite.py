@@ -104,6 +104,12 @@ suite = {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7.2-complete.jar"],
       "sha1": "34fc363424d3b060b660f84974a82d6bdc7ebe0c",
     },
+
+    "TRUFFLE_ASM_7.2" : {
+      "sha1" : "03ab18f3f0409fbed479c3c1c2cccec0d1b483c1",
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/com.oracle.truffle.impl.asm-7.2.0.jar"],
+    },
+
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "projects" : {
@@ -163,6 +169,7 @@ suite = {
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.instrumentation",
         "com.oracle.truffle.api.exception",
+        "truffle:TRUFFLE_ASM_7.2",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
