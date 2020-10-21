@@ -2226,11 +2226,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         if (base.equals(AMD64.rip)) {
             return 5;
         } else if (base.isValid()) {
-            final boolean isZeroDisplacement = disp == 0 && !base.equals(rbp) && !base.equals(r13);
+            final boolean isZeroDisplacement = addr.getDisplacementAnnotation() == null && disp == 0 && !base.equals(rbp) && !base.equals(r13);
+            boolean isByteDisplacement = addr.getDisplacementAnnotation() == null && isByte(disp);
             if (index.isValid()) {
                 if (isZeroDisplacement) {
                     return 2;
-                } else if (isByte(disp)) {
+                } else if (isByteDisplacement) {
                     return 3;
                 } else {
                     return 6;
@@ -2238,7 +2239,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             } else if (base.equals(rsp) || base.equals(r12)) {
                 if (disp == 0) {
                     return 2;
-                } else if (isByte(disp)) {
+                } else if (isByteDisplacement) {
                     return 3;
                 } else {
                     return 6;
@@ -2246,7 +2247,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             } else {
                 if (isZeroDisplacement) {
                     return 1;
-                } else if (isByte(disp)) {
+                } else if (isByteDisplacement) {
                     return 2;
                 } else {
                     return 5;
@@ -3964,7 +3965,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     @Override
     public AMD64Address getPlaceholder(int instructionStartPosition) {
-        return new AMD64Address(AMD64.rip, Register.None, Scale.Times1, 0, instructionStartPosition);
+        return new AMD64Address(AMD64.rip, Register.None, Scale.Times1, 0, null, instructionStartPosition);
     }
 
     private void prefetchPrefix(AMD64Address src) {
@@ -4018,6 +4019,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public void rdtsc() {
         emitByte(0x0F);
         emitByte(0x31);
+    }
+
+    public void rdtscp() {
+        emitByte(0x0F);
+        emitByte(0x01);
+        emitByte(0xF9);
     }
 
     /**

@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.FutureTask;
@@ -73,12 +74,14 @@ public class BackgroundCompileQueue {
     }
 
     private ExecutorService getExecutorService(OptimizedCallTarget callTarget) {
-        if (compilationExecutorService != null) {
-            return compilationExecutorService;
+        ExecutorService service = this.compilationExecutorService;
+        if (service != null) {
+            return service;
         }
         synchronized (this) {
-            if (compilationExecutorService != null) {
-                return compilationExecutorService;
+            service = this.compilationExecutorService;
+            if (service != null) {
+                return service;
             }
             if (shutdown) {
                 throw new RejectedExecutionException("The BackgroundCompileQueue is shutdown");
@@ -154,7 +157,7 @@ public class BackgroundCompileQueue {
 
     public CancellableCompileTask submitTask(Priority priority, OptimizedCallTarget target, Request request) {
         final WeakReference<OptimizedCallTarget> targetReference = new WeakReference<>(target);
-        CancellableCompileTask cancellable = new CancellableCompileTask(targetReference, priority == Priority.LAST_TIER);
+        CancellableCompileTask cancellable = new CancellableCompileTask(targetReference, priority.tier == Priority.Tier.LAST);
         RequestImpl<Void> requestImpl = new RequestImpl<>(nextId(), priority, targetReference, cancellable, request);
         cancellable.setFuture(getExecutorService(target).submit(requestImpl));
         return cancellable;
@@ -167,7 +170,15 @@ public class BackgroundCompileQueue {
     public int getQueueSize() {
         final ExecutorService threadPool = compilationExecutorService;
         if (threadPool instanceof ThreadPoolExecutor) {
-            return ((ThreadPoolExecutor) threadPool).getQueue().size();
+            BlockingQueue<Runnable> queue = ((ThreadPoolExecutor) threadPool).getQueue();
+            int count = 0;
+            for (Runnable runnable : queue) {
+                RequestFutureTask<?> task = (RequestFutureTask<?>) runnable;
+                if (!task.isCancelled() && !task.request.task.isCancelled()) {
+                    count++;
+                }
+            }
+            return count;
         } else {
             return 0;
         }
@@ -212,16 +223,22 @@ public class BackgroundCompileQueue {
         }
     }
 
-    public enum Priority {
+    public static class Priority {
 
-        INITIALIZATION(0),
-        FIRST_TIER(1),
-        LAST_TIER(2);
+        public enum Tier {
+            INITIALIZATION,
+            FIRST,
+            LAST
+        }
 
+        public static final Priority INITIALIZATION = new Priority(0, Tier.INITIALIZATION);
+
+        private final Tier tier;
         private final int value;
 
-        Priority(int value) {
+        Priority(int value, Tier tier) {
             this.value = value;
+            this.tier = tier;
         }
 
     }
@@ -239,22 +256,41 @@ public class BackgroundCompileQueue {
         private final CancellableCompileTask task;
         private final WeakReference<OptimizedCallTarget> targetRef;
         private final Request request;
+        private final boolean priorityQueue;
+        private final boolean multiTier;
 
         RequestImpl(long id, Priority priority, WeakReference<OptimizedCallTarget> targetRef, CancellableCompileTask task, Request request) {
             this.id = id;
             this.priority = priority;
             this.targetRef = targetRef;
+            OptimizedCallTarget target = targetRef.get();
+            priorityQueue = target != null && target.getOptionValue(PolyglotCompilerOptions.PriorityQueue);
+            multiTier = target != null && target.getOptionValue(PolyglotCompilerOptions.MultiTier);
             this.task = task;
             this.request = request;
         }
 
         @Override
         public int compareTo(RequestImpl<?> that) {
-            int diff = priority.value - that.priority.value;
-            if (diff == 0) {
-                diff = Long.compare(this.id, that.id);
+            int tierCompare = priority.tier.compareTo(that.priority.tier);
+            if (tierCompare != 0) {
+                return tierCompare;
             }
-            return diff;
+            if (priorityQueueEnabled()) {
+                int valueCompare = -1 * Long.compare(priority.value, that.priority.value);
+                if (valueCompare != 0) {
+                    return valueCompare;
+                }
+            }
+            return Long.compare(this.id, that.id);
+        }
+
+        /**
+         * We only want priority for the "escape from interpreter" compilations. If multi tier is
+         * enabled, that means *only* first tier compilations, otherwise it means last tier.
+         */
+        private boolean priorityQueueEnabled() {
+            return priorityQueue && ((multiTier && priority.tier == Priority.Tier.FIRST) || (!multiTier && priority.tier == Priority.Tier.LAST));
         }
 
         @SuppressWarnings("try")

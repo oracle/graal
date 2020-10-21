@@ -30,11 +30,11 @@ final class GraalRuntimeAccessor extends Accessor {
 
     private static final GraalRuntimeAccessor ACCESSOR = new GraalRuntimeAccessor();
 
+    static final JDKSupport JDK = ACCESSOR.jdkSupport();
     static final NodeSupport NODES = ACCESSOR.nodeSupport();
     static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
     static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
-    static final JDKSupport JDK = ACCESSOR.jdkSupport();
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
     static final FrameSupport FRAME = ACCESSOR.framesSupport();

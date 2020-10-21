@@ -43,4 +43,6 @@ abstract class AbstractCoverageNode extends ExecutionEventNode {
     }
 
     abstract boolean isCovered();
+
+    abstract void reset();
 }

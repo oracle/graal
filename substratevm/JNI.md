@@ -20,7 +20,7 @@ The native image builder must know beforehand which items will be looked up in c
 Moreover, the native image builder must generate call wrapper code ahead-of-time for any method that can be called via JNI.
 Therefore, specifying a concise list of items that need to be accessible via JNI guarantees their availability and allows for a smaller footprint.
 Such a list can be specified with the following image build argument:
-```
+```shell
 -H:JNIConfigurationFiles=/path/to/jniconfig
 ```
 Here, `jniconfig` is a JSON configuration file.
@@ -72,7 +72,7 @@ Methods declared with the `native` keyword have a JNI-compliant implementation i
 // Java declaration
 native int[] sort0(int[] array);
 // native declaration with JNI name mangling
-jintArray JNICALL Java_org_example_sorter_IntSorter_sort0(JNIEnv *env, jobject this, jintArray array) {
+jintArray JNICALL Java_org_example_sorter_IntSorter_sort0(JNIEnv *env, jobject this, jintArray array)
 ```
 
 When the image build encounters a method that is declared native, it generates a graph with a wrapper that performs the transition to native code and back, adds the `JNIEnv*` and `this` arguments, boxes any object arguments in handles, and in case of an object return type, unboxes the returned handle.
@@ -84,8 +84,8 @@ Alternatively, instead of requiring symbols that conform to JNI name mangling sc
 
 ## JNI Functions
 JNI provides a set of functions that native code can use to interact with Java code.
-Native Image implements these functions using `@CEntryPoint`. For example:
-```
+Substrate VM implements these functions using `@CEntryPoint`, for example:
+```c
 @CEntryPoint(...) private static void DeleteGlobalRef(JNIEnvironment env, JNIObjectHandle globalRef) { /* setup; */ JNIGlobalHandles.singleton().delete(globalRef); }
 ```
 JNI specifies that these functions are provided via function pointers in a C struct that is accessible via the `JNIEnv*` argument.

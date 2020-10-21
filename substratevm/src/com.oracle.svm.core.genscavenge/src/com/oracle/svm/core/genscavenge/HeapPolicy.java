@@ -42,6 +42,7 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.XOptions;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -314,10 +315,29 @@ public final class HeapPolicy {
      * Collection-triggering Policies
      */
 
-    static final UninterruptibleUtils.AtomicUnsigned youngUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
+    private static final UninterruptibleUtils.AtomicUnsigned edenUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
+    private static final UninterruptibleUtils.AtomicUnsigned youngUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
 
-    static UnsignedWord getYoungUsedBytes() {
+    public static void setEdenAndYoungGenBytes(UnsignedWord edenBytes, UnsignedWord youngBytes) {
+        assert VMOperation.isGCInProgress() : "would cause races otherwise";
+        youngUsedBytes.set(youngBytes);
+        edenUsedBytes.set(edenBytes);
+    }
+
+    public static void increaseEdenUsedBytes(UnsignedWord value) {
+        youngUsedBytes.addAndGet(value);
+        edenUsedBytes.addAndGet(value);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getYoungUsedBytes() {
+        assert !VMOperation.isGCInProgress() : "value is incorrect during a GC";
         return youngUsedBytes.get();
+    }
+
+    public static UnsignedWord getEdenUsedBytes() {
+        assert !VMOperation.isGCInProgress() : "value is incorrect during a GC";
+        return edenUsedBytes.get();
     }
 
     private static UnsignedWord getAllocationBeforePhysicalMemorySize() {

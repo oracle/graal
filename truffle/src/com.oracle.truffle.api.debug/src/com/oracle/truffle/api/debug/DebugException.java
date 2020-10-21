@@ -45,8 +45,10 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
@@ -183,14 +185,33 @@ public final class DebugException extends RuntimeException {
                 List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(exception);
                 int n = stackTrace.size();
                 List<DebugStackTraceElement> debugStack = new ArrayList<>(n);
+                boolean hostInfo = session.isShowHostStackFrames();
                 for (int i = 0; i < n; i++) {
                     TruffleStackTraceElement tframe = stackTrace.get(i);
                     RootNode root = tframe.getTarget().getRootNode();
                     if (root.getLanguageInfo() != null) {
                         debugStack.add(new DebugStackTraceElement(session, tframe));
+                    } else if (hostInfo) {
+                        debugStack.add(null);
                     }
                 }
-                debugStackTrace = Collections.unmodifiableList(debugStack);
+                if (hostInfo) {
+                    StackTraceElement[] stack = SuspendedEvent.cutToHostDepth(super.getStackTrace());
+                    Iterator<DebugStackTraceElement> mergedElements = Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(stack, debugStack.iterator(), true,
+                                    new Function<StackTraceElement, DebugStackTraceElement>() {
+                                        @Override
+                                        public DebugStackTraceElement apply(StackTraceElement element) {
+                                            return new DebugStackTraceElement(session, element);
+                                        }
+                                    }, Function.identity());
+                    List<DebugStackTraceElement> elementsList = new ArrayList<>();
+                    while (mergedElements.hasNext()) {
+                        elementsList.add(mergedElements.next());
+                    }
+                    debugStackTrace = Collections.unmodifiableList(elementsList);
+                } else {
+                    debugStackTrace = Collections.unmodifiableList(debugStack);
+                }
             } else {
                 debugStackTrace = Collections.emptyList();
             }

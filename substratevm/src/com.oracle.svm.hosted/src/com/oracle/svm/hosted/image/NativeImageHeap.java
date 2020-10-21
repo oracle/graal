@@ -306,6 +306,17 @@ public final class NativeImageHeap implements ImageHeap {
         }
     }
 
+    @Override
+    public int countDynamicHubs() {
+        int count = 0;
+        for (ObjectInfo o : getObjects()) {
+            if (o.getObject() instanceof DynamicHub) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     /**
      * Adds an object to the image heap that tries to span {@code size} bytes. Note that there is no
      * guarantee that the created object will exactly span {@code size} bytes. If it is not possible

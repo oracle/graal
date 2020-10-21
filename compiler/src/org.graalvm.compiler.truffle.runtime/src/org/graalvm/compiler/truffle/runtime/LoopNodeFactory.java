@@ -27,7 +27,7 @@ package org.graalvm.compiler.truffle.runtime;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 
-public interface LoopNodeFactory extends PrioritizedServiceProvider {
+public interface LoopNodeFactory extends GraalRuntimeServiceProvider {
 
     LoopNode create(RepeatingNode repeatingNode);
 

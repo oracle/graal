@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module PUBLIC "-//NetBeans//DTD Module Status 1.0//EN"
+                        "http://www.netbeans.org/dtds/module-status-1_0.dtd">
+<module name="org.netbeans.modules.nbjavac.impl">
+    <param name="autoload">true</param>
+    <param name="eager">false</param>
+    <param name="jar">modules/org-netbeans-modules-nbjavac-impl.jar</param>
+    <param name="reloadable">false</param>
+</module>

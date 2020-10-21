@@ -29,6 +29,7 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.SnippetObjectConstant;
 import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
@@ -62,6 +63,10 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
         if (constant instanceof HotSpotObjectConstant) {
             HotSpotObjectConstant hsConstant = (HotSpotObjectConstant) constant;
             return hsConstant.asObject(type);
+        }
+        if (constant instanceof SnippetObjectConstant) {
+            SnippetObjectConstant snippetObject = (SnippetObjectConstant) constant;
+            return snippetObject.asObject(type);
         }
         return null;
     }

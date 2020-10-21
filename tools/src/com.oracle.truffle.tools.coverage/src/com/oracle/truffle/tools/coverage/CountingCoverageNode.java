@@ -44,6 +44,11 @@ public class CountingCoverageNode extends AbstractCoverageNode {
     }
 
     @Override
+    void reset() {
+        count.set(0);
+    }
+
+    @Override
     protected void onEnter(VirtualFrame frame) {
         this.count.incrementAndGet();
     }

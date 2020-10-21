@@ -44,6 +44,7 @@ public class HotSpotWordTypes extends WordTypes {
      * Resolved type for {@link MetaspacePointer}.
      */
     private final ResolvedJavaType metaspacePointerType;
+    private final Class<?> metaspacePointerClass;
 
     /**
      * Resolved type for {@link KlassPointer}.
@@ -59,13 +60,20 @@ public class HotSpotWordTypes extends WordTypes {
      * Resolved type for {@link MethodCountersPointer}.
      */
     private final ResolvedJavaType methodCountersPointerType;
+    private final Class<?> klassPointerClass;
+    private final Class<?> methodPointerClass;
+    private final Class<?> methodCountersPointerClass;
 
     public HotSpotWordTypes(MetaAccessProvider metaAccess, JavaKind wordKind) {
         super(metaAccess, wordKind);
         this.metaspacePointerType = metaAccess.lookupJavaType(MetaspacePointer.class);
+        this.metaspacePointerClass = MetaspacePointer.class;
         this.klassPointerType = metaAccess.lookupJavaType(KlassPointer.class);
+        this.klassPointerClass = KlassPointer.class;
+        this.methodPointerClass = MethodPointer.class;
         this.methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
         this.methodCountersPointerType = metaAccess.lookupJavaType(MethodCountersPointer.class);
+        this.methodCountersPointerClass = MethodCountersPointer.class;
     }
 
     @Override
@@ -73,7 +81,16 @@ public class HotSpotWordTypes extends WordTypes {
         if (type instanceof ResolvedJavaType && metaspacePointerType.isAssignableFrom((ResolvedJavaType) type)) {
             return true;
         }
+        assert type == null || !type.getName().equals("Lorg/graalvm/compiler/hotspot/word/KlassPointer;") : type.getClass() + " " + klassPointerType.getClass() + " " + type + " " + klassPointerType;
         return super.isWord(type);
+    }
+
+    @Override
+    public boolean isWord(Class<?> clazz) {
+        if (metaspacePointerClass.isAssignableFrom(clazz)) {
+            return true;
+        }
+        return super.isWord(clazz);
     }
 
     @Override
@@ -91,6 +108,18 @@ public class HotSpotWordTypes extends WordTypes {
         } else if (type.equals(methodPointerType)) {
             return MethodPointerStamp.method();
         } else if (type.equals(methodCountersPointerType)) {
+            return MethodCountersPointerStamp.methodCounters();
+        }
+        return super.getWordStamp(type);
+    }
+
+    @Override
+    public Stamp getWordStamp(Class<?> type) {
+        if (type.equals(klassPointerClass)) {
+            return KlassPointerStamp.klass();
+        } else if (type.equals(methodPointerClass)) {
+            return MethodPointerStamp.method();
+        } else if (type.equals(methodCountersPointerClass)) {
             return MethodCountersPointerStamp.methodCounters();
         }
         return super.getWordStamp(type);

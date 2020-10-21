@@ -46,6 +46,7 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.option.APIOption;
+import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -142,6 +143,19 @@ public class SubstrateOptions {
     @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
 
+    public static final class GCGroup implements APIOptionGroup {
+        @Override
+        public String name() {
+            return "gc";
+        }
+
+        @Override
+        public String helpText() {
+            return "Select native-image garbage collector implementation.";
+        }
+    }
+
+    @APIOption(name = "serial", group = GCGroup.class, customHelp = "Serial garbage collector")//
     @Option(help = "Use a card remembered set heap for GC")//
     public static final HostedOptionKey<Boolean> UseCardRememberedSetHeap = new HostedOptionKey<>(true);
 
@@ -249,8 +263,8 @@ public class SubstrateOptions {
     @Option(help = "Export Invocation API symbols.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> JNIExportSymbols = new HostedOptionKey<>(true);
 
-    @Option(help = "Alignment of AOT and JIT compiled code in bytes. For example, Intel advises to align code to at least 128 bytes for best cache performance.")//
-    public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(128);
+    @Option(help = "Alignment of AOT and JIT compiled code in bytes.")//
+    public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(16);
 
     /*
      * Object and array allocation options.

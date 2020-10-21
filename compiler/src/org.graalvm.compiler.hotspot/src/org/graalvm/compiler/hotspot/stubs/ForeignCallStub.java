@@ -28,6 +28,7 @@ import static jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
 import static org.graalvm.compiler.nodes.CallTargetNode.InvokeKind.Static;
@@ -44,6 +45,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
+import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
@@ -267,7 +269,8 @@ public class ForeignCallStub extends Stub {
 
     private ResolvedJavaMethod getGraphMethod() {
         ResolvedJavaMethod thisMethod = null;
-        for (ResolvedJavaMethod method : providers.getMetaAccess().lookupJavaType(ForeignCallStub.class).getDeclaredMethods()) {
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        for (ResolvedJavaMethod method : metaAccess.lookupJavaType(ForeignCallStub.class).getDeclaredMethods()) {
             if (method.getName().equals("getGraph")) {
                 if (thisMethod == null) {
                     thisMethod = method;
@@ -277,16 +280,21 @@ public class ForeignCallStub extends Stub {
             }
         }
         if (thisMethod == null) {
-            throw new InternalError("Can't find getGraph");
+            throw new InternalError("Can't find ForeignCallStub.getGraph");
+        }
+        if (IS_BUILDING_NATIVE_IMAGE) {
+            HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) providers.getReplacements();
+            replacements.findSnippetMethod(thisMethod);
         }
         return thisMethod;
     }
 
     private ParameterNode[] createParameters(GraphKit kit, Class<?>[] args) {
         ParameterNode[] params = new ParameterNode[args.length];
-        ResolvedJavaType accessingClass = providers.getMetaAccess().lookupJavaType(getClass());
+        MetaAccessProvider metaAccess = HotSpotReplacementsImpl.noticeTypes(providers.getMetaAccess());
+        ResolvedJavaType accessingClass = metaAccess.lookupJavaType(getClass());
         for (int i = 0; i < args.length; i++) {
-            ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(args[i]).resolve(accessingClass);
+            ResolvedJavaType type = metaAccess.lookupJavaType(args[i]).resolve(accessingClass);
             StampPair stamp = StampFactory.forDeclaredType(kit.getGraph().getAssumptions(), type, false);
             ParameterNode param = kit.unique(new ParameterNode(i, stamp));
             params[i] = param;

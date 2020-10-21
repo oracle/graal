@@ -20,7 +20,6 @@ For example, if `java.util.logging.FileHandler` is used then the following refle
 ```
 See the [Reflection Support](Reflection.md) page for more details.
 
-
 ## Build-Time Logger Initialization
 
 The logger can be initialized at image build time with a custom `logging.properties` config, as in the code below:
@@ -52,7 +51,6 @@ public class RuntimeLoggerInit {
     public static void main(String[] args) throws IOException {
         LogManager.getLogManager().readConfiguration(RuntimeLoggerInit.class.getResourceAsStream("logging.properties"));
         Logger logger = Logger.getLogger(RuntimeLoggerInit.class.getName());
-
         // Use the logger here
     }
 }

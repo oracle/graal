@@ -76,7 +76,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LocationFactory;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
@@ -901,10 +900,6 @@ abstract class DynamicObjectLibraryImpl {
                     return null;
                 }
 
-                if (cachedCount == 1) {
-                    reportPolymorphicSpecialize();
-                }
-
                 SpecificKey newEntry = SpecificKey.create(key, cachedShape, tail, useIdentity);
                 insert(newEntry);
                 this.keyCache = newEntry;
@@ -1694,7 +1689,7 @@ abstract class DynamicObjectLibraryImpl {
         }
 
         static Shape shapeSetDynamicType(Shape shape, Object newType) {
-            return shape.changeType((ObjectType) newType);
+            return ((ShapeImpl) shape).setDynamicType(newType);
         }
     }
 

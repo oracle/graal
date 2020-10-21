@@ -135,6 +135,34 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     @Override
+    public boolean isConstantScale(InductionVariable ref) {
+        return super.isConstantScale(ref) || (scale.isConstant() && base.isConstantScale(ref));
+    }
+
+    @Override
+    public long constantScale(InductionVariable ref) {
+        assert isConstantScale(ref);
+        if (super.isConstantScale(ref)) {
+            return super.constantScale(ref);
+        }
+        return scale.asJavaConstant().asLong() * base.constantScale(ref);
+    }
+
+    @Override
+    public boolean offsetIsZero(InductionVariable ref) {
+        if (super.offsetIsZero(ref)) {
+            return true;
+        }
+        return base.offsetIsZero(ref);
+    }
+
+    @Override
+    public ValueNode offsetNode(InductionVariable ref) {
+        assert !offsetIsZero(ref);
+        return null;
+    }
+
+    @Override
     public String toString() {
         return String.format("DerivedScaleInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), scale);
     }

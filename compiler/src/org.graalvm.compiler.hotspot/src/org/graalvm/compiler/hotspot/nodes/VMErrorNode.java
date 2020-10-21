@@ -52,10 +52,10 @@ import jdk.vm.ci.meta.Value;
 public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowerable {
 
     public static final NodeClass<VMErrorNode> TYPE = NodeClass.create(VMErrorNode.class);
-    protected final String format;
+    protected final CStringConstant format;
     @Input ValueNode value;
 
-    public VMErrorNode(String format, ValueNode value) {
+    public VMErrorNode(CStringConstant format, ValueNode value) {
         super(TYPE, StampFactory.forVoid());
         this.format = format;
         this.value = value;
@@ -80,12 +80,12 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowera
 
         LIRKind wordKind = gen.getLIRGeneratorTool().getLIRKind(StampFactory.pointer());
         Value whereArg = gen.getLIRGeneratorTool().emitConstant(wordKind, new CStringConstant(whereString));
-        Value formatArg = gen.getLIRGeneratorTool().emitConstant(wordKind, new CStringConstant(format));
+        Value formatArg = gen.getLIRGeneratorTool().emitConstant(wordKind, format);
 
         ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(VM_ERROR);
         gen.getLIRGeneratorTool().emitForeignCall(linkage, null, whereArg, formatArg, gen.operand(value));
     }
 
     @NodeIntrinsic
-    public static native void vmError(@ConstantNodeParameter String format, long value);
+    public static native void vmError(@ConstantNodeParameter CStringConstant format, long value);
 }

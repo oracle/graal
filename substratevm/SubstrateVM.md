@@ -29,8 +29,7 @@ For GraalVM distribution based on JDK 11, you will need MSVC 2017 15.5.5 or late
 
 The last prerequisite, common for both GraalVM distribution based on JDK 11 and JDK 8, is the proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/). On Windows, the `native-image` tool only works when it is executed from the x64 Native Tools Command Prompt.
 
-After cloning the repository, run
-```
+```shell
 cd substratevm
 mx build
 
@@ -68,39 +67,10 @@ In Eclipse, use the debugging configuration _substratevm-localhost-8000_ to atta
 
 If you have to debug the compiler graphs that are built as part of an image, proceed to the [debugging](../compiler/docs/Debugging.md) page.
 You can use the [Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/20/docs/tools/igv/) tool to view individual compilation steps:
-```
+```shell
 mx igv &>/dev/null &
 mx native-image HelloWorld -H:Dump= -H:MethodFilter=HelloWorld.*
 ```
-
-## Images and Entry Points
-
-A native image can be built as a standalone executable, which is the default, or as a shared library by passing `--shared` to the native image builder. For an image to be useful, it needs to have at least one entry point method.
-
-For executables, Native Image supports Java main methods with a signature that takes the command line arguments as an array of strings:
-
-```java
-public static void main(String[] arg) { /* ... */ }
-```
-
-For shared libraries, Native Image provides the `@CEntryPoint` annotation to specify entry point methods that should be exported and callable from C.
-Entry point methods must be static and may only have non-object parameters and return types – this includes Java primitives, but also Word types (including pointers). One of the parameters of an entry point method has to be of type `IsolateThread` or `Isolate`. This parameter provides the current thread's execution context for the call.
-
-For example:
-
-```java
-@CEntryPoint static int add(IsolateThread thread, int a, int b) {
-    return a + b;
-}
-```
-
-When building a shared library, an additional C header file is generated.
-This header file contains declarations for the [C API](C-API.md), which allows creating isolates and attaching threads from C code, as well as declarations for each entry point in user code. The generated C declaration for the above example is:
-```c
-int add(graal_isolatethread_t* thread, int a, int b);
-```
-
-Both executable images and shared library images can have an arbitrary number of entry points, for example, to implement callbacks or APIs.
 
 ## Options
 

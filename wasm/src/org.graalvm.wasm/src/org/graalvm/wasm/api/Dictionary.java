@@ -66,7 +66,7 @@ public class Dictionary implements TruffleObject {
     }
 
     @TruffleBoundary
-    private static UnknownIdentifierException unknown(String identifier) {
+    protected static UnknownIdentifierException unknown(String identifier) {
         return UnknownIdentifierException.create(identifier);
     }
 

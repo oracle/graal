@@ -157,13 +157,13 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         final GlobalRegistry globals = WasmContext.getCurrent().globals();
         final byte type = symbolTable.globalValueType(globalIndex);
         switch (type) {
-            case ValueTypes.I32_TYPE:
+            case WasmType.I32_TYPE:
                 return globals.loadAsInt(address);
-            case ValueTypes.I64_TYPE:
+            case WasmType.I64_TYPE:
                 return globals.loadAsLong(address);
-            case ValueTypes.F32_TYPE:
+            case WasmType.F32_TYPE:
                 return globals.loadAsFloat(address);
-            case ValueTypes.F64_TYPE:
+            case WasmType.F64_TYPE:
                 return globals.loadAsDouble(address);
             default:
                 throw new RuntimeException("Unknown type: " + type);

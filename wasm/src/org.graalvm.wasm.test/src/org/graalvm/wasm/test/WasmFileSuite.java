@@ -132,6 +132,19 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         return inCI() || inWindows();
     }
 
+    private static Value findMain(Context context) {
+        for (String moduleName : context.getBindings("wasm").getMemberKeys()) {
+            final Value module = context.getBindings("wasm").getMember(moduleName);
+            if (module.hasMember("_start")) {
+                return module.getMember("_start");
+            }
+            if (module.hasMember("_main")) {
+                return module.getMember("_main");
+            }
+        }
+        return null;
+    }
+
     private static void runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel) {
         boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
 
@@ -154,14 +167,12 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             // Execute the main function (exported as "_main").
             // Then, optionally save memory and globals, and compare them.
             // Execute a special function, which resets memory and globals to their default values.
-            Value mainFunction = context.getBindings("wasm").getMember("_start");
-            if (mainFunction == null) {
-                mainFunction = context.getBindings("wasm").getMember("_main");
-            }
-            Value resetMemories = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_MEMORIES);
-            Value reinitInstance = context.getBindings("wasm").getMember(TestutilModule.Names.REINIT_INSTANCE);
-            Value saveContext = context.getBindings("wasm").getMember(TestutilModule.Names.SAVE_CONTEXT);
-            Value compareContexts = context.getBindings("wasm").getMember(TestutilModule.Names.COMPARE_CONTEXTS);
+            Value mainFunction = findMain(context);
+            final Value testutil = context.getBindings("wasm").getMember("testutil");
+            Value resetMemories = testutil.getMember(TestutilModule.Names.RESET_MEMORIES);
+            Value reinitInstance = testutil.getMember(TestutilModule.Names.REINIT_INSTANCE);
+            Value saveContext = testutil.getMember(TestutilModule.Names.SAVE_CONTEXT);
+            Value compareContexts = testutil.getMember(TestutilModule.Names.COMPARE_CONTEXTS);
 
             resetStatus(oldOut, phaseIcon, phaseLabel);
             ByteArrayOutputStream capturedStdout;
@@ -188,11 +199,12 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                     }
 
                     // Reset context state.
-                    if (iterationNeedsStateCheck(i + 1) || requiresZeroMemory) {
+                    boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
+                    if (reinitMemory) {
                         resetMemories.execute();
                     }
                     for (final Value instance : instances) {
-                        reinitInstance.execute(instance);
+                        reinitInstance.execute(instance, reinitMemory);
                     }
 
                     validateResult(testCase.data().resultValidator(), result, capturedStdout);

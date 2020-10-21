@@ -101,8 +101,8 @@ public abstract class LLVMReadCharsetNode extends LLVMNode {
         }
 
         @TruffleBoundary
-        public String decode(ByteBuffer b) {
-            return charset.decode(b).toString();
+        public String decode(byte[] b) {
+            return charset.decode(ByteBuffer.wrap(b)).toString();
         }
     }
 }

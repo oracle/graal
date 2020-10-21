@@ -32,6 +32,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 
@@ -100,8 +101,8 @@ final class OldGeneration extends Generation {
         getToSpace().promoteObjectChunk(obj);
     }
 
-    void releaseSpaces() {
-        getFromSpace().releaseChunks();
+    void releaseSpaces(ChunkReleaser chunkReleaser) {
+        getFromSpace().releaseChunks(chunkReleaser);
         if (HeapImpl.getHeapImpl().getGCImpl().isCompleteCollection()) {
             getToSpace().cleanRememberedSet();
         }
@@ -214,10 +215,12 @@ final class OldGeneration extends Generation {
         return -1;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Space getFromSpace() {
         return fromSpace;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Space getToSpace() {
         return toSpace;
     }
@@ -234,5 +237,16 @@ final class OldGeneration extends Generation {
 
     boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
         return getFromSpace().walkHeapChunks(visitor) && getToSpace().walkHeapChunks(visitor);
+    }
+
+    /**
+     * This value is only updated during a GC. Be careful when calling this method during a GC as it
+     * might wrongly include chunks that will be freed at the end of the GC.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    UnsignedWord getChunkBytes() {
+        UnsignedWord fromBytes = getFromSpace().getChunkBytes();
+        UnsignedWord toBytes = getToSpace().getChunkBytes();
+        return fromBytes.add(toBytes);
     }
 }

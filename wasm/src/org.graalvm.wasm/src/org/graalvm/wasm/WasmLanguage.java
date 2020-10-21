@@ -76,9 +76,8 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     }
 
     @Override
-    @SuppressWarnings("deprecation")
-    protected Iterable<com.oracle.truffle.api.Scope> findTopScopes(WasmContext context) {
-        return context.getTopScopes();
+    protected Object getScope(WasmContext context) {
+        return context.getScope();
     }
 
     @Override

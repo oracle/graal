@@ -38,7 +38,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -52,7 +51,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
@@ -234,7 +232,6 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
 
     @Test
     public void testInvalidation() throws IOException, InterruptedException {
-        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
         CountDownLatch latch = new CountDownLatch(2);
         NodeToInvalidate nodeToInvalidate = new NodeToInvalidate(ThreadLocal.withInitial(() -> true), latch);
         WhileLoopNode testedCode = new WhileLoopNode(1000000000, nodeToInvalidate);

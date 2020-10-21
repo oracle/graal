@@ -41,6 +41,9 @@
 package com.oracle.truffle.api.instrumentation;
 
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -49,6 +52,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.io.MessageTransport;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleContext;
@@ -93,6 +97,10 @@ final class InstrumentAccessor extends Accessor {
         return ACCESSOR.interopSupport();
     }
 
+    static RuntimeSupport runtimeAccess() {
+        return ACCESSOR.runtimeSupport();
+    }
+
     protected boolean isTruffleObject(Object value) {
         return interopSupport().isTruffleObject(value);
     }
@@ -100,7 +108,8 @@ final class InstrumentAccessor extends Accessor {
     static final class InstrumentImpl extends InstrumentSupport {
 
         @Override
-        public Object createInstrumentationHandler(Object polyglotEngine, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor) {
+        public Object createInstrumentationHandler(Object polyglotEngine, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor,
+                        boolean strongReferences) {
             return new InstrumentationHandler(polyglotEngine, out, err, in, messageInterceptor);
         }
 
@@ -181,10 +190,10 @@ final class InstrumentAccessor extends Accessor {
         }
 
         @Override
-        public void onFirstExecution(RootNode rootNode) {
-            assert validEngine(rootNode);
+        public void onFirstExecution(RootNode rootNode, boolean validate) {
+            assert !validate || validEngine(rootNode);
             InstrumentationHandler handler = getHandler(rootNode);
-            if (handler != null) {
+            if (handler != null && !runtimeAccess().isOSRRootNode(rootNode)) {
                 handler.onFirstExecution(rootNode);
             }
         }
@@ -192,7 +201,7 @@ final class InstrumentAccessor extends Accessor {
         @Override
         public void onLoad(RootNode rootNode) {
             InstrumentationHandler handler = getHandler(rootNode);
-            if (handler != null) {
+            if (handler != null && !runtimeAccess().isOSRRootNode(rootNode)) {
                 handler.onLoad(rootNode);
             }
         }
@@ -277,16 +286,25 @@ final class InstrumentAccessor extends Accessor {
             return identifier instanceof ProbeNode.EventProviderWithInputChainNode.SavedInputValueID;
         }
 
+        @Override
+        public Collection<CallTarget> getLoadedCallTargets(Object instrumentationHandler) {
+            Collection<RootNode> roots = ((InstrumentationHandler) instrumentationHandler).loadedRoots;
+            List<CallTarget> targets = new ArrayList<>();
+            for (RootNode root : roots) {
+                CallTarget target = root.getCallTarget();
+                if (target != null) {
+                    targets.add(target);
+                }
+            }
+            return targets;
+        }
+
         private static InstrumentationHandler getHandler(RootNode rootNode) {
-            LanguageInfo info = rootNode.getLanguageInfo();
-            if (info == null) {
+            Object polyglotEngineImpl = nodesAccess().getPolyglotEngine(rootNode);
+            if (polyglotEngineImpl == null) {
                 return null;
             }
-            Object polyglotLanguage = nodesAccess().getPolyglotLanguage(info);
-            if (polyglotLanguage == null) {
-                return null;
-            }
-            return (InstrumentationHandler) engineAccess().getInstrumentationHandler(polyglotLanguage);
+            return (InstrumentationHandler) engineAccess().getInstrumentationHandler(polyglotEngineImpl);
         }
 
         @Override

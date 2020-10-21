@@ -108,9 +108,8 @@ public abstract class Shape {
          * See {@link DynamicObjectLibrary#setDynamicType(DynamicObject, Object)} for more
          * information.
          *
-         * @param dynamicType type identifier object; an instance of {@link ObjectType}
+         * @param dynamicType a non-null object type identifier
          * @throws NullPointerException if the type is {@code null}
-         * @throws IllegalArgumentException if the type is not an instance of {@link ObjectType}
          * @since 20.2.0
          */
         public abstract T dynamicType(Object dynamicType);
@@ -142,9 +141,6 @@ public abstract class Shape {
 
         static Object checkDynamicType(Object dynamicType) {
             Objects.requireNonNull(dynamicType, "dynamicType");
-            if (!(dynamicType instanceof ObjectType)) {
-                throw new IllegalArgumentException("dynamicType must be an instance of ObjectType");
-            }
             return dynamicType;
         }
 
@@ -772,15 +768,15 @@ public abstract class Shape {
     /**
      * Get the shape's object type info.
      *
-     * Planned to be deprecated. To be replaced by {@link #getDynamicType()}.
-     *
      * @since 0.8 or earlier
      * @see #getDynamicType()
+     * @deprecated Deprecated since 20.3.0. Replaced by {@link #getDynamicType()}.
      */
+    @Deprecated
     public abstract ObjectType getObjectType();
 
     /**
-     * Get the shape's dynamic object type identifier (formerly {@link #getObjectType()}).
+     * Get the shape's dynamic object type identifier.
      *
      * @since 20.2.0
      */

@@ -43,12 +43,14 @@ package org.graalvm.polyglot;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -762,6 +764,30 @@ public final class Context implements AutoCloseable {
      */
     public void close() {
         close(false);
+    }
+
+    /**
+     * Use this method to interrupt this context. The interruption is non-destructive meaning the
+     * context is still usable after this method finishes. Please note that guest finally blocks are
+     * executed during interrupt. A context thread may not be interruptiple if it uses
+     * non-interruptible waiting or executes non-interruptible host code.
+     * 
+     * This method may be used as a "soft exit", meaning that it can be used before
+     * {@link #close(boolean) close(true)} is executed.
+     *
+     * @param timeout specifies the duration the interrupt method will wait for the active threads
+     *            of the context to be finished. Setting the duration to {@link Duration#ZERO 0}
+     *            means wait indefinitely.
+     * @throws IllegalStateException in case the context is entered in the current thread.
+     * @throws TimeoutException in case the interrupt was not successful, i.e., not all threads were
+     *             finished within the specified time limit.
+     *
+     * @since 20.3
+     */
+    public void interrupt(Duration timeout) throws TimeoutException {
+        if (!impl.interrupt(this, timeout)) {
+            throw new TimeoutException("Interrupt timed out.");
+        }
     }
 
     /**

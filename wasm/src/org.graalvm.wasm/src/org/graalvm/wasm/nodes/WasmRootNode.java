@@ -50,9 +50,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.wasm.ValueTypes;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmVoidResult;
 
@@ -61,12 +62,14 @@ import static org.graalvm.wasm.WasmTracing.trace;
 @NodeInfo(language = "wasm", description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
+    protected final WasmInstance instance;
     private final WasmCodeEntry codeEntry;
     @CompilationFinal private ContextReference<WasmContext> rawContextReference;
     @Child private WasmNode body;
 
-    public WasmRootNode(TruffleLanguage<?> language, WasmCodeEntry codeEntry) {
+    public WasmRootNode(TruffleLanguage<?> language, WasmInstance instance, WasmCodeEntry codeEntry) {
         super(language);
+        this.instance = instance;
         this.codeEntry = codeEntry;
         this.body = null;
     }
@@ -92,7 +95,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
         // be able to parse multiple modules before the code gets run.
-        context.linker().tryLink();
+        context.linker().tryLink(instance);
     }
 
     @Override
@@ -121,24 +124,24 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
         switch (body.returnTypeId()) {
             case 0x00:
-            case ValueTypes.VOID_TYPE: {
+            case WasmType.VOID_TYPE: {
                 return WasmVoidResult.getInstance();
             }
-            case ValueTypes.I32_TYPE: {
+            case WasmType.I32_TYPE: {
                 long returnValue = pop(frame, 0);
                 assert returnValue >>> 32 == 0;
                 return (int) returnValue;
             }
-            case ValueTypes.I64_TYPE: {
+            case WasmType.I64_TYPE: {
                 long returnValue = pop(frame, 0);
                 return returnValue;
             }
-            case ValueTypes.F32_TYPE: {
+            case WasmType.F32_TYPE: {
                 long returnValue = pop(frame, 0);
                 assert returnValue >>> 32 == 0;
                 return Float.intBitsToFloat((int) returnValue);
             }
-            case ValueTypes.F64_TYPE: {
+            case WasmType.F64_TYPE: {
                 long returnValue = pop(frame, 0);
                 return Double.longBitsToDouble(returnValue);
             }
@@ -191,16 +194,16 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         for (int i = numArgs; i != body.codeEntry().numLocals(); ++i) {
             byte type = body.codeEntry().localType(i);
             switch (type) {
-                case ValueTypes.I32_TYPE:
+                case WasmType.I32_TYPE:
                     body.setInt(frame, i, 0);
                     break;
-                case ValueTypes.I64_TYPE:
+                case WasmType.I64_TYPE:
                     body.setLong(frame, i, 0);
                     break;
-                case ValueTypes.F32_TYPE:
+                case WasmType.F32_TYPE:
                     body.setFloat(frame, i, 0);
                     break;
-                case ValueTypes.F64_TYPE:
+                case WasmType.F64_TYPE:
                     body.setDouble(frame, i, 0);
                     break;
             }

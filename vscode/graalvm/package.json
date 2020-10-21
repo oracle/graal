@@ -18,7 +18,7 @@
 		"url": "https://github.com/oracle/graal/issues"
 	},
 	"engines": {
-		"vscode": "^1.44.0"
+		"vscode": "^1.49.0"
 	},
 	"categories": [
 		"Programming Languages",
@@ -93,8 +93,9 @@
 			},
 			{
 				"command": "extension.graalvm.refreshInstallations",
-				"title": "Refresh",
-				"icon": "$(refresh)"
+				"title": "Refresh Installations",
+				"icon": "$(refresh)",
+				"category": "GraalVM"
 			},
 			{
 				"command": "extension.graalvm.installGraalVMComponent",
@@ -126,6 +127,17 @@
 			{
 				"command": "extension.graalvm.installRubyLanguageServer",
 				"title": "Install Ruby Language Server",
+				"category": "GraalVM"
+			},
+			{
+				"command": "extension.graalvm.setupProxy",
+				"icon": "$(wrench)",
+				"title": "Setup Proxy"
+			},
+			{
+				"command": "extension.graalvm.removeInstallation",
+				"title": "Remove GraalVM Installation",
+				"icon": "$(trash)",
 				"category": "GraalVM"
 			}
 		],
@@ -181,7 +193,7 @@
 			"view/item/context": [
 				{
 					"command": "extension.graalvm.selectGraalVMHome",
-					"when": "view == graalvm-installations && viewItem == graalvmInstallation",
+					"when": "view == graalvm-installations && viewItem == graalvmInstallation || viewItem == graalvmInstallationOut",
 					"group": "inline"
 				},
 				{
@@ -192,6 +204,16 @@
 				{
 					"command": "extension.graalvm.uninstallGraalVMComponent",
 					"when": "view == graalvm-installations && viewItem == graalvmComponentInstalled",
+					"group": "inline"
+				},
+				{
+					"command": "extension.graalvm.setupProxy",
+					"when": "view == graalvm-installations && viewItem == graalvmConnectionError",
+					"group": "inline"
+				},
+				{
+					"command": "extension.graalvm.removeInstallation",
+					"when": "view == graalvm-installations && viewItem == graalvmInstallation",
 					"group": "inline"
 				}
 			]
@@ -575,6 +597,7 @@
 	},
 	"dependencies": {
 		"decompress": "4.2.1",
+		"mustache": "4.0.1",
 		"sax": "^1.2.4",
 		"vscode-chrome-debug-core": "^6.8.8",
 		"vscode-languageclient": "^5.2.1"
@@ -583,8 +606,9 @@
 		"@types/mocha": "^7.0.2",
 		"@types/node": "^12.12.30",
 		"@types/sax": "^1.2.1",
+		"@types/mustache": "^4.0.1",
 		"@types/decompress": "^4.2.3",
-		"@types/vscode": "1.44.0",
+		"@types/vscode": "^1.49.0",
 		"ts-loader": "^6.2.1",
 		"tslint": "^6.1.0",
 		"typescript": "^3.8.3",

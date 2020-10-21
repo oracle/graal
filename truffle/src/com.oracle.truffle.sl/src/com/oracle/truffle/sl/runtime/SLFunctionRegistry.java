@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,10 +43,12 @@ package com.oracle.truffle.sl.runtime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.SLLanguage;
@@ -59,6 +61,7 @@ public final class SLFunctionRegistry {
 
     private final SLLanguage language;
     private final FunctionsObject functionsObject = new FunctionsObject();
+    private final Map<Map<String, RootCallTarget>, Void> registeredFunctions = new IdentityHashMap<>();
 
     public SLFunctionRegistry(SLLanguage language) {
         this.language = language;
@@ -68,6 +71,7 @@ public final class SLFunctionRegistry {
      * Returns the canonical {@link SLFunction} object for the given name. If it does not exist yet,
      * it is created.
      */
+    @TruffleBoundary
     public SLFunction lookup(String name, boolean createIfNotPresent) {
         SLFunction result = functionsObject.functions.get(name);
         if (result == null && createIfNotPresent) {
@@ -82,16 +86,31 @@ public final class SLFunctionRegistry {
      * node. If the function did not exist before, it defines the function. If the function existed
      * before, it redefines the function and the old implementation is discarded.
      */
-    public SLFunction register(String name, RootCallTarget callTarget) {
-        SLFunction function = lookup(name, true);
-        function.setCallTarget(callTarget);
-        return function;
+    SLFunction register(String name, RootCallTarget callTarget) {
+        SLFunction result = functionsObject.functions.get(name);
+        if (result == null) {
+            result = new SLFunction(callTarget);
+            functionsObject.functions.put(name, result);
+        } else {
+            result.setCallTarget(callTarget);
+        }
+        return result;
     }
 
+    /**
+     * Registers a map of functions. The once registered map must not change in order to allow to
+     * cache the registration for the entire map. If the map is changed after registration the
+     * functions might not get registered.
+     */
+    @TruffleBoundary
     public void register(Map<String, RootCallTarget> newFunctions) {
+        if (registeredFunctions.containsKey(newFunctions)) {
+            return;
+        }
         for (Map.Entry<String, RootCallTarget> entry : newFunctions.entrySet()) {
             register(entry.getKey(), entry.getValue());
         }
+        registeredFunctions.put(newFunctions, null);
     }
 
     public void register(Source newFunctions) {

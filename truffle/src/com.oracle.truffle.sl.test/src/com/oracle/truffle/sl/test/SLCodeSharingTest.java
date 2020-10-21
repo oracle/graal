@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm;
+package com.oracle.truffle.sl.test;
 
-import org.graalvm.wasm.exception.WasmValidationException;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-public class ValueTypes {
-    public static final byte VOID_TYPE = 0x40;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Source;
+import org.junit.Test;
 
-    public static final byte I32_TYPE = 0x7F;
-    public static final byte I64_TYPE = 0x7E;
-    public static final byte F32_TYPE = 0x7D;
-    public static final byte F64_TYPE = 0x7C;
+public class SLCodeSharingTest {
 
-    public static String asString(int valueType) {
-        switch (valueType) {
-            case I32_TYPE:
-                return "i32";
-            case I64_TYPE:
-                return "i64";
-            case F32_TYPE:
-                return "f32";
-            case F64_TYPE:
-                return "f64";
-            default:
-                throw new WasmValidationException("Unknown value type: 0x" + Integer.toHexString(valueType));
+    private static Source createFib() {
+        return Source.newBuilder("sl", "" +
+                        "function fib(n) {\n" +
+                        "  if (n == 1 || n == 2) {\n" +
+                        "    return 1;\n" +
+                        "  }\n" +
+                        "  return fib(n - 1) + fib(n - 2);\n" +
+                        "}\n",
+                        "fib.sl").buildLiteral();
+    }
+
+    @Test
+    public void testFibSharing() throws Exception {
+        Source fib = createFib();
+        try (Engine engine = Engine.create()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                assertEquals(0, engine.getCachedSources().size());
+                context.eval(fib);
+                assertEquals(1, engine.getCachedSources().size());
+                assertTrue(engine.getCachedSources().contains(fib));
+            }
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                assertEquals(1, engine.getCachedSources().size());
+                assertTrue(engine.getCachedSources().contains(fib));
+                context.eval(fib);
+                assertEquals(1, engine.getCachedSources().size());
+                assertTrue(engine.getCachedSources().contains(fib));
+            }
         }
     }
+
 }

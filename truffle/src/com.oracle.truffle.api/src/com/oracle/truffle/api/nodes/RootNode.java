@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -434,6 +435,40 @@ public abstract class RootNode extends ExecutableNode {
     protected Object translateStackTraceElement(TruffleStackTraceElement element) {
         Node location = element.getLocation();
         return NodeAccessor.EXCEPTION.createDefaultStackTraceElementObject(element.getTarget().getRootNode(), location != null ? location.getEncapsulatingSourceSection() : null);
+    }
+
+    /**
+     * Allows languages to perform actions before a root node is attempted to be compiled without
+     * prior call to {@link #execute(VirtualFrame)}. By default this method returns
+     * <code>null</code> to indicate that AOT compilation is not supported. Any non-null value
+     * indicates that compilation without execution is supported for this root node. This method is
+     * guaranteed to not be invoked prior to any calls to {@link #execute(VirtualFrame) execute}.
+     * <p>
+     * Common tasks that need to be performed by this method:
+     * <ul>
+     * <li>Initialize local variable types in the {@link FrameDescriptor} of the root node. Without
+     * that any access to the frame will invalidate the code on first execute.
+     * <li>Initialize specializing nodes with profiles that do not invalidate on first execution.
+     * <li>Compute the expected execution signature of a root node and return it.
+     * </ul>
+     * <p>
+     * If possible an {@link ExecutionSignature execution signature} should be returned for better
+     * call efficiency. If the argument and return profile is not available or cannot be derived the
+     * {@link ExecutionSignature#GENERIC} can be used to indicate that any value needs to be
+     * expected for as argument from or as return value of the method. To indicate that a type is
+     * unknown a <code>null</code> return or argument type should be used. The type
+     * <code>Object</code> type should not be used in that case.
+     * <p>
+     * This method is invoked when no context is currently {@link TruffleContext#enter(Node)
+     * entered} therefore no guest application code must be executed. The execution might happen on
+     * any thread, even threads unknown to the guest language implementation. It is allowed to
+     * create new {@link CallTarget call targets} during preparation of the root node or perform
+     * modifications to the {@link TruffleLanguage language} of this root node.
+     *
+     * @since 20.3
+     */
+    protected ExecutionSignature prepareForAOT() {
+        return null;
     }
 
     /**

@@ -28,13 +28,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.Assumptions.Assumption;
-
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -44,6 +40,9 @@ import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.Assumptions.Assumption;
 
 /**
  * A mechanism for Truffle to update a {@link CompilationResult} before it is
@@ -67,9 +66,9 @@ class TruffleCompilationResultBuilderFactory implements CompilationResultBuilder
     }
 
     @Override
-    public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
+    public CompilationResultBuilder createBuilder(CodeGenProviders providers, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     OptionValues options, DebugContext debug, CompilationResult compilationResult, Register uncompressedNullRegister) {
-        return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister) {
+        return new CompilationResultBuilder(providers, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister) {
             @Override
             protected void closeCompilationResult() {
                 CompilationResult result = this.compilationResult;

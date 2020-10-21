@@ -46,7 +46,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.dsl.Cached;
@@ -104,9 +103,13 @@ public final class SLFunction implements TruffleObject {
     private final CyclicAssumption callTargetStable;
 
     protected SLFunction(SLLanguage language, String name) {
-        this.name = name;
-        this.callTarget = Truffle.getRuntime().createCallTarget(new SLUndefinedFunctionRootNode(language, name));
+        this(language.getOrCreateUndefinedFunction(name));
+    }
+
+    protected SLFunction(RootCallTarget callTarget) {
+        this.name = callTarget.getRootNode().getName();
         this.callTargetStable = new CyclicAssumption(name);
+        setCallTarget(callTarget);
     }
 
     public String getName() {
@@ -114,13 +117,16 @@ public final class SLFunction implements TruffleObject {
     }
 
     protected void setCallTarget(RootCallTarget callTarget) {
+        boolean wasNull = this.callTarget == null;
         this.callTarget = callTarget;
         /*
          * We have a new call target. Invalidate all code that speculated that the old call target
          * was stable.
          */
         LOG.log(Level.FINE, "Installed call target for: {0}", name);
-        callTargetStable.invalidate();
+        if (!wasNull) {
+            callTargetStable.invalidate();
+        }
     }
 
     public RootCallTarget getCallTarget() {

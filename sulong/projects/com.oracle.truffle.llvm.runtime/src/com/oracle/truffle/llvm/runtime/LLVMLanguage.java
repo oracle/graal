@@ -48,9 +48,6 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.ObjectType;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.config.Configuration;
@@ -71,13 +68,6 @@ import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
                 fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class}, version = LLVMConfig.VERSION)
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
-
-    static class GlobalObjectType extends ObjectType {
-        private static final GlobalObjectType INSTANCE = new GlobalObjectType();
-    }
-
-    static final Layout GLOBAL_LAYOUT = Layout.createLayout();
-    Shape emptyGlobalShape = GLOBAL_LAYOUT.createShape(GlobalObjectType.INSTANCE);
 
     static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";
     static final String LLVM_BITCODE_EXTENSION = "bc";
@@ -270,7 +260,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     /**
      * If a library has already been parsed, the call target will be retrieved from the language
      * cache.
-     * 
+     *
      * @param request request for parsing
      * @return calltarget of the library
      */

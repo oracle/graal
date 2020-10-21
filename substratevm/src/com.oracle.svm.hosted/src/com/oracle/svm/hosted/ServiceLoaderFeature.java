@@ -31,8 +31,11 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -86,6 +89,15 @@ public class ServiceLoaderFeature implements Feature {
         public static final HostedOptionKey<Boolean> TraceServiceLoaderFeature = new HostedOptionKey<>(false);
     }
 
+    /**
+     * Services that should not be processes here, for example because they are handled by
+     * specialized features.
+     */
+    private static final Set<String> SERVICES_TO_SKIP = new HashSet<>(Arrays.asList(
+                    "java.security.Provider",                       // see SecurityServicesFeature
+                    "sun.util.locale.provider.LocaleDataMetaInfo"   // see LocaleSubstitutions
+    ));
+
     /** Copy of private field {@code ServiceLoader.PREFIX}. */
     private static final String LOCATION_PREFIX = "META-INF/services/";
 
@@ -95,11 +107,26 @@ public class ServiceLoaderFeature implements Feature {
      */
     private final Map<AnalysisType, Boolean> processedTypes = new ConcurrentHashMap<>();
 
+    /**
+     * Known services and their providers declared using modules.
+     */
+    private Map<String, List<String>> serviceProviders;
+
     private final boolean trace = Options.TraceServiceLoaderFeature.getValue();
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return Options.UseServiceLoaderFeature.getValue();
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        serviceProviders = ModuleAccess.lookupServiceProviders(access);
+        if (trace) {
+            int services = serviceProviders.keySet().size();
+            int providers = serviceProviders.values().stream().mapToInt(List::size).sum();
+            System.out.println("ServiceLoaderFeature: Discovered " + services + " with " + providers + " service providers registered using modules");
+        }
     }
 
     @SuppressWarnings("try")
@@ -140,6 +167,13 @@ public class ServiceLoaderFeature implements Feature {
         String serviceClassName = type.toClassName();
         String serviceResourceLocation = LOCATION_PREFIX + serviceClassName;
 
+        if (SERVICES_TO_SKIP.contains(serviceClassName)) {
+            if (trace) {
+                System.out.println("ServiceLoaderFeature: Skipping service " + serviceClassName);
+            }
+            return false;
+        }
+
         /*
          * We are using a TreeSet to remove duplicate entries and to have a stable order for the
          * resource that is put into the image.
@@ -164,6 +198,14 @@ public class ServiceLoaderFeature implements Feature {
             } catch (IOException ex) {
                 throw UserError.abort(ex, "Error loading service implementations for service `%s` from URL `%s`", serviceClassName, resourceURL);
             }
+        }
+
+        List<String> providers = serviceProviders.get(serviceClassName);
+        if (providers != null) {
+            if (trace) {
+                System.out.println("ServiceLoaderFeature: found service declared using java modules: " + serviceClassName + " with providers: " + providers);
+            }
+            implementationClassNames.addAll(providers);
         }
 
         if (implementationClassNames.size() == 0) {

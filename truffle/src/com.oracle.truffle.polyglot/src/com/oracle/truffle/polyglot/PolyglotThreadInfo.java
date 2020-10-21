@@ -59,7 +59,7 @@ final class PolyglotThreadInfo {
      * Only modify if Thread.currentThread() == thread.get().
      */
     private volatile int enteredCount;
-    final LinkedList<Object> explicitContextStack = new LinkedList<>();
+    final LinkedList<PolyglotContextImpl> explicitContextStack = new LinkedList<>();
     volatile boolean cancelled;
     private Object originalContextClassLoader = NULL_CLASS_LOADER;
     private ClassLoaderEntry prevContextClassLoader;

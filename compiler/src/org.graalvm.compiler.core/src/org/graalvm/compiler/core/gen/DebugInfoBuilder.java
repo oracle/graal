@@ -35,6 +35,7 @@ import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.ConstantValue;
+import org.graalvm.compiler.lir.ImplicitLIRFrameState;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
@@ -85,7 +86,7 @@ public class DebugInfoBuilder {
 
     protected final Queue<VirtualObjectNode> pendingVirtualObjects = new ArrayDeque<>();
 
-    public LIRFrameState build(NodeWithState node, FrameState topState, LabelRef exceptionEdge) {
+    public LIRFrameState build(NodeWithState node, FrameState topState, LabelRef exceptionEdge, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
         assert virtualObjects.size() == 0;
         assert objectStates.size() == 0;
         assert pendingVirtualObjects.size() == 0;
@@ -187,7 +188,11 @@ public class DebugInfoBuilder {
         }
         objectStates.clear();
 
-        return newLIRFrameState(exceptionEdge, frame, virtualObjectsArray);
+        if (deoptReasonAndAction == null && deoptSpeculation == null) {
+            return new LIRFrameState(frame, virtualObjectsArray, exceptionEdge);
+        } else {
+            return new ImplicitLIRFrameState(frame, virtualObjectsArray, exceptionEdge, deoptReasonAndAction, deoptSpeculation);
+        }
     }
 
     private boolean checkValues(ResolvedJavaType type, JavaValue[] values, JavaKind[] slotKinds) {
@@ -239,10 +244,6 @@ public class DebugInfoBuilder {
      */
     protected JavaKind storageKind(JavaType type) {
         return type.getJavaKind();
-    }
-
-    protected LIRFrameState newLIRFrameState(LabelRef exceptionEdge, BytecodeFrame frame, VirtualObject[] virtualObjectsArray) {
-        return new LIRFrameState(frame, virtualObjectsArray, exceptionEdge);
     }
 
     /**

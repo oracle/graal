@@ -32,17 +32,19 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.log.Log;
 
 /**
- * Accounting for {@link GCImpl}. Times are in nanoseconds. ChunkBytes refer to bytes reserved (but
- * maybe not occupied). ObjectBytes refer to bytes occupied by objects.
+ * This data is only updated during a GC.
+ *
+ * ChunkBytes refer to bytes reserved (but maybe not occupied). ObjectBytes refer to bytes occupied
+ * by objects.
  */
-final class Accounting {
+public final class GCAccounting {
     /* State that is available to collection policies, etc. */
     private long incrementalCollectionCount = 0;
     private long incrementalCollectionTotalNanos = 0;
     private long completeCollectionCount = 0;
     private long completeCollectionTotalNanos = 0;
     private UnsignedWord collectedTotalChunkBytes = WordFactory.zero();
-    private UnsignedWord normalChunkBytes = WordFactory.zero();
+    private UnsignedWord allocatedChunkBytes = WordFactory.zero();
     private UnsignedWord promotedTotalChunkBytes = WordFactory.zero();
     private UnsignedWord copiedTotalChunkBytes = WordFactory.zero();
 
@@ -60,29 +62,29 @@ final class Accounting {
     private UnsignedWord collectedTotalObjectBytes = WordFactory.zero();
     private UnsignedWord youngObjectBytesBefore = WordFactory.zero();
     private UnsignedWord oldObjectBytesBefore = WordFactory.zero();
-    private UnsignedWord normalObjectBytes = WordFactory.zero();
+    private UnsignedWord allocatedObjectBytes = WordFactory.zero();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    Accounting() {
+    GCAccounting() {
     }
 
-    long getIncrementalCollectionCount() {
+    public long getIncrementalCollectionCount() {
         return incrementalCollectionCount;
     }
 
-    long getIncrementalCollectionTotalNanos() {
+    public long getIncrementalCollectionTotalNanos() {
         return incrementalCollectionTotalNanos;
     }
 
-    UnsignedWord getNormalChunkBytes() {
-        return normalChunkBytes;
+    UnsignedWord getAllocatedChunkBytes() {
+        return allocatedChunkBytes;
     }
 
-    long getCompleteCollectionCount() {
+    public long getCompleteCollectionCount() {
         return completeCollectionCount;
     }
 
-    long getCompleteCollectionTotalNanos() {
+    public long getCompleteCollectionTotalNanos() {
         return completeCollectionTotalNanos;
     }
 
@@ -94,16 +96,20 @@ final class Accounting {
         return collectedTotalObjectBytes;
     }
 
-    UnsignedWord getNormalObjectBytes() {
-        return normalObjectBytes;
+    UnsignedWord getAllocatedObjectBytes() {
+        return allocatedObjectBytes;
     }
 
-    UnsignedWord getOldGenerationAfterChunkBytes() {
+    public UnsignedWord getOldGenerationAfterChunkBytes() {
         return oldChunkBytesAfter;
     }
 
     UnsignedWord getYoungChunkBytesAfter() {
         return youngChunkBytesAfter;
+    }
+
+    public static UnsignedWord getSurvivorSpaceAfterChunkBytes(int survivorIndex) {
+        return HeapImpl.getHeapImpl().getYoungGeneration().getSurvivorFromSpaceAt(survivorIndex).getChunkBytes();
     }
 
     UnsignedWord getLastCollectionPromotedChunkBytes() {
@@ -115,16 +121,16 @@ final class Accounting {
         /* Gather some space statistics. */
         HeapImpl heap = HeapImpl.getHeapImpl();
         YoungGeneration youngGen = heap.getYoungGeneration();
-        youngChunkBytesBefore = youngGen.getChunkUsedBytes();
+        youngChunkBytesBefore = youngGen.getChunkBytes();
         /* This is called before the collection, so OldSpace is FromSpace. */
         Space oldSpace = heap.getOldGeneration().getFromSpace();
         oldChunkBytesBefore = oldSpace.getChunkBytes();
         /* Objects are allocated in the young generation. */
-        normalChunkBytes = normalChunkBytes.add(youngChunkBytesBefore);
+        allocatedChunkBytes = allocatedChunkBytes.add(youngChunkBytesBefore);
         if (HeapOptions.PrintGCSummary.getValue()) {
-            youngObjectBytesBefore = youngGen.getObjectBytes();
-            oldObjectBytesBefore = oldSpace.getObjectBytes();
-            normalObjectBytes = normalObjectBytes.add(youngObjectBytesBefore);
+            youngObjectBytesBefore = youngGen.computeObjectBytes();
+            oldObjectBytesBefore = oldSpace.computeObjectBytes();
+            allocatedObjectBytes = allocatedObjectBytes.add(youngObjectBytesBefore);
         }
         trace.string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
                         .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
@@ -175,7 +181,7 @@ final class Accounting {
         HeapImpl heap = HeapImpl.getHeapImpl();
         // This is called after the collection, after the space flip, so OldSpace is FromSpace.
         YoungGeneration youngGen = heap.getYoungGeneration();
-        youngChunkBytesAfter = youngGen.getChunkUsedBytes();
+        youngChunkBytesAfter = youngGen.getChunkBytes();
         Space oldSpace = heap.getOldGeneration().getFromSpace();
         oldChunkBytesAfter = oldSpace.getChunkBytes();
         UnsignedWord beforeChunkBytes = youngChunkBytesBefore.add(oldChunkBytesBefore);
@@ -183,8 +189,8 @@ final class Accounting {
         UnsignedWord collectedChunkBytes = beforeChunkBytes.subtract(afterChunkBytes);
         collectedTotalChunkBytes = collectedTotalChunkBytes.add(collectedChunkBytes);
         if (HeapOptions.PrintGCSummary.getValue()) {
-            UnsignedWord youngObjectBytesAfter = youngGen.getObjectBytes();
-            UnsignedWord oldObjectBytesAfter = oldSpace.getObjectBytes();
+            UnsignedWord youngObjectBytesAfter = youngGen.computeObjectBytes();
+            UnsignedWord oldObjectBytesAfter = oldSpace.computeObjectBytes();
             UnsignedWord beforeObjectBytes = youngObjectBytesBefore.add(oldObjectBytesBefore);
             UnsignedWord collectedObjectBytes = beforeObjectBytes.subtract(oldObjectBytesAfter).subtract(youngObjectBytesAfter);
             collectedTotalObjectBytes = collectedTotalObjectBytes.add(collectedObjectBytes);

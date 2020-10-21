@@ -237,7 +237,7 @@ final class PolyglotLimits {
         }
 
         void initialize(PolyglotLimits limits, PolyglotContextImpl context) {
-            assert Thread.holdsLock(engine);
+            assert Thread.holdsLock(engine.lock);
             Predicate<Source> newPredicate = limits.statementLimitSourcePredicate;
             if (newPredicate == null) {
                 newPredicate = NO_PREDICATE;
@@ -265,7 +265,7 @@ final class PolyglotLimits {
                             @Override
                             public boolean test(com.oracle.truffle.api.source.Source s) {
                                 try {
-                                    return statementLimitSourcePredicate.test(engine.getImpl().getPolyglotSource(s));
+                                    return statementLimitSourcePredicate.test(engine.getImpl().getOrCreatePolyglotSource(s));
                                 } catch (Throwable e) {
                                     throw PolyglotImpl.hostToGuestException(context, e);
                                 }

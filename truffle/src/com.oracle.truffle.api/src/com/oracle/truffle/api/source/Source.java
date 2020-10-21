@@ -45,6 +45,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -157,13 +158,24 @@ public abstract class Source {
     private static final int BUFFER_SIZE = 8192;
     static final Class<?> BYTE_SEQUENCE_CLASS = ByteSequence.create(new byte[0]).getClass();
 
-    private static final InternedSources SOURCES = new InternedSources();
+    static final InternedSources SOURCES = new InternedSources();
 
     private volatile TextMap textMap;
     private volatile URI computedURI;
-    volatile org.graalvm.polyglot.Source polyglotSource;
+    /*
+     * We use the original polyglot source as an e polyglot embedding API indicato whether we should
+     * continue to hold on to caches(ASTs, code) related to this source. If this reference is strong
+     * it would keep that polyglot reference potentially always alive, because Truffle sources are
+     * interned.
+     *
+     * If no one is referencing the polyglot source anymore we can assume that no one relies on the
+     * identity of the original polyglot source. So we can just as well free it.
+     */
+    volatile WeakReference<org.graalvm.polyglot.Source> cachedPolyglotSource;
 
     abstract Object getSourceId();
+
+    abstract Object getSourceKey();
 
     Source() {
     }
@@ -259,7 +271,10 @@ public abstract class Source {
         if (!(obj instanceof Source)) {
             return false;
         }
-        return getSourceId().equals(((Source) obj).getSourceId());
+
+        boolean result = getSourceId().equals(((Source) obj).getSourceId());
+        assert result == getSourceKey().equals(((Source) obj).getSourceKey());
+        return result;
     }
 
     /**

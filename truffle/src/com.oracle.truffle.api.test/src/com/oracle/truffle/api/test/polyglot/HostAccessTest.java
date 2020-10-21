@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFa
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -106,6 +107,21 @@ public class HostAccessTest {
         assertEquals("HostAccess.NONE", HostAccess.NONE.toString());
     }
 
+    @Test
+    public void constantsCanBeCopied() {
+        verifyObjectImpl(HostAccess.NONE);
+        verifyObjectImpl(HostAccess.EXPLICIT);
+        verifyObjectImpl(HostAccess.ALL);
+    }
+
+    private static void verifyObjectImpl(HostAccess access) {
+        HostAccess otherAccess = HostAccess.newBuilder(access).build();
+        assertNotSame(access, otherAccess);
+        assertEquals(access, otherAccess);
+        assertEquals(access.hashCode(), otherAccess.hashCode());
+        assertNotNull(access.toString());
+    }
+
     public static class MyEquals {
 
         @Override
@@ -131,7 +147,6 @@ public class HostAccessTest {
             denyAccess(Object.class, false).
             build();
         // @formatter:on
-
         setupEnv(config);
 
         Value readValue = context.eval("sl", "" +
@@ -162,7 +177,6 @@ public class HostAccessTest {
             denyAccess(Object.class, false).
             build();
         // @formatter:on
-
         setupEnv(config);
         Value readValue = context.eval("sl", "" +
                         "function readValue(x, y) {\n" +
@@ -410,12 +424,15 @@ public class HostAccessTest {
             builder.allowImplementationsAnnotatedBy(FunctionalInterface.class);
             builder.allowImplementationsAnnotatedBy(HostAccess.Implementable.class);
             builder.allowAccessAnnotatedBy(HostAccess.Export.class);
-            setupEnv(builder.build());
+            HostAccess access = builder.build();
+            verifyObjectImpl(access);
+            setupEnv(access);
         }
     }
 
     private void setupEnv(HostAccess access) {
         tearDown();
+        verifyObjectImpl(access);
         context = Context.newBuilder().allowHostAccess(access).build();
     }
 

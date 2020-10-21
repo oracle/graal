@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime;
+package com.oracle.truffle.tools.coverage.impl;
 
-public interface PrioritizedServiceProvider {
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-    default int getPriority() {
-        return 0;
+class CoverageException extends AbstractTruffleException {
+
+    private static final long serialVersionUID = -658136962028990564L;
+
+    CoverageException(String message) {
+        super(message);
     }
-
 }

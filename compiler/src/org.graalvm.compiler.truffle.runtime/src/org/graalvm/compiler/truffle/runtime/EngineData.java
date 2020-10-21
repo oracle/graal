@@ -57,11 +57,15 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
+import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.getRuntime;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Level;
 
@@ -78,23 +82,16 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Class used to store data used by the compiler in the Engine. Enables "global" compiler state per
- * engine.
+ * engine. One-to-one relationship with a polyglot Engine instance.
  */
 public final class EngineData {
-
-    static final BiFunction<OptionValues, Function<String, TruffleLogger>, EngineData> ENGINE_DATA_SUPPLIER = new BiFunction<OptionValues, Function<String, TruffleLogger>, EngineData>() {
-        @Override
-        public EngineData apply(OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory) {
-            return new EngineData(engineOptions, loggerFactory);
-        }
-    };
 
     private static final AtomicLong engineCounter = new AtomicLong();
 
     int splitLimit;
     int splitCount;
     public final long id;
-    private final Function<String, TruffleLogger> loggerFactory;
+    private Function<String, TruffleLogger> loggerFactory;
     @CompilationFinal OptionValues engineOptions;
     final TruffleSplittingStrategy.SplitStatisticsData splittingStatistics;
     @CompilationFinal public StatisticsListener statisticsListener;
@@ -141,20 +138,91 @@ public final class EngineData {
     // Cached parsed CompileOnly includes and excludes
     private volatile Pair<List<String>, List<String>> parsedCompileOnly;
 
+    private Object polyglotEngine;
+
+    /*
+     * Extension data for dynamically bound engine extensions.
+     */
+    private volatile Map<Class<?>, Object> engineLocals;
+
     EngineData(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
+        Objects.requireNonNull(options);
         this.id = engineCounter.incrementAndGet();
         this.loggerFactory = loggerFactory;
-        loadOptions(options);
+        this.loadOptions(options);
 
         // the splittingStatistics requires options to be initialized
         this.splittingStatistics = new TruffleSplittingStrategy.SplitStatisticsData();
     }
 
-    public OptionValues getEngineOptions() {
-        return engineOptions;
+    public void preinitializeContext() {
+        GraalRuntimeAccessor.ENGINE.preinitializeContext(this.polyglotEngine);
     }
 
-    void loadOptions(OptionValues options) {
+    public Object getEngineLock() {
+        return GraalRuntimeAccessor.ENGINE.getEngineLock(this.polyglotEngine);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T getEngineLocal(Class<T> symbol) {
+        Map<Class<?>, Object> data = this.engineLocals;
+        if (data == null) {
+            return null;
+        }
+        return (T) data.get(symbol);
+    }
+
+    public void clearEngineLocal(Class<?> symbol) {
+        Map<Class<?>, Object> data = this.engineLocals;
+        if (data == null) {
+            return;
+        }
+        data.remove(symbol);
+    }
+
+    public <T> void putEngineLocal(Class<T> symbol, T value) {
+        Map<Class<?>, Object> data = this.engineLocals;
+        if (data == null) {
+            synchronized (this) {
+                data = this.engineLocals;
+                if (data == null) {
+                    this.engineLocals = data = new ConcurrentHashMap<>();
+                }
+            }
+        }
+        Object prev = data.putIfAbsent(symbol, symbol.cast(value));
+        if (prev != null) {
+            throw new IllegalArgumentException("Cannot set engine local. Key " + symbol + " is already defined.");
+        }
+    }
+
+    void onEngineCreated(Object engine) {
+        assert this.polyglotEngine == null;
+        this.polyglotEngine = engine;
+        getRuntime().getEngineCacheSupport().onEngineCreated(this);
+    }
+
+    void onEnginePatch(OptionValues newOptions, Function<String, TruffleLogger> newLoggerFactory) {
+        this.loggerFactory = newLoggerFactory;
+        loadOptions(newOptions);
+        getRuntime().getEngineCacheSupport().onEnginePatch(this);
+    }
+
+    public Object getPolyglotEngine() {
+        return polyglotEngine;
+    }
+
+    boolean onEngineClosing() {
+        return getRuntime().getEngineCacheSupport().onEngineClosing(this);
+    }
+
+    void onEngineClosed() {
+        getRuntime().getListener().onEngineClosed(this);
+        getRuntime().getEngineCacheSupport().onEngineClosed(this);
+        this.polyglotEngine = null;
+    }
+
+    private void loadOptions(OptionValues options) {
         this.engineOptions = options;
 
         // splitting options
@@ -258,6 +326,18 @@ public final class EngineData {
             parsedCompileOnly = result;
         }
         return result;
+    }
+
+    public OptionValues getEngineOptions() {
+        return engineOptions;
+    }
+
+    @SuppressWarnings({"static-method", "unchecked"})
+    public Collection<OptimizedCallTarget> getCallTargets() {
+        if (polyglotEngine == null) {
+            throw new IllegalStateException("No polyglot engine initialized.");
+        }
+        return (Collection<OptimizedCallTarget>) GraalRuntimeAccessor.ENGINE.findCallTargets(polyglotEngine);
     }
 
     private static ExceptionAction computeCompilationFailureAction(OptionValues options) {

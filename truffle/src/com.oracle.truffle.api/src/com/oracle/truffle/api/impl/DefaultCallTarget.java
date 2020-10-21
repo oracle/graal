@@ -105,7 +105,7 @@ public final class DefaultCallTarget implements RootCallTarget {
     private void initialize() {
         synchronized (this) {
             if (!this.initialized) {
-                DefaultRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode());
+                DefaultRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode(), true);
                 this.initialized = true;
             }
         }

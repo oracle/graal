@@ -92,7 +92,7 @@ abstract class HostToGuestRootNode extends RootNode {
             assert languageContext != null;
             PolyglotContextImpl context = languageContext.context;
             boolean needsEnter = needsEnter() && languageContext != null && engine.needsEnter(context);
-            Object prev;
+            PolyglotContextImpl prev;
             if (needsEnter) {
                 if (!seenEnter) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

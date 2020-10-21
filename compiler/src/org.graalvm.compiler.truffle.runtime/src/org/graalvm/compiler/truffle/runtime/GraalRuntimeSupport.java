@@ -24,12 +24,14 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import java.util.function.Function;
+
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
@@ -68,8 +70,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public OptionDescriptors getCompilerOptionDescriptors() {
-        return PolyglotCompilerOptions.getDescriptors();
+    public OptionDescriptors getEngineOptionDescriptors() {
+        return GraalTruffleRuntime.getRuntime().getEngineOptionDescriptors();
     }
 
     @Override
@@ -85,22 +87,12 @@ final class GraalRuntimeSupport extends RuntimeSupport {
      */
     @Override
     public void initializeProfile(CallTarget target, Class<?>[] argumentTypes) {
-        ((OptimizedCallTarget) target).initializeArgumentTypes(argumentTypes);
+        ((OptimizedCallTarget) target).initializeUnsafeArgumentTypes(argumentTypes);
     }
 
     @Override
     public <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor) {
         return new OptimizedBlockNode<>(elements, executor);
-    }
-
-    @Override
-    public void reloadEngineOptions(Object runtimeData, OptionValues optionValues) {
-        ((EngineData) runtimeData).loadOptions(optionValues);
-    }
-
-    @Override
-    public void onEngineClosed(Object runtimeData) {
-        GraalTruffleRuntime.getRuntime().onEngineClosed((EngineData) runtimeData);
     }
 
     @Override
@@ -170,7 +162,45 @@ final class GraalRuntimeSupport extends RuntimeSupport {
                 target.cancelCompilation("Polyglot engine was closed.");
             }
         }
-
     }
 
+    @Override
+    public Object tryLoadCachedEngine(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
+        return GraalTruffleRuntime.getRuntime().getEngineCacheSupport().tryLoadingCachedEngine(options, loggerFactory);
+    }
+
+    @Override
+    public boolean isStoreEnabled(OptionValues options) {
+        return EngineCacheSupport.get().isStoreEnabled(options);
+    }
+
+    @Override
+    public Object createRuntimeData(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
+        return new EngineData(options, loggerFactory);
+    }
+
+    @Override
+    public void onEngineCreate(Object engine, Object runtimeData) {
+        ((EngineData) runtimeData).onEngineCreated(engine);
+    }
+
+    @Override
+    public void onEnginePatch(Object runtimeData, OptionValues options, Function<String, TruffleLogger> loggerFactory) {
+        ((EngineData) runtimeData).onEnginePatch(options, loggerFactory);
+    }
+
+    @Override
+    public boolean onEngineClosing(Object runtimeData) {
+        return ((EngineData) runtimeData).onEngineClosing();
+    }
+
+    @Override
+    public void onEngineClosed(Object runtimeData) {
+        ((EngineData) runtimeData).onEngineClosed();
+    }
+
+    @Override
+    public boolean isOSRRootNode(RootNode rootNode) {
+        return rootNode instanceof OptimizedOSRLoopNode.OSRRootNode;
+    }
 }

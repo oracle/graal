@@ -32,4 +32,6 @@ public interface ImageHeap {
     ImageHeapObject addLateToImageHeap(Object object, String reason);
 
     ImageHeapObject addFillerObject(int size);
+
+    int countDynamicHubs();
 }

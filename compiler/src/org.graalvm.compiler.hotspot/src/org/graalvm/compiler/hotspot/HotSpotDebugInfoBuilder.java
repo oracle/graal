@@ -49,6 +49,7 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -103,6 +104,11 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
             if (DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls.containsValue(descriptor.getSignature())) {
                 return true;
             }
+        }
+        FrameState current = topState;
+        while (current != null) {
+            assert current.getMethod() instanceof HotSpotResolvedJavaMethod : current;
+            current = current.outerFrameState();
         }
         // There are many properties of FrameStates which could be validated though it's complicated
         // by some of the idiomatic ways that they are used. This check specifically tries to catch

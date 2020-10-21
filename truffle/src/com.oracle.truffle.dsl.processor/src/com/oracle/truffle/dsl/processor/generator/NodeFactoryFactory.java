@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,10 @@
 package com.oracle.truffle.dsl.processor.generator;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.modifiers;
+import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -260,38 +262,22 @@ public class NodeFactoryFactory {
             method.getModifiers().add(visibility);
         }
         method.getModifiers().add(Modifier.STATIC);
-
-        String varName = instanceVarName(node);
-
-        CodeTreeBuilder builder = method.createBuilder();
-        builder.startIf();
-        builder.string(varName).string(" == null");
-        builder.end().startBlock();
-
-        builder.startStatement();
-        builder.string(varName);
-        builder.string(" = ");
-        builder.startNew(factoryClassName(node.getTemplateType())).end();
-        builder.end();
-
-        builder.end();
-        builder.startReturn().string(varName).end();
+        method.createBuilder().startReturn().string(instanceVarName(node)).end();
         return method;
     }
 
     private static String instanceVarName(NodeData node) {
         if (node.getDeclaringNode() != null) {
-            return ElementUtils.firstLetterLowerCase(factoryClassName(node.getTemplateType())) + "Instance";
+            return ElementUtils.createConstantName(factoryClassName(node.getTemplateType())) + "_INSTANCE";
         } else {
-            return "instance";
+            return "INSTANCE";
         }
     }
 
     private CodeVariableElement createInstanceConstant(TypeMirror factoryType) {
         String varName = instanceVarName(node);
-        CodeVariableElement var = new CodeVariableElement(modifiers(), factoryType, varName);
-        var.getModifiers().add(Modifier.PRIVATE);
-        var.getModifiers().add(Modifier.STATIC);
+        CodeVariableElement var = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), factoryType, varName);
+        var.createInitBuilder().startNew(factoryClassName(node.getTemplateType())).end();
         return var;
     }
 

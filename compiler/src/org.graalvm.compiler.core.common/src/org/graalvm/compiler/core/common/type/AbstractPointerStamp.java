@@ -68,7 +68,7 @@ public abstract class AbstractPointerStamp extends Stamp {
     }
 
     protected Stamp defaultPointerJoin(Stamp stamp) {
-        assert getClass() == stamp.getClass();
+        assert getClass() == stamp.getClass() : this + " " + stamp;
         AbstractPointerStamp other = (AbstractPointerStamp) stamp;
         boolean joinNonNull = this.nonNull || other.nonNull;
         boolean joinAlwaysNull = this.alwaysNull || other.alwaysNull;

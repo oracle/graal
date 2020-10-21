@@ -416,7 +416,13 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         r.register0("isProfilingEnabled", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(Truffle.getRuntime().isProfilingEnabled()));
+                boolean constantBoolean;
+                if (profilingEnabled == null) {
+                    constantBoolean = false;
+                } else {
+                    constantBoolean = profilingEnabled;
+                }
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(constantBoolean));
                 return true;
             }
         });
@@ -468,6 +474,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         return true;
     }
+
+    private Boolean profilingEnabled;
 
     @SuppressWarnings("deprecation")
     @Override
@@ -541,7 +549,17 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                  */
                 config.registerAsCompiled((AnalysisMethod) method);
             }
+
+            /*
+             * This effectively initializes the Truffle fallback engine which does all the system
+             * property option parsing to initialize the profilingEnabled flag correctly. A polyglot
+             * fallback engine can not stay in the the image though, so we clear it right after. We
+             * don't expect it to be used except for profiling enabled check.
+             */
+            this.profilingEnabled = Truffle.getRuntime().isProfilingEnabled();
+            invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotEngineImpl", "resetFallbackEngine", Collections.emptyList());
         }
+
         firstAnalysisRun = true;
     }
 

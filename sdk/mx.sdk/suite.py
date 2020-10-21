@@ -317,6 +317,9 @@ suite = {
         "uses" : [
           "org.graalvm.polyglot.impl.AbstractPolyglotImpl"
         ],
+        "opens" : [
+          "org.graalvm.polyglot to org.graalvm.truffle"
+        ],
       },
       "description" : "GraalVM is an ecosystem for compiling and running applications written in multiple languages.\nGraalVM removes the isolation between programming languages and enables interoperability in a shared runtime.",
     },

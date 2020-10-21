@@ -58,12 +58,12 @@ Each class can be initialized either (1) at run time, or (2) at build time.
 To specify class-initialization policies, two flags are provided: `--initialize-at-build-time` and `--initialize-at-run-time`.
 These flags allow specifying a policy for whole packages or individual classes.
 For example, if you have classes `p.C1`, `p.C2`, … , or `p.Cn`, you can eagerly initialize this package with:
-```
+```shell
 --initialize-at-build-time=p
 ```
 
 If you want to delay one of the classes in package `p`, simply add:
-```
+```shell
 --initialize-at-run-time=p.C1
 ```
 

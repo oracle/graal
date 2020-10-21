@@ -134,6 +134,7 @@ meth public static org.graalvm.polyglot.Context getCurrent()
 meth public void close()
 meth public void close(boolean)
 meth public void enter()
+meth public void interrupt(java.time.Duration) throws java.util.concurrent.TimeoutException
 meth public void leave()
 meth public void resetLimits()
 supr java.lang.Object
@@ -185,6 +186,7 @@ meth public java.lang.String getImplementationName()
 meth public java.lang.String getVersion()
 meth public java.util.Map<java.lang.String,org.graalvm.polyglot.Instrument> getInstruments()
 meth public java.util.Map<java.lang.String,org.graalvm.polyglot.Language> getLanguages()
+meth public java.util.Set<org.graalvm.polyglot.Source> getCachedSources()
 meth public org.graalvm.options.OptionDescriptors getOptions()
 meth public static java.nio.file.Path findHome()
 meth public static org.graalvm.polyglot.Engine create()
@@ -224,6 +226,8 @@ innr public abstract interface static !annotation Export
 innr public abstract interface static !annotation Implementable
 innr public final Builder
 innr public final static !enum TargetMappingPrecedence
+meth public boolean equals(java.lang.Object)
+meth public int hashCode()
 meth public java.lang.String toString()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder(org.graalvm.polyglot.HostAccess)
@@ -411,7 +415,7 @@ meth public static org.graalvm.polyglot.Source$Builder newBuilder(java.lang.Stri
 meth public static org.graalvm.polyglot.Source$Builder newBuilder(java.lang.String,java.net.URL)
 meth public static org.graalvm.polyglot.Source$Builder newBuilder(java.lang.String,org.graalvm.polyglot.io.ByteSequence,java.lang.String)
 supr java.lang.Object
-hfds EMPTY,IMPL,impl,language
+hfds EMPTY,IMPL,impl
 
 CLSS public org.graalvm.polyglot.Source$Builder
  outer org.graalvm.polyglot.Source

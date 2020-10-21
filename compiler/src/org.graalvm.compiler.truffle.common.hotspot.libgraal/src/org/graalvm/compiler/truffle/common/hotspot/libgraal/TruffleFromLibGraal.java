@@ -111,7 +111,7 @@ public @interface TruffleFromLibGraal {
         IsValueType(boolean.class, Object.class, long.class),
         Log(void.class, Object.class, String.class, Object.class, String.class),
         OnCodeInstallation(void.class, Object.class, Object.class, long.class),
-        OnCompilationFailed(void.class, Object.class, Supplier.class, boolean.class, boolean.class),
+        OnCompilationFailed(void.class, Object.class, Supplier.class, boolean.class, boolean.class, boolean.class),
         OnFailure(void.class, Object.class, Object.class, String.class, boolean.class, boolean.class),
         OnGraalTierFinished(void.class, Object.class, Object.class, long.class),
         OnSuccess(void.class, Object.class, Object.class, Object.class, long.class, long.class),

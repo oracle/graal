@@ -401,7 +401,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public boolean requiresReservedStackCheck(List<ResolvedJavaMethod> methods) {
         if (enableStackReservedZoneAddress != 0 && methods != null) {
             for (ResolvedJavaMethod method : methods) {
-                if (((HotSpotResolvedJavaMethod) method).hasReservedStackAccess()) {
+                if (method instanceof HotSpotResolvedJavaMethod && ((HotSpotResolvedJavaMethod) method).hasReservedStackAccess()) {
                     return true;
                 }
             }

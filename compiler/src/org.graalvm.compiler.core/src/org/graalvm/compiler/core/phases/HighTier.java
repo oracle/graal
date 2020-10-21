@@ -52,7 +52,7 @@ import org.graalvm.compiler.phases.common.NodeCounterPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
+import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
 public class HighTier extends BaseTier<HighTierContext> {
@@ -106,7 +106,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         if (OptReadElimination.getValue(options)) {
-            appendPhase(new EarlyReadEliminationPhase(canonicalizer));
+            appendPhase(new ReadEliminationPhase(canonicalizer));
         }
 
         if (NodeCounterPhase.Options.NodeCounters.getValue(options)) {

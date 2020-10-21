@@ -366,9 +366,16 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     }
 
     private static void notifyCompilableOfFailure(CompilableTruffleAST compilable, Throwable e) {
-        BailoutException bailout = e instanceof BailoutException ? (BailoutException) e : null;
+        Throwable error = e;
+        boolean graphTooBig = false;
+        if (error instanceof GraphTooBigBailoutException) {
+            error = error.getCause();
+            graphTooBig = true;
+        }
+        BailoutException bailout = error instanceof BailoutException ? (BailoutException) error : null;
         boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-        compilable.onCompilationFailed(() -> CompilableTruffleAST.serializeException(e), bailout != null, permanentBailout);
+        Throwable finalError = error;
+        compilable.onCompilationFailed(() -> CompilableTruffleAST.serializeException(finalError), bailout != null, permanentBailout, graphTooBig);
     }
 
     @Override

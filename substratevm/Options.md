@@ -14,7 +14,9 @@ class.
 
 - `native-image [options] -jar jarfile` to build an image for a JAR file.
 
-Options to the Native Image builder fall into four categories:
+The options passed to `native-image` are evaluated left-to-right. For more information, see [Native Image Build Configuration](BuildConfiguration.md#order-of-arguments-evaluation).
+
+The options fall into four categories:
 image generation options, macro options, non-standard options, and server options.
 Non-standard and server options are subject to change through a deprecation cycle.
 
@@ -80,4 +82,4 @@ The `--language:python`, `--language:ruby` and `--language:R` polyglot macro opt
 * `--dry-run`: output the command line that would be used for building
 * `-V<key>=<value>`:  provide values for placeholders in _native-image.properties_ files
 
-Native Image options are also distinguished as hosted and runtime options. Continue reading to the [ Native Image Hosted and Runtime Options](HostedvsRuntimeOptions.md) guide.
+Native Image options are also distinguished as hosted and runtime options. Continue reading to the [Native Image Hosted and Runtime Options](HostedvsRuntimeOptions.md) guide.

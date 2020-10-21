@@ -432,6 +432,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Sets the target non-trivial Truffle node size for partial compilation of BlockNode nodes.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> PartialBlockCompilationSize = new OptionKey<>(3000);
 
+    @Option(help = "Sets the maximum non-trivial Truffle node size for partial compilation of BlockNode nodes.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> PartialBlockMaximumSize = new OptionKey<>(10000);
+
     /*
      * TODO planned options (GR-13444):
      *
@@ -488,6 +491,10 @@ public final class PolyglotCompilerOptions {
             "On runtimes which doesn't support it the option has no effect.",
             category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
+
+    // Compilation queue
+    @Option(help = "Use the priority of compilation jobs in the compilation queue.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> PriorityQueue = new OptionKey<>(true);
 
     // Language agnostic inlining
 
