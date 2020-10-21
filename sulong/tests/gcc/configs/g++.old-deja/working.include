@@ -214,7 +214,6 @@ gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.jason/temporary4.C
 gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.jason/temporary7.C
 gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.jason/temporary8.C
 gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.jason/thunk1.C
-gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.jason/thunk3.C
 gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.jason/typedef2.C
 gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.jason/vecdel.C
 gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.jason/virtual2.C
