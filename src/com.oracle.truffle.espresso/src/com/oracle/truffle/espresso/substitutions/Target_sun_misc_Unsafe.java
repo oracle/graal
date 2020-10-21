@@ -29,7 +29,11 @@ import java.security.ProtectionDomain;
 import java.util.Arrays;
 import java.util.concurrent.locks.LockSupport;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -40,6 +44,8 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.ParserKlass;
+import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.jni.NativeEnv.RawPointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
@@ -425,9 +431,87 @@ public final class Target_sun_misc_Unsafe {
      * @see #getByte
      * @see #putByte
      */
+    @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static long allocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long length) {
-        return UNSAFE.allocateMemory(length);
+    public static long allocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long length, @InjectMeta Meta meta) {
+        if (meta.getContext().IsolatedNamespace) {
+            // alloc/free within the isolated native namespace.
+            JniEnv jni = meta.getContext().getJNI();
+            if (length < 0 || length > jni.SIZE_MAX()) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
+            }
+            TruffleObject result = jni.malloc(length);
+            long ptr = 0;
+            try {
+                ptr = InteropLibrary.getUncached().asPointer(result);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere(e);
+            }
+            // malloc may return anything for 0-sized allocations.
+            if (ptr == 0L && length > 0 ) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "malloc returned NULL");
+            }
+            return ptr;
+        } else {
+            // No isolated native namespace, just forward to the host.
+            try {
+                return UNSAFE.allocateMemory(length);
+            } catch (IllegalArgumentException e) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
+            } catch (OutOfMemoryError e) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Resizes a new block of native memory, to the given size in bytes. The contents of the new
+     * block past the size of the old block are uninitialized; they will generally be garbage. The
+     * resulting native pointer will be zero if and only if the requested size is zero. The
+     * resulting native pointer will be aligned for all value types. Dispose of this memory by
+     * calling {@link #freeMemory}, or resize it with {@link #reallocateMemory}. The address passed
+     * to this method may be null, in which case an allocation will be performed.
+     *
+     * @throws IllegalArgumentException if the size is negative or too large for the native size_t
+     *             type
+     *
+     * @throws OutOfMemoryError if the allocation is refused by the system
+     *
+     * @see #allocateMemory
+     */
+    @TruffleBoundary
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
+    public static long reallocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, long bytes, @InjectMeta Meta meta) {
+        if (meta.getContext().IsolatedNamespace) {
+            // alloc/free within the isolated native namespace.
+            JniEnv jni = meta.getContext().getJNI();
+            if (bytes < 0 || bytes > jni.SIZE_MAX()) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
+            }
+            TruffleObject result = jni.realloc(RawPointer.create(address), bytes);
+            long ptr = 0;
+            try {
+                ptr = InteropLibrary.getUncached().asPointer(result);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere(e);
+            }
+            // realloc may return anything for 0-sized allocations.
+            if (ptr == 0L && bytes > 0 ) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "realloc returned NULL");
+            }
+            return ptr;
+        } else {
+            // No isolated native namespace, just forward to the host.
+            try {
+                return UNSAFE.reallocateMemory(address, bytes);
+            } catch (IllegalArgumentException e) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
+            } catch (OutOfMemoryError e) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage());
+            }
+        }
     }
 
     /**
@@ -437,9 +521,16 @@ public final class Target_sun_misc_Unsafe {
      *
      * @see #allocateMemory
      */
+    @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static void freeMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address) {
-        UNSAFE.freeMemory(address);
+    public static void freeMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, @InjectMeta Meta meta) {
+        if (meta.getContext().IsolatedNamespace) {
+            // alloc/free within the isolated native namespace.
+            meta.getContext().getJNI().free(RawPointer.create(address));
+        } else {
+            // No isolated native namespace, just forward to the host.
+            UNSAFE.freeMemory(address);
+        }
     }
 
     // region get*(Object holder, long offset)
@@ -1290,26 +1381,6 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static void fullFence(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self) {
         UNSAFE.fullFence();
-    }
-
-    /**
-     * Resizes a new block of native memory, to the given size in bytes. The contents of the new
-     * block past the size of the old block are uninitialized; they will generally be garbage. The
-     * resulting native pointer will be zero if and only if the requested size is zero. The
-     * resulting native pointer will be aligned for all value types. Dispose of this memory by
-     * calling {@link #freeMemory}, or resize it with {@link #reallocateMemory}. The address passed
-     * to this method may be null, in which case an allocation will be performed.
-     *
-     * @throws IllegalArgumentException if the size is negative or too large for the native size_t
-     *             type
-     *
-     * @throws OutOfMemoryError if the allocation is refused by the system
-     *
-     * @see #allocateMemory
-     */
-    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static long reallocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, long bytes) {
-        return UNSAFE.reallocateMemory(address, bytes);
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)

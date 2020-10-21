@@ -220,6 +220,26 @@ suite = {
             },
         },
 
+        # Shared library to overcome certain, but not all, dlmopen limitations/bugs,
+        # allowing native isolated namespaces to be rather usable.
+        "com.oracle.truffle.espresso.eden": {
+            "subDir": "src",
+            "native": "shared_lib",
+            "deliverable": "eden",
+            "platformDependent": True,
+            "os_arch": {
+                "linux": {
+                    "<others>": {
+                        "cflags" : ["-g", "-fPIC", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+                        "ldflags": [
+                            "-Wl,-soname,libeden.so",
+                        ],
+                        "ldlibs" : ["-ldl"],
+                    },
+                },
+            },
+        },
+
         "com.oracle.truffle.espresso.test": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -422,6 +442,7 @@ suite = {
                     "file:mx.espresso/reflectconfig.json",
                 ],
                 "lib/": [
+                    "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                 ],

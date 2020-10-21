@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 #if defined(_WIN32)
 #define va_copy(dest, src) (dest = src)
@@ -685,4 +686,26 @@ JNIEXPORT void JNICALL disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env
   *env = NULL;
 
   free(env);
+}
+
+JNIEXPORT void * JNICALL allocateMemory(size_t size) {
+  return malloc(size);
+}
+
+JNIEXPORT void JNICALL freeMemory(void *ptr) {
+  free(ptr);
+}
+
+JNIEXPORT void * JNICALL reallocateMemory(void *ptr, size_t new_size) {
+  return realloc(ptr, new_size);
+}
+
+extern void __ctype_init (void);
+
+JNIEXPORT void JNICALL ctypeInit(void) {
+  __ctype_init();
+}
+
+JNIEXPORT jlong JNICALL get_SIZE_MAX() {
+  return (jlong) SIZE_MAX;
 }

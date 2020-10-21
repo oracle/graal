@@ -164,7 +164,7 @@ public abstract class NativeEnv {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    protected static final class RawPointer implements TruffleObject {
+    public static final class RawPointer implements TruffleObject {
         private final long rawPtr;
 
         private static final RawPointer NULL = new RawPointer(0L);
