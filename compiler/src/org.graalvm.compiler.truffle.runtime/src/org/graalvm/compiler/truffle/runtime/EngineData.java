@@ -159,6 +159,10 @@ public final class EngineData {
         GraalRuntimeAccessor.ENGINE.preinitializeContext(this.polyglotEngine);
     }
 
+    public void finalizeStore() {
+        GraalRuntimeAccessor.ENGINE.finalizeStore(this.polyglotEngine);
+    }
+
     public Object getEngineLock() {
         return GraalRuntimeAccessor.ENGINE.getEngineLock(this.polyglotEngine);
     }
