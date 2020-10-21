@@ -32,21 +32,6 @@ export function findExecutable(program: string, graalVMHome?: string): string | 
     return undefined;
 }
 
-/**
- * Combine command with proxy platform-wise
- * @param cmd executable command
- * @param proxy proxy setting
- */
-export function createProxyCmd(cmd: string, proxy?: string): string {
-	if (proxy) {
-		if (process.platform === 'win32') {
-			return `cmd /C "set http_proxy=${proxy} && ${cmd}"`;
-		}
-		return `env http_proxy=${proxy} ${cmd}`;
-	}
-	return cmd;
-}
-
 export async function ask(question: string, options: {option: string, fnc?: (() => any)}[], otherwise?: (() => any)): Promise<any> {
 	const select = await vscode.window.showInformationMessage(question, ...options.map(o => o.option));
 	if (!select) {
@@ -83,12 +68,13 @@ export async function runInTerminal(command: string) {
 	terminal.sendText(command);
 }
 
-export async function checkRecommendedExtension(extensionName: string, display: string) {
+export function checkRecommendedExtension(extensionName: string, display: string): boolean {
 	const extension =  vscode.extensions.getExtension(extensionName);
 	if (!extension) {
 		askInstall(`Do you want to install the recommended extensions for ${display}?`, 
 			() => runInTerminal(`code --install-extension ${extensionName}`));
 	}
+	return extension !== undefined;
 }
 
 export function isSymlinked(dirPath: string): Promise<boolean> {

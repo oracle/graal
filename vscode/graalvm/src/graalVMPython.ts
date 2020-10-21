@@ -15,12 +15,14 @@ export function getPythonConfigurations(): ConfigurationPickItem[] {
         '(python.pythonPath)',
         graalVMHome => {
             const executable = utils.findExecutable('graalpython', graalVMHome);
-            return executable !== undefined && executable !== getConf('python').get('pythonPath');
+            if (executable) {
+                return utils.checkRecommendedExtension('ms-python.python', 'Python Language') && executable !== getConf('python').get('pythonPath');
+            }
+            return false;
         }, 
         async graalVMHome => {
             const executable = utils.findExecutable('graalpython', graalVMHome);
             if (executable) {
-                utils.checkRecommendedExtension('ms-python.python', 'Python Language');
                 return setConfig('pythonPath', executable);
             }
         })

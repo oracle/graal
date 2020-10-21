@@ -8,12 +8,12 @@
 import * as vscode from 'vscode';
 import { toggleCodeCoverage, activeTextEditorChaged } from './graalVMCoverage';
 import { GraalVMConfigurationProvider, GraalVMDebugAdapterDescriptorFactory, GraalVMDebugAdapterTracker } from './graalVMDebug';
-import { installGraalVM, addExistingGraalVM, installGraalVMComponent, uninstallGraalVMComponent, selectInstalledGraalVM, findGraalVMs, InstallationNodeProvider, Component, Installation, setupProxy, removeGraalVMInstallation } from './graalVMInstall';
+import { installGraalVM, addExistingGraalVM, installGraalVMComponent, uninstallGraalVMComponent, selectInstalledGraalVM, findGraalVMs, InstallationNodeProvider, Component, Installation, removeGraalVMInstallation } from './graalVMInstall';
 import { onClientNotification, startLanguageServer, stopLanguageServer } from './graalVMLanguageServer';
 import { installRPackage, R_LANGUAGE_SERVER_PACKAGE_NAME } from './graalVMR';
 import { installRubyGem, RUBY_LANGUAGE_SERVER_GEM_NAME } from './graalVMRuby';
 import { addNativeImageToPOM } from './graalVMNativeImage';
-import { getGVMHome, configureGraalVMHome } from './graalVMConfiguration';
+import { getGVMHome, configureGraalVMHome, setupProxy } from './graalVMConfiguration';
 import { runVisualVMForPID } from './graalVMVisualVM';
 
 const INSTALL_GRAALVM: string = 'Install GraalVM';

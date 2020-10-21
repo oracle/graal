@@ -35,11 +35,31 @@ export async function setGVMHome(graalVMHome: string | undefined, gvmConfig?: vs
 
 const CONFIG_INSTALLATIONS = 'installations';
 export function getGVMInsts(gvmConfig?: vscode.WorkspaceConfiguration): string[] {
-	return getGVMConfig(gvmConfig).get(CONFIG_INSTALLATIONS) as string[];
+	return getGVMConfig(gvmConfig).get(CONFIG_INSTALLATIONS) as string[] || [];
 }
 
 export function setGVMInsts(gvmConfig: vscode.WorkspaceConfiguration, installations: string[]): Thenable<void> {
 	return gvmConfig.update(CONFIG_INSTALLATIONS, installations, true);
+}
+
+export function setupProxy() {
+    const http = getConf('http');
+    const proxy = http.get('proxy') as string;
+    vscode.window.showInputBox(
+        {
+            prompt: 'Input proxy settings.',
+            placeHolder: '<http(s)>://<host>:<port>',
+            value: proxy
+        }
+    ).then(out => {
+        if (out) {
+            if (proxy !== out) {
+                http.update('proxy', out, true).then(() => 
+                http.update('proxySupport', 'off', true)).then(() =>
+                vscode.commands.executeCommand('extension.graalvm.refreshInstallations'));
+            }
+        }
+    });
 }
 
 export async function configureGraalVMHome(graalVMHome: string) {
@@ -53,11 +73,22 @@ export async function configureGraalVMHome(graalVMHome: string) {
 
     await defaultConfig(graalVMHome, gr);
     
-    const selected: ConfigurationPickItem[] = await vscode.window.showQuickPick(
-        configurations.filter(conf => conf.show(graalVMHome)),
-        {canPickMany: true, placeHolder: 'Configure active GraalVM'}) || [];
+    const toShow = configurations.filter(conf => conf.show(graalVMHome));
+    if (toShow.length > 0) {
+        const selected: ConfigurationPickItem[] = await vscode.window.showQuickPick(
+            toShow, {
+                canPickMany: true, 
+                placeHolder: 'Configure active GraalVM'
+            }) || [];
 
-    selected.forEach(select => select.set(graalVMHome));
+        for (const select of selected) {
+            try {
+                await select.set(graalVMHome);
+            } catch (error) {
+                vscode.window.showErrorMessage(error?.message);    
+            }
+        }
+    }
 }
 
 function gatherConfigurations() {
@@ -76,6 +107,10 @@ async function defaultConfig(graalVMHome: string, gr: vscode.WorkspaceConfigurat
         insts.push(graalVMHome);
         await setGVMInsts(gr, insts);
     }
+
+    try {
+        await getConf('netbeans').update('jdkhome', graalVMHome, true);
+    } catch (error) {}
 
     const termConfig = getConf('terminal.integrated');
     let section: string = '';

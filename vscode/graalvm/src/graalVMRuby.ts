@@ -20,13 +20,15 @@ export function getRubyConfigurations(): ConfigurationPickItem[] {
         'Set as Ruby runtime',
         '(ruby.interpreter.commandPath)',
         graalVMHome => {
-			const executable = utils.findExecutable('ruby', graalVMHome);
-            return executable !== undefined && executable !== getConf('ruby').get('interpreter.commandPath');
+            const executable = utils.findExecutable('ruby', graalVMHome);
+            if (executable) {
+                return utils.checkRecommendedExtension('rebornix.Ruby', 'Ruby Language') && executable !== getConf('ruby').get('interpreter.commandPath');
+            }
+            return false;
         }, 
         async graalVMHome => {
             const executable = utils.findExecutable('ruby', graalVMHome);
             if (executable) {
-                utils.checkRecommendedExtension('rebornix.Ruby', 'Ruby Language');
                 return setConfig('interpreter.commandPath', executable);
             }
         })

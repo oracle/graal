@@ -3,6 +3,8 @@
 	// for the documentation about the extensions.json format
 	"recommendations": [
 		"eg2.tslint",
+		"vscjava.vscode-maven",
+		"redhat.java",
 		"ms-python.python",
 		"Ikuyadeu.r",
 		"rebornix.Ruby"
