@@ -163,7 +163,10 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     }
 
     /**
-     * TODO: explain why this is needed.
+     * Since {@link BackgroundCompileQueue} uses a {@link java.util.concurrent.ThreadPoolExecutor}
+     * to run compilations, and since the executor expects each {@link Callable} (in our case, the
+     * {@link CompilationTask}) to be converted into a {@link FutureTask} we use this wrapper around
+     * the {@link CompilationTask} just for compatibility with the executor.
      */
     static class ExecutorServiceWrapper extends FutureTask<Void> implements Comparable<ExecutorServiceWrapper> {
         final CompilationTask compileTask;
