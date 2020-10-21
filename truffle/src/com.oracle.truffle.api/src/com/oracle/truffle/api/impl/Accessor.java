@@ -214,6 +214,8 @@ public abstract class Accessor {
 
         public abstract void checkInteropType(Object result);
 
+        public abstract boolean isInteropType(Object result);
+
         public abstract boolean isExecutableObject(Object value);
 
         public abstract Object createDefaultNodeObject(Node node);
