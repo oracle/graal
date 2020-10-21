@@ -47,7 +47,8 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.exception.WasmExecutionException;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.testutil.SaveContextNodeNode.ContextState;
@@ -83,13 +84,13 @@ public class CompareContextsNode extends WasmBuiltinRootNode {
         final GlobalRegistry firstGlobals = firstState.globals();
         final GlobalRegistry lastGlobals = lastState.globals();
         if (firstGlobals.count() != lastGlobals.count()) {
-            throw new WasmExecutionException(this, "Mismatch in memory lengths.");
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Mismatch in memory lengths.");
         }
         for (int address = 0; address < firstGlobals.count(); address++) {
             long first = firstGlobals.loadAsLong(address);
             long last = lastGlobals.loadAsLong(address);
             if (first != last) {
-                throw new WasmExecutionException(this, "Mismatch in global at " + address + ". " +
+                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Mismatch in global at " + address + ". " +
                                 "Reference " + first + ", actual " + last);
             }
         }
@@ -102,10 +103,10 @@ public class CompareContextsNode extends WasmBuiltinRootNode {
             return;
         }
         if (firstMemory == null || lastMemory == null) {
-            throw new WasmExecutionException(this, "One of the memories is null.");
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "One of the memories is null.");
         }
         if (firstMemory.byteSize() != lastMemory.byteSize()) {
-            throw new WasmExecutionException(this, "Mismatch in memory lengths: " + firstMemory.byteSize() + " vs " +
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Mismatch in memory lengths: " + firstMemory.byteSize() + " vs " +
                             lastMemory.byteSize());
         }
         for (int ptr = 0; ptr < firstMemory.byteSize(); ptr++) {
@@ -113,7 +114,7 @@ public class CompareContextsNode extends WasmBuiltinRootNode {
             byte last = (byte) lastMemory.load_i32_8s(this, ptr);
             if (first != last) {
                 int from = (ptr - 100) / 8 * 8;
-                throw new WasmExecutionException(this, "Memory mismatch.\n" +
+                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Memory mismatch.\n" +
                                 "-- Reference --\n" + firstMemory.hexView(from, 200) + "\n" +
                                 "-- Actual --\n" + firstMemory.hexView(from, 200) + "\n");
             }

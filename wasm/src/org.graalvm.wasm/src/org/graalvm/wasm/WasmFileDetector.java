@@ -40,10 +40,10 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.TruffleFile;
+
 import java.io.IOException;
 import java.nio.charset.Charset;
-
-import com.oracle.truffle.api.TruffleFile;
 
 public final class WasmFileDetector implements TruffleFile.FileTypeDetector {
     @Override

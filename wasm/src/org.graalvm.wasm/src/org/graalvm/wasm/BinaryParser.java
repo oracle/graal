@@ -53,9 +53,8 @@ import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.constants.Instructions;
 import org.graalvm.wasm.constants.LimitsPrefix;
 import org.graalvm.wasm.constants.Section;
-import org.graalvm.wasm.exception.BinaryParserException;
-import org.graalvm.wasm.exception.WasmLinkerException;
-import org.graalvm.wasm.exception.WasmValidationException;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.nodes.WasmBlockNode;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
@@ -142,10 +141,10 @@ public class BinaryParser extends BinaryStreamParser {
             try {
                 parsingThread.join();
                 if (handler.parsingException() != null) {
-                    throw new WasmValidationException("Asynchronous parsing failed.", handler.parsingException());
+                    throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Asynchronous parsing failed.");
                 }
             } catch (InterruptedException e) {
-                throw new WasmValidationException("Asynchronous parsing interrupted.", e);
+                throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Asynchronous parsing interrupted.");
             }
         }
     }
@@ -157,8 +156,8 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void validateMagicNumberAndVersion() {
-        Assert.assertIntEqual(read4(), MAGIC, "Invalid MAGIC number");
-        Assert.assertIntEqual(read4(), VERSION, "Invalid VERSION number");
+        Assert.assertIntEqual(read4(), MAGIC, "Invalid MAGIC number", Failure.UNSPECIFIED_MALFORMED);
+        Assert.assertIntEqual(read4(), VERSION, "Invalid VERSION number", Failure.UNSPECIFIED_MALFORMED);
     }
 
     private void readSymbolSections() {
@@ -204,9 +203,9 @@ public class BinaryParser extends BinaryStreamParser {
                     readDataSection(null, null);
                     break;
                 default:
-                    Assert.fail("invalid section ID: " + sectionID);
+                    Assert.fail("invalid section ID: " + sectionID, Failure.UNSPECIFIED_MALFORMED);
             }
-            Assert.assertIntEqual(offset - startOffset, size, String.format("Declared section (0x%02X) size is incorrect", sectionID));
+            Assert.assertIntEqual(offset - startOffset, size, String.format("Declared section (0x%02X) size is incorrect", sectionID), Failure.UNSPECIFIED_MALFORMED);
         }
     }
 
@@ -228,14 +227,14 @@ public class BinaryParser extends BinaryStreamParser {
                     readFunctionType();
                     break;
                 default:
-                    Assert.fail("Only function types are supported in the type section");
+                    Assert.fail("Only function types are supported in the type section", Failure.UNSPECIFIED_MALFORMED);
             }
         }
     }
 
     private void readImportSection() {
         Assert.assertIntEqual(module.symbolTable().maxGlobalIndex(), -1,
-                        "The global index should be -1 when the import section is first read.");
+                        "The global index should be -1 when the import section is first read.", Failure.UNSPECIFIED_INVALID);
         int numImports = readVectorLength();
         for (int i = 0; i != numImports; ++i) {
             String moduleName = readName();
@@ -249,7 +248,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case ImportIdentifier.TABLE: {
                     byte elemType = readElemType();
-                    Assert.assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table import");
+                    Assert.assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table import", Failure.UNSPECIFIED_MALFORMED);
                     readTableLimits(limitsResult);
                     module.symbolTable().importTable(moduleName, memberName, limitsResult[0], limitsResult[1]);
                     break;
@@ -267,7 +266,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 default: {
-                    Assert.fail(String.format("Invalid import type identifier: 0x%02X", importType));
+                    Assert.fail(String.format("Invalid import type identifier: 0x%02X", importType), Failure.UNSPECIFIED_MALFORMED);
                 }
             }
         }
@@ -283,13 +282,13 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readTableSection() {
         int numTables = readVectorLength();
-        Assert.assertIntLessOrEqual(module.symbolTable().tableCount() + numTables, 1, "Can import or declare at most one table per module");
+        Assert.assertIntLessOrEqual(module.symbolTable().tableCount() + numTables, 1, "Can import or declare at most one table per module", Failure.UNSPECIFIED_MALFORMED);
         // Since in the current version of WebAssembly supports at most one table instance per
         // module.
         // this loop should be executed at most once.
         for (byte tableIndex = 0; tableIndex != numTables; ++tableIndex) {
             byte elemType = readElemType();
-            Assert.assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table");
+            Assert.assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table", Failure.UNSPECIFIED_MALFORMED);
             readTableLimits(limitsResult);
             module.symbolTable().allocateTable(limitsResult[0], limitsResult[1]);
         }
@@ -297,7 +296,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readMemorySection() {
         int numMemories = readVectorLength();
-        Assert.assertIntLessOrEqual(module.symbolTable().memoryCount() + numMemories, 1, "Can import or declare at most one memory per module");
+        Assert.assertIntLessOrEqual(module.symbolTable().memoryCount() + numMemories, 1, "Can import or declare at most one memory per module", Failure.UNSPECIFIED_MALFORMED);
         // Since in the current version of WebAssembly supports at most one table instance per
         // module.
         // this loop should be executed at most once.
@@ -326,7 +325,7 @@ public class BinaryParser extends BinaryStreamParser {
             int codeEntrySize = readUnsignedInt32();
             int startOffset = offset;
             readCodeEntry(instance, functionIndexOffset + entryIndex, rootNodes[entryIndex]);
-            Assert.assertIntEqual(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entryIndex));
+            Assert.assertIntEqual(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entryIndex), Failure.UNSPECIFIED_MALFORMED);
             final int currentEntryIndex = entryIndex;
             context.linker().resolveCodeEntry(module, currentEntryIndex);
         }
@@ -364,7 +363,7 @@ public class BinaryParser extends BinaryStreamParser {
         WasmBlockNode bodyBlock = readBlockBody(instance, rootNode.codeEntry(), state, returnTypeId, returnTypeId);
         state.popStackState();
         Assert.assertIntEqual(state.stackSize(), returnTypeLength,
-                        "Stack size must match the return type length at the function end");
+                        "Stack size must match the return type length at the function end", Failure.RETURN_STACK_SIZE_MISMATCH);
         rootNode.setBody(bodyBlock);
 
         /* Push a frame slot to the frame descriptor for every local. */
@@ -412,9 +411,9 @@ public class BinaryParser extends BinaryStreamParser {
     @SuppressWarnings("unused")
     private static void checkValidStateOnBlockExit(byte returnTypeId, ExecutionState state, int initialStackSize) {
         if (returnTypeId == WasmType.VOID_TYPE) {
-            Assert.assertIntEqual(state.stackSize(), initialStackSize, "Void function left values in the stack");
+            Assert.assertIntEqual(state.stackSize(), initialStackSize, "Void function left values in the stack", Failure.UNSPECIFIED_MALFORMED);
         } else {
-            Assert.assertIntEqual(state.stackSize(), initialStackSize + 1, "Function left more than 1 values left in stack");
+            Assert.assertIntEqual(state.stackSize(), initialStackSize + 1, "Function left more than 1 values left in stack", Failure.UNSPECIFIED_MALFORMED);
         }
     }
 
@@ -564,7 +563,7 @@ public class BinaryParser extends BinaryStreamParser {
                             returnLength = blockReturnLength;
                         } else {
                             Assert.assertIntEqual(returnLength, blockReturnLength,
-                                            "All target blocks in br.table must have the same return type length.");
+                                            "All target blocks in br.table must have the same return type length.", Failure.UNSPECIFIED_MALFORMED);
                         }
                     }
                     branchTable[0] = returnLength;
@@ -616,7 +615,7 @@ public class BinaryParser extends BinaryStreamParser {
                     state.pop(numArguments);
                     state.push(returnLength);
                     children.add(WasmIndirectCallNode.create());
-                    Assert.assertIntEqual(read1(), CallIndirect.ZERO_TABLE, "CALL_INDIRECT: Instruction must end with 0x00");
+                    Assert.assertIntEqual(read1(), CallIndirect.ZERO_TABLE, "CALL_INDIRECT: Instruction must end with 0x00", Failure.UNSPECIFIED_MALFORMED);
                     break;
                 }
                 case Instructions.DROP:
@@ -631,31 +630,31 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.LOCAL_GET: {
                     int localIndex = readLocalIndex(state);
                     // Assert localIndex exists.
-                    Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.get");
+                    Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.get", Failure.UNSPECIFIED_MALFORMED);
                     state.push();
                     break;
                 }
                 case Instructions.LOCAL_SET: {
                     int localIndex = readLocalIndex(state);
                     // Assert localIndex exists.
-                    Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.set");
+                    Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.set", Failure.UNSPECIFIED_MALFORMED);
                     // Assert there is a value on the top of the stack.
-                    Assert.assertIntGreater(state.stackSize(), 0, "local.set requires at least one element in the stack");
+                    Assert.assertIntGreater(state.stackSize(), 0, "local.set requires at least one element in the stack", Failure.UNSPECIFIED_MALFORMED);
                     state.pop();
                     break;
                 }
                 case Instructions.LOCAL_TEE: {
                     int localIndex = readLocalIndex(state);
                     // Assert localIndex exists.
-                    Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.tee");
+                    Assert.assertIntLessOrEqual(localIndex, codeEntry.numLocals(), "Invalid local index for local.tee", Failure.UNSPECIFIED_MALFORMED);
                     // Assert there is a value on the top of the stack.
-                    Assert.assertIntGreater(state.stackSize(), 0, "local.tee requires at least one element in the stack");
+                    Assert.assertIntGreater(state.stackSize(), 0, "local.tee requires at least one element in the stack", Failure.UNSPECIFIED_MALFORMED);
                     break;
                 }
                 case Instructions.GLOBAL_GET: {
                     int index = readGlobalIndex(state);
                     Assert.assertIntLessOrEqual(index, module.symbolTable().maxGlobalIndex(),
-                                    "Invalid global index for global.get.");
+                                    "Invalid global index for global.get.", Failure.UNSPECIFIED_MALFORMED);
                     state.push();
                     break;
                 }
@@ -663,12 +662,12 @@ public class BinaryParser extends BinaryStreamParser {
                     int index = readGlobalIndex(state);
                     // Assert localIndex exists.
                     Assert.assertIntLessOrEqual(index, module.symbolTable().maxGlobalIndex(),
-                                    "Invalid global index for global.set.");
+                                    "Invalid global index for global.set.", Failure.UNSPECIFIED_MALFORMED);
                     // Assert that the global is mutable.
                     Assert.assertTrue(module.symbolTable().globalMutability(index) == GlobalModifier.MUTABLE,
-                                    "Immutable globals cannot be set: " + index);
+                                    "Immutable globals cannot be set: " + index, Failure.UNSPECIFIED_MALFORMED);
                     // Assert there is a value on the top of the stack.
-                    Assert.assertIntGreater(state.stackSize(), 0, "global.set requires at least one element in the stack");
+                    Assert.assertIntGreater(state.stackSize(), 0, "global.set requires at least one element in the stack", Failure.UNSPECIFIED_MALFORMED);
                     state.pop();
                     break;
                 }
@@ -694,7 +693,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     readUnsignedInt32(); // align
                     readUnsignedInt32(state); // load offset
-                    Assert.assertIntGreater(state.stackSize(), 0, String.format("load instruction 0x%02X requires at least one element in the stack", opcode));
+                    Assert.assertIntGreater(state.stackSize(), 0, String.format("load instruction 0x%02X requires at least one element in the stack", opcode), Failure.UNSPECIFIED_MALFORMED);
                     state.pop();   // Base address.
                     state.push();  // Loaded value.
                     break;
@@ -716,7 +715,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     readUnsignedInt32(); // align
                     readUnsignedInt32(state); // store offset
-                    Assert.assertIntGreater(state.stackSize(), 1, String.format("store instruction 0x%02X requires at least two elements in the stack", opcode));
+                    Assert.assertIntGreater(state.stackSize(), 1, String.format("store instruction 0x%02X requires at least two elements in the stack", opcode), Failure.UNSPECIFIED_MALFORMED);
                     state.pop();  // Value to store.
                     state.pop();  // Base address.
                     break;
@@ -931,7 +930,7 @@ public class BinaryParser extends BinaryStreamParser {
                     state.push();
                     break;
                 default:
-                    Assert.fail(Assert.format("Unknown opcode: 0x%02x", opcode));
+                    Assert.fail(Assert.format("Unknown opcode: 0x%02x", opcode), Failure.UNSPECIFIED_MALFORMED);
                     break;
             }
         } while (opcode != Instructions.END && opcode != Instructions.ELSE);
@@ -993,7 +992,7 @@ public class BinaryParser extends BinaryStreamParser {
         if (peek1(-1) == Instructions.ELSE) {
             falseBranchBlock = readBlockBody(instance, codeEntry, state, blockTypeId, blockTypeId);
         } else if (blockTypeId != WasmType.VOID_TYPE) {
-            Assert.fail("An if statement without an else branch block cannot return values.");
+            Assert.fail("An if statement without an else branch block cannot return values.", Failure.UNSPECIFIED_MALFORMED);
         }
         int stackSizeBeforeCondition = stackSizeAfterCondition + 1;
         return new WasmIfNode(instance, codeEntry, trueBranchBlock, falseBranchBlock, offset() - startOffset, blockTypeId, stackSizeBeforeCondition);
@@ -1008,7 +1007,7 @@ public class BinaryParser extends BinaryStreamParser {
             // Support for different table indices and "segment flags" might be added in the future
             // (see
             // https://github.com/WebAssembly/bulk-memory-operations/blob/master/proposals/bulk-memory-operations/Overview.md#element-segments).
-            Assert.assertIntEqual(tableIndex, 0, "Invalid table index");
+            Assert.assertIntEqual(tableIndex, 0, "Invalid table index", Failure.UNSPECIFIED_MALFORMED);
 
             // Table offset expression must be a constant expression with result type i32.
             // https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
@@ -1030,7 +1029,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 default: {
-                    Assert.fail(String.format("Invalid instruction for table offset expression: 0x%02X", instruction));
+                    Assert.fail(String.format("Invalid instruction for table offset expression: 0x%02X", instruction), Failure.UNSPECIFIED_MALFORMED);
                 }
             }
 
@@ -1066,7 +1065,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readEnd() {
         byte instruction = read1();
-        Assert.assertByteEqual(instruction, (byte) Instructions.END, "Initialization expression must end with an END");
+        Assert.assertByteEqual(instruction, (byte) Instructions.END, "Initialization expression must end with an END", Failure.UNSPECIFIED_MALFORMED);
     }
 
     private void readStartSection() {
@@ -1087,8 +1086,8 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case ExportIdentifier.TABLE: {
                     int tableIndex = readTableIndex();
-                    Assert.assertTrue(module.symbolTable().tableExists(), "No table was imported or declared, so cannot export a table");
-                    Assert.assertIntEqual(tableIndex, 0, "Cannot export table index different than zero (only one table per module allowed)");
+                    Assert.assertTrue(module.symbolTable().tableExists(), "No table was imported or declared, so cannot export a table", Failure.UNSPECIFIED_MALFORMED);
+                    Assert.assertIntEqual(tableIndex, 0, "Cannot export table index different than zero (only one table per module allowed)", Failure.UNSPECIFIED_MALFORMED);
                     module.symbolTable().exportTable(exportName);
                     break;
                 }
@@ -1103,7 +1102,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 default: {
-                    Assert.fail(String.format("Invalid export type identifier: 0x%02X", exportType));
+                    Assert.fail(String.format("Invalid export type identifier: 0x%02X", exportType), Failure.UNSPECIFIED_MALFORMED);
                 }
             }
         }
@@ -1144,10 +1143,10 @@ public class BinaryParser extends BinaryStreamParser {
                     isInitialized = false;
                     break;
                 default:
-                    throw Assert.fail(String.format("Invalid instruction for global initialization: 0x%02X", instruction));
+                    throw Assert.fail(String.format("Invalid instruction for global initialization: 0x%02X", instruction), Failure.UNSPECIFIED_MALFORMED);
             }
             instruction = read1();
-            Assert.assertByteEqual(instruction, (byte) Instructions.END, "Global initialization must end with END");
+            Assert.assertByteEqual(instruction, (byte) Instructions.END, "Global initialization must end with END", Failure.UNSPECIFIED_MALFORMED);
             module.symbolTable().declareGlobal(globalIndex, type, mutability);
             final int currentGlobalIndex = globalIndex;
             final int currentExistingIndex = existingIndex;
@@ -1163,7 +1162,7 @@ public class BinaryParser extends BinaryStreamParser {
                         // The current WebAssembly spec says constant expressions can only refer to
                         // imported globals. We can easily remove this restriction in the future.
                         Assert.fail("The initializer for global " + currentGlobalIndex + " in module '" + module.name() +
-                                        "' refers to a non-imported global.");
+                                        "' refers to a non-imported global.", Failure.UNSPECIFIED_MALFORMED);
                     }
                     context.linker().resolveGlobalInitialization(context, instance, currentGlobalIndex, currentExistingIndex);
                 }
@@ -1177,7 +1176,7 @@ public class BinaryParser extends BinaryStreamParser {
             int memIndex = readUnsignedInt32();
             // At the moment, WebAssembly only supports one memory instance, thus the only valid
             // memory index is 0.
-            Assert.assertIntEqual(memIndex, 0, "Invalid memory index, only the memory index 0 is currently supported.");
+            Assert.assertIntEqual(memIndex, 0, "Invalid memory index, only the memory index 0 is currently supported.", Failure.UNSPECIFIED_MALFORMED);
             byte instruction = read1();
 
             // Data dataOffset expression must be a constant expression with result type i32.
@@ -1197,7 +1196,7 @@ public class BinaryParser extends BinaryStreamParser {
                     readEnd();
                     break;
                 default:
-                    Assert.fail(String.format("Invalid instruction for data offset expression: 0x%02X", instruction));
+                    Assert.fail(String.format("Invalid instruction for data offset expression: 0x%02X", instruction), Failure.UNSPECIFIED_MALFORMED);
             }
 
             int byteLength = readVectorLength();
@@ -1265,7 +1264,7 @@ public class BinaryParser extends BinaryStreamParser {
                 module.symbolTable().registerFunctionTypeReturnType(funcTypeIdx, 0, type);
                 break;
             default:
-                Assert.fail(String.format("Invalid return value specifier: 0x%02X", b));
+                Assert.fail(String.format("Invalid return value specifier: 0x%02X", b), Failure.UNSPECIFIED_MALFORMED);
         }
     }
 
@@ -1357,16 +1356,16 @@ public class BinaryParser extends BinaryStreamParser {
                 break;
             }
             default:
-                Assert.fail(String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
+                Assert.fail(String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X", limitsPrefix), Failure.UNSPECIFIED_MALFORMED);
         }
 
         // Convert min and max to longs to avoid checking bounds on overflowed values.
         long longMin = unsignedInt32ToLong(out[0]);
         long longMax = unsignedInt32ToLong(out[1]);
-        Assert.assertLongLessOrEqual(longMin, upperBound, "Invalid " + minName + ", must be less than upper bound");
+        Assert.assertLongLessOrEqual(longMin, upperBound, "Invalid " + minName + ", must be less than upper bound", Failure.UNSPECIFIED_MALFORMED);
         if (out[1] != -1) {
-            Assert.assertLongLessOrEqual(longMax, upperBound, "Invalid " + maxName + ", must be less than upper bound");
-            Assert.assertLongLessOrEqual(longMin, longMax, "Invalid " + minName + ", must be less than " + maxName);
+            Assert.assertLongLessOrEqual(longMax, upperBound, "Invalid " + maxName + ", must be less than upper bound", Failure.UNSPECIFIED_MALFORMED);
+            Assert.assertLongLessOrEqual(longMin, longMax, "Invalid " + minName + ", must be less than " + maxName, Failure.UNSPECIFIED_MALFORMED);
         }
     }
 
@@ -1378,7 +1377,7 @@ public class BinaryParser extends BinaryStreamParser {
         int nameLength = readVectorLength();
         int afterNameOffset = nameLength + offset;
         if (afterNameOffset < 0 || data.length < afterNameOffset) {
-            throw BinaryParserException.format("The binary is truncated at: %d", data.length);
+            throw WasmException.format(Failure.UNSPECIFIED_MALFORMED, "The binary is truncated at: %d", data.length);
         }
 
         // Decode and verify UTF-8 encoding of the name
@@ -1389,7 +1388,7 @@ public class BinaryParser extends BinaryStreamParser {
         try {
             result = decoder.decode(ByteBuffer.wrap(data, offset, nameLength));
         } catch (CharacterCodingException ex) {
-            throw BinaryParserException.format("Invalid UTF-8 encoding of the name at: %d", offset);
+            throw WasmException.format(Failure.UNSPECIFIED_MALFORMED, "Invalid UTF-8 encoding of the name at: %d", offset);
         }
         offset += nameLength;
         return result.toString();
@@ -1488,7 +1487,7 @@ public class BinaryParser extends BinaryStreamParser {
                         readValueType();
                         byte mutability = readMutability();
                         if (mutability == GlobalModifier.MUTABLE) {
-                            throw new WasmLinkerException("Cannot reset imports of mutable global variables (not implemented).");
+                            throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Cannot reset imports of mutable global variables (not implemented).");
                         }
                         globalIndex++;
                         break;
@@ -1529,7 +1528,7 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.GLOBAL_GET: {
                         int existingIndex = readGlobalIndex();
                         if (module.symbolTable().globalMutability(existingIndex) == GlobalModifier.MUTABLE) {
-                            throw new WasmLinkerException("Cannot reset global variables that were initialized " +
+                            throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Cannot reset global variables that were initialized " +
                                             "with a non-constant global variable (not implemented).");
                         }
                         final int existingAddress = instance.globalAddress(existingIndex);

@@ -44,7 +44,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import org.graalvm.wasm.WasmTracing;
-import org.graalvm.wasm.exception.WasmTrap;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -80,7 +81,7 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
 
     @CompilerDirectives.TruffleBoundary
     private void trapOutOfBounds(Node node, int address, int offset) {
-        throw WasmTrap.format(node, "%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
+        throw WasmException.format(Failure.UNSPECIFIED_TRAP, node, "%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
                         offset, address, address, byteSize());
     }
 
@@ -115,7 +116,7 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
     @Override
     public boolean grow(int extraPageSize) {
         if (extraPageSize < 0) {
-            throw WasmTrap.create(null, "Extra size cannot be negative.");
+            throw WasmException.create(Failure.UNSPECIFIED_TRAP, null, "Extra size cannot be negative.");
         }
         long targetSize = byteSize() + extraPageSize * PAGE_SIZE;
         if (maxPageSize >= 0 && targetSize > maxPageSize * PAGE_SIZE) {
