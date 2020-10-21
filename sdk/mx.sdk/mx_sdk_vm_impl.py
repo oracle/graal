@@ -162,7 +162,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         main_class='org.graalvm.launcher.PolyBenchLauncher',
         build_args=[
             '-H:-ParseRuntimeOptions',
-            '-H:Features=org.graalvm.launcher.PolyBenchLauncherFeature',
+            '-H:Features=org.graalvm.launcher.PolyglotLauncherFeature',
             '--tool:all',
         ],
         is_main_launcher=True,

@@ -126,8 +126,14 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
         }
         String extension = path.substring(dotIndex + 1);
         switch (extension) {
+            case "js":
+                return "js";
             case "wasm":
                 return "wasm";
+            case "rb":
+                return "ruby";
+            case "py":
+                return "python";
             default:
                 throw abort("Unknown extension: " + extension);
         }
@@ -221,6 +227,9 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
         }
         if (result == null) {
             throw abort("Cannot find target '" + memberName + "'. Please check that the specified program is a benchmark.");
+        }
+        if (!result.canExecute()) {
+            throw abort("The member named " + memberName + " is not executable: " + result);
         }
         return result;
     }

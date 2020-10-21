@@ -1,8 +1,8 @@
 
-int run() {
-  int i;
-  int number = 400000;
-  int primes[number + 1];
+function run() {
+  let i;
+  let number = 400000;
+  let primes = new Array(number + 1);
 
   for (i = 2; i <= number; i++) {
     primes[i] = i;
@@ -11,7 +11,7 @@ int run() {
   i = 2;
   while ((i * i) <= number) {
     if (primes[i] != 0) {
-      for(int j = 2; j < number; j++) {
+      for (let j = 2; j < number; j++) {
         if (primes[i] * j > number)
           break;
         else
@@ -22,9 +22,5 @@ int run() {
   }
 
   return primes[number];
-}
-
-int main() {
-  return run();
 }
 
