@@ -3174,7 +3174,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @Override
     protected void initializeThread(InstrumentContext context, Thread thread) {
         Thread.UncaughtExceptionHandler currentHandler = thread.getUncaughtExceptionHandler();
-        if ("com.oracle.truffle.polyglot.PolyglotLanguageContext$PolyglotUncaughtExceptionHandler".equals(currentHandler.getClass().getName())) {
+        if (currentHandler != null && "com.oracle.truffle.polyglot.PolyglotLanguageContext$PolyglotUncaughtExceptionHandler".equals(currentHandler.getClass().getName())) {
             thread.setUncaughtExceptionHandler((t, e) -> {
                 InteropLibrary interop = InteropLibrary.getUncached();
                 boolean interrupted;
