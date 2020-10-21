@@ -380,8 +380,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         try {
             if (context.IsolatedNamespace) {
                 // libeden.so must be the first library loaded in the isolated namespace.
-                loadLibraryInternal(Collections.singletonList(props.espressoLibraryPath()), "eden", true);
+                TruffleObject edenLibrary = loadLibraryInternal(Collections.singletonList(props.espressoLibraryPath()), "eden", true);
+                ctypeInit = NativeLibrary.lookupAndBind(edenLibrary, "ctypeInit",
+                        "(): void");
+            } else {
+                ctypeInit = null;
             }
+
             nespressoLibrary = loadLibraryInternal(Collections.singletonList(props.espressoLibraryPath()), "nespresso");
             dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
@@ -400,9 +405,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                             "(pointer, sint64): pointer"); // void*(void*,size_t)
             free = NativeLibrary.lookupAndBind(nespressoLibrary, "freeMemory",
                             "(pointer): void"); // void(void*)
-
-            ctypeInit = NativeLibrary.lookupAndBind(nespressoLibrary, "ctypeInit",
-                            "(): void");
 
             // Varargs native bindings.
             popBoolean = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_boolean", "(pointer): sint8");
@@ -558,6 +560,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     public void ctypeInit() {
+        if (ctypeInit == null) {
+            return ;
+        }
         try {
             getUncached().execute(ctypeInit);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {

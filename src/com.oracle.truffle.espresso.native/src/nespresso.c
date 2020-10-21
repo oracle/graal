@@ -700,12 +700,6 @@ JNIEXPORT void * JNICALL reallocateMemory(void *ptr, size_t new_size) {
   return realloc(ptr, new_size);
 }
 
-extern void __ctype_init (void);
-
-JNIEXPORT void JNICALL ctypeInit(void) {
-  __ctype_init();
-}
-
 JNIEXPORT jlong JNICALL get_SIZE_MAX() {
   return (jlong) SIZE_MAX;
 }

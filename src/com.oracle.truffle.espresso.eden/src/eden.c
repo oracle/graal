@@ -17,6 +17,15 @@ static int eden_debug = 0;
 
 #define LOG(fmt, ...) do { if (eden_debug) fprintf(stderr, "[eden #%ld] " fmt, namespace_id, ##__VA_ARGS__); } while (0)
 
+static void *get_libc() {
+    static void *libc = NULL;
+    if (libc == NULL) {
+        libc = __libc_dlopen_mode("libc.so.6", RTLD_LAZY);
+        LOG("get_libc(libc.so.6) => %p\n", libc);
+    }
+    return libc;
+}
+
 static void *get_libdl() {
     static void *libdl = NULL;
     if (libdl == NULL) {
@@ -125,4 +134,11 @@ static __attribute__((constructor)) void initialize(void) {
     LOG("init &__ctype_b_loc: %p\n", &__ctype_b_loc);
     LOG("init *__ctype_b_loc() = %p\n", *__ctype_b_loc());
     LOG("Current locale: %s\n", setlocale(LC_ALL, NULL));
+}
+
+void ctypeInit(void) {
+    void(*__ctype_init)(void) = dlsym(get_libc(), "__ctype_init");
+    if (__ctype_init != NULL) {
+        __ctype_init();
+    }
 }
