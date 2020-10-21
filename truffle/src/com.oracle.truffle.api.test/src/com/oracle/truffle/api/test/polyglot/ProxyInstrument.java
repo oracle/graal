@@ -66,7 +66,6 @@ public class ProxyInstrument extends TruffleInstrument {
     }
     private boolean wrapper = true;
     protected ProxyInstrument instrument;
-    private Env environment;
     private Consumer<Env> onCreate;
 
     public static <T extends ProxyInstrument> T setDelegate(T delegate) {
@@ -101,7 +100,6 @@ public class ProxyInstrument extends TruffleInstrument {
 
     @Override
     protected void onCreate(Env env) {
-        this.environment = env;
         env.registerService(new Initialize() {
             public Env getEnv() {
                 return env;
@@ -122,7 +120,6 @@ public class ProxyInstrument extends TruffleInstrument {
             delegate.instrument = this;
             delegate.onDispose(env);
         }
-        this.environment = null;
     }
 
     @Override
