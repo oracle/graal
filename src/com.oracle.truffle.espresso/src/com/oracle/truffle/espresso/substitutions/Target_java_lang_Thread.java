@@ -219,6 +219,11 @@ public final class Target_java_lang_Thread {
                 public void run() {
                     try {
                         try {
+                            if (meta.getContext().IsolatedNamespace) {
+                                // Initialize TLS related to __ctype_b_loc to avoid crashes on
+                                // glibc.
+                                meta.getContext().getJNI().ctypeInit();
+                            }
                             // Execute the payload
                             self.getKlass().vtableLookup(meta.java_lang_Thread_run.getVTableIndex()).invokeDirect(self);
                             checkDeprecatedState(meta, self);
