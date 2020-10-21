@@ -146,7 +146,7 @@ async function hasRSource(): Promise<boolean> {
 	return hasR;
 }
 
-export async function registerLSPNotificationHandler(method: string, handler: GenericNotificationHandler): Promise<boolean> {
+export async function onClientNotification(method: string, handler: GenericNotificationHandler): Promise<boolean> {
 	if (languageClient) {
 		let isSuccessful = false;
 		await languageClient.then((client) => client.onNotification(method, handler)).then(() => isSuccessful = true);
