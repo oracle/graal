@@ -29,12 +29,12 @@
  */
 package com.oracle.truffle.llvm;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.NativeConfigurationFactory.Key;
 import com.oracle.truffle.llvm.parser.factories.BasicIntrinsicsProvider;
 import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
 import com.oracle.truffle.llvm.parser.factories.BasicPlatformCapability;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
@@ -48,6 +48,9 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class NativeConfiguration implements Configuration {
 
@@ -65,8 +68,8 @@ public final class NativeConfiguration implements Configuration {
     }
 
     @Override
-    public NodeFactory createNodeFactory(LLVMContext context, DataLayout dataLayout) {
-        return new BasicNodeFactory(context, dataLayout);
+    public NodeFactory createNodeFactory(LLVMLanguage language, DataLayout dataLayout) {
+        return new BasicNodeFactory(language, dataLayout);
     }
 
     @Override

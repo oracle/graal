@@ -46,13 +46,13 @@ import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.CompareOperator;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackFromFrameNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -343,16 +343,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class BasicNodeFactory implements NodeFactory {
-    protected final LLVMContext context;
+    protected final LLVMLanguage language;
     protected DataLayout dataLayout;
 
     protected final Type vaListType;
 
-    public BasicNodeFactory(LLVMContext context, DataLayout dataLayout) {
-        this.context = context;
+    public BasicNodeFactory(LLVMLanguage language, DataLayout dataLayout) {
+        this.language = language;
         this.dataLayout = dataLayout;
 
-        this.vaListType = this.context.getLanguage().getActiveConfiguration().getCapability(PlatformCapability.class).getVAListType();
+        this.vaListType = language.getActiveConfiguration().getCapability(PlatformCapability.class).getVAListType();
     }
 
     @Override
@@ -1118,7 +1118,7 @@ public class BasicNodeFactory implements NodeFactory {
         LLVMStackAccess stackAccess = createStackAccess(frameDescriptor);
         LLVMFunctionRootNode functionRoot = LLVMFunctionRootNodeGen.create(uniquesRegionAllocNode, stackAccess, copyArgumentsToFrame, body, frameDescriptor);
         functionRoot.setSourceLocation(LLVMSourceLocation.orDefault(location));
-        return new LLVMFunctionStartNode(context.getLanguage(), stackAccess, functionRoot, frameDescriptor, name, argumentCount, originalName, bcSource, location, dataLayout);
+        return new LLVMFunctionStartNode(language, stackAccess, functionRoot, frameDescriptor, name, argumentCount, originalName, bcSource, location, dataLayout);
     }
 
     @Override
@@ -1151,7 +1151,7 @@ public class BasicNodeFactory implements NodeFactory {
 
         LLVMInlineAssemblyRootNode assemblyRoot;
         try {
-            assemblyRoot = InlineAssemblyParser.parseInlineAssembly(asmExpression, new AsmFactory(context.getLanguage(), argTypes, asmFlags, retType, retTypes, retOffsets, this));
+            assemblyRoot = InlineAssemblyParser.parseInlineAssembly(asmExpression, new AsmFactory(language, argTypes, asmFlags, retType, retTypes, retOffsets, this));
         } catch (AsmParseException e) {
             assemblyRoot = getLazyUnsupportedInlineRootNode(asmExpression, e);
         }
@@ -1174,7 +1174,7 @@ public class BasicNodeFactory implements NodeFactory {
         LLVMInlineAssemblyRootNode assemblyRoot;
         String message = asmExpression + ": " + e.getMessage();
         FrameDescriptor frameDescriptor = new FrameDescriptor();
-        assemblyRoot = new LLVMInlineAssemblyRootNode(context.getLanguage(), frameDescriptor, createStackAccess(frameDescriptor),
+        assemblyRoot = new LLVMInlineAssemblyRootNode(language, frameDescriptor, createStackAccess(frameDescriptor),
                         Collections.singletonList(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, message)), Collections.emptyList(), null);
         return assemblyRoot;
     }
@@ -1260,7 +1260,7 @@ public class BasicNodeFactory implements NodeFactory {
             } else {
                 // Inline Sulong intrinsics directly at their call site, to avoid the overhead of a
                 // call node and extra argument nodes.
-                LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
+                LLVMIntrinsicProvider intrinsicProvider = language.getCapability(LLVMIntrinsicProvider.class);
                 return intrinsicProvider.generateIntrinsicNode(name, args, argsTypes, this);
             }
         }
@@ -1994,6 +1994,6 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMStackAccess createStackAccess(FrameDescriptor frameDescriptor) {
-        return new LLVMStack.LLVMNativeStackAccess(frameDescriptor, context.getLanguage().getLLVMMemory());
+        return new LLVMStack.LLVMNativeStackAccess(frameDescriptor, language.getLLVMMemory());
     }
 }

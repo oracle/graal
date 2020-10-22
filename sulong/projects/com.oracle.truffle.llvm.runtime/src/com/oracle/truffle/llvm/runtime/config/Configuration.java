@@ -30,12 +30,17 @@
 package com.oracle.truffle.llvm.runtime.config;
 
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.llvm.runtime.ContextExtension;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 
+import java.util.List;
+
 public interface Configuration {
 
-    NodeFactory createNodeFactory(LLVMContext context, DataLayout dataLayout);
+    NodeFactory createNodeFactory(LLVMLanguage language, DataLayout dataLayout);
 
     /**
      * Capabilities encapsulate functionality that is stateless, or has just static state that is

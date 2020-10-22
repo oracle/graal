@@ -29,44 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.ControlFlowException;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.utilities.AssumedValue;
-import com.oracle.truffle.llvm.api.Toolchain;
-import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
-import com.oracle.truffle.llvm.runtime.LLVMContextFactory.InitializeContextNodeGen;
-import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
-import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
-import com.oracle.truffle.llvm.runtime.instruments.trace.LLVMTracerInstrument;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.HandleContainer;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import com.oracle.truffle.llvm.runtime.options.TargetStream;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
-import org.graalvm.collections.EconomicMap;
-
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
@@ -79,6 +41,38 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import org.graalvm.collections.EconomicMap;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.llvm.api.Toolchain;
+import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
+import com.oracle.truffle.llvm.runtime.instruments.trace.LLVMTracerInstrument;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.HandleContainer;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.options.TargetStream;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
 
 public final class LLVMContext {
 
@@ -123,7 +117,6 @@ public final class LLVMContext {
     private final DynamicLinkChain dynamicLinkChainForScopes;
     private final List<RootCallTarget> destructorFunctions;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
-    private final LLVMInteropType.InteropTypeRegistry interopTypeRegistry;
 
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
@@ -139,9 +132,6 @@ public final class LLVMContext {
 
     // pThread state
     private final LLVMPThreadContext pThreadContext;
-
-    private LLVMFunction sulongInitContext;
-    private LLVMFunctionCode sulongInitContextCode;
     private LLVMFunction sulongDisposeContext;
 
     // globals block function
@@ -149,8 +139,8 @@ public final class LLVMContext {
     @CompilationFinal Object allocateGlobalsBlockFunction;
     @CompilationFinal Object protectGlobalsBlockFunction;
 
-    private boolean initialized;
-    private boolean cleanupNecessary;
+    protected boolean initialized;
+    protected boolean cleanupNecessary;
     private boolean initializeContextCalled;
     private DataLayout libsulongDatalayout;
     private Boolean datalayoutInitialised;
@@ -170,7 +160,7 @@ public final class LLVMContext {
         }
 
         synchronized LLVMFunctionDescriptor create(LLVMFunction functionDetail, LLVMFunctionCode functionCode) {
-            return new LLVMFunctionDescriptor(LLVMContext.this, functionDetail, functionCode);
+            return new LLVMFunctionDescriptor(getLanguage(), functionDetail, functionCode);
         }
     }
 
@@ -191,7 +181,6 @@ public final class LLVMContext {
         this.handleContainer = memory.createHandleContainer(false, language.getNoCommonHandleAssumption());
         this.derefHandleContainer = memory.createHandleContainer(true, language.getNoDerefHandleAssumption());
         this.functionPointerRegistry = new LLVMFunctionPointerRegistry();
-        this.interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
         this.sourceContext = new LLVMSourceContext();
         this.toolchain = toolchain;
 
@@ -207,7 +196,7 @@ public final class LLVMContext {
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
 
-        pThreadContext = new LLVMPThreadContext(this);
+        pThreadContext = new LLVMPThreadContext(getEnv(), getLanguage(), getLibsulongDataLayout());
 
         symbolStorage = new AssumedValue[10][];
         libraryLoaded = new boolean[10];
@@ -228,41 +217,8 @@ public final class LLVMContext {
         return mainArgs == null ? environment.getApplicationArguments() : (Object[]) mainArgs;
     }
 
-    public void setSulongInitContext(LLVMFunction function) {
-        this.sulongInitContext = function;
-        this.sulongInitContextCode = new LLVMFunctionCode(sulongInitContext);
-    }
-
     public void setSulongDisposeContext(LLVMFunction function) {
         this.sulongDisposeContext = function;
-    }
-
-    abstract static class InitializeContextNode extends LLVMStatementNode {
-
-        @CompilationFinal private ContextReference<LLVMContext> ctxRef;
-
-        @Child private DirectCallNode initContext;
-
-        InitializeContextNode(LLVMFunctionDescriptor initContextDescriptor) {
-            RootCallTarget initContextFunction = initContextDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
-            this.initContext = DirectCallNode.create(initContextFunction);
-        }
-
-        @Specialization
-        public void doInit() {
-            if (ctxRef == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                ctxRef = lookupContextReference(LLVMLanguage.class);
-            }
-            LLVMContext ctx = ctxRef.get();
-            if (!ctx.initialized) {
-                assert !ctx.cleanupNecessary;
-                ctx.initialized = true;
-                ctx.cleanupNecessary = true;
-                Object[] args = new Object[]{ctx.getThreadingStack().getStack(), ctx.getApplicationArguments(), getEnvironmentVariables(), getRandomValues()};
-                initContext.call(args);
-            }
-        }
     }
 
     @SuppressWarnings("unchecked")
@@ -383,22 +339,12 @@ public final class LLVMContext {
         return threadingStack != null;
     }
 
-    public LLVMStatementNode createInitializeContextNode() {
-        // we can't do the initialization in the LLVMContext constructor nor in
-        // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
-        // do it in a delayed way.
-        if (sulongInitContext == null) {
-            throw new IllegalStateException("Context cannot be initialized:" + SULONG_INIT_CONTEXT + " was not found");
-        }
-        return InitializeContextNodeGen.create(createFunctionDescriptor(sulongInitContext, sulongInitContextCode));
-    }
-
     public Toolchain getToolchain() {
         return toolchain;
     }
 
     @TruffleBoundary
-    private LLVMManagedPointer getApplicationArguments() {
+    protected LLVMManagedPointer getApplicationArguments() {
         String[] result;
         if (mainArguments == null) {
             result = new String[]{""};
@@ -415,13 +361,13 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    private static LLVMManagedPointer getEnvironmentVariables() {
+    protected static LLVMManagedPointer getEnvironmentVariables() {
         String[] result = System.getenv().entrySet().stream().map((e) -> e.getKey() + "=" + e.getValue()).toArray(String[]::new);
         return toManagedObjects(result);
     }
 
     @TruffleBoundary
-    private static LLVMManagedPointer getRandomValues() {
+    protected static LLVMManagedPointer getRandomValues() {
         byte[] result = new byte[16];
         secureRandom().nextBytes(result);
         return toManagedPointer(new LLVMArgumentBuffer(result));
@@ -903,11 +849,6 @@ public final class LLVMContext {
 
     public void setCleanupNecessary(boolean value) {
         cleanupNecessary = value;
-    }
-
-    @TruffleBoundary
-    public LLVMInteropType getInteropType(LLVMSourceType sourceType) {
-        return interopTypeRegistry.get(sourceType);
     }
 
     private void printNativeCallStatistics() {

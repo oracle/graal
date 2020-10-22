@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -105,6 +102,9 @@ import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * This class implements the AMD64 (X86_64) version of the va_list managed object and reflects the
@@ -238,7 +238,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     @TruffleBoundary
     Object getNativeType(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         // This method should never be invoked
-        return ctx.getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, getDataLayout()));
+        return ctx.getLanguage().getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, getDataLayout()));
     }
 
     // InteropLibrary implementation
@@ -835,13 +835,13 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     @SuppressWarnings("static-method")
     LLVMExpressionNode createAllocaNode(LLVMContext llvmCtx) {
         DataLayout dataLayout = getDataLayout();
-        return llvmCtx.getLanguage().getActiveConfiguration().createNodeFactory(llvmCtx, dataLayout).createAlloca(VA_LIST_TYPE, 16);
+        return llvmCtx.getLanguage().getActiveConfiguration().createNodeFactory(llvmCtx.getLanguage(), dataLayout).createAlloca(VA_LIST_TYPE, 16);
     }
 
     @SuppressWarnings("static-method")
     VarargsAreaStackAllocationNode createVarargsAreaStackAllocationNode(LLVMContext llvmCtx) {
         DataLayout dataLayout = getDataLayout();
-        return llvmCtx.getLanguage().getActiveConfiguration().createNodeFactory(llvmCtx, dataLayout).createVarargsAreaStackAllocation();
+        return llvmCtx.getLanguage().getActiveConfiguration().createNodeFactory(llvmCtx.getLanguage(), dataLayout).createVarargsAreaStackAllocation();
     }
 
     private static DataLayout getDataLayout() {

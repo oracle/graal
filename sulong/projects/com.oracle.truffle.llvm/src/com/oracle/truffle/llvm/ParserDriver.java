@@ -340,7 +340,7 @@ final class ParserDriver {
         if (targetDataLayout.getByteOrder() != ByteOrder.LITTLE_ENDIAN) {
             throw new LLVMParserException("Byte order " + targetDataLayout.getByteOrder() + " of file " + source.getPath() + " is not supported");
         }
-        NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(context, targetDataLayout);
+        NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(language, targetDataLayout);
         LLVMScope fileScope = new LLVMScope();
         int bitcodeID = nextFreeBitcodeID.getAndIncrement();
         LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, nodeFactory, bitcodeID, file, source.getName());
@@ -355,13 +355,13 @@ final class ParserDriver {
 
         model.getSourceGlobals().forEach((symbol, irValue) -> {
             final LLVMExpressionNode node = symbolResolver.resolve(irValue);
-            final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(context, node, irValue instanceof GlobalVariable);
+            final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(node, irValue instanceof GlobalVariable);
             sourceContext.registerStatic(symbol, value);
         });
 
         model.getSourceStaticMembers().forEach(((type, symbol) -> {
             final LLVMExpressionNode node = symbolResolver.resolve(symbol);
-            final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(context, node, symbol instanceof GlobalVariable);
+            final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(node, symbol instanceof GlobalVariable);
             type.setValue(value);
         }));
     }

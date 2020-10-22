@@ -217,7 +217,7 @@ public final class LoadModulesNode extends LLVMRootNode {
                     RootNode rootNode = new LLVMGlobalRootNode(language, new FrameDescriptor(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
                     mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
                 }
-                initContext = this.insert(context.createInitializeContextNode());
+                initContext = this.insert(language.createInitializeContextNode());
                 hasInitialised = true;
             }
 
@@ -535,7 +535,7 @@ public final class LoadModulesNode extends LLVMRootNode {
             throw new IllegalStateException("Context cannot be initialized: " + LLVMContext.SULONG_DISPOSE_CONTEXT + " was not found in sulong libraries");
         }
 
-        context.setSulongInitContext(initContext.asFunction());
+        language.setSulongInitContext(initContext.asFunction());
         context.setSulongDisposeContext(disposeContext.asFunction());
         return startFunction;
     }

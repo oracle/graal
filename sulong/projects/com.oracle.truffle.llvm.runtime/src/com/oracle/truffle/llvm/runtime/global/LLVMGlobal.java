@@ -85,7 +85,7 @@ public final class LLVMGlobal extends LLVMSymbol {
         if (!interopTypeCached) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             LLVMSourceType sourceType = sourceSymbol != null ? sourceSymbol.getType() : null;
-            interopType = context.getInteropType(sourceType);
+            interopType = context.getLanguage().getInteropType(sourceType);
             interopTypeCached = true;
         }
         return interopType;
