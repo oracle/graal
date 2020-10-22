@@ -29,6 +29,7 @@ import mx_espresso
 
 from mx_benchmark import GuestVm, JavaVm
 from mx_java_benchmarks import ScalaDaCapoBenchmarkSuite
+from mx_java_benchmarks import _daCapoScalaConfig
 
 
 _suite = mx.suite('espresso')
@@ -127,24 +128,26 @@ def warmupIterations(startup=None, earlyWarmup=None, lateWarmup=None):
     if startup is not None:
         result["startup"] = startup
     if earlyWarmup is not None:
+        assert startup and startup < earlyWarmup
         result["early-warmup"] = earlyWarmup
     if lateWarmup is not None:
+        assert earlyWarmup and earlyWarmup < lateWarmup
         result["late-warmup"] = lateWarmup
     return result
 
 scala_dacapo_warmup_iterations = {
-    "actors"      : warmupIterations(0, 10/3, 10 - 1),
-    "apparat"     : warmupIterations(0, 5/3, 5 - 1),
-    "factorie"    : warmupIterations(0, 6/3, 6 - 1),
-    "kiama"       : warmupIterations(0, 40/3, 40 - 1),
-    "scalac"      : warmupIterations(0, 30/3, 30 - 1),
-    "scaladoc"    : warmupIterations(0, 20/3, 20 - 1),
-    "scalap"      : warmupIterations(0, 120/3, 120 - 1),
-    "scalariform" : warmupIterations(0, 30/3, 30 - 1),
-    "scalatest"   : warmupIterations(0, 60/3, 60 - 1),
-    "scalaxb"     : warmupIterations(0, 60/3, 60 - 1),
-    "specs"       : warmupIterations(0, 20/3, 20 - 1),
-    "tmt"         : warmupIterations(0, 12/3, 12 - 1),
+    "actors"      : warmupIterations(1, 1 + _daCapoScalaConfig["actors"] // 3, _daCapoScalaConfig["actors"]),
+    "apparat"     : warmupIterations(1, 1 + _daCapoScalaConfig["apparat"] // 3, _daCapoScalaConfig["apparat"]),
+    "factorie"    : warmupIterations(1, 1 + _daCapoScalaConfig["factorie"] // 3, _daCapoScalaConfig["factorie"]),
+    "kiama"       : warmupIterations(1, 1 + _daCapoScalaConfig["kiama"] // 3, _daCapoScalaConfig["kiama"]),
+    "scalac"      : warmupIterations(1, 1 + _daCapoScalaConfig["scalac"] // 3, _daCapoScalaConfig["scalac"]),
+    "scaladoc"    : warmupIterations(1, 1 + _daCapoScalaConfig["scaladoc"] // 3, _daCapoScalaConfig["scaladoc"]),
+    "scalap"      : warmupIterations(1, 1 + _daCapoScalaConfig["scalap"] // 3, _daCapoScalaConfig["scalap"]),
+    "scalariform" : warmupIterations(1, 1 + _daCapoScalaConfig["scalariform"] // 3, _daCapoScalaConfig["scalariform"]),
+    "scalatest"   : warmupIterations(1, 1 + _daCapoScalaConfig["scalatest"] // 3, _daCapoScalaConfig["scalatest"]),
+    "scalaxb"     : warmupIterations(1, 1 + _daCapoScalaConfig["scalaxb"] // 3, _daCapoScalaConfig["scalaxb"]),
+    "specs"       : warmupIterations(1, 1 + _daCapoScalaConfig["specs"] // 3, _daCapoScalaConfig["specs"]),
+    "tmt"         : warmupIterations(1, 1 + _daCapoScalaConfig["tmt"] // 3, _daCapoScalaConfig["tmt"]),
 }
 
 class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
