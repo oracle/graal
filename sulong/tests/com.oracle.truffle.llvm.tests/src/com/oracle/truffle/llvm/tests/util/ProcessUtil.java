@@ -141,7 +141,7 @@ public class ProcessUtil {
     }
 
     public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput) throws IOException {
-        return executeSulongTestMainSameEngine(bitcodeFile, args, options, captureOutput, Engine.newBuilder().build());
+        return executeSulongTestMainSameEngine(bitcodeFile, args, options, captureOutput, Engine.newBuilder().allowExperimentalOptions(true).build());
     }
 
     public static ProcessResult executeSulongTestMainSameEngine(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput, Engine engine)
