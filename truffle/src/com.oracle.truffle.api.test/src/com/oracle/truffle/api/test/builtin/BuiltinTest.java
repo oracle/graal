@@ -65,7 +65,9 @@ public class BuiltinTest extends InteropLibraryBaseTest {
         Object function = builtinLib.readMember(testObject, EXISTING);
         InteropLibrary functionLib = createLibrary(InteropLibrary.class, function);
 
+        Assert.assertEquals("test", builtinLib.invokeMember(testObject, "testArg0"));
         Assert.assertEquals("test42", builtinLib.invokeMember(testObject, EXISTING, "42"));
+        Assert.assertEquals("test42", builtinLib.invokeMember(testObject, "testArg2", "4", "2"));
         Assert.assertEquals("test42", functionLib.execute(function, "42"));
     }
 
