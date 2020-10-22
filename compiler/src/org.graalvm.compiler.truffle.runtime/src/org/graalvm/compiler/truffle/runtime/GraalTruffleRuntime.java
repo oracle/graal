@@ -135,19 +135,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     private static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
     private static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
-    final Consumer<CompilationTask> compilationAction = new Consumer<CompilationTask>() {
-        @Override
-        public void accept(CompilationTask task) {
-            OptimizedCallTarget callTarget = task.targetRef.get();
-            if (callTarget != null && task.start()) {
-                try {
-                    doCompile(callTarget, task);
-                } finally {
-                    task.finished();
-                }
-            }
-        }
-    };
 
     /**
      * Used only to reset state for native image compilation.

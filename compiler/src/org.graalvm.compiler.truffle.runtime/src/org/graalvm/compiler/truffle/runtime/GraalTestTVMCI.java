@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.Map;
 
-import com.oracle.truffle.api.Truffle;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.VoidGraphStructure;
 import org.graalvm.compiler.truffle.runtime.GraalTestTVMCI.GraalTestContext;
@@ -119,6 +118,6 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTar
     @Override
     public void finishWarmup(GraalTestContext testContext, OptimizedCallTarget callTarget) {
         BackgroundCompileQueue.Priority priority = new BackgroundCompileQueue.Priority(Integer.MAX_VALUE, BackgroundCompileQueue.Priority.Tier.LAST);
-        truffleRuntime.doCompile(callTarget, CompilationTask.compilationTask(priority, new WeakReference<>(callTarget), ((GraalTruffleRuntime) Truffle.getRuntime()), 0));
+        truffleRuntime.doCompile(callTarget, CompilationTask.compilationTask(priority, new WeakReference<>(callTarget), 0));
     }
 }

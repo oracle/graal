@@ -163,7 +163,7 @@ public class BackgroundCompileQueue {
 
     public CompilationTask submitCompilation(Priority priority, OptimizedCallTarget target) {
         final WeakReference<OptimizedCallTarget> targetReference = new WeakReference<>(target);
-        CompilationTask compilationTask = CompilationTask.compilationTask(priority, targetReference, runtime, nextId());
+        CompilationTask compilationTask = CompilationTask.compilationTask(priority, targetReference, nextId());
         return submitTask(compilationTask);
     }
 

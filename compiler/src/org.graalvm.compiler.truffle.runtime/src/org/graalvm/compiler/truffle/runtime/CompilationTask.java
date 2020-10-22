@@ -31,8 +31,11 @@ import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
@@ -47,13 +50,26 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private volatile Future<?> future;
     private volatile boolean cancelled;
     private volatile boolean started;
+    private static final Consumer<CompilationTask> compilationAction = new Consumer<CompilationTask>() {
+        @Override
+        public void accept(CompilationTask task) {
+            OptimizedCallTarget callTarget = task.targetRef.get();
+            if (callTarget != null && task.start()) {
+                try {
+                    ((GraalTruffleRuntime) Truffle.getRuntime()).doCompile(callTarget, task);
+                } finally {
+                    task.finished();
+                }
+            }
+        }
+    };
 
     static CompilationTask initializationTask(WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action) {
         return new CompilationTask(BackgroundCompileQueue.Priority.INITIALIZATION, targetRef, action, 0);
     }
 
-    static CompilationTask compilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, GraalTruffleRuntime runtime, long id) {
-        return new CompilationTask(priority, targetRef, runtime.compilationAction, id);
+    static CompilationTask compilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, long id) {
+        return new CompilationTask(priority, targetRef, compilationAction, id);
     }
 
     private CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
