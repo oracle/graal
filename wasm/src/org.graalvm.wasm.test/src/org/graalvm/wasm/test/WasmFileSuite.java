@@ -168,21 +168,22 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             // Then, optionally save memory and globals, and compare them.
             // Execute a special function, which resets memory and globals to their default values.
             final WasmContext wasmContext = WasmContext.getCurrent();
-            Value mainFunction = findMain(wasmContext);
+            final Value mainFunction = findMain(wasmContext);
 
             resetStatus(oldOut, phaseIcon, phaseLabel);
-            ByteArrayOutputStream capturedStdout;
+            final ByteArrayOutputStream capturedStream = new ByteArrayOutputStream();
+            final PrintStream capturedStdout = new PrintStream(capturedStream);
+            final String argString = testCase.options().getProperty("argument");
+            final Integer arg = argString == null ? null : Integer.parseInt(argString);
+            System.setOut(capturedStdout);
             ContextState firstIterationContextState = null;
 
             for (int i = 0; i != iterations; ++i) {
                 try {
-                    capturedStdout = new ByteArrayOutputStream();
-                    System.setOut(new PrintStream(capturedStdout));
-
-                    final String argString = testCase.options().getProperty("argument");
+                    capturedStream.reset();
 
                     // Execute benchmark.
-                    final Value result = argString == null ? mainFunction.execute() : mainFunction.execute(Integer.parseInt(argString));
+                    final Value result = arg == null ? mainFunction.execute() : mainFunction.execute(arg);
 
                     // Save context state, and check that it's consistent with the previous one.
                     if (iterationNeedsStateCheck(i)) {
