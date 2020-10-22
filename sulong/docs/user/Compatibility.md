@@ -15,11 +15,11 @@ during dynamic compilation. Some optimizations are better when done
 ahead-of-time on bitcode, while other optimizations are better left for the
 dynamic compilation of the GraalVM compiler, when profiling information is available.
 
-The LLVM toolchain that is shipped with GraalVM automatically selects the
+The LLVM toolchain, shipped with GraalVM, automatically selects the
 recommended flags by default.
 
 Generally, all optimization levels should work, but for a better result, it is
 recommended to compile the bitcode with the optimization level `-O1`.
 
 For cross-language interoperability, the `-mem2reg` optimization is required.
-There are two ways to get that, either compile with at least `-O1`, or use the `opt` tool to apply the `-mem2reg` optimization manually.
+There are two ways to get that: either compile with at least `-O1`, or use the `opt` tool to apply the `-mem2reg` optimization manually.

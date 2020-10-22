@@ -8,7 +8,7 @@ Note: Managed execution mode for LLVM bitcode is possible with GraalVM Enterpris
 
 In the default configuration, cross-language interoperability requires bitcode
 to be compiled with the debug information enabled (`-g`), and the `-mem2reg`
-optimization is performed on the bitcode (compiled with at least `-O1`, or
+optimization performed on LLVM bitcode (compiled with at least `-O1`, or
 explicitly using the `opt` tool). These requirements can be overcome in a
 managed environment of GraalVM Enterprise that allows native code to participate in the
 polyglot programs, passing and receiving the data from any other supported
