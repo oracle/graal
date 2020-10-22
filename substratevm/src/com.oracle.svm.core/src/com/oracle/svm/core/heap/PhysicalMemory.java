@@ -26,7 +26,9 @@ package com.oracle.svm.core.heap;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Containers;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
@@ -139,6 +141,9 @@ public class PhysicalMemory {
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Only called if allocation is allowed.")
     private static void doInitialize() {
-        cachedSize = ImageSingletons.lookup(PhysicalMemorySupport.class).size();
+        long memoryLimit = Containers.memoryLimitInBytes();
+        cachedSize = memoryLimit == Containers.UNKNOWN
+                        ? ImageSingletons.lookup(PhysicalMemorySupport.class).size()
+                        : WordFactory.unsigned(memoryLimit);
     }
 }

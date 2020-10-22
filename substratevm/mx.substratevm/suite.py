@@ -168,6 +168,16 @@ suite = {
             "workingSets": "SVM",
         },
 
+        "com.oracle.svm.core.containers": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": ["com.oracle.svm.core"],
+            "overlayTarget": "com.oracle.svm.core",
+            "javaCompliance": "8+",
+            "workingSets": "SVM",
+            "spotbugs": "false",
+        },
+
         "com.oracle.svm.core.jdk8": {
             "subDir": "src",
             "sourceDirs": ["src"],
