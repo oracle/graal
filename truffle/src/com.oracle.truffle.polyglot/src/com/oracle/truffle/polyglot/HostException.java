@@ -55,8 +55,11 @@ final class HostException extends AbstractTruffleException {
     final HostObject delegate;
 
     HostException(Throwable original) {
+        this(original, PolyglotContextImpl.currentNotEntered());
+    }
+
+    HostException(Throwable original, PolyglotContextImpl context) {
         this.original = original;
-        PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
         this.delegate = HostObject.forException(original, context != null ? context.getHostContext() : null, this);
     }
 

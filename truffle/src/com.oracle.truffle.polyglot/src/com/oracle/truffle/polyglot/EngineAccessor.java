@@ -1013,7 +1013,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean isHostSymbol(Object obj) {
-            if (HostObject.isInstance(obj)) {
+            if (HostObject.isHostObjectInstance(obj)) {
                 return ((HostObject) obj).isStaticClass();
             }
             return false;
