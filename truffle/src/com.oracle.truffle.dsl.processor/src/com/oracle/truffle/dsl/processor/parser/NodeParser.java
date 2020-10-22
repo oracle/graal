@@ -2380,7 +2380,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.setAlwaysInitialized(true);
                 continue;
             } else {
-                seenDynamicParameterBound |= specialization.isDynamicParameterBound(receiverExpression, false);
+                seenDynamicParameterBound |= specialization.isDynamicParameterBound(receiverExpression, true);
                 cachedLibrary.setDefaultExpression(receiverExpression);
 
                 String receiverName = cachedLibrary.getParameter().getVariableElement().getSimpleName().toString();
