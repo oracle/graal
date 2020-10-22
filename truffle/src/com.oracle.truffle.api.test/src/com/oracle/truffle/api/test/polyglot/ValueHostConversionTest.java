@@ -1307,10 +1307,40 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertEquals("object", context.asValue(new StringHierarchy()).invokeMember("hierarchy", new BigDecimal(42)).asString());
 
         // the only applicable method is one that requires the lowest precedence target mapping.
-        Value stringClass = context.asValue(String.class).getMember("static");
-        assertEquals("42", stringClass.newInstance(new BigDecimal(42)).asString());
-        Value integerClass = context.asValue(Integer.class).getMember("static");
-        assertEquals("42", integerClass.invokeMember("toString", new BigDecimal(42)).asString());
+        Value onlyString = context.asValue(new OnlyString());
+        assertEquals("42", onlyString.invokeMember("accept", new BigDecimal(42)).asString());
+        Value onlyInt = context.asValue(new OnlyInt());
+        assertEquals("42", onlyInt.invokeMember("accept", new BigDecimal(42)).asString());
+    }
+
+    @SuppressWarnings("unused")
+    public static class OnlyString {
+        public String accept() {
+            return "()";
+        }
+
+        public String accept(String a) {
+            return a;
+        }
+
+        public String accept(CharSequence a) {
+            return "(CharSequence)";
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class OnlyInt {
+        public String accept() {
+            return "()";
+        }
+
+        public String accept(int a) {
+            return String.valueOf(a);
+        }
+
+        public String accept(int a, int b) {
+            return "(int,int)";
+        }
     }
 
 }
