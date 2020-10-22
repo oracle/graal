@@ -261,7 +261,13 @@ final class LibFFIClosure implements TruffleObject {
         }
 
         @Override
-        protected ByteBuffer getPrimBuffer() {
+        public int position() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
+        }
+
+        @Override
+        public void position(int newPosition) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalStateException("should not reach here");
         }
