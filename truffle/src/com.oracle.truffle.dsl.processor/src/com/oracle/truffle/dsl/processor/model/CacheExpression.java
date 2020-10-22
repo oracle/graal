@@ -56,6 +56,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.library.LibraryData;
 
 public final class CacheExpression extends MessageContainer {
 
@@ -75,6 +76,8 @@ public final class CacheExpression extends MessageContainer {
 
     private TypeMirror languageType;
     private TypeMirror referenceType;
+
+    private LibraryData cachedlibrary;
 
     public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror) {
         this.sourceParameter = sourceParameter;
@@ -326,6 +329,14 @@ public final class CacheExpression extends MessageContainer {
 
     public void setAdopt(boolean adopt) {
         this.adopt = adopt;
+    }
+
+    public LibraryData getCachedLibrary() {
+        return cachedlibrary;
+    }
+
+    public void setCachedLibrary(LibraryData cachedlibrary) {
+        this.cachedlibrary = cachedlibrary;
     }
 
 }

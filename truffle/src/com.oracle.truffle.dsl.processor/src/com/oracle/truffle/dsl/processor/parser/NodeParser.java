@@ -2331,6 +2331,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.addError("Library '%s' has errors. Please resolve them first.", getSimpleName(parameterType));
                 continue;
             }
+
+            cachedLibrary.setCachedLibrary(parsedLibrary);
+            if (uncachedLibrary != null) {
+                uncachedLibrary.setCachedLibrary(parsedLibrary);
+            }
+
             String expression = cachedLibrary.getCachedLibraryExpression();
             DSLExpression receiverExpression = parseCachedExpression(resolver, cachedLibrary, parsedLibrary.getSignatureReceiverType(), expression);
             if (receiverExpression == null) {
