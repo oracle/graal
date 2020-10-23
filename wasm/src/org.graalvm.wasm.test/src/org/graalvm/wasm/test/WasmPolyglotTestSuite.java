@@ -40,18 +40,18 @@
  */
 package org.graalvm.wasm.test;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.ByteSequence;
 
 import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
 
@@ -81,7 +81,7 @@ public class WasmPolyglotTestSuite {
     }
 
     @Test
-    public void unsafeMemoryFreed() throws IOException, NoSuchFieldException, IllegalAccessException {
+    public void unsafeMemoryFreed() throws IOException {
         Context.Builder contextBuilder = Context.newBuilder("wasm");
         Source.Builder sourceBuilder = Source.newBuilder("wasm",
                         ByteSequence.create(binary),
@@ -90,9 +90,12 @@ public class WasmPolyglotTestSuite {
         contextBuilder.allowExperimentalOptions(true);
         contextBuilder.option("wasm.UseUnsafeMemory", "true");
         Context context = contextBuilder.build();
+        context.enter();
         context.eval(source);
-        context.getBindings("wasm").getMember("main").getMember("main").execute();
-        UnsafeWasmMemory memory = getPrivateField(context.getBindings("wasm").getMember("main").getMember("memory"), "receiver");
+        final Value mainModule = context.getBindings("wasm").getMember("main");
+        mainModule.getMember("main").execute();
+        final TruffleLanguage.Env env = WasmContext.getCurrent().environment();
+        final UnsafeWasmMemory memory = (UnsafeWasmMemory) env.asGuestValue(mainModule.getMember("memory"));
         Assert.assertTrue("Memory should have been allocated.", !memory.freed());
         context.close();
         Assert.assertTrue("Memory should have been freed.", memory.freed());
@@ -123,14 +126,4 @@ public class WasmPolyglotTestSuite {
                     "686561705f6261736503010a5f5f6461",
                     "74615f656e6403020a090202000b0400",
                     "412a0b");
-
-    /**
-     * Do not try this at home.
-     */
-    @SuppressWarnings("unchecked")
-    private static <T> T getPrivateField(Object object, String field) throws NoSuchFieldException, IllegalAccessException {
-        Field f = object.getClass().getDeclaredField(field);
-        f.setAccessible(true);
-        return (T) f.get(object);
-    }
 }
