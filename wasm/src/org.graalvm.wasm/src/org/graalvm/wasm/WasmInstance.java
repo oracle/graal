@@ -73,10 +73,14 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         return module().name();
     }
 
-    public WasmFunctionInstance getMainFunction() {
+    public WasmFunctionInstance getEntryPoint() {
         final WasmFunction mainFunction = symbolTable().exportedFunctions().get("_main");
         if (mainFunction != null) {
             return functionInstance(mainFunction);
+        }
+        final WasmFunction startFunction = symbolTable().exportedFunctions().get("_start");
+        if (startFunction != null) {
+            return functionInstance(startFunction);
         }
         if (symbolTable().startFunction() != null) {
             return functionInstance(symbolTable().startFunction());
