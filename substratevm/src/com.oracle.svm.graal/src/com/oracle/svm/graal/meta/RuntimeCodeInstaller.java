@@ -291,7 +291,13 @@ public class RuntimeCodeInstaller {
             Throwable[] errorBox = {null};
             JavaVMOperation.enqueueBlockingSafepoint("Install code", () -> {
                 try {
-
+                    // Valid installedCode must be invalidated before setting its address.
+                    //
+                    // SubstrateInstalledCode passed here can come from either a Truffle,
+                    // in which case this is a SubstrateOptimizedCallTarget instance,
+                    // or from code for typed entry points and various stubs,
+                    // in which case this is a SubstrateInstalledCodeImpl instance.
+                    // In the latter case, installedCode is not valid, because it is a new instance.
                     if (installedCode.isValid()) {
                         CodeInfoTable.invalidateInstalledCodeAtSafepoint(WordFactory.pointer(installedCode.getAddress()));
                     }

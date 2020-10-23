@@ -251,7 +251,7 @@ public class CodeInfoTable {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static CodeInfoTableCounters counters() {
+    private static CodeInfoTableCounters counters() {
         return ImageSingletons.lookup(CodeInfoTableCounters.class);
     }
 }
