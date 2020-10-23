@@ -15,6 +15,7 @@ import * as utils from './utils';
 import { LSPORT, connectToLanguageServer, stopLanguageServer, lspArgs, hasLSClient, setLSPID } from './graalVMLanguageServer';
 import { StreamInfo } from 'vscode-languageclient';
 import { ILaunchRequestArguments, IGraalVMLaunchInfo } from './graalVMDebugInterfaces';
+import { getGVMConfig, getConf, getGVMHome } from './graalVMConfiguration';
 
 const DEBUG_TERMINAL_NAME = 'GraalVM Debug Console';
 const NODE: string = "node";
@@ -25,7 +26,7 @@ let rTermArgs: string[] | undefined;
 export class GraalVMDebugAdapterTracker implements vscode.DebugAdapterTrackerFactory {
 
 	createDebugAdapterTracker(session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
-		const inProcessServer = utils.getGVMConfig().get('languageServer.inProcessServer') as boolean;
+		const inProcessServer = getGVMConfig().get('languageServer.inProcessServer') as boolean;
 		return {
 			onDidSendMessage(message: any) {
 				if (message.type === 'event' && !hasLSClient() && session.configuration.request === 'launch' && inProcessServer) {
@@ -50,8 +51,7 @@ export class GraalVMDebugAdapterTracker implements vscode.DebugAdapterTrackerFac
 			},
 			onWillStopSession() {
 				if (rTermArgs) {
-					const conf = utils.getConf('r');
-					conf.update('rterm.option', rTermArgs, true);
+					getConf('r').update('rterm.option', rTermArgs, true);
 				}
 			}
 		};
@@ -64,7 +64,7 @@ export class GraalVMConfigurationProvider implements vscode.DebugConfigurationPr
 		return new Promise<vscode.DebugConfiguration>(resolve => {
 			if (config.request === 'launch' && config.name === 'Launch R Term') {
 				config.request = 'attach';
-				const conf = utils.getConf('r');
+				const conf = getConf('r');
 				rTermArgs = conf.get('rterm.option') as string[];
 				let args = config.runtimeArgs ? rTermArgs.slice().concat(config.runtimeArgs) : rTermArgs.slice();
 				if (!args.find((arg: string) => arg.startsWith('--inspect'))) {
@@ -78,9 +78,9 @@ export class GraalVMConfigurationProvider implements vscode.DebugConfigurationPr
 					}, config.timeout | 3000);
 				}, 1000);
 			} else {
-				const gvmc = utils.getGVMConfig()
+				const gvmc = getGVMConfig()
 				const inProcessServer = gvmc.get('languageServer.inProcessServer') as boolean;
-				const graalVMHome = utils.getGVMHome(gvmc);
+				const graalVMHome = getGVMHome(gvmc);
 				if (graalVMHome) {
 					config.graalVMHome = graalVMHome;
 					const graalVMBin = path.join(graalVMHome, 'bin');
@@ -130,10 +130,10 @@ export class GraalVMConfigurationProvider implements vscode.DebugConfigurationPr
 	}
 
 	resolveDebugConfigurationWithSubstitutedVariables?(_folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration, _token?: vscode.CancellationToken): vscode.ProviderResult<vscode.DebugConfiguration> {
-        return getLaunchInfo(config, utils.getGVMHome()).then(launchInfo => {
+        return getLaunchInfo(config, getGVMHome()).then(launchInfo => {
 			config.graalVMLaunchInfo = launchInfo;
 			if (config.program) {
-				if (!utils.getGVMConfig().get('languageServer.inProcessServer') as boolean) {
+				if (!getGVMConfig().get('languageServer.inProcessServer') as boolean) {
 					vscode.commands.getCommands().then((commands: string[]) => {
 						if (commands.includes('dry_run')) {
 							vscode.commands.executeCommand('dry_run', pathToFileURL(config.program));
