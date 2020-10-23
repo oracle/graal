@@ -37,6 +37,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -51,6 +52,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
@@ -86,8 +88,6 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     protected FixedWithNextNode lastInstr;
     protected ValueNode[] arguments;
     protected ValueNode returnValue;
-
-    private int numUnwinds = 0;
 
     private FrameState createStateAfterStartOfReplacementGraph(ResolvedJavaMethod original, GraphBuilderConfiguration graphBuilderConfig) {
         FrameStateBuilder startFrameState = new FrameStateBuilder(this, code, graph, graphBuilderConfig.retainLocalVariables());
@@ -178,8 +178,6 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
                 setExceptionState(exceptionSuccessor);
                 exceptionSuccessor.setNext(graph.add(new UnwindNode(exceptionSuccessor)));
 
-                numUnwinds++;
-
                 withExceptionNode.setNext(normalSuccessor);
                 withExceptionNode.setExceptionEdge(exceptionSuccessor);
                 lastInstr = normalSuccessor;
@@ -190,12 +188,20 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         }
     }
 
+    @Override
+    public AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionNode.BytecodeExceptionKind exceptionKind, ValueNode... exceptionArguments) {
+        BytecodeExceptionNode exceptionNode = graph.add(new BytecodeExceptionNode(getMetaAccess(), exceptionKind, exceptionArguments));
+        setExceptionState(exceptionNode);
+        exceptionNode.setNext(graph.add(new UnwindNode(exceptionNode)));
+        return BeginNode.begin(exceptionNode);
+    }
+
     /**
      * Currently unimplemented here, but implemented in subclasses that need it.
      *
      * @param exceptionObject The node that needs an exception state.
      */
-    protected void setExceptionState(ExceptionObjectNode exceptionObject) {
+    protected void setExceptionState(StateSplit exceptionObject) {
         throw GraalError.shouldNotReachHere("unsupported by this IntrinsicGraphBuilder");
     }
 
@@ -207,7 +213,9 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
      * Currently unimplemented here, but implemented in subclasses that need it.
      */
     protected void mergeUnwinds() {
-        throw GraalError.shouldNotReachHere("unsupported by this IntrinsicGraphBuilder");
+        if (getGraph().getNodes().filter(UnwindNode.class).count() > 1) {
+            throw GraalError.shouldNotReachHere("mergeUnwinds unsupported by this IntrinsicGraphBuilder");
+        }
     }
 
     @Override
@@ -348,9 +356,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
                 assert (returnValue != null) == (method.getSignature().getReturnKind() != JavaKind.Void) : method;
                 assert lastInstr != null : "ReturnNode must be linked into control flow";
                 append(new ReturnNode(returnValue));
-                if (numUnwinds > 1) {
-                    mergeUnwinds();
-                }
+                mergeUnwinds();
                 return graph;
             }
             return null;
