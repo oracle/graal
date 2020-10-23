@@ -278,11 +278,13 @@ public class TypeCheckBuilder {
             int[] slots = classIDMap.get(type);
             for (int i = 0; i < slots.length; i++) {
                 typeCheckSlots[i] = getShortValue(slots[i]);
+                assert typeCheckSlots[i] < SLOT_CAPACITY;
             }
             slots = interfaceIDMap.get(type);
             if (slots != null) {
                 for (int i = 0; i < slots.length; i++) {
                     typeCheckSlots[numClassSlots + i] = getShortValue(slots[i]);
+                    assert typeCheckSlots[numClassSlots + i] < SLOT_CAPACITY;
                 }
             }
 
@@ -373,23 +375,25 @@ public class TypeCheckBuilder {
      * against non-interface types can be accomplished through a range check.
      * <p>
      * In our algorithm, in order to guarantee ID information can fit into two bytes, the type ids
-     * are spread out into multiple slots when the two byte capacity is exceeded.
+     * are spread out into multiple slots when the two byte capacity is exceeded. To do so, the
+     * concept of a reservedID is introduced. ReservedIDs are assigned backwards from the slot's
+     * capacity and are used to guarantee subtyping works correct when a type's subtypes will
+     * overfill the current slot.
      */
     private void calculateClassIDs() {
         ArrayList<Integer> currentIDs = new ArrayList<>();
-        ArrayList<Integer> reservedIDs = new ArrayList<>();
-        currentIDs.add(-1);
-        reservedIDs.add(SLOT_CAPACITY);
+        ArrayList<Integer> numReservedIDs = new ArrayList<>();
+        currentIDs.add(0);
+        numReservedIDs.add(0);
         for (HostedType root : allReachableRoots) {
-            assert !isInterface(root);
-            classIdHelper(root, currentIDs, reservedIDs);
+            classIdHelper(root, currentIDs, numReservedIDs);
         }
 
         /* Recording the number of slots reserved for class IDs. */
         assert numClassSlots == -1;
         numClassSlots = currentIDs.size();
 
-        /* Setting class slot for interfaces - will integrate this with classIDHelper eventually. */
+        /* Setting class slot for interfaces to be the same as the object type. */
         for (HostedType type : allReachableTypes) {
             if (isInterface(type)) {
                 int dim = type.getArrayDimension();
@@ -414,15 +418,13 @@ public class TypeCheckBuilder {
     }
 
     /**
-     * This method assigns ids to class types. interfaces are performed using the information
+     * This method assigns ids to class types. Interfaces are performed using the information
      * calculated in {@link #computeInterfaceSlots()}.
      */
-    private void classIdHelper(HostedType type, ArrayList<Integer> currentIDs, ArrayList<Integer> reservedIDs) {
-        assert shouldIncludeType(type);
-        boolean isTypeInterface = isInterface(type);
-        assert !isTypeInterface;
+    private void classIdHelper(HostedType type, ArrayList<Integer> currentIDs, ArrayList<Integer> numReservedIDs) {
+        assert shouldIncludeType(type) && !isInterface(type);
 
-        ClassIDState state = generateClassIDState(type, currentIDs, reservedIDs);
+        ClassIDState state = generateClassIDState(type, currentIDs, numReservedIDs);
         int reservedID = state.reservedID;
         int slotNum = state.slotNum;
         int assignedID = state.assignedID;
@@ -441,67 +443,84 @@ public class TypeCheckBuilder {
                  */
                 continue;
             }
-            classIdHelper(subtype, currentIDs, reservedIDs);
+            classIdHelper(subtype, currentIDs, numReservedIDs);
 
             assert currentIDs.get(slotNum) >= assignedID; // IDs should always be increasing.
         }
 
-        /* Determining range of values assigned to subtypes. */
-        if (!isTypeInterface) {
-            type.setTypeCheckSlot(getShortValue(slotNum));
-            int currentID = currentIDs.get(slotNum);
-            assert currentID == maxSubtypeID;
-            type.setTypeCheckRange(getShortValue(assignedID), getShortValue(currentID - assignedID + 1));
-        }
-        if (reservedID != -1) {
-            currentIDs.set(slotNum, reservedID);
-            reservedIDs.set(slotNum, reservedID + 1); // setting back to original value
+        /* Validating calculation of maxSubtypeID. */
+        assert currentIDs.get(slotNum) == maxSubtypeID;
+
+        /* Record type's slot and range. */
+        type.setTypeCheckSlot(getShortValue(slotNum));
+        type.setTypeCheckRange(getShortValue(assignedID), getShortValue(maxSubtypeID - assignedID + 1));
+        if (reservedID != 0) {
+            /* Must distinguish subsequent ID assignments from this type. */
+            assert numReservedIDs.get(slotNum) == reservedID;
+            int newNumReservedIDs = reservedID - 1;
+            numReservedIDs.set(slotNum, newNumReservedIDs);
+            currentIDs.set(slotNum, newNumReservedIDs == 0 ? 0 : SLOT_CAPACITY - newNumReservedIDs);
         }
     }
 
-    private ClassIDState generateClassIDState(HostedType type, ArrayList<Integer> currentIDs, ArrayList<Integer> reservedIDs) {
-        int reservedID = -1;
+    private ClassIDState generateClassIDState(HostedType type, ArrayList<Integer> currentIDs, ArrayList<Integer> numReservedIDs) {
+        /*
+         * A reserved ID is assigned when this type's slot will overflow while assigning IDs to its
+         * subtypes.
+         */
+        int reservedID = 0;
         int slotNum = currentIDs.size() - 1;
         int numDescendants = numClassDescendants.getOrDefault(type, 0);
-        int assignedID = currentIDs.get(slotNum) + 1; // need start at the next free stop
-        int currentReservedID = reservedIDs.get(slotNum); // max value allowed at this spot
-        assert assignedID < currentReservedID;
+        /* first trying to assign next sequential id. */
+        int assignedID = currentIDs.get(slotNum) + 1;
+        /* Number of slot currently reserved. This effectively lowers the slot's capacity. */
+        int currentNumReservedIDs = numReservedIDs.get(slotNum);
+        int currentCapacity = SLOT_CAPACITY - currentNumReservedIDs;
+        assert assignedID <= currentCapacity;
 
-        if (assignedID + 1 == currentReservedID) {
-            /* No more space left. Making filled slot's value different than predecessor. */
-            currentIDs.set(slotNum, assignedID);
+        if (assignedID == currentCapacity) {
+            /*
+             * No more space left. Assigning overflowed slot appropriate "end" value.
+             */
+            currentIDs.set(slotNum, currentNumReservedIDs == 0 ? 0 : SLOT_CAPACITY - currentNumReservedIDs);
             slotNum++;
-            assignedID = 1;
             currentIDs.add(0);
-            currentReservedID = SLOT_CAPACITY;
-            reservedIDs.add(currentReservedID);
+            currentNumReservedIDs = 0;
+            currentCapacity = SLOT_CAPACITY;
+            numReservedIDs.add(currentNumReservedIDs);
+            assignedID = 1;
         }
         int maxSubtypeID = assignedID + numDescendants;
-        if (maxSubtypeID >= currentReservedID) {
-            /* Means this types descendants will overfill this type. */
-            reservedID = currentReservedID - 1;
-            if (assignedID + 1 == reservedID) {
+        if (maxSubtypeID >= currentCapacity) {
+            /*
+             * Means this types descendants will overfill this slot. In this case, need to reserved
+             * an ID and force all descendants to have values between the current assignable and the
+             * reserved ID (inclusive). Non-descendants are then assigned the next ID (mod
+             * capacity).
+             */
+            if (assignedID + 1 == currentCapacity) {
                 /*
-                 * Not enough space for reserved ID + new-slot filler -- move on to next slot. Also,
-                 * making filled slot's value different than predecessor.
+                 * Not enough space to add a reserved slot at end of the list, so must move to next
+                 * slot.
                  */
-                currentIDs.set(slotNum, reservedID);
+                currentIDs.set(slotNum, currentNumReservedIDs == 0 ? 0 : SLOT_CAPACITY - currentNumReservedIDs);
                 slotNum++;
-                assignedID = 1;
                 currentIDs.add(0);
+                currentNumReservedIDs = 0;
+                currentCapacity = SLOT_CAPACITY;
+                numReservedIDs.add(currentNumReservedIDs);
+                assignedID = 1;
                 maxSubtypeID = assignedID + numDescendants;
-                currentReservedID = SLOT_CAPACITY;
-                reservedIDs.add(currentReservedID);
-                if (maxSubtypeID >= currentReservedID) {
-                    reservedID = currentReservedID - 1;
-                    reservedIDs.set(slotNum, reservedID);
-                    maxSubtypeID = reservedID - 1;
-                } else {
-                    reservedID = -1;
-                }
-            } else {
-                reservedIDs.set(slotNum, reservedID);
-                maxSubtypeID = reservedID - 1;
+            }
+
+            /*
+             * Have to recheck whether a reservedID is needed since a new slot may have been added.
+             */
+            if (maxSubtypeID >= currentCapacity) {
+                currentNumReservedIDs++;
+                reservedID = currentNumReservedIDs;
+                maxSubtypeID = SLOT_CAPACITY - reservedID;
+                numReservedIDs.set(slotNum, currentNumReservedIDs);
             }
         }
 
@@ -515,7 +534,7 @@ public class TypeCheckBuilder {
      * the slot capacity.
      */
     private static short getShortValue(int intValue) {
-        assert SLOT_CAPACITY <= 1 << 16 && intValue < SLOT_CAPACITY;
+        assert intValue < (1 << 16);
         return (short) intValue;
     }
 
