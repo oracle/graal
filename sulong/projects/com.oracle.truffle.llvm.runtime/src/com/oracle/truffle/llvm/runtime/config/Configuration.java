@@ -29,14 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.config;
 
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
-
-import java.util.List;
 
 public interface Configuration {
 

@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.NativeConfigurationFactory.Key;
 import com.oracle.truffle.llvm.parser.factories.BasicIntrinsicsProvider;
 import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
@@ -48,9 +47,6 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public final class NativeConfiguration implements Configuration {
 

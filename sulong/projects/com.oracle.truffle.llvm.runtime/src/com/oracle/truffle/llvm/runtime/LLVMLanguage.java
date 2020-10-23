@@ -29,12 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -73,6 +67,12 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
+
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE}, //
