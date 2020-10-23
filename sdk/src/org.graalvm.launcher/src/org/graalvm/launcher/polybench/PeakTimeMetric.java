@@ -47,4 +47,9 @@ public class PeakTimeMetric implements Metric {
     public String unit() {
         return "ms";
     }
+
+    @Override
+    public String name() {
+        return "peak time";
+    }
 }

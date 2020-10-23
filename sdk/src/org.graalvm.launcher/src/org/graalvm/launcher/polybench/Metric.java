@@ -24,4 +24,6 @@ public interface Metric {
     default String unit() {
         return "";
     }
+
+    String name();
 }

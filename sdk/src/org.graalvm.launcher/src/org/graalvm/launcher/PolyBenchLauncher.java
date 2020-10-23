@@ -19,17 +19,109 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class PolyBenchLauncher extends LanguageLauncherBase {
+    class ArgumentConsumer {
+        private final String prefix;
+        private final BiConsumer<String, Map<String, String>> action;
+
+        ArgumentConsumer(String prefix, BiConsumer<String, Map<String, String>> action) {
+            this.prefix = prefix;
+            this.action = action;
+        }
+
+        boolean consume(String argument, Iterator<String> remaining, Map<String, String> options) {
+            if (!argument.startsWith(prefix)) {
+                return false;
+            }
+
+            final String value;
+            if (argument.contains("=")) {
+                value = argument.split("=", 2)[1];
+            } else {
+                if (!argument.equals(prefix)) {
+                    return false;
+                }
+                value = remaining.next();
+            }
+
+            action.accept(value, options);
+            return true;
+        }
+    }
+
+    class ArgumentParser {
+        private final List<ArgumentConsumer> consumers;
+
+        ArgumentParser() {
+            this.consumers = new ArrayList<>();
+            this.consumers.add(new ArgumentConsumer("--path", (value, options) -> {
+                config.path = value;
+                final File file = new File(value);
+                try {
+                    sourceContent = Source.newBuilder(Source.findLanguage(file), file);
+                } catch (IOException e) {
+                    throw abort("Error while examining source file '" + file + "': " + e.getMessage());
+                }
+            }));
+            this.consumers.add(new ArgumentConsumer("--mode", (value, options) -> {
+                switch (value) {
+                    case "interpreter":
+                        config.mode = "interpreter";
+                        setInterpreterOnly(options);
+                        break;
+                    default:
+                        throw abort("Unknown execution-mode: " + value);
+                }
+            }));
+            this.consumers.add(new ArgumentConsumer("--metric", (value, options) -> {
+                switch (value) {
+                    case "peak-time":
+                        config.metric = new PeakTimeMetric();
+                        break;
+                    default:
+                        throw abort("Unknown metric: " + value);
+                }
+            }));
+            this.consumers.add(new ArgumentConsumer("-wi", (value, options) -> {
+                config.warmupIterations = Integer.parseInt(value);
+            }));
+            this.consumers.add(new ArgumentConsumer("-i", (value, options) -> {
+                config.iterations = Integer.parseInt(value);
+            }));
+        }
+
+        List<String> parse(String[] args, Map<String, String> polyglotOptions) {
+            try {
+                List<String> arguments = Arrays.asList(args);
+                List<String> unrecognizedArguments = new ArrayList<>();
+                final Iterator<String> iterator = arguments.iterator();
+                outer: while (iterator.hasNext()) {
+                    final String argument = iterator.next();
+                    for (ArgumentConsumer consumer : consumers) {
+                        if (consumer.consume(argument, iterator, polyglotOptions)) {
+                            continue outer;
+                        }
+                    }
+                    unrecognizedArguments.add(argument);
+                }
+                return unrecognizedArguments;
+            } catch (NoSuchElementException e) {
+                throw abort("Premature end of arguments.");
+            }
+        }
+    }
+
     private Source.Builder sourceContent;
     private Config config;
-    private Metric metric;
 
     public PolyBenchLauncher() {
         this.sourceContent = null;
         this.config = new Config();
-        this.metric = new NoMetric();
     }
 
     @Override
@@ -74,55 +166,8 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
     }
 
     private List<String> parsePolyBenchLauncherOptions(String[] args, Map<String, String> polyglotOptions) {
-        List<String> arguments = Arrays.asList(args);
-        List<String> unrecognizedArguments = new ArrayList<>();
-        final Iterator<String> iterator = arguments.iterator();
-        while (iterator.hasNext()) {
-            final String arg = iterator.next();
-            String[] parts = arg.split("=", 2);
-            if (parts.length == 1) {
-                unrecognizedArguments.add(arg);
-            }
-            switch (parts[0]) {
-                case "--path":
-                    this.config.path = parts[1];
-                    final File file = new File(parts[1]);
-                    try {
-                        sourceContent = Source.newBuilder(Source.findLanguage(file), file);
-                    } catch (IOException e) {
-                        throw abort("Error while examining source file '" + file + "': " + e.getMessage());
-                    }
-                    break;
-                case "--execution-mode":
-                    switch (parts[1]) {
-                        case "interpreter":
-                            config.mode = "interpreter";
-                            setInterpreterOnly(polyglotOptions);
-                            break;
-                        default:
-                            throw abort("Unknown execution-mode: " + parts[1]);
-                    }
-                    break;
-                case "--metric":
-                    switch (parts[1]) {
-                        case "peak-time":
-                            metric = new PeakTimeMetric();
-                            break;
-                        default:
-                            throw abort("Unknown metric: " + parts[1]);
-                    }
-                    break;
-                case "-wi":
-                    config.warmupIterations = Integer.parseInt(parts[1]);
-                    break;
-                case "-i":
-                    config.iterations = Integer.parseInt(parts[1]);
-                    break;
-                default:
-                    unrecognizedArguments.add(arg);
-            }
-        }
-        return unrecognizedArguments;
+        final ArgumentParser parser = new ArgumentParser();
+        return parser.parse(args, polyglotOptions);
     }
 
     private void launch(String[] args) {
@@ -168,7 +213,7 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
                 log("");
 
                 log("::: Running :::");
-                metric.reset();
+                config.metric.reset();
                 repeatIterations(context, source.getLanguage(), source.getName(), false, config.iterations);
                 log("");
             } catch (Throwable t) {
@@ -189,22 +234,22 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
         Value run = lookup(context, languageId, "run");
 
         for (int i = 0; i < iterations; i++) {
-            metric.beforeIteration(warmup, i, config);
+            config.metric.beforeIteration(warmup, i, config);
 
             run.execute();
 
-            metric.afterIteration(warmup, i, config);
+            config.metric.afterIteration(warmup, i, config);
 
-            final Optional<Double> value = metric.reportAfterIteration(config);
+            final Optional<Double> value = config.metric.reportAfterIteration(config);
             if (value.isPresent()) {
-                log("[" + name + "] iteration " + i + ": " + round(value.get()) + " " + metric.unit());
+                log("[" + name + "] iteration " + i + ": " + round(value.get()) + " " + config.metric.unit());
             }
         }
 
-        final Optional<Double> value = metric.reportAfterAll();
+        final Optional<Double> value = config.metric.reportAfterAll();
         if (value.isPresent()) {
             log("------");
-            log("[" + name + "] " + (warmup ? "after warmup: " : "after run: ") + round(value.get()) + " " + metric.unit());
+            log("[" + name + "] " + (warmup ? "after warmup: " : "after run: ") + round(value.get()) + " " + config.metric.unit());
         }
     }
 
