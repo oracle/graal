@@ -139,6 +139,12 @@
 				"title": "Remove GraalVM Installation",
 				"icon": "$(trash)",
 				"category": "GraalVM"
+			},
+			{
+				"command": "extension.graalvm.runVisualVMForPID",
+				"title": "Open Process In VisualVM",
+				"icon": "$(run)",
+				"category": "VisualVM"
 			}
 		],
 		"viewsContainers": {
@@ -193,8 +199,8 @@
 			"view/item/context": [
 				{
 					"command": "extension.graalvm.selectGraalVMHome",
-					"when": "view == graalvm-installations && viewItem == graalvmInstallation || viewItem == graalvmInstallationOut",
-					"group": "inline"
+					"when": "view == graalvm-installations && viewItem == graalvmInstallation || viewItem == graalvmInstallationOut || viewItem == graalvmInstallationActive",
+					"group": "inline@1"
 				},
 				{
 					"command": "extension.graalvm.installGraalVMComponent",
@@ -213,8 +219,8 @@
 				},
 				{
 					"command": "extension.graalvm.removeInstallation",
-					"when": "view == graalvm-installations && viewItem == graalvmInstallation",
-					"group": "inline"
+					"when": "view == graalvm-installations && viewItem == graalvmInstallation || viewItem == graalvmInstallationActive",
+					"group": "inline@2"
 				}
 			]
 		},
@@ -614,10 +620,5 @@
 		"typescript": "^3.8.3",
 		"webpack": "^4.42.0",
 		"webpack-cli": "^3.3.11"
-	},
-	"extensionDependencies": [
-		"ms-python.python",
-		"Ikuyadeu.r",
-		"rebornix.Ruby"
-	]
+	}
 }

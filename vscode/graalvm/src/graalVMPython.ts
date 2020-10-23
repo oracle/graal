@@ -6,18 +6,30 @@
  */
 
 import * as utils from './utils';
+import { ConfigurationPickItem, getConf } from './graalVMConfiguration';
 
-export function pythonConfig(graalVMHome: string): boolean {
-    const executable = utils.findExecutable('graalpython', graalVMHome);
-    if (executable) {
-        setConfig('pythonPath', executable);
-        return true;
-    }
-    return false;
+export function getPythonConfigurations(): ConfigurationPickItem[] {
+    const ret: ConfigurationPickItem[] = [];
+    ret.push(new ConfigurationPickItem(
+        'Set as Python runtime',
+        '(python.pythonPath)',
+        graalVMHome => {
+            const executable = utils.findExecutable('graalpython', graalVMHome);
+            return executable !== undefined && executable !== getConf('python').get('pythonPath');
+        }, 
+        async graalVMHome => {
+            const executable = utils.findExecutable('graalpython', graalVMHome);
+            if (executable) {
+                utils.checkRecommendedExtension('ms-python.python', 'Python Language');
+                return setConfig('pythonPath', executable);
+            }
+        })
+    );
+    return ret;
 }
 
-function setConfig(section: string, path:string) {
-	const config = utils.getConf('python');
+function setConfig(section: string, path: string) {
+	const config = getConf('python');
 	const term = config.inspect(section);
 	if (term) {
 		config.update(section, path, true);

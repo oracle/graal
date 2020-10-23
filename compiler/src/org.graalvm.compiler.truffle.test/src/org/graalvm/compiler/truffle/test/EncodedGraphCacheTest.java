@@ -47,6 +47,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -60,6 +61,7 @@ import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.options.OptionValues;
 
+@Ignore("GR-26854")
 public final class EncodedGraphCacheTest extends PartialEvaluationTest {
 
     @AfterClass

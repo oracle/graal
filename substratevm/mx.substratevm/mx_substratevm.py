@@ -776,7 +776,7 @@ def pom_from_template(proj_dir, svmVersion):
     with open(join(proj_dir, 'pom.xml'), 'w') as pom_file:
         dom.writexml(pom_file)
 
-def deploy_native_image_maven_plugin(svmVersion, repo, gpg, keyid):
+def deploy_native_image_maven_plugin(svmVersion, repo, gpg, keyid, mvn_nonzero_fatal=True, mvn_out=None, mvn_err=None):
     proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin')
     pom_from_template(proj_dir, svmVersion)
     # Build and install native-image-maven-plugin into local repository
@@ -793,7 +793,7 @@ def deploy_native_image_maven_plugin(svmVersion, repo, gpg, keyid):
             '-DaltDeploymentRepository={}::default::{}'.format(repo.name, repo.get_url(svmVersion)),
             'deploy'
         ]
-    mx.run_maven(maven_args, cwd=proj_dir)
+    return mx.run_maven(maven_args, nonZeroIsFatal=mvn_nonzero_fatal, out=mvn_out, err=mvn_err, cwd=proj_dir)
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -1533,6 +1533,7 @@ def maven_plugin_install(args):
     parser.add_argument('--licenses', help='Comma-separated list of licenses that are cleared for upload. Only used if no url is given. Otherwise licenses are looked up in suite.py')
     parser.add_argument('--gpg', action='store_true', help='Sign files with gpg before deploying')
     parser.add_argument('--gpg-keyid', help='GPG keyid to use when signing files (implies --gpg)', default=None)
+    parser.add_argument('--suppress-output-on-success', help='Buffers maven output and prints it only in case of errors', default=False, action='store_true')
     parser.add_argument('repository_id', metavar='repository-id', nargs='?', action='store', help='Repository ID used for binary deploy. If none is given, mavens local repository is used instead.')
     parser.add_argument('url', metavar='repository-url', nargs='?', action='store', help='Repository URL used for binary deploy. If no url is given, the repository-id is looked up in suite.py')
     parsed = parser.parse_args(args)
@@ -1591,28 +1592,43 @@ def maven_plugin_install(args):
             del new_env['MX_ENV_PATH']
         mx.run_mx(['--suite=' + s for s in suites] + ['maven-deploy'] + deploy_args, suite, env=new_env)
 
-    deploy_native_image_maven_plugin(svm_version, repo, parsed.gpg, parsed.gpg_keyid)
+    mvn_out = None
+    mvn_err = None
+    mvn_nonzero_fatal = True
+    if parsed.suppress_output_on_success:
+        mvn_out = mvn_err = mx.LinesOutputCapture()
+        mvn_nonzero_fatal = False
+        mx.log('Installing the maven plugin. Output will be printed only in case of failure.')
 
-    success_message = [
-        '',
-        'Use the following plugin snippet to enable native-image building for your maven project:',
-        '',
-        '<plugin>',
-        '    <groupId>org.graalvm.nativeimage</groupId>',
-        '    <artifactId>native-image-maven-plugin</artifactId>',
-        '    <version>' + svm_version + '</version>',
-        '    <executions>',
-        '        <execution>',
-        '            <goals>',
-        '                <goal>native-image</goal>',
-        '            </goals>',
-        '            <phase>package</phase>',
-        '        </execution>',
-        '    </executions>',
-        '</plugin>',
-        '',
-        ]
-    mx.log('\n'.join(success_message))
+    ret = deploy_native_image_maven_plugin(svm_version, repo, parsed.gpg, parsed.gpg_keyid, mvn_nonzero_fatal=mvn_nonzero_fatal, mvn_out=mvn_out, mvn_err=mvn_err)
+
+    if not ret:
+        success_message = [
+            '',
+            'Use the following plugin snippet to enable native-image building for your maven project:',
+            '',
+            '<plugin>',
+            '    <groupId>org.graalvm.nativeimage</groupId>',
+            '    <artifactId>native-image-maven-plugin</artifactId>',
+            '    <version>' + svm_version + '</version>',
+            '    <executions>',
+            '        <execution>',
+            '            <goals>',
+            '                <goal>native-image</goal>',
+            '            </goals>',
+            '            <phase>package</phase>',
+            '        </execution>',
+            '    </executions>',
+            '</plugin>',
+            '',
+            ]
+        mx.log('\n'.join(success_message))
+    else:
+        mx.log_error('maven-plugin-install failed!')
+        mx.log_error('Maven output:')
+        for line in mvn_out.lines:
+            mx.log_error(line)
+        mx.abort(ret)
 
 @mx.command(suite.name, 'maven-plugin-test')
 def maven_plugin_test(args):

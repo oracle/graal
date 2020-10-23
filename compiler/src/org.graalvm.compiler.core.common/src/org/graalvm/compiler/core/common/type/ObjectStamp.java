@@ -123,7 +123,14 @@ public class ObjectStamp extends AbstractObjectStamp {
 
         @Override
         public ObjectStamp resolve(ResolvedJavaType accessingClass) {
-            return new ObjectStamp(type != null ? type.resolve(accessingClass) : null, exactType, nonNull, alwaysNull);
+            ResolvedJavaType resolvedType = null;
+            if (type != null) {
+                resolvedType = this.type.resolve(accessingClass);
+                if (resolvedType == null) {
+                    throw new NoClassDefFoundError("Can't resolve " + type.getName() + " with " + accessingClass.getName());
+                }
+            }
+            return new ObjectStamp(resolvedType, exactType, nonNull, alwaysNull);
         }
 
         @Override

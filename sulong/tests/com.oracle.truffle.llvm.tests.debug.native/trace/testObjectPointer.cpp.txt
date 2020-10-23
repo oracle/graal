@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates.
+# Copyright (c) 2018, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -42,6 +42,7 @@ BREAK 54 CONTINUE "myMethod"
                     MEMBER int "short" "[2]" "32767"
                     MEMBER int "short" "[0]" "-32768"
                 END_MEMBERS
+                MEMBER any "MyClass*" "myMethod"
             END_MEMBERS
         END_MEMBERS
 
@@ -59,6 +60,7 @@ BREAK 58 CONTINUE "myStaticMethod"
                 MEMBER int "short" "[2]" "32767"
                 MEMBER int "short" "[0]" "-32768"
             END_MEMBERS
+            MEMBER any "MyClass*" "myMethod"
         END_MEMBERS
 
 
@@ -76,6 +78,7 @@ BREAK 54 CONTINUE "myMethod"
                     MEMBER int "short" "[2]" "32767"
                     MEMBER int "short" "[0]" "-32768"
                 END_MEMBERS
+                MEMBER any "MyClass*" "myMethod"
             END_MEMBERS
         END_MEMBERS
 
@@ -93,6 +96,7 @@ BREAK 58 CONTINUE "myStaticMethod"
                 MEMBER int "short" "[2]" "32767"
                 MEMBER int "short" "[0]" "-32768"
             END_MEMBERS
+            MEMBER any "MyClass*" "myMethod"
         END_MEMBERS
 
 
@@ -110,6 +114,7 @@ BREAK 54 CONTINUE "myMethod"
                     MEMBER int "short" "[2]" "32767"
                     MEMBER int "short" "[0]" "-32768"
                 END_MEMBERS
+                MEMBER any "MyClass*" "myMethod"
             END_MEMBERS
         END_MEMBERS
 
@@ -127,6 +132,7 @@ BREAK 58 CONTINUE "myStaticMethod"
                 MEMBER int "short" "[2]" "32767"
                 MEMBER int "short" "[0]" "-32768"
             END_MEMBERS
+            MEMBER any "MyClass*" "myMethod"
         END_MEMBERS
 
 
@@ -144,6 +150,7 @@ BREAK 54 CONTINUE "myMethod"
                     MEMBER int "short" "[2]" "32767"
                     MEMBER int "short" "[0]" "-32768"
                 END_MEMBERS
+                MEMBER any "MyClass*" "myMethod"
             END_MEMBERS
         END_MEMBERS
 
@@ -161,6 +168,7 @@ BREAK 58 CONTINUE "myStaticMethod"
                 MEMBER int "short" "[2]" "32767"
                 MEMBER int "short" "[0]" "-32768"
             END_MEMBERS
+            MEMBER any "MyClass*" "myMethod"
         END_MEMBERS
 
 
@@ -177,6 +185,7 @@ BREAK 80 CONTINUE "start"
                 MEMBER int "short" "[2]" "32767"
                 MEMBER int "short" "[0]" "-32768"
             END_MEMBERS
+            MEMBER any "MyClass*" "myMethod"
         END_MEMBERS
         MEMBER any "MyClass*" "localPtr"
     OPEN_SCOPE
@@ -192,6 +201,7 @@ BREAK 80 CONTINUE "start"
                 MEMBER int "short" "[2]" "32767"
                 MEMBER int "short" "[0]" "-32768"
             END_MEMBERS
+            MEMBER any "MyClass*" "myMethod"
         END_MEMBERS
 
 

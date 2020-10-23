@@ -320,7 +320,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
         node.getFields().addAll(parseFields(lookupTypes, members));
         node.getChildren().addAll(parseChildren(node, lookupTypes, members));
-        node.getChildExecutions().addAll(parseExecutions(node.getFields(), node.getChildren(), members));
+        node.getChildExecutions().addAll(parseExecutions(node, node.getFields(), node.getChildren(), members));
         node.getExecutableTypes().addAll(parseExecutableTypeData(node, members, node.getSignatureSize(), context.getFrameTypes(), false));
 
         initializeExecutableTypes(node);
@@ -1235,7 +1235,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     }
 
-    private List<NodeExecutionData> parseExecutions(List<NodeFieldData> fields, List<NodeChildData> children, List<? extends Element> elements) {
+    private List<NodeExecutionData> parseExecutions(@SuppressWarnings("unused") NodeData node, List<NodeFieldData> fields, List<NodeChildData> children, List<? extends Element> elements) {
         List<ExecutableElement> methods = ElementFilter.methodsIn(elements);
         boolean hasVarArgs = false;
         int maxSignatureSize = 0;

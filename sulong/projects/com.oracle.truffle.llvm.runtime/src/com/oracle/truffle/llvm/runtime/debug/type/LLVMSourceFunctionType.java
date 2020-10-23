@@ -37,7 +37,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public final class LLVMSourceFunctionType extends LLVMSourceType {
+public class LLVMSourceFunctionType extends LLVMSourceType {
 
     private final List<LLVMSourceType> types;
 

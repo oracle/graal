@@ -121,7 +121,8 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
             Value paramValue = params[param.index()];
-            assert paramValue.getValueKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp(NodeView.DEFAULT))) : paramValue.getValueKind() + " != " + param.stamp(NodeView.DEFAULT);
+            assert paramValue.getValueKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp(NodeView.DEFAULT))) : paramValue.getValueKind() + " != " +
+                            getLIRGeneratorTool().getLIRKind(param.stamp(NodeView.DEFAULT)) + " for " + param.stamp(NodeView.DEFAULT);
             setResult(param, gen.emitMove(paramValue));
         }
     }

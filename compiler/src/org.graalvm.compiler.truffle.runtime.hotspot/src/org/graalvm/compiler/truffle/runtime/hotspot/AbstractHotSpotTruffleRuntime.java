@@ -148,7 +148,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     private volatile Throwable truffleCompilerInitializationException;
 
     public AbstractHotSpotTruffleRuntime() {
-        super(Arrays.asList(HotSpotOptimizedCallTarget.class));
+        super(Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class));
 
         List<ResolvedJavaMethod> boundaryMethods = new ArrayList<>();
         MetaAccessProvider metaAccess = getMetaAccess();

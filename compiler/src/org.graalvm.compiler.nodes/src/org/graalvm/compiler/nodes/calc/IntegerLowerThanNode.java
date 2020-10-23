@@ -47,7 +47,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.TriState;
 
 /**
- * Common super-class for "a < b" comparisons both {@linkplain IntegerLowerThanNode signed} and
+ * Common super-class for "a < b" comparisons both {@linkplain IntegerLessThanNode signed} and
  * {@linkplain IntegerBelowNode unsigned}.
  */
 @NodeInfo()

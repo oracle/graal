@@ -40,19 +40,19 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.WasmExecutionException;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 public class WasiClockTimeGetNode extends WasmBuiltinRootNode {
     // https://github.com/WebAssembly/WASI/blob/master/phases/snapshot/docs.md#-clockid-enumu32
@@ -98,14 +98,14 @@ public class WasiClockTimeGetNode extends WasmBuiltinRootNode {
     }
 
     @TruffleBoundary
-    private WasmExecutionException unimplementedClock(final ClockId clockId) {
-        throw new WasmExecutionException(this, "Unimplemented ClockID: " + clockId.name());
+    private static WasmException unimplementedClock(final ClockId clockId) {
+        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unimplemented ClockID: " + clockId.name());
     }
 
     @TruffleBoundary
-    private void checkEncodable(String argument) {
+    private static void checkEncodable(String argument) {
         if (!StandardCharsets.US_ASCII.newEncoder().canEncode(argument)) {
-            throw new WasmExecutionException(this, "Argument '" + argument + "' contains non-ASCII characters.");
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Argument '" + argument + "' contains non-ASCII characters.");
         }
     }
 

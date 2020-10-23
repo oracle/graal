@@ -68,7 +68,7 @@ public abstract class TruffleCallBoundaryInstrumentation extends CompilationResu
         if (id == HotSpotMarkId.VERIFIED_ENTRY) {
             ResolvedJavaType optimizedCallTargetType = TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotOptimizedCallTarget");
             int installedCodeOffset = getFieldOffset("installedCode", optimizedCallTargetType);
-            int entryPointOffset = getFieldOffset("entryPoint", metaAccess.lookupJavaType(InstalledCode.class));
+            int entryPointOffset = getFieldOffset("entryPoint", TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, InstalledCode.class.getName()));
             injectTailCallCode(installedCodeOffset, entryPointOffset);
         }
         return mark;

@@ -50,6 +50,7 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 final class DefaultRuntimeAccessor extends Accessor {
 
@@ -173,6 +174,10 @@ final class DefaultRuntimeAccessor extends Accessor {
             return false;
         }
 
+        @Override
+        public boolean isOSRRootNode(RootNode rootNode) {
+            return false;
+        }
     }
 
 }

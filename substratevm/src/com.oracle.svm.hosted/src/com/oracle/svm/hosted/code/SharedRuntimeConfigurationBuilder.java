@@ -173,7 +173,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         HybridLayout<DynamicHub> hubLayout = new HybridLayout<>(DynamicHub.class, ConfigurationValues.getObjectLayout(), hMetaAccess);
         int vtableBaseOffset = hubLayout.getArrayBaseOffset();
         int vtableEntrySize = ConfigurationValues.getObjectLayout().sizeInBytes(hubLayout.getArrayElementStorageKind());
-        int instanceOfBitsOffset = hubLayout.getBitFieldOffset();
+        int instanceOfBitsOrTypeIDSlotsOffset = HybridLayout.getBitFieldOrTypeIDSlotsFieldOffset(ConfigurationValues.getObjectLayout());
 
         int componentHubOffset;
         try {
@@ -190,7 +190,8 @@ public abstract class SharedRuntimeConfigurationBuilder {
             vmThreadStatusOffset = ImageSingletons.lookup(VMThreadMTFeature.class).offsetOf(VMThreads.StatusSupport.statusTL);
         }
 
-        runtimeConfig.setLazyState(vtableBaseOffset, vtableEntrySize, instanceOfBitsOffset, componentHubOffset, javaFrameAnchorLastSPOffset, javaFrameAnchorLastIPOffset, vmThreadStatusOffset);
+        runtimeConfig.setLazyState(vtableBaseOffset, vtableEntrySize, instanceOfBitsOrTypeIDSlotsOffset, componentHubOffset, javaFrameAnchorLastSPOffset, javaFrameAnchorLastIPOffset,
+                        vmThreadStatusOffset);
     }
 
     private int findStructOffset(Class<?> clazz, String accessorName) {

@@ -629,6 +629,7 @@ suite = {
         "LLVM_INCLUDE_DOCS" : "NO",
         "LLVM_TARGETS_TO_BUILD" : "X86",
         "LIBCXXABI_INCLUDE_TESTS": "NO",
+        "LIBCXXABI_LINK_TESTS_WITH_SHARED_LIBCXX" : "YES",
         "LIBCXXABI_LIBCXX_INCLUDES" : "<path:sdk:LLVM_ORG_SRC>/libcxx/include",
         "LIBCXXABI_LIBCXX_PATH" : "<path:sdk:LLVM_ORG_SRC>/libcxx",
         "LIBCXXABI_ENABLE_STATIC" : "NO",
@@ -719,6 +720,7 @@ suite = {
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
         "SUITE_CFLAGS" : "-Wno-unused-function",
+        "SUITE_CXXFLAGS" : "-Wno-unused-function",
         "OS" : "<os>",
       },
       "os_arch" : {

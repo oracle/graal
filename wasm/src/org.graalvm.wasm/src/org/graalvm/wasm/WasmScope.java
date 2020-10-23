@@ -107,7 +107,7 @@ public class WasmScope implements TruffleObject {
     @ExportMessage
     @CompilerDirectives.TruffleBoundary
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "wasm-global-scope";
+        return "wasm-global-scope" + instances.keySet();
     }
 
     @ExportLibrary(InteropLibrary.class)

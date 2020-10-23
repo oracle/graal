@@ -504,7 +504,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return intCallCount >= engine.callThresholdInInterpreter //
                         && intLoopCallCount >= engine.callAndLoopThresholdInInterpreter //
                         && !compilationFailed //
-                        && !isSubmittedForCompilation();
+                        && !isSubmittedForCompilation()
+                        /*
+                         * Compilation of OSR loop call target is scheduled in
+                         * OptimizedOSRLoopNode#compileImpl.
+                         */
+                        && !(getRootNode() instanceof OSRRootNode);
     }
 
     public final boolean shouldCompile() {
@@ -724,12 +729,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      */
     public final boolean invalidate(Object source, CharSequence reason) {
         cachedNonTrivialNodeCount = -1;
+        boolean invalidated = false;
         if (isAlive()) {
             invalidateCode();
             runtime().getListener().onCompilationInvalidated(this, source, reason);
-            return true;
+            invalidated = true;
         }
-        return cancelCompilation(reason);
+        return cancelCompilation(reason) || invalidated;
     }
 
     final OptimizedCallTarget cloneUninitialized() {

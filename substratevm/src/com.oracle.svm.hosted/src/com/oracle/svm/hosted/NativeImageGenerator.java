@@ -189,8 +189,9 @@ import com.oracle.svm.core.graal.snippets.DeoptHostedSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptRuntimeSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
+import com.oracle.svm.core.graal.snippets.LegacyTypeSnippets;
+import com.oracle.svm.core.graal.snippets.NewTypeSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.graal.snippets.TypeSnippets;
 import com.oracle.svm.core.graal.stackvalue.StackValuePhase;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.Heap;
@@ -1249,7 +1250,11 @@ public class NativeImageGenerator {
 
             Iterable<DebugHandlersFactory> factories = runtimeConfig != null ? runtimeConfig.getDebugHandlersFactories() : Collections.singletonList(new GraalDebugHandlersFactory(snippetReflection));
             lowerer.setConfiguration(runtimeConfig, options, factories, providers, snippetReflection);
-            TypeSnippets.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
+            if (SubstrateOptions.UseLegacyTypeCheck.getValue()) {
+                LegacyTypeSnippets.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
+            } else {
+                NewTypeSnippets.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
+            }
             ExceptionSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
 
             if (hosted) {

@@ -40,24 +40,23 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.WasmTable;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
-import org.graalvm.wasm.exception.WasmTrap;
 
 @ExportLibrary(InteropLibrary.class)
 public class Table extends Dictionary {
@@ -114,8 +113,8 @@ public class Table extends Dictionary {
     }
 
     @TruffleBoundary
-    private static WasmExecutionException rangeError() {
-        return new WasmExecutionException(null, "Range error.");
+    private static WasmException rangeError() {
+        return WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Range error.");
     }
 
     public WasmTable wasmTable() {
@@ -135,7 +134,7 @@ public class Table extends Dictionary {
     }
 
     public Object get(int index) {
-        if (index > table.size()) {
+        if (index >= table.size()) {
             throw rangeError();
         }
         final Object function = table.get(index);
@@ -143,7 +142,7 @@ public class Table extends Dictionary {
     }
 
     public Object set(int index, Object element) {
-        if (index > table.size()) {
+        if (index >= table.size()) {
             throw rangeError();
         }
         table.set(index, new WasmFunctionInstance(null, Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
@@ -154,14 +153,14 @@ public class Table extends Dictionary {
                     try {
                         return InteropLibrary.getUncached().execute(element, frame.getArguments());
                     } catch (UnsupportedTypeException e) {
-                        throw WasmTrap.format(null, "Table element %s has an unsupported type.", element);
+                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, null, "Table element %s has an unsupported type.", element);
                     } catch (ArityException e) {
-                        throw WasmTrap.format(null, "Table element %s has unexpected arity.", element);
+                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, null, "Table element %s has unexpected arity.", element);
                     } catch (UnsupportedMessageException e) {
-                        throw WasmTrap.format(null, "Table element %s is not executable.", element);
+                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, null, "Table element %s is not executable.", element);
                     }
                 } else {
-                    throw WasmTrap.format(null, "Table element %s is not executable.", element);
+                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, null, "Table element %s is not executable.", element);
                 }
             }
         })));

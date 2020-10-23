@@ -102,7 +102,7 @@
 -  Strategies.emplace_back(new InstDeleterIRStrategy());
 +  Strategies.emplace_back(new InstReducerIRStrategy());
  
-   return llvm::make_unique<IRMutator>(std::move(Types), std::move(Strategies));
+   return std::make_unique<IRMutator>(std::move(Types), std::move(Strategies));
  }
  
 -extern "C" LLVM_ATTRIBUTE_USED size_t LLVMFuzzerCustomMutator(
@@ -136,7 +136,7 @@
 -  TargetLibraryInfoImpl TLII(TM->getTargetTriple());
 -  PM.add(new TargetLibraryInfoWrapperPass(TLII));
 -  raw_null_ostream OS;
--  TM->addPassesToEmitFile(PM, OS, nullptr, TargetMachine::CGFT_Null);
+-  TM->addPassesToEmitFile(PM, OS, nullptr, CGFT_Null);
 +  srand(Seed);
 +  for(unsigned i = 0; i < NumberMutations; i++){
 +     Mutator->mutateModule(*M, rand(), 1000, 1000);

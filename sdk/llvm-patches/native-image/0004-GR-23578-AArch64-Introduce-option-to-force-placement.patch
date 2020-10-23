@@ -1,0 +1,122 @@
+From 22d26375659ee388e18a96bf6b34e56299f75efc Mon Sep 17 00:00:00 2001
+From: Loic Ottet <loic.ottet@oracle.com>
+Date: Tue, 8 Sep 2020 13:03:06 +0200
+Subject: [PATCH 4/4] [GR-23578][AArch64] Introduce option to force placement
+ of the frame record on top of the stack frame
+
+---
+ .../Target/AArch64/AArch64FrameLowering.cpp   | 20 ++++++++++++++-----
+ .../lib/Target/AArch64/AArch64FrameLowering.h |  4 ++++
+ .../Target/AArch64/AArch64RegisterInfo.cpp    |  3 ++-
+ 3 files changed, 21 insertions(+), 6 deletions(-)
+
+diff --git a/llvm/lib/Target/AArch64/AArch64FrameLowering.cpp b/llvm/lib/Target/AArch64/AArch64FrameLowering.cpp
+index 1f050065f230..8659f17a7e70 100644
+--- a/llvm/lib/Target/AArch64/AArch64FrameLowering.cpp
++++ b/llvm/lib/Target/AArch64/AArch64FrameLowering.cpp
+@@ -170,6 +170,11 @@ static cl::opt<bool>
+                          cl::desc("reverse the CSR restore sequence"),
+                          cl::init(false), cl::Hidden);
+ 
++static cl::opt<bool>
++    FrameRecordOnTop("aarch64-frame-record-on-top",
++                     cl::desc("place the frame record on top of the frame"),
++                     cl::init(false), cl::Hidden);
++
+ STATISTIC(NumRedZoneFunctions, "Number of functions using red zone");
+ 
+ /// This is the biggest offset to the stack pointer we can encode in aarch64
+@@ -840,6 +845,10 @@ static bool isTargetWindows(const MachineFunction &MF) {
+   return MF.getSubtarget<AArch64Subtarget>().isTargetWindows();
+ }
+ 
++bool AArch64FrameLowering::frameRecordOnTop(const MachineFunction &MF) const {
++  return FrameRecordOnTop || isTargetDarwin(MF);
++}
++
+ // Convenience function to determine whether I is an SVE callee save.
+ static bool IsSVECalleeSave(MachineBasicBlock::iterator I) {
+   switch (I->getOpcode()) {
+@@ -1020,7 +1029,7 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
+ 
+   if (HasFP) {
+     // Only set up FP if we actually need to.
+-    int64_t FPOffset = isTargetDarwin(MF) ? (AFI->getCalleeSavedStackSize() - 16) : 0;
++    int64_t FPOffset = frameRecordOnTop(MF) ? (AFI->getCalleeSavedStackSize() - 16) : 0;
+ 
+     if (CombineSPBump)
+       FPOffset += AFI->getLocalStackSize();
+@@ -1234,7 +1243,7 @@ void AArch64FrameLowering::emitPrologue(MachineFunction &MF,
+ 
+   if (needsFrameMoves) {
+     const DataLayout &TD = MF.getDataLayout();
+-    const int StackGrowth = isTargetDarwin(MF)
++    const int StackGrowth = frameRecordOnTop(MF)
+                                 ? (2 * -TD.getPointerSize(0))
+                                 : -AFI->getCalleeSavedStackSize();
+     Register FramePtr = RegInfo->getFrameRegister(MF);
+@@ -1616,7 +1625,7 @@ void AArch64FrameLowering::emitEpilogue(MachineFunction &MF,
+   // be able to save any instructions.
+   if (!IsFunclet && (MFI.hasVarSizedObjects() || AFI->isStackRealigned())) {
+     int64_t OffsetToFrameRecord =
+-        isTargetDarwin(MF) ? (-(int64_t)AFI->getCalleeSavedStackSize() + 16) : 0;
++        frameRecordOnTop(MF) ? (-(int64_t)AFI->getCalleeSavedStackSize() + 16) : 0;
+     emitFrameOffset(MBB, LastPopI, DL, AArch64::SP, AArch64::FP,
+                     {OffsetToFrameRecord, MVT::i8},
+                     TII, MachineInstr::FrameDestroy, false, NeedsWinCFI);
+@@ -1674,13 +1683,14 @@ int AArch64FrameLowering::getNonLocalFrameIndexReference(
+   return getSEHFrameIndexOffset(MF, FI);
+ }
+ 
+-static StackOffset getFPOffset(const MachineFunction &MF, int64_t ObjectOffset) {
++StackOffset AArch64FrameLowering::getFPOffset(
++    const MachineFunction &MF, int64_t ObjectOffset) const {
+   const auto *AFI = MF.getInfo<AArch64FunctionInfo>();
+   const auto &Subtarget = MF.getSubtarget<AArch64Subtarget>();
+   bool IsWin64 =
+       Subtarget.isCallingConvWin64(MF.getFunction().getCallingConv());
+   unsigned FixedObject = IsWin64 ? alignTo(AFI->getVarArgsGPRSize(), 16) : 0;
+-  unsigned FPAdjust = isTargetDarwin(MF)
++  unsigned FPAdjust = frameRecordOnTop(MF)
+                         ? 16 : AFI->getCalleeSavedStackSize(MF.getFrameInfo());
+   return {ObjectOffset + FixedObject + FPAdjust, MVT::i8};
+ }
+diff --git a/llvm/lib/Target/AArch64/AArch64FrameLowering.h b/llvm/lib/Target/AArch64/AArch64FrameLowering.h
+index b5719feb6b15..0db733f4f05b 100644
+--- a/llvm/lib/Target/AArch64/AArch64FrameLowering.h
++++ b/llvm/lib/Target/AArch64/AArch64FrameLowering.h
+@@ -86,6 +86,8 @@ public:
+                                      bool IgnoreSPUpdates) const override;
+   int getNonLocalFrameIndexReference(const MachineFunction &MF,
+                                int FI) const override;
++  StackOffset getFPOffset(const MachineFunction &MF,
++                          int64_t ObjectOffset) const;
+   int getSEHFrameIndexOffset(const MachineFunction &MF, int FI) const;
+ 
+   bool isSupportedStackID(TargetStackID::Value ID) const override {
+@@ -99,6 +101,8 @@ public:
+     }
+   }
+ 
++  bool frameRecordOnTop(const MachineFunction &MF) const;
++
+ private:
+   bool shouldCombineCSRLocalStackBump(MachineFunction &MF,
+                                       uint64_t StackBumpBytes) const;
+diff --git a/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp b/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
+index 6d6eee64038e..59213557a0d0 100644
+--- a/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
++++ b/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
+@@ -68,7 +68,8 @@ AArch64RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
+     return CSR_AArch64_AAPCS_SwiftError_SaveList;
+   if (MF->getFunction().getCallingConv() == CallingConv::PreserveMost)
+     return CSR_AArch64_RT_MostRegs_SaveList;
+-  if (MF->getSubtarget<AArch64Subtarget>().isTargetDarwin())
++  if (MF->getSubtarget<AArch64Subtarget>().getFrameLowering()
++          ->frameRecordOnTop(*MF))
+     return CSR_Darwin_AArch64_AAPCS_SaveList;
+   return CSR_AArch64_AAPCS_SaveList;
+ }
+-- 
+2.28.0
+

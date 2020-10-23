@@ -54,8 +54,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -78,6 +78,7 @@ import org.graalvm.polyglot.io.ProcessHandler;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
@@ -88,7 +89,6 @@ import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
@@ -103,11 +103,13 @@ import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
+import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
-import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotSource.EmbedderFileSystemContext;
 
 final class EngineAccessor extends Accessor {
@@ -1011,7 +1013,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean isHostSymbol(Object obj) {
-            if (HostObject.isInstance(obj)) {
+            if (HostObject.isHostObjectInstance(obj)) {
                 return ((HostObject) obj).isStaticClass();
             }
             return false;
@@ -1282,6 +1284,7 @@ final class EngineAccessor extends Accessor {
             return context.isActive(Thread.currentThread());
         }
 
+        @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
         @Override
         @CompilerDirectives.TruffleBoundary
         public void closeContext(Object impl, boolean force, Node closeLocation, boolean resourceExhaused, String resourceExhausedReason) {
@@ -1298,7 +1301,11 @@ final class EngineAccessor extends Accessor {
                     throw context.createCancelException(closeLocation);
                 }
             } else {
-                if (context.isActiveNotCancelled()) {
+                if (context.isActiveNotCancelled(false)) {
+                    /*
+                     * Polyglot threads are still allowed to run at this point. They are required to
+                     * be finished after finalizeContext.
+                     */
                     throw new IllegalStateException("The context is currently active and cannot be closed. Make sure no thread is running or call closeCancelled on the context to resolve this.");
                 }
                 context.closeImpl(false, false, true);
@@ -1309,6 +1316,19 @@ final class EngineAccessor extends Accessor {
         public <T, G> Iterator<T> mergeHostGuestFrames(StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage, Function<StackTraceElement, T> hostFrameConvertor,
                         Function<G, T> guestFrameConvertor) {
             return new PolyglotExceptionImpl.MergedHostGuestIterator<>(hostStack, guestFrames, inHostLanguage, hostFrameConvertor, guestFrameConvertor);
+        }
+
+        @Override
+        public Object createHostAdapterClass(Object polyglotLanguageContext, Class<?>[] types, Object classOverrides) {
+            CompilerAsserts.neverPartOfCompilation();
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
+            PolyglotEngineImpl engine = languageContext.getEngine();
+            HostContext hostContext = languageContext.context.getHostContextImpl();
+            AdapterResult adapter = HostAdapterFactory.getAdapterClassFor(engine, hostContext, types, classOverrides);
+            if (!adapter.isSuccess()) {
+                throw adapter.throwException();
+            }
+            return asHostSymbol(polyglotLanguageContext, adapter.getAdapterClass());
         }
 
         @Override

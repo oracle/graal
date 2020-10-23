@@ -131,6 +131,25 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private int typeID;
 
     /**
+     * In our current version, type checks are accomplished by performing a range check on a value
+     * from an array. The slot to read from the checked type is determined by
+     * {@link #getTypeCheckSlot()} and the check passes if {@link #getTypeCheckStart()} <= value <
+     * ({@link #getTypeCheckStart()} + {@link #getTypeCheckRange()}).
+     */
+    private short typeCheckStart;
+
+    /**
+     * The number of ids which are in valid range for a type check.
+     */
+    private short typeCheckRange;
+
+    /**
+     *
+     * The value slot within the type id slot array to read when comparing against this type.
+     */
+    private short typeCheckSlot;
+
+    /**
      * The offset of the synthetic field which stores whatever is used for monitorEnter/monitorExit
      * by an instance of this class. If 0, then instances of this class can not be locked.
      * <p>
@@ -293,6 +312,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     @Hybrid.Bitset private BitSet instanceOfBits;
 
+    /**
+     * Array containing this type's type check id information. During a type check, a requested
+     * column of this array is read to determine if this value fits within the range of ids which
+     * match the assignee's type.
+     */
+    @Hybrid.TypeIDSlots private short[] typeCheckSlots;
+
     @Hybrid.Array private CFunctionPointer[] vtable;
 
     private GenericInfo genericInfo;
@@ -376,6 +402,27 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setClassInitializationInfo(ClassInitializationInfo classInitializationInfo) {
         this.classInitializationInfo = classInitializationInfo;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setData(int layoutEncoding, int typeID, int monitorOffset, int hashCodeOffset,
+                    short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots,
+                    CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated) {
+        this.layoutEncoding = layoutEncoding;
+        this.typeID = typeID;
+        this.monitorOffset = monitorOffset;
+        this.hashCodeOffset = hashCodeOffset;
+        this.typeCheckStart = typeCheckStart;
+        this.typeCheckRange = typeCheckRange;
+        this.typeCheckSlot = typeCheckSlot;
+        this.typeCheckSlots = typeCheckSlots;
+        this.vtable = vtable;
+
+        if ((int) referenceMapIndex != referenceMapIndex) {
+            throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");
+        }
+        this.referenceMapIndex = (int) referenceMapIndex;
+        this.isInstantiated = isInstantiated;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -540,6 +587,18 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     public int getTypeID() {
         return typeID;
+    }
+
+    public short getTypeCheckSlot() {
+        return typeCheckSlot;
+    }
+
+    public short getTypeCheckStart() {
+        return typeCheckStart;
+    }
+
+    public short getTypeCheckRange() {
+        return typeCheckRange;
     }
 
     public int getMonitorOffset() {
@@ -1336,12 +1395,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         /* See open/src/hotspot/share/prims/jvm.cpp#1522. */
     }
 
-    @Substitute //
+    @KeepOriginal //
     @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings({"unused"})
-    List<Method> getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes) {
-        throw VMError.unsupportedFeature("JDK11OrLater: DynamicHub.getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes)");
-    }
+    private native List<Method> getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes);
 
     @Substitute
     @TargetElement(onlyWith = JDK11OrLater.class)

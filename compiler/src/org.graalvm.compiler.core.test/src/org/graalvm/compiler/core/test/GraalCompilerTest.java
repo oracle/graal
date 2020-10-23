@@ -926,7 +926,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             Assert.assertTrue("expected " + expect.exception, actual.exception != null);
             Assert.assertEquals("Exception class", expect.exception.getClass(), actual.exception.getClass());
             // C2 can optimize out the stack trace and message in some cases
-            if (expect.exception.getMessage() != null || !C2_OMIT_STACK_TRACE_IN_FAST_THROW_EXCEPTIONS.contains(expect.exception.getClass())) {
+            if (!C2_OMIT_STACK_TRACE_IN_FAST_THROW_EXCEPTIONS.contains(expect.exception.getClass())) {
                 Assert.assertEquals("Exception message", expect.exception.getMessage(), actual.exception.getMessage());
             }
         } else {

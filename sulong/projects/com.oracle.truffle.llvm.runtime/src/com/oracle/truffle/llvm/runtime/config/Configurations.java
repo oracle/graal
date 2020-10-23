@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.config;
 
+import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,10 +59,10 @@ public final class Configurations {
         factories = cfgs.toArray(new ConfigurationFactory<?>[cfgs.size()]);
     }
 
-    private static <KEY> Configuration tryCreate(ConfigurationFactory<KEY> factory, LLVMLanguage language, OptionValues options) {
+    private static <KEY> Configuration tryCreate(ConfigurationFactory<KEY> factory, LLVMLanguage language, ContextExtension.Registry ctxExtRegistry, OptionValues options) {
         KEY key = factory.parseOptions(options);
         if (key != null) {
-            return factory.createConfiguration(language, key);
+            return factory.createConfiguration(language, ctxExtRegistry, key);
         } else {
             return null;
         }
@@ -71,9 +72,9 @@ public final class Configurations {
      * Create a configuration object for given options. This will use the highest priority
      * {@link ConfigurationFactory} that matches the given options.
      */
-    public static Configuration createConfiguration(LLVMLanguage language, OptionValues options) {
+    public static Configuration createConfiguration(LLVMLanguage language, ContextExtension.Registry ctxExtRegistry, OptionValues options) {
         for (ConfigurationFactory<?> factory : factories) {
-            Configuration ret = tryCreate(factory, language, options);
+            Configuration ret = tryCreate(factory, language, ctxExtRegistry, options);
             if (ret != null) {
                 return ret;
             }

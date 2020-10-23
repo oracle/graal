@@ -80,7 +80,7 @@ public final class SulongEngineOption {
     public static final OptionKey<Boolean> CXX_INTEROP = new OptionKey<>(false);
 
     @Option(name = "llvm.enableExternalNativeAccess",
-            category = OptionCategory.USER,
+            category = OptionCategory.INTERNAL,
             help = "Enable Sulongs native interface.")
     public static final OptionKey<Boolean> ENABLE_NFI = new OptionKey<>(true);
 

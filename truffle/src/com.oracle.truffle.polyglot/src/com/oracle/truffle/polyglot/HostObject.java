@@ -125,12 +125,19 @@ final class HostObject implements TruffleObject {
         return obj instanceof HostObject || obj instanceof HostException;
     }
 
-    static boolean isInstance(TruffleObject obj) {
-        return obj instanceof HostObject || obj instanceof HostException;
+    static boolean isHostObjectInstance(Object obj) {
+        return obj instanceof HostObject;
     }
 
-    HostObject withContext(PolyglotLanguageContext context) {
-        return new HostObject(this.obj, context, this.extraInfo);
+    static Object withContext(Object obj, PolyglotLanguageContext context) {
+        if (obj instanceof HostObject) {
+            HostObject hostObject = (HostObject) obj;
+            return new HostObject(hostObject.obj, context, hostObject.extraInfo);
+        } else if (obj instanceof HostException) {
+            return new HostException(((HostException) obj).getOriginal(), context.context);
+        } else {
+            throw CompilerDirectives.shouldNotReachHere("Parameter must be HostObject or HostException.");
+        }
     }
 
     static boolean isJavaInstance(Class<?> targetType, Object javaObject) {
@@ -197,7 +204,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    final class KeysArray implements TruffleObject {
+    static final class KeysArray implements TruffleObject {
 
         @CompilationFinal(dimensions = 1) private final String[] keys;
 
@@ -274,6 +281,8 @@ final class HostObject implements TruffleObject {
             }
         } else if (isClass() && HostInteropReflect.CLASS_TO_STATIC.equals(name)) {
             return HostObject.forStaticClass(asClass(), languageContext);
+        } else if (HostInteropReflect.ADAPTER_SUPER_MEMBER.equals(name) && HostAdapterFactory.isAdapterInstance(this.obj)) {
+            return HostAdapterFactory.getSuperAdapter(this);
         }
         error.enter();
         throw UnknownIdentifierException.create(name);
@@ -1225,11 +1234,11 @@ final class HostObject implements TruffleObject {
         if (isClass()) {
             Class<?> c = asClass();
             if (HostObject.isInstance(other)) {
-                HostObject otherHost = ((HostObject) other);
-                if (otherHost.isNull()) {
+                Object otherHostObj = HostObject.valueOf(other);
+                if (otherHostObj == null) {
                     return false;
                 } else {
-                    return c.isInstance(otherHost.obj);
+                    return c.isInstance(otherHostObj);
                 }
             } else if (PolyglotProxy.isProxyGuestObject(other)) {
                 PolyglotProxy otherHost = (PolyglotProxy) other;

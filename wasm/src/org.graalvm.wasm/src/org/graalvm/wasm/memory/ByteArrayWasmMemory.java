@@ -44,7 +44,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.WasmTracing;
-import org.graalvm.wasm.exception.WasmTrap;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 import java.util.Arrays;
 
@@ -58,10 +59,10 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @TruffleBoundary
-    private WasmTrap trapOutOfBounds(Node node, int address, long offset) {
+    private WasmException trapOutOfBounds(Node node, int address, long offset) {
         String message = String.format("%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
                         offset, address, address, byteSize());
-        return WasmTrap.create(node, message);
+        return WasmException.create(Failure.UNSPECIFIED_TRAP, node, message);
     }
 
     @Override
@@ -99,7 +100,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     @TruffleBoundary
     public synchronized boolean grow(int extraPageSize) {
         if (extraPageSize < 0) {
-            throw WasmTrap.create(null, "Extra size cannot be negative.");
+            throw WasmException.create(Failure.UNSPECIFIED_TRAP, null, "Extra size cannot be negative.");
         }
         int targetSize = byteSize() + extraPageSize * PAGE_SIZE;
         if (maxPageSize >= 0 && targetSize > maxPageSize * PAGE_SIZE) {

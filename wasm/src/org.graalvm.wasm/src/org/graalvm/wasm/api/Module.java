@@ -46,11 +46,13 @@ import static org.graalvm.wasm.api.ImportExportKind.memory;
 import static org.graalvm.wasm.api.ImportExportKind.table;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 import org.graalvm.wasm.ImportDescriptor;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmType;
 
 public class Module extends Dictionary {
     private final WasmModule module;
@@ -66,19 +68,22 @@ public class Module extends Dictionary {
 
     public Sequence<ModuleExportDescriptor> exports() {
         final ArrayList<ModuleExportDescriptor> list = new ArrayList<>();
-        for (String name : module.exportedFunctions().keySet()) {
-            list.add(new ModuleExportDescriptor(name, function.name()));
+        for (Map.Entry<String, WasmFunction> entry : module.exportedFunctions().entrySet()) {
+            list.add(new ModuleExportDescriptor(entry.getKey(), function.name(), functionTypeToString(entry.getValue())));
         }
         final String exportedTable = module.exportedTable();
         if (exportedTable != null) {
-            list.add(new ModuleExportDescriptor(exportedTable, table.name()));
+            list.add(new ModuleExportDescriptor(exportedTable, table.name(), null));
         }
         final String exportedMemory = module.exportedMemory();
         if (exportedMemory != null) {
-            list.add(new ModuleExportDescriptor(exportedMemory, memory.name()));
+            list.add(new ModuleExportDescriptor(exportedMemory, memory.name(), null));
         }
-        for (String name : module.exportedGlobals().keySet()) {
-            list.add(new ModuleExportDescriptor(name, global.name()));
+        for (Map.Entry<String, Integer> entry : module.exportedGlobals().entrySet()) {
+            String name = entry.getKey();
+            int index = entry.getValue();
+            String valueType = ValueType.fromByteValue(module.globalValueType(index)).toString();
+            list.add(new ModuleExportDescriptor(name, global.name(), valueType));
         }
         return new Sequence<>(list);
     }
@@ -86,20 +91,42 @@ public class Module extends Dictionary {
     public Sequence<ModuleImportDescriptor> imports() {
         final ArrayList<ModuleImportDescriptor> list = new ArrayList<>();
         for (WasmFunction f : module.importedFunctions()) {
-            list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), function.name()));
+            list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), function.name(), functionTypeToString(f)));
         }
         final ImportDescriptor tableDescriptor = module.importedTable();
         if (tableDescriptor != null) {
-            list.add(new ModuleImportDescriptor(tableDescriptor.moduleName, tableDescriptor.memberName, table.name()));
+            list.add(new ModuleImportDescriptor(tableDescriptor.moduleName, tableDescriptor.memberName, table.name(), null));
         }
         final ImportDescriptor memoryDescriptor = module.importedMemory();
         if (memoryDescriptor != null) {
-            list.add(new ModuleImportDescriptor(memoryDescriptor.moduleName, memoryDescriptor.memberName, memory.name()));
+            list.add(new ModuleImportDescriptor(memoryDescriptor.moduleName, memoryDescriptor.memberName, memory.name(), null));
         }
-        for (ImportDescriptor descriptor : module.importedGlobals().values()) {
-            list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, global.name()));
+        for (Map.Entry<Integer, ImportDescriptor> entry : module.importedGlobals().entrySet()) {
+            int index = entry.getKey();
+            String valueType = ValueType.fromByteValue(module.globalValueType(index)).toString();
+            ImportDescriptor descriptor = entry.getValue();
+            list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, global.name(), valueType));
         }
         return new Sequence<>(list);
+    }
+
+    private static String functionTypeToString(WasmFunction f) {
+        StringBuilder typeInfo = new StringBuilder();
+
+        typeInfo.append(f.index());
+
+        typeInfo.append('(');
+        int argumentCount = f.numArguments();
+        for (int i = 0; i < argumentCount; i++) {
+            typeInfo.append(ValueType.fromByteValue(f.argumentTypeAt(i)));
+        }
+        typeInfo.append(')');
+
+        byte returnType = f.returnType();
+        if (returnType != WasmType.VOID_TYPE) {
+            typeInfo.append(ValueType.fromByteValue(f.returnType()));
+        }
+        return typeInfo.toString();
     }
 
     @SuppressWarnings("unused")

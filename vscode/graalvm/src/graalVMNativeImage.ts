@@ -11,7 +11,7 @@ import * as http from "http";
 import * as https from "https";
 import * as url from "url";
 import * as sax from "sax";
-import * as utils from "./utils";
+import { getGVMHome } from "./graalVMConfiguration";
 import { getGraalVMVersion } from './graalVMInstall';
 
 const URL_SEARCH: string = 'https://search.maven.org/solrsearch/select';
@@ -42,7 +42,13 @@ export async function addNativeImageToPOM() {
         }
     }
 
-    const graalVMHome = utils.getGVMHome();
+    const doc: vscode.TextDocument = textEditor.document;
+    if (checkForNativeImage(doc.getText())) {
+        vscode.window.showErrorMessage("Native image plugin already present in the selected pom.xml.");
+        return;
+    }
+
+    const graalVMHome = getGVMHome();
     const fullVersion: string | undefined = await getGraalVMVersion(graalVMHome);
     if (!fullVersion) {
         vscode.window.showErrorMessage("Cannot get the version information of the selected GraalVM.");
@@ -76,13 +82,12 @@ export async function addNativeImageToPOM() {
 
     let install: boolean = true;
     if (!artefactAvailable) {
-        if (NO === await vscode.window.showInformationMessage(`Unable to verify the native-image artefact version ${fullVersion}. Continue anyway?`, YES, NO)) {
+        if (NO === await vscode.window.showInformationMessage(`Unable to verify the native-image artefact version ${version[0]}. Continue anyway?`, YES, NO)) {
             return;
         }
     }
 
     if (install) {
-        const doc: vscode.TextDocument = textEditor.document;
         const options: vscode.TextEditorOptions = textEditor.options;
         const indent: string = options.insertSpaces ? " ".repeat(<number>options.tabSize) : "\t";
         const eol: string = doc.eol === vscode.EndOfLine.LF ? "\n" : "\r\n";
@@ -104,17 +109,17 @@ export async function addNativeImageToPOM() {
                 switch (top) {
                     case 'plugins':
                         if (!insertOffset && stack.length > 1 && stack[stack.length - 1] === 'build' && stack[stack.length - 2] === 'project') {
-                            toInsert = getPlugin(getIndent(doc, insertOffset = parser.startTagPosition - 1), indent, eol, fullVersion);
+                            toInsert = getPlugin(getIndent(doc, insertOffset = parser.startTagPosition - 1), indent, eol, version[0]);
                         }
                         break;
                     case 'build':
                         if (!insertOffset && stack.length > 0 && stack[stack.length - 1] === 'project') {
-                            toInsert = getPlugins(getIndent(doc, insertOffset = parser.startTagPosition - 1), indent, eol, fullVersion);
+                            toInsert = getPlugins(getIndent(doc, insertOffset = parser.startTagPosition - 1), indent, eol, version[0]);
                         }
                         break;
                     case 'project':
                         if (!insertOffset) {
-                            toInsert = getBuild(getIndent(doc, insertOffset = parser.startTagPosition - 1), indent, eol, fullVersion);
+                            toInsert = getBuild(getIndent(doc, insertOffset = parser.startTagPosition - 1), indent, eol, version[0]);
                         }
                         break;
                 }
@@ -130,10 +135,33 @@ export async function addNativeImageToPOM() {
             const workspaceEdit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
             workspaceEdit.set(doc.uri, [textEdit]);
             await vscode.workspace.applyEdit(workspaceEdit);
+            doc.save();
             const endPos: vscode.Position = doc.positionAt(insertOffset + toInsert.length);
             textEditor.revealRange(new vscode.Range(pos, endPos));
         }
     }
+}
+
+function checkForNativeImage(text: string): boolean {
+    let hasNativeImage = false;
+    const stack: string[] = [];
+    const parser = sax.parser(true);
+    parser.onopentag = tag => {
+        stack.push(tag.name);
+    };
+    parser.onclosetag = tagName => {
+        let top: string | undefined = stack.pop();
+        while(top !== tagName) {
+            top = stack.pop();
+        }
+    };
+    parser.ontext = text => {
+        if (text === AID && stack.length > 0 && stack[stack.length -1] === 'artifactId' && [stack[stack.length -2] === 'plugin']) {
+            hasNativeImage = true;
+        }
+    };
+    parser.write(text);
+    return hasNativeImage;
 }
 
 function getIndent(doc: vscode.TextDocument, off: number): string {

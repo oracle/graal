@@ -29,8 +29,8 @@ import java.util.function.Function;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.nodes.BlockNode;
@@ -199,4 +199,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         ((EngineData) runtimeData).onEngineClosed();
     }
 
+    @Override
+    public boolean isOSRRootNode(RootNode rootNode) {
+        return rootNode instanceof OptimizedOSRLoopNode.OSRRootNode;
+    }
 }
