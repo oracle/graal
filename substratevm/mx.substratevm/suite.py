@@ -631,6 +631,21 @@ suite = {
             "spotbugs": "false",
         },
 
+        "com.oracle.svm.methodhandles": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.reflect",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+        },
+
         "com.oracle.svm.tutorial" : {
             "subDir": "src",
             "sourceDirs" : ["src"],
@@ -937,6 +952,7 @@ suite = {
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.jni",
                 "com.oracle.svm.reflect",
+                "com.oracle.svm.methodhandles"
             ],
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",

@@ -48,6 +48,16 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIObjectHandle javaLangClassNotFoundException;
     final JNIObjectHandle javaLangRuntimeException;
     final JNIObjectHandle javaUtilMissingResourceException;
+    final JNIMethodId javaLangClassGetDeclaredMethod;
+    final JNIMethodId javaLangClassGetDeclaredConstructor;
+    final JNIMethodId javaLangClassGetDeclaredField;
+    final JNIMethodId javaLangClassGetName;
+    final JNIMethodId javaLangInvokeMemberNameGetDeclaringClass;
+    final JNIMethodId javaLangInvokeMemberNameGetName;
+    final JNIMethodId javaLangInvokeMemberNameGetParameterTypes;
+    final JNIMethodId javaLangInvokeMemberNameIsMethod;
+    final JNIMethodId javaLangInvokeMemberNameIsField;
+    final JNIMethodId javaLangInvokeMemberNameIsConstructor;
 
     // HotSpot crashes when looking these up eagerly
     private JNIObjectHandle javaLangReflectField;
@@ -64,6 +74,10 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         super(env);
         JNIObjectHandle javaLangClass = findClass(env, "java/lang/Class");
         javaLangClassForName3 = getMethodId(env, javaLangClass, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;", true);
+        javaLangClassGetDeclaredMethod = getMethodId(env, javaLangClass, "getDeclaredMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;", false);
+        javaLangClassGetDeclaredConstructor = getMethodId(env, javaLangClass, "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", false);
+        javaLangClassGetDeclaredField = getMethodId(env, javaLangClass, "getDeclaredField", "(Ljava/lang/String;)Ljava/lang/reflect/Field;", false);
+        javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
 
         JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
         javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);
@@ -83,6 +97,14 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangRuntimeException = newClassGlobalRef(env, "java/lang/RuntimeException");
         javaUtilMissingResourceException = newClassGlobalRef(env, "java/util/MissingResourceException");
         javaUtilMissingResourceExceptionCtor3 = getMethodId(env, javaUtilMissingResourceException, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V", false);
+
+        JNIObjectHandle javaLangInvokeMemberName = findClass(env, "java/lang/invoke/MemberName");
+        javaLangInvokeMemberNameGetDeclaringClass = getMethodId(env, javaLangInvokeMemberName, "getDeclaringClass", "()Ljava/lang/Class;", false);
+        javaLangInvokeMemberNameGetName = getMethodId(env, javaLangInvokeMemberName, "getName", "()Ljava/lang/String;", false);
+        javaLangInvokeMemberNameGetParameterTypes = getMethodId(env, javaLangInvokeMemberName, "getParameterTypes", "()[Ljava/lang/Class;", false);
+        javaLangInvokeMemberNameIsMethod = getMethodId(env, javaLangInvokeMemberName, "isMethod", "()Z", false);
+        javaLangInvokeMemberNameIsConstructor = getMethodId(env, javaLangInvokeMemberName, "isConstructor", "()Z", false);
+        javaLangInvokeMemberNameIsField = getMethodId(env, javaLangInvokeMemberName, "isField", "()Z", false);
     }
 
     public JNIObjectHandle getJavaLangReflectField(JNIEnvironment env) {
