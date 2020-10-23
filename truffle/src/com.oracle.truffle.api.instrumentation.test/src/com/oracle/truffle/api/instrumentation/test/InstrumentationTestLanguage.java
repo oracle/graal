@@ -43,6 +43,7 @@ package com.oracle.truffle.api.instrumentation.test;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.AbstractSet;
 import java.util.ArrayList;
@@ -3168,6 +3169,39 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @Override
     protected void finalizeContext(InstrumentContext context) {
         joinSpawnedThreads(context, true);
+    }
+
+    @Override
+    protected void initializeThread(InstrumentContext context, Thread thread) {
+        Thread.UncaughtExceptionHandler currentHandler = thread.getUncaughtExceptionHandler();
+        if (currentHandler != null && "com.oracle.truffle.polyglot.PolyglotLanguageContext$PolyglotUncaughtExceptionHandler".equals(currentHandler.getClass().getName())) {
+            thread.setUncaughtExceptionHandler((t, e) -> {
+                InteropLibrary interop = InteropLibrary.getUncached();
+                boolean interrupted;
+                boolean cancelled = false;
+                if (interop.isException(e)) {
+                    try {
+                        ExceptionType exceptionType = interop.getExceptionType(e);
+                        interrupted = exceptionType == ExceptionType.INTERRUPT;
+                    } catch (UnsupportedMessageException ume) {
+                        throw CompilerDirectives.shouldNotReachHere(ume);
+                    }
+                } else {
+                    interrupted = e != null && e.getCause() instanceof InterruptedException;
+                    cancelled = e != null && "com.oracle.truffle.polyglot.PolyglotEngineImpl$CancelExecution".equals(e.getClass().getName());
+                }
+                if (!interrupted && !cancelled) {
+                    Env currentEnv = context.env;
+                    try {
+                        e.printStackTrace(new PrintStream(currentEnv.err()));
+                    } catch (Throwable exc) {
+                        // Still show the original error if printing on Env.err() fails for some
+                        // reason
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
     }
 }
 
