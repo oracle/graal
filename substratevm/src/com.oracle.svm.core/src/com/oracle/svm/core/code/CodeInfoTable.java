@@ -197,7 +197,7 @@ public class CodeInfoTable {
      * invalidation/freeing that the GC does because the tether is still reachable.
      */
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
-    private static void invalidateInstalledCodeAtSafepoint(CodePointer codePointer) {
+    public static void invalidateInstalledCodeAtSafepoint(CodePointer codePointer) {
         UntetheredCodeInfo untetheredInfo = getRuntimeCodeCache().lookupCodeInfo(codePointer);
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try {
@@ -251,12 +251,12 @@ public class CodeInfoTable {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static CodeInfoTableCounters counters() {
+    public static CodeInfoTableCounters counters() {
         return ImageSingletons.lookup(CodeInfoTableCounters.class);
     }
 }
 
-class CodeInfoTableCounters {
+final class CodeInfoTableCounters {
     private final Counter.Group counters = new Counter.Group(CodeInfoTable.Options.CodeCacheCounters, "CodeInfoTable");
     final Counter lookupCodeInfoCount = new Counter(counters, "lookupCodeInfo", "");
     final Counter lookupDeoptimizationEntrypointCount = new Counter(counters, "lookupDeoptimizationEntrypoint", "");

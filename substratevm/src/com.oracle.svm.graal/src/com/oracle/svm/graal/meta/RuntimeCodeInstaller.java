@@ -224,6 +224,7 @@ public class RuntimeCodeInstaller {
     }
 
     private void doInstall(SubstrateInstalledCode installedCode) {
+
         ReferenceAdjuster adjuster = new InstantReferenceAdjuster();
 
         // A freshly allocated CodeInfo object is protected from the GC until the tether is set.
@@ -290,6 +291,11 @@ public class RuntimeCodeInstaller {
             Throwable[] errorBox = {null};
             JavaVMOperation.enqueueBlockingSafepoint("Install code", () -> {
                 try {
+
+                    if (installedCode.isValid()) {
+                        CodeInfoTable.invalidateInstalledCodeAtSafepoint(WordFactory.pointer(installedCode.getAddress()));
+                    }
+
                     CodeInfoTable.getRuntimeCodeCache().addMethod(codeInfo);
                     /*
                      * This call makes the new code visible, i.e., other threads can start executing
