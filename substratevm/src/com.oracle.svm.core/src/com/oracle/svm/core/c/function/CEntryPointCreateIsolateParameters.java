@@ -67,6 +67,12 @@ public interface CEntryPointCreateIsolateParameters extends PointerBase {
 
     /* fields below: version 3 */
 
+    @CField("pkey")
+    void setProtectionKey(int pkey);
+
+    @CField("pkey")
+    int protectionKey();
+
     /**
      * C arguments passed from the C main function into the isolate creation. These fields are not
      * public API, therefore they are named "reserved" in the C header files, and they are not

@@ -103,6 +103,8 @@ import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
@@ -1011,7 +1013,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean isHostSymbol(Object obj) {
-            if (HostObject.isInstance(obj)) {
+            if (HostObject.isHostObjectInstance(obj)) {
                 return ((HostObject) obj).isStaticClass();
             }
             return false;
@@ -1314,6 +1316,19 @@ final class EngineAccessor extends Accessor {
         public <T, G> Iterator<T> mergeHostGuestFrames(StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage, Function<StackTraceElement, T> hostFrameConvertor,
                         Function<G, T> guestFrameConvertor) {
             return new PolyglotExceptionImpl.MergedHostGuestIterator<>(hostStack, guestFrames, inHostLanguage, hostFrameConvertor, guestFrameConvertor);
+        }
+
+        @Override
+        public Object createHostAdapterClass(Object polyglotLanguageContext, Class<?>[] types, Object classOverrides) {
+            CompilerAsserts.neverPartOfCompilation();
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
+            PolyglotEngineImpl engine = languageContext.getEngine();
+            HostContext hostContext = languageContext.context.getHostContextImpl();
+            AdapterResult adapter = HostAdapterFactory.getAdapterClassFor(engine, hostContext, types, classOverrides);
+            if (!adapter.isSuccess()) {
+                throw adapter.throwException();
+            }
+            return asHostSymbol(polyglotLanguageContext, adapter.getAdapterClass());
         }
 
         @Override

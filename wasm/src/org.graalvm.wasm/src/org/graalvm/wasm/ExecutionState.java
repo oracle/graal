@@ -43,6 +43,7 @@ package org.graalvm.wasm;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.collection.LongArrayList;
+import org.graalvm.wasm.exception.Failure;
 
 import java.util.ArrayList;
 
@@ -123,7 +124,7 @@ public class ExecutionState {
 
     public int getStackState(int level) {
         if (stackStates.size() < level + 1) {
-            Assert.fail("Branch to level " + level + " larger than the nesting " + stackStates.size());
+            Assert.fail("Branch to level " + level + " larger than the nesting " + stackStates.size(), Failure.UNSPECIFIED_MALFORMED);
         }
         return stackStates.get(stackStates.size() - 1 - level);
     }

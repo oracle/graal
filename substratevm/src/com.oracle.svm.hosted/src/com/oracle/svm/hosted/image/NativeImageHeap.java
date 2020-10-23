@@ -394,6 +394,7 @@ public final class NativeImageHeap implements ImageHeap {
             }
 
             final JavaConstant con = SubstrateObjectConstant.forObject(object);
+            HostedField hybridTypeIDSlotsField = null;
             HostedField hybridBitsetField = null;
             HostedField hybridArrayField = null;
             Object hybridArray = null;
@@ -407,14 +408,26 @@ public final class NativeImageHeap implements ImageHeap {
                 }
 
                 /*
-                 * The hybrid array and bit set are written within the hybrid object. So they may
-                 * not be written as separate objects. We use the blacklist to check that.
+                 * The hybrid array, bit set, and typeID array are written within the hybrid object.
+                 * So they may not be written as separate objects. We use the blacklist to check
+                 * that.
                  */
+                boolean containsTypeIDSlot = false;
+                hybridTypeIDSlotsField = hybridLayout.getTypeIDSlotsField();
+                if (hybridTypeIDSlotsField != null) {
+                    Object typeIDSlots = readObjectField(hybridTypeIDSlotsField, con);
+                    if (typeIDSlots != null) {
+                        blacklist.add(typeIDSlots);
+                        containsTypeIDSlot = true;
+                    }
+                }
+
                 hybridBitsetField = hybridLayout.getBitsetField();
                 if (hybridBitsetField != null) {
                     Object bitSet = readObjectField(hybridBitsetField, con);
                     if (bitSet != null) {
                         blacklist.add(bitSet);
+                        VMError.guarantee(!containsTypeIDSlot, "Hub cannot contain both a bitset and typeID slots.");
                     }
                 }
 
@@ -436,7 +449,10 @@ public final class NativeImageHeap implements ImageHeap {
                 // Recursively add all the fields of the object.
                 final boolean fieldsAreImmutable = object instanceof String;
                 for (HostedField field : clazz.getInstanceFields(true)) {
-                    if (field.isInImageHeap() && !field.equals(hybridArrayField) && !field.equals(hybridBitsetField)) {
+                    if (field.isInImageHeap() &&
+                                    !field.equals(hybridArrayField) &&
+                                    !field.equals(hybridBitsetField) &&
+                                    !field.equals(hybridTypeIDSlotsField)) {
                         boolean fieldRelocatable = false;
                         if (field.getJavaKind() == JavaKind.Object) {
                             assert field.hasLocation();

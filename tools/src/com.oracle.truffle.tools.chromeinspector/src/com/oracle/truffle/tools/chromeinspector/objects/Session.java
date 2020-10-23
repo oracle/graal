@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,11 +85,13 @@ class Session extends AbstractInspectorObject {
 
     private final AtomicLong cmdId = new AtomicLong(1);
     private final Supplier<InspectorExecutionContext> contextSupplier;
+    private final UndefinedProvider undefinedProvider;
     private InspectServerSession iss;
     private Listeners listeners;
 
-    Session(Supplier<InspectorExecutionContext> contextSupplier) {
+    Session(Supplier<InspectorExecutionContext> contextSupplier, UndefinedProvider undefinedProvider) {
         this.contextSupplier = contextSupplier;
+        this.undefinedProvider = undefinedProvider;
     }
 
     public static boolean isInstance(TruffleObject obj) {
@@ -185,7 +187,7 @@ class Session extends AbstractInspectorObject {
         execContext.setSynchronous(true);
         // Enable the Runtime by default
         iss.sendCommand(new Command("{\"id\":0,\"method\":\"Runtime.enable\"}"));
-        return NullObject.INSTANCE;
+        return undefinedProvider.get();
     }
 
     private Object disconnect() {
@@ -197,7 +199,7 @@ class Session extends AbstractInspectorObject {
             }
             iss = null;
         }
-        return NullObject.INSTANCE;
+        return undefinedProvider.get();
     }
 
     private Object addListener(Object[] arguments, boolean prepend) throws ArityException {
@@ -280,7 +282,7 @@ class Session extends AbstractInspectorObject {
             }
         }
         post(method, params, callback);
-        return NullObject.INSTANCE;
+        return undefinedProvider.get();
     }
 
     private void post(String method, TruffleObject paramsObject, TruffleObject callback) {
@@ -311,7 +313,7 @@ class Session extends AbstractInspectorObject {
     private Listeners getListeners() {
         Listeners l = listeners;
         if (l == null) {
-            l = listeners = new Listeners();
+            l = listeners = new Listeners(undefinedProvider);
         }
         return l;
     }
@@ -323,6 +325,11 @@ class Session extends AbstractInspectorObject {
         private final Map<String, TruffleObject[]> listenersMap = new ConcurrentHashMap<>();
         private final Set<Object> eventNames = new LinkedHashSet<>();
         private final Map<Long, TruffleObject> callbacksMap = new ConcurrentHashMap<>();
+        private final UndefinedProvider undefinedProvider;
+
+        Listeners(UndefinedProvider undefinedProvider) {
+            this.undefinedProvider = undefinedProvider;
+        }
 
         private void addOnceListener(Object eventName, TruffleObject listener, boolean prepend) {
             addListener(eventName, new AutoremoveListener(this, eventName, listener), prepend);
@@ -456,11 +463,11 @@ class Session extends AbstractInspectorObject {
                     JSONObject error = message.optJSONObject("error");
                     if (error != null) {
                         arguments[0] = new JSONTruffleObject(error);
-                        arguments[1] = NullObject.INSTANCE;
+                        arguments[1] = undefinedProvider.get();
                     } else {
                         JSONObject result = message.optJSONObject("result");
-                        arguments[0] = NullObject.INSTANCE;
-                        arguments[1] = result != null ? new JSONTruffleObject(result) : NullObject.INSTANCE;
+                        arguments[0] = undefinedProvider.get();
+                        arguments[1] = result != null ? new JSONTruffleObject(result) : undefinedProvider.get();
                     }
                     try {
                         InteropLibrary.getFactory().getUncached().execute(callback, arguments);

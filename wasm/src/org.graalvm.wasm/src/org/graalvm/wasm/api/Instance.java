@@ -53,7 +53,8 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.exception.WasmExecutionException;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.exception.WasmJsApiException.Kind;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -145,13 +146,13 @@ public class Instance extends Dictionary {
                         ensureImportModule(importModules, d.module()).addGlobal(d.name(), member);
                         break;
                     default:
-                        throw new WasmExecutionException(null, "Unimplemented case: " + d.kind());
+                        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unimplemented case: " + d.kind());
                 }
 
                 i += 1;
             }
         } catch (InvalidArrayIndexException | UnknownIdentifierException | ClassCastException | UnsupportedMessageException e) {
-            throw new WasmExecutionException(null, "Unexpected state.", e);
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unexpected state.");
         }
 
         return importModules;

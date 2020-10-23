@@ -99,6 +99,11 @@ final class InteropAccessor extends Accessor {
         }
 
         @Override
+        public boolean isInteropType(Object result) {
+            return AssertUtils.isInteropValue(result);
+        }
+
+        @Override
         public boolean isExecutableObject(Object value) {
             return InteropLibrary.getUncached().isExecutable(value);
         }

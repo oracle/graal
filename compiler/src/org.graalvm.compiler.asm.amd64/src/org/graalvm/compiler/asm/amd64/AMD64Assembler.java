@@ -4021,6 +4021,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitByte(0x31);
     }
 
+    public void rdtscp() {
+        emitByte(0x0F);
+        emitByte(0x01);
+        emitByte(0xF9);
+    }
+
     /**
      * Emits an instruction which is considered to be illegal. This is used if we deliberately want
      * to crash the program (debugging etc.).

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,7 @@ import java.util.List;
 
 import org.graalvm.options.OptionDescriptor;
 
+import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.ConfigurationFactory;
@@ -45,9 +46,11 @@ public final class NativeConfigurationFactory implements ConfigurationFactory<Ke
     public static final class Key {
 
         final boolean loadCxxLibraries;
+        final boolean enableNFI;
 
         public Key(OptionValues options) {
             this.loadCxxLibraries = options.get(SulongEngineOption.LOAD_CXX_LIBRARIES);
+            this.enableNFI = options.get(SulongEngineOption.ENABLE_NFI);
         }
 
         @Override
@@ -56,13 +59,14 @@ public final class NativeConfigurationFactory implements ConfigurationFactory<Ke
                 return false;
             }
             Key other = (Key) o;
-            return this.loadCxxLibraries == other.loadCxxLibraries;
+            return this.loadCxxLibraries == other.loadCxxLibraries && this.enableNFI == other.enableNFI;
         }
 
         @Override
         public int hashCode() {
             int hash = 7;
             hash = 71 * hash + (this.loadCxxLibraries ? 1 : 0);
+            hash = 71 * hash + (this.enableNFI ? 1 : 0);
             return hash;
         }
     }
@@ -83,7 +87,7 @@ public final class NativeConfigurationFactory implements ConfigurationFactory<Ke
     }
 
     @Override
-    public Configuration createConfiguration(LLVMLanguage language, Key key) {
-        return new NativeConfiguration(language, key);
+    public Configuration createConfiguration(LLVMLanguage language, ContextExtension.Registry ctxExtRegistry, Key key) {
+        return new NativeConfiguration(language, ctxExtRegistry, key);
     }
 }

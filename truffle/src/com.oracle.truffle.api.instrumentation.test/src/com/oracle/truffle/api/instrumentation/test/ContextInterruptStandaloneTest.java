@@ -206,9 +206,13 @@ public class ContextInterruptStandaloneTest {
                 } catch (TimeoutException te) {
                     polyglotThreadException[0] = te;
                     throw new RuntimeException(te);
-                } catch (Exception e) {
+                } catch (IllegalStateException e) {
                     polyglotThreadException[0] = e;
-                    throw e;
+                    if (!"Cannot interrupt context from a thread where its child context is active.".equals(e.getMessage())) {
+                        throw e;
+                    } else {
+                        throw new RuntimeException(new InterruptedException());
+                    }
                 }
             }, getInstrumentEnv(context[0].getEngine()));
             context[0].initialize(InstrumentationTestLanguage.ID);

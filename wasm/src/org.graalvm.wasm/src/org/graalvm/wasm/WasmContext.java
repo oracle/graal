@@ -41,8 +41,8 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import org.graalvm.wasm.exception.WasmExecutionException;
-import org.graalvm.wasm.exception.WasmValidationException;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 import java.util.LinkedHashMap;
@@ -112,7 +112,7 @@ public final class WasmContext {
 
     public void register(WasmInstance instance) {
         if (moduleInstances.containsKey(instance.name())) {
-            throw new WasmExecutionException(null, "Context already contains an instance named '" + instance.name() + "'.");
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Context already contains an instance named '" + instance.name() + "'.");
         }
         moduleInstances.put(instance.name(), instance);
     }
@@ -126,7 +126,7 @@ public final class WasmContext {
         for (String moduleSpec : moduleSpecs) {
             final String[] parts = moduleSpec.split(":");
             if (parts.length > 2) {
-                throw new WasmValidationException("Module specification '" + moduleSpec + "' is not valid.");
+                throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Module specification '" + moduleSpec + "' is not valid.");
             }
             final String name = parts[0];
             final String key = parts.length == 2 ? parts[1] : parts[0];
@@ -153,7 +153,7 @@ public final class WasmContext {
 
     public WasmInstance readInstance(WasmModule module) {
         if (moduleInstances.containsKey(module.name())) {
-            throw WasmExecutionException.create(null, "Module " + module.name() + " is already instantiated in this context.");
+            throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
         }
         final WasmInstance instance = new WasmInstance(module, module.storeConstantsPolicy());
         final BinaryParser reader = new BinaryParser(language, module);

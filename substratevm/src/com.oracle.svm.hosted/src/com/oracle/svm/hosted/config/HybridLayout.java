@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.config;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -59,6 +58,7 @@ public class HybridLayout<T> {
     private final ObjectLayout layout;
     private final HostedField arrayField;
     private final HostedField bitsetField;
+    private final HostedField typeIDSlotsField;
     private final int instanceSize;
 
     public HybridLayout(Class<T> hybridClass, ObjectLayout layout, HostedMetaAccess metaAccess) {
@@ -68,9 +68,10 @@ public class HybridLayout<T> {
     public HybridLayout(HostedInstanceClass hybridClass, ObjectLayout layout) {
         this.layout = layout;
         HybridLayoutSupport utils = ImageSingletons.lookup(HybridLayoutSupport.class);
-        Pair<HostedField, HostedField> arrayAndBitsetFields = utils.findHybridFields(hybridClass);
-        arrayField = arrayAndBitsetFields.getLeft();
-        bitsetField = arrayAndBitsetFields.getRight();
+        HybridLayoutSupport.HybridFields hybridFields = utils.findHybridFields(hybridClass);
+        arrayField = hybridFields.arrayField;
+        bitsetField = hybridFields.bitsetField;
+        typeIDSlotsField = hybridFields.typeIDSlotsField;
         instanceSize = hybridClass.getInstanceSize();
     }
 
@@ -98,11 +99,18 @@ public class HybridLayout<T> {
         return bitsetField;
     }
 
+    public HostedField getTypeIDSlotsField() {
+        return typeIDSlotsField;
+    }
+
     public int getInstanceSize() {
         return instanceSize;
     }
 
-    public int getBitFieldOffset() {
+    /**
+     * In a given build, only the bit field or the type id slot array field will exist.
+     */
+    public static int getBitFieldOrTypeIDSlotsFieldOffset(ObjectLayout layout) {
         return layout.getArrayLengthOffset() + layout.sizeInBytes(JavaKind.Int);
     }
 }

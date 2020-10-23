@@ -30,7 +30,7 @@
 
 #include <cstdio>
 
-#include "cxa_exception.hpp"
+#include "cxa_exception.h"
 #include "private_typeinfo.h"
 
 namespace __cxxabiv1 {

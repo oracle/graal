@@ -46,7 +46,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import org.graalvm.wasm.exception.WasmValidationException;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings({"unused", "static-method"})
@@ -74,7 +75,7 @@ public class WasmType implements TruffleObject {
             case F64_TYPE:
                 return "f64";
             default:
-                throw new WasmValidationException("Unknown value type: 0x" + Integer.toHexString(valueType));
+                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(valueType));
         }
     }
 

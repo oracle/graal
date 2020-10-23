@@ -2560,7 +2560,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public Object asHostObject(Object receiver) {
-            return ((HostObject) receiver).obj;
+            return HostObject.valueOf(receiver);
         }
 
         @Override

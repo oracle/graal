@@ -41,13 +41,15 @@
 package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
+
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CallTarget;
@@ -58,6 +60,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -66,6 +69,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 /*
@@ -86,6 +90,12 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         private final Object topScope = new TopScopeObject(this);
         private volatile HostClassLoader classloader;
         private final HostLanguage language;
+        final ClassValue<Map<List<Class<?>>, AdapterResult>> adapterCache = new ClassValue<Map<List<Class<?>>, AdapterResult>>() {
+            @Override
+            protected Map<List<Class<?>>, AdapterResult> computeValue(Class<?> type) {
+                return new ConcurrentHashMap<>();
+            }
+        };
 
         HostContext(HostLanguage language) {
             this.language = language;
@@ -110,7 +120,7 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
             }
         }
 
-        private HostClassLoader getClassloader() {
+        HostClassLoader getClassloader() {
             if (classloader == null) {
                 ClassLoader parentClassLoader = internalContext.context.config.hostClassLoader != null ? internalContext.context.config.hostClassLoader
                                 : internalContext.getEngine().contextClassLoader;
