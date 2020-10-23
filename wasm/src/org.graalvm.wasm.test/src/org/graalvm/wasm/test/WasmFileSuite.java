@@ -60,14 +60,12 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -148,12 +146,21 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     }
 
     private static void runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel) {
-        boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
-
-        context.enter();
         final PrintStream oldOut = System.out;
         try {
+            // TODO(mbovel): Make WASI functions use Env#out() instead of System#out so that we
+            // don't need that hack.
+            final ByteArrayOutputStream capturedStream = new ByteArrayOutputStream();
+            final PrintStream capturedStdout = new PrintStream(capturedStream);
+            System.setOut(capturedStdout);
+
+            // Whereas the test needs memory to be reset between iterations.
+            final boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
+
             resetStatus(oldOut, PHASE_PARSE_ICON, "parsing");
+
+            // This is needed so that we can call WasmContext.getCurrent().
+            context.enter();
 
             try {
                 sources.forEach(context::eval);
@@ -162,29 +169,37 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 return;
             }
 
-            // The sequence of WebAssembly functions to execute.
-            // Run custom initialization.
-            // Execute the main function (exported as "_main").
-            // Then, optionally save memory and globals, and compare them.
-            // Execute a special function, which resets memory and globals to their default values.
             final WasmContext wasmContext = WasmContext.getCurrent();
             final Value mainFunction = findMain(wasmContext);
 
             resetStatus(oldOut, phaseIcon, phaseLabel);
-            final ByteArrayOutputStream capturedStream = new ByteArrayOutputStream();
-            final PrintStream capturedStdout = new PrintStream(capturedStream);
+
             final String argString = testCase.options().getProperty("argument");
             final Integer arg = argString == null ? null : Integer.parseInt(argString);
-            System.setOut(capturedStdout);
             ContextState firstIterationContextState = null;
 
             for (int i = 0; i != iterations; ++i) {
                 try {
                     capturedStream.reset();
-
-                    // Execute benchmark.
                     final Value result = arg == null ? mainFunction.execute() : mainFunction.execute(arg);
-
+                    WasmCase.validateResult(testCase.data().resultValidator(), result, capturedStream);
+                } catch (PolyglotException e) {
+                    // If no exception is expected and the program returns with success exit status,
+                    // then we check stdout.
+                    if (e.isExit() && testCase.data().expectedErrorMessage() == null) {
+                        Assert.assertEquals("Program exited with non-zero return code.", e.getExitStatus(), 0);
+                        WasmCase.validateResult(testCase.data().resultValidator(), null, capturedStream);
+                    } else if (testCase.data().expectedErrorTime() == WasmCaseData.ErrorType.Validation) {
+                        validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
+                        return;
+                    } else {
+                        validateThrown(testCase.data(), WasmCaseData.ErrorType.Runtime, e);
+                    }
+                } catch (Throwable t) {
+                    final RuntimeException e = new RuntimeException("Error during test phase '" + phaseLabel + "'", t);
+                    e.setStackTrace(new StackTraceElement[0]);
+                    throw e;
+                } finally {
                     // Save context state, and check that it's consistent with the previous one.
                     if (iterationNeedsStateCheck(i)) {
                         final ContextState contextState = saveContext(wasmContext);
@@ -207,25 +222,11 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                             wasmContext.reinitInstance(instance, reinitMemory);
                         }
                     }
-
-                    validateResult(testCase.data().resultValidator(), result, capturedStdout);
-                } catch (PolyglotException e) {
-                    // We cannot label the tests with polyglot errors, because they might
-                    // semantically be return values of the test.
-                    if (testCase.data().expectedErrorTime() == WasmCaseData.ErrorType.Validation) {
-                        validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
-                        return;
-                    }
-                    validateThrown(testCase.data(), WasmCaseData.ErrorType.Runtime, e);
-                } catch (Throwable t) {
-                    final RuntimeException e = new RuntimeException("Error during test phase '" + phaseLabel + "'", t);
-                    e.setStackTrace(new StackTraceElement[0]);
-                    throw e;
                 }
             }
         } finally {
-            System.setOut(oldOut);
             context.close(true);
+            System.setOut(oldOut);
         }
     }
 
@@ -304,7 +305,6 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             runInContext(testCase, context, sources, syncInlineIterations, PHASE_SYNC_INLINE_ICON, "sync,inl");
 
             // Run with normal, asynchronous compilation.
-            // Run 1000 + 1 times - the last time run with a surrogate stream, to collect output.
             int asyncIterations = Integer.parseInt(testCase.options().getProperty("async-iterations", String.valueOf(DEFAULT_ASYNC_ITERATIONS)));
             context = getAsyncCompiled(contextBuilder);
             runInContext(testCase, context, sources, asyncIterations, PHASE_ASYNC_ICON, "async,multi");
@@ -318,19 +318,11 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         return "testutil:testutil";
     }
 
-    private static void validateResult(BiConsumer<Value, String> validator, Value result, OutputStream capturedStdout) {
-        if (validator != null) {
-            validator.accept(result, capturedStdout.toString());
-        } else {
-            Assert.fail("Test was not expected to return a value.");
-        }
-    }
-
     private static void validateThrown(WasmCaseData data, WasmCaseData.ErrorType phase, PolyglotException e) throws PolyglotException {
         if (data.expectedErrorMessage() == null || !data.expectedErrorMessage().equals(e.getMessage())) {
             throw e;
         }
-        Assert.assertEquals("Unexpected error phase (should not have been thrown during the running phase).", data.expectedErrorTime(), phase);
+        Assert.assertEquals("Unexpected error phase.", data.expectedErrorTime(), phase);
     }
 
     @Override
