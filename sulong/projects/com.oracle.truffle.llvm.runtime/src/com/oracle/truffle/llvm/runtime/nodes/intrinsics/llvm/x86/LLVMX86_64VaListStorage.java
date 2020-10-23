@@ -34,7 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -236,9 +236,9 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     @SuppressWarnings("static-method")
     @ExportMessage
     @TruffleBoundary
-    Object getNativeType(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+    Object getNativeType(@CachedLanguage LLVMLanguage language) {
         // This method should never be invoked
-        return ctx.getLanguage().getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, getDataLayout()));
+        return language.getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, getDataLayout()));
     }
 
     // InteropLibrary implementation
@@ -833,9 +833,9 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     }
 
     @SuppressWarnings("static-method")
-    LLVMExpressionNode createAllocaNode(LLVMContext llvmCtx) {
+    LLVMExpressionNode createAllocaNode(LLVMLanguage language) {
         DataLayout dataLayout = getDataLayout();
-        return llvmCtx.getLanguage().getActiveConfiguration().createNodeFactory(llvmCtx.getLanguage(), dataLayout).createAlloca(VA_LIST_TYPE, 16);
+        return language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(VA_LIST_TYPE, 16);
     }
 
     @SuppressWarnings("static-method")
@@ -873,8 +873,8 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     @SuppressWarnings("static-method")
     @ExportMessage
     @TruffleBoundary
-    void toNative(@SuppressWarnings("unused") @CachedContext(LLVMLanguage.class) LLVMContext llvmCtx,
-                    @Cached(value = "this.createAllocaNode(llvmCtx)", uncached = "this.createAllocaNode(llvmCtx)") LLVMExpressionNode allocaNode,
+    void toNative(@SuppressWarnings("unused") @CachedLanguage() LLVMLanguage language,
+                    @Cached(value = "this.createAllocaNode(language)", uncached = "this.createAllocaNode(language)") LLVMExpressionNode allocaNode,
                     @Cached(value = "create()", uncached = "create()") LLVMNativeVarargsAreaStackAllocationNode stackAllocationNode,
                     @Cached(value = "createI64StoreNode()", uncached = "createI64StoreNode()") LLVMStoreNode i64RegSaveAreaStore,
                     @Cached(value = "createI32StoreNode()", uncached = "createI32StoreNode()") LLVMStoreNode i32RegSaveAreaStore,

@@ -39,7 +39,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.CastConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyLLVMIRFunction;
@@ -125,8 +124,7 @@ public final class LLVMParser {
         LLVMFunction llvmFunction = LLVMFunction.create(functionSymbol.getName(), function, functionSymbol.getType(), runtime.getBitcodeID(), functionSymbol.getIndex(),
                         functionDefinition.isExported(), runtime.getFile().getPath());
         runtime.getFileScope().register(llvmFunction);
-        LLVMContext context = LLVMLanguage.getContext();
-        final boolean cxxInterop = context.getEnv().getOptions().get(SulongEngineOption.CXX_INTEROP);
+        final boolean cxxInterop = LLVMLanguage.getContext().getEnv().getOptions().get(SulongEngineOption.CXX_INTEROP);
         if (cxxInterop) {
             model.getFunctionParser(functionDefinition).parseLinkageName(runtime);
         }

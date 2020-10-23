@@ -50,13 +50,13 @@ public abstract class AllocateReadOnlyGlobalsBlockNode extends LLVMNode implemen
     private final long size;
     @Child LLVMToNativeNode toNative;
 
-    public AllocateReadOnlyGlobalsBlockNode(StructureType type, DataLayout dataLayout) {
-        try {
-            this.size = type.getSize(dataLayout);
-            this.toNative = LLVMToNativeNode.createToNativeWithTarget();
-        } catch (TypeOverflowException ex) {
-            throw new IllegalStateException(ex);
-        }
+    public AllocateReadOnlyGlobalsBlockNode(long size) {
+        this.size = size;
+        this.toNative = LLVMToNativeNode.createToNativeWithTarget();
+    }
+
+    public static AllocateReadOnlyGlobalsBlockNode create(StructureType type, DataLayout dataLayout) throws TypeOverflowException {
+        return AllocateReadOnlyGlobalsBlockNodeGen.create(type.getSize(dataLayout));
     }
 
     @Specialization(limit = "1")
