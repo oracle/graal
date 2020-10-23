@@ -570,9 +570,9 @@ public class TruffleGraphBuilderPlugins {
         r.register2("clear", Receiver.class, new ResolvedJavaSymbol(types.classFrameSlot), new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot) {
-                TruffleCompilerRuntime runtime = getRuntime();
                 int frameSlotIndex = maybeGetConstantFrameSlotIndex(receiver, frameSlot, constantReflection, types);
-                if (frameSlotIndex > 0) {
+                if (frameSlotIndex >= 0) {
+                    TruffleCompilerRuntime runtime = getRuntime();
                     b.add(new VirtualFrameFreeNode(receiver, frameSlotIndex, runtime.getFrameSlotKindTagForJavaKind(JavaKind.Illegal)));
                     return true;
                 }
