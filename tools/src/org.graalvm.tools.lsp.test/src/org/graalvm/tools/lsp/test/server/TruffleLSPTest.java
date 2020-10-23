@@ -31,7 +31,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -105,7 +104,9 @@ public abstract class TruffleLSPTest {
                 try {
                     return CompletableFuture.completedFuture(taskWithResult.call());
                 } catch (Exception e) {
-                    return CompletableFuture.failedFuture(e);
+                    CompletableFuture<T> cf = new CompletableFuture<>();
+                    cf.completeExceptionally(e);
+                    return cf;
                 }
             }
 
@@ -117,7 +118,9 @@ public abstract class TruffleLSPTest {
                     try {
                         return CompletableFuture.completedFuture(taskWithResult.call());
                     } catch (Exception e) {
-                        return CompletableFuture.failedFuture(e);
+                        CompletableFuture<T> cf = new CompletableFuture<>();
+                        cf.completeExceptionally(e);
+                        return cf;
                     } finally {
                         newContext.leave();
                     }
@@ -137,10 +140,14 @@ public abstract class TruffleLSPTest {
                         try {
                             return CompletableFuture.completedFuture(onTimeoutTask.call());
                         } catch (Exception timeoutTaskException) {
-                            return CompletableFuture.failedFuture(timeoutTaskException);
+                            CompletableFuture<T> cf = new CompletableFuture<>();
+                            cf.completeExceptionally(timeoutTaskException);
+                            return cf;
                         }
                     } catch (InterruptedException | ExecutionException e) {
-                        return CompletableFuture.failedFuture(e);
+                        CompletableFuture<T> cf = new CompletableFuture<>();
+                        cf.completeExceptionally(e);
+                        return cf;
                     }
                 }
             }

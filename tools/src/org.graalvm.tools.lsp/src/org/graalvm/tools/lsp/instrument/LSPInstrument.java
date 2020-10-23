@@ -307,10 +307,14 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
                     try {
                         return CompletableFuture.completedFuture(onTimeoutTask.call());
                     } catch (Exception timeoutTaskException) {
-                        return CompletableFuture.failedFuture(timeoutTaskException);
+                        CompletableFuture<T> cf = new CompletableFuture<>();
+                        cf.completeExceptionally(timeoutTaskException);
+                        return cf;
                     }
                 } catch (InterruptedException | ExecutionException e) {
-                    return CompletableFuture.failedFuture(e);
+                    CompletableFuture<T> cf = new CompletableFuture<>();
+                    cf.completeExceptionally(e);
+                    return cf;
                 }
             }
         }
