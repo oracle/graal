@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -27,8 +29,8 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRunt
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -46,6 +48,7 @@ import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -57,6 +60,7 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
     private final int primitiveArrayIndex;
 
     private final int illegalTag;
+    private final int defaultTag;
     private final int objectTag;
 
     private ValueNode nullConstant;
@@ -78,6 +82,7 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
         TruffleCompilerRuntime runtime = getRuntime();
         this.illegalTag = runtime.getFrameSlotKindTagForJavaKind(JavaKind.Illegal);
         this.objectTag = runtime.getFrameSlotKindTagForJavaKind(JavaKind.Object);
+        this.defaultTag = JavaConstant.defaultForKind(JavaKind.Int).asInt();
 
         illegalStamp = StampFactory.forInteger(JavaKind.Byte.getBitCount(), illegalTag, illegalTag);
     }
@@ -124,6 +129,9 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
 
     private void maybeClearFrameSlot(VirtualObjectState tagArrayVirtual, VirtualObjectState objectArrayVirtual, VirtualObjectState primitiveArrayVirtual, int i, FrameState fs) {
         ValueNode tagNode = tagArrayVirtual.values().get(i);
+        if (tagNode == null) {
+            return;
+        }
         if (tagNode.isJavaConstant()) {
             int tag = tagNode.asJavaConstant().asInt();
             if (tag == illegalTag) {
@@ -136,10 +144,26 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
             }
         } else {
             Stamp tagStamp = tagNode.stamp(NodeView.DEFAULT);
-            if (!tagStamp.join(illegalStamp).isEmpty()) {
-                throw new PermanentBailoutException("Inconsistent use of Frame.clear() detected.\n" + fs.getNodeSourcePosition());
+            assert tagStamp instanceof PrimitiveStamp;
+            if (stampHasIllegal((PrimitiveStamp) tagStamp)) {
+                throw new NullPointerException("Inconsistent use of Frame.clear() detected.");
+            }
+            if (!stampHasObject((PrimitiveStamp) tagStamp)) {
+                /*
+                 * Phi tag with no object possible: free object. No need to try and check if there
+                 * is a primitive in there, there will be.
+                 */
+                objectArrayVirtual.values().set(i, nullConstant);
             }
         }
+    }
+
+    private boolean stampHasIllegal(PrimitiveStamp stamp) {
+        return !stamp.join(StampFactory.forInteger(stamp.getBits(), illegalTag, illegalTag)).isEmpty();
+    }
+
+    private boolean stampHasObject(PrimitiveStamp stamp) {
+        return !stamp.join(StampFactory.forInteger(stamp.getBits(), objectTag, objectTag)).isEmpty();
     }
 
     private EconomicMap<VirtualObjectNode, EscapeObjectState> getObjectStateMappings(FrameState fs) {

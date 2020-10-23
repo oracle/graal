@@ -51,13 +51,13 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private byte[] tags;
 
     public static final byte OBJECT_TAG = 0;
-    public static final byte ILLEGAL_TAG = 1;
-    public static final byte LONG_TAG = 2;
-    public static final byte INT_TAG = 3;
-    public static final byte DOUBLE_TAG = 4;
-    public static final byte FLOAT_TAG = 5;
-    public static final byte BOOLEAN_TAG = 6;
-    public static final byte BYTE_TAG = 7;
+    public static final byte LONG_TAG = 1;
+    public static final byte INT_TAG = 2;
+    public static final byte DOUBLE_TAG = 3;
+    public static final byte FLOAT_TAG = 4;
+    public static final byte BOOLEAN_TAG = 5;
+    public static final byte BYTE_TAG = 6;
+    public static final byte ILLEGAL_TAG = 7;
 
     private static final Object[] EMPTY_OBJECT_ARRAY = {};
     private static final long[] EMPTY_LONG_ARRAY = {};
