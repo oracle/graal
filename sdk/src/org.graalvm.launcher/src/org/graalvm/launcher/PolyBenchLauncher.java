@@ -48,7 +48,7 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
         if (isAOT()) {
             engineImplementationName += " Native";
         }
-        println(String.format("%s polyglot launcher %s", engineImplementationName, engine.getVersion()));
+        println(String.format("%s polybench launcher %s", engineImplementationName, engine.getVersion()));
     }
 
     public static void main(String[] args) {
@@ -145,6 +145,10 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
         parseUnrecognizedOptions(null, polyglotOptions, unrecognizedArguments);
         final Context.Builder contextBuilder = Context.newBuilder().options(polyglotOptions);
         contextBuilder.allowAllAccess(true);
+
+        if (runLauncherAction()) {
+            return;
+        }
 
         validateArguments();
 
