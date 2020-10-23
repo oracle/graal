@@ -12,7 +12,8 @@ Finally, you create the second native image with a `--pgo profile.iprof` flag th
 
 Here is an example of building an optimized native image.
 
-1. Save this Java program that iterates over `ArrayList` using a lambda expression to an _OptimizedImage.java_ file:
+1&#46; Save this Java program that iterates over `ArrayList` using a lambda expression to an _OptimizedImage.java_ file:
+
 ```java
 import java.util.ArrayList;
 
@@ -32,13 +33,15 @@ class OptimizedImage {
   }
 }
 ```
-2. Compile it and build an instrumented native image with the `--pgo-instrument` option:
+
+2&#46; Compile it and build an instrumented native image with the `--pgo-instrument` option:
 ```
 javac OptimizedImage.java
 native-image --pgo-instrument OptimizedImage
 ./optimizedimage
 ```
-2. Build the second native image specifying the path to the _profile.iprof_ file and execute it:
+
+3&#46; Build the second native image specifying the path to the _profile.iprof_ file and execute it:
 ```
 native-image --pgo profile.iprof OptimizedImage
 ./optimizedimage
