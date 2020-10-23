@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.analysis.liveness;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.BitSet;
 
@@ -37,10 +38,7 @@ import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.perf.AutoTimer;
 import com.oracle.truffle.espresso.perf.DebugTimer;
@@ -181,19 +179,8 @@ public class LivenessAnalysis {
     private static BitSet mergePredecessors(BlockBoundaryResult helper, Graph<? extends LinkedBlock> graph, Method m, LinkedBlock current) {
         BitSet mergedEntryState = new BitSet(m.getMaxLocals());
         if (current == graph.entryBlock()) {
-            // The entry block has the arguments as live variables.
-            int pos = 0;
-            if (!m.isStatic()) {
-                mergedEntryState.set(0);
-                pos++;
-            }
-            for (int i = 0; i < m.getParameterCount(); i++) {
-                mergedEntryState.set(pos++);
-                JavaKind kind = Types.getJavaKind(Signatures.parameterType(m.getParsedSignature(), i));
-                if (kind.needsTwoSlots()) {
-                    mergedEntryState.set(pos++);
-                }
-            }
+            // Truffle automates initialization to default values of all slots.
+            mergedEntryState.set(0, m.getMaxLocals());
         } else {
             for (int pred : current.predecessorsID()) {
                 BitSet predState = helper.endFor(pred);
@@ -267,5 +254,18 @@ public class LivenessAnalysis {
 
     private static int getIndex(int bci, boolean preAction) {
         return 2 * bci + (preAction ? 0 : 1);
+    }
+
+    private void log(PrintStream ps) {
+        for (int i = 0; i < result.length / 2; i++) {
+            LocalVariableAction pre = result[2 * i];
+            LocalVariableAction post = result[2 * i + 1];
+            if (pre != null) {
+                ps.println(i + "- pre: " + pre);
+            }
+            if (post != null) {
+                ps.println(i + "- post: " + post);
+            }
+        }
     }
 }

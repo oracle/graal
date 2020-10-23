@@ -613,7 +613,8 @@ public final class BytecodeNode extends EspressoMethodNode {
     // region Local accessors
 
     public void freeLocal(VirtualFrame frame, int slot) {
-        // TODO(garcia): use frame.free() once available
+        // TODO(garcia): use frame.clear() once available
+        // frame.clear(locals[slot]);
         if (frame.isObject(locals[slot])) {
             frame.setObject(locals[slot], null); // null out object array
         } else {
@@ -693,6 +694,8 @@ public final class BytecodeNode extends EspressoMethodNode {
             instrument.notifyEntry(frame);
         }
 
+        preBCI(frame, curBCI);
+
         loop: while (true) {
             int curOpcode;
             EXECUTED_BYTECODES_COUNT.inc();
@@ -708,8 +711,6 @@ public final class BytecodeNode extends EspressoMethodNode {
                 if (Bytecodes.canTrap(curOpcode) || instrument != null) {
                     setBCI(frame, curBCI);
                 }
-
-                preBCI(frame, curBCI);
 
                 if (instrument != null) {
                     instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
@@ -974,6 +975,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                             }
                             top += Bytecodes.stackEffectOf(curOpcode);
                             curBCI = targetBCI;
+                            preBCI(frame, curBCI);
                             continue loop;
                         }
                         break switchLabel;
@@ -989,6 +991,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         }
                         top += Bytecodes.stackEffectOf(curOpcode);
                         curBCI = targetBCI;
+                        preBCI(frame, curBCI);
                         continue loop;
                     }
                     case RET: {
@@ -1013,6 +1016,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 }
                                 top += Bytecodes.stackEffectOf(curOpcode);
                                 curBCI = targetBCI;
+                                preBCI(frame, curBCI);
                                 continue loop;
                             }
                         }
@@ -1026,6 +1030,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         }
                         top += Bytecodes.stackEffectOf(curOpcode);
                         curBCI = targetBCI;
+                        preBCI(frame, curBCI);
                         continue loop;
                     }
 
@@ -1067,6 +1072,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 }
                                 top += Bytecodes.stackEffectOf(curOpcode);
                                 curBCI = targetBCI;
+                                preBCI(frame, curBCI);
                                 continue loop;
                             }
                         }
@@ -1080,6 +1086,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         }
                         top += Bytecodes.stackEffectOf(curOpcode);
                         curBCI = targetBCI;
+                        preBCI(frame, curBCI);
                         continue loop;
                     }
                     case LOOKUPSWITCH: {
@@ -1104,6 +1111,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 }
                                 top += Bytecodes.stackEffectOf(curOpcode);
                                 curBCI = targetBCI;
+                                preBCI(frame, curBCI);
                                 continue loop;
                             }
                         }
@@ -1117,6 +1125,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         }
                         top += Bytecodes.stackEffectOf(curOpcode);
                         curBCI = targetBCI;
+                        preBCI(frame, curBCI);
                         continue loop;
                     }
                     // @formatter:off
@@ -1229,6 +1238,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                     nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                                 }
                                 curBCI = targetBCI;
+                                preBCI(frame, curBCI);
                                 continue loop; // skip bs.next()
                             }
                         }
@@ -1276,6 +1286,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                             nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                         }
                         curBCI = targetBCI;
+                        preBCI(frame, curBCI);
                         continue loop; // skip bs.next()
                     } else {
                         if (instrument != null) {
@@ -1308,6 +1319,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 nextStatementIndex = instrument.getNextStatementIndex(statementIndex, targetBCI);
             }
             curBCI = targetBCI;
+            preBCI(frame, curBCI);
         }
     }
 
