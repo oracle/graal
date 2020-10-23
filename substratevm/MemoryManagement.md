@@ -42,6 +42,7 @@ To enable it, pass the `-H:+UseLowLatencyGC` option to the native image builder,
 ```shell
 native-image -H:+UseLowLatencyGC HelloWorld
 ```
+Note: The `-H:+UseLowLatencyGC` option will be depricated in GraalVM  20.3 version in favour of `-H:+UseG1GC`.
 
 Currently, the G1 GC can only be used in native images built on Linux for AMD64.
 Note: The G1 GC integration is available with **GraalVM Enterprise** only and is experimental.
