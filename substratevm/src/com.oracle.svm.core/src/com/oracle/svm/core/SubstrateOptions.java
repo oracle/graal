@@ -444,15 +444,15 @@ public class SubstrateOptions {
     };
 
     private static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, @SuppressWarnings("unused") Integer oldValue, Integer newValue) {
-        // force update of TrackNodeSourcePosition
-        if (newValue > 0 && !Boolean.TRUE.equals(values.get(TrackNodeSourcePosition))) {
-            TrackNodeSourcePosition.update(values, true);
-        }
+        // force update of TrackNodeSourcePosition and DeleteLocalSymbols
+        TrackNodeSourcePosition.update(values, newValue > 0);
+        DeleteLocalSymbols.update(values, newValue == 0);
     }
 
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
     public static final HostedOptionKey<String[]> DebugInfoSourceSearchPath = new HostedOptionKey<String[]>(null) {
     };
+
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
     public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
 

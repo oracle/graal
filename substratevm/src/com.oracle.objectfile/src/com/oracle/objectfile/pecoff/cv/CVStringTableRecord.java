@@ -24,58 +24,33 @@
  * questions.
  */
 
-package com.oracle.objectfile.debugentry;
+package com.oracle.objectfile.pecoff.cv;
 
-/**
- * Tracks debug info associated with a Java source file.
- */
-public class FileEntry {
-    private String fileName;
-    private DirEntry dirEntry;
-    private String cachePath;
+final class CVStringTableRecord extends CVSymbolRecord {
 
-    public FileEntry(String fileName, DirEntry dirEntry, String cachePath) {
-        this.fileName = fileName;
-        this.dirEntry = dirEntry;
-        this.cachePath = cachePath;
+    private final CVSymbolSectionImpl.CVStringTable stringTable;
+
+    CVStringTableRecord(CVDebugInfo cvDebugInfo, CVSymbolSectionImpl.CVStringTable stringTable) {
+        super(cvDebugInfo, CVDebugConstants.DEBUG_S_STRINGTABLE);
+        this.stringTable = stringTable;
     }
 
-    /**
-     * The name of the associated file excluding path elements.
-     */
-    public String getFileName() {
-        return fileName;
+    @Override
+    public int computeSize(int pos) {
+        return pos + stringTable.getCurrentOffset();
     }
 
-    public String getPathName() {
-        return getDirEntry().getPathString();
-    }
-
-    public String getFullName() {
-        return getDirEntry() != null ? getDirEntry().getPath().resolve(getFileName()).toString() : getFileName();
-    }
-
-    /**
-     * The directory entry associated with this file entry.
-     */
-    public DirEntry getDirEntry() {
-        return dirEntry;
-    }
-
-    /**
-     * The compilation directory in which to look for source files as a {@link String}.
-     */
-    public String getCachePath() {
-        return cachePath;
+    @Override
+    public int computeContents(byte[] buffer, int initialPos) {
+        int pos = initialPos;
+        for (CVSymbolSectionImpl.CVStringTable.StringTableEntry entry : stringTable.values()) {
+            pos = CVUtil.putUTF8StringBytes(entry.text, buffer, pos);
+        }
+        return pos;
     }
 
     @Override
     public String toString() {
-        if (getDirEntry() == null) {
-            return getFileName() == null ? "-" : getFileName();
-        } else if (getFileName() == null) {
-            return "--";
-        }
-        return String.format("FileEntry(%s)", getFullName());
+        return String.format("CVStringTableRecord(type=0x%04x pos=0x%06x count=%d)", type, recordStartPosition, stringTable.size());
     }
 }
