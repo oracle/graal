@@ -15,8 +15,8 @@ public class Config {
 
     @Override
     public String toString() {
-        return "execution-mode    = " + mode + "\n" +
-                "warmup-iterations = " + warmupIterations + "\n" +
-                "iterations        = " + iterations;
+        return "execution-mode:    " + mode + "\n" +
+                "warmup-iterations: " + warmupIterations + "\n" +
+                "iterations:        " + iterations;
     }
 }

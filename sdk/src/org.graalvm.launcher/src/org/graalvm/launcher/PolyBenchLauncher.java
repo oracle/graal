@@ -12,6 +12,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -85,7 +86,12 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
             switch (parts[0]) {
                 case "--path":
                     this.config.path = parts[1];
-                    sourceContent = Source.newBuilder(languageId(parts[1]), new File(parts[1]));
+                    final File file = new File(parts[1]);
+                    try {
+                        sourceContent = Source.newBuilder(Source.findLanguage(file), file);
+                    } catch (IOException e) {
+                        throw abort("Error while examining source file '" + file + "': " + e.getMessage());
+                    }
                     break;
                 case "--execution-mode":
                     switch (parts[1]) {
@@ -117,26 +123,6 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
             }
         }
         return unrecognizedArguments;
-    }
-
-    private String languageId(String path) {
-        final int dotIndex = path.lastIndexOf(".");
-        if (dotIndex == -1) {
-            throw abort("Cannot detect language from path: " + path);
-        }
-        String extension = path.substring(dotIndex + 1);
-        switch (extension) {
-            case "js":
-                return "js";
-            case "wasm":
-                return "wasm";
-            case "rb":
-                return "ruby";
-            case "py":
-                return "python";
-            default:
-                throw abort("Unknown extension: " + extension);
-        }
     }
 
     private void launch(String[] args) {
@@ -171,6 +157,9 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
                 log("::: Parsing :::");
                 final Source source = sourceContent.build();
                 context.eval(source);
+                log("language: " + source.getLanguage());
+                log("type:     " + (source.hasBytes() ? "binary" : "source code"));
+                log("length:   " + source.getLength() + (source.hasBytes() ? " bytes" : " characters"));
                 log("Parsing completed.");
                 log("");
 
