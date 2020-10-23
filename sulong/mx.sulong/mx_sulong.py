@@ -527,8 +527,7 @@ def extract_compiler_args(args, useDoubleDash=False):
     return compilerArgs, remainder
 
 def getCommonOptions(withAssertion, lib_args=None):
-    options = ['-Dgraal.TruffleCompilationExceptionsArePrinted=true',
-        '-Dgraal.ExitVMOnException=true']
+    options = []
 
     if lib_args is not None:
         options.append('-Dpolyglot.llvm.libraries=' + ':'.join(lib_args))

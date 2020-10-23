@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -138,15 +139,16 @@ public final class InitializeSymbolsNode extends LLVMNode {
         ArrayList<LLVMWriteSymbolNode> writeFunctionsList = new ArrayList<>();
         for (FunctionSymbol functionSymbol : result.getDefinedFunctions()) {
             LLVMFunction function = fileScope.getFunction(functionSymbol.getName());
+            LLVMFunctionCode functionCode = new LLVMFunctionCode(function);
             // Internal libraries in the llvm library path are allowed to have intriniscs.
             if (isInternalSulongLibrary && intrinsicProvider.isIntrinsified(function.getName())) {
-                allocFuncsAndAliasesList.add(new AllocIntrinsicFunctionNode(function, nodeFactory, intrinsicProvider));
+                allocFuncsAndAliasesList.add(new AllocIntrinsicFunctionNode(function, functionCode, nodeFactory, intrinsicProvider));
                 writeFunctionsList.add(LLVMWriteSymbolNodeGen.create(function));
             } else if (lazyParsing) {
-                allocFuncsAndAliasesList.add(new AllocLLVMFunctionNode(function));
+                allocFuncsAndAliasesList.add(new AllocLLVMFunctionNode(function, functionCode));
                 writeFunctionsList.add(LLVMWriteSymbolNodeGen.create(function));
             } else {
-                allocFuncsAndAliasesList.add(new AllocLLVMEagerFunctionNode(function));
+                allocFuncsAndAliasesList.add(new AllocLLVMEagerFunctionNode(function, functionCode));
                 writeFunctionsList.add(LLVMWriteSymbolNodeGen.create(function));
             }
         }
@@ -301,13 +303,16 @@ public final class InitializeSymbolsNode extends LLVMNode {
      */
     static final class AllocLLVMFunctionNode extends AllocSymbolNode {
 
-        AllocLLVMFunctionNode(LLVMFunction function) {
+        private final LLVMFunctionCode functionCode;
+
+        AllocLLVMFunctionNode(LLVMFunction function, LLVMFunctionCode functionCode) {
             super(function);
+            this.functionCode = functionCode;
         }
 
         @CompilerDirectives.TruffleBoundary
         private LLVMFunctionDescriptor createAndResolve(LLVMContext context) {
-            return context.createFunctionDescriptor(symbol.asFunction());
+            return context.createFunctionDescriptor(symbol.asFunction(), functionCode);
         }
 
         @Override
@@ -319,13 +324,16 @@ public final class InitializeSymbolsNode extends LLVMNode {
 
     static final class AllocLLVMEagerFunctionNode extends AllocSymbolNode {
 
-        AllocLLVMEagerFunctionNode(LLVMFunction function) {
+        private final LLVMFunctionCode functionCode;
+
+        AllocLLVMEagerFunctionNode(LLVMFunction function, LLVMFunctionCode functionCode) {
             super(function);
+            this.functionCode = functionCode;
         }
 
         @CompilerDirectives.TruffleBoundary
         private LLVMFunctionDescriptor createAndResolve(LLVMContext context) {
-            LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction());
+            LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), functionCode);
             functionDescriptor.getFunctionCode().resolveIfLazyLLVMIRFunction();
             return functionDescriptor;
         }
@@ -341,16 +349,18 @@ public final class InitializeSymbolsNode extends LLVMNode {
 
         private final NodeFactory nodeFactory;
         LLVMIntrinsicProvider intrinsicProvider;
+        private final LLVMFunctionCode functionCode;
 
-        AllocIntrinsicFunctionNode(LLVMFunction function, NodeFactory nodeFactory, LLVMIntrinsicProvider intrinsicProvider) {
+        AllocIntrinsicFunctionNode(LLVMFunction function, LLVMFunctionCode functionCode, NodeFactory nodeFactory, LLVMIntrinsicProvider intrinsicProvider) {
             super(function);
+            this.functionCode = functionCode;
             this.nodeFactory = nodeFactory;
             this.intrinsicProvider = intrinsicProvider;
         }
 
         @CompilerDirectives.TruffleBoundary
         private LLVMFunctionDescriptor createAndDefine(LLVMContext context) {
-            LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction());
+            LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), functionCode);
             if (intrinsicProvider.isIntrinsified(symbol.getName())) {
                 functionDescriptor.getFunctionCode().define(intrinsicProvider, nodeFactory);
                 return functionDescriptor;

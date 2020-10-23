@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -149,8 +149,9 @@ abstract class FunctionExecuteNode extends Node {
     @ExplodeLoop
     @Specialization(replaces = "cachedSignature", guards = "signature.getArgTypes().length == libs.length")
     protected Object cachedArgCount(NativePointer receiver, LibFFISignature signature, Object[] args,
+                    @CachedLanguage() NFILanguageImpl language,
                     @Cached("getGenericNativeArgumentLibraries(signature.getArgTypes().length)") NativeArgumentLibrary[] libs,
-                    @Cached("createSlowPathCall()") DirectCallNode slowPathCall,
+                    @Cached() IndirectCallNode slowPathCall,
                     @Cached BranchProfile exception) throws ArityException, UnsupportedTypeException {
         LibFFIType[] argTypes = signature.getArgTypes();
 
@@ -176,15 +177,10 @@ abstract class FunctionExecuteNode extends Node {
         }
 
         try {
-            return slowPathCall.call(receiver, signature, buffer);
+            return slowPathCall.call(language.getSlowPathCall(), receiver, signature, buffer);
         } finally {
             assert keepAlive(args);
         }
-    }
-
-    DirectCallNode createSlowPathCall() {
-        NFILanguageImpl language = lookupLanguageReference(NFILanguageImpl.class).get();
-        return DirectCallNode.create(language.getSlowPathCall());
     }
 
     private static void raiseArityException(LibFFIType[] argTypes, int actualArgCount) throws ArityException {

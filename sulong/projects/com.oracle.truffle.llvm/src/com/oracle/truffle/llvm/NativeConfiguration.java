@@ -34,7 +34,6 @@ import com.oracle.truffle.llvm.parser.factories.BasicIntrinsicsProvider;
 import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
 import com.oracle.truffle.llvm.parser.factories.BasicPlatformCapability;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
@@ -65,8 +64,8 @@ public final class NativeConfiguration implements Configuration {
     }
 
     @Override
-    public NodeFactory createNodeFactory(LLVMContext context, DataLayout dataLayout) {
-        return new BasicNodeFactory(context, dataLayout);
+    public NodeFactory createNodeFactory(LLVMLanguage language, DataLayout dataLayout) {
+        return new BasicNodeFactory(language, dataLayout);
     }
 
     @Override
