@@ -29,28 +29,27 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.options.OptionDescriptors;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
+import com.oracle.truffle.llvm.runtime.LLVMLanguageFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.Configurations;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
@@ -59,14 +58,25 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprExecutable
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
+
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE}, //
-                fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class}, version = LLVMConfig.VERSION)
+                fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class}, version = LLVMConfig.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
@@ -130,12 +140,17 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle");
 
+    private final LLVMInteropType.InteropTypeRegistry interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
+
+    @CompilationFinal private LLVMFunctionCode sulongInitContextCode;
+
     {
         /*
          * This is needed at the moment to make sure the Assumption classes are initialized in the
          * proper class loader by the time compilation starts.
          */
         noCommonHandleAssumption.isValid();
+
     }
 
     public abstract static class Loader implements LLVMCapability {
@@ -311,6 +326,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     @Override
+    protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+        return Configurations.areOptionsCompatible(firstOptions, newOptions);
+    }
+
+    @Override
     protected void finalizeContext(LLVMContext context) {
         context.finalizeContext();
     }
@@ -322,8 +342,106 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         context.dispose(memory);
     }
 
+    static class FreeGlobalsNode extends RootNode {
+
+        @Child LLVMMemoryOpNode freeRo;
+        @Child LLVMMemoryOpNode freeRw;
+
+        final ContextReference<LLVMContext> ctx;
+
+        FreeGlobalsNode(LLVMLanguage language, NodeFactory nodeFactory) {
+            super(language);
+            this.ctx = lookupContextReference(LLVMLanguage.class);
+            this.freeRo = nodeFactory.createFreeGlobalsBlock(true);
+            this.freeRw = nodeFactory.createFreeGlobalsBlock(false);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            // Executed in dispose(), therefore can read unsynchronized
+            LLVMContext context = ctx.get();
+            for (LLVMPointer store : context.globalsReadOnlyStore.getValues()) {
+                if (store != null) {
+                    freeRo.execute(store);
+                }
+            }
+            for (int i = 0; i < context.globalsNonPointerStore.size(); i++) {
+                LLVMPointer store = getElement(context.globalsNonPointerStore, i);
+                if (store != null) {
+                    freeRw.execute(store);
+                }
+            }
+            return null;
+        }
+
+        @CompilerDirectives.TruffleBoundary(allowInlining = true)
+        private static LLVMPointer getElement(ArrayList<LLVMPointer> list, int idx) {
+            return list.get(idx);
+        }
+    }
+
+    abstract static class InitializeContextNode extends LLVMStatementNode {
+
+        @CompilationFinal private ContextReference<LLVMContext> ctxRef;
+
+        @Child private DirectCallNode initContext;
+
+        InitializeContextNode(LLVMFunctionCode initContextFunctionCode) {
+            RootCallTarget initContextFunction = initContextFunctionCode.getLLVMIRFunctionSlowPath();
+            this.initContext = DirectCallNode.create(initContextFunction);
+        }
+
+        @Specialization
+        public void doInit() {
+            if (ctxRef == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                ctxRef = lookupContextReference(LLVMLanguage.class);
+            }
+            LLVMContext ctx = ctxRef.get();
+            if (!ctx.initialized) {
+                assert !ctx.cleanupNecessary;
+                ctx.initialized = true;
+                ctx.cleanupNecessary = true;
+                Object[] args = new Object[]{ctx.getThreadingStack().getStack(), ctx.getApplicationArguments(), LLVMContext.getEnvironmentVariables(), LLVMContext.getRandomValues()};
+                initContext.call(args);
+            }
+        }
+    }
+
+    public void setSulongInitContext(LLVMFunction function) {
+        this.sulongInitContextCode = new LLVMFunctionCode(function);
+    }
+
+    private CallTarget freeGlobalBlocks;
+
+    protected void initFreeGlobalBlocks(NodeFactory nodeFactory) {
+        // lazily initialized, this is not necessary if there are no global blocks allocated
+        if (freeGlobalBlocks == null) {
+            freeGlobalBlocks = Truffle.getRuntime().createCallTarget(new FreeGlobalsNode(this, nodeFactory));
+        }
+    }
+
+    public CallTarget getFreeGlobalBlocks() {
+        return freeGlobalBlocks;
+    }
+
     public AtomicInteger getRawRunnerID() {
         return nextID;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    public LLVMInteropType getInteropType(LLVMSourceType sourceType) {
+        return interopTypeRegistry.get(sourceType);
+    }
+
+    public LLVMStatementNode createInitializeContextNode() {
+        // we can't do the initialization in the LLVMContext constructor nor in
+        // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
+        // do it in a delayed way.
+        if (sulongInitContextCode == null) {
+            throw new IllegalStateException("Context cannot be initialized:" + LLVMContext.SULONG_INIT_CONTEXT + " was not found");
+        }
+        return InitializeContextNodeGen.create(sulongInitContextCode);
     }
 
     /**

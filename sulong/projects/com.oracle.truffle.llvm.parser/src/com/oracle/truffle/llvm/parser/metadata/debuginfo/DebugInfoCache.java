@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,19 +29,18 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
+
+import java.util.HashMap;
+import java.util.Map;
 
 final class DebugInfoCache {
 
@@ -58,9 +57,9 @@ final class DebugInfoCache {
     private final DIScopeBuilder scopeBuilder;
     private final DITypeExtractor typeExtractor;
 
-    DebugInfoCache(MetadataValueList metadata, Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers, LLVMContext context) {
+    DebugInfoCache(MetadataValueList metadata, Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers) {
         this.parsedVariables = new HashMap<>();
-        this.scopeBuilder = new DIScopeBuilder(metadata, context);
+        this.scopeBuilder = new DIScopeBuilder(metadata);
         this.typeExtractor = new DITypeExtractor(scopeBuilder, metadata, staticMembers);
     }
 

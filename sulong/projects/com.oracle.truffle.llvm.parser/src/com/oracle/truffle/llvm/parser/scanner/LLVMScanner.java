@@ -30,6 +30,14 @@
 
 package com.oracle.truffle.llvm.parser.scanner;
 
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.listeners.BCFileRoot;
+import com.oracle.truffle.llvm.parser.listeners.ParserListener;
+import com.oracle.truffle.llvm.parser.model.ModelModule;
+import com.oracle.truffle.llvm.runtime.Magic;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import org.graalvm.polyglot.io.ByteSequence;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,15 +45,6 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.listeners.BCFileRoot;
-import com.oracle.truffle.llvm.parser.listeners.ParserListener;
-import com.oracle.truffle.llvm.parser.model.ModelModule;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.Magic;
-import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
-import org.graalvm.polyglot.io.ByteSequence;
 
 public final class LLVMScanner {
 
@@ -91,7 +90,7 @@ public final class LLVMScanner {
         this.offset = offset;
     }
 
-    public static void parseBitcode(ByteSequence bitcode, ModelModule model, Source bcSource, LLVMContext context) {
+    public static void parseBitcode(ByteSequence bitcode, ModelModule model, Source bcSource) {
         final BitStream bitstream = BitStream.create(bitcode);
         final BCFileRoot fileParser = new BCFileRoot(model, bcSource);
         final LLVMScanner scanner = new LLVMScanner(bitstream, fileParser);
@@ -104,7 +103,7 @@ public final class LLVMScanner {
 
         // the root block does not exist in the LLVM file and is therefore never exited by the
         // scanner
-        fileParser.exit(context);
+        fileParser.exit();
     }
 
     private static <V> List<V> subList(List<V> original, int from) {
