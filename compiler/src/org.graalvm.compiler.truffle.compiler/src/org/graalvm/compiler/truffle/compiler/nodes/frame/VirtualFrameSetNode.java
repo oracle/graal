@@ -30,7 +30,6 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
@@ -67,7 +66,6 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
                 ValueNode dataEntry = tool.getEntry(dataVirtual, frameSlotIndex);
                 if (dataEntry.getStackKind() == value.getStackKind()) {
                     if (tool.setVirtualEntry(dataVirtual, frameSlotIndex, value, value.getStackKind(), -1)) {
-                        clearCounterpart(tool);
                         tool.delete();
                         return;
                     }
@@ -81,17 +79,4 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
          */
         insertDeoptimization(tool);
     }
-
-    private void clearCounterpart(VirtualizerTool tool) {
-        ValueNode counterpartAlias = tool.getAlias(
-                        TruffleCompilerRuntime.getRuntime().getJavaKindForFrameSlotKind(accessTag) == JavaKind.Object
-                                        ? frame.virtualFramePrimitiveArray
-                                        : frame.virtualFrameObjectArray);
-        if (counterpartAlias instanceof VirtualObjectNode) {
-            VirtualObjectNode counterPartVirtual = (VirtualObjectNode) counterpartAlias;
-            tool.setVirtualEntry(counterPartVirtual, frameSlotIndex,
-                            ConstantNode.defaultForKind(counterPartVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex), graph()));
-        }
-    }
-
 }

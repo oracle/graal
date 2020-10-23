@@ -31,14 +31,11 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-
-import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public class VirtualFrameFreeNode extends VirtualFrameAccessorNode implements Virtualizable {
@@ -60,16 +57,7 @@ public class VirtualFrameFreeNode extends VirtualFrameAccessorNode implements Vi
             VirtualObjectNode primitiveStorageVirtual = (VirtualObjectNode) primitiveStorageAlias;
 
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < objectStorageVirtual.entryCount() && frameSlotIndex < primitiveStorageVirtual.entryCount()) {
-                tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag));
-
-                JavaKind objectEntryKind = objectStorageVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex);
-                JavaKind primitiveEntryKind = primitiveStorageVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex);
-
-                ValueNode nullConstant = ConstantNode.defaultForKind(objectEntryKind, graph());
-                ValueNode zeroConstant = ConstantNode.defaultForKind(primitiveEntryKind, graph());
-
-                boolean success = tool.setVirtualEntry(objectStorageVirtual, frameSlotIndex, nullConstant, objectEntryKind, -1) &&
-                                tool.setVirtualEntry(primitiveStorageVirtual, frameSlotIndex, zeroConstant, primitiveEntryKind, -1);
+                boolean success = tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag), tagVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex), -1);
                 if (success) {
                     tool.delete();
                     return;
