@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,8 +56,14 @@ public enum PECoffMachine/* implements Integral */ {
                 switch (k) {
                     case DIRECT_8:
                         return PECoffX86_64Relocation.ADDR64;
+                    case DIRECT_4:
+                        return PECoffX86_64Relocation.ADDR32;
                     case PC_RELATIVE_4:
                         return PECoffX86_64Relocation.REL32;
+                    case SECTION_2:
+                        return PECoffX86_64Relocation.SECTION;
+                    case SECREL_4:
+                        return PECoffX86_64Relocation.SECREL;
                     case UNKNOWN:
                     default:
                         throw new IllegalArgumentException("cannot map unknown relocation kind to an PECoff x86-64 relocation type");
@@ -144,6 +150,24 @@ enum PECoffX86_64Relocation implements PECoffRelocationMethod {
         @Override
         public long toLong() {
             return IMAGE_RELOCATION.IMAGE_REL_AMD64_ADDR64;
+        }
+    },
+    ADDR32 {
+        @Override
+        public long toLong() {
+            return IMAGE_RELOCATION.IMAGE_REL_AMD64_ADDR32;
+        }
+    },
+    SECREL {
+        @Override
+        public long toLong() {
+            return IMAGE_RELOCATION.IMAGE_REL_AMD64_SECREL;
+        }
+    },
+    SECTION {
+        @Override
+        public long toLong() {
+            return IMAGE_RELOCATION.IMAGE_REL_AMD64_SECTION;
         }
     },
     REL32 {

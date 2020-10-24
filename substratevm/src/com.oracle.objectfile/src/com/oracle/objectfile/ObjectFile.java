@@ -253,6 +253,16 @@ public abstract class ObjectFile {
         DIRECT_4,
         DIRECT_8,
         /**
+         * The index of the object file section containing the relocation's symbol supplies the
+         * fixup bytes. (used in CodeView debug information)
+         */
+        SECTION_2,
+        /**
+         * The address of the object file section containing the relocation's symbol (plus addend)
+         * supplies the fixup bytes. (used in CodeView debug information)
+         */
+        SECREL_4,
+        /**
          * The relocation's symbol provides an address whose PC-relative value (plus addend)
          * supplies the fixup bytes.
          */
@@ -325,9 +335,11 @@ public abstract class ObjectFile {
                     return 1;
                 case DIRECT_2:
                 case PC_RELATIVE_2:
+                case SECTION_2:
                     return 2;
                 case DIRECT_4:
                 case PC_RELATIVE_4:
+                case SECREL_4:
                     return 4;
                 case DIRECT_8:
                 case PC_RELATIVE_8:

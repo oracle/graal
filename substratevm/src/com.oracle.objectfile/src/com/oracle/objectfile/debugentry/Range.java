@@ -36,11 +36,15 @@ import java.nio.file.Paths;
  */
 
 public class Range {
+
+    private static final String CLASS_DELIMITER = ".";
+
     private final String cachePath;
     private String fileName;
     private Path filePath;
     private String className;
     private String methodName;
+    private String symbolName;
     private String paramNames;
     private String returnTypeName;
     private String fullMethodName;
@@ -56,24 +60,24 @@ public class Range {
     /*
      * Create a primary range.
      */
-    public Range(String fileName, Path filePath, Path cachePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line,
-                    boolean isDeoptTarget) {
-        this(fileName, filePath, cachePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, isDeoptTarget, null);
+    public Range(String fileName, Path filePath, Path cachePath, String className, String methodName, String symbolName, String paramNames, String returnTypeName, StringTable stringTable, int lo,
+                    int hi, int line, boolean isDeoptTarget) {
+        this(fileName, filePath, cachePath, className, methodName, symbolName, paramNames, returnTypeName, stringTable, lo, hi, line, isDeoptTarget, null);
     }
 
     /*
      * Create a secondary range.
      */
-    public Range(String fileName, Path filePath, Path cachePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line,
-                    Range primary) {
-        this(fileName, filePath, cachePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, false, primary);
+    public Range(String fileName, Path filePath, Path cachePath, String className, String methodName, String symbolName, String paramNames, String returnTypeName, StringTable stringTable, int lo,
+                    int hi, int line, Range primary) {
+        this(fileName, filePath, cachePath, className, methodName, symbolName, paramNames, returnTypeName, stringTable, lo, hi, line, false, primary);
     }
 
     /*
      * Create a primary or secondary range.
      */
-    private Range(String fileName, Path filePath, Path cachePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line,
-                    boolean isDeoptTarget, Range primary) {
+    private Range(String fileName, Path filePath, Path cachePath, String className, String methodName, String symbolName, String paramNames, String returnTypeName, StringTable stringTable, int lo,
+                    int hi, int line, boolean isDeoptTarget, Range primary) {
         /*
          * Currently file name and full method name need to go into the debug_str section other
          * strings just need to be deduplicated to save space.
@@ -83,6 +87,7 @@ public class Range {
         this.cachePath = (cachePath == null ? "" : stringTable.uniqueDebugString(cachePath.toString()));
         this.className = stringTable.uniqueString(className);
         this.methodName = stringTable.uniqueString(methodName);
+        this.symbolName = stringTable.uniqueString(symbolName);
         this.paramNames = stringTable.uniqueString(paramNames);
         this.returnTypeName = stringTable.uniqueString(returnTypeName);
         this.fullMethodName = stringTable.uniqueDebugString(constructClassAndMethodNameWithParams());
@@ -131,6 +136,10 @@ public class Range {
         return methodName;
     }
 
+    public String getSymbolName() {
+        return symbolName;
+    }
+
     public int getHi() {
         return hi;
     }
@@ -151,6 +160,14 @@ public class Range {
         return isDeoptTarget;
     }
 
+    public String getParamNames() {
+        return paramNames;
+    }
+
+    public String getClassAndMethodName() {
+        return getExtendedMethodName(false, false);
+    }
+
     private String getExtendedMethodName(boolean includeParams, boolean includeReturnType) {
         StringBuilder builder = new StringBuilder();
         if (includeReturnType && returnTypeName.length() > 0) {
@@ -159,7 +176,7 @@ public class Range {
         }
         if (className != null) {
             builder.append(className);
-            builder.append("::");
+            builder.append(CLASS_DELIMITER);
         }
         builder.append(methodName);
         if (includeParams && !paramNames.isEmpty()) {
@@ -179,5 +196,10 @@ public class Range {
      */
     public String getCachePath() {
         return cachePath;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Range(lo=0x%05x hi=0x%05x %s %s:%d)", lo, hi, constructClassAndMethodNameWithParams(), getFileAsPath(), line);
     }
 }

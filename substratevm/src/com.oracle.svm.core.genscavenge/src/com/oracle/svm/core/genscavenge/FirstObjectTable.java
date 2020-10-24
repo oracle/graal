@@ -154,7 +154,7 @@ public final class FirstObjectTable {
 
     /**
      * The bias for exponential entry offsets to distinguish them from linear offset entries.
-     * 
+     *
      * The limit for {@link #EXPONENT_MAX} seems to be that for the maximal object of 2^64 bytes, I
      * never have to skip back more than (2^64)/{@link #ENTRY_SIZE_BYTES} entries, so the maximum
      * exponent I'll need is 55. So the EXPONENT_BIAS just has to leave enough room for that many
@@ -167,7 +167,7 @@ public final class FirstObjectTable {
      * In fact, the current largest object that can be allocated is an array of long (or double, or
      * Object) of size Integer.MAX_VALUE, so the largest skip back is (2^35)/512 or 2^24. That
      * leaves lots of room for special values.
-     * 
+     *
      */
     private static final int EXPONENT_BIAS = 1 + LINEAR_OFFSET_MAX - EXPONENT_MIN;
 

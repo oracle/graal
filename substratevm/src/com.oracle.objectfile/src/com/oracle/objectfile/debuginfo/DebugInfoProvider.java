@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,6 +76,11 @@ public interface DebugInfoProvider {
          * @return the name of the compiled method including signature.
          */
         String methodName();
+
+        /**
+         * @return the symbolNameForMethod string
+         */
+        String symbolNameForMethod();
 
         /**
          * @return the lowest address containing code generated for the method represented as an
@@ -164,6 +169,11 @@ public interface DebugInfoProvider {
          * @return the name of the outer or inlined method including signature.
          */
         String methodName();
+
+        /**
+         * @return the symbolNameForMethod string
+         */
+        String symbolNameForMethod();
 
         /**
          * @return the lowest address containing code generated for an outer or inlined code segment
