@@ -67,9 +67,18 @@ public final class LibraryData extends Template {
     private ExportsLibrary objectExports;
     private boolean defaultExportLookupEnabled;
     private boolean dynamicDispatchEnabled = true;
+    private boolean pushEncapsulatingNode = true;
 
     public LibraryData(TypeElement type, AnnotationMirror annotationMirror) {
         super(ProcessorContext.getInstance(), type, annotationMirror);
+    }
+
+    public void setPushEncapsulatingNode(boolean pushEncapsulatingNode) {
+        this.pushEncapsulatingNode = pushEncapsulatingNode;
+    }
+
+    public boolean isPushEncapsulatingNode() {
+        return pushEncapsulatingNode;
     }
 
     public void setDynamicDispatchEnabled(boolean dynamicDispatchEnabled) {

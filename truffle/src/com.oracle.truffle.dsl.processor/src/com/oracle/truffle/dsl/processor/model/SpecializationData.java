@@ -148,7 +148,9 @@ public final class SpecializationData extends TemplateMethod {
     public boolean needsPushEncapsulatingNode() {
         for (CacheExpression cache : caches) {
             if (cache.isAlwaysInitialized() && cache.isRequiresBoundary() && cache.isCachedLibrary()) {
-                return true;
+                if (cache.getCachedLibrary().isPushEncapsulatingNode()) {
+                    return true;
+                }
             }
         }
         return false;

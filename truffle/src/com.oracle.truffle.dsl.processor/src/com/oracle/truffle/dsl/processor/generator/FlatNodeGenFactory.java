@@ -1415,7 +1415,7 @@ public class FlatNodeGenFactory {
             renameOriginalParameters(forType, method, frameState);
         }
 
-        boolean isExecutableInUncached = forType.getEvaluatedCount() != node.getExecutionCount();
+        boolean isExecutableInUncached = forType.getEvaluatedCount() != node.getExecutionCount() && !node.getChildren().isEmpty();
         if (!isExecutableInUncached) {
             method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         }
@@ -3161,7 +3161,7 @@ public class FlatNodeGenFactory {
                 boolean useDuplicateFlag = specialization.isGuardBindsCache() && !specialization.hasMultipleInstances();
                 String duplicateFoundName = specialization.getId() + "_duplicateFound_";
 
-                boolean pushBoundary = cachesRequireFastPathBoundary(specialization.getCaches());
+                boolean pushBoundary = specialization.needsPushEncapsulatingNode();
                 if (pushBoundary) {
                     builder.startBlock();
                     GeneratorUtils.pushEncapsulatingNode(builder, "this");
@@ -3391,15 +3391,6 @@ public class FlatNodeGenFactory {
         builder.end().end();
 
         return innerBuilder;
-    }
-
-    private static boolean cachesRequireFastPathBoundary(Collection<CacheExpression> caches) {
-        for (CacheExpression cache : caches) {
-            if (cache.isAlwaysInitialized() && cache.isRequiresBoundary()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private List<IfTriple> createAssumptionCheckTriples(FrameState frameState, SpecializationData specialization, NodeExecutionMode mode) {
