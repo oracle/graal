@@ -53,7 +53,9 @@ public enum Failure {
     UNSPECIFIED_MALFORMED(Type.MALFORMED, "unspecified"),
 
     UNSPECIFIED_INVALID(Type.INVALID, "unspecified"),
-    RETURN_STACK_SIZE_MISMATCH(Type.INVALID, "type mismatch"),
+    RETURN_SIZE_MISMATCH(Type.INVALID, "type mismatch"),
+    EMPTY_STACK(Type.INVALID, "type mismatch"),
+    TABLE_TARGET_MISMATCH(Type.INVALID, "type mismatch"),
 
     UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),
 

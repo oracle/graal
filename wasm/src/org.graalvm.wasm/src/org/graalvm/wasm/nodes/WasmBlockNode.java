@@ -267,7 +267,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     @CompilationFinal private final int startOffset;
     @CompilationFinal private final byte returnTypeId;
-    @CompilationFinal private final byte continuationTypeId;
     @CompilationFinal private final int initialStackPointer;
     @CompilationFinal private final int initialByteConstantOffset;
     @CompilationFinal private final int initialIntConstantOffset;
@@ -278,13 +277,11 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private ContextReference<WasmContext> rawContextReference;
     @Children private Node[] children;
 
-    public WasmBlockNode(WasmInstance wasmInstance, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, byte continuationTypeId, int initialStackPointer,
-                    int initialByteConstantOffset, int initialIntConstantOffset, int initialLongConstantOffset, int initialBranchTableOffset,
-                    int initialProfileOffset) {
+    public WasmBlockNode(WasmInstance wasmInstance, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, int initialStackPointer, int initialByteConstantOffset, int initialIntConstantOffset,
+                    int initialLongConstantOffset, int initialBranchTableOffset, int initialProfileOffset) {
         super(wasmInstance, codeEntry, -1);
         this.startOffset = startOffset;
         this.returnTypeId = returnTypeId;
-        this.continuationTypeId = continuationTypeId;
         this.initialStackPointer = initialStackPointer;
         this.initialByteConstantOffset = initialByteConstantOffset;
         this.initialIntConstantOffset = initialIntConstantOffset;
@@ -381,7 +378,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                         childrenOffset++;
                         offset += block.byteLength();
-                        stackPointer += block.returnTypeLength();
+                        stackPointer += block.returnLength();
                         byteConstantOffset += block.byteConstantLength();
                         intConstantOffset += block.intConstantLength();
                         longConstantOffset += block.longConstantLength();
@@ -416,7 +413,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                         childrenOffset++;
                         offset += loopBody.byteLength();
-                        stackPointer += loopBody.returnTypeLength();
+                        stackPointer += loopBody.returnLength();
                         byteConstantOffset += loopBody.byteConstantLength();
                         intConstantOffset += loopBody.intConstantLength();
                         longConstantOffset += loopBody.longConstantLength();
@@ -435,7 +432,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         }
                         childrenOffset++;
                         offset += ifNode.byteLength();
-                        stackPointer += ifNode.returnTypeLength();
+                        stackPointer += ifNode.returnLength();
                         byteConstantOffset += ifNode.byteConstantLength();
                         intConstantOffset += ifNode.intConstantLength();
                         longConstantOffset += ifNode.longConstantLength();
@@ -2510,10 +2507,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @Override
     public byte returnTypeId() {
         return returnTypeId;
-    }
-
-    public int continuationTypeLength() {
-        return typeLength(continuationTypeId);
     }
 
     private int unsignedIntConstant(int offset, int intConstantOffset) {
