@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import { toggleCodeCoverage, activeTextEditorChaged } from './graalVMCoverage';
 import { GraalVMConfigurationProvider, GraalVMDebugAdapterDescriptorFactory, GraalVMDebugAdapterTracker } from './graalVMDebug';
 import { installGraalVM, addExistingGraalVM, installGraalVMComponent, uninstallGraalVMComponent, selectInstalledGraalVM, findGraalVMs, InstallationNodeProvider, Component, Installation, setupProxy, removeGraalVMInstallation } from './graalVMInstall';
-import { startLanguageServer, stopLanguageServer } from './graalVMLanguageServer';
+import { onClientNotification, startLanguageServer, stopLanguageServer } from './graalVMLanguageServer';
 import { installRPackage, R_LANGUAGE_SERVER_PACKAGE_NAME } from './graalVMR';
 import { installRubyGem, RUBY_LANGUAGE_SERVER_GEM_NAME } from './graalVMRuby';
 import { addNativeImageToPOM } from './graalVMNativeImage';
@@ -93,6 +93,11 @@ export function activate(context: vscode.ExtensionContext) {
 		startLanguageServer(graalVMHome);
 	}
 	vscode.window.setStatusBarMessage('GraalVM extension activated', 3000);
+	
+	// Public API
+	return {
+		onClientNotification: onClientNotification,
+	};
 }
 
 export function deactivate(): Thenable<void> {

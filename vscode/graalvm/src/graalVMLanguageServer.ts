@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as utils from './utils';
 import * as net from 'net';
-import { LanguageClient, LanguageClientOptions, StreamInfo } from 'vscode-languageclient';
+import { GenericNotificationHandler, LanguageClient, LanguageClientOptions, StreamInfo } from 'vscode-languageclient';
 import { getGVMConfig } from './graalVMConfiguration';
 
 export const LSPORT: number = 8123;
@@ -145,6 +145,16 @@ async function hasRSource(): Promise<boolean> {
 		}
 	}
 	return hasR;
+}
+
+export async function onClientNotification(method: string, handler: GenericNotificationHandler): Promise<boolean> {
+	if (languageClient) {
+		let isSuccessful = false;
+		await languageClient.then((client) => client.onNotification(method, handler)).then(() => isSuccessful = true);
+		return isSuccessful;
+	} else {
+		return false;
+	}
 }
 
 function terminateLanguageServer() {
