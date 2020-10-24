@@ -652,6 +652,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 if (blockTarget.isValid()) {
                     continue;
                 }
+                listeners.onCompilationQueued(blockTarget);
                 int nodeCount = blockTarget.getNonTrivialNodeCount();
                 if (nodeCount > callTarget.engine.getEngineOptions().get(PolyglotCompilerOptions.PartialBlockMaximumSize)) {
                     listeners.onCompilationDequeued(blockTarget, null, "Partial block is too big to be compiled.");

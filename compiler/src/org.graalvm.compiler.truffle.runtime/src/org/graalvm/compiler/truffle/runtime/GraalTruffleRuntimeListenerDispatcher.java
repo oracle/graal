@@ -159,4 +159,10 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout) {
         onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout);
     }
+
+    @Override
+    public void onCompilationRetry(CompilableTruffleAST compilable) {
+        onCompilationQueued((OptimizedCallTarget) compilable);
+        onCompilationStarted((OptimizedCallTarget) compilable);
+    }
 }

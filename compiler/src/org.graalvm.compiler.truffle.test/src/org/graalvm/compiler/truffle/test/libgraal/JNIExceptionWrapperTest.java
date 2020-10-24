@@ -136,5 +136,9 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         @Override
         public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout) {
         }
+
+        @Override
+        public void onCompilationRetry(CompilableTruffleAST compilable) {
+        }
     }
 }
