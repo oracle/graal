@@ -462,7 +462,7 @@ public class BenchmarkCounters {
             enabled = true;
         }
         if (Options.TimedDynamicCounters.getValue(options) > 0) {
-            Thread thread = new GraalServiceThread(new Runnable() {
+            Thread thread = new GraalServiceThread(BenchmarkCounters.class.getSimpleName(), new Runnable() {
                 long lastTime = System.nanoTime();
 
                 @Override

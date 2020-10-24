@@ -349,9 +349,8 @@ class MBeanProxy<T extends DynamicMBean> {
     /**
      * Guards defining and loading classes. The {@code barrier} is used to ensure the {@code action}
      * with {@code defineClass} parameter is executed exactly once in the process (i.e. synchronized
-     * across all threads and isolates). The other threads will block until the define class action
-     * finish in order to run load class action. Note that each {@code barrier} is specific to a
-     * specific {@code action} and cannot be used for any other action.
+     * across all threads and isolates). The other threads will block until the {@code defineClass}
+     * action finishes in order to run the {@code loadClass} action.
      */
     private static void runGuarded(Pointer barrier, Consumer<ToLongFunction<ClassData>> action,
                     ToLongFunction<ClassData> defineClass, ToLongFunction<ClassData> loadClass) {

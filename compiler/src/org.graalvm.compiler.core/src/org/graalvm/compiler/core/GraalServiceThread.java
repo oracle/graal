@@ -32,8 +32,8 @@ package org.graalvm.compiler.core;
 public class GraalServiceThread extends Thread {
     private final Runnable runnable;
 
-    public GraalServiceThread(Runnable runnable) {
-        super();
+    public GraalServiceThread(String name, Runnable runnable) {
+        super(name);
         this.runnable = runnable;
     }
 
