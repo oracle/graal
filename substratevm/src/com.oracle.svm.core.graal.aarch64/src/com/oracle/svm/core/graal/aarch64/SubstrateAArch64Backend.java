@@ -72,6 +72,7 @@ import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
 import org.graalvm.compiler.lir.StandardOp.ZapRegistersOp;
 import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
 import org.graalvm.compiler.lir.aarch64.AArch64BreakpointOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Call;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow;
@@ -112,6 +113,7 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -317,10 +319,35 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
 
         @Override
-        protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+        protected Value emitIndirectForeignCallAddress(ForeignCallLinkage linkage) {
+            if (!shouldEmitOnlyIndirectCalls()) {
+                return null;
+            }
+
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
-            ResolvedJavaMethod targetMethod = callTarget.getMethod();
-            append(new SubstrateAArch64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, arguments, temps, info, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL));
+            SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
+
+            Value codeOffsetInImage = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forInt(targetMethod.getCodeOffsetInImage()));
+            Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache()));
+            int codeStartFieldOffset = getRuntimeConfiguration().getImageCodeInfoCodeStartOffset();
+            Value codeStartField = new AArch64AddressValue(getLIRKindTool().getWordKind(), asAllocatable(codeInfo),
+                            Value.ILLEGAL, codeStartFieldOffset, 1, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED);
+            Value codeStart = getArithmetic().emitLoad(getLIRKindTool().getWordKind(), codeStartField, null);
+            return getArithmetic().emitAdd(codeStart, codeOffsetInImage, false);
+        }
+
+        @Override
+        protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+            SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
+            SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
+            if (shouldEmitOnlyIndirectCalls()) {
+                RegisterValue targetRegister = AArch64.lr.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
+                emitMove(targetRegister, targetAddress);
+                append(new SubstrateAArch64IndirectCallOp(getRuntimeConfiguration(), targetMethod, result, arguments, temps, targetRegister, info, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL));
+            } else {
+                assert targetAddress == null;
+                append(new SubstrateAArch64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, arguments, temps, info, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL));
+            }
         }
 
         @Override

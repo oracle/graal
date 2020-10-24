@@ -165,7 +165,6 @@ import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.NoLibC;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import com.oracle.svm.core.c.struct.OffsetOf;
-import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -412,9 +411,8 @@ public class NativeImageGenerator {
                 architecture = new AMD64(features, SubstrateTargetDescription.allAMD64Flags());
             }
             assert architecture instanceof AMD64 : "using AMD64 platform with a different architecture";
-            boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue() && RuntimeCodeCache.Options.WriteableCodeCache.getValue();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: rax and xmm0
-            return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
+            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace);
         } else if (includedIn(platform, Platform.AARCH64.class)) {
             Architecture architecture;
             if (NativeImageOptions.NativeArchitecture.getValue()) {
@@ -425,9 +423,8 @@ public class NativeImageGenerator {
                 architecture = new AArch64(features, EnumSet.noneOf(AArch64.Flag.class));
             }
             assert architecture instanceof AArch64 : "using AArch64 platform with a different architecture";
-            boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue() && RuntimeCodeCache.Options.WriteableCodeCache.getValue();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers.
-            return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
+            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace);
         } else {
             throw UserError.abort("Architecture specified by platform is not supported: %s", platform.getClass().getTypeName());
         }

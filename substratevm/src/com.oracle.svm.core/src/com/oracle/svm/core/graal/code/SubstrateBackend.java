@@ -38,6 +38,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
@@ -122,6 +123,11 @@ public abstract class SubstrateBackend extends Backend {
         ValueNode frameAnchor = getPrologueData(callTarget).frameAnchor();
         assert frameAnchor != null;
         return frameAnchor;
+    }
+
+    public static boolean shouldEmitOnlyIndirectCalls() {
+        // For runtime compilations, emit indirect foreign calls to avoid additional patching
+        return !SubstrateUtil.HOSTED;
     }
 
     /**
