@@ -1990,8 +1990,9 @@ x-GraalVM-Polyglot-Part: {polyglot}
         dependencies = sorted(dependencies)
         if dependencies:
             _manifest_str += "Require-Bundle: {}\n".format(','.join(("org.graalvm." + d for d in dependencies)))
-        if isinstance(main_component, mx_sdk.GraalVmLanguage):
-            _wd_base = join('jre', 'languages') if _src_jdk_version < 9 else 'languages'
+        if isinstance(main_component, mx_sdk.GraalVmLanguage) or isinstance(main_component, mx_sdk.GraalVmTool):
+            _component_type_base = 'tools' if isinstance(main_component, mx_sdk.GraalVmTool) else 'languages'
+            _wd_base = join('jre', _component_type_base) if _src_jdk_version < 9 else _component_type_base
             _manifest_str += """x-GraalVM-Working-Directories: {workdir}
 """.format(workdir=join(_wd_base, main_component.dir_name))
 
