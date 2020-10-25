@@ -110,6 +110,10 @@ public final class RubyFlags extends AbstractConstantKeysObject {
         return new RubyFlags(this.value | otherFlags.value);
     }
 
+    public RubyFlags delFlag(int flagChar) {
+        return new RubyFlags(this.value & ~maskForFlag(flagChar));
+    }
+
     public RubyFlags delFlags(RubyFlags otherFlags) {
         return new RubyFlags(this.value & ~otherFlags.value);
     }
