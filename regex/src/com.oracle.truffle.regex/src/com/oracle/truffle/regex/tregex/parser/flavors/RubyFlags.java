@@ -53,36 +53,51 @@ public final class RubyFlags extends AbstractConstantKeysObject {
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("EXTENDED", "IGNORECASE", "MULTILINE");
 
     private final int value;
+    private final Mode mode;
 
-    private static final String FLAGS = "imx";
-    private static final String INTERNAL_FLAGS = "y";
+    private enum Mode {
+        Ascii,
+        Default,
+        Unicode;
+
+        public static final Mode[] VALUES = Mode.values();
+
+        public static Mode fromFlagChar(int ch) {
+            return VALUES[TYPE_FLAGS.indexOf(ch)];
+        }
+    }
+
+    private static final String FLAGS = "imxadu";
+    private static final String BIT_FLAGS = "imxy";
+    private static final String TYPE_FLAGS = "adu";
 
     public static final RubyFlags EMPTY_INSTANCE = new RubyFlags("");
 
     public RubyFlags(String source) {
         int bits = 0;
         for (int i = 0; i < source.length(); i++) {
+            assert isBitFlag(source.charAt(i));
             bits |= maskForFlag(source.charAt(i));
         }
         this.value = bits;
+        this.mode = Mode.Default;
     }
 
-    private RubyFlags(int value) {
+    private RubyFlags(int value, Mode mode) {
         this.value = value;
+        this.mode = mode;
     }
 
     private static int maskForFlag(int flagChar) {
-        int index = FLAGS.indexOf(flagChar);
-        if (index >= 0) {
-            return 1 << index;
-        } else {
-            assert INTERNAL_FLAGS.indexOf(flagChar) >= 0;
-            return 1 << (FLAGS.length() + INTERNAL_FLAGS.indexOf(flagChar));
-        }
+        return 1 << BIT_FLAGS.indexOf(flagChar);
     }
 
     public boolean hasFlag(int flagChar) {
-        return (this.value & maskForFlag(flagChar)) != 0;
+        if (isTypeFlag(flagChar)) {
+            return this.mode.equals(Mode.fromFlagChar(flagChar));
+        } else {
+            return (this.value & maskForFlag(flagChar)) != 0;
+        }
     }
 
     public boolean isIgnoreCase() {
@@ -101,29 +116,42 @@ public final class RubyFlags extends AbstractConstantKeysObject {
         return hasFlag('y');
     }
 
-
-    public RubyFlags addFlag(int flagChar) {
-        return new RubyFlags(this.value | maskForFlag(flagChar));
+    public boolean isAscii() {
+        return hasFlag('a');
     }
 
-    public RubyFlags addFlags(RubyFlags otherFlags) {
-        return new RubyFlags(this.value | otherFlags.value);
+    public boolean isDefault() {
+        return hasFlag('d');
+    }
+
+    public boolean isUnicode() {
+        return hasFlag('u');
+    }
+
+
+    public RubyFlags addFlag(int flagChar) {
+        if (isTypeFlag(flagChar)) {
+            return new RubyFlags(this.value, Mode.fromFlagChar(flagChar));
+        } else {
+            return new RubyFlags(this.value | maskForFlag(flagChar), this.mode);
+        }
     }
 
     public RubyFlags delFlag(int flagChar) {
-        return new RubyFlags(this.value & ~maskForFlag(flagChar));
-    }
-
-    public RubyFlags delFlags(RubyFlags otherFlags) {
-        return new RubyFlags(this.value & ~otherFlags.value);
+        assert isBitFlag(flagChar);
+        return new RubyFlags(this.value & ~maskForFlag(flagChar), this.mode);
     }
 
     public static boolean isValidFlagChar(int candidateChar) {
         return FLAGS.indexOf(candidateChar) >= 0;
     }
 
-    public boolean overlaps(RubyFlags otherFlags) {
-        return (this.value & otherFlags.value) != 0;
+    public static boolean isBitFlag(int candidateChar) {
+        return BIT_FLAGS.indexOf(candidateChar) >= 0;
+    }
+
+    public static boolean isTypeFlag(int candidateChar) {
+        return TYPE_FLAGS.indexOf(candidateChar) >= 0;
     }
 
     @Override
