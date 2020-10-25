@@ -80,6 +80,10 @@ public abstract class EnginesGCedTest {
                             // A compiler thread
                             continue;
                         }
+                        if (t.getName().toLowerCase().contains("libgraal")) {
+                            // A libgraal thread
+                            continue;
+                        }
                         Assert.fail("An extra thread " + t + " is found after test finished.");
                     }
                 }
