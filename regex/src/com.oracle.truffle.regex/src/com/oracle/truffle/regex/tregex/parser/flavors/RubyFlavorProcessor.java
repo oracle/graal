@@ -51,6 +51,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -85,111 +87,70 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private static final CompilationFinalBitSet CHAR_CLASS_SYNTAX_CHARACTERS = CompilationFinalBitSet.valueOf('\\', ']', '-', '^');
 
     /**
-     * Maps Python's predefined Unicode character classes (d, D, s, S, w, W) to equivalent
-     * expressions in ECMAScript regular expressions. The results are not wrapped in brackets and
-     * can therefore be directly pasted in to character classes (e.g. when translating [\s,.:]).
-     *
-     * This map is partial. If no replacement exists, a set from {@link #UNICODE_CHAR_CLASS_SETS}
-     * has to be listed out explicitly instead.
-     */
-    private static final Map<Character, String> UNICODE_CHAR_CLASS_REPLACEMENTS;
-    /**
      * Maps Python's predefined Unicode character classes to sets containing the characters to be
      * matched.
      */
-    private static final Map<Character, CodePointSet> UNICODE_CHAR_CLASS_SETS;
+    private static final Map<Character, CodePointSet> UNICODE_CHAR_CLASSES;
+    private static final Map<Character, CodePointSet> ASCII_CHAR_CLASSES;
 
-    private static final Map<String, CodePointSet> POSIX_CHAR_CLASSES;
+    private static final Map<String, CodePointSet> UNICODE_POSIX_CHAR_CLASSES;
+    private static final Map<String, CodePointSet> ASCII_POSIX_CHAR_CLASSES;
 
     static {
-        UNICODE_CHAR_CLASS_REPLACEMENTS = new HashMap<>();
-        UNICODE_CHAR_CLASS_SETS = new HashMap<>();
+        CodePointSet ASCII_RANGE = CodePointSet.create(0x00, 0x7F);
+        CodePointSet NON_ASCII_RANGE = CodePointSet.create(0x80, Character.MAX_CODE_POINT);
 
-        // Digits: \d
-        // Python accepts characters with the Numeric_Type=Decimal property.
-        // As of Unicode 11.0.0, these happen to be exactly the characters
-        // in the Decimal_Number General Category.
-        UNICODE_CHAR_CLASS_REPLACEMENTS.put('d', "\\p{General_Category=Decimal_Number}");
+        UNICODE_CHAR_CLASSES = new HashMap<>(4);
+        ASCII_CHAR_CLASSES = new HashMap<>(4);
 
-        // Non-digits: \D
-        UNICODE_CHAR_CLASS_REPLACEMENTS.put('D', "\\P{General_Category=Decimal_Number}");
-
-        // \d and \D as CodePointSets (currently not needed, included for consistency)
-        UNICODE_CHAR_CLASS_SETS.put('d', UnicodeProperties.getProperty("General_Category=Decimal_Number"));
-        UNICODE_CHAR_CLASS_SETS.put('D', UnicodeProperties.getProperty("General_Category=Decimal_Number").createInverse(Encodings.UTF_32));
-
-        // Spaces: \s
-        // Python accepts characters with either the Space_Separator General Category
-        // or one of the WS, B or S Bidi_Classes. A close analogue available in
-        // ECMAScript regular expressions is the White_Space Unicode property,
-        // which is only missing the characters \\u001c-\\u001f (as of Unicode 11.0.0).
-        UNICODE_CHAR_CLASS_REPLACEMENTS.put('s', "\\p{White_Space}\u001c-\u001f");
-
-        // Non-spaces: \S
-        // If we are translating an occurrence of \S inside a character class, we cannot
-        // use the negated Unicode character property \P{White_Space}, because then we would
-        // need to subtract the code points \\u001c-\\u001f from the resulting character class,
-        // which is not possible in ECMAScript regular expressions. Therefore, we have to expand
-        // the definition of the White_Space property, do the set subtraction and then list the
-        // contents of the resulting set.
-        CodePointSet unicodeSpaces = UnicodeProperties.getProperty("White_Space");
-        CodePointSet spaces = unicodeSpaces.union(CodePointSet.createNoDedup('\u001c', '\u001f'));
-        CodePointSet nonSpaces = spaces.createInverse(Encodings.UTF_32);
-        UNICODE_CHAR_CLASS_SETS.put('s', spaces);
-        UNICODE_CHAR_CLASS_SETS.put('S', nonSpaces);
-
-        // Word characters: \w
-        // As alphabetic characters, Python accepts those in the general category L.
-        // As numeric, it takes any character with either Numeric_Type=Decimal,
-        // Numeric_Type=Digit or Numeric_Type=Numeric. As of Unicode 11.0.0, this
-        // corresponds to the general category Number, along with the following
-        // code points:
-        // F96B;CJK COMPATIBILITY IDEOGRAPH-F96B;Lo;0;L;53C3;;;3;N;;;;;
-        // F973;CJK COMPATIBILITY IDEOGRAPH-F973;Lo;0;L;62FE;;;10;N;;;;;
-        // F978;CJK COMPATIBILITY IDEOGRAPH-F978;Lo;0;L;5169;;;2;N;;;;;
-        // F9B2;CJK COMPATIBILITY IDEOGRAPH-F9B2;Lo;0;L;96F6;;;0;N;;;;;
-        // F9D1;CJK COMPATIBILITY IDEOGRAPH-F9D1;Lo;0;L;516D;;;6;N;;;;;
-        // F9D3;CJK COMPATIBILITY IDEOGRAPH-F9D3;Lo;0;L;9678;;;6;N;;;;;
-        // F9FD;CJK COMPATIBILITY IDEOGRAPH-F9FD;Lo;0;L;4EC0;;;10;N;;;;;
-        // 2F890;CJK COMPATIBILITY IDEOGRAPH-2F890;Lo;0;L;5EFE;;;9;N;;;;;
-        String alphaStr = "\\p{General_Category=Letter}";
-        String numericStr = "\\p{General_Category=Number}\uf96b\uf973\uf978\uf9b2\uf9d1\uf9d3\uf9fd\\u{2f890}";
-        String wordCharsStr = alphaStr + numericStr + "_";
-        UNICODE_CHAR_CLASS_REPLACEMENTS.put('w', wordCharsStr);
-
-        // Non-word characters: \W
-        // Similarly as for \S, we will not be able to produce a replacement string for \W.
-        // We will need to construct the set ourselves.
         CodePointSet alpha = UnicodeProperties.getProperty("General_Category=Letter");
-        CodePointSet numericExtras = CodePointSet.createNoDedup(0xf96b, 0xf973, 0xf978, 0xf9b2, 0xf9d1, 0xf9d3, 0xf9fd, 0x2f890);
-        CodePointSet numeric = UnicodeProperties.getProperty("General_Category=Number").union(numericExtras);
-        CodePointSet wordChars = alpha.union(numeric).union(CodePointSet.create('_'));
-        CodePointSet nonWordChars = wordChars.createInverse(Encodings.UTF_32);
-        UNICODE_CHAR_CLASS_SETS.put('w', wordChars);
-        UNICODE_CHAR_CLASS_SETS.put('W', nonWordChars);
+        CodePointSet numeric = UnicodeProperties.getProperty("General_Category=Number");
+        UNICODE_CHAR_CLASSES.put('d', numeric);
+        UNICODE_CHAR_CLASSES.put('h', UnicodeProperties.getProperty("Hex_Digit"));
+        UNICODE_CHAR_CLASSES.put('s', UnicodeProperties.getProperty("White_Space"));
+        UNICODE_CHAR_CLASSES.put('w', alpha.union(numeric).union(CodePointSet.create('_')));
 
-        POSIX_CHAR_CLASSES = new HashMap<>(14);
-        POSIX_CHAR_CLASSES.put("alpha", UnicodeProperties.getProperty("Alphabetic"));
-        POSIX_CHAR_CLASSES.put("alnum", UnicodeProperties.getProperty("General_Category=Letter").union(UnicodeProperties.getProperty("General_Category=Number")));
-        POSIX_CHAR_CLASSES.put("blank", CodePointSet.create('\t', '\t', ' ', ' '));
-        POSIX_CHAR_CLASSES.put("cntrl", UnicodeProperties.getProperty("General_Category=Control"));
-        POSIX_CHAR_CLASSES.put("digit", UnicodeProperties.getProperty("General_Category=Number"));
+        for (char ctypeChar : new Character[] { 'd', 'h', 's', 'w' }) {
+            CodePointSet charSet = UNICODE_CHAR_CLASSES.get(ctypeChar);
+            char complementCTypeChar = Character.toUpperCase(ctypeChar);
+            CodePointSet complementCharSet = charSet.createInverse(Encodings.UTF_32);
+            UNICODE_CHAR_CLASSES.put(complementCTypeChar, complementCharSet);
+            ASCII_CHAR_CLASSES.put(ctypeChar, ASCII_RANGE.createIntersectionSingleRange(charSet));
+            ASCII_CHAR_CLASSES.put(complementCTypeChar, complementCharSet.union(NON_ASCII_RANGE));
+        }
+
+        UNICODE_POSIX_CHAR_CLASSES = new HashMap<>(14);
+        ASCII_POSIX_CHAR_CLASSES = new HashMap<>(14);
+
+        UNICODE_POSIX_CHAR_CLASSES.put("alpha", UnicodeProperties.getProperty("Alphabetic"));
+        UNICODE_POSIX_CHAR_CLASSES.put("alnum", UnicodeProperties.getProperty("General_Category=Letter").union(UnicodeProperties.getProperty("General_Category=Number")));
+        UNICODE_POSIX_CHAR_CLASSES.put("blank", CodePointSet.create('\t', '\t', ' ', ' '));
+        UNICODE_POSIX_CHAR_CLASSES.put("cntrl", UnicodeProperties.getProperty("General_Category=Control"));
+        UNICODE_POSIX_CHAR_CLASSES.put("digit", UnicodeProperties.getProperty("General_Category=Number"));
         // TODO: Figure out [[:graph:]]
-        POSIX_CHAR_CLASSES.put("graph", CodePointSet.getEmpty());
-        POSIX_CHAR_CLASSES.put("lower", UnicodeProperties.getProperty("Lowercase"));
+        UNICODE_POSIX_CHAR_CLASSES.put("graph", Encodings.UTF_32.getFullSet());
+        UNICODE_POSIX_CHAR_CLASSES.put("lower", UnicodeProperties.getProperty("Lowercase"));
         // TODO: Figure out [[:print:]]
-        POSIX_CHAR_CLASSES.put("print", CodePointSet.getEmpty());
-        POSIX_CHAR_CLASSES.put("punct", UnicodeProperties.getProperty("General_Category=Punctuation"));
-        POSIX_CHAR_CLASSES.put("space", UnicodeProperties.getProperty("White_Space"));
-        POSIX_CHAR_CLASSES.put("upper", UnicodeProperties.getProperty("Uppercase"));
-        POSIX_CHAR_CLASSES.put("xdigit", UnicodeProperties.getProperty("Hex_Digit"));
+        UNICODE_POSIX_CHAR_CLASSES.put("print", Encodings.UTF_32.getFullSet());
+        UNICODE_POSIX_CHAR_CLASSES.put("punct", UnicodeProperties.getProperty("General_Category=Punctuation"));
+        UNICODE_POSIX_CHAR_CLASSES.put("space", UnicodeProperties.getProperty("White_Space"));
+        UNICODE_POSIX_CHAR_CLASSES.put("upper", UnicodeProperties.getProperty("Uppercase"));
+        UNICODE_POSIX_CHAR_CLASSES.put("xdigit", UnicodeProperties.getProperty("Hex_Digit"));
 
-        POSIX_CHAR_CLASSES.put("word", UnicodeProperties.getProperty("General_Category=Letter")
+        UNICODE_POSIX_CHAR_CLASSES.put("word", UnicodeProperties.getProperty("General_Category=Letter")
                 .union(UnicodeProperties.getProperty("General_Category=Mark"))
                 .union(UnicodeProperties.getProperty("General_Category=Number"))
                 .union(UnicodeProperties.getProperty("General_Category=Connector_Punctuation")));
-        POSIX_CHAR_CLASSES.put("ascii", UnicodeProperties.getProperty("ASCII"));
+        UNICODE_POSIX_CHAR_CLASSES.put("ascii", UnicodeProperties.getProperty("ASCII"));
+
+        for (Map.Entry<String, CodePointSet> entry: UNICODE_POSIX_CHAR_CLASSES.entrySet()) {
+            ASCII_POSIX_CHAR_CLASSES.put(entry.getKey(), ASCII_RANGE.createIntersectionSingleRange(entry.getValue()));
+        }
     }
+
+    public static final Pattern WORD_CHARS_PATTERN = Pattern.compile("\\\\[wW]");
+    public static final String WORD_BOUNDARY = "(?:(?:^|(?<=\\W))(?=\\w)|(?<=\\w)(?:(?=\\W)|$))";
+    public static final String WORD_NON_BOUNDARY = "(?:(?:^|(?<=\\W))(?:(?=\\W)|$)|(?<=\\w)(?=\\w))";
 
     /**
      * An enumeration of the possible grammatical categories of Python regex terms.
@@ -593,6 +554,16 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
     }
 
+    private void emitCharSet(CodePointSet charSet) {
+        if (!silent) {
+            curCharClass.clear();
+            curCharClass.addSet(charSet);
+            emitSnippet("[");
+            emitCharSet();
+            emitSnippet("]");
+        }
+    }
+
     private void emitCharSetNoCasing() {
         emitCharSetNoCasing(curCharClass);
     }
@@ -864,15 +835,39 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 bailOut("\\G escape sequence is not supported");
                 return true;
             case 'b':
-                emitSnippet("\\b");
+                if (getLocalFlags().isAscii()) {
+                    emitWordBoundaryAssertion(WORD_BOUNDARY, ASCII_CHAR_CLASSES.get('w'), ASCII_CHAR_CLASSES.get('W'));
+                } else {
+                    emitWordBoundaryAssertion(WORD_BOUNDARY, UNICODE_CHAR_CLASSES.get('w'), UNICODE_CHAR_CLASSES.get('W'));
+                }
                 return true;
             case 'B':
-                emitSnippet("\\B");
+                if (getLocalFlags().isAscii()) {
+                    emitWordBoundaryAssertion(WORD_NON_BOUNDARY, ASCII_CHAR_CLASSES.get('w'), ASCII_CHAR_CLASSES.get('W'));
+                } else {
+                    emitWordBoundaryAssertion(WORD_NON_BOUNDARY, UNICODE_CHAR_CLASSES.get('w'), UNICODE_CHAR_CLASSES.get('W'));
+                }
                 return true;
             default:
                 retreat();
                 return false;
         }
+    }
+
+    private void emitWordBoundaryAssertion(String snippetTemplate, CodePointSet wordChars, CodePointSet nonWordChars) {
+        Matcher matcher = WORD_CHARS_PATTERN.matcher(snippetTemplate);
+        int lastAppendPosition = 0;
+        while (matcher.find()) {
+            emitSnippet(snippetTemplate.substring(lastAppendPosition, matcher.start()));
+            if (matcher.group().equals("\\w")) {
+                emitCharSet(wordChars);
+            } else {
+                assert matcher.group().equals("\\W");
+                emitCharSet(nonWordChars);
+            }
+            lastAppendPosition = matcher.end();
+        }
+        emitSnippet(snippetTemplate.substring(lastAppendPosition));
     }
 
     /**
@@ -894,16 +889,25 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         switch (curChar()) {
             case 'd':
             case 'D':
+            case 'h':
+            case 'H':
             case 's':
             case 'S':
             case 'w':
             case 'W':
                 char className = (char) curChar();
                 advance();
-                if (inCharClass) {
-                    curCharClass.addSet(UNICODE_CHAR_CLASS_SETS.get(className));
+                CodePointSet charSet;
+                if (getLocalFlags().isAscii() || getLocalFlags().isDefault()) {
+                    charSet = ASCII_CHAR_CLASSES.get(className);
                 } else {
-                    emitSnippet("\\" + className);
+                    assert getLocalFlags().isUnicode();
+                    charSet = UNICODE_CHAR_CLASSES.get(className);
+                }
+                if (inCharClass) {
+                    curCharClass.addSet(charSet);
+                } else {
+                    emitCharSet(charSet);
                 }
                 return true;
             default:
@@ -1240,10 +1244,16 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
         String className = getMany(c -> c != ':' && c != ']');
         if (match(":]")) {
-            if (!POSIX_CHAR_CLASSES.containsKey(className)) {
+            if (!UNICODE_POSIX_CHAR_CLASSES.containsKey(className)) {
                 throw syntaxErrorAtRel("invalid POSIX bracket type", className.length());
             }
-            CodePointSet charSet = POSIX_CHAR_CLASSES.get(className);
+            CodePointSet charSet;
+            if (getLocalFlags().isAscii()) {
+                charSet = ASCII_POSIX_CHAR_CLASSES.get(className);
+            } else {
+                assert getLocalFlags().isDefault() || getLocalFlags().isUnicode();
+                charSet = UNICODE_POSIX_CHAR_CLASSES.get(className);
+            }
             charSet.appendRangesTo(curCharClass.get(), 0, charSet.size());
             if (negated) {
                 negateCharClass();
