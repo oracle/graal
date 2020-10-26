@@ -24,6 +24,11 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.util.Map;
+
+import org.graalvm.compiler.truffle.common.TruffleCompilation;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
@@ -34,10 +39,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.Map;
-import org.graalvm.compiler.truffle.common.TruffleCompilation;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 
 public class TransferToInterpreterTest extends TestWithPolyglotOptions {
 

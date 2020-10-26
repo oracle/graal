@@ -33,6 +33,7 @@ import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -67,7 +68,10 @@ import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationPolymorphismLi
 import org.graalvm.compiler.truffle.runtime.debug.TraceSplittingListener;
 import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.Assumption;
@@ -107,7 +111,6 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.LayoutFactory;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import java.util.HashMap;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -122,9 +125,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.services.Services;
-import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionValues;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal. There is only one per VM.

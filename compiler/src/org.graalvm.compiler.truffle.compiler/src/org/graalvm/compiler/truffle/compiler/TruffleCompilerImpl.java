@@ -32,8 +32,11 @@ import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.R
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseExceptionProbability;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckHints;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckedInlining;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierUseEconomy;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
 
 import java.io.PrintStream;
 import java.nio.BufferOverflowException;
@@ -45,6 +48,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
@@ -54,6 +59,7 @@ import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
@@ -64,8 +70,8 @@ import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.LogStream;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
-import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.Cancellable;
@@ -91,7 +97,10 @@ import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
+import org.graalvm.compiler.truffle.options.OptionValuesImpl;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CompilationRequest;
@@ -102,15 +111,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.truffle.options.OptionValuesImpl;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
-import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionDescriptors;
 
 /**
  * Coordinates partial evaluation of a Truffle AST and subsequent compilation via Graal.

@@ -28,11 +28,11 @@ import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 
 /**
  * A listener for events related to the execution and compilation phases of a

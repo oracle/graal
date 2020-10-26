@@ -29,10 +29,9 @@ import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 
 import com.oracle.truffle.api.frame.Frame;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 
 /**
  * A collection for broadcasting {@link GraalTruffleRuntimeListener} events and converting

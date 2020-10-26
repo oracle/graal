@@ -25,26 +25,25 @@
 package org.graalvm.compiler.truffle.runtime.debug;
 
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.jfr.CompilationEvent;
+import org.graalvm.compiler.truffle.jfr.CompilationStatisticsEvent;
+import org.graalvm.compiler.truffle.jfr.DeoptimizationEvent;
+import org.graalvm.compiler.truffle.jfr.EventFactory;
+import org.graalvm.compiler.truffle.jfr.InvalidationEvent;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
+import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
-import org.graalvm.compiler.truffle.jfr.CompilationEvent;
-import org.graalvm.compiler.truffle.jfr.EventFactory;
+import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
-import java.util.concurrent.atomic.AtomicLong;
-import org.graalvm.compiler.truffle.jfr.CompilationStatisticsEvent;
-import org.graalvm.compiler.truffle.jfr.DeoptimizationEvent;
-import org.graalvm.compiler.truffle.jfr.InvalidationEvent;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Traces Truffle Compilations using Java Flight Recorder events.

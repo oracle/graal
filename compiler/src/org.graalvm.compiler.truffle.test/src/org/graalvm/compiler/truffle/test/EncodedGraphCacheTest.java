@@ -33,6 +33,7 @@ import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.EncodedGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -57,7 +58,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.compiler.options.OptionValues;
 
 @Ignore("GR-26854")
 public final class EncodedGraphCacheTest extends PartialEvaluationTest {

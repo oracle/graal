@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -34,6 +32,9 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class OverrideOptionsTest extends TruffleCompilerImplTest {
 

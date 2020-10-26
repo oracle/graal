@@ -43,7 +43,6 @@ import java.util.logging.Level;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -182,9 +181,9 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     public synchronized void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleMetaAccessProvider inliningDecision, GraphInfo graph) {
         final Times times = compilationTimes.get();
         times.truffleTierFinished = System.nanoTime();
-        nodeStatistics.accept(nodeClasses(target, inliningDecision), target);
+        nodeStatistics.accept(nodeClasses(target), target);
 
-        CallTargetNodeStatistics callTargetStat = new CallTargetNodeStatistics(target, inliningDecision);
+        CallTargetNodeStatistics callTargetStat = new CallTargetNodeStatistics(target);
         nodeCount.accept(callTargetStat.getNodeCount(), target);
         nodeCountTrivial.accept(callTargetStat.getNodeCountTrivial(), target);
         nodeCountNonTrivial.accept(callTargetStat.getNodeCountNonTrivial(), target);
@@ -207,7 +206,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
     }
 
-    private static Collection<Class<?>> nodeClasses(OptimizedCallTarget target, TruffleMetaAccessProvider inliningDecision) {
+    private static Collection<Class<?>> nodeClasses(OptimizedCallTarget target) {
         Collection<Class<?>> nodeClasses = new ArrayList<>();
         for (Node node : target.nodeIterable()) {
             if (node != null) {
@@ -476,7 +475,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         private int callCountDirectNotCloned;
         private int loopCount;
 
-        CallTargetNodeStatistics(OptimizedCallTarget target, TruffleMetaAccessProvider inliningDecision) {
+        CallTargetNodeStatistics(OptimizedCallTarget target) {
             target.accept(this::visitNode);
 
         }

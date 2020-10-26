@@ -24,19 +24,20 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.nodes.RootNode;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class CompilerLoggingTest extends TruffleCompilerImplTest {
 

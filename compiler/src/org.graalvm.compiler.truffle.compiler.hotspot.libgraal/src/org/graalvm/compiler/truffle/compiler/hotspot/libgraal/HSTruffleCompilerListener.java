@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
-import org.graalvm.libgraal.jni.HSObject;
-import java.io.Closeable;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationRetry;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnFailure;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnGraalTierFinished;
@@ -39,15 +36,18 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCo
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnTruffleTierFinished;
 import static org.graalvm.libgraal.jni.JNIUtil.createHSString;
 
+import java.io.Closeable;
+
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
-import org.graalvm.libgraal.jni.JNILibGraalScope;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
+import org.graalvm.libgraal.jni.HSObject;
 import org.graalvm.libgraal.jni.JNI.JNIEnv;
 import org.graalvm.libgraal.jni.JNI.JObject;
 import org.graalvm.libgraal.jni.JNI.JString;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
+import org.graalvm.libgraal.jni.JNILibGraalScope;
 
 /**
  * Proxy for a {@link TruffleCompilerListener} object in the HotSpot heap.

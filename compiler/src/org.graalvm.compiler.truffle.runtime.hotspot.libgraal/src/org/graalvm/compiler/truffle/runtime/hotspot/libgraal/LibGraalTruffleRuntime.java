@@ -33,6 +33,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
@@ -44,7 +45,6 @@ import com.oracle.truffle.api.TruffleRuntime;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
 /**
  * A {@link TruffleRuntime} that uses libgraal for compilation.

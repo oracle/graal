@@ -28,11 +28,11 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import com.oracle.truffle.api.nodes.RootNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.test.SubprocessUtil;
@@ -47,6 +47,8 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.TestWithPolyglotOptions;
 import org.junit.Test;
+
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
 
