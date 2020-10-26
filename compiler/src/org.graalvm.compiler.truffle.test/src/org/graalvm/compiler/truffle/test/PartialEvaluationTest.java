@@ -44,7 +44,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
@@ -210,7 +209,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         DebugContext debug = getDebugContext(options);
         lastDebug = debug;
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
+            TruffleInlining inliningDecision = new TruffleInlining();
             SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();

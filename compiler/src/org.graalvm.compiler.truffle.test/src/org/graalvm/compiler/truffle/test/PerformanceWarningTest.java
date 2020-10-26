@@ -32,6 +32,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -129,7 +130,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;
                 CompilationIdentifier compilationId = getTruffleCompiler(target).createCompilationIdentifier(compilable);
-                TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
+                TruffleMetaAccessProvider inliningPlan = new TruffleInlining();
                 getTruffleCompiler(target).compileAST(compilable.getOptionValues(), debug, compilable, inliningPlan, compilationId, null, null);
                 assertTrue(compilable.isValid());
             }

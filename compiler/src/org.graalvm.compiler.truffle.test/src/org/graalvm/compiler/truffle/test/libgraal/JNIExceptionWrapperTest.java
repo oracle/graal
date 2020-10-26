@@ -41,7 +41,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -90,7 +90,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
             try (TruffleDebugContext debug = compiler.openDebugContext(GraalTruffleRuntime.getOptionsForCompiler(compilable), compilation)) {
-                TruffleInliningPlan inliningPlan = runtime.createInliningPlan(compilable, null);
+                TruffleMetaAccessProvider inliningPlan = runtime.createInliningPlan(compilable, null);
                 TestListener listener = new TestListener();
                 compiler.doCompile(debug, compilation, GraalTruffleRuntime.getOptionsForCompiler(compilable), inliningPlan, null, listener);
             }
@@ -121,7 +121,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
     private static final class TestListener implements TruffleCompilerListener {
 
         @Override
-        public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graph) {
+        public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph) {
             throw new RuntimeException("Expected exception");
         }
 
@@ -130,7 +130,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         }
 
         @Override
-        public void onSuccess(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
+        public void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
         }
 
         @Override

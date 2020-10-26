@@ -52,7 +52,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
     }
 
     protected StructuredGraph runLanguageAgnosticInliningPhase(OptimizedCallTarget callTarget) {
-        final TruffleInlining callNodeProvider = new TruffleInlining(callTarget, new NoInliningPolicy());
+        final TruffleInlining callNodeProvider = new TruffleInlining();
         final PartialEvaluator partialEvaluator = getTruffleCompiler(callTarget).getPartialEvaluator();
         final CompilationIdentifier compilationIdentifier = new CompilationIdentifier() {
             @Override

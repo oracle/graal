@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -78,7 +79,7 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
         Map<String, Object> options = GraalTruffleRuntime.getOptionsForCompiler(target);
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
             TruffleDebugContext debug = compiler.openDebugContext(options, compilation);
-            TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
+            TruffleMetaAccessProvider inliningPlan = new TruffleInlining();
             compiler.doCompile(debug, compilation, options, inliningPlan, null, null);
         }
         Assert.assertTrue(target.isValid());

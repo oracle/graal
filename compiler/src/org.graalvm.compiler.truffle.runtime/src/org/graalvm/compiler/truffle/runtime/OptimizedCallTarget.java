@@ -955,27 +955,17 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
-    public final void accept(NodeVisitor visitor, TruffleInlining inlingDecision) {
-        if (inlingDecision != null) {
-            inlingDecision.accept(this, visitor);
-        } else {
-            getRootNode().accept(visitor);
-        }
+    public final void accept(NodeVisitor visitor) {
+        getRootNode().accept(visitor);
     }
 
-    public final Iterable<Node> nodeIterable(TruffleInlining inliningDecision) {
-        Iterator<Node> iterator = nodeIterator(inliningDecision);
+    public final Iterable<Node> nodeIterable() {
+        Iterator<Node> iterator = nodeIterator();
         return () -> iterator;
     }
 
-    public final Iterator<Node> nodeIterator(TruffleInlining inliningDecision) {
-        Iterator<Node> iterator;
-        if (inliningDecision != null) {
-            iterator = inliningDecision.makeNodeIterator(this);
-        } else {
-            iterator = NodeUtil.makeRecursiveIterator(this.getRootNode());
-        }
-        return iterator;
+    public final Iterator<Node> nodeIterator() {
+        return NodeUtil.makeRecursiveIterator(this.getRootNode());
     }
 
     @Override

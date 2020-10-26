@@ -52,7 +52,7 @@ public final class TraceCompilationPolymorphismListener extends AbstractGraalTru
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
         if (target.getOptionValue(PolyglotCompilerOptions.TraceCompilationPolymorphism)) {
-            for (Node node : target.nodeIterable(inliningDecision)) {
+            for (Node node : target.nodeIterable()) {
                 if (node != null && (node.getCost() == NodeCost.MEGAMORPHIC || node.getCost() == NodeCost.POLYMORPHIC)) {
                     NodeCost cost = node.getCost();
                     Map<String, Object> props = new LinkedHashMap<>();

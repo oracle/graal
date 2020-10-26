@@ -143,7 +143,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             int calls = 0;
             int inlinedCalls;
             if (inliningDecision == null) {
-                for (Node node : target.nodeIterable(null)) {
+                for (Node node : target.nodeIterable()) {
                     if (node instanceof OptimizedDirectCallNode) {
                         calls++;
                     }

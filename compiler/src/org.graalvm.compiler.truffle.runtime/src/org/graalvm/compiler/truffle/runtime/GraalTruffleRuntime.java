@@ -64,7 +64,6 @@ import org.graalvm.compiler.truffle.runtime.debug.TraceASTCompilationListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceCallTreeListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationPolymorphismListener;
-import org.graalvm.compiler.truffle.runtime.debug.TraceInliningListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceSplittingListener;
 import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
 import org.graalvm.nativeimage.ImageInfo;
@@ -215,19 +214,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             }
         }
         return testTvmci;
-    }
-
-    @Override
-    public TruffleInlining createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task) {
-        final OptimizedCallTarget sourceTarget = (OptimizedCallTarget) compilable;
-        final TruffleInliningPolicy policy;
-        if (task != null && sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining) &&
-                        !sourceTarget.getOptionValue(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
-            policy = TruffleInliningPolicy.getInliningPolicy();
-        } else {
-            policy = TruffleInliningPolicy.getNoInliningPolicy();
-        }
-        return new TruffleInlining(sourceTarget, policy);
     }
 
     @Override
@@ -428,7 +414,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         TraceCompilationListener.install(this);
         TraceCompilationPolymorphismListener.install(this);
         TraceCallTreeListener.install(this);
-        TraceInliningListener.install(this);
         TraceSplittingListener.install(this);
         StatisticsListener.install(this);
         TraceASTCompilationListener.install(this);
@@ -680,12 +665,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
                     compilationStarted = true;
                     listeners.onCompilationStarted(callTarget);
-                    TruffleInlining inlining = createInliningPlan(callTarget, task);
+                    TruffleInlining inlining = new TruffleInlining();
                     try (AutoCloseable s = debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget))) {
                         // Open the "Truffle::methodName" dump group if dumping is enabled.
                         try (TruffleOutputGroup o = !isPrintGraphEnabled() ? null
                                         : TruffleOutputGroup.open(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation))) {
                             // Create "AST" and "Call Tree" groups if dumping is enabled.
+                            // TODO should not take inlining as an argument
                             maybeDumpTruffleTree(debug, callTarget, inlining);
                             // Compile the method (puts dumps in "Graal Graphs" group if dumping is
                             // enabled).
@@ -701,8 +687,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                             debug.closeDebugChannels();
                         }
                     }
-                    // used by legacy inlining
-                    dequeueInlinedCallSites(inlining, callTarget);
                     // used by language-agnostic inlining
                     inlining.dequeueTargets();
                 }
@@ -736,20 +720,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         try (AutoCloseable c = debug.scope("TruffleTree")) {
             if (debug.isDumpEnabled()) {
                 TruffleTreeDumper.dump(debug, callTarget, inlining);
-            }
-        }
-    }
-
-    private static void dequeueInlinedCallSites(TruffleInlining inliningDecision, OptimizedCallTarget optimizedCallTarget) {
-        if (inliningDecision != null) {
-            for (TruffleInliningDecision decision : inliningDecision) {
-                if (decision.shouldInline()) {
-                    OptimizedCallTarget target = decision.getTarget();
-                    if (target != optimizedCallTarget) {
-                        target.cancelCompilation("Inlining caller compiled.");
-                    }
-                    dequeueInlinedCallSites(decision, optimizedCallTarget);
-                }
             }
         }
     }

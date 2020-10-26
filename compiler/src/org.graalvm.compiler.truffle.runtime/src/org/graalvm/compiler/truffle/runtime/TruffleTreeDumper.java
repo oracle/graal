@@ -111,7 +111,7 @@ public final class TruffleTreeDumper {
         for (DirectCallNode callNode : NodeUtil.findAllNodeInstances(callTarget.getRootNode(), DirectCallNode.class)) {
             CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
             if (inlinedCallTarget instanceof RootCallTarget && callNode instanceof OptimizedDirectCallNode) {
-                TruffleInliningDecision decision = inlining.findByCall((OptimizedDirectCallNode) callNode);
+                TruffleInliningDecision decision = null;
                 if (decision != null && decision.shouldInline()) {
                     final RootCallTarget rootCallTarget = (RootCallTarget) inlinedCallTarget;
                     if (!dumped.contains(rootCallTarget)) {
@@ -285,7 +285,7 @@ public final class TruffleTreeDumper {
                     final DirectCallNode callNode = (DirectCallNode) node;
                     final CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
                     if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
-                        TruffleInliningDecision decision = inliningDecisions.findByCall((OptimizedDirectCallNode) callNode);
+                        TruffleInliningDecision decision = null;
                         if (decision != null && decision.shouldInline()) {
                             final RootNode targetRootNode = ((OptimizedCallTarget) inlinedCallTarget).getRootNode();
                             final ASTNode astTargetRootNode = ast.makeASTNode(targetRootNode, nodeSources);
@@ -552,7 +552,7 @@ public final class TruffleTreeDumper {
                 for (DirectCallNode callNode : NodeUtil.findAllNodeInstances((target).getRootNode(), DirectCallNode.class)) {
                     CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
                     if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
-                        TruffleInliningDecision decision = inlining.findByCall((OptimizedDirectCallNode) callNode);
+                        TruffleInliningDecision decision = null;
                         final CallTreeNode callTreeNode = graph.makeCallTreeNode(inlinedCallTarget);
                         callTreeNode.properties.put("label", inlinedCallTarget.toString());
                         parent.edges.add(new CallTreeEdge(callTreeNode, ""));

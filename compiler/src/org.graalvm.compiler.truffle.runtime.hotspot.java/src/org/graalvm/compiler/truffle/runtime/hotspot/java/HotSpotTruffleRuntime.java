@@ -28,7 +28,10 @@ import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
@@ -36,6 +39,12 @@ import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntim
 final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     HotSpotTruffleRuntime() {
+    }
+
+    @Override
+    public TruffleMetaAccessProvider createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task) {
+        // TODO
+        return null;
     }
 
     @Override

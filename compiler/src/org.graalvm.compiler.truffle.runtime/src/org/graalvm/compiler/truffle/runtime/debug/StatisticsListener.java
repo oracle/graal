@@ -32,7 +32,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IntSummaryStatistics;
-import java.util.List;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.util.Objects;
@@ -50,8 +49,6 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining.CallTreeNodeVisitor;
-import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -59,6 +56,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 
 public final class StatisticsListener extends AbstractGraalTruffleRuntimeListener {
 
@@ -212,7 +210,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
 
     private static Collection<Class<?>> nodeClasses(OptimizedCallTarget target, TruffleInlining inliningDecision) {
         Collection<Class<?>> nodeClasses = new ArrayList<>();
-        for (Node node : target.nodeIterable(inliningDecision)) {
+        for (Node node : target.nodeIterable()) {
             if (node != null) {
                 nodeClasses.add(node.getClass());
             }
@@ -504,11 +502,11 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         private int loopCount;
 
         CallTargetNodeStatistics(OptimizedCallTarget target, TruffleInlining inliningDecision) {
-            target.accept((CallTreeNodeVisitor) this::visitNode, inliningDecision);
+            target.accept((NodeVisitor) this::visitNode);
 
         }
 
-        private boolean visitNode(List<TruffleInlining> stack, Node node) {
+        private boolean visitNode(Node node) {
             if (node == null) {
                 return true;
             }
@@ -528,13 +526,8 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             }
 
             if (node instanceof DirectCallNode) {
-                TruffleInliningDecision decision = CallTreeNodeVisitor.getCurrentInliningDecision(stack);
-                if (decision != null && decision.getProfile().getCallNode() == node && decision.shouldInline()) {
-                    callCountDirectInlined++;
-                } else {
-                    callCountDirectDispatched++;
-                }
-                if (decision != null && decision.getProfile().getCallNode().isCallTargetCloned()) {
+                OptimizedDirectCallNode optimizedDirectCallNode = node instanceof OptimizedDirectCallNode ? ((OptimizedDirectCallNode) node) : null;
+                if (optimizedDirectCallNode != null && optimizedDirectCallNode.getCallTarget().isSplit()) {
                     callCountDirectCloned++;
                 } else {
                     callCountDirectNotCloned++;

@@ -34,6 +34,7 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
@@ -132,7 +133,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         DebugContext debug = new DebugContext.Builder(runtime.getGraalOptions(OptionValues.class)).build();
         try (DebugContext.Scope s = debug.scope("EncodedGraphCacheTest")) {
             CompilationIdentifier compilationId = getTruffleCompilerFromRuntime(target).createCompilationIdentifier(target);
-            TruffleInliningPlan inliningPlan = new TruffleInlining(target, new DefaultInliningPolicy());
+            TruffleMetaAccessProvider inliningPlan = new TruffleInlining();
             getTruffleCompilerFromRuntime(target).compileAST(target.getOptionValues(), debug, target, inliningPlan, compilationId, null, null);
             assertTrue(target.isValid());
             return target;

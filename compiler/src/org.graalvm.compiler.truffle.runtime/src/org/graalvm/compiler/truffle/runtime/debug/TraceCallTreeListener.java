@@ -25,23 +25,21 @@
 package org.graalvm.compiler.truffle.runtime.debug;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedIndirectCallNode;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining.CallTreeNodeVisitor;
-import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 
 /**
  * Traces the inlined Truffle call tree after each successful Truffle compilation.
@@ -65,31 +63,25 @@ public final class TraceCallTreeListener extends AbstractGraalTruffleRuntimeList
     }
 
     private void logTruffleCallTree(OptimizedCallTarget compilable, TruffleInlining inliningDecision) {
-        CallTreeNodeVisitor visitor = new CallTreeNodeVisitor() {
+        NodeVisitor visitor = new NodeVisitor() {
 
             @Override
-            public boolean visit(List<TruffleInlining> decisionStack, Node node) {
+            public boolean visit(Node node) {
                 if (node instanceof OptimizedDirectCallNode) {
                     OptimizedDirectCallNode callNode = ((OptimizedDirectCallNode) node);
-                    int depth = decisionStack == null ? 0 : decisionStack.size() - 1;
-                    TruffleInliningDecision inlining = CallTreeNodeVisitor.getCurrentInliningDecision(decisionStack);
                     String dispatched = "<dispatched>";
-                    if (inlining != null && inlining.shouldInline()) {
-                        dispatched = "";
-                    }
                     Map<String, Object> properties = new LinkedHashMap<>();
                     GraalTruffleRuntimeListener.addASTSizeProperty(callNode.getCurrentCallTarget(), properties);
                     properties.putAll(callNode.getCurrentCallTarget().getDebugProperties());
-                    runtime.logEvent(compilable, depth, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties, null);
+                    runtime.logEvent(compilable, 0, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties, null);
                 } else if (node instanceof OptimizedIndirectCallNode) {
-                    int depth = decisionStack == null ? 0 : decisionStack.size() - 1;
-                    runtime.logEvent(compilable, depth, "opt call tree", "<indirect>", null, null);
+                    runtime.logEvent(compilable, 0, "opt call tree", "<indirect>", null, null);
                 }
                 return true;
             }
 
         };
-        compilable.accept(visitor, inliningDecision);
+        compilable.accept(visitor);
     }
 
 }

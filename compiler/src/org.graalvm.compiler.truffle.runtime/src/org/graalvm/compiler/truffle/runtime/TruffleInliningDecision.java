@@ -40,7 +40,7 @@ public final class TruffleInliningDecision extends TruffleInlining implements Co
     private boolean inline;
 
     public TruffleInliningDecision(OptimizedCallTarget target, TruffleInliningProfile profile, List<TruffleInliningDecision> children) {
-        super(children);
+        super();
         this.target = target;
         this.profile = profile;
     }
@@ -72,26 +72,6 @@ public final class TruffleInliningDecision extends TruffleInlining implements Co
         return Double.compare(o.getProfile().getScore(), getProfile().getScore());
     }
 
-    public boolean isSameAs(TruffleInliningDecision other) {
-        if (getTarget() != other.getTarget()) {
-            return false;
-        } else if (shouldInline() != other.shouldInline()) {
-            return false;
-        } else if (!shouldInline()) {
-            assert !other.shouldInline();
-            return true;
-        } else {
-            Iterator<TruffleInliningDecision> i1 = iterator();
-            Iterator<TruffleInliningDecision> i2 = other.iterator();
-            while (i1.hasNext() && i2.hasNext()) {
-                if (!i1.next().isSameAs(i2.next())) {
-                    return false;
-                }
-            }
-            return !i1.hasNext() && !i2.hasNext();
-        }
-    }
-
     @Override
     public String toString() {
         return String.format("TruffleInliningDecision(callNode=%s, inline=%b)", profile.getCallNode(), inline);
@@ -105,5 +85,10 @@ public final class TruffleInliningDecision extends TruffleInlining implements Co
     @Override
     public JavaConstant getNodeRewritingAssumption() {
         return runtime().forObject(target.getNodeRewritingAssumption());
+    }
+
+    @Override
+    public Decision findDecision(JavaConstant callNode) {
+        return null;
     }
 }

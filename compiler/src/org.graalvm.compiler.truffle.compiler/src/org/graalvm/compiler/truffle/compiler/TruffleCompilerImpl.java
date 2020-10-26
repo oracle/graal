@@ -88,7 +88,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
@@ -285,7 +285,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public final void doCompile(TruffleDebugContext truffleDebug,
                     TruffleCompilation compilation,
                     Map<String, Object> optionsMap,
-                    TruffleInliningPlan inliningPlan,
+                    TruffleMetaAccessProvider inliningPlan,
                     TruffleCompilationTask task,
                     TruffleCompilerListener inListener) {
         Objects.requireNonNull(compilation, "Compilation must be non null.");
@@ -335,7 +335,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         }
     }
 
-    private void actuallyCompile(org.graalvm.options.OptionValues options, TruffleInliningPlan inliningPlan, TruffleCompilationTask task, TruffleCompilerListener listener,
+    private void actuallyCompile(org.graalvm.options.OptionValues options, TruffleMetaAccessProvider inliningPlan, TruffleCompilationTask task, TruffleCompilerListener listener,
                     TruffleCompilationIdentifier compilationId,
                     CompilableTruffleAST compilable, DebugContext graalDebug) {
         final TruffleCompilationWrapper truffleCompilationWrapper = new TruffleCompilationWrapper(
@@ -507,7 +507,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public void compileAST(org.graalvm.options.OptionValues options,
                     DebugContext debug,
                     final CompilableTruffleAST compilable,
-                    TruffleInliningPlan inliningPlan,
+                    TruffleMetaAccessProvider inliningPlan,
                     CompilationIdentifier compilationId,
                     CancellableTruffleCompilationTask task,
                     TruffleCompilerListener listener) {
@@ -680,7 +680,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
      */
     private final class TruffleCompilationWrapper extends CompilationWrapper<Void> {
         private final CompilableTruffleAST compilable;
-        private final TruffleInliningPlan inliningPlan;
+        private final TruffleMetaAccessProvider inliningPlan;
         private final CancellableTruffleCompilationTask task;
         private final TruffleCompilerListener listener;
         private final CompilationIdentifier compilationId;
@@ -692,7 +692,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         Map<ExceptionAction, Integer> problemsHandledPerAction,
                         CompilableTruffleAST optimizedCallTarget,
                         CancellableTruffleCompilationTask task,
-                        TruffleInliningPlan inliningPlan,
+                        TruffleMetaAccessProvider inliningPlan,
                         CompilationIdentifier compilationId,
                         TruffleCompilerListener listener) {
             super(outputDirectory, problemsHandledPerAction);

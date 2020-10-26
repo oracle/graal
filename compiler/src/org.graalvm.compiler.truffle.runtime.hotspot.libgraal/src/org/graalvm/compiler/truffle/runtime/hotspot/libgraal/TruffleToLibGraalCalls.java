@@ -67,7 +67,7 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 
 /**
@@ -102,7 +102,7 @@ final class TruffleToLibGraalCalls {
                     long debugContextHandle,
                     long compilationHandle,
                     byte[] options,
-                    TruffleInliningPlan inlining,
+                    TruffleMetaAccessProvider inlining,
                     TruffleCompilationTask task,
                     TruffleCompilerListener listener);
 

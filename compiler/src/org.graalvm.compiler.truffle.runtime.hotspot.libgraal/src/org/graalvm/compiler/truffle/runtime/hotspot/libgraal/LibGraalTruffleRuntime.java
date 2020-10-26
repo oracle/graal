@@ -28,6 +28,9 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilerIdleDelay;
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
@@ -47,6 +50,12 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
  * A {@link TruffleRuntime} that uses libgraal for compilation.
  */
 final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
+
+    @Override
+    public TruffleMetaAccessProvider createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task) {
+        // TODO
+        return null;
+    }
 
     /**
      * Handle to a HSTruffleCompilerRuntime object in an libgraal heap.
