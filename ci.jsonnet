@@ -214,8 +214,9 @@ local jdk8_on_demand_bench_linux  = base.jdk8 + base.onDemandBench + base.x52;
 local espresso_configs = ['jvm-ce', 'jvm-ee', 'native-ce', 'native-ee'];
 local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
-// Scala DaCapo benchmarks that run in both JVM and native modes, excluding factorie which is very slow.
-local scala_dacapo_jvm_fast(warmup=false) = 'scala-dacapo' + (if warmup then '-warmup' else '') + ':*[scalap,scalac,scaladoc,kiama,scalariform,scalaxb]';
+# Scala DaCapo benchmarks that run in both JVM and native modes,
+# Excluding factorie (too slow). kiama and scalariform have transient issues with compilation enabled.
+local scala_dacapo_jvm_fast(warmup=false) = 'scala-dacapo' + (if warmup then '-warmup' else '') + ':*[scalap,scalac,scaladoc,scalaxb]';
 
 # Scala DaCapo benchmarks that run on Espresso JVM.
 local scala_dacapo_jvm = ["scalap", "scalac", "scaladoc", "factorie", "kiama", "scalariform", "scalaxb"];
