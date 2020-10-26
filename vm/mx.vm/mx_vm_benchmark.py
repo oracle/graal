@@ -682,7 +682,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         if len(benchmarks) != 1:
             mx.abort("Can only specify one benchmark at a time.")
         benchmark_path = os.path.join(_suite.dir, "benchmarks", benchmarks[0])
-        return ["--metric=peak-time", "--execution-mode=interpreter", "--path=" + benchmark_path]
+        return ["--metric=peak-time", "--mode=interpreter", "--path=" + benchmark_path]
 
     def get_vm_registry(self):
         return _polybench_vm_registry
