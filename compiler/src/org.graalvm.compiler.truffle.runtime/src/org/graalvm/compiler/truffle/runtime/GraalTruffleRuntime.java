@@ -54,7 +54,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.TruffleOutputGroup;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
@@ -673,7 +672,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                                         : TruffleOutputGroup.open(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation))) {
                             // Create "AST" and "Call Tree" groups if dumping is enabled.
                             // TODO should not take inlining as an argument
-                            maybeDumpTruffleTree(debug, callTarget, inlining);
+                            maybeDumpTruffleTree(debug, callTarget);
                             // Compile the method (puts dumps in "Graal Graphs" group if dumping is
                             // enabled).
                             compiler.doCompile(debug, compilation, optionsMap, inlining, task, listeners.isEmpty() ? null : listeners);
@@ -717,10 +716,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @SuppressWarnings("try")
-    private static void maybeDumpTruffleTree(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inlining) throws Exception {
+    private static void maybeDumpTruffleTree(TruffleDebugContext debug, OptimizedCallTarget callTarget) throws Exception {
         try (AutoCloseable c = debug.scope("TruffleTree")) {
             if (debug.isDumpEnabled()) {
-                TruffleTreeDumper.dump(debug, callTarget, inlining);
+                TruffleTreeDumper.dump(debug, callTarget);
             }
         }
     }

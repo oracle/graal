@@ -64,17 +64,17 @@ public final class TruffleTreeDumper {
     private static final String AFTER_PROFILING = "After Profiling";
     private static final String AFTER_INLINING = "After Inlining";
 
-    public static void dump(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inliningDecision) {
+    public static void dump(TruffleDebugContext debug, OptimizedCallTarget callTarget) {
         if (GraalTruffleRuntime.getRuntime().isPrintGraphEnabled()) {
             try {
-                dumpASTAndCallTrees(debug, callTarget, inliningDecision, inliningDecision.getTruffleNodeSources());
+                dumpASTAndCallTrees(debug, callTarget, new TruffleNodeSources());
             } catch (IOException ex) {
                 throw new RuntimeException("Failed to dump AST: " + callTarget, ex);
             }
         }
     }
 
-    private static void dumpASTAndCallTrees(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inlining, TruffleNodeSources nodeSources) throws IOException {
+    private static void dumpASTAndCallTrees(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleNodeSources nodeSources) throws IOException {
         if (callTarget.getRootNode() != null) {
             AST ast = new AST(callTarget, nodeSources);
             final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE));
@@ -84,20 +84,6 @@ public final class TruffleTreeDumper {
             astOutput.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
             astOutput.endGroup(); // AST
             astOutput.close();
-
-            if (callTarget.getOptionValue(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
-                return;
-            }
-            CallTree callTree = new CallTree(callTarget, null);
-            final GraphOutput<CallTree, ?> callTreeOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE));
-            callTreeOutput.beginGroup(null, "Call Tree", "Call Tree", null, 0, debug.getVersionProperties());
-            callTreeOutput.print(callTree, null, 0, AFTER_PROFILING);
-            if (inlining.countInlinedCalls() > 0) {
-                callTree = new CallTree(callTarget, inlining);
-                callTreeOutput.print(callTree, null, 0, AFTER_INLINING);
-            }
-            callTreeOutput.endGroup(); // Call Tree
-            callTreeOutput.close();
         }
     }
 
@@ -451,41 +437,22 @@ public final class TruffleTreeDumper {
         final CallTreeBlock inlined = new CallTreeBlock(0);
         final CallTreeBlock notInlined = new CallTreeBlock(1);
 
-        CallTree(RootCallTarget target, TruffleInlining inlining) {
+        CallTree(RootCallTarget target) {
             root = makeCallTreeNode(target);
             inlined.nodes.add(root);
             root.properties.put("label", target.toString());
             root.properties.putAll(((OptimizedCallTarget) target).getDebugProperties());
-            build(target, root, inlining, this);
+            build(target, root, this);
         }
 
-        private static void build(RootCallTarget target, CallTreeNode parent, TruffleInlining inlining, CallTree graph) {
-            if (inlining == null) {
-                for (DirectCallNode callNode : NodeUtil.findAllNodeInstances((target).getRootNode(), DirectCallNode.class)) {
-                    CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
-                    final CallTreeNode callTreeNode = graph.makeCallTreeNode(inlinedCallTarget);
-                    parent.edges.add(new CallTreeEdge(callTreeNode, ""));
-                    graph.notInlined.nodes.add(callTreeNode);
-                    callTreeNode.properties.put("label", inlinedCallTarget.toString());
-                    callTreeNode.properties.put("inlined", "false");
-                }
-            } else {
-                List<RootCallTarget> furtherTargets = new ArrayList<>();
-                List<CallTreeNode> furtherParent = new ArrayList<>();
-                List<TruffleInlining> furtherDecisions = new ArrayList<>();
-                for (DirectCallNode callNode : NodeUtil.findAllNodeInstances((target).getRootNode(), DirectCallNode.class)) {
-                    CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
-                    if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
-                        final CallTreeNode callTreeNode = graph.makeCallTreeNode(inlinedCallTarget);
-                        callTreeNode.properties.put("label", inlinedCallTarget.toString());
-                        parent.edges.add(new CallTreeEdge(callTreeNode, ""));
-                        callTreeNode.properties.put("inlined", "false");
-                        graph.notInlined.nodes.add(callTreeNode);
-                    }
-                }
-                for (int i = 0; i < furtherTargets.size(); i++) {
-                    build(furtherTargets.get(i), furtherParent.get(i), furtherDecisions.get(i), graph);
-                }
+        private static void build(RootCallTarget target, CallTreeNode parent, CallTree graph) {
+            for (DirectCallNode callNode : NodeUtil.findAllNodeInstances((target).getRootNode(), DirectCallNode.class)) {
+                CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
+                final CallTreeNode callTreeNode = graph.makeCallTreeNode(inlinedCallTarget);
+                parent.edges.add(new CallTreeEdge(callTreeNode, ""));
+                graph.notInlined.nodes.add(callTreeNode);
+                callTreeNode.properties.put("label", inlinedCallTarget.toString());
+                callTreeNode.properties.put("inlined", "false");
             }
         }
 
