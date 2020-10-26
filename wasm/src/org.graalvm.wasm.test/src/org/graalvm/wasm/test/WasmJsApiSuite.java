@@ -267,6 +267,17 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testInstantiateModuleTwice() throws IOException {
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Module module = wasm.compile(binaryWithExports);
+            Object importObject = new Dictionary();
+            wasm.instantiate(module, importObject);
+            wasm.instantiate(module, importObject);
+        });
+    }
+
+    @Test
     public void testInstantiateWithUnicodeExport() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
