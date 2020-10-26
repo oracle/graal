@@ -209,13 +209,12 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         DebugContext debug = getDebugContext(options);
         lastDebug = debug;
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            TruffleInlining inliningDecision = new TruffleInlining();
             SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();
             }
             final PartialEvaluator partialEvaluator = getTruffleCompiler(compilable).getPartialEvaluator();
-            final PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable), inliningDecision,
+            final PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable), new TruffleInlining(),
                             compilationId, speculationLog, null);
             return partialEvaluator.evaluate(request);
         } catch (Throwable e) {

@@ -671,7 +671,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         try (TruffleOutputGroup o = !isPrintGraphEnabled() ? null
                                         : TruffleOutputGroup.open(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation))) {
                             // Create "AST" and "Call Tree" groups if dumping is enabled.
-                            // TODO should not take inlining as an argument
                             maybeDumpTruffleTree(debug, callTarget);
                             // Compile the method (puts dumps in "Graal Graphs" group if dumping is
                             // enabled).

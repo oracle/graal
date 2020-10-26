@@ -79,8 +79,7 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
         Map<String, Object> options = GraalTruffleRuntime.getOptionsForCompiler(target);
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
             TruffleDebugContext debug = compiler.openDebugContext(options, compilation);
-            TruffleMetaAccessProvider inliningPlan = new TruffleInlining();
-            compiler.doCompile(debug, compilation, options, inliningPlan, null, null);
+            compiler.doCompile(debug, compilation, options, new TruffleInlining(), null, null);
         }
         Assert.assertTrue(target.isValid());
         target.call(0);

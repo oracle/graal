@@ -133,8 +133,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         DebugContext debug = new DebugContext.Builder(runtime.getGraalOptions(OptionValues.class)).build();
         try (DebugContext.Scope s = debug.scope("EncodedGraphCacheTest")) {
             CompilationIdentifier compilationId = getTruffleCompilerFromRuntime(target).createCompilationIdentifier(target);
-            TruffleMetaAccessProvider inliningPlan = new TruffleInlining();
-            getTruffleCompilerFromRuntime(target).compileAST(target.getOptionValues(), debug, target, inliningPlan, compilationId, null, null);
+            getTruffleCompilerFromRuntime(target).compileAST(target.getOptionValues(), debug, target, new TruffleInlining(), compilationId, null, null);
             assertTrue(target.isValid());
             return target;
         }
