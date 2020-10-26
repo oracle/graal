@@ -74,6 +74,10 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
                         config.mode = "interpreter";
                         setInterpreterOnly(options);
                         break;
+                    case "default":
+                        config.mode = "default";
+                        setDefault(options);
+                        break;
                     default:
                         throw abort("Unknown execution-mode: " + value);
                 }
@@ -163,6 +167,10 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
 
     private static void setInterpreterOnly(Map<String, String> options) {
         options.put("engine.Compilation", "false");
+    }
+
+    private static void setDefault(Map<String, String> options) {
+        options.put("engine.Compilation", "true");
     }
 
     private List<String> parsePolyBenchLauncherOptions(String[] args, Map<String, String> polyglotOptions) {
