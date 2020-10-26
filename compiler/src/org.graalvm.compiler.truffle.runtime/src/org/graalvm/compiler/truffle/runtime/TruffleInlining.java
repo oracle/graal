@@ -49,9 +49,6 @@ public class TruffleInlining implements TruffleMetaAccessProvider {
     public TruffleInlining() {
     }
 
-    public TruffleInlining(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy) {
-    }
-
     public TruffleNodeSources getTruffleNodeSources() {
         if (nodeSources == null) {
             nodeSources = new TruffleNodeSources();

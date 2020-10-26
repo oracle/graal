@@ -37,6 +37,7 @@ import java.util.Map;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.graphio.GraphBlocks;
@@ -214,46 +215,17 @@ public final class TruffleTreeDumper {
             return astBlock;
         }
 
-        void inline(TruffleInlining inliningDecisions, TruffleNodeSources nodeSources) {
-            traverseSeenNodes(root.source, root, this, inliningDecisions, nodeSources, blocks.get(0));
-        }
-
-        private static void traverseSeenNodes(Node parent, ASTNode astParent, AST ast, TruffleInlining inliningDecisions, TruffleNodeSources nodeSources, ASTBlock currentBlock) {
-            for (Map.Entry<String, Node> entry : findNamedNodeChildren(parent).entrySet()) {
-                final String label = entry.getKey();
-                final Node node = entry.getValue();
-                final ASTNode seenAstNode = ast.findASTNode(node);
-                if (seenAstNode == null) {
-                    final ASTNode astNode = ast.makeASTNode(node, nodeSources);
-                    currentBlock.nodes.add(astNode);
-                    astParent.edges.add(new ASTEdge(astNode, label));
-                    handleCallNodes(ast, inliningDecisions, nodeSources, node, astNode, currentBlock);
-                    traverseSeenNodes(node, astNode, ast, inliningDecisions, nodeSources, currentBlock);
-                } else {
-                    handleCallNodes(ast, inliningDecisions, nodeSources, node, seenAstNode, currentBlock);
-                    traverseSeenNodes(node, seenAstNode, ast, inliningDecisions, nodeSources, currentBlock);
-                }
-            }
-        }
-
-        private static void traverseNodes(Node parent, ASTNode astParent, AST ast, TruffleInlining inliningDecisions, TruffleNodeSources nodeSources, ASTBlock currentBlock) {
+        private static void traverseNodes(Node parent, ASTNode astParent, AST ast, TruffleMetaAccessProvider inliningDecisions, TruffleNodeSources nodeSources, ASTBlock currentBlock) {
             for (Map.Entry<String, Node> entry : findNamedNodeChildren(parent).entrySet()) {
                 final String label = entry.getKey();
                 final Node node = entry.getValue();
                 final ASTNode astNode = ast.makeASTNode(node, nodeSources);
                 currentBlock.nodes.add(astNode);
                 astParent.edges.add(new ASTEdge(astNode, label));
-                handleCallNodes(ast, inliningDecisions, nodeSources, node, astNode, currentBlock);
                 traverseNodes(node, astNode, ast, inliningDecisions, nodeSources, currentBlock);
             }
         }
 
-        private static void handleCallNodes(AST ast, TruffleInlining inliningDecisions, TruffleNodeSources nodeSources, Node node, ASTNode astNode, ASTBlock currentBlock) {
-            // Has this call node been handled already?
-            if (astNode.edges.size() > 0) {
-                return;
-            }
-        }
     }
 
     static class ASTNode {
