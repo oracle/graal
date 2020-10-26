@@ -81,11 +81,6 @@ public final class TruffleTreeDumper {
             astOutput.beginGroup(ast, "AST", "AST", null, 0, debug.getVersionProperties());
 
             astOutput.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
-            if (inlining.countInlinedCalls() > 0) {
-                dumpInlinedTrees(debug, astOutput, callTarget, inlining, nodeSources, new ArrayList<>());
-                ast.inline(inlining, nodeSources);
-                astOutput.print(ast, null, 1, AFTER_INLINING);
-            }
             astOutput.endGroup(); // AST
             astOutput.close();
 
@@ -102,28 +97,6 @@ public final class TruffleTreeDumper {
             }
             callTreeOutput.endGroup(); // Call Tree
             callTreeOutput.close();
-        }
-    }
-
-    private static void dumpInlinedTrees(TruffleDebugContext debug, GraphOutput<AST, ?> output, final RootCallTarget callTarget, TruffleInlining inlining, TruffleNodeSources nodeSources,
-                    List<RootCallTarget> dumped)
-                    throws IOException {
-        for (DirectCallNode callNode : NodeUtil.findAllNodeInstances(callTarget.getRootNode(), DirectCallNode.class)) {
-            CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
-            if (inlinedCallTarget instanceof RootCallTarget && callNode instanceof OptimizedDirectCallNode) {
-                TruffleInliningDecision decision = null;
-                if (decision != null && decision.shouldInline()) {
-                    final RootCallTarget rootCallTarget = (RootCallTarget) inlinedCallTarget;
-                    if (!dumped.contains(rootCallTarget)) {
-                        AST ast = new AST(rootCallTarget, nodeSources);
-                        output.beginGroup(ast, inlinedCallTarget.toString(), rootCallTarget.getRootNode().getName(), null, 0, debug.getVersionProperties());
-                        output.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
-                        output.endGroup();
-                        dumped.add(rootCallTarget);
-                        dumpInlinedTrees(debug, output, (OptimizedCallTarget) inlinedCallTarget, decision, nodeSources, dumped);
-                    }
-                }
-            }
         }
     }
 
@@ -279,27 +252,6 @@ public final class TruffleTreeDumper {
             // Has this call node been handled already?
             if (astNode.edges.size() > 0) {
                 return;
-            }
-            if (inliningDecisions != null) {
-                if (node instanceof DirectCallNode) {
-                    final DirectCallNode callNode = (DirectCallNode) node;
-                    final CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
-                    if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
-                        TruffleInliningDecision decision = null;
-                        if (decision != null && decision.shouldInline()) {
-                            final RootNode targetRootNode = ((OptimizedCallTarget) inlinedCallTarget).getRootNode();
-                            final ASTNode astTargetRootNode = ast.makeASTNode(targetRootNode, nodeSources);
-                            astNode.edges.add(new ASTEdge(astTargetRootNode, inlinedCallTarget.toString()));
-                            astNode.setNewClass();
-                            final ASTBlock newBlock = ast.makeASTBlock();
-                            if (currentBlock != null) {
-                                currentBlock.successors.add(newBlock);
-                            }
-                            newBlock.nodes.add(astTargetRootNode);
-                            traverseNodes(targetRootNode, astTargetRootNode, ast, decision, nodeSources, newBlock);
-                        }
-                    }
-                }
             }
         }
     }
@@ -552,24 +504,11 @@ public final class TruffleTreeDumper {
                 for (DirectCallNode callNode : NodeUtil.findAllNodeInstances((target).getRootNode(), DirectCallNode.class)) {
                     CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
                     if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
-                        TruffleInliningDecision decision = null;
                         final CallTreeNode callTreeNode = graph.makeCallTreeNode(inlinedCallTarget);
                         callTreeNode.properties.put("label", inlinedCallTarget.toString());
                         parent.edges.add(new CallTreeEdge(callTreeNode, ""));
-                        if (decision != null && decision.shouldInline()) {
-                            graph.inlined.nodes.add(callTreeNode);
-                            callTreeNode.properties.put("inlined", "true");
-                            callTreeNode.properties.putAll(decision.getProfile().getDebugProperties());
-                            furtherTargets.add((RootCallTarget) inlinedCallTarget);
-                            furtherParent.add(callTreeNode);
-                            furtherDecisions.add(decision);
-                        } else {
-                            callTreeNode.properties.put("inlined", "false");
-                            if (decision != null) {
-                                callTreeNode.properties.putAll(decision.getTarget().getDebugProperties());
-                            }
-                            graph.notInlined.nodes.add(callTreeNode);
-                        }
+                        callTreeNode.properties.put("inlined", "false");
+                        graph.notInlined.nodes.add(callTreeNode);
                     }
                 }
                 for (int i = 0; i < furtherTargets.size(); i++) {
