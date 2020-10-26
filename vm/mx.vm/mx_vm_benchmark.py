@@ -674,7 +674,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return "Graal"
 
     def subgroup(self):
-        return "vm"
+        return "truffle"
 
     def name(self):
         return "polybench"
