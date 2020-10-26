@@ -73,7 +73,7 @@ public final class CallTreePrinter {
     }
 
     static class MethodNodeReference implements Node {
-        private final MethodNode methodNode;
+        protected final MethodNode methodNode;
 
         MethodNodeReference(MethodNode methodNode) {
             this.methodNode = methodNode;
@@ -88,10 +88,10 @@ public final class CallTreePrinter {
     static class MethodNode implements Node {
         static int methodId = 0;
 
-        private final int id;
-        private final AnalysisMethod method;
-        private final List<InvokeNode> invokes;
-        private final boolean isEntryPoint;
+        protected final int id;
+        protected final AnalysisMethod method;
+        protected final List<InvokeNode> invokes;
+        protected final boolean isEntryPoint;
 
         MethodNode(AnalysisMethod method) {
             this(method, false);
@@ -116,8 +116,8 @@ public final class CallTreePrinter {
 
     static class InvokeNode {
         private final AnalysisMethod targetMethod;
-        private final List<Node> callees;
-        private final boolean isDirectInvoke;
+        protected final List<Node> callees;
+        protected final boolean isDirectInvoke;
         private final SourceReference[] sourceReferences;
 
         InvokeNode(AnalysisMethod targetMethod, boolean isDirectInvoke, SourceReference[] sourceReferences) {
@@ -214,7 +214,7 @@ public final class CallTreePrinter {
         return sourceReference.toArray(new SourceReference[sourceReference.size()]);
     }
 
-    private static final String METHOD_FORMAT = "%H.%n(%P):%R";
+    protected static final String METHOD_FORMAT = "%H.%n(%P):%R";
 
     private void printMethods(PrintWriter out) {
         out.println("VM Entry Points");
