@@ -136,18 +136,18 @@ def warmupIterations(startup=None, earlyWarmup=None, lateWarmup=None):
     return result
 
 scala_dacapo_warmup_iterations = {
-    "actors"      : warmupIterations(1, 1 + _daCapoScalaConfig["actors"] // 3, _daCapoScalaConfig["actors"]),
-    "apparat"     : warmupIterations(1, 1 + _daCapoScalaConfig["apparat"] // 3, _daCapoScalaConfig["apparat"]),
-    "factorie"    : warmupIterations(1, 1 + _daCapoScalaConfig["factorie"] // 3, _daCapoScalaConfig["factorie"]),
-    "kiama"       : warmupIterations(1, 1 + _daCapoScalaConfig["kiama"] // 3, _daCapoScalaConfig["kiama"]),
-    "scalac"      : warmupIterations(1, 1 + _daCapoScalaConfig["scalac"] // 3, _daCapoScalaConfig["scalac"]),
-    "scaladoc"    : warmupIterations(1, 1 + _daCapoScalaConfig["scaladoc"] // 3, _daCapoScalaConfig["scaladoc"]),
-    "scalap"      : warmupIterations(1, 1 + _daCapoScalaConfig["scalap"] // 3, _daCapoScalaConfig["scalap"]),
+    "actors"      : warmupIterations(1, 1 + _daCapoScalaConfig["actors"]      // 3, _daCapoScalaConfig["actors"]),
+    "apparat"     : warmupIterations(1, 1 + _daCapoScalaConfig["apparat"]     // 3, _daCapoScalaConfig["apparat"]),
+    "factorie"    : warmupIterations(1, 1 + _daCapoScalaConfig["factorie"]    // 3, _daCapoScalaConfig["factorie"]),
+    "kiama"       : warmupIterations(1, 1 + _daCapoScalaConfig["kiama"]       // 3, _daCapoScalaConfig["kiama"]),
+    "scalac"      : warmupIterations(1, 1 + _daCapoScalaConfig["scalac"]      // 3, _daCapoScalaConfig["scalac"]),
+    "scaladoc"    : warmupIterations(1, 1 + _daCapoScalaConfig["scaladoc"]    // 3, _daCapoScalaConfig["scaladoc"]),
+    "scalap"      : warmupIterations(1, 1 + _daCapoScalaConfig["scalap"]      // 3, _daCapoScalaConfig["scalap"]),
     "scalariform" : warmupIterations(1, 1 + _daCapoScalaConfig["scalariform"] // 3, _daCapoScalaConfig["scalariform"]),
-    "scalatest"   : warmupIterations(1, 1 + _daCapoScalaConfig["scalatest"] // 3, _daCapoScalaConfig["scalatest"]),
-    "scalaxb"     : warmupIterations(1, 1 + _daCapoScalaConfig["scalaxb"] // 3, _daCapoScalaConfig["scalaxb"]),
-    "specs"       : warmupIterations(1, 1 + _daCapoScalaConfig["specs"] // 3, _daCapoScalaConfig["specs"]),
-    "tmt"         : warmupIterations(1, 1 + _daCapoScalaConfig["tmt"] // 3, _daCapoScalaConfig["tmt"]),
+    "scalatest"   : warmupIterations(1, 1 + _daCapoScalaConfig["scalatest"]   // 3, _daCapoScalaConfig["scalatest"]),
+    "scalaxb"     : warmupIterations(1, 1 + _daCapoScalaConfig["scalaxb"]     // 3, _daCapoScalaConfig["scalaxb"]),
+    "specs"       : warmupIterations(1, 1 + _daCapoScalaConfig["specs"]       // 3, _daCapoScalaConfig["specs"]),
+    "tmt"         : warmupIterations(1, 1 + _daCapoScalaConfig["tmt"]         // 3, _daCapoScalaConfig["tmt"]),
 }
 
 class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
@@ -158,26 +158,6 @@ class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disab
 
     def name(self):
         return "scala-dacapo-warmup"
-
-    def accumulateResults(self, results, metricName="warmup"):
-        """
-        Postprocess results to compute the cumulative metric.value, over all previous iterations.
-        Adds new entries with matric.name = "cumulative-" + metricName.
-        """
-        benchmarkNames = {r["benchmark"] for r in results}
-        for benchmark in benchmarkNames:
-            entries = [result for result in results if result["metric.name"] == metricName and result["benchmark"] == benchmark]
-            if entries:
-                for entry in entries:
-                    aggregates = [e for e in entries if e["metric.iteration"] <= entry["metric.iteration"]]
-                    cumulativeValue = sum((e["metric.value"] for e in aggregates))
-                    newEntry = entry.copy()
-                    newEntry.update({
-                        "metric.value": cumulativeValue,
-                        "metric.name": "cumulative-" + metricName,
-                        "metric.cumulative-over": len(aggregates)
-                    })
-                    results.append(newEntry)
 
     def warmupResults(self, results, warmupIterations, metricName="cumulative-warmup"):
         """
@@ -216,6 +196,10 @@ class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disab
                 }
             )
         ]
+
+    def postprocessRunArgs(self, benchname, runArgs):
+        result = super(ScalaDaCapoWarmupBenchmarkSuite, self).postprocessRunArgs(benchname, runArgs)
+        return (result or []) + ['-c', 'WallTimeCallback']
 
     def run(self, benchmarks, bmSuiteArgs):
         results = super(ScalaDaCapoWarmupBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)

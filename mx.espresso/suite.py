@@ -555,7 +555,7 @@ suite = {
                     "Specification-Version": "0.1.0-SNAPSHOT",
                     "Main-Class": "Harness",
                     "Archiver-Version": "Plexus Archiver",
-            },            
+            },
             "description": "Scala DaCapo with WallTime callback",
         },
     }
