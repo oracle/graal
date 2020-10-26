@@ -23,7 +23,7 @@ native-image --static --libc=musl [other arguments] Class
 ## Build a Mostly Static Native Image
 
 As of GraalVM version 20.2, you can build a “mostly static” native image which link statically everything except `libc`. Native images built this way are convenient to run in Docker containers, for example, based on
-distroless minimal Linux, glibc-based systems.
+[distroless minimal Linux, glibc-based systems](https://github.com/GoogleContainerTools/distroless/blob/master/base/README.md).
 
 To build a mostly-static native image native image, use:
 ```shell
