@@ -152,7 +152,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Polybench Launcher',
-    short_name='polybench',
+    short_name='pbm',
     license_files=[],
     third_party_license_files=[],
     dir_name='polybench',

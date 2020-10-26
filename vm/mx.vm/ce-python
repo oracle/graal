@@ -1,3 +1,4 @@
 # Do not modify this env file without updating the Graal.Python benchmark builders
 DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs,graalpython
+EXCLUDE_COMPONENTS=pbm
 FORCE_BASH_LAUNCHERS=polyglot
