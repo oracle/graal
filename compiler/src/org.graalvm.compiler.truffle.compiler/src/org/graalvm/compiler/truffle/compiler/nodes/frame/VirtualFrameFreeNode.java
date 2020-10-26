@@ -48,16 +48,15 @@ public class VirtualFrameFreeNode extends VirtualFrameAccessorNode implements Vi
     @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode tagAlias = tool.getAlias(frame.virtualFrameTagArray);
-        ValueNode objectStorageAlias = tool.getAlias(frame.virtualFrameObjectArray);
-        ValueNode primitiveStorageAlias = tool.getAlias(frame.virtualFramePrimitiveArray);
-
-        if (tagAlias instanceof VirtualObjectNode && objectStorageAlias instanceof VirtualObjectNode && primitiveStorageAlias instanceof VirtualObjectNode) {
+        if (tagAlias instanceof VirtualObjectNode) {
             VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
-            VirtualObjectNode objectStorageVirtual = (VirtualObjectNode) objectStorageAlias;
-            VirtualObjectNode primitiveStorageVirtual = (VirtualObjectNode) primitiveStorageAlias;
-
-            if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < objectStorageVirtual.entryCount() && frameSlotIndex < primitiveStorageVirtual.entryCount()) {
-                boolean success = tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag), tagVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex), -1);
+            if (frameSlotIndex < tagVirtual.entryCount()) {
+                // Simply set kind to illegal. A later phase will clear the slots.
+                boolean success = tool.setVirtualEntry(tagVirtual,
+                                frameSlotIndex,
+                                getConstant(accessTag),
+                                tagVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex),
+                                -1);
                 if (success) {
                     tool.delete();
                     return;

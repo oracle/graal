@@ -29,7 +29,6 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRunt
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -48,11 +47,38 @@ import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 
-import jdk.vm.ci.meta.JavaConstant;
+import com.oracle.truffle.api.frame.FrameSlot;
+
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * This phase inspects the FrameState virtual objects corresponding to truffle virtual frames.
+ * <p>
+ * For each slot in each virtual frame:
+ * <ul>
+ * <li>If the slot is cleared (ie: tag is illegal), then we null out the slot in both supporting
+ * arrays
+ * <li>If the slot is determined to contain an object (respectively a primitive), we null out the
+ * counterpart slot in the primitive array (respectively the object array)
+ * <li>If nothing can be inferred about the kind of entry in the slot, we leave it alone (most
+ * likely corresponds to two branches putting different kinds merging execution)
+ * <li>If we determine one of the slots to be cleared in a branch, but not the other and they merge
+ * execution, we fail.
+ * </ul>
+ * <p>
+ * 
+ * This behavior has two main points of interest:
+ * <ul>
+ * <li>Allow languages to implement liveness analysis through the
+ * {@link com.oracle.truffle.api.frame.Frame#clear(FrameSlot)} method, which will eliminate stale
+ * locals early.
+ * <li>Stack-based interpreters re-use slots for different kinds. By clearing the counterpart array
+ * 
+ * </ul>
+ * 
+ */
 public class FrameClearPhase extends BasePhase<CoreProviders> {
     private final ResolvedJavaType frameType;
     private final int tagArrayIndex;
@@ -60,12 +86,10 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
     private final int primitiveArrayIndex;
 
     private final int illegalTag;
-    private final int defaultTag;
     private final int objectTag;
 
     private ValueNode nullConstant;
     private ValueNode zeroConstant;
-    private IntegerStamp illegalStamp;
 
     public FrameClearPhase(KnownTruffleTypes knownTruffleTypes) {
         this(knownTruffleTypes.classFrameClass, knownTruffleTypes.fieldTags, knownTruffleTypes.fieldLocals, knownTruffleTypes.fieldPrimitiveLocals);
@@ -82,9 +106,6 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
         TruffleCompilerRuntime runtime = getRuntime();
         this.illegalTag = runtime.getFrameSlotKindTagForJavaKind(JavaKind.Illegal);
         this.objectTag = runtime.getFrameSlotKindTagForJavaKind(JavaKind.Object);
-        this.defaultTag = JavaConstant.defaultForKind(JavaKind.Int).asInt();
-
-        illegalStamp = StampFactory.forInteger(JavaKind.Byte.getBitCount(), illegalTag, illegalTag);
     }
 
     private static int findFieldIndex(ResolvedJavaType type, ResolvedJavaField field) {
@@ -111,6 +132,8 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
                     if ((tagArrayValue instanceof VirtualArrayNode) &&
                                     (vObjState.values().get(objectArrayIndex) instanceof VirtualArrayNode) &&
                                     (vObjState.values().get(primitiveArrayIndex) instanceof VirtualArrayNode)) {
+                        // make sure everything is virtual
+
                         EscapeObjectState tagArrayVirtual = objectStates.get((VirtualArrayNode) tagArrayValue);
                         EscapeObjectState objectArrayVirtual = objectStates.get((VirtualArrayNode) vObjState.values().get(objectArrayIndex));
                         EscapeObjectState primitiveArrayVirtual = objectStates.get((VirtualArrayNode) vObjState.values().get(primitiveArrayIndex));
@@ -130,31 +153,40 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
     private void maybeClearFrameSlot(VirtualObjectState tagArrayVirtual, VirtualObjectState objectArrayVirtual, VirtualObjectState primitiveArrayVirtual, int i, FrameState fs) {
         ValueNode tagNode = tagArrayVirtual.values().get(i);
         if (tagNode == null) {
+            // Uninitialized slot, will be initialized to default on deopt anyway.
             return;
         }
         if (tagNode.isJavaConstant()) {
             int tag = tagNode.asJavaConstant().asInt();
             if (tag == illegalTag) {
+                // Cleared slot
                 objectArrayVirtual.values().set(i, nullConstant);
                 primitiveArrayVirtual.values().set(i, zeroConstant);
             } else {
+                // Clear counterpart
                 VirtualObjectState toClear = (tag == objectTag) ? primitiveArrayVirtual : objectArrayVirtual;
                 ValueNode toSet = (tag == objectTag) ? zeroConstant : nullConstant;
                 toClear.values().set(i, toSet);
             }
         } else {
+            // frame slot can be of multiple kinds here
             Stamp tagStamp = tagNode.stamp(NodeView.DEFAULT);
             assert tagStamp instanceof PrimitiveStamp;
             if (stampHasIllegal((PrimitiveStamp) tagStamp)) {
+                // Clearing a slot introduces a phi: report.
                 throw new NullPointerException("Inconsistent use of Frame.clear() detected.");
             }
             if (!stampHasObject((PrimitiveStamp) tagStamp)) {
-                /*
-                 * Phi tag with no object possible: free object. No need to try and check if there
-                 * is a primitive in there, there will be.
-                 */
+                // Phi tag with no object possible: free object slot.
                 objectArrayVirtual.values().set(i, nullConstant);
             }
+            /*-
+             * No need to check for primitive kind, it will be there:
+             * - Cannot be illegal.
+             * - Has at least 2 possible values.
+             * - At most 1 possible kind other than primitive.
+             * => one of the possible kind values will always be primitive.
+             */
         }
     }
 
