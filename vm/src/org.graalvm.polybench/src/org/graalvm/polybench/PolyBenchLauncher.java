@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -189,6 +190,12 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
     }
 
     private void launch(String[] args) {
+        if (isAOT()) {
+            List<String> argumentsList = new ArrayList<>(Arrays.asList(args));
+            List<String> originalArgs = Collections.unmodifiableList(new ArrayList<>(argumentsList));
+            maybeNativeExec(originalArgs, argumentsList, false);
+        }
+
         final Map<String, String> polyglotOptions = new HashMap<>();
         final List<String> unrecognizedArguments = parsePolyBenchLauncherOptions(args, polyglotOptions);
         parseUnrecognizedOptions(null, polyglotOptions, unrecognizedArguments);
