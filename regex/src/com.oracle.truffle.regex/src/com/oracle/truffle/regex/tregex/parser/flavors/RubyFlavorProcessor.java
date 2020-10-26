@@ -1099,8 +1099,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                         throw syntaxErrorAtRel("octal escape value \\" + code + " outside of range 0-o377", 1 + code.length());
                     }
                     return codePoint;
-                } else if (isAsciiLetter(ch)) {
-                    throw syntaxErrorAtRel("bad escape \\" + new String(Character.toChars(ch)), 2);
                 } else {
                     return ch;
                 }
