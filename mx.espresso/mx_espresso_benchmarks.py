@@ -203,8 +203,8 @@ class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disab
 
     def run(self, benchmarks, bmSuiteArgs):
         results = super(ScalaDaCapoWarmupBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
-        # self.accumulateResults(results)
         self.warmupResults(results, scala_dacapo_warmup_iterations, 'walltime')
-        return results
+        # walltime entries are not accepted by the bench server
+        return [e for e in results if e["metric.name"] != "walltime"]
 
 mx_benchmark.add_bm_suite(ScalaDaCapoWarmupBenchmarkSuite())
