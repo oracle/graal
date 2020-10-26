@@ -388,8 +388,14 @@ public class CheckGraalIntrinsics extends GraalTest {
         }
 
         if (isJDK11OrHigher()) {
-            // Relevant for Java flight recorder
+            if (!(arch instanceof AArch64)) {
+                add(toBeInvestigated,
+                                "java/lang/Math.abs(I)I",
+                                "java/lang/Math.abs(J)J");
+            }
             add(toBeInvestigated,
+                            "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I",
+                            "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I",
                             "java/lang/CharacterDataLatin1.isDigit(I)Z",
                             "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
                             "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
