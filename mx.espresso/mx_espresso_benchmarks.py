@@ -190,7 +190,7 @@ class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disab
                 if entries:
                     for entry in entries:
                         for key, iteration in warmupIterations[benchmark].items():
-                            if entry["metric.iteration"] == iteration:
+                            if entry["metric.iteration"] == iteration - 1: # scala_dacapo_warmup_iterations is 1-based, JSON output is 0-based
                                 newEntry = entry.copy()
                                 newEntry["metric.name"] = key
                                 results.append(newEntry)
