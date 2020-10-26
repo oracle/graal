@@ -63,6 +63,7 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.util.Exceptions;
@@ -103,12 +104,15 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         UNICODE_CHAR_CLASSES = new HashMap<>(4);
         ASCII_CHAR_CLASSES = new HashMap<>(4);
 
-        CodePointSet alpha = UnicodeProperties.getProperty("General_Category=Letter");
-        CodePointSet numeric = UnicodeProperties.getProperty("General_Category=Number");
-        UNICODE_CHAR_CLASSES.put('d', numeric);
-        UNICODE_CHAR_CLASSES.put('h', UnicodeProperties.getProperty("Hex_Digit"));
-        UNICODE_CHAR_CLASSES.put('s', UnicodeProperties.getProperty("White_Space"));
-        UNICODE_CHAR_CLASSES.put('w', alpha.union(numeric).union(CodePointSet.create('_')));
+        CodePointSet alpha = UnicodeProperties.getProperty("Alphabetic");
+        CodePointSet digit = UnicodeProperties.getProperty("General_Category=Decimal_Number");
+        CodePointSet space = UnicodeProperties.getProperty("White_Space");
+        CodePointSet xdigit = digit.union(UnicodeProperties.getProperty("Hex_Digit"));
+        CodePointSet word = alpha.union(UnicodeProperties.getProperty("General_Category=Mark")).union(digit).union(UnicodeProperties.getProperty("General_Category=Connector_Punctuation")).union(UnicodeProperties.getProperty("Join_Control"));
+        UNICODE_CHAR_CLASSES.put('d', digit);
+        UNICODE_CHAR_CLASSES.put('h', xdigit);
+        UNICODE_CHAR_CLASSES.put('s', space);
+        UNICODE_CHAR_CLASSES.put('w', word);
 
         for (char ctypeChar : new Character[] { 'd', 'h', 's', 'w' }) {
             CodePointSet charSet = UNICODE_CHAR_CLASSES.get(ctypeChar);
@@ -121,26 +125,25 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
         UNICODE_POSIX_CHAR_CLASSES = new HashMap<>(14);
         ASCII_POSIX_CHAR_CLASSES = new HashMap<>(14);
+        CompilationBuffer buffer = new CompilationBuffer(Encodings.UTF_32);
 
-        UNICODE_POSIX_CHAR_CLASSES.put("alpha", UnicodeProperties.getProperty("Alphabetic"));
-        UNICODE_POSIX_CHAR_CLASSES.put("alnum", UnicodeProperties.getProperty("General_Category=Letter").union(UnicodeProperties.getProperty("General_Category=Number")));
-        UNICODE_POSIX_CHAR_CLASSES.put("blank", CodePointSet.create('\t', '\t', ' ', ' '));
-        UNICODE_POSIX_CHAR_CLASSES.put("cntrl", UnicodeProperties.getProperty("General_Category=Control"));
-        UNICODE_POSIX_CHAR_CLASSES.put("digit", UnicodeProperties.getProperty("General_Category=Number"));
-        // TODO: Figure out [[:graph:]]
-        UNICODE_POSIX_CHAR_CLASSES.put("graph", Encodings.UTF_32.getFullSet());
+        CodePointSet blank = UnicodeProperties.getProperty("General_Category=Space_Separator").union(CodePointSet.create('\t', '\t'));
+        CodePointSet cntrl = UnicodeProperties.getProperty("General_Category=Control");
+        CodePointSet graph = space.union(UnicodeProperties.getProperty("General_Category=Control")).union(UnicodeProperties.getProperty("General_Category=Surrogate")).union(UnicodeProperties.getProperty("General_Category=Unassigned")).createInverse(Encodings.UTF_32);
+        UNICODE_POSIX_CHAR_CLASSES.put("alpha", alpha);
+        UNICODE_POSIX_CHAR_CLASSES.put("alnum", alpha.union(digit));
+        UNICODE_POSIX_CHAR_CLASSES.put("blank", blank);
+        UNICODE_POSIX_CHAR_CLASSES.put("cntrl", cntrl);
+        UNICODE_POSIX_CHAR_CLASSES.put("digit", digit);
+        UNICODE_POSIX_CHAR_CLASSES.put("graph", graph);
         UNICODE_POSIX_CHAR_CLASSES.put("lower", UnicodeProperties.getProperty("Lowercase"));
-        // TODO: Figure out [[:print:]]
-        UNICODE_POSIX_CHAR_CLASSES.put("print", Encodings.UTF_32.getFullSet());
-        UNICODE_POSIX_CHAR_CLASSES.put("punct", UnicodeProperties.getProperty("General_Category=Punctuation"));
-        UNICODE_POSIX_CHAR_CLASSES.put("space", UnicodeProperties.getProperty("White_Space"));
+        UNICODE_POSIX_CHAR_CLASSES.put("print", graph.union(blank).subtract(cntrl, buffer));
+        UNICODE_POSIX_CHAR_CLASSES.put("punct", UnicodeProperties.getProperty("General_Category=Punctuation").union(UnicodeProperties.getProperty("General_Category=Symbol").subtract(alpha, buffer)));
+        UNICODE_POSIX_CHAR_CLASSES.put("space", space);
         UNICODE_POSIX_CHAR_CLASSES.put("upper", UnicodeProperties.getProperty("Uppercase"));
-        UNICODE_POSIX_CHAR_CLASSES.put("xdigit", UnicodeProperties.getProperty("Hex_Digit"));
+        UNICODE_POSIX_CHAR_CLASSES.put("xdigit", xdigit);
 
-        UNICODE_POSIX_CHAR_CLASSES.put("word", UnicodeProperties.getProperty("General_Category=Letter")
-                .union(UnicodeProperties.getProperty("General_Category=Mark"))
-                .union(UnicodeProperties.getProperty("General_Category=Number"))
-                .union(UnicodeProperties.getProperty("General_Category=Connector_Punctuation")));
+        UNICODE_POSIX_CHAR_CLASSES.put("word", word);
         UNICODE_POSIX_CHAR_CLASSES.put("ascii", UnicodeProperties.getProperty("ASCII"));
 
         for (Map.Entry<String, CodePointSet> entry: UNICODE_POSIX_CHAR_CLASSES.entrySet()) {
