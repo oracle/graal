@@ -499,7 +499,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         final int loopIterations = 5;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
         AbstractTestNode result = new AddTestNode(t.new Unroll02(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{}, true);
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
         //@formatter:off

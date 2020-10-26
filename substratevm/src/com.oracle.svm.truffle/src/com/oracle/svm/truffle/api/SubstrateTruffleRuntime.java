@@ -31,6 +31,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -38,7 +39,7 @@ import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
-import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
+import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.Platform;
@@ -66,7 +67,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.compiler.debug.DebugOptions;
 
 class SubstrateTruffleOptions {
 
@@ -98,16 +98,16 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     private volatile boolean initialized;
     private volatile Boolean profilingEnabled;
 
-    @Override
-    public BackgroundCompileQueue getCompileQueue() {
-        return compileQueue;
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleRuntime() {
         super(Collections.emptyList());
         /* Ensure the factory class gets initialized. */
         super.getLoopNodeFactory();
+    }
+
+    @Override
+    public BackgroundCompileQueue getCompileQueue() {
+        return compileQueue;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -244,7 +244,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
+    public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         if (SubstrateUtil.HOSTED) {
             /*
              * Truffle code can run during image generation. But for now it is the easiest to not
@@ -282,7 +282,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public void finishCompilation(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task, boolean mayBeAsynchronous) {
+    public void finishCompilation(OptimizedCallTarget optimizedCallTarget, CompilationTask task, boolean mayBeAsynchronous) {
         if (SubstrateTruffleOptions.isMultiThreaded()) {
             super.finishCompilation(optimizedCallTarget, task, mayBeAsynchronous);
         }
