@@ -43,10 +43,8 @@ public class OverrideOptionsTest extends TruffleCompilerImplTest {
         setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option("engine.CompileImmediately",
                         Boolean.TRUE.toString()).option("engine.InliningNodeBudget", "42").build());
         OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
-        Assert.assertEquals((Integer) 42, callTarget.getOptionValue(PolyglotCompilerOptions.InliningNodeBudget));
         OptionValues values = TruffleCompilerImpl.getOptionsForCompiler(GraalTruffleRuntime.getOptionsForCompiler(callTarget));
         Assert.assertEquals(false, values.get(PolyglotCompilerOptions.BackgroundCompilation));
         Assert.assertEquals(true, values.get(PolyglotCompilerOptions.CompileImmediately));
-        Assert.assertEquals((Integer) 42, values.get(PolyglotCompilerOptions.InliningNodeBudget));
     }
 }

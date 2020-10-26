@@ -68,23 +68,6 @@ public class NodeLimitTest extends PartialEvaluationTest {
         expectAllOK(NodeLimitTest::createRootNode);
     }
 
-    @Test
-    @SuppressWarnings("try")
-    public void testWithTruffleInlining() {
-        Assume.assumeFalse(dummyTarget().getOptionValue(PolyglotCompilerOptions.LanguageAgnosticInlining));
-        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumInlineNodeCount", "10").build());
-        RootNode rootNode = createRootNodeWithCall(new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                CompilerAsserts.neverPartOfCompilation();
-                return null;
-            }
-        });
-        RootCallTarget target = Truffle.getRuntime().createCallTarget(rootNode);
-        final Object[] arguments = {1};
-        partialEval((OptimizedCallTarget) target, arguments, CompilationIdentifier.INVALID_COMPILATION_ID);
-    }
-
     @Test(expected = PermanentBailoutException.class)
     public void testDefaultLimit() {
         // NOTE: the following code is intentionally written to explode during partial evaluation!
