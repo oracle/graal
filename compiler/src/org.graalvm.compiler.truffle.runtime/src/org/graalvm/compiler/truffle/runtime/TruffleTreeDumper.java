@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,19 +38,15 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.graphio.GraphBlocks;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Introspection;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public final class TruffleTreeDumper {
@@ -60,9 +55,7 @@ public final class TruffleTreeDumper {
     }
 
     private static final ASTDumpStructure AST_DUMP_STRUCTURE = new ASTDumpStructure();
-    private static final CallTreeDumpStructure CALL_GRAPH_DUMP_STRUCTURE = new CallTreeDumpStructure();
     private static final String AFTER_PROFILING = "After Profiling";
-    private static final String AFTER_INLINING = "After Inlining";
 
     public static void dump(TruffleDebugContext debug, OptimizedCallTarget callTarget) {
         if (GraalTruffleRuntime.getRuntime().isPrintGraphEnabled()) {
@@ -430,207 +423,4 @@ public final class TruffleTreeDumper {
             return block.successors;
         }
     }
-
-    static class CallTree {
-        final CallTreeNode root;
-        final List<CallTreeNode> nodes = new ArrayList<>();
-        final CallTreeBlock inlined = new CallTreeBlock(0);
-        final CallTreeBlock notInlined = new CallTreeBlock(1);
-
-        CallTree(RootCallTarget target) {
-            root = makeCallTreeNode(target);
-            inlined.nodes.add(root);
-            root.properties.put("label", target.toString());
-            root.properties.putAll(((OptimizedCallTarget) target).getDebugProperties());
-            build(target, root, this);
-        }
-
-        private static void build(RootCallTarget target, CallTreeNode parent, CallTree graph) {
-            for (DirectCallNode callNode : NodeUtil.findAllNodeInstances((target).getRootNode(), DirectCallNode.class)) {
-                CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
-                final CallTreeNode callTreeNode = graph.makeCallTreeNode(inlinedCallTarget);
-                parent.edges.add(new CallTreeEdge(callTreeNode, ""));
-                graph.notInlined.nodes.add(callTreeNode);
-                callTreeNode.properties.put("label", inlinedCallTarget.toString());
-                callTreeNode.properties.put("inlined", "false");
-            }
-        }
-
-        CallTreeNode makeCallTreeNode(CallTarget source) {
-            final CallTreeNode callTreeNode = new CallTreeNode(source, nodes.size());
-            nodes.add(callTreeNode);
-            return callTreeNode;
-        }
-    }
-
-    static class CallTreeNode {
-        final CallTarget source;
-        List<CallTreeEdge> edges = new ArrayList<>();
-        final int id;
-        final Map<String, ? super Object> properties = new HashMap<>();
-        final CallTreeClass c = new CallTreeClass();
-
-        CallTreeNode(CallTarget source, int id) {
-            this.source = source;
-            this.id = id;
-        }
-
-        class CallTreeClass {
-            CallTreeNode getNode() {
-                return CallTreeNode.this;
-            }
-
-            @Override
-            public boolean equals(Object obj) {
-                if (!(obj instanceof CallTreeClass)) {
-                    return false;
-                }
-                CallTreeClass other = (CallTreeClass) obj;
-                return other.getNode() == CallTreeNode.this;
-            }
-
-            @Override
-            public int hashCode() {
-                return CallTreeNode.this.hashCode();
-            }
-
-        }
-    }
-
-    static class CallTreeEdge {
-        final CallTreeNode target;
-        final String label;
-
-        CallTreeEdge(CallTreeNode target, String label) {
-            this.target = target;
-            this.label = label;
-        }
-    }
-
-    static class CallTreeBlock {
-        final int id;
-        final List<CallTreeNode> nodes = new ArrayList<>();
-
-        CallTreeBlock(int id) {
-            this.id = id;
-        }
-    }
-
-    static class CallTreeDumpStructure implements
-                    GraphStructure<CallTree, CallTreeNode, CallTreeNode.CallTreeClass, List<CallTreeEdge>>,
-                    GraphBlocks<CallTree, CallTreeBlock, CallTreeNode> {
-
-        @Override
-        public CallTree graph(CallTree currentGraph, Object obj) {
-            return obj instanceof CallTree ? (CallTree) obj : null;
-        }
-
-        @Override
-        public Iterable<? extends CallTreeNode> nodes(CallTree graph) {
-            return graph.nodes;
-        }
-
-        @Override
-        public int nodesCount(CallTree graph) {
-            return graph.nodes.size();
-        }
-
-        @Override
-        public int nodeId(CallTreeNode node) {
-            return node.id;
-        }
-
-        @Override
-        public boolean nodeHasPredecessor(CallTreeNode node) {
-            return false;
-        }
-
-        @Override
-        public void nodeProperties(CallTree graph, CallTreeNode node, Map<String, ? super Object> properties) {
-            properties.putAll(node.properties);
-        }
-
-        @Override
-        public CallTreeNode node(Object obj) {
-            return obj instanceof CallTreeNode ? (CallTreeNode) obj : null;
-        }
-
-        @Override
-        public CallTreeNode.CallTreeClass nodeClass(Object obj) {
-            return obj instanceof CallTreeNode.CallTreeClass ? (CallTreeNode.CallTreeClass) obj : null;
-        }
-
-        @Override
-        public CallTreeNode.CallTreeClass classForNode(CallTreeNode node) {
-            return node.c;
-        }
-
-        @Override
-        public String nameTemplate(CallTreeNode.CallTreeClass nodeClass) {
-            return "{p#label}";
-        }
-
-        @Override
-        public Object nodeClassType(CallTreeNode.CallTreeClass nodeClass) {
-            return nodeClass.getNode().source.getClass();
-        }
-
-        @Override
-        public List<CallTreeEdge> portInputs(CallTreeNode.CallTreeClass nodeClass) {
-            return Collections.emptyList();
-        }
-
-        @Override
-        public List<CallTreeEdge> portOutputs(CallTreeNode.CallTreeClass nodeClass) {
-            return nodeClass.getNode().edges;
-        }
-
-        @Override
-        public int portSize(List<CallTreeEdge> port) {
-            return port.size();
-        }
-
-        @Override
-        public boolean edgeDirect(List<CallTreeEdge> port, int index) {
-            return true;
-        }
-
-        @Override
-        public String edgeName(List<CallTreeEdge> port, int index) {
-            return "";
-        }
-
-        @Override
-        public Object edgeType(List<CallTreeEdge> port, int index) {
-            return port.get(index).label;
-        }
-
-        @Override
-        public Collection<? extends CallTreeNode> edgeNodes(CallTree graph, CallTreeNode node, List<CallTreeEdge> port, int index) {
-            List<CallTreeNode> singleton = new ArrayList<>(1);
-            singleton.add(port.get(index).target);
-            return singleton;
-        }
-
-        @Override
-        public Collection<? extends CallTreeBlock> blocks(CallTree graph) {
-            return Arrays.asList(graph.inlined, graph.notInlined);
-        }
-
-        @Override
-        public int blockId(CallTreeBlock block) {
-            return block.id;
-        }
-
-        @Override
-        public Collection<? extends CallTreeNode> blockNodes(CallTree info, CallTreeBlock block) {
-            return block.nodes;
-        }
-
-        @Override
-        public Collection<? extends CallTreeBlock> blockSuccessors(CallTreeBlock block) {
-            return Collections.emptyList();
-        }
-    }
-
 }
