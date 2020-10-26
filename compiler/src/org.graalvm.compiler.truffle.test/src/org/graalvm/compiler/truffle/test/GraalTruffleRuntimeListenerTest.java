@@ -394,7 +394,8 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         }
 
         @Override
-        public void onCompilationSuccess(OptimizedCallTarget target, TruffleMetaAccessProvider inliningDecision, TruffleCompilerListener.GraphInfo graph, TruffleCompilerListener.CompilationResultInfo result) {
+        public void onCompilationSuccess(OptimizedCallTarget target, TruffleMetaAccessProvider inliningDecision, TruffleCompilerListener.GraphInfo graph,
+                        TruffleCompilerListener.CompilationResultInfo result) {
             if (isImportant(target)) {
                 events.add(EventType.COMPILATION_SUCCESS);
             }

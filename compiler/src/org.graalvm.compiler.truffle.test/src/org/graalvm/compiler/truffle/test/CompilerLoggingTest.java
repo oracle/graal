@@ -67,7 +67,8 @@ public class CompilerLoggingTest extends TruffleCompilerImplTest {
     private static final class TestListener implements GraalTruffleRuntimeListener {
 
         @Override
-        public void onCompilationSuccess(OptimizedCallTarget target, TruffleMetaAccessProvider inliningDecision, TruffleCompilerListener.GraphInfo graph, TruffleCompilerListener.CompilationResultInfo result) {
+        public void onCompilationSuccess(OptimizedCallTarget target, TruffleMetaAccessProvider inliningDecision, TruffleCompilerListener.GraphInfo graph,
+                        TruffleCompilerListener.CompilationResultInfo result) {
             TTY.printf(FORMAT_SUCCESS, target.getName());
             printCommon();
         }
