@@ -18,10 +18,10 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-20.3-b02"
-    - JDK8_UPDATE_VERSION="262"
+    - JVMCI_VERSION="jvmci-20.3-b03-dev"
+    - JDK8_UPDATE_VERSION="272"
     - JDK8_UPDATE_VERSION_SUFFIX="+10"
-    - JDK11_VERSION="11.0.8+10"
+    - JDK11_VERSION="11.0.9+10"
 
 matrix:
   include:
