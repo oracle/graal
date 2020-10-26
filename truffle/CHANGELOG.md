@@ -2,6 +2,8 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 21.0.0
+
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.
 * Added new specialization utility to print detailed statistics about specialization instances and execution count. See [Specialization Statistics Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/SpecializationHistogram.md) for details on how to use it.
