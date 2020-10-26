@@ -94,7 +94,7 @@ public abstract class LanguageLauncherBase extends Launcher {
         }
     }
 
-    static Engine getTempEngine() {
+    public static Engine getTempEngine() {
         if (tempEngine == null) {
             tempEngine = Engine.create();
         }

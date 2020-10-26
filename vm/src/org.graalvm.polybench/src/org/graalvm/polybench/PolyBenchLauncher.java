@@ -1,9 +1,6 @@
-package org.graalvm.launcher;
+package org.graalvm.polybench;
 
-import org.graalvm.launcher.polybench.Config;
-import org.graalvm.launcher.polybench.Metric;
-import org.graalvm.launcher.polybench.NoMetric;
-import org.graalvm.launcher.polybench.PeakTimeMetric;
+import org.graalvm.launcher.LanguageLauncherBase;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -22,7 +19,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public class PolyBenchLauncher extends LanguageLauncherBase {
     class ArgumentConsumer {
@@ -156,12 +152,26 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
             } catch (AbortException e) {
                 throw e;
             } catch (PolyglotException e) {
-                launcher.handlePolyglotException(e);
+                handlePolyglotException(e);
             } catch (Throwable t) {
                 throw launcher.abort(t);
             }
         } catch (AbortException e) {
             launcher.handleAbortException(e);
+        }
+    }
+
+    static void handlePolyglotException(PolyglotException e) {
+        if (e.getMessage() != null) {
+            System.err.println("ERROR: " + e.getMessage());
+        }
+        if (e.isInternalError()) {
+            e.printStackTrace();
+        }
+        if (e.isExit()) {
+            System.exit(e.getExitStatus());
+        } else {
+            System.exit(1);
         }
     }
 

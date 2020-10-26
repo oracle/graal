@@ -192,7 +192,7 @@ public abstract class Launcher {
         return err;
     }
 
-    void handleAbortException(AbortException e) {
+    public void handleAbortException(AbortException e) {
         if (e.getMessage() != null) {
             err.println("ERROR: " + e.getMessage());
         }

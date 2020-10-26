@@ -1,4 +1,4 @@
-package org.graalvm.launcher.polybench;
+package org.graalvm.polybench;
 
 import java.util.Optional;
 

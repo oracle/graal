@@ -107,6 +107,16 @@ suite = {
             "checkstyle": "org.graalvm.component.installer",
             "license" : "GPLv2-CPE",
         },
+        "org.graalvm.polybench" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "1.8+",
+            "license" : "GPLv2-CPE",
+            "checkstyle": "org.graalvm.component.installer",
+            "dependencies": [
+                "sdk:LAUNCHER_COMMON",
+            ],
+        },
     },
 
     "distributions": {
@@ -151,6 +161,17 @@ suite = {
                 "THIRD_PARTY_LICENSE.txt": "file:THIRD_PARTY_LICENSE_CE.txt",
             },
             "maven": False,
+        },
+        "POLYBENCH": {
+            "subDir": "src",
+            "mainClass": "org.graalvm.polybench.PolyBenchLauncher",
+            "dependencies": [
+                "org.graalvm.polybench",
+            ],
+            "distDependencies": [
+                "sdk:LAUNCHER_COMMON",
+            ],
+            "maven" : False,
         },
     },
 }

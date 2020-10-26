@@ -149,30 +149,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 ))
 
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-    suite=_suite,
-    name='Polybench Launcher',
-    short_name='pbm',
-    license_files=[],
-    third_party_license_files=[],
-    dir_name='polybench',
-    launcher_configs=[mx_sdk_vm.LauncherConfig(
-        destination='bin/<exe:polybench>',
-        jar_distributions=['sdk:LAUNCHER_COMMON'],
-        main_class='org.graalvm.launcher.PolyBenchLauncher',
-        build_args=[
-            '-H:-ParseRuntimeOptions',
-            '-H:Features=org.graalvm.launcher.PolyglotLauncherFeature',
-            '--tool:all',
-        ],
-        is_main_launcher=True,
-        default_symlinks=True,
-        is_sdk_launcher=True,
-        is_polyglot=True,
-    )],
-))
-
-
 def gate_body(args, tasks):
     with mx_gate.Task('Sdk: GraalVM dist names', tasks, tags=['names']) as t:
         if t:

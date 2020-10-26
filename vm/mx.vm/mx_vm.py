@@ -78,6 +78,31 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmComponent(
     support_distributions=['vm:VM_GRAALVM_SUPPORT'],
 ))
 
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Polybench Launcher',
+    short_name='pbm',
+    license_files=[],
+    third_party_license_files=[],
+    dir_name='polybench',
+    launcher_configs=[mx_sdk_vm.LauncherConfig(
+        destination='bin/<exe:polybench>',
+        jar_distributions=['vm:POLYBENCH'],
+        main_class='org.graalvm.polybench.PolyBenchLauncher',
+        build_args=[
+            '-H:-ParseRuntimeOptions',
+            '-H:Features=org.graalvm.launcher.PolyglotLauncherFeature',
+            '--tool:all',
+        ],
+        is_main_launcher=True,
+        default_symlinks=True,
+        is_sdk_launcher=True,
+        is_polyglot=True,
+    )],
+))
+
+
 # pylint: disable=line-too-long
 ce_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'js', 'lg', 'lsp', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']
 ce_complete_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'gwa', 'ins', 'insight', 'js', 'lg', 'llp', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']

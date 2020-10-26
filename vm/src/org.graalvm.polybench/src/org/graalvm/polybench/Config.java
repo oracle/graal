@@ -1,4 +1,4 @@
-package org.graalvm.launcher.polybench;
+package org.graalvm.polybench;
 
 public class Config {
     public String path;
