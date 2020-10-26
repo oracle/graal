@@ -205,14 +205,13 @@ public class Linker {
         final ImportGlobalSym importGlobalSym = new ImportGlobalSym(instance.name(), importDescriptor);
         final Sym[] dependencies = new Sym[]{new ExportGlobalSym(importedModuleName, importedGlobalName)};
         resolutionDag.resolveLater(importGlobalSym, dependencies, resolveAction);
-        resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), new Sym[]{importGlobalSym}, () -> {
-        });
+        resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), new Sym[]{importGlobalSym}, NO_RESOLVE_ACTION);
     }
 
     void resolveGlobalExport(WasmModule module, String globalName, int globalIndex) {
         final Sym[] dependencies;
         dependencies = new Sym[]{new InitializeGlobalSym(module.name(), globalIndex)};
-        resolutionDag.resolveLater(new ExportGlobalSym(module.name(), globalName), dependencies, ResolutionDag.NO_RESOLVE_ACTION);
+        resolutionDag.resolveLater(new ExportGlobalSym(module.name(), globalName), dependencies, NO_RESOLVE_ACTION);
     }
 
     void resolveGlobalInitialization(WasmInstance instance, int globalIndex) {
