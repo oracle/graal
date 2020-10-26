@@ -211,10 +211,9 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readCustomSection(int size) {
         int nextSectionOffset = offset + size;
-        readName();
+        String name = readName();
         int dataLength = Math.max(0, nextSectionOffset - offset);
-        // TODO: We skip the custom section for now, but we should see what we could typically pick
-        // up here.
+        module.allocateCustomSection(name, offset, dataLength);
         offset += dataLength;
     }
 
