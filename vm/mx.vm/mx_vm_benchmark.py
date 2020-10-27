@@ -665,10 +665,10 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         self._extensions = [".js", ".rb", ".wasm"]
         self._benchmarks = []
         for group in ["interpreter"]:
-            for (path, dirs, files) in os.walk(os.path.join(_suite.dir, "benchmarks", group)):
-                for file in files:
-                    if os.path.splitext(file)[1] in self._extensions:
-                        self._benchmarks.append(group + "/" + file)
+            for (_, _, files) in os.walk(os.path.join(_suite.dir, "benchmarks", group)):
+                for f in files:
+                    if os.path.splitext(f)[1] in self._extensions:
+                        self._benchmarks.append(group + "/" + f)
 
     def group(self):
         return "Graal"
