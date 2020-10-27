@@ -1501,11 +1501,6 @@ public final class DebuggerSession implements Closeable {
         }
 
         @Override
-        EventBinding<?> getBinding() {
-            return syntaxElementsBinding;
-        }
-
-        @Override
         boolean isStepNode() {
             return true;
         }
