@@ -937,6 +937,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     if (atEnd()) {
                         retreat(propertySpec.length() + 2);
                         return false;
+                    } else {
+                        advance();
                     }
                     boolean negative = propertySpec.startsWith("^");
                     if (negative) {
