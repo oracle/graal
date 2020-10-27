@@ -15,7 +15,7 @@ during dynamic compilation. Some optimizations are better when done
 ahead-of-time on bitcode, while other optimizations are better left for the
 dynamic compilation of the GraalVM compiler, when profiling information is available.
 
-The LLVM toolchain, shipped with GraalVM, automatically selects the
+The LLVM toolchain that is shipped with GraalVM automatically selects the
 recommended flags by default.
 
 Generally, all optimization levels should work, but for a better result, it is

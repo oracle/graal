@@ -1,7 +1,7 @@
 # Interoperability
 
 GraalVM supports several other programming languages including JavaScript, Python, Ruby, and R.
-While GraalVM's implementation of `lli` is designed to run LLVM bitcode, it also provides the API for programming languages interoperability that lets you execute code from any other GraalVM-suppored language.
+While GraalVM's implementation of `lli` is designed to run LLVM bitcode, it also provides the API for programming language interoperability that lets you execute code from any other GraalVM-supported language.
 
 Dynamic languages like JavaScript usually access object members by name. Since
 normally names are not preserved in LLVM bitcode, it must be compiled with debug
