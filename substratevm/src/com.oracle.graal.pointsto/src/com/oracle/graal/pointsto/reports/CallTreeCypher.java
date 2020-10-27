@@ -22,7 +22,11 @@ import java.util.stream.Collectors;
 public class CallTreeCypher {
 
     // TODO temporarily use a system property to try different values
-    private static final int BATCH_SIZE = Integer.getInteger("cypher.batch.size", 2);
+    private static final int BATCH_SIZE = Integer.getInteger("cypher.batch.size", 32);
+
+    private static final String METHOD_FORMAT = "properties:{name:'%n', signature:'" + CallTreePrinter.METHOD_FORMAT + "'}";
+
+    private static final AtomicInteger virtualNodeId = new AtomicInteger(-1);
 
     public static void print(BigBang bigbang, String path, String reportName) {
         // Re-initialize method ids back to 0 to better diagnose disparities
@@ -31,24 +35,25 @@ public class CallTreeCypher {
         CallTreePrinter printer = new CallTreePrinter(bigbang);
         printer.buildCallTree();
 
+        // Set virtual node at next available method id
+        virtualNodeId.set(MethodNode.methodId);
+
         ReportUtils.report("call tree cypher", path + File.separatorChar + "reports", "call_tree_" + reportName, "cypher",
                 writer -> printCypher(printer.methodToNode, writer));
     }
 
     private static void printCypher(Map<AnalysisMethod, MethodNode> methodToNode, PrintWriter writer) {
+        writer.print(vmEntryPoint());
         printMethodNodes(methodToNode.values(), writer);
         printMethodEdges(methodToNode, writer);
     }
 
     private static void printMethodNodes(Collection<MethodNode> methods, PrintWriter writer) {
         final Collection<List<MethodNode>> methodsBatches = batched(methods);
-
-        writer.print(vmEntryPoint());
-
         final String unwindMethod = unwindMethod();
         final String script = methodsBatches.stream()
                 .map(methodBatch -> methodBatch.stream()
-                        .map(method -> String.format("{_id:%d, %s}", method.id, methodProperties(method)))
+                        .map(method -> String.format("{_id:%d, %s}", method.id, method.method.format(METHOD_FORMAT)))
                         .collect(Collectors.joining(", ", ":param rows => [", "]"))
                 )
                 .collect(Collectors.joining(unwindMethod, "", unwindMethod));
@@ -56,8 +61,16 @@ public class CallTreeCypher {
         writer.print(script);
     }
 
-    private static String methodProperties(MethodNode method) {
-        return method.method.format("properties:{name:'%n', signature:'" + CallTreePrinter.METHOD_FORMAT + "'}");
+    private static void printVirtualNodes(Map<String, Integer> virtualNodes, PrintWriter writer) {
+        final Collection<List<Map.Entry<String, Integer>>> virtualNodesBatches = batched(virtualNodes.entrySet());
+        final String unwindMethod = unwindMethod();
+        final String script = virtualNodesBatches.stream()
+                .map(virtualNodesBatch -> virtualNodesBatch.stream()
+                        .map(virtualNode -> String.format("{_id:%d, %s}", virtualNode.getValue(), virtualNode.getKey()))
+                        .collect(Collectors.joining(", ", ":param rows => [", "]"))
+                )
+                .collect(Collectors.joining(unwindMethod, "", unwindMethod));
+        writer.print(script);
     }
 
     private static String vmEntryPoint() {
@@ -75,17 +88,24 @@ public class CallTreeCypher {
     }
 
     private static void printMethodEdges(Map<AnalysisMethod, MethodNode> methodToNode, PrintWriter writer) {
-        Map<Integer, Set<String>> direct = new HashMap<>();
-        Map<Integer, Set<String>> virtual = new HashMap<>();
-        Map<Integer, Set<Integer>> override = new HashMap<>();
+        // TODO ignoring bci values, assumes a virtual node with a signature is same as others (irrespective of bci)
+        Map<String, Integer> virtualNodes = new HashMap<>();
+
+        Map<Integer, Set<String>> directEdges = new HashMap<>();
+        Map<Integer, Set<String>> virtualEdges = new HashMap<>();
+        Map<Integer, Set<String>> overridenByEdges = new HashMap<>();
+
         final Iterator<MethodNode> iterator = methodToNode.values().stream().filter(n -> n.isEntryPoint).iterator();
         while (iterator.hasNext()) {
             final MethodNode node = iterator.next();
             writer.print(entryEdge(node.method.format(CallTreePrinter.METHOD_FORMAT)));
-            addMethodEdges(node, direct, virtual, override);
+            addMethodEdges(node, directEdges, virtualEdges, overridenByEdges, virtualNodes);
         }
 
-        printDirectEdges(direct, writer);
+        printVirtualNodes(virtualNodes, writer);
+        printEdges("DIRECT", directEdges, writer);
+        printEdges("VIRTUAL", virtualEdges, writer);
+        printEdges("OVERRIDDEN_BY", overridenByEdges, writer);
     }
 
     private static String entryEdge(String signature) {
@@ -94,26 +114,37 @@ public class CallTreeCypher {
                 "CREATE (v)-[r:ENTRY]->(m);\n\n";
     }
 
-    private static void addMethodEdges(MethodNode methodNode, Map<Integer, Set<String>> direct, Map<Integer, Set<String>> virtual, Map<Integer, Set<Integer>> override) {
+    private static void addMethodEdges(MethodNode methodNode, Map<Integer, Set<String>> directEdges, Map<Integer, Set<String>> virtualEdges, Map<Integer, Set<String>> overridenByEdges, Map<String, Integer> virtualNodes) {
         for (InvokeNode invoke : methodNode.invokes) {
             if (invoke.isDirectInvoke) {
                 if (invoke.callees.size() > 0) {
                     Node calleeNode = invoke.callees.get(0);
-                    addMethodEdge(methodNode.id, calleeNode, direct);
+                    addMethodEdge(methodNode.id, calleeNode, directEdges);
                     if (calleeNode instanceof MethodNode) {
-                        addMethodEdges((MethodNode) calleeNode, direct, virtual, override);
+                        addMethodEdges((MethodNode) calleeNode, directEdges, virtualEdges, overridenByEdges, virtualNodes);
                     }
                 }
             } else {
-//                addSignatureEdge(methodNode.id, invoke, virtual);
-//                for (Node calleeNode : invoke.callees) {
-//                    addIdEdge(methodNode.id, calleeNode, override);
-//                    if (calleeNode instanceof MethodNode) {
-//                        addMethodEdges((MethodNode) calleeNode, direct, virtual, override);
-//                    }
-//                }
+                final int virtualNodeId = addVirtualNode(invoke, virtualNodes);
+                addVirtualMethodEdge(methodNode.id, invoke, virtualEdges);
+                for (Node calleeNode : invoke.callees) {
+                    addMethodEdge(virtualNodeId, calleeNode, overridenByEdges);
+                    if (calleeNode instanceof MethodNode) {
+                        addMethodEdges((MethodNode) calleeNode, directEdges, virtualEdges, overridenByEdges, virtualNodes);
+                    }
+                }
             }
         }
+    }
+
+    private static int addVirtualNode(InvokeNode node, Map<String, Integer> virtualNodes) {
+        final String virtualNodeProperties = node.targetMethod.format(METHOD_FORMAT);
+        return virtualNodes.computeIfAbsent(virtualNodeProperties, k -> CallTreeCypher.virtualNodeId.getAndIncrement());
+    }
+
+    private static void addVirtualMethodEdge(int nodeId, InvokeNode node, Map<Integer, Set<String>> edges) {
+        Set<String> nodeEdges = edges.computeIfAbsent(nodeId, k -> new HashSet<>());
+        nodeEdges.add(node.formatTarget());
     }
 
     private static void addMethodEdge(int nodeId, Node calleeNode, Map<Integer, Set<String>> edges) {
@@ -125,21 +156,16 @@ public class CallTreeCypher {
         }
     }
 
-//    private static void addSignatureEdge(int nodeId, InvokeNode invokeNode, Map<Integer, Set<String>> edges) {
-//        Set<String> nodeEdges = edges.computeIfAbsent(nodeId, k -> new HashSet<>());
-//        nodeEdges.add(invokeNode.formatTarget());
-//    }
-
-    private static void printDirectEdges(Map<Integer, Set<String>> directEdges, PrintWriter writer) {
-        final Set<Edge> idEdges = directEdges.entrySet().stream()
+    private static void printEdges(String edgeName, Map<Integer, Set<String>> edges, PrintWriter writer) {
+        final Set<Edge> idEdges = edges.entrySet().stream()
                 .flatMap(entry -> entry.getValue().stream().map(signature -> new Edge(entry.getKey(), signature)))
                 .collect(Collectors.toSet());
 
-        final Collection<List<Edge>> idEdgeBatches = batched(idEdges);
+        final Collection<List<Edge>> batchedEdges = batched(idEdges);
 
-        final String unwindEdge = directEdge();
-        final String script = idEdgeBatches.stream()
-                .map(edges -> edges.stream()
+        final String unwindEdge = edge(edgeName);
+        final String script = batchedEdges.stream()
+                .map(edgesBatch -> edgesBatch.stream()
                         .map(edge -> String.format("{start: {_id:%d}, end: {signature:'%s'}}", edge.id, edge.signature))
                         .collect(Collectors.joining(", ", ":param rows => [", "]"))
                 )
@@ -148,13 +174,13 @@ public class CallTreeCypher {
         writer.print(script);
     }
 
-    private static String directEdge() {
+    private static String edge(String edgeName) {
         return "\n\n:begin\n" +
                 "UNWIND $rows as row\n" +
                 "MATCH (start:`UNIQUE IMPORT LABEL`\n" +
                 "               {`UNIQUE IMPORT ID`: row.start._id})\n" +
                 "MATCH (end:Method {signature: row.end.signature})\n" +
-                "CREATE (start)-[r:DIRECT]->(end);\n" +
+                "CREATE (start)-[r:" + edgeName + "]->(end);\n" +
                 ":commit\n\n";
     }
 

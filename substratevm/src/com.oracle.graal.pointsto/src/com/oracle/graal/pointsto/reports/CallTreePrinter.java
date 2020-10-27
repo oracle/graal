@@ -115,7 +115,7 @@ public final class CallTreePrinter {
     }
 
     static class InvokeNode {
-        private final AnalysisMethod targetMethod;
+        protected final AnalysisMethod targetMethod;
         protected final List<Node> callees;
         protected final boolean isDirectInvoke;
         private final SourceReference[] sourceReferences;
