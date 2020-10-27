@@ -42,12 +42,6 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     }
 
     @Override
-    public TruffleMetaAccessProvider createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task) {
-        // TODO
-        return null;
-    }
-
-    @Override
     public <T> T getGraalOptions(Class<T> optionValuesType) {
         if (optionValuesType == OptionValues.class) {
             return optionValuesType.cast(HotSpotGraalOptionValues.defaultOptions());
