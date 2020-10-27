@@ -1095,6 +1095,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 return '\u0007';
             case 'b':
                 return '\b';
+            case 'e':
+                return '\u001b';
             case 'f':
                 return '\f';
             case 'n':
@@ -1107,13 +1109,26 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 return '\u000b';
             case '\\':
                 return '\\';
+            case 'c':
+            case 'C': {
+                if (atEnd()) {
+                    throw syntaxErrorHere("end pattern at control");
+                }
+                if (ch == 'C' && !match("-")) {
+                    throw syntaxErrorHere("invalid control-code syntax");
+                }
+                int c = consumeChar();
+                if (c == '?') {
+                    return 0177;
+                }
+                if (c == '\\') {
+                    c = silentCharacterEscape();
+                }
+                return c & 0x9f;
+            }
             case 'x': {
                 String code = getUpTo(2, RubyFlavorProcessor::isHexDigit);
-                if (code.length() < 2) {
-                    throw syntaxErrorAtRel("incomplete escape \\x" + code, 2 + code.length());
-                }
-                int codepoint = Integer.parseInt(code, 16);
-                return codepoint;
+                return Integer.parseInt(code, 16);
             }
             case 'u':
             case 'U':
