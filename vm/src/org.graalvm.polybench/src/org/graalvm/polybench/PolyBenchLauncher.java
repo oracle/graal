@@ -1,5 +1,6 @@
 package org.graalvm.polybench;
 
+import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.launcher.LanguageLauncherBase;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
@@ -21,7 +22,7 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
-public class PolyBenchLauncher extends LanguageLauncherBase {
+public class PolyBenchLauncher extends AbstractLanguageLauncher {
     class ArgumentConsumer {
         private final String prefix;
         private final BiConsumer<String, Map<String, String>> action;
@@ -96,9 +97,8 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
             }));
         }
 
-        List<String> parse(String[] args, Map<String, String> polyglotOptions) {
+        List<String> parse(List<String> arguments, Map<String, String> polyglotOptions) {
             try {
-                List<String> arguments = Arrays.asList(args);
                 List<String> unrecognizedArguments = new ArrayList<>();
                 final Iterator<String> iterator = arguments.iterator();
                 outer: while (iterator.hasNext()) {
@@ -125,55 +125,9 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
         this.config = new Config();
     }
 
-    @Override
-    protected void printHelp(OptionCategory maxCategory) {
-        Engine engine = getTempEngine();
-        printVersion(engine);
-    }
-
-    @Override
-    protected void printVersion() {
-        printVersion(getTempEngine());
-        printPolyglotVersions();
-    }
-
-    protected void printVersion(Engine engine) {
-        String engineImplementationName = engine.getImplementationName();
-        if (isAOT()) {
-            engineImplementationName += " Native";
-        }
-        println(String.format("%s polybench launcher %s", engineImplementationName, engine.getVersion()));
-    }
-
     public static void main(String[] args) {
         PolyBenchLauncher launcher = new PolyBenchLauncher();
-        try {
-            try {
-                launcher.launch(args);
-            } catch (AbortException e) {
-                throw e;
-            } catch (PolyglotException e) {
-                handlePolyglotException(e);
-            } catch (Throwable t) {
-                throw launcher.abort(t);
-            }
-        } catch (AbortException e) {
-            launcher.handleAbortException(e);
-        }
-    }
-
-    static void handlePolyglotException(PolyglotException e) {
-        if (e.getMessage() != null) {
-            System.err.println("ERROR: " + e.getMessage());
-        }
-        if (e.isInternalError()) {
-            e.printStackTrace();
-        }
-        if (e.isExit()) {
-            System.exit(e.getExitStatus());
-        } else {
-            System.exit(1);
-        }
+        launcher.launch(args);
     }
 
     private static void setInterpreterOnly(Map<String, String> options) {
@@ -184,31 +138,28 @@ public class PolyBenchLauncher extends LanguageLauncherBase {
         options.put("engine.Compilation", "true");
     }
 
-    private List<String> parsePolyBenchLauncherOptions(String[] args, Map<String, String> polyglotOptions) {
+    @Override
+    protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
         final ArgumentParser parser = new ArgumentParser();
-        return parser.parse(args, polyglotOptions);
+        return parser.parse(arguments, polyglotOptions);
     }
 
-    private void launch(String[] args) {
-        if (isAOT()) {
-            List<String> argumentsList = new ArrayList<>(Arrays.asList(args));
-            List<String> originalArgs = Collections.unmodifiableList(new ArrayList<>(argumentsList));
-            maybeNativeExec(originalArgs, argumentsList, false);
-        }
-
-        final Map<String, String> polyglotOptions = new HashMap<>();
-        final List<String> unrecognizedArguments = parsePolyBenchLauncherOptions(args, polyglotOptions);
-        parseUnrecognizedOptions(null, polyglotOptions, unrecognizedArguments);
-        final Context.Builder contextBuilder = Context.newBuilder().options(polyglotOptions);
-        contextBuilder.allowAllAccess(true);
-
-        if (runLauncherAction()) {
-            return;
-        }
-
+    @Override
+    protected void launch(Context.Builder contextBuilder) {
         validateArguments();
-
         runHarness(contextBuilder);
+    }
+
+    @Override
+    protected String getLanguageId() {
+        return "js";
+    }
+
+    @Override
+    protected void printHelp(OptionCategory maxCategory) {
+        System.out.println();
+        System.out.println("Usage: polybench [OPTION]... [FILE]");
+        System.out.println("Run a benchmark in an arbitrary language on the PolyBench harness.");
     }
 
     private void validateArguments() {
