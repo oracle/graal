@@ -34,7 +34,6 @@ vm_bench_polybench_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd
     ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=native-interpreter"]
     ${vm_bench_common.upload}
   ]
-  targets: [gate]
 }
 
 builds += [
