@@ -97,12 +97,14 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private static final Map<String, CodePointSet> UNICODE_POSIX_CHAR_CLASSES;
     private static final Map<String, CodePointSet> ASCII_POSIX_CHAR_CLASSES;
 
+    private static final Map<String, CodePointSet> POSIX_PROPERTIES;
+
     static {
         CodePointSet ASCII_RANGE = CodePointSet.create(0x00, 0x7F);
         CodePointSet NON_ASCII_RANGE = CodePointSet.create(0x80, Character.MAX_CODE_POINT);
 
-        UNICODE_CHAR_CLASSES = new HashMap<>(4);
-        ASCII_CHAR_CLASSES = new HashMap<>(4);
+        UNICODE_CHAR_CLASSES = new HashMap<>(8);
+        ASCII_CHAR_CLASSES = new HashMap<>(8);
 
         CodePointSet alpha = UnicodeProperties.getProperty("Alphabetic");
         CodePointSet digit = UnicodeProperties.getProperty("General_Category=Decimal_Number");
@@ -149,6 +151,22 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         for (Map.Entry<String, CodePointSet> entry: UNICODE_POSIX_CHAR_CLASSES.entrySet()) {
             ASCII_POSIX_CHAR_CLASSES.put(entry.getKey(), ASCII_RANGE.createIntersectionSingleRange(entry.getValue()));
         }
+
+        POSIX_PROPERTIES = new HashMap<>(14);
+        POSIX_PROPERTIES.put("Alnum", UNICODE_POSIX_CHAR_CLASSES.get("alnum"));
+        POSIX_PROPERTIES.put("Alpha", UNICODE_POSIX_CHAR_CLASSES.get("alpha"));
+        POSIX_PROPERTIES.put("Blank", UNICODE_POSIX_CHAR_CLASSES.get("blank"));
+        POSIX_PROPERTIES.put("Cntrl", UNICODE_POSIX_CHAR_CLASSES.get("cntrl"));
+        POSIX_PROPERTIES.put("Digit", UNICODE_POSIX_CHAR_CLASSES.get("digit"));
+        POSIX_PROPERTIES.put("Graph", UNICODE_POSIX_CHAR_CLASSES.get("graph"));
+        POSIX_PROPERTIES.put("Lower", UNICODE_POSIX_CHAR_CLASSES.get("lower"));
+        POSIX_PROPERTIES.put("Print", UNICODE_POSIX_CHAR_CLASSES.get("print"));
+        POSIX_PROPERTIES.put("Punct", UNICODE_POSIX_CHAR_CLASSES.get("punct"));
+        POSIX_PROPERTIES.put("Space", UNICODE_POSIX_CHAR_CLASSES.get("space"));
+        POSIX_PROPERTIES.put("Upper", UNICODE_POSIX_CHAR_CLASSES.get("upper"));
+        POSIX_PROPERTIES.put("XDigit", UNICODE_POSIX_CHAR_CLASSES.get("xdigit"));
+        POSIX_PROPERTIES.put("Word", UNICODE_POSIX_CHAR_CLASSES.get("word"));
+        POSIX_PROPERTIES.put("ASCII", UNICODE_POSIX_CHAR_CLASSES.get("ascii"));
     }
 
     public static final Pattern WORD_CHARS_PATTERN = Pattern.compile("\\\\[wW]");
@@ -423,6 +441,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         advance(-1);
     }
 
+    private void retreat(int len) {
+        advance(-len);
+    }
+
     private void advance(int len) {
         if (bytes) {
             position += len;
@@ -626,10 +648,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     }
 
     // Character predicates
-
-    private static boolean isAsciiLetter(int c) {
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-    }
 
     private static boolean isOctDigit(int c) {
         return c >= '0' && c <= '7';
@@ -913,6 +931,41 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     emitCharSet(charSet);
                 }
                 return true;
+            case 'p':
+                if (match("p{")) {
+                    String propertySpec = getMany(c -> c != '}');
+                    if (atEnd()) {
+                        retreat(propertySpec.length() + 2);
+                        return false;
+                    }
+                    boolean negative = propertySpec.startsWith("^");
+                    if (negative) {
+                        propertySpec = propertySpec.substring(1);
+                    }
+                    CodePointSet property;
+                    if (POSIX_PROPERTIES.containsKey(propertySpec)) {
+                        property = POSIX_PROPERTIES.get(propertySpec);
+                    } else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec)) {
+                        property = UnicodeProperties.getProperty("General_Category=" + propertySpec);
+                    } else if (UnicodeProperties.isSupportedScript(propertySpec)) {
+                        property = UnicodeProperties.getProperty("Script=" + propertySpec);
+                    } else if (!UnicodeProperties.isSupportedProperty(propertySpec)) {
+                        throw syntaxErrorAtRel(String.format("invalid character property name {%s}", propertySpec), propertySpec.length());
+                    } else {
+                        property = UnicodeProperties.getProperty(propertySpec);
+                    }
+                    if (negative) {
+                        property = property.createInverse(Encodings.UTF_32);
+                    }
+                    if (inCharClass) {
+                        curCharClass.addSet(property);
+                    } else {
+                        emitCharSet(property);
+                    }
+                    return true;
+                } else {
+                    return false;
+                }
             default:
                 return false;
         }

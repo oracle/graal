@@ -112,4 +112,16 @@ public class UnicodeProperties {
         }
         return UnicodePropertyData.SCRIPT_ALIASES.get(scriptName);
     }
+
+    public static boolean isSupportedProperty(String propertyName) {
+        return UnicodePropertyData.PROPERTY_ALIASES.containsKey(propertyName);
+    }
+
+    public static boolean isSupportedGeneralCategory(String generalCategoryName) {
+        return UnicodePropertyData.GENERAL_CATEGORY_ALIASES.containsKey(generalCategoryName);
+    }
+
+    public static boolean isSupportedScript(String scriptName) {
+        return UnicodePropertyData.SCRIPT_ALIASES.containsKey(scriptName);
+    }
 }
