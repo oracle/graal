@@ -38,9 +38,11 @@ Run this command to install Native Image:
 ```shell
 gu install native-image
 ```
-
 After this additional step, the `native-image` executable will become available in
 the `GRAALVM_HOME/bin` directory.
+
+The above command will install Native Image from the GitHub catalog for GraalVM Community users.
+For GraalVM Enterprise users, the [manual installation](https://www.graalvm.org/reference-manual/graalvm-updater/#manual-installation) is required.
 
 ## Prerequisites
 
