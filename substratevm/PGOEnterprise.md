@@ -1,19 +1,13 @@
 # Profile-Guided Optimizations
 
 GraalVM Enterprise allows to apply profile-guided optimizations (PGO) for additional performance gain and higher throughput of native images.
-With PGO you can collect the profiling data in advance and then feed it to the `native-image` builder, which will use this information to optimize the performance of the resulting binary.
+With PGO you can collect the profiling data in advance and then feed it to the native image builder, which will use this information to optimize the performance of the resulting binary.
 
 Note: This feature is available with **GraalVM Enterprise** only.
 
-To build an optimized native image, you first need to collect the profiling information.
-The `--pgo-instrument` builds an instrumented native image with profile-guided optimization data collected from ahead-of-time compiled code in the _default.iprof_ file, if nothing else is specified.
-Then you run this instrumented native image, saving the result in _default.iprof_.
-Finally, you create the second native image with a `--pgo profile.iprof` flag that should be significantly faster. You can collect multiple profile files and add them to the image build.
+Here is how you can build an optimized native image, using the _OptimizedImage.java_ example program.
 
-Here is an example of building an optimized native image.
-
-1&#46; Save this Java program that iterates over `ArrayList` using a lambda expression to an _OptimizedImage.java_ file:
-
+1&#46; Save this Java program that iterates over `ArrayList` using a lambda expression to a file and compile it:
 ```java
 import java.util.ArrayList;
 
@@ -33,16 +27,25 @@ class OptimizedImage {
   }
 }
 ```
-
-2&#46; Compile it and build an instrumented native image with the `--pgo-instrument` option:
-```
+```shell
 javac OptimizedImage.java
+```
+
+2&#46; Build an instrumented native image by appending the `--pgo-instrument` option, whose execution will collect the code-execution-frequency profiles:
+```shell
 native-image --pgo-instrument OptimizedImage
+```
+
+3&#46; Run this instrumented image, saving the result in a _profile.iprof_ file, if nothing else is specified:
+```shell
 ./optimizedimage
 ```
 
-3&#46; Build the second native image specifying the path to the _profile.iprof_ file and execute it:
-```
+4&#46; Lastly, create the second native image by specifying the path to the _profile.iprof_ file and execute it.
+It should run significantly faster.
+```shell
 native-image --pgo=profile.iprof OptimizedImage
 ./optimizedimage
 ```
+
+You can collect multiple profile files, by specifying different names, and add them to the image build.
