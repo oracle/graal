@@ -686,6 +686,27 @@ suite = {
             ],
         },
 
+        "com.oracle.svm.graal.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:GRAAL_SDK",
+                "com.oracle.svm.graal",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci": ["jdk.vm.ci.meta"],
+            },
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "spotbugs": "false",
+            "testProject": True,
+        },
+
         "com.oracle.svm.thirdparty": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1171,6 +1192,7 @@ suite = {
             "com.oracle.svm.test",
             "com.oracle.svm.test.jdk11",
             "com.oracle.svm.configure.test",
+            "com.oracle.svm.graal.test",
           ],
           "distDependencies": [
             "mx:JUNIT_TOOL",

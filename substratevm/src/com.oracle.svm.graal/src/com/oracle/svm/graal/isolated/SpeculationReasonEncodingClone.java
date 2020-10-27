@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,29 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class IsolatedSpeculationReason extends IsolatedObjectProxy<SpeculationReason> implements SpeculationReason {
+/** Copied from {@code jdk.vm.ci.hotspot.HotSpotSpeculationEncoding.SpeculationReasonEncoding}. */
+public interface SpeculationReasonEncodingClone {
+    void addByte(int value);
 
-    IsolatedSpeculationReason(ClientHandle<SpeculationReason> reason) {
-        super(reason);
+    void addShort(int value);
+
+    void addInt(int value);
+
+    void addLong(long value);
+
+    void addMethod(ResolvedJavaMethod method);
+
+    void addType(ResolvedJavaType type);
+
+    void addString(String value);
+
+    default void addField(ResolvedJavaField field) {
+        this.addType(field.getDeclaringClass());
+        this.addInt(field.getModifiers());
+        this.addInt(field.getOffset());
     }
-
 }
