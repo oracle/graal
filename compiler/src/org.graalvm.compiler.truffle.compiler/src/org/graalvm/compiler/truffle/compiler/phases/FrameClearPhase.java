@@ -28,6 +28,7 @@ package org.graalvm.compiler.truffle.compiler.phases;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -37,6 +38,8 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
@@ -90,6 +93,9 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
 
     private ValueNode nullConstant;
     private ValueNode zeroConstant;
+    private ValueNode illegalConstant;
+
+    private final EconomicSet<ValueNode> knownIllegals = EconomicSet.create();
 
     public FrameClearPhase(KnownTruffleTypes knownTruffleTypes) {
         this(knownTruffleTypes.classFrameClass, knownTruffleTypes.fieldTags, knownTruffleTypes.fieldLocals, knownTruffleTypes.fieldPrimitiveLocals);
@@ -122,6 +128,7 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
     protected void run(StructuredGraph graph, CoreProviders context) {
         nullConstant = ConstantNode.defaultForKind(JavaKind.Object, graph);
         zeroConstant = ConstantNode.defaultForKind(JavaKind.Long, graph);
+        illegalConstant = ConstantNode.forInt(illegalTag, graph);
 
         for (FrameState fs : graph.getNodes(FrameState.TYPE)) {
             EconomicMap<VirtualObjectNode, EscapeObjectState> objectStates = getObjectStateMappings(fs);
@@ -156,37 +163,40 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
             // Uninitialized slot, will be initialized to default on deopt anyway.
             return;
         }
-        if (tagNode.isJavaConstant()) {
-            int tag = tagNode.asJavaConstant().asInt();
-            if (tag == illegalTag) {
-                // Cleared slot
-                objectArrayVirtual.values().set(i, nullConstant);
-                primitiveArrayVirtual.values().set(i, zeroConstant);
-            } else {
-                // Clear counterpart
-                VirtualObjectState toClear = (tag == objectTag) ? primitiveArrayVirtual : objectArrayVirtual;
-                ValueNode toSet = (tag == objectTag) ? zeroConstant : nullConstant;
-                toClear.values().set(i, toSet);
-            }
-        } else {
+        if (!tagNode.isJavaConstant()) {
             // frame slot can be of multiple kinds here
             Stamp tagStamp = tagNode.stamp(NodeView.DEFAULT);
             assert tagStamp instanceof PrimitiveStamp;
-            if (stampHasIllegal((PrimitiveStamp) tagStamp)) {
-                // Clearing a slot introduces a phi: report.
-                throw new NullPointerException("Inconsistent use of Frame.clear() detected.");
-            }
-            if (!stampHasObject((PrimitiveStamp) tagStamp)) {
+            if ((tagStamp.isUnrestricted() && unbalancedIllegal(tagNode)) || stampHasIllegal((PrimitiveStamp) tagStamp)) {
+                // Phi can be illegal: coerce it to be illegal constant.
+                tagArrayVirtual.values().set(i, illegalConstant);
+                tagNode = illegalConstant;
+            } else if (!stampHasObject((PrimitiveStamp) tagStamp)) {
                 // Phi tag with no object possible: free object slot.
                 objectArrayVirtual.values().set(i, nullConstant);
+                return;
+            } else {
+                /*-
+                 * No need to check for primitive kind, it will be there:
+                 * - Cannot be illegal.
+                 * - Has at least 2 possible values.
+                 * - At most 1 possible kind other than primitive.
+                 * => one of the possible kind values will always be primitive.
+                 */
+                return;
             }
-            /*-
-             * No need to check for primitive kind, it will be there:
-             * - Cannot be illegal.
-             * - Has at least 2 possible values.
-             * - At most 1 possible kind other than primitive.
-             * => one of the possible kind values will always be primitive.
-             */
+        }
+
+        int tag = tagNode.asJavaConstant().asInt();
+        if (tag == illegalTag) {
+            // Cleared slot
+            objectArrayVirtual.values().set(i, nullConstant);
+            primitiveArrayVirtual.values().set(i, zeroConstant);
+        } else {
+            // Clear counterpart
+            VirtualObjectState toClear = (tag == objectTag) ? primitiveArrayVirtual : objectArrayVirtual;
+            ValueNode toSet = (tag == objectTag) ? zeroConstant : nullConstant;
+            toClear.values().set(i, toSet);
         }
     }
 
@@ -196,6 +206,60 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
 
     private boolean stampHasObject(PrimitiveStamp stamp) {
         return !stamp.join(StampFactory.forInteger(stamp.getBits(), objectTag, objectTag)).isEmpty();
+    }
+
+    private class UnbalancedIllegalExplorer {
+        private boolean illegalSeen = false;
+        private boolean normalValueSeen = false;
+
+        private final EconomicSet<ValueNode> visited = EconomicSet.create();
+
+        private boolean explore(ValueNode node) {
+            ValueNode toProcess = node;
+            while (toProcess instanceof ValueProxyNode) {
+                toProcess = ((ValueProxyNode) toProcess).value();
+            }
+            if (toProcess instanceof ConstantNode) {
+                assert toProcess.getStackKind() == JavaKind.Int;
+                boolean isIllegal = toProcess.asJavaConstant().asInt() == illegalTag;
+                if (isIllegal) {
+                    if (normalValueSeen) {
+                        return true;
+                    }
+                    illegalSeen = true;
+                } else {
+                    if (illegalSeen) {
+                        return true;
+                    }
+                    normalValueSeen = true;
+                }
+                return isIllegal;
+            } else if (toProcess instanceof ValuePhiNode) {
+                if (knownIllegals.contains(toProcess)) {
+                    return true;
+                }
+                if (visited.contains(toProcess)) {
+                    return false;
+                }
+                visited.add(node);
+                for (ValueNode value : ((ValuePhiNode) toProcess).values()) {
+                    if (explore(value)) {
+                        knownIllegals.add(toProcess);
+                        return true;
+                    }
+                }
+            } else {
+                /* tags 'should' only ever be constants or phi of tags ( */
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Traverses phi graphs to find if phi can be both an illegal and something else.
+     */
+    private boolean unbalancedIllegal(ValueNode node) {
+        return new UnbalancedIllegalExplorer().explore(node);
     }
 
     private static EconomicMap<VirtualObjectNode, EscapeObjectState> getObjectStateMappings(FrameState fs) {
