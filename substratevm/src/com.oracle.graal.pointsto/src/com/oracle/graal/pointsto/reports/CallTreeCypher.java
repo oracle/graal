@@ -4,6 +4,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.CallTreePrinter.InvokeNode;
 import com.oracle.graal.pointsto.reports.CallTreePrinter.MethodNode;
+import com.oracle.graal.pointsto.reports.CallTreePrinter.MethodNodeReference;
 import com.oracle.graal.pointsto.reports.CallTreePrinter.Node;
 
 import java.io.File;
@@ -80,12 +81,11 @@ public class CallTreeCypher {
         final Iterator<MethodNode> iterator = methodToNode.values().stream().filter(n -> n.isEntryPoint).iterator();
         while (iterator.hasNext()) {
             final MethodNode node = iterator.next();
-            String entryEdge = entryEdge(node.method.format(CallTreePrinter.METHOD_FORMAT));
-            writer.print(entryEdge);
-            // addMethodEdges(iterator.next(), direct, virtual, override);
+            writer.print(entryEdge(node.method.format(CallTreePrinter.METHOD_FORMAT)));
+            addMethodEdges(node, direct, virtual, override);
         }
 
-        // printDirectEdges(direct, writer);
+        printDirectEdges(direct, writer);
     }
 
     private static String entryEdge(String signature) {
@@ -94,69 +94,69 @@ public class CallTreeCypher {
                 "CREATE (v)-[r:ENTRY]->(m);\n\n";
     }
 
-//    private static void addMethodEdges(MethodNode methodNode, Map<Integer, Set<String>> direct, Map<Integer, Set<String>> virtual, Map<Integer, Set<Integer>> override) {
-//        for (InvokeNode invoke : methodNode.invokes) {
-//            if (invoke.isDirectInvoke) {
-//                if (invoke.callees.size() > 0) {
-//                    Node calleeNode = invoke.callees.get(0);
-//                    addIdSignatureEdge(methodNode.id, calleeNode, direct);
+    private static void addMethodEdges(MethodNode methodNode, Map<Integer, Set<String>> direct, Map<Integer, Set<String>> virtual, Map<Integer, Set<Integer>> override) {
+        for (InvokeNode invoke : methodNode.invokes) {
+            if (invoke.isDirectInvoke) {
+                if (invoke.callees.size() > 0) {
+                    Node calleeNode = invoke.callees.get(0);
+                    addMethodEdge(methodNode.id, calleeNode, direct);
+                    if (calleeNode instanceof MethodNode) {
+                        addMethodEdges((MethodNode) calleeNode, direct, virtual, override);
+                    }
+                }
+            } else {
+//                addSignatureEdge(methodNode.id, invoke, virtual);
+//                for (Node calleeNode : invoke.callees) {
+//                    addIdEdge(methodNode.id, calleeNode, override);
 //                    if (calleeNode instanceof MethodNode) {
 //                        addMethodEdges((MethodNode) calleeNode, direct, virtual, override);
 //                    }
 //                }
-//            } else {
-////                addSignatureEdge(methodNode.id, invoke, virtual);
-////                for (Node calleeNode : invoke.callees) {
-////                    addIdEdge(methodNode.id, calleeNode, override);
-////                    if (calleeNode instanceof MethodNode) {
-////                        addMethodEdges((MethodNode) calleeNode, direct, virtual, override);
-////                    }
-////                }
-//            }
-//        }
-//    }
+            }
+        }
+    }
 
-//    private static void addIdSignatureEdge(int nodeId, Node calleeNode, Map<Integer, Set<String>> edges) {
-//        Set<String> nodeEdges = edges.computeIfAbsent(nodeId, k -> new HashSet<>());
-//        if (calleeNode instanceof MethodNode) {
-//            nodeEdges.add(((MethodNode) calleeNode).method.format(CallTreePrinter.METHOD_FORMAT));
-//        } else {
-//            nodeEdges.add(((CallTreePrinter.MethodNodeReference) calleeNode).methodNode.method.format(CallTreePrinter.METHOD_FORMAT));
-//        }
-//    }
-//
+    private static void addMethodEdge(int nodeId, Node calleeNode, Map<Integer, Set<String>> edges) {
+        Set<String> nodeEdges = edges.computeIfAbsent(nodeId, k -> new HashSet<>());
+        if (calleeNode instanceof MethodNode) {
+            nodeEdges.add(((MethodNode) calleeNode).method.format(CallTreePrinter.METHOD_FORMAT));
+        } else {
+            nodeEdges.add(((MethodNodeReference) calleeNode).methodNode.method.format(CallTreePrinter.METHOD_FORMAT));
+        }
+    }
+
 //    private static void addSignatureEdge(int nodeId, InvokeNode invokeNode, Map<Integer, Set<String>> edges) {
 //        Set<String> nodeEdges = edges.computeIfAbsent(nodeId, k -> new HashSet<>());
 //        nodeEdges.add(invokeNode.formatTarget());
 //    }
 
-//    private static void printDirectEdges(Map<Integer, Set<String>> directEdges, PrintWriter writer) {
-//        final Set<Edge> idEdges = directEdges.entrySet().stream()
-//                .flatMap(entry -> entry.getValue().stream().map(signature -> new Edge(entry.getKey(), signature)))
-//                .collect(Collectors.toSet());
-//
-//        final Collection<List<Edge>> idEdgeBatches = batched(idEdges);
-//
-//        final String unwindEdge = unwindDirectEdge();
-//        final String script = idEdgeBatches.stream()
-//                .map(edges -> edges.stream()
-//                        .map(edge -> String.format("{start: {_id:%d}, end: {signature:'%s'}}", edge.id, edge.signature))
-//                        .collect(Collectors.joining(", ", ":param rows => [", "]"))
-//                )
-//                .collect(Collectors.joining(unwindEdge, "", unwindEdge));
-//
-//        writer.print(script);
-//    }
-//
-//    private static String unwindDirectEdge() {
-//        return "\n\n:begin\n" +
-//                "UNWIND $rows as row\n" +
-//                "MATCH (start:`UNIQUE IMPORT LABEL`\n" +
-//                "               {`UNIQUE IMPORT ID`: row.start._id})\n" +
-//                "MATCH (end:Method {signature: row.end.signature})\n" +
-//                "CREATE (start)-[r:DIRECT]->(end);\n" +
-//                ":commit\n\n";
-//    }
+    private static void printDirectEdges(Map<Integer, Set<String>> directEdges, PrintWriter writer) {
+        final Set<Edge> idEdges = directEdges.entrySet().stream()
+                .flatMap(entry -> entry.getValue().stream().map(signature -> new Edge(entry.getKey(), signature)))
+                .collect(Collectors.toSet());
+
+        final Collection<List<Edge>> idEdgeBatches = batched(idEdges);
+
+        final String unwindEdge = directEdge();
+        final String script = idEdgeBatches.stream()
+                .map(edges -> edges.stream()
+                        .map(edge -> String.format("{start: {_id:%d}, end: {signature:'%s'}}", edge.id, edge.signature))
+                        .collect(Collectors.joining(", ", ":param rows => [", "]"))
+                )
+                .collect(Collectors.joining(unwindEdge, "", unwindEdge));
+
+        writer.print(script);
+    }
+
+    private static String directEdge() {
+        return "\n\n:begin\n" +
+                "UNWIND $rows as row\n" +
+                "MATCH (start:`UNIQUE IMPORT LABEL`\n" +
+                "               {`UNIQUE IMPORT ID`: row.start._id})\n" +
+                "MATCH (end:Method {signature: row.end.signature})\n" +
+                "CREATE (start)-[r:DIRECT]->(end);\n" +
+                ":commit\n\n";
+    }
 
     private static <E> Collection<List<E>> batched(Collection<E> methods) {
         final AtomicInteger counter = new AtomicInteger();
@@ -165,13 +165,13 @@ public class CallTreeCypher {
                 .values();
     }
 
-//    private static final class Edge {
-//        final int id;
-//        final String signature;
-//
-//        private Edge(int id, String signature) {
-//            this.id = id;
-//            this.signature = signature;
-//        }
-//    }
+    private static final class Edge {
+        final int id;
+        final String signature;
+
+        private Edge(int id, String signature) {
+            this.id = id;
+            this.signature = signature;
+        }
+    }
 }
