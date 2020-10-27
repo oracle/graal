@@ -92,7 +92,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
             try (TruffleDebugContext debug = compiler.openDebugContext(GraalTruffleRuntime.getOptionsForCompiler(compilable), compilation)) {
-                TruffleMetaAccessProvider inliningPlan = runtime.createInliningPlan(compilable, null);
+                TruffleMetaAccessProvider inliningPlan = runtime.createInliningPlan();
                 TestListener listener = new TestListener();
                 compiler.doCompile(debug, compilation, GraalTruffleRuntime.getOptionsForCompiler(compilable), inliningPlan, null, listener);
             }

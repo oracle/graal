@@ -176,7 +176,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public TruffleMetaAccessProvider createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task) {
+    public TruffleMetaAccessProvider createInliningPlan() {
         return new TruffleInlining();
     }
 

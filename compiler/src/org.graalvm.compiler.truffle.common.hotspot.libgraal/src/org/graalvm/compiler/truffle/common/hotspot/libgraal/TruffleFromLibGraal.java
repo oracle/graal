@@ -65,7 +65,7 @@ public @interface TruffleFromLibGraal {
         ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, Object.class),
         CountCalls(int.class, Object.class),
         CountInlinedCalls(int.class, Object.class),
-        CreateInliningPlan(Object.class, Object.class, Object.class, Object.class),
+        CreateInliningPlan(Object.class, Object.class),
         CreateStringSupplier(Supplier.class, long.class),
         DequeueInlined(void.class, Object.class),
         DequeueTargets(void.class, Object.class),

@@ -232,8 +232,8 @@ final class TruffleFromLibGraalEntryPoints {
     }
 
     @TruffleFromLibGraal(CreateInliningPlan)
-    static Object createInliningPlan(Object truffleRuntime, Object compilable, Object task) {
-        return ((HotSpotTruffleCompilerRuntime) truffleRuntime).createInliningPlan((CompilableTruffleAST) compilable, (TruffleCompilationTask) task);
+    static Object createInliningPlan(Object truffleRuntime) {
+        return ((HotSpotTruffleCompilerRuntime) truffleRuntime).createInliningPlan();
     }
 
     @TruffleFromLibGraal(RegisterOptimizedAssumptionDependency)
