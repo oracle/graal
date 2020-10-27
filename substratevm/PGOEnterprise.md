@@ -42,7 +42,6 @@ native-image --pgo-instrument OptimizedImage
 ```
 
 4&#46; Lastly, create the second native image by specifying the path to the _profile.iprof_ file and execute it.
-It should run significantly faster.
 ```shell
 native-image --pgo=profile.iprof OptimizedImage
 ./optimizedimage
