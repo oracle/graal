@@ -70,7 +70,6 @@ public @interface TruffleFromLibGraal {
         DequeueInlined(void.class, Object.class),
         DequeueTargets(void.class, Object.class),
         FindCallNode(Object.class, Object.class, long.class),
-        FindDecision(Object.class, Object.class, long.class),
         GetCallCount(int.class, Object.class),
         GetCallNodes(Object[].class, Object.class),
         GetCallTargetForCallNode(long.class, Object.class, long.class),
@@ -97,14 +96,12 @@ public @interface TruffleFromLibGraal {
         GetOffsetStart(int.class, Object.class),
         GetPosition(Object.class, Object.class, long.class),
         GetSuppliedString(String.class, Supplier.class),
-        GetTargetName(String.class, Object.class),
         GetTruffleCallBoundaryMethods(long[].class, Object.class),
         GetURI(String.class, Object.class),
         IsCancelled(boolean.class, Object.class),
         IsInliningForced(boolean.class, Object.class),
         IsLastTier(boolean.class, Object.class),
         IsSameOrSplit(boolean.class, Object.class, Object.class),
-        IsTargetStable(boolean.class, Object.class),
         IsTrivial(boolean.class, Object.class),
         IsTruffleBoundary(boolean.class, Object.class, long.class),
         IsSpecializationMethod(boolean.class, Object.class, long.class),
@@ -119,8 +116,7 @@ public @interface TruffleFromLibGraal {
         OnTruffleTierFinished(void.class, Object.class, Object.class, Object.class, long.class),
         RegisterOptimizedAssumptionDependency(Consumer.class, Object.class, long.class),
         SetCallCount(void.class, Object.class, int.class),
-        SetInlinedCallCount(void.class, Object.class, int.class),
-        ShouldInline(boolean.class, Object.class);
+        SetInlinedCallCount(void.class, Object.class, int.class);
         // @formatter:on
 
         private final String signature;
