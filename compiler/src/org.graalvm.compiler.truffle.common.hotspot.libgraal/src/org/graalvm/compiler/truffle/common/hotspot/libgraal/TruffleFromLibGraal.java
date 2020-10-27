@@ -87,7 +87,6 @@ public @interface TruffleFromLibGraal {
         GetLanguage(String.class, Object.class),
         GetLineNumber(int.class, Object.class),
         GetLoopExplosionKind(int.class, Object.class, long.class),
-        GetNodeRewritingAssumption(long.class, Object.class),
         GetNodeRewritingAssumptionConstant(long.class, Object.class),
         GetNodeId(int.class, Object.class),
         GetNodeClassName(String.class, Object.class),
