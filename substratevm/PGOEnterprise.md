@@ -43,6 +43,6 @@ native-image --pgo-instrument OptimizedImage
 
 3&#46; Build the second native image specifying the path to the _profile.iprof_ file and execute it:
 ```
-native-image --pgo profile.iprof OptimizedImage
+native-image --pgo=profile.iprof OptimizedImage
 ./optimizedimage
 ```

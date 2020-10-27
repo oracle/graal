@@ -126,9 +126,9 @@ NativeImageArgs = --configurations-path /home/user/custom-image-configs \
                   -O1
 ```
 
-### Changing the Output Directory
+### Changing the Configuration Directory
 
-Native Image by default stores the build information in user's home directory -- `$HOME/.native-image/`.
+Native Image by default stores the configuration information in user's home directory -- `$HOME/.native-image/`.
 In order to change the output directory, set the environment variable `NATIVE_IMAGE_USER_HOME` to a different location. For example:
 ```shell
 export NATIVE_IMAGE_USER_HOME= $HOME/.local/share/native-image

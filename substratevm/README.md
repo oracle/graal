@@ -8,8 +8,8 @@ The resulting program has faster startup time and lower runtime memory overhead 
 
 The **Native Image builder** or `native-image` is a utility that processes all classes of an application and their dependencies, including those from the JDK.
 It statically analyzes these data to determine which classes and methods are reachable during the application execution.
-Then it ahead-of-time compiles that reachable data to a native executable for a specific operating system and architecture.
-This entire process is called an **image build time** to clearly distinguish it from the compilation of Java source code to bytecode.
+Then it ahead-of-time compiles that reachable code and data to a native executable for a specific operating system and architecture.
+This entire process is called **building an image** (or the **image build time**) to clearly distinguish it from the compilation of Java source code to bytecode.
 
 Native Image supports JVM-based languages, e.g., Java, Scala, Clojure, Kotlin.
 The resulting image can, optionally, execute dynamic languages like
@@ -146,7 +146,8 @@ For more complex examples, visit the [native image generation](https://www.graal
 
 ## Build a Shared Library
 
-To build a native image as a shared library of a Java class file, pass  `--shared` to the native image builder:
+To build a native image as a shared library of a Java class file, pass  `--shared` to the native image builder.
+The created shared library will have the main method of the given Java class as its entrypoint method.
 ```shell
 native-image class [libraryname] --shared
 ```
@@ -174,7 +175,8 @@ This header file contains declarations for the [C API](C-API.md), which allows c
 ```c
 int add(graal_isolatethread_t* thread, int a, int b);
 ```
-Shared library images, alike executable imagesm, can have an arbitrary number of entry points, for example, to implement callbacks or APIs.
+
+Shared library images and executable images alike can have an arbitrary number of entry points, for example, to implement callbacks or APIs.
 
 ## How to Determine What Version of GraalVM an Image Is Generated with
 
