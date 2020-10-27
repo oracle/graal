@@ -109,7 +109,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         CodePointSet alpha = UnicodeProperties.getProperty("Alphabetic");
         CodePointSet digit = UnicodeProperties.getProperty("General_Category=Decimal_Number");
         CodePointSet space = UnicodeProperties.getProperty("White_Space");
-        CodePointSet xdigit = digit.union(UnicodeProperties.getProperty("Hex_Digit"));
+        CodePointSet xdigit = CodePointSet.create('0', '9', 'A', 'F', 'a', 'f');
         CodePointSet word = alpha.union(UnicodeProperties.getProperty("General_Category=Mark")).union(digit).union(UnicodeProperties.getProperty("General_Category=Connector_Punctuation")).union(UnicodeProperties.getProperty("Join_Control"));
         UNICODE_CHAR_CLASSES.put('d', digit);
         UNICODE_CHAR_CLASSES.put('h', xdigit);
