@@ -22,13 +22,15 @@ export function getRConfigurations(): ConfigurationPickItem[] {
         'Set as R runtime',
         `(r.${getConfigSection()})`,
         graalVMHome => {
-			const executable = utils.findExecutable('R', graalVMHome);
-            return executable !== undefined && executable !== getConf('r').get(getConfigSection());
+            const executable = utils.findExecutable('R', graalVMHome);
+            if (executable) {
+                return utils.checkRecommendedExtension('Ikuyadeu.r', 'R Language') && executable !== getConf('r').get(getConfigSection());
+            }
+            return false;
         }, 
         async graalVMHome => {
             const executable = utils.findExecutable('R', graalVMHome);
             if (executable) {
-				utils.checkRecommendedExtension('Ikuyadeu.r', 'R Language');
                 return setConfig(executable);
             }
         })
