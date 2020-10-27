@@ -42,7 +42,7 @@ public class OverrideOptionsTest extends TruffleCompilerImplTest {
     @SuppressWarnings("try")
     public void testOverrideOptionsUsingContext() {
         setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option("engine.CompileImmediately",
-                        Boolean.TRUE.toString()).option("engine.InliningNodeBudget", "42").build());
+                        Boolean.TRUE.toString()).build());
         OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
         OptionValues values = TruffleCompilerImpl.getOptionsForCompiler(GraalTruffleRuntime.getOptionsForCompiler(callTarget));
         Assert.assertEquals(false, values.get(PolyglotCompilerOptions.BackgroundCompilation));
