@@ -104,6 +104,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                     case "peak-time":
                         config.metric = new PeakTimeMetric();
                         break;
+                    case "none":
+                        config.metric = new NoMetric();
+                        break;
                     default:
                         throw abort("Unknown metric: " + value);
                 }

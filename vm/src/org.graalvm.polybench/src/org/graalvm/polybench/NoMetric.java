@@ -27,6 +27,6 @@ package org.graalvm.polybench;
 class NoMetric implements Metric {
     @Override
     public String name() {
-        return "no metric";
+        return "none";
     }
 }
