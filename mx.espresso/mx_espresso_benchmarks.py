@@ -22,6 +22,7 @@
 #
 
 import re
+import argparse
 
 import mx
 import mx_benchmark
@@ -198,8 +199,17 @@ class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disab
         ]
 
     def postprocessRunArgs(self, benchname, runArgs):
-        result = super(ScalaDaCapoWarmupBenchmarkSuite, self).postprocessRunArgs(benchname, runArgs)
-        return (result or []) + ['-c', 'WallTimeCallback']
+        parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument("-n", default=None)
+        args, remaining = parser.parse_known_args(runArgs)
+        result = ['-c', 'WallTimeCallback'] + remaining
+        if args.n:
+            if args.n.isdigit():
+                result = ["-n", args.n] + result
+        else:
+            iterations = scala_dacapo_warmup_iterations[benchname]["late-warmup"]
+            result = ["-n", str(iterations)] + result
+        return result
 
     def run(self, benchmarks, bmSuiteArgs):
         results = super(ScalaDaCapoWarmupBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
