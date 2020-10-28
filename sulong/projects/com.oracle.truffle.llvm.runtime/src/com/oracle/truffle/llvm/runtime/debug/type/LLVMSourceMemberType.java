@@ -34,7 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-public final class LLVMSourceMemberType extends LLVMSourceType {
+public class LLVMSourceMemberType extends LLVMSourceType {
 
     @CompilationFinal private LLVMSourceType elementType;
 

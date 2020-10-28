@@ -65,6 +65,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceClassLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceDecoratorType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceEnumLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceInheritanceType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
@@ -406,11 +407,12 @@ final class DITypeExtractor implements MetadataVisitor {
             }
 
             case DW_TAG_INHERITANCE: {
-                final LLVMSourceMemberType type = new LLVMSourceMemberType("super", size, align, offset, location);
-                parsedTypes.put(mdType, type);
+                final LLVMSourceInheritanceType inheritanceType = new LLVMSourceInheritanceType("super", size, align, offset, location);
+                parsedTypes.put(mdType, inheritanceType);
                 final LLVMSourceType baseType = resolve(mdType.getBaseType());
-                type.setElementType(baseType);
-                type.setName(() -> String.format("super (%s)", baseType.getName()));
+                inheritanceType.setElementType(baseType);
+                inheritanceType.setName(() -> String.format("super (%s)", baseType.getName()));
+                inheritanceType.setVirtual(Flags.VIRTUAL.isSetIn(mdType.getFlags()));
 
                 break;
             }
