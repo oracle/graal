@@ -273,10 +273,10 @@ local awfy = 'awfy:*';
     jdk8_bench_linux              + espresso_interpreter_benchmark('native-ee', awfy)                     + {name: 'espresso-bench-native-ee-awfy_interpreter-jdk8-linux-amd64'},
 
     // Scala DaCapo warmup benchmarks (post-merge)
-    #jdk8_bench_linux              + scala_dacapo_warmup_benchmark('jvm-ce')      + {name: 'espresso-bench-jvm-ce-scala_dacapo_warmup_benchmark-jdk8-linux-amd64'},
-    #jdk8_bench_linux              + scala_dacapo_warmup_benchmark('jvm-ee')      + {name: 'espresso-bench-jvm-ee-scala_dacapo_warmup_benchmark-jdk8-linux-amd64'},    
-    jdk8_bench_linux              + scala_dacapo_warmup_benchmark('native-ce')   + {name: 'espresso-bench-native-ce-scala_dacapo_warmup_benchmark-jdk8-linux-amd64'},
-    jdk8_bench_linux              + scala_dacapo_warmup_benchmark('native-ee')   + {name: 'espresso-bench-native-ee-scala_dacapo_warmup_benchmark-jdk8-linux-amd64'},
+    #jdk8_bench_linux              + scala_dacapo_warmup_benchmark('jvm-ce')      + {name: 'espresso-bench-jvm-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
+    #jdk8_bench_linux              + scala_dacapo_warmup_benchmark('jvm-ee')      + {name: 'espresso-bench-jvm-ee-scala_dacapo_warmup-jdk8-linux-amd64'},    
+    jdk8_bench_linux              + scala_dacapo_warmup_benchmark('native-ce')   + {name: 'espresso-bench-native-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
+    jdk8_bench_linux              + scala_dacapo_warmup_benchmark('native-ee')   + {name: 'espresso-bench-native-ee-scala_dacapo_warmup-jdk8-linux-amd64'},
 
     // Scala DaCapo warmup benchmarks --engine.MultiTier (post-merge)
     #jdk8_bench_linux              + scala_dacapo_warmup_benchmark('jvm-ce', 'multi-tier')      + {name: 'espresso-bench-jvm-ce-scala_dacapo_warmup_benchmark_multi_tier-jdk8-linux-amd64'},
@@ -285,8 +285,8 @@ local awfy = 'awfy:*';
     jdk8_bench_linux              + scala_dacapo_warmup_benchmark('native-ee', 'multi-tier')   + {name: 'espresso-bench-native-ee-scala_dacapo_warmup_benchmark_multi_tier-jdk8-linux-amd64'},
 
     // Scala DaCapo warmup benchmarks (Graal CE/EE baseline) (on-demand)
-    jdk8_on_demand_bench_linux           + graal_benchmark('jvm-ce', scala_dacapo_jvm_fast(warmup=true))  + {name: 'bench-graal-ce-scala_dacapo_warmup_benchmark-jdk8-linux-amd64'},
-    jdk8_on_demand_bench_linux           + graal_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=true))  + {name: 'bench-graal-ee-scala_dacapo_warmup_benchmark-jdk8-linux-amd64'},
+    jdk8_on_demand_bench_linux           + graal_benchmark('jvm-ce', scala_dacapo_jvm_fast(warmup=true))  + {name: 'bench-graal-ce-scala_dacapo_warmup-jdk8-linux-amd64'},
+    jdk8_on_demand_bench_linux           + graal_benchmark('jvm-ee', scala_dacapo_jvm_fast(warmup=true))  + {name: 'bench-graal-ee-scala_dacapo_warmup-jdk8-linux-amd64'},
 
     // On-demand
     jdk8_on_demand_linux          + espresso_minheap_benchmark('jvm-ce', awfy, 'infinite-overhead')       + {name: 'espresso-jvm-ce-awfy-minheap-infinite-ovh-jdk8-linux-amd64'},
