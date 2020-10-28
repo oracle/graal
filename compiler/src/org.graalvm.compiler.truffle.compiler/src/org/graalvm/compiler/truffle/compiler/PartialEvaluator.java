@@ -358,7 +358,7 @@ public abstract class PartialEvaluator {
                     partialEscape(request);
                 }
                 try (DebugCloseable a = TruffleFrameClearTimer.start(request.debug)) {
-                    new FrameClearPhase(knownTruffleTypes).apply(request.graph, request.highTierContext);
+                    new FrameClearPhase(knownTruffleTypes, canonicalizer).apply(request.graph, request.highTierContext);
                 }
                 // recompute loop frequencies now that BranchProbabilities have been canonicalized
                 ComputeLoopFrequenciesClosure.compute(request.graph);

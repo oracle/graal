@@ -27,12 +27,16 @@ package org.graalvm.compiler.truffle.compiler.phases;
 
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
@@ -45,8 +49,12 @@ import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
+import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 
@@ -68,21 +76,21 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <li>If nothing can be inferred about the kind of entry in the slot, we leave it alone (most
  * likely corresponds to two branches putting different kinds merging execution)
  * <li>If we determine one of the slots to be cleared in a branch, but not the other and they merge
- * execution, we fail.
+ * execution, we report a performance warning.
  * </ul>
  * <p>
- * 
  * This behavior has two main points of interest:
  * <ul>
  * <li>Allow languages to implement liveness analysis through the
  * {@link com.oracle.truffle.api.frame.Frame#clear(FrameSlot)} method, which will eliminate stale
- * locals early.
- * <li>Stack-based interpreters re-use slots for different kinds. By clearing the counterpart array
- * 
+ * locals early, and report potential errors in the implementation.
+ * <li>Stack-based interpreters re-use slots for different kinds. By clearing the counterpart array,
+ * we expect stale values to not be kept alive for longer than necessary.
  * </ul>
- * 
  */
 public class FrameClearPhase extends BasePhase<CoreProviders> {
+    private final CanonicalizerPhase canonicalizer;
+
     private final ResolvedJavaType frameType;
     private final int tagArrayIndex;
     private final int objectArrayIndex;
@@ -93,16 +101,16 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
 
     private ValueNode nullConstant;
     private ValueNode zeroConstant;
-    private ValueNode illegalConstant;
 
     private final EconomicSet<ValueNode> knownIllegals = EconomicSet.create();
 
-    public FrameClearPhase(KnownTruffleTypes knownTruffleTypes) {
-        this(knownTruffleTypes.classFrameClass, knownTruffleTypes.fieldTags, knownTruffleTypes.fieldLocals, knownTruffleTypes.fieldPrimitiveLocals);
+    public FrameClearPhase(KnownTruffleTypes knownTruffleTypes, CanonicalizerPhase canonicalizer) {
+        this(knownTruffleTypes.classFrameClass, knownTruffleTypes.fieldTags, knownTruffleTypes.fieldLocals, knownTruffleTypes.fieldPrimitiveLocals, canonicalizer);
     }
 
     private FrameClearPhase(ResolvedJavaType frameType,
-                    ResolvedJavaField tagArray, ResolvedJavaField objectArray, ResolvedJavaField primitiveArray) {
+                    ResolvedJavaField tagArray, ResolvedJavaField objectArray, ResolvedJavaField primitiveArray,
+                    CanonicalizerPhase canonicalizer) {
         this.frameType = frameType;
         this.tagArrayIndex = findFieldIndex(frameType, tagArray);
         this.objectArrayIndex = findFieldIndex(frameType, objectArray);
@@ -112,6 +120,7 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
         TruffleCompilerRuntime runtime = getRuntime();
         this.illegalTag = runtime.getFrameSlotKindTagForJavaKind(JavaKind.Illegal);
         this.objectTag = runtime.getFrameSlotKindTagForJavaKind(JavaKind.Object);
+        this.canonicalizer = canonicalizer;
     }
 
     private static int findFieldIndex(ResolvedJavaType type, ResolvedJavaField field) {
@@ -126,9 +135,17 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
+        try {
+            doRun(graph, context);
+        } catch (Throwable e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    private void doRun(StructuredGraph graph, CoreProviders context) {
         nullConstant = ConstantNode.defaultForKind(JavaKind.Object, graph);
         zeroConstant = ConstantNode.defaultForKind(JavaKind.Long, graph);
-        illegalConstant = ConstantNode.forInt(illegalTag, graph);
 
         for (FrameState fs : graph.getNodes(FrameState.TYPE)) {
             EconomicMap<VirtualObjectNode, EscapeObjectState> objectStates = getObjectStateMappings(fs);
@@ -149,15 +166,18 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
 
                         int length = ((VirtualArrayNode) tagArrayValue).entryCount();
                         for (int i = 0; i < length; i++) {
-                            maybeClearFrameSlot((VirtualObjectState) tagArrayVirtual, (VirtualObjectState) objectArrayVirtual, (VirtualObjectState) primitiveArrayVirtual, i, fs);
+                            maybeClearFrameSlot((VirtualObjectState) tagArrayVirtual, (VirtualObjectState) objectArrayVirtual, (VirtualObjectState) primitiveArrayVirtual, i);
                         }
                     }
                 }
             }
         }
+
+        // Get rid of newly unused nodes.
+        canonicalizer.apply(graph, context);
     }
 
-    private void maybeClearFrameSlot(VirtualObjectState tagArrayVirtual, VirtualObjectState objectArrayVirtual, VirtualObjectState primitiveArrayVirtual, int i, FrameState fs) {
+    private void maybeClearFrameSlot(VirtualObjectState tagArrayVirtual, VirtualObjectState objectArrayVirtual, VirtualObjectState primitiveArrayVirtual, int i) {
         ValueNode tagNode = tagArrayVirtual.values().get(i);
         if (tagNode == null) {
             // Uninitialized slot, will be initialized to default on deopt anyway.
@@ -165,38 +185,44 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
         }
         if (!tagNode.isJavaConstant()) {
             // frame slot can be of multiple kinds here
-            Stamp tagStamp = tagNode.stamp(NodeView.DEFAULT);
-            assert tagStamp instanceof PrimitiveStamp;
-            if ((tagStamp.isUnrestricted() && unbalancedIllegal(tagNode)) || stampHasIllegal((PrimitiveStamp) tagStamp)) {
-                // Phi can be illegal: coerce it to be illegal constant.
-                tagArrayVirtual.values().set(i, illegalConstant);
-                tagNode = illegalConstant;
-            } else if (!stampHasObject((PrimitiveStamp) tagStamp)) {
+            assert tagNode.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp;
+            PrimitiveStamp tagStamp = (PrimitiveStamp) tagNode.stamp(NodeView.DEFAULT);
+
+            boolean canBeIllegal;
+            if (tagStamp.isUnrestricted()) {
+                // Circular phi node: explore phi graph for an illegal constant.
+                canBeIllegal = unbalancedIllegal(tagNode);
+            } else {
+                // Regular phi node with constant: just check stamp.
+                canBeIllegal = stampHasIllegal(tagStamp);
+            }
+
+            if (canBeIllegal) {
+                // Entry can be illegal: report.
+                logPerformanceWarningClearIntroducedPhi(tagNode);
+            } else if (!stampHasObject(tagStamp)) {
                 // Phi tag with no object possible: free object slot.
                 objectArrayVirtual.values().set(i, nullConstant);
-                return;
-            } else {
-                /*-
-                 * No need to check for primitive kind, it will be there:
-                 * - Cannot be illegal.
-                 * - Has at least 2 possible values.
-                 * - At most 1 possible kind other than primitive.
-                 * => one of the possible kind values will always be primitive.
-                 */
-                return;
             }
-        }
-
-        int tag = tagNode.asJavaConstant().asInt();
-        if (tag == illegalTag) {
-            // Cleared slot
-            objectArrayVirtual.values().set(i, nullConstant);
-            primitiveArrayVirtual.values().set(i, zeroConstant);
+            /*-
+             * No need to check for primitive kind, it will be there:
+             * - Cannot be illegal.
+             * - Has at least 2 possible values.
+             * - At most 1 possible kind other than primitive.
+             * => one of the possible kind values will always be primitive.
+             */
         } else {
-            // Clear counterpart
-            VirtualObjectState toClear = (tag == objectTag) ? primitiveArrayVirtual : objectArrayVirtual;
-            ValueNode toSet = (tag == objectTag) ? zeroConstant : nullConstant;
-            toClear.values().set(i, toSet);
+            int tag = tagNode.asJavaConstant().asInt();
+            if (tag == illegalTag) {
+                // Cleared slot
+                objectArrayVirtual.values().set(i, nullConstant);
+                primitiveArrayVirtual.values().set(i, zeroConstant);
+            } else {
+                // Clear counterpart
+                VirtualObjectState toClear = (tag == objectTag) ? primitiveArrayVirtual : objectArrayVirtual;
+                ValueNode toSet = (tag == objectTag) ? zeroConstant : nullConstant;
+                toClear.values().set(i, toSet);
+            }
         }
     }
 
@@ -249,7 +275,8 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
                     }
                 }
             } else {
-                /* tags 'should' only ever be constants or phi of tags ( */
+                /* tags 'should' only ever be constants or phi of tags. */
+                return true;
             }
             return false;
         }
@@ -278,5 +305,31 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
             current = current.outerFrameState();
         } while (current != null);
         return objectStates;
+    }
+
+    @SuppressWarnings("try")
+    private static void logPerformanceWarningClearIntroducedPhi(ValueNode location) {
+        if (PerformanceInformationHandler.isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_CLEAR_PHI)) {
+            StructuredGraph graph = location.graph();
+            DebugContext debug = location.getDebug();
+            try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
+                TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
+                if (truffleMethod != null) {    // Never null in compilation but can be null in
+                    // TruffleCompilerImplTest
+                    Map<String, Object> properties = new LinkedHashMap<>();
+                    properties.put("location", location);
+                    properties.put("method", truffleMethod);
+                    PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_CLEAR_PHI, truffleMethod.getCompilable(),
+                                    Collections.emptyList(),
+                                    "Frame clear introduces new phis in the graph. " +
+                                                    "This is most likely due to a faulty liveness analysis implementation, or an unexpected control-flow construction. " +
+                                                    "Make sure all control-flows in the graph are expected.",
+                                    properties);
+                    debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Frame clear introduces new phis in the graph: %s", location);
+                }
+            } catch (Throwable t) {
+                debug.handle(t);
+            }
+        }
     }
 }

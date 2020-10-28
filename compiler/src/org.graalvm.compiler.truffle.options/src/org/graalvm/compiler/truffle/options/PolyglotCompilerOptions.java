@@ -71,6 +71,7 @@ public final class PolyglotCompilerOptions {
         VIRTUAL_RUNTIME_CALL("call", "Enables virtual call warnings"),
         VIRTUAL_INSTANCEOF("instanceof", "Enables virtual instanceof warnings"),
         VIRTUAL_STORE("store", "Enables virtual store warnings"),
+        FRAME_CLEAR_PHI("clear", "Enables frame clears introducing phi nodes warnings"),
         TRIVIAL_FAIL("trivial", "Enables trivial fail warnings");
 
         private static final EconomicMap<String, PerformanceWarningKind> kindByName;

@@ -262,9 +262,8 @@ public interface Frame {
      * {@link FrameSlotTypeException}.
      * <p>
      * This method is intended to be used for implementations of liveness analysis. As such, the
-     * compiler will find and report (alongside a bailout) any inconsistency (with respect to
-     * liveness analysis) when using this method. These inconsistencies include:
-     * <li>Reading a slot that was previously cleared.
+     * compiler will find and report any inconsistency with respect to liveness analysis when using
+     * this method. These inconsistencies include:
      * <li>Clearing a slot in a branch, but not on another one, and their execution merge.
      * 
      * @param slot the slot of the local variable
