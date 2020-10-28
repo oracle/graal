@@ -41,7 +41,7 @@ import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.SelectEdgeAction;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.perf.AutoTimer;
+import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 
 public class LivenessAnalysis {
@@ -108,32 +108,33 @@ public class LivenessAnalysis {
         }
     }
 
+    @SuppressWarnings("try")
     public static LivenessAnalysis analyze(Method method) {
         if (method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.DISABLED) {
             return NO_ANALYSIS;
         }
-        try (AutoTimer liveness = AutoTimer.time(LIVENESS_TIMER)) {
+        try (DebugCloseable liveness = LIVENESS_TIMER.scope()) {
             Graph<? extends LinkedBlock> graph;
-            try (AutoTimer builder = AutoTimer.time(BUILDER_TIMER)) {
+            try (DebugCloseable builder = BUILDER_TIMER.scope()) {
                 graph = GraphBuilder.build(method);
             }
 
             // Transform the graph into a more manageable graph consisting of only the history of
             // load/stores.
             LoadStoreFinder loadStoreClosure;
-            try (AutoTimer loadStore = AutoTimer.time(LOADSTORE_TIMER)) {
+            try (DebugCloseable loadStore = LOADSTORE_TIMER.scope()) {
                 loadStoreClosure = new LoadStoreFinder(graph);
                 BlockIterator.analyze(method, graph, loadStoreClosure);
             }
 
             // Computes the entry/end live sets for each variable for each block.
             BlockBoundaryFinder blockBoundaryFinder;
-            try (AutoTimer boundary = AutoTimer.time(STATE_TIMER)) {
+            try (DebugCloseable boundary = STATE_TIMER.scope()) {
                 blockBoundaryFinder = new BlockBoundaryFinder(method, loadStoreClosure.result());
                 DepthFirstBlockIterator.analyze(method, graph, blockBoundaryFinder);
             }
 
-            try (AutoTimer propagation = AutoTimer.time(PROPAGATE_TIMER)) {
+            try (DebugCloseable propagation = PROPAGATE_TIMER.scope()) {
                 // Forces loop ends to inherit the loop entry state, and propagates the changes.
                 LoopPropagatorClosure loopPropagation = new LoopPropagatorClosure(graph, blockBoundaryFinder.result());
                 while (loopPropagation.process(graph)) {
@@ -157,12 +158,11 @@ public class LivenessAnalysis {
 
             // Using the live sets and history, build a set of action for each bci, such that it
             // frees as early as possible each dead local.
-            try (AutoTimer actionFinder = AutoTimer.time(ACTION_TIMER)) {
+            try (DebugCloseable actionFinder = ACTION_TIMER.scope()) {
                 Builder builder = new Builder(graph, method, blockBoundaryFinder.result());
                 builder.build();
                 boolean compiledCodeOnly = method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.COMPILED;
-                LivenessAnalysis livenessAnalysis = new LivenessAnalysis(builder.actions, builder.edge, builder.onStart, compiledCodeOnly);
-                return livenessAnalysis;
+                return new LivenessAnalysis(builder.actions, builder.edge, builder.onStart, compiledCodeOnly);
             }
         }
     }
@@ -178,7 +178,7 @@ public class LivenessAnalysis {
         this(null, null, null, false);
     }
 
-    private static class Builder {
+    private static final class Builder {
         private final LocalVariableAction[] actions;
         private final EdgeAction[] edge;
         private LocalVariableAction onStart;
@@ -187,7 +187,7 @@ public class LivenessAnalysis {
         private final Method method;
         private final BlockBoundaryResult helper;
 
-        public Builder(Graph<? extends LinkedBlock> graph, Method method, BlockBoundaryResult helper) {
+        private Builder(Graph<? extends LinkedBlock> graph, Method method, BlockBoundaryResult helper) {
             this.actions = new LocalVariableAction[method.getCode().length];
             this.edge = new EdgeAction[method.getCode().length];
             this.graph = graph;
@@ -195,12 +195,10 @@ public class LivenessAnalysis {
             this.helper = helper;
         }
 
-        private LocalVariableAction[] build() {
-            LocalVariableAction[] actions = new LocalVariableAction[method.getCode().length * 2];
+        private void build() {
             for (int id = 0; id < graph.totalBlocks(); id++) {
                 processBlock(id);
             }
-            return actions;
         }
 
         private void processBlock(int blockID) {
@@ -336,6 +334,7 @@ public class LivenessAnalysis {
 
     }
 
+    @SuppressWarnings("unused") // For debug purposes.
     private void log(PrintStream ps) {
         ps.println("on start: " + onStart);
         for (int i = 0; i < result.length; i++) {

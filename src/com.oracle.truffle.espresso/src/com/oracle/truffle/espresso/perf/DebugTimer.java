@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.truffle.api.TruffleLogger;
+
 public abstract class DebugTimer {
     static final boolean DEBUG_TIMER_ENABLED = true;
 
@@ -38,64 +40,6 @@ public abstract class DebugTimer {
         this.name = name;
     }
 
-    public static void report() {
-        for (DebugTimer timer : timers) {
-            timer.doReport();
-        }
-    }
-
-    abstract void start();
-
-    abstract void end(long tick);
-
-    protected abstract void doReport();
-
-    private static final class Default extends DebugTimer {
-        private final AtomicLong clock = new AtomicLong();
-        private final AtomicLong counter = new AtomicLong();
-
-        public Default(String name) {
-            super(name);
-        }
-
-        @Override
-        void start() {
-            counter.getAndIncrement();
-        }
-
-        @Override
-        void end(long tick) {
-            clock.getAndAdd(tick);
-        }
-
-        @Override
-        protected void doReport() {
-            long count = counter.get();
-            long avg = (count == 0) ? 0 : (clock.get() / count);
-            System.err.println(name + " avg: " + avg);
-        }
-    }
-
-    private static final class NoTimer extends DebugTimer {
-        private static final NoTimer INSTANCE = new NoTimer();
-
-        public NoTimer() {
-            super(null);
-        }
-
-        @Override
-        void start() {
-        }
-
-        @Override
-        void end(long tick) {
-        }
-
-        @Override
-        protected void doReport() {
-        }
-    }
-
     public static DebugTimer create(String name) {
         if (DEBUG_TIMER_ENABLED) {
             DebugTimer result = new Default(name);
@@ -103,6 +47,98 @@ public abstract class DebugTimer {
             return result;
         } else {
             return NoTimer.INSTANCE;
+        }
+    }
+
+    public DebugCloseable scope() {
+        if (DebugTimer.DEBUG_TIMER_ENABLED) {
+            return new AutoTimer.Default(this);
+        } else {
+            return AutoTimer.NO_TIMER;
+        }
+    }
+
+    public static void report(TruffleLogger logger) {
+        for (DebugTimer timer : timers) {
+            timer.doReport(logger);
+        }
+    }
+
+    abstract void tick(long tick);
+
+    protected abstract void doReport(TruffleLogger logger);
+
+    private static final class Default extends DebugTimer {
+        private final AtomicLong clock = new AtomicLong();
+
+        private final AtomicLong counter = new AtomicLong();
+
+        Default(String name) {
+            super(name);
+        }
+
+        @Override
+        void tick(long tick) {
+            counter.getAndIncrement();
+            clock.getAndAdd(tick);
+        }
+
+        @Override
+        protected void doReport(TruffleLogger logger) {
+            long count = counter.get();
+            long avg = (count == 0) ? 0 : (clock.get() / count);
+            logger.info(name + " avg: " + avg);
+        }
+
+    }
+
+    private static final class NoTimer extends DebugTimer {
+
+        private static final NoTimer INSTANCE = new NoTimer();
+
+        NoTimer() {
+            super(null);
+        }
+
+        @Override
+        void tick(long tick) {
+        }
+
+        @Override
+        protected void doReport(TruffleLogger logger) {
+        }
+
+    }
+
+    public abstract static class AutoTimer implements DebugCloseable {
+        private static final AutoTimer NO_TIMER = new NoTimer();
+
+        private AutoTimer() {
+        }
+
+        @Override
+        public abstract void close();
+
+        private static final class Default extends AutoTimer {
+            private final DebugTimer timer;
+            private final long tick;
+
+            private Default(DebugTimer timer) {
+                this.timer = timer;
+                this.tick = System.nanoTime();
+            }
+
+            @Override
+            public void close() {
+                timer.tick(System.nanoTime() - tick);
+            }
+        }
+
+        private static final class NoTimer extends AutoTimer {
+            @Override
+            public void close() {
+
+            }
         }
     }
 }

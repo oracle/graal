@@ -280,7 +280,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.perf.AutoTimer;
+import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -581,6 +581,7 @@ public final class MethodVerifier implements ContextAccess {
      * @throws NoClassDefFoundError if Class loading of an operand fails at any point
      * @throws ClassFormatError if classfile is malformed
      */
+    @SuppressWarnings("try")
     public static void verify(Method m) {
         CodeAttribute codeAttribute = m.getCodeAttribute();
         assert !((m.isAbstract() || m.isNative()) && codeAttribute != null) : "Abstract method has code: " + m;
@@ -590,7 +591,7 @@ public final class MethodVerifier implements ContextAccess {
             }
             throw new ClassFormatError("Concrete method has no code attribute: " + m);
         }
-        try (AutoTimer t = AutoTimer.time(VERIFIER_TIMER)) {
+        try (DebugCloseable t = VERIFIER_TIMER.scope()) {
             new MethodVerifier(codeAttribute, m).verify();
         }
     }

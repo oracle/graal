@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.analysis.graph;
 
 import java.util.BitSet;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 
 public final class EspressoExecutionGraph implements Graph<EspressoBlock> {
@@ -63,7 +62,6 @@ public final class EspressoExecutionGraph implements Graph<EspressoBlock> {
         return handlerToBlock[handlerID];
     }
 
-    @CompilerDirectives.TruffleBoundary
     @Override
     public String toString() {
         return visit(new GraphVisitor<String>() {
@@ -76,8 +74,8 @@ public final class EspressoExecutionGraph implements Graph<EspressoBlock> {
             }
 
             @Override
-            protected void visitImpl(int block) {
-                appendItem(blocks[block].toString());
+            protected void visitImpl(EspressoBlock block) {
+                appendItem(block.toString());
             }
 
             private StringBuilder indent() {
@@ -96,23 +94,24 @@ public final class EspressoExecutionGraph implements Graph<EspressoBlock> {
 
     private <T> T visit(GraphVisitor<T> visitor) {
         for (EspressoBlock block : blocks) {
-            visitor.visit(block.id());
+            visitor.visit(block);
         }
         return visitor.result();
     }
 
-    abstract class GraphVisitor<T> {
+    private abstract class GraphVisitor<T> {
         private final BitSet visited = new BitSet(blocks.length);
 
-        public void visit(int block) {
-            if (visited.get(block)) {
+        public void visit(EspressoBlock block) {
+            int id = block.id();
+            if (visited.get(id)) {
                 return;
             }
-            visited.set(block);
+            visited.set(id);
             visitImpl(block);
         }
 
-        protected abstract void visitImpl(int block);
+        protected abstract void visitImpl(EspressoBlock block);
 
         protected abstract T result();
     }

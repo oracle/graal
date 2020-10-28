@@ -23,43 +23,10 @@
 
 package com.oracle.truffle.espresso.perf;
 
-public abstract class AutoTimer implements AutoCloseable {
-    private static final AutoTimer NO_TIMER = new NoTimer();
-
-    private AutoTimer() {
-    }
-
+/**
+ * An {@link AutoCloseable} whose {@link #close()} does not throw a checked exception.
+ */
+public interface DebugCloseable extends AutoCloseable {
     @Override
-    public abstract void close();
-
-    private static final class Default extends AutoTimer {
-        private final DebugTimer timer;
-        private final long tick;
-
-        private Default(DebugTimer timer) {
-            this.timer = timer;
-            this.timer.start();
-            this.tick = System.nanoTime();
-        }
-
-        @Override
-        public void close() {
-            timer.end(System.nanoTime() - tick);
-        }
-    }
-
-    public static AutoTimer time(DebugTimer timer) {
-        if (DebugTimer.DEBUG_TIMER_ENABLED) {
-            return new Default(timer);
-        } else {
-            return NO_TIMER;
-        }
-    }
-
-    private static final class NoTimer extends AutoTimer {
-        @Override
-        public void close() {
-
-        }
-    }
+    void close();
 }

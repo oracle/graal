@@ -946,7 +946,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                         if (takeBranch(frame, top, curOpcode)) {
                             int targetBCI = bs.readBranchDest(curBCI);
-                            nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, curOpcode, statementIndex, instrument);
+                            nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, statementIndex, instrument);
                             top += Bytecodes.stackEffectOf(curOpcode);
                             curBCI = targetBCI;
                             continue loop;
@@ -957,7 +957,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case JSR_W: {
                         putReturnAddress(frame, top, bs.nextBCI(curBCI));
                         int targetBCI = bs.readBranchDest(curBCI);
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, curOpcode, statementIndex, instrument);
+                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, statementIndex, instrument);
                         top += Bytecodes.stackEffectOf(curOpcode);
                         curBCI = targetBCI;
                         continue loop;
@@ -977,7 +977,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                             if (jsr == targetBCI) {
                                 CompilerAsserts.partialEvaluationConstant(jsr);
                                 targetBCI = jsr;
-                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, curOpcode, statementIndex, instrument);
+                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, statementIndex, instrument);
                                 top += Bytecodes.stackEffectOf(curOpcode);
                                 curBCI = targetBCI;
                                 continue loop;
@@ -986,7 +986,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         jsrBci[curBCI] = Arrays.copyOf(jsrBci[curBCI], jsrBci[curBCI].length + 1);
                         jsrBci[curBCI][jsrBci[curBCI].length - 1] = targetBCI;
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, curOpcode, statementIndex, instrument);
+                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, statementIndex, instrument);
                         top += Bytecodes.stackEffectOf(curOpcode);
                         curBCI = targetBCI;
                         continue loop;
@@ -1007,7 +1007,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                             } else {
                                 targetBCI = switchHelper.defaultTarget(bs, curBCI);
                             }
-                            nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, curOpcode, statementIndex, instrument);
+                            nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, statementIndex, instrument);
                             top += Bytecodes.stackEffectOf(curOpcode);
                             curBCI = targetBCI;
                             continue loop;
@@ -1019,7 +1019,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                             if (i == index) {
                                 // Key found.
                                 int targetBCI = switchHelper.targetAt(bs, curBCI, i - low);
-                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, curOpcode, statementIndex, instrument);
+                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, statementIndex, instrument);
                                 top += Bytecodes.stackEffectOf(curOpcode);
                                 curBCI = targetBCI;
                                 continue loop;
@@ -1028,7 +1028,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                         // Key not found.
                         int targetBCI = switchHelper.defaultTarget(bs, curBCI);
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, curOpcode, statementIndex, instrument);
+                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, statementIndex, instrument);
                         top += Bytecodes.stackEffectOf(curOpcode);
                         curBCI = targetBCI;
                         continue loop;
@@ -1048,7 +1048,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                             } else {
                                 // Key found.
                                 int targetBCI = curBCI + switchHelper.offsetAt(bs, curBCI, mid);
-                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, curOpcode, statementIndex, instrument);
+                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, statementIndex, instrument);
                                 top += Bytecodes.stackEffectOf(curOpcode);
                                 curBCI = targetBCI;
                                 continue loop;
@@ -1057,7 +1057,7 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                         // Key not found.
                         int targetBCI = switchHelper.defaultTarget(bs, curBCI);
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, curOpcode, statementIndex, instrument);
+                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, statementIndex, instrument);
                         top += Bytecodes.stackEffectOf(curOpcode);
                         curBCI = targetBCI;
                         continue loop;
@@ -1167,7 +1167,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 putObject(frame, 0, wrappedStackOverflowError.getExceptionObject());
                                 top++;
                                 int targetBCI = stackOverflowErrorInfo[i + 2];
-                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, NOP, statementIndex, instrument);
+                                nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, statementIndex, instrument);
                                 curBCI = targetBCI;
                                 continue loop; // skip bs.next()
                             }
@@ -1210,7 +1210,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         putObject(frame, 0, wrappedException.getExceptionObject());
                         top++;
                         int targetBCI = handler.getHandlerBCI();
-                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, NOP, statementIndex, instrument);
+                        nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, statementIndex, instrument);
                         curBCI = targetBCI;
                         continue loop; // skip bs.next()
                     } else {
@@ -1461,10 +1461,9 @@ public final class BytecodeNode extends EspressoMethodNode {
         refArrayStoreNode.arrayStore(popObject(frame, top - 1), index, array);
     }
 
-    private int beforeJumpChecks(VirtualFrame frame, int curBCI, int targetBCI, int top, int opcode, int statementIndex, InstrumentationSupport instrument) {
+    private int beforeJumpChecks(VirtualFrame frame, int curBCI, int targetBCI, int statementIndex, InstrumentationSupport instrument) {
         CompilerAsserts.partialEvaluationConstant(targetBCI);
         int nextStatementIndex = 0;
-        int newTop = top + Bytecodes.stackEffectOf(opcode);
         if (targetBCI <= curBCI) {
             checkStopping(curBCI, targetBCI);
             LoopNode.reportLoopCount(this, 1);

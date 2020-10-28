@@ -214,8 +214,8 @@ public final class EspressoOptions {
 
     public enum LivenessAnalysisMode {
         DISABLED,
-        ENABLED, // Verifies all bytecodes not loaded by the bootstrap class loader.
-        COMPILED
+        ENABLED, // Also apply liveness analysis in interpreter
+        COMPILED // Only apply liveness analysis in compiled code.
     }
 
     private static final OptionType<LivenessAnalysisMode> LIVENESS_ANALYSIS_MODE_OPTION_TYPE = new OptionType<>("LivenessAnalysisMode",
