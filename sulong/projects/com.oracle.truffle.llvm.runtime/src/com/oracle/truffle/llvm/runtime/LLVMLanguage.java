@@ -96,6 +96,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     static final String NAME = "LLVM";
     private final AtomicInteger nextID = new AtomicInteger(0);
 
+    public final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("Only a single context is active");
+
     @CompilationFinal private Configuration activeConfiguration = null;
 
     private static final class ContextExtensionKey<C extends ContextExtension> extends ContextExtension.Key<C> {
@@ -517,5 +519,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         } else {
             return LLVMDebuggerScopeFactory.createSourceLevelScope(node, frame, context);
         }
+    }
+
+    @Override
+    protected void initializeMultipleContexts() {
+        super.initializeMultipleContexts();
+        singleContextAssumption.invalidate();
     }
 }

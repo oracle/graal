@@ -90,7 +90,7 @@ public final class LLVMNativeWrapper implements TruffleObject {
 
         abstract Object execute(LLVMFunction function, LLVMFunctionCode code, Object[] args);
 
-        @Specialization(guards = "function == cachedFunction")
+        @Specialization(guards = "code == cachedCode")
         Object doCached(@SuppressWarnings("unused") LLVMFunction function, @SuppressWarnings("unused") LLVMFunctionCode code, Object[] args,
                         @Cached("function") @SuppressWarnings("unused") LLVMFunction cachedFunction,
                         @Cached("code") @SuppressWarnings("unused") LLVMFunctionCode cachedCode,
