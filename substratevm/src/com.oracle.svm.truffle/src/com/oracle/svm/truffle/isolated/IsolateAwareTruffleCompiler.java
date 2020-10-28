@@ -102,7 +102,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
     @Override
     @SuppressFBWarnings(value = "DLS_DEAD_LOCAL_STORE", justification = "False positive.")
     public void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options,
-                          TruffleMetaAccessProvider inlining, TruffleCompilationTask task, TruffleCompilerListener listener) {
+                    TruffleMetaAccessProvider inlining, TruffleCompilationTask task, TruffleCompilerListener listener) {
 
         if (!SubstrateOptions.shouldCompileInIsolates()) {
             delegate.doCompile(null, compilation, options, inlining, task, listener);
