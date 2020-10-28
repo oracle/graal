@@ -664,6 +664,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
         if (oldBlockCompilations == null && callTarget.blockCompilations != null) {
             // retry with block compilations
+            ((CompilationTask) task).reset();
+            listeners.onCompilationQueued(callTarget);
             doCompile(callTarget, task);
         }
     }
