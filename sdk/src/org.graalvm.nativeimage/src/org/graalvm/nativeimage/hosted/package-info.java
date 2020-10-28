@@ -40,11 +40,11 @@
  */
 /*
  @ApiInfo(
- group="Graal SDK"
+ group="GraalVM SDK"
  )
  */
 /**
- * The Graal-SDK native-image API allows to customize the native image generation, i.e., the
+ * The GraalVM SDK Native Image API allows to customize the native image generation, i.e., the
  * ahead-of-time compilation of Java code to standalone executables:
  * <ul>
  * <li>{@link org.graalvm.nativeimage.hosted.Feature}s allow clients to intercept the native image
