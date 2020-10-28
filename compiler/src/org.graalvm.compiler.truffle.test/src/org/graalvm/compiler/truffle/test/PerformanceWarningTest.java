@@ -43,6 +43,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -113,6 +115,11 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @Test
     public void testSlowClassCast() {
         testHelper(new RootNodeDeepClass(), false, "perf info", L8.class.getSimpleName(), "foo", "execute");
+    }
+
+    @Test
+    public void testFrameClear() {
+        testHelper(new RootNodeClearFrameClass(new FrameDescriptor("test")), true, "perf warn");
     }
 
     @SuppressWarnings("try")
@@ -232,6 +239,10 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
 
         private TestRootNode() {
             super(null);
+        }
+
+        private TestRootNode(FrameDescriptor fd) {
+            super(null, fd);
         }
     }
 
@@ -375,6 +386,29 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         @SuppressWarnings("unused")
         private void foo() {
             L8 c = (L8) obj;
+        }
+    }
+
+    private final class RootNodeClearFrameClass extends TestRootNode {
+        final FrameSlot slot;
+
+        public RootNodeClearFrameClass(FrameDescriptor fd) {
+            super(fd);
+            this.slot = fd.addFrameSlot("test");
+        }
+
+        public Object execute(VirtualFrame frame) {
+            Object[] args = frame.getArguments();
+            if ((boolean) args[0]) {
+                frame.clear(slot);
+            }
+            // Expected CompilationError
+            boundary();
+            return null;
+        }
+
+        @TruffleBoundary
+        private void boundary() {
         }
     }
 

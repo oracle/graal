@@ -50,8 +50,8 @@ import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
@@ -102,15 +102,19 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
     private ValueNode nullConstant;
     private ValueNode zeroConstant;
 
-    private final EconomicSet<ValueNode> knownIllegals = EconomicSet.create();
+    private final CompilableTruffleAST compilable;
 
-    public FrameClearPhase(KnownTruffleTypes knownTruffleTypes, CanonicalizerPhase canonicalizer) {
-        this(knownTruffleTypes.classFrameClass, knownTruffleTypes.fieldTags, knownTruffleTypes.fieldLocals, knownTruffleTypes.fieldPrimitiveLocals, canonicalizer);
+    private final EconomicSet<ValueNode> knownIllegals = EconomicSet.create();
+    private final EconomicSet<ValueNode> reported = EconomicSet.create();
+
+    public FrameClearPhase(KnownTruffleTypes knownTruffleTypes, CanonicalizerPhase canonicalizer, CompilableTruffleAST compilable) {
+        this(knownTruffleTypes.classFrameClass, knownTruffleTypes.fieldTags, knownTruffleTypes.fieldLocals, knownTruffleTypes.fieldPrimitiveLocals, canonicalizer, compilable);
     }
 
     private FrameClearPhase(ResolvedJavaType frameType,
                     ResolvedJavaField tagArray, ResolvedJavaField objectArray, ResolvedJavaField primitiveArray,
-                    CanonicalizerPhase canonicalizer) {
+                    CanonicalizerPhase canonicalizer,
+                    CompilableTruffleAST compilable) {
         this.frameType = frameType;
         this.tagArrayIndex = findFieldIndex(frameType, tagArray);
         this.objectArrayIndex = findFieldIndex(frameType, objectArray);
@@ -121,6 +125,7 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
         this.illegalTag = runtime.getFrameSlotKindTagForJavaKind(JavaKind.Illegal);
         this.objectTag = runtime.getFrameSlotKindTagForJavaKind(JavaKind.Object);
         this.canonicalizer = canonicalizer;
+        this.compilable = compilable;
     }
 
     private static int findFieldIndex(ResolvedJavaType type, ResolvedJavaField field) {
@@ -248,18 +253,11 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
             if (toProcess instanceof ConstantNode) {
                 assert toProcess.getStackKind() == JavaKind.Int;
                 boolean isIllegal = toProcess.asJavaConstant().asInt() == illegalTag;
-                if (isIllegal) {
-                    if (normalValueSeen) {
-                        return true;
-                    }
-                    illegalSeen = true;
-                } else {
-                    if (illegalSeen) {
-                        return true;
-                    }
-                    normalValueSeen = true;
-                }
-                return isIllegal;
+                return manageSeenValue(isIllegal);
+            } else if (!toProcess.stamp(NodeView.DEFAULT).isUnrestricted()) {
+                assert toProcess.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp;
+                PrimitiveStamp stamp = (PrimitiveStamp) toProcess.stamp(NodeView.DEFAULT);
+                return manageSeenValue(stampHasIllegal(stamp));
             } else if (toProcess instanceof ValuePhiNode) {
                 if (knownIllegals.contains(toProcess)) {
                     return true;
@@ -279,6 +277,21 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
                 return true;
             }
             return false;
+        }
+
+        private boolean manageSeenValue(boolean isIllegal) {
+            if (isIllegal) {
+                if (normalValueSeen) {
+                    return true;
+                }
+                illegalSeen = true;
+            } else {
+                if (illegalSeen) {
+                    return true;
+                }
+                normalValueSeen = true;
+            }
+            return isIllegal;
         }
     }
 
@@ -308,25 +321,25 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
     }
 
     @SuppressWarnings("try")
-    private static void logPerformanceWarningClearIntroducedPhi(ValueNode location) {
+    private void logPerformanceWarningClearIntroducedPhi(ValueNode location) {
         if (PerformanceInformationHandler.isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_CLEAR_PHI)) {
+            if (reported.contains(location)) {
+                return;
+            }
             StructuredGraph graph = location.graph();
             DebugContext debug = location.getDebug();
             try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
-                TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
-                if (truffleMethod != null) {    // Never null in compilation but can be null in
-                    // TruffleCompilerImplTest
-                    Map<String, Object> properties = new LinkedHashMap<>();
-                    properties.put("location", location);
-                    properties.put("method", truffleMethod);
-                    PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_CLEAR_PHI, truffleMethod.getCompilable(),
-                                    Collections.emptyList(),
-                                    "Frame clear introduces new phis in the graph. " +
-                                                    "This is most likely due to a faulty liveness analysis implementation, or an unexpected control-flow construction. " +
-                                                    "Make sure all control-flows in the graph are expected.",
-                                    properties);
-                    debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Frame clear introduces new phis in the graph: %s", location);
-                }
+                Map<String, Object> properties = new LinkedHashMap<>();
+                properties.put("location", location);
+                properties.put("method", compilable.getName());
+                PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_CLEAR_PHI, compilable,
+                                Collections.emptyList(),
+                                "Frame clear introduces new phis in the graph. " +
+                                                "This is most likely due to a faulty liveness analysis implementation, or an unexpected control-flow construction. " +
+                                                "Make sure all control-flows in the graph are as expected.",
+                                properties);
+                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Frame clear introduces new phis in the graph: %s", location);
+                reported.add(location);
             } catch (Throwable t) {
                 debug.handle(t);
             }
