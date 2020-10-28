@@ -473,14 +473,14 @@ public final class GCImpl implements GC {
     @SuppressWarnings("try")
     private void walkRuntimeCodeCache() {
         try (Timer wrm = timers.walkRuntimeCodeCache.open()) {
-            RuntimeCodeInfoMemory.singleton().walkRuntimeMethods(runtimeCodeCacheWalker);
+            RuntimeCodeInfoMemory.singleton().walkRuntimeMethodsDuringGC(runtimeCodeCacheWalker);
         }
     }
 
     @SuppressWarnings("try")
     private void cleanRuntimeCodeCache() {
         try (Timer wrm = timers.cleanRuntimeCodeCache.open()) {
-            RuntimeCodeInfoMemory.singleton().walkRuntimeMethods(runtimeCodeCacheCleaner);
+            RuntimeCodeInfoMemory.singleton().walkRuntimeMethodsDuringGC(runtimeCodeCacheCleaner);
         }
     }
 

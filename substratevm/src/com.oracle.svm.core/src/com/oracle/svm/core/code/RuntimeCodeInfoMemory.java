@@ -195,7 +195,7 @@ public class RuntimeCodeInfoMemory {
         }
     }
 
-    public boolean walkRuntimeMethods(CodeInfoVisitor visitor) {
+    public boolean walkRuntimeMethodsDuringGC(CodeInfoVisitor visitor) {
         assert VMOperation.isGCInProgress() : "otherwise, we would need to make sure that the CodeInfo is not freeded by the GC";
         if (table.isNonNull()) {
             int length = NonmovableArrays.lengthOf(table);
@@ -210,6 +210,21 @@ public class RuntimeCodeInfoMemory {
                 if (info == NonmovableArrays.getWord(table, i)) {
                     i++;
                 }
+            }
+        }
+        return true;
+    }
+
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
+    public boolean walkRuntimeMethodsUninterruptibly(CodeInfoVisitor visitor) {
+        if (table.isNonNull()) {
+            int length = NonmovableArrays.lengthOf(table);
+            for (int i = 0; i < length;) {
+                UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
+                if (info.isNonNull()) {
+                    visitor.visitCode(CodeInfoAccess.convert(info));
+                }
+                assert info == NonmovableArrays.getWord(table, i);
             }
         }
         return true;
