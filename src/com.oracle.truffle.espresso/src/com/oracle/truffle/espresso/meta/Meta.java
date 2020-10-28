@@ -244,6 +244,11 @@ public final class Meta implements ContextAccess {
         java_lang_ClassLoader_name = java_lang_ClassLoader.lookupDeclaredField(Name.name, Type.java_lang_String);
         HIDDEN_CLASS_LOADER_REGISTRY = java_lang_ClassLoader.lookupHiddenField(Name.HIDDEN_CLASS_LOADER_REGISTRY);
 
+        java_lang_ClassLoader_getResourceAsStream = java_lang_ClassLoader.lookupMethod(Name.getResourceAsStream, Signature.InputStream_String);
+        java_io_InputStream = knownKlass(Type.java_io_InputStream);
+        java_io_InputStream_read = java_io_InputStream.lookupMethod(Name.read, Signature._int_byte_array_int_int);
+        java_io_InputStream_close = java_io_InputStream.lookupMethod(Name.close, Signature._void);
+
         // Guest reflection.
         java_lang_reflect_Executable = knownKlass(Type.java_lang_reflect_Executable);
         java_lang_reflect_Constructor = knownKlass(Type.java_lang_reflect_Constructor);
@@ -675,6 +680,7 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_ClassLoader_findNative;
     public final Method java_lang_ClassLoader_getSystemClassLoader;
     public final Field HIDDEN_CLASS_LOADER_REGISTRY;
+    public final Method java_lang_ClassLoader_getResourceAsStream;
 
     public final ObjectKlass jdk_internal_loader_ClassLoaders$PlatformClassLoader;
 
@@ -791,6 +797,10 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass java_security_PrivilegedActionException;
     public final Method java_security_PrivilegedActionException_init_Exception;
+
+    public final ObjectKlass java_io_InputStream;
+    public final Method java_io_InputStream_read;
+    public final Method java_io_InputStream_close;
 
     // Array support.
     public final ObjectKlass java_lang_Cloneable;

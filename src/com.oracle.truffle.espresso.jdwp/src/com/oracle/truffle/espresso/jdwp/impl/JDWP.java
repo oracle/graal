@@ -376,8 +376,8 @@ final class JDWP {
             static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                JDWPLogger.log("Request to redefine received", JDWPLogger.LogLevel.REDEFINE);
                 int classes = input.readInt();
+                JDWPLogger.log("Request to redefine %d classes received", JDWPLogger.LogLevel.REDEFINE, classes);
                 RedefineInfo[] redefineInfos = new RedefineInfo[classes];
                 for (int i = 0; i < classes; i++) {
                     KlassRef klass = verifyRefType(input.readLong(), reply, context);

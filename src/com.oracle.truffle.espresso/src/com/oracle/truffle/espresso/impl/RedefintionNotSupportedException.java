@@ -22,17 +22,16 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-public final class ChangePacket {
+public class RedefintionNotSupportedException extends RuntimeException {
 
-    public final ClassInfo info;
-    public final ParserKlass parserKlass;
-    public final ClassRedefinition.ClassChange classChange;
-    public final DetectedChange detectedChange;
+    private static final long serialVersionUID = -5767957395371919542L;
+    private final int errorCode;
 
-    public ChangePacket(ClassInfo redefineInfo, ParserKlass parserKlass, ClassRedefinition.ClassChange classChange, DetectedChange detectedChange) {
-        this.info = redefineInfo;
-        this.parserKlass = parserKlass;
-        this.classChange = classChange;
-        this.detectedChange = detectedChange;
+    RedefintionNotSupportedException(int errorCode) {
+        this.errorCode = errorCode;
+    }
+
+    public int getErrorCode() {
+        return errorCode;
     }
 }
