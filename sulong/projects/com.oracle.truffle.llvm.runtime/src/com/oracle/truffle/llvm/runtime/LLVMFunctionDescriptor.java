@@ -199,7 +199,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
             return call.call(args);
         }
 
-        @Specialization(replaces = "doDescriptor", guards = "self.getFunctionCode() == cachedFunctionCode")
+        @Specialization(replaces = "doDescriptor", limit = "5", guards = "self.getFunctionCode() == cachedFunctionCode")
         static Object doCached(@SuppressWarnings("unused") LLVMFunctionDescriptor self, Object[] args,
                         @Cached("self.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode cachedFunctionCode,
                         @Cached("createCall(self)") DirectCallNode call) {

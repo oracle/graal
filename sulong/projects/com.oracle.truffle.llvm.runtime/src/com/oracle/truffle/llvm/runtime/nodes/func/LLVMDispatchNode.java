@@ -108,7 +108,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      */
 
     @SuppressWarnings("try")
-    @Specialization(guards = {"descriptor == cachedDescriptor", "cachedFunctionCode.isLLVMIRFunction()"}, assumptions = "singleContextAssumption()")
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "cachedFunctionCode.isLLVMIRFunction()"}, assumptions = "singleContextAssumption()")
     protected static Object doDirectFunction(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("descriptor") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
                     @Cached("cachedDescriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode cachedFunctionCode,
@@ -117,7 +117,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     }
 
     @SuppressWarnings("try")
-    @Specialization(replaces = "doDirectFunction", guards = {"descriptor.getFunctionCode() == cachedFunctionCode", "cachedFunctionCode.isLLVMIRFunction()"})
+    @Specialization(limit = "INLINE_CACHE_SIZE", replaces = "doDirectFunction", guards = {"descriptor.getFunctionCode() == cachedFunctionCode", "cachedFunctionCode.isLLVMIRFunction()"})
     protected static Object doDirectCode(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("descriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode cachedFunctionCode,
                     @Cached("create(cachedFunctionCode.getLLVMIRFunctionSlowPath())") DirectCallNode callNode) {
@@ -144,7 +144,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     }
 
     @SuppressWarnings("try")
-    @Specialization(guards = {"descriptor == cachedDescriptor", "cachedFunctionCode.isIntrinsicFunctionSlowPath()"}, assumptions = "singleContextAssumption()")
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "cachedFunctionCode.isIntrinsicFunctionSlowPath()"}, assumptions = "singleContextAssumption()")
     protected Object doDirectIntrinsicFunction(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("descriptor") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
                     @Cached("cachedDescriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode cachedFunctionCode,
@@ -153,7 +153,8 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     }
 
     @SuppressWarnings("try")
-    @Specialization(replaces = "doDirectIntrinsicFunction", guards = {"descriptor.getFunctionCode() == cachedFunctionCode", "cachedFunctionCode.isIntrinsicFunctionSlowPath()"})
+    @Specialization(limit = "INLINE_CACHE_SIZE", replaces = "doDirectIntrinsicFunction", guards = {"descriptor.getFunctionCode() == cachedFunctionCode",
+                    "cachedFunctionCode.isIntrinsicFunctionSlowPath()"})
     protected Object doDirectIntrinsicCode(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("descriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode cachedFunctionCode,
                     @Cached("getIntrinsificationCallNode(cachedFunctionCode.getIntrinsicSlowPath())") DirectCallNode callNode) {
@@ -174,7 +175,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      */
 
     @SuppressWarnings("try")
-    @Specialization(guards = {"descriptor == cachedDescriptor", "cachedFunctionCode.isNativeFunctionSlowPath()"}, assumptions = "singleContextAssumption()")
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "cachedFunctionCode.isNativeFunctionSlowPath()"}, assumptions = "singleContextAssumption()")
     protected Object doCachedNativeFunction(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor,
                     Object[] arguments,
                     @Cached("descriptor") LLVMFunctionDescriptor cachedDescriptor,
