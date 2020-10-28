@@ -40,6 +40,11 @@
  */
 package org.graalvm.polyglot;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.MapCursor;
+
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -55,11 +60,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.MapCursor;
 
 /**
  * Represents the host access policy of a polyglot context. The host access policy specifies which
@@ -95,9 +95,10 @@ public final class HostAccess {
     private final boolean allowAllClassImplementations;
     final boolean allowArrayAccess;
     final boolean allowListAccess;
+    final boolean allowBufferAccess;
     volatile Object impl;
 
-    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false);
+    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false);
 
     /**
      * Predefined host access policy that allows access to public host methods or fields that were
@@ -147,7 +148,7 @@ public final class HostAccess {
                     allowPublicAccess(true).//
                     allowAllImplementations(true).//
                     allowAllClassImplementations(true).//
-                    allowArrayAccess(true).allowListAccess(true).//
+                    allowArrayAccess(true).allowListAccess(true).allowBufferAccess(true).//
                     name("HostAccess.ALL").build();
 
     /**
@@ -167,7 +168,7 @@ public final class HostAccess {
                     EconomicSet<Class<? extends Annotation>> implementableAnnotations,
                     EconomicSet<Class<?>> implementableTypes, List<Object> targetMappings,
                     String name,
-                    boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess) {
+                    boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess, boolean allowBufferAccess) {
         // create defensive copies
         this.accessAnnotations = copySet(annotations, Equivalence.IDENTITY);
         this.excludeTypes = copyMap(excludeTypes, Equivalence.IDENTITY);
@@ -181,6 +182,7 @@ public final class HostAccess {
         this.allowAllClassImplementations = allowAllClassImplementations;
         this.allowArrayAccess = allowArrayAccess;
         this.allowListAccess = allowListAccess;
+        this.allowBufferAccess = allowBufferAccess;
     }
 
     /**
@@ -546,8 +548,9 @@ public final class HostAccess {
         private EconomicSet<AnnotatedElement> members;
         private List<Object> targetMappings;
         private boolean allowPublic;
-        private boolean allowListAccess;
         private boolean allowArrayAccess;
+        private boolean allowListAccess;
+        private boolean allowBufferAccess;
         private boolean allowAllImplementations;
         private boolean allowAllClassImplementations;
         private String name;
@@ -763,6 +766,19 @@ public final class HostAccess {
         }
 
         /**
+         * Allows the guest application to access {@link java.nio.ByteBuffer}s as values with
+         * {@link Value#hasBufferElements() buffer elements}. By default no buffer access is
+         * allowed.
+         *
+         * @see Value#hasBufferElements()
+         * @since 21.1
+         */
+        public Builder allowBufferAccess(boolean bufferAccess) {
+            this.allowBufferAccess = bufferAccess;
+            return this;
+        }
+
+        /**
          * Adds a custom source to target type mapping for Java host calls, host field assignments
          * and {@link Value#as(Class) explicit value conversions}. Method is equivalent to calling
          * the targetTypeMapping method with precedence {@link TargetMappingPrecedence#HIGH}.
@@ -926,7 +942,7 @@ public final class HostAccess {
          */
         public HostAccess build() {
             return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic,
-                            allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess);
+                            allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess, allowBufferAccess);
         }
     }
 

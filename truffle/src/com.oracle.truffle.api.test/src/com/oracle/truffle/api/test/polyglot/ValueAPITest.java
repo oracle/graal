@@ -40,60 +40,23 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ARRAY_ELEMENTS;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DATE;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DURATION;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.INSTANTIABLE;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.META;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIME;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIMEZONE;
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.tck.tests.ValueAssert;
+import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.Implementable;
@@ -115,23 +78,62 @@ import org.junit.Before;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.tck.tests.ValueAssert;
-import com.oracle.truffle.tck.tests.ValueAssert.Trait;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ARRAY_ELEMENTS;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BUFFER_ELEMENTS;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DATE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DURATION;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.INSTANTIABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.META;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIME;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIMEZONE;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class ValueAPITest {
 
@@ -266,11 +268,15 @@ public class ValueAPITest {
                         public Object apply(Object t) {
                             return t;
                         }
-                    }, new Supplier<String>() {
+                    },
+                    new Supplier<String>() {
                         public String get() {
                             return "foobar";
                         }
-                    }, BigDecimal.class, Class.class, Proxy.newProxyInstance(ValueAPITest.class.getClassLoader(), new Class<?>[]{ProxyInterface.class}, new InvocationHandler() {
+                    },
+                    BigDecimal.class,
+                    Class.class,
+                    Proxy.newProxyInstance(ValueAPITest.class.getClassLoader(), new Class<?>[]{ProxyInterface.class}, new InvocationHandler() {
                         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                             switch (method.getName()) {
                                 case "foobar":
@@ -285,7 +291,8 @@ public class ValueAPITest {
                                     throw new UnsupportedOperationException(method.getName());
                             }
                         }
-                    })};
+                    }),
+                    ByteBuffer.wrap(new byte[0])};
 
     @Test
     public void testHostObject() {
@@ -303,6 +310,10 @@ public class ValueAPITest {
 
             if (value instanceof List) {
                 expectedTraits.add(ARRAY_ELEMENTS);
+            }
+
+            if (value instanceof ByteBuffer) {
+                expectedTraits.add(BUFFER_ELEMENTS);
             }
 
             if (value instanceof Class && value != Class.class) {
@@ -359,6 +370,247 @@ public class ValueAPITest {
         assertEquals(3, list.size());
         assertEquals(3, vlist.getArraySize());
     }
+
+    // region Buffer tests
+
+    /**
+     * Returns an array of test {@link ByteBuffer}s with different implementation.
+     * <p>
+     * All test buffers contains bytes [1, 2, 3, 4, 5, 6, 7, 8].
+     */
+    public static ByteBuffer[] makeTestBuffers() {
+        final List<ByteBuffer> list = new ArrayList<>();
+
+        // Heap buffers
+        list.add(fillTestBuffer(ByteBuffer.allocate(8))); // HeapByteBuffer
+        list.add(fillTestBuffer(ByteBuffer.allocate(8)).order(ByteOrder.BIG_ENDIAN)); // HeapByteBuffer
+        list.add(fillTestBuffer(ByteBuffer.allocate(8)).order(ByteOrder.LITTLE_ENDIAN)); // HeapByteBuffer
+        list.add(fillTestBuffer(ByteBuffer.wrap(new byte[8]))); // HeapByteBuffer
+        list.add(fillTestBuffer(sliceTestBuffer(ByteBuffer.allocate(10)))); // HeapByteBuffer
+        list.add(fillTestBuffer(ByteBuffer.allocate(8)).asReadOnlyBuffer()); // HeapByteBufferR
+
+        // Direct buffers
+        list.add(fillTestBuffer(ByteBuffer.allocateDirect(8))); // DirectHeapBuffer
+        list.add(fillTestBuffer(ByteBuffer.allocateDirect(8)).order(ByteOrder.BIG_ENDIAN)); // DirectHeapBuffer
+        list.add(fillTestBuffer(ByteBuffer.allocateDirect(8)).order(ByteOrder.LITTLE_ENDIAN)); // DirectHeapBuffer
+        list.add(fillTestBuffer(sliceTestBuffer(ByteBuffer.allocateDirect(10)))); // DirectHeapBuffer
+        list.add(fillTestBuffer(ByteBuffer.allocateDirect(8)).asReadOnlyBuffer()); // DirectHeapBufferR
+
+        return list.toArray(new ByteBuffer[0]);
+    }
+
+    private static final ByteBuffer[] BUFFERS = makeTestBuffers();
+
+    private static ByteBuffer fillTestBuffer(ByteBuffer buffer) {
+        return buffer.put(0, (byte) 1).put(1, (byte) 2).put(2, (byte) 3).put(3, (byte) 4).put(4, (byte) 5).put(5, (byte) 6).put(6, (byte) 7).put(7, (byte) 8);
+    }
+
+    private static ByteBuffer sliceTestBuffer(ByteBuffer buffer) {
+        buffer.position(1); // not chainable (returns Buffer)
+        buffer.limit(9); // not chainable (returns Buffer)
+        return buffer.slice();
+    }
+
+    @Test
+    public void testBuffers() {
+        for (final ByteBuffer buffer : BUFFERS) {
+            final Value value = context.asValue(buffer);
+            assertValue(value, BUFFER_ELEMENTS, HOST_OBJECT, MEMBERS);
+        }
+    }
+
+    @Test
+    public void testBuffersModifiable() {
+        for (final ByteBuffer buffer : makeTestBuffers()) {
+            Assert.assertEquals(!buffer.isReadOnly(), context.asValue(buffer).isBufferWritable());
+        }
+    }
+
+    @Test
+    public void testBuffersSize() {
+        for (final ByteBuffer buffer : makeTestBuffers()) {
+            Assert.assertEquals(8, context.asValue(buffer).getBufferSize());
+        }
+    }
+
+    @Test
+    public void testBuffersRead() {
+        for (final ByteBuffer buffer : makeTestBuffers()) {
+            final Value value = context.asValue(buffer);
+            final ByteOrder order = buffer.order();
+            for (byte i = 0; i < value.getBufferSize(); ++i) {
+                Assert.assertEquals(buffer.get(i), value.readBufferByte(i));
+                Assert.assertEquals("Side effect: readBufferByte should not modify wrapped buffer's order", order, buffer.order());
+            }
+            for (byte i = 0; i < value.getBufferSize() - 1; ++i) {
+                Assert.assertEquals(buffer.getShort(i), value.readBufferShort(order, i));
+                Assert.assertEquals("Side effect: readBufferShort should not modify wrapped buffer's order", order, buffer.order());
+            }
+            for (byte i = 0; i < value.getBufferSize() - 3; ++i) {
+                Assert.assertEquals(buffer.getInt(i), value.readBufferInt(order, i));
+                Assert.assertEquals("Side effect: readBufferInt should not modify wrapped buffer's order", order, buffer.order());
+                Assert.assertEquals(buffer.getFloat(i), value.readBufferFloat(order, i), 0);
+                Assert.assertEquals("Side effect: readBufferFloat should not modify wrapped buffer's order", order, buffer.order());
+            }
+            for (byte i = 0; i < value.getBufferSize() - 7; ++i) {
+                Assert.assertEquals(buffer.getLong(i), value.readBufferLong(order, i));
+                Assert.assertEquals("Side effect: readBufferLong should not modify wrapped buffer's order", order, buffer.order());
+                Assert.assertEquals(buffer.getDouble(i), value.readBufferDouble(order, i), 0);
+                Assert.assertEquals("Side effect: readBufferDouble should not modify wrapped buffer's order", order, buffer.order());
+            }
+        }
+    }
+
+    @Test
+    public void testBuffersWrite() {
+        for (final ByteBuffer buffer : makeTestBuffers()) {
+            final Value value = context.asValue(buffer);
+            final ByteOrder order = buffer.order();
+            if (value.isBufferWritable()) {
+                for (int i = 0; i < value.getBufferSize(); ++i) {
+                    value.writeBufferByte(i, Byte.MAX_VALUE);
+                    Assert.assertEquals(Byte.MAX_VALUE, buffer.get(i));
+                    Assert.assertEquals("Side effect: writeBufferByte should not modify wrapped buffer's order", order, buffer.order());
+                }
+            }
+        }
+        for (final ByteBuffer buffer : makeTestBuffers()) {
+            final Value value = context.asValue(buffer);
+            final ByteOrder order = buffer.order();
+            if (value.isBufferWritable()) {
+                for (int i = 0; i < value.getBufferSize() - 1; ++i) {
+                    value.writeBufferShort(order, i, Short.MAX_VALUE);
+                    Assert.assertEquals(Short.MAX_VALUE, buffer.getShort(i));
+                }
+            }
+        }
+        for (final ByteBuffer buffer : makeTestBuffers()) {
+            final Value value = context.asValue(buffer);
+            final ByteOrder order = buffer.order();
+            if (value.isBufferWritable()) {
+                for (int i = 0; i < value.getBufferSize() - 3; ++i) {
+                    value.writeBufferInt(order, i, Integer.MAX_VALUE);
+                    Assert.assertEquals(Integer.MAX_VALUE, buffer.getInt(i));
+                }
+            }
+        }
+        for (final ByteBuffer buffer : makeTestBuffers()) {
+            final Value value = context.asValue(buffer);
+            final ByteOrder order = buffer.order();
+            if (value.isBufferWritable()) {
+                for (int i = 0; i < value.getBufferSize() - 3; ++i) {
+                    value.writeBufferFloat(order, i, Float.MAX_VALUE);
+                    Assert.assertEquals(Float.MAX_VALUE, buffer.getFloat(i), 0);
+                }
+            }
+        }
+        for (final ByteBuffer buffer : makeTestBuffers()) {
+            final Value value = context.asValue(buffer);
+            final ByteOrder order = buffer.order();
+            if (value.isBufferWritable()) {
+                for (int i = 0; i < value.getBufferSize() - 7; ++i) {
+                    value.writeBufferLong(order, i, Long.MAX_VALUE);
+                    Assert.assertEquals(Long.MAX_VALUE, buffer.getLong(i));
+                }
+            }
+        }
+        for (final ByteBuffer buffer : makeTestBuffers()) {
+            final Value value = context.asValue(buffer);
+            final ByteOrder order = buffer.order();
+            if (value.isBufferWritable()) {
+                for (int i = 0; i < value.getBufferSize() - 7; ++i) {
+                    value.writeBufferDouble(order, i, Double.MAX_VALUE);
+                    Assert.assertEquals(Double.MAX_VALUE, buffer.getDouble(i), 0);
+                }
+            }
+        }
+
+    }
+
+    @Test
+    public void testBuffersErrors() {
+        for (final ByteBuffer buffer : BUFFERS) {
+            final Value value = context.asValue(buffer);
+            final String className = buffer.getClass().getName();
+            final ByteOrder order = buffer.order();
+            if (buffer.isReadOnly()) {
+                assertFails(() -> value.writeBufferByte(0, Byte.MAX_VALUE), UnsupportedOperationException.class,
+                                "Unsupported operation Value.writeBufferByte() for '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className +
+                                                "). You can ensure that the operation is supported using Value.isBufferWritable().");
+                assertFails(() -> value.writeBufferShort(order, 0, Short.MAX_VALUE), UnsupportedOperationException.class,
+                                "Unsupported operation Value.writeBufferShort() for '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className +
+                                                "). You can ensure that the operation is supported using Value.isBufferWritable().");
+                assertFails(() -> value.writeBufferInt(order, 0, Integer.MAX_VALUE), UnsupportedOperationException.class,
+                                "Unsupported operation Value.writeBufferInt() for '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className +
+                                                "). You can ensure that the operation is supported using Value.isBufferWritable().");
+                assertFails(() -> value.writeBufferLong(order, 0, Long.MAX_VALUE), UnsupportedOperationException.class,
+                                "Unsupported operation Value.writeBufferLong() for '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className +
+                                                "). You can ensure that the operation is supported using Value.isBufferWritable().");
+                assertFails(() -> value.writeBufferFloat(order, 0, Float.MAX_VALUE), UnsupportedOperationException.class,
+                                "Unsupported operation Value.writeBufferFloat() for '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className +
+                                                "). You can ensure that the operation is supported using Value.isBufferWritable().");
+                assertFails(() -> value.writeBufferDouble(order, 0, Double.MAX_VALUE), UnsupportedOperationException.class,
+                                "Unsupported operation Value.writeBufferDouble() for '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className +
+                                                "). You can ensure that the operation is supported using Value.isBufferWritable().");
+            } else {
+                assertFails(() -> value.readBufferByte(-1), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 1 at byte offset -1 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.readBufferByte(value.getBufferSize()), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 1 at byte offset 8 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.writeBufferByte(-1, Byte.MAX_VALUE), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 1 at byte offset -1 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.writeBufferByte(value.getBufferSize(), Byte.MAX_VALUE), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 1 at byte offset 8 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+
+                assertFails(() -> value.readBufferShort(order, -1), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 2 at byte offset -1 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.readBufferShort(order, value.getBufferSize()), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 2 at byte offset 8 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.writeBufferShort(order, -1, Short.MAX_VALUE), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 2 at byte offset -1 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.writeBufferShort(order, value.getBufferSize(), Short.MAX_VALUE), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 2 at byte offset 8 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+
+                assertFails(() -> value.readBufferInt(order, -1), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 4 at byte offset -1 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.readBufferInt(order, value.getBufferSize()), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 4 at byte offset 8 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.writeBufferInt(order, -1, Integer.MAX_VALUE), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 4 at byte offset -1 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.writeBufferInt(order, value.getBufferSize(), Integer.MAX_VALUE), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 4 at byte offset 8 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+
+                assertFails(() -> value.readBufferLong(order, -1), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 8 at byte offset -1 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.readBufferLong(order, value.getBufferSize()), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 8 at byte offset 8 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.writeBufferLong(order, -1, Long.MAX_VALUE), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 8 at byte offset -1 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.writeBufferLong(order, value.getBufferSize(), Long.MAX_VALUE), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 8 at byte offset 8 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+
+                assertFails(() -> value.readBufferFloat(order, -1), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 4 at byte offset -1 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.readBufferFloat(order, value.getBufferSize()), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 4 at byte offset 8 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.writeBufferFloat(order, -1, Float.MAX_VALUE), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 4 at byte offset -1 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.writeBufferFloat(order, value.getBufferSize(), Float.MAX_VALUE), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 4 at byte offset 8 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+
+                assertFails(() -> value.readBufferDouble(order, -1), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 8 at byte offset -1 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.readBufferDouble(order, value.getBufferSize()), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 8 at byte offset 8 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.writeBufferDouble(order, -1, Double.MAX_VALUE), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 8 at byte offset -1 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+                assertFails(() -> value.writeBufferDouble(order, value.getBufferSize(), Double.MAX_VALUE), IndexOutOfBoundsException.class,
+                                "Invalid buffer access of length 8 at byte offset 8 for buffer '" + className + "[pos=0 lim=8 cap=8]'(language: Java, type: " + className + ").");
+            }
+        }
+    }
+
+    // endregion
 
     @Test
     public void testComplexGenericCoercion() {
@@ -1755,6 +2007,7 @@ public class ValueAPITest {
         sharableObjects.addAll(Arrays.asList(BOOLEANS));
         sharableObjects.addAll(Arrays.asList(STRINGS));
         sharableObjects.addAll(Arrays.asList(ARRAYS));
+        sharableObjects.addAll(Arrays.asList(BUFFERS));
 
         expandObjectVariants(context1, sharableObjects);
         for (Object object : sharableObjects) {
@@ -2053,6 +2306,20 @@ public class ValueAPITest {
             Value array = context.asValue(new int[]{1, 2, 3});
             AbstractPolyglotTest.assertFails(() -> array.getArrayElement(index), ArrayIndexOutOfBoundsException.class);
             AbstractPolyglotTest.assertFails(() -> array.setArrayElement(index, 42), ArrayIndexOutOfBoundsException.class);
+
+            final Value buffer = context.asValue(ByteBuffer.wrap(new byte[]{1, 2, 3}));
+            AbstractPolyglotTest.assertFails(() -> buffer.readBufferByte(index), IndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> buffer.writeBufferByte(index, (byte) 42), IndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> buffer.readBufferShort(ByteOrder.LITTLE_ENDIAN, index), IndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> buffer.writeBufferShort(ByteOrder.LITTLE_ENDIAN, index, (short) 42), IndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> buffer.readBufferInt(ByteOrder.LITTLE_ENDIAN, index), IndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> buffer.writeBufferInt(ByteOrder.LITTLE_ENDIAN, index, 2), IndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> buffer.readBufferLong(ByteOrder.LITTLE_ENDIAN, index), IndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> buffer.writeBufferLong(ByteOrder.LITTLE_ENDIAN, index, 42), IndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> buffer.readBufferFloat(ByteOrder.LITTLE_ENDIAN, index), IndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> buffer.writeBufferFloat(ByteOrder.LITTLE_ENDIAN, index, 42), IndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> buffer.readBufferDouble(ByteOrder.LITTLE_ENDIAN, index), IndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> buffer.writeBufferDouble(ByteOrder.LITTLE_ENDIAN, index, 42), IndexOutOfBoundsException.class);
         }
     }
 

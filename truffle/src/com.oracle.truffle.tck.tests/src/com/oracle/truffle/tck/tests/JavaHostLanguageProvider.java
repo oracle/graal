@@ -40,6 +40,21 @@
  */
 package com.oracle.truffle.tck.tests;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyDate;
+import org.graalvm.polyglot.proxy.ProxyDuration;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
+import org.graalvm.polyglot.proxy.ProxyTime;
+import org.graalvm.polyglot.proxy.ProxyTimeZone;
+import org.graalvm.polyglot.tck.LanguageProvider;
+import org.graalvm.polyglot.tck.Snippet;
+import org.graalvm.polyglot.tck.TypeDescriptor;
+
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -58,20 +73,6 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyArray;
-import org.graalvm.polyglot.proxy.ProxyDate;
-import org.graalvm.polyglot.proxy.ProxyDuration;
-import org.graalvm.polyglot.proxy.ProxyExecutable;
-import org.graalvm.polyglot.proxy.ProxyObject;
-import org.graalvm.polyglot.proxy.ProxyTime;
-import org.graalvm.polyglot.proxy.ProxyTimeZone;
-import org.graalvm.polyglot.tck.LanguageProvider;
-import org.graalvm.polyglot.tck.Snippet;
-import org.graalvm.polyglot.tck.TypeDescriptor;
 
 public final class JavaHostLanguageProvider implements LanguageProvider {
     private static final String ID = "java-host";
@@ -134,6 +135,7 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         for (Primitive primitive : primitives.values()) {
             result.add(createPrimitive(context, primitive));
         }
+
         // Arrays
         result.add(Snippet.newBuilder("Array<int>", export(context, new ValueSupplier<>(new int[]{1, 2})),
                         TypeDescriptor.array(TypeDescriptor.NUMBER)).build());
@@ -144,6 +146,10 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         for (Primitive primitive : primitives.values()) {
             result.add(createProxyArray(context, primitive));
         }
+
+        // Buffers
+        result.add(Snippet.newBuilder("HeapByteBuffer", export(context, new ValueSupplier<>(ByteBuffer.wrap(new byte[]{1, 2, 3}))), TypeDescriptor.OBJECT).build());
+        result.add(Snippet.newBuilder("HeapByteBufferR", export(context, new ValueSupplier<>(ByteBuffer.wrap(new byte[]{1, 2, 3}).asReadOnlyBuffer())), TypeDescriptor.OBJECT).build());
 
         // Object Proxies
         result.add(Snippet.newBuilder("Proxy<java.lang.Object{}>", export(context, new ValueSupplier<>(ProxyObject.fromMap(Collections.emptyMap()))), TypeDescriptor.OBJECT).build());
