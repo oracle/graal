@@ -149,11 +149,12 @@ public final class GraphBuilder {
         boolean isRet = false;
         boolean traps = false;
         int bci = 0;
+        int last = 0;
         while (bci < status.length) {
             if (bci != 0 && isStatus(bci, BLOCK_START)) {
                 assert temp[id] == null;
                 assert id == readBlockID(start);
-                temp[id] = createTempBlock(id, start, successors, isRet, bci, traps);
+                temp[id] = createTempBlock(id, start, successors, isRet, bci, last, traps);
                 start = bci;
                 id++;
                 successors = null;
@@ -176,9 +177,10 @@ public final class GraphBuilder {
                 assert successors == null;
                 successors = EMPTY_SUCCESSORS;
             }
+            last = bci;
             bci = bs.nextBCI(bci);
         }
-        temp[id] = createTempBlock(id, start, successors, isRet, status.length, traps);
+        temp[id] = createTempBlock(id, start, successors, isRet, status.length, last, traps);
 
         temporaryBlocks = temp;
         int[] handlerBlocks = new int[handlers.length];
@@ -189,8 +191,8 @@ public final class GraphBuilder {
         handlerToBlock = handlerBlocks;
     }
 
-    private static TemporaryBlock createTempBlock(int id, int start, int[] successors, boolean isRet, int bci, boolean traps) {
-        return new TemporaryBlock(id, start, bci - 1, successors, isRet, traps);
+    private static TemporaryBlock createTempBlock(int id, int start, int[] successors, boolean isRet, int bci, int last, boolean traps) {
+        return new TemporaryBlock(id, start, bci - 1, last, successors, isRet, traps);
     }
 
     /**
@@ -283,12 +285,13 @@ public final class GraphBuilder {
             if (isJSR(opcode)) {
                 markJsr(bci);
             }
+            if (Bytecodes.isStop(opcode)) {
+                markGoto(bci);
+            }
         } else if (isSwitch(opcode)) {
             markSwitch(bci, opcode);
         } else if (isRet(opcode)) {
             markRet(bci);
-        } else if (Bytecodes.isStop(opcode)) {
-            markGoto(bci);
         }
     }
 
@@ -350,9 +353,7 @@ public final class GraphBuilder {
     }
 
     private void markGoto(int bci) {
-        mark(bci, bs.readBranchDest(bci) & TARGET_MASK);
-        mark(bs.nextBCI(bci), BLOCK_START);
-        mark(bs.readBranchDest(bci), BLOCK_START);
+        mark(bci, ONLY_TARGET);
     }
 
     private void markHandler(ExceptionHandler handler) {
@@ -438,6 +439,7 @@ public final class GraphBuilder {
         private final int id;
         private final int start;
         private final int end;
+        private final int last;
         private final int[] successors;
         private final boolean isRet;
 
@@ -452,10 +454,11 @@ public final class GraphBuilder {
 
         private int[] fullyLinkedSuccessors = null;
 
-        TemporaryBlock(int id, int start, int end, int[] successors, boolean isRet, boolean traps) {
+        TemporaryBlock(int id, int start, int end, int last, int[] successors, boolean isRet, boolean traps) {
             this.id = id;
             this.start = start;
             this.end = end;
+            this.last = last;
             if (successors != null) {
                 this.successors = successors;
             } else {
@@ -477,6 +480,11 @@ public final class GraphBuilder {
         }
 
         @Override
+        public int lastBCI() {
+            return last;
+        }
+
+        @Override
         public int id() {
             return id;
         }
@@ -494,12 +502,12 @@ public final class GraphBuilder {
 
         EspressoBlock promote(GraphBuilder builder, EspressoExecutionGraph graph) {
             if (successors.length == 0 && handlers.isEmpty() && !isRet) {
-                return new EspressoBlock(graph, id, start, end, EspressoBlock.EMPTY_ID_ARRAY, Util.toIntArray(predecessors));
+                return new EspressoBlock(graph, id, start, end, last, EspressoBlock.EMPTY_ID_ARRAY, Util.toIntArray(predecessors));
             }
             if (handlers.isEmpty()) {
-                return new EspressoBlock(graph, id, start, end, successors(builder), Util.toIntArray(predecessors));
+                return new EspressoBlock(graph, id, start, end, last, successors(builder), Util.toIntArray(predecessors));
             }
-            return new EspressoBlockWithHandlers(graph, id, start, end, successors(builder), Util.toIntArray(handlers), Util.toIntArray(predecessors));
+            return new EspressoBlockWithHandlers(graph, id, start, end, last, successors(builder), Util.toIntArray(handlers), Util.toIntArray(predecessors));
         }
 
         private int[] successors(GraphBuilder builder) {

@@ -30,8 +30,8 @@ public final class EspressoBlockWithHandlers extends EspressoBlock implements Ex
     // Contains the handlers index in method.getExceptionHandlers.
     private final int[] handlers;
 
-    public EspressoBlockWithHandlers(EspressoExecutionGraph graph, int id, int start, int end, int[] successors, int[] handlers, int[] predecessors) {
-        super(graph, id, start, end, successors, predecessors);
+    public EspressoBlockWithHandlers(EspressoExecutionGraph graph, int id, int start, int end, int last, int[] successors, int[] handlers, int[] predecessors) {
+        super(graph, id, start, end, last, successors, predecessors);
         this.handlers = handlers;
     }
 

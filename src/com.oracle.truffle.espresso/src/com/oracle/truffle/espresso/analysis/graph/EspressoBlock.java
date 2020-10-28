@@ -34,6 +34,7 @@ public class EspressoBlock implements LinkedBlock {
     private final int id;
     private final int start;
     private final int end;
+    private final int last;
     private final int[] successors;
     private final int[] predecessors;
 
@@ -41,11 +42,12 @@ public class EspressoBlock implements LinkedBlock {
         return graph;
     }
 
-    public EspressoBlock(EspressoExecutionGraph graph, int id, int start, int end, int[] successors, int[] predecessors) {
+    public EspressoBlock(EspressoExecutionGraph graph, int id, int start, int end, int last, int[] successors, int[] predecessors) {
         this.graph = graph;
         this.id = id;
         this.start = start;
         this.end = end;
+        this.last = last;
         this.successors = successors;
         this.predecessors = predecessors;
         assert Util.assertNoDupe(successors);
@@ -60,6 +62,11 @@ public class EspressoBlock implements LinkedBlock {
     @Override
     public final int end() {
         return end;
+    }
+
+    @Override
+    public int lastBCI() {
+        return last;
     }
 
     @Override

@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
+import com.oracle.truffle.espresso.analysis.liveness.actions.SelectEdgeAction;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.perf.AutoTimer;
@@ -54,11 +55,15 @@ public class LivenessAnalysis {
 
     public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis() {
         @Override
-        public void performPreBCI(VirtualFrame frame, int bci, BytecodeNode node) {
+        public void performPostBCI(VirtualFrame frame, int bci, BytecodeNode node) {
         }
 
         @Override
-        public void performPostBCI(VirtualFrame frame, int bci, BytecodeNode node) {
+        public void performOnEdge(VirtualFrame frame, int bci, int nextBci, BytecodeNode node) {
+        }
+
+        @Override
+        public void onStart(VirtualFrame frame, BytecodeNode node) {
         }
     };
 
@@ -69,21 +74,36 @@ public class LivenessAnalysis {
      */
     @CompilerDirectives.CompilationFinal(dimensions = 1) //
     private final LocalVariableAction[] result;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    private final EdgeAction[] edge;
+    private final LocalVariableAction onStart;
+
     private final boolean compiledCodeOnly;
 
-    public void performPreBCI(VirtualFrame frame, int bci, BytecodeNode node) {
-        doAction(frame, bci, node, true);
+    private boolean compiledCodeCheck() {
+        return !compiledCodeOnly || CompilerDirectives.inCompiledCode();
+    }
+
+    public void performOnEdge(VirtualFrame frame, int bci, int nextBci, BytecodeNode node) {
+        if (compiledCodeCheck()) {
+            if (edge != null && edge[nextBci] != null) {
+                edge[nextBci].onEdge(frame, bci, node);
+            }
+        }
+    }
+
+    public void onStart(VirtualFrame frame, BytecodeNode node) {
+        if (compiledCodeCheck()) {
+            if (onStart != null) {
+                onStart.execute(frame, node);
+            }
+        }
     }
 
     public void performPostBCI(VirtualFrame frame, int bci, BytecodeNode node) {
-        doAction(frame, bci, node, false);
-    }
-
-    private void doAction(VirtualFrame frame, int bci, BytecodeNode node, boolean preAction) {
-        if (!compiledCodeOnly || CompilerDirectives.inCompiledCode()) {
-            int index = getIndex(bci, preAction);
-            if (result != null && result[index] != null) {
-                result[index].execute(frame, node);
+        if (compiledCodeCheck()) {
+            if (result != null && result[bci] != null) {
+                result[bci].execute(frame, node);
             }
         }
     }
@@ -138,134 +158,197 @@ public class LivenessAnalysis {
             // Using the live sets and history, build a set of action for each bci, such that it
             // frees as early as possible each dead local.
             try (AutoTimer actionFinder = AutoTimer.time(ACTION_TIMER)) {
-                LocalVariableAction[] actions = buildResultFrom(blockBoundaryFinder.result(), graph, method);
+                Builder builder = new Builder(graph, method, blockBoundaryFinder.result());
+                builder.build();
                 boolean compiledCodeOnly = method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.COMPILED;
-                return new LivenessAnalysis(actions, compiledCodeOnly);
+                LivenessAnalysis livenessAnalysis = new LivenessAnalysis(builder.actions, builder.edge, builder.onStart, compiledCodeOnly);
+                return livenessAnalysis;
             }
         }
     }
 
-    private LivenessAnalysis(LocalVariableAction[] result, boolean compiledCodeOnly) {
+    public LivenessAnalysis(LocalVariableAction[] result, EdgeAction[] edge, LocalVariableAction onStart, boolean compiledCodeOnly) {
         this.result = result;
+        this.edge = edge;
+        this.onStart = onStart;
         this.compiledCodeOnly = compiledCodeOnly;
     }
 
     private LivenessAnalysis() {
-        this(null, false);
+        this(null, null, null, false);
     }
 
-    private static LocalVariableAction[] buildResultFrom(BlockBoundaryResult result, Graph<? extends LinkedBlock> graph, Method method) {
-        LocalVariableAction[] actions = new LocalVariableAction[method.getCode().length * 2];
-        for (int id = 0; id < graph.totalBlocks(); id++) {
-            processBlock(actions, result, id, graph, method);
+    private static class Builder {
+        private final LocalVariableAction[] actions;
+        private final EdgeAction[] edge;
+        private LocalVariableAction onStart;
+
+        private final Graph<? extends LinkedBlock> graph;
+        private final Method method;
+        private final BlockBoundaryResult helper;
+
+        public Builder(Graph<? extends LinkedBlock> graph, Method method, BlockBoundaryResult helper) {
+            this.actions = new LocalVariableAction[method.getCode().length];
+            this.edge = new EdgeAction[method.getCode().length];
+            this.graph = graph;
+            this.method = method;
+            this.helper = helper;
         }
-        return actions;
-    }
 
-    private static void processBlock(LocalVariableAction[] actions, BlockBoundaryResult helper, int blockID, Graph<? extends LinkedBlock> graph, Method m) {
-        LinkedBlock current = graph.get(blockID);
+        private LocalVariableAction[] build() {
+            LocalVariableAction[] actions = new LocalVariableAction[method.getCode().length * 2];
+            for (int id = 0; id < graph.totalBlocks(); id++) {
+                processBlock(id);
+            }
+            return actions;
+        }
 
-        // merge the state from all predecessors
-        BitSet mergedEntryState = mergePredecessors(helper, graph, m, current);
+        private void processBlock(int blockID) {
+            LinkedBlock current = graph.get(blockID);
 
-        // Locals inherited from merging predecessors, but are not needed down the line can be
-        // killed on block entry.
-        killLocalsOnBlockEntry(actions, helper, blockID, current, mergedEntryState);
+            if (current == graph.entryBlock()) {
+                // Clear all non-argument locals (and non-used args)
+                processEntryBlock(blockID);
+            } else {
+                // merge the state from all predecessors
+                BitSet mergedEntryState = mergePredecessors(current);
 
-        // Replay history in reverse to seek the last load for each variable.
-        replayHistory(actions, helper, blockID);
-    }
+                // Locals inherited from merging predecessors, but are not needed down the line can
+                // be killed on block entry.
+                killLocalsOnBlockEntry(blockID, current, mergedEntryState);
+            }
 
-    private static BitSet mergePredecessors(BlockBoundaryResult helper, Graph<? extends LinkedBlock> graph, Method m, LinkedBlock current) {
-        BitSet mergedEntryState = new BitSet(m.getMaxLocals());
-        if (current == graph.entryBlock()) {
-            // Truffle automates initialization to default values of all slots.
-            mergedEntryState.set(0, m.getMaxLocals());
-        } else {
+            // Replay history in reverse to seek the last load for each variable.
+            replayHistory(blockID);
+        }
+
+        private void processEntryBlock(int blockID) {
+            BitSet entryState = helper.entryFor(blockID);
+            ArrayList<Integer> kills = new ArrayList<>();
+            for (int i = 0; i < method.getMaxLocals(); i++) {
+                if (!entryState.get(i)) {
+                    kills.add(i);
+                }
+            }
+            if (!kills.isEmpty()) {
+                onStart = toLocalAction(kills);
+            }
+        }
+
+        private BitSet mergePredecessors(LinkedBlock current) {
+            BitSet mergedEntryState = new BitSet(method.getMaxLocals());
             for (int pred : current.predecessorsID()) {
-                BitSet predState = helper.endFor(pred);
-                for (int i : Util.bitSetIterator(predState)) {
-                    mergedEntryState.set(i);
+                mergedEntryState.or(helper.endFor(pred));
+            }
+            return mergedEntryState;
+        }
+
+        @SuppressWarnings("unchecked")
+        private void killLocalsOnBlockEntry(int blockID, LinkedBlock current, BitSet mergedEntryState) {
+            BitSet entryState = helper.entryFor(blockID);
+            mergedEntryState.andNot(entryState);
+
+            int nbPredKills = 0;
+            int[] predecessors = current.predecessorsID();
+            ArrayList<Integer>[] kills = new ArrayList[predecessors.length];
+
+            for (int local : Util.bitSetIterator(mergedEntryState)) {
+                for (int j = 0; j < predecessors.length; j++) {
+                    int pred = predecessors[j];
+                    BitSet predEnd = helper.endFor(pred);
+                    if (predEnd.get(local)) {
+                        ArrayList<Integer> kill = kills[j];
+                        if (kill == null) {
+                            kills[j] = kill = new ArrayList<>();
+                            nbPredKills++;
+                        }
+                        kill.add(local);
+                    }
+                }
+            }
+
+            if (nbPredKills > 0) {
+                int pos = 0;
+                int[] predBCIs = new int[nbPredKills];
+                LocalVariableAction[] edgeActions = new LocalVariableAction[nbPredKills];
+                for (int p = 0; p < predecessors.length; p++) {
+                    ArrayList<Integer> clears = kills[p];
+                    if (clears != null) {
+                        predBCIs[pos] = graph.get(predecessors[p]).lastBCI();
+                        edgeActions[pos] = toLocalAction(clears);
+                        pos++;
+                    }
+                }
+                assert pos == nbPredKills;
+                edge[current.start()] = new SelectEdgeAction(predBCIs, edgeActions);
+            }
+
+        }
+
+        private static LocalVariableAction toLocalAction(ArrayList<Integer> actions) {
+            assert !actions.isEmpty();
+            if (actions.size() == 1) {
+                return NullOutAction.get(actions.get(0));
+            } else {
+                return new MultiAction(Util.toIntArray(actions));
+            }
+        }
+
+        private void replayHistory(int blockID) {
+            BitSet endState = helper.endFor(blockID);
+            if (endState == null) {
+                // unreachable
+                return;
+            }
+            endState = (BitSet) endState.clone();
+            for (Record r : helper.historyFor(blockID).reverse()) {
+                switch (r.type) {
+                    case LOAD: // Fallthrough
+                    case IINC:
+                        if (!endState.get(r.local)) {
+                            // last load for this value
+                            recordAction(r.bci, NullOutAction.get(r.local));
+                            endState.set(r.local);
+                        }
+                        break;
+                    case STORE:
+                        if (!endState.get(r.local)) {
+                            // Store is not used: can be killed immediately.
+                            recordAction(r.bci, NullOutAction.get(r.local));
+                        } else {
+                            // Store for this variable kills the local between here and the previous
+                            // usage
+                            endState.clear(r.local);
+                        }
+                        break;
                 }
             }
         }
-        return mergedEntryState;
-    }
 
-    private static void killLocalsOnBlockEntry(LocalVariableAction[] actions, BlockBoundaryResult helper, int blockID, LinkedBlock current, BitSet mergedEntryState) {
-        ArrayList<Integer> startActions = new ArrayList<>();
-        BitSet entryState = helper.entryFor(blockID);
-        for (int i : Util.bitSetIterator(mergedEntryState)) {
-            if (!entryState.get(i)) {
-                startActions.add(i);
+        private void recordAction(int bci, LocalVariableAction action) {
+            LocalVariableAction toInsert = action;
+            if (actions[bci] != null) {
+                // 2 actions for a single BCI: access to a 2 slot local (long/double).
+                toInsert = actions[bci].merge(toInsert);
             }
+            actions[bci] = toInsert;
         }
-        if (!startActions.isEmpty()) {
-            LocalVariableAction startAction;
-            if (startActions.size() == 1) {
-                startAction = NullOutAction.get(startActions.get(0));
-            } else {
-                startAction = new MultiAction(Util.toIntArray(startActions));
-            }
-            recordAction(actions, current.start(), startAction, true);
-        }
-    }
 
-    private static void replayHistory(LocalVariableAction[] actions, BlockBoundaryResult helper, int blockID) {
-        BitSet endState = helper.endFor(blockID);
-        if (endState == null) {
-            // unreachable
-            return;
-        }
-        endState = (BitSet) endState.clone();
-        for (Record r : helper.historyFor(blockID).reverse()) {
-            switch (r.type) {
-                case LOAD: // Fallthrough
-                case IINC:
-                    if (!endState.get(r.local)) {
-                        // last load for this value
-                        recordAction(actions, r.bci, NullOutAction.get(r.local), false);
-                        endState.set(r.local);
-                    }
-                    break;
-                case STORE:
-                    if (!endState.get(r.local)) {
-                        // Store is not used: can be killed immediately.
-                        recordAction(actions, r.bci, NullOutAction.get(r.local), false);
-                    } else {
-                        // Store for this variable kills the local between here and the previous
-                        // usage
-                        endState.clear(r.local);
-                    }
-                    break;
-            }
-        }
-    }
-
-    private static void recordAction(LocalVariableAction[] actions, int bci, LocalVariableAction action, boolean preAction) {
-        int index = getIndex(bci, preAction);
-        LocalVariableAction toInsert = action;
-        if (actions[index] != null) {
-            // 2 actions for a single BCI: access to a 2 slot local (long/double).
-            toInsert = actions[index].merge(toInsert);
-        }
-        actions[index] = toInsert;
-    }
-
-    private static int getIndex(int bci, boolean preAction) {
-        return 2 * bci + (preAction ? 0 : 1);
     }
 
     private void log(PrintStream ps) {
-        for (int i = 0; i < result.length / 2; i++) {
-            LocalVariableAction pre = result[2 * i];
-            LocalVariableAction post = result[2 * i + 1];
-            if (pre != null) {
-                ps.println(i + "- pre: " + pre);
-            }
+        ps.println("on start: " + onStart);
+        for (int i = 0; i < result.length; i++) {
+            LocalVariableAction post = result[i];
             if (post != null) {
                 ps.println(i + "- post: " + post);
             }
+            EdgeAction edgeAction = edge[i];
+            if (edgeAction != null) {
+                ps.println("at " + i);
+                ps.println(edgeAction.toString());
+            }
         }
     }
+
 }

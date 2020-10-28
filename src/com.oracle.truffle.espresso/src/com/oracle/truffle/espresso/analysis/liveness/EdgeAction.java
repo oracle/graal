@@ -21,14 +21,11 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.analysis.graph;
+package com.oracle.truffle.espresso.analysis.liveness;
 
-public interface Block {
-    int id();
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
-    int start();
-
-    int end();
-
-    int lastBCI();
+public interface EdgeAction {
+    void onEdge(VirtualFrame frame, int fromBCI, BytecodeNode node);
 }
