@@ -198,7 +198,7 @@ final class IsolatedTruffleInlining<T extends TruffleMetaAccessProvider> extends
     @CEntryPoint
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     private static CompilerHandle<CompilableTruffleAST[]> inlinedTargets0(@SuppressWarnings("unused") ClientIsolateThread client,
-                                                          ClientHandle<? extends TruffleMetaAccessProvider> handle) {
+                    ClientHandle<? extends TruffleMetaAccessProvider> handle) {
         // TODO: I'm quite sure this is incorrect.
         TruffleMetaAccessProvider truffleMetaAccessProvider = IsolatedCompileClient.get().unhand(handle);
         return IsolatedCompileContext.get().hand(truffleMetaAccessProvider.inlinedTargets());
