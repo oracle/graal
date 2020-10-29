@@ -1144,6 +1144,14 @@ final class InstrumentationHandler {
             trace("BEGIN: Visit root %s for %s%n", root.toString(), visitor);
         }
 
+        if (InstrumentAccessor.runtimeAccess().isOSRRootNode(root)) {
+            /*
+             * OSR Root nodes are always traversed by the parent root node. So walking OSR root
+             * nodes would be redundant work.
+             */
+            return;
+        }
+
         visitor.preVisit(root, firstExecution);
         try {
             Lock lock = InstrumentAccessor.nodesAccess().getLock(node);

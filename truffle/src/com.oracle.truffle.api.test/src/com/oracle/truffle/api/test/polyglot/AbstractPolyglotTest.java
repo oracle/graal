@@ -147,10 +147,8 @@ public abstract class AbstractPolyglotTest {
             throw new IllegalStateException("Test proxy instrument not installed. Inconsistent build?");
         } else {
             // forces initialization of instrument
-            embedderInstrument.lookup(ProxyInstrument.Initialize.class);
+            this.instrumentEnv = embedderInstrument.lookup(ProxyInstrument.Initialize.class).getEnv();
         }
-        this.instrumentEnv = ProxyInstrument.getCurrent().getLastEnvironment();
-        // force initialization of proxy language
 
         Class<?> currentLanguageClass = usedLanguage.getClass();
         String languageId = null;
