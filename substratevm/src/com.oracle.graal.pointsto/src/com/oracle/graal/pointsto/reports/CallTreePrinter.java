@@ -118,7 +118,7 @@ public final class CallTreePrinter {
         protected final AnalysisMethod targetMethod;
         protected final List<Node> callees;
         protected final boolean isDirectInvoke;
-        private final SourceReference[] sourceReferences;
+        protected final SourceReference[] sourceReferences;
 
         InvokeNode(AnalysisMethod targetMethod, boolean isDirectInvoke, SourceReference[] sourceReferences) {
             this.targetMethod = targetMethod;

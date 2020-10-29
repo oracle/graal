@@ -15,16 +15,18 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class CallTreeCypher {
 
     // TODO temporarily use a system property to try different values
     private static final int BATCH_SIZE = Integer.getInteger("cypher.batch.size", 256);
 
-    private static final String METHOD_FORMAT = "properties:{name:'%n', signature:'" + CallTreePrinter.METHOD_FORMAT + "'}";
+    private static final String METHOD_INFO_FORMAT = "properties:{name:'%n', signature:'" + CallTreePrinter.METHOD_FORMAT + "'}";
 
     private static final AtomicInteger virtualNodeId = new AtomicInteger(-1);
 
@@ -53,7 +55,7 @@ public class CallTreeCypher {
         final String unwindMethod = unwindMethod();
         final String script = methodsBatches.stream()
                 .map(methodBatch -> methodBatch.stream()
-                        .map(method -> String.format("{_id:%d, %s}", method.id, method.method.format(METHOD_FORMAT)))
+                        .map(method -> String.format("{_id:%d, %s}", method.id, method.method.format(METHOD_INFO_FORMAT)))
                         .collect(Collectors.joining(", ", ":param rows => [", "]"))
                 )
                 .collect(Collectors.joining(unwindMethod, "", unwindMethod));
@@ -61,12 +63,12 @@ public class CallTreeCypher {
         writer.print(script);
     }
 
-    private static void printVirtualNodes(Map<String, Integer> virtualNodes, PrintWriter writer) {
-        final Collection<List<Map.Entry<String, Integer>>> virtualNodesBatches = batched(virtualNodes.entrySet());
+    private static void printVirtualNodes(Map<VirtualInvokeId, Integer> virtualNodes, PrintWriter writer) {
+        final Collection<List<Map.Entry<VirtualInvokeId, Integer>>> virtualNodesBatches = batched(virtualNodes.entrySet());
         final String unwindMethod = unwindMethod();
         final String script = virtualNodesBatches.stream()
                 .map(virtualNodesBatch -> virtualNodesBatch.stream()
-                        .map(virtualNode -> String.format("{_id:%d, %s}", virtualNode.getValue(), virtualNode.getKey()))
+                        .map(virtualNode -> String.format("{_id:%d, %s}", virtualNode.getValue(), virtualNode.getKey().methodInfo))
                         .collect(Collectors.joining(", ", ":param rows => [", "]"))
                 )
                 .collect(Collectors.joining(unwindMethod, "", unwindMethod));
@@ -88,8 +90,7 @@ public class CallTreeCypher {
     }
 
     private static void printMethodEdges(Map<AnalysisMethod, MethodNode> methodToNode, PrintWriter writer) {
-        // TODO ignoring bci values, assumes a virtual node with a signature is same as others (irrespective of bci)
-        Map<String, Integer> virtualNodes = new HashMap<>();
+        Map<VirtualInvokeId, Integer> virtualNodes = new HashMap<>();
 
         Map<Integer, Set<Integer>> directEdges = new HashMap<>();
         Map<Integer, Set<Integer>> virtualEdges = new HashMap<>();
@@ -114,7 +115,7 @@ public class CallTreeCypher {
                 "CREATE (v)-[r:ENTRY]->(m);\n\n";
     }
 
-    private static void addMethodEdges(MethodNode methodNode, Map<Integer, Set<Integer>> directEdges, Map<Integer, Set<Integer>> virtualEdges, Map<Integer, Set<Integer>> overridenByEdges, Map<String, Integer> virtualNodes) {
+    private static void addMethodEdges(MethodNode methodNode, Map<Integer, Set<Integer>> directEdges, Map<Integer, Set<Integer>> virtualEdges, Map<Integer, Set<Integer>> overridenByEdges, Map<VirtualInvokeId, Integer> virtualNodes) {
         for (InvokeNode invoke : methodNode.invokes) {
             if (invoke.isDirectInvoke) {
                 if (invoke.callees.size() > 0) {
@@ -137,9 +138,14 @@ public class CallTreeCypher {
         }
     }
 
-    private static int addVirtualNode(InvokeNode node, Map<String, Integer> virtualNodes) {
-        final String virtualNodeProperties = node.targetMethod.format(METHOD_FORMAT);
-        return virtualNodes.computeIfAbsent(virtualNodeProperties, k -> CallTreeCypher.virtualNodeId.getAndIncrement());
+    private static int addVirtualNode(InvokeNode node, Map<VirtualInvokeId, Integer> virtualNodes) {
+        final String methodInfo = node.targetMethod.format(METHOD_INFO_FORMAT);
+        final List<Integer> bytecodeIndexes = Stream.of(node.sourceReferences)
+                .map(source -> source.bci)
+                .collect(Collectors.toList());
+
+        final VirtualInvokeId id = new VirtualInvokeId(methodInfo, bytecodeIndexes);
+        return virtualNodes.computeIfAbsent(id, k -> CallTreeCypher.virtualNodeId.getAndIncrement());
     }
 
     private static void addVirtualMethodEdge(int startId, int endId, Map<Integer, Set<Integer>> edges) {
@@ -198,6 +204,30 @@ public class CallTreeCypher {
         private Edge(int startId, int endId) {
             this.startId = startId;
             this.endId = endId;
+        }
+    }
+
+    private static final class VirtualInvokeId {
+        final String methodInfo;
+        final List<Integer> bytecodeIndexes;
+
+        private VirtualInvokeId(String methodInfo, List<Integer> bytecodeIndexes) {
+            this.methodInfo = methodInfo;
+            this.bytecodeIndexes = bytecodeIndexes;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            VirtualInvokeId that = (VirtualInvokeId) o;
+            return methodInfo.equals(that.methodInfo) &&
+                    bytecodeIndexes.equals(that.bytecodeIndexes);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(methodInfo, bytecodeIndexes);
         }
     }
 }
