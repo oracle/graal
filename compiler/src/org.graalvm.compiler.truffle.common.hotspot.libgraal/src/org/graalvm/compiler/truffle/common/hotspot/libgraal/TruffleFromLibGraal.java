@@ -57,6 +57,7 @@ public @interface TruffleFromLibGraal {
     enum Id implements FromLibGraalId {
         // @formatter:off
         AddTargetToDequeue(void.class, Object.class, Object.class),
+        AddInlinedTarget(void.class, Object.class, Object.class),
         AsCompilableTruffleAST(Object.class, Object.class, long.class),
         AsJavaConstant(long.class, Object.class),
         CallNodeHashCode(int.class, Object.class),
@@ -97,6 +98,7 @@ public @interface TruffleFromLibGraal {
         GetSuppliedString(String.class, Supplier.class),
         GetTruffleCallBoundaryMethods(long[].class, Object.class),
         GetURI(String.class, Object.class),
+        InlinedTargets(Object[].class, Object.class),
         IsCancelled(boolean.class, Object.class),
         IsInliningForced(boolean.class, Object.class),
         IsLastTier(boolean.class, Object.class),

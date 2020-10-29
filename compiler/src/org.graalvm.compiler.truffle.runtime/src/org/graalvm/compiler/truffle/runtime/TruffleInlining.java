@@ -40,7 +40,8 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public class TruffleInlining implements TruffleMetaAccessProvider {
 
-    private final List<CompilableTruffleAST> targets = new ArrayList<>();
+    private final List<CompilableTruffleAST> targetsToDequeue = new ArrayList<>();
+    private final List<CompilableTruffleAST> inlinedTargets = new ArrayList<>();
     private int callCount = -1;
     private int inlinedCallCount = -1;
 
@@ -67,6 +68,16 @@ public class TruffleInlining implements TruffleMetaAccessProvider {
     }
 
     @Override
+    public CompilableTruffleAST[] inlinedTargets() {
+        return inlinedTargets.toArray(new CompilableTruffleAST[0]);
+    }
+
+    @Override
+    public void addInlinedTarget(CompilableTruffleAST target) {
+        inlinedTargets.add(target);
+    }
+
+    @Override
     public void setInlinedCallCount(int count) {
         inlinedCallCount = count;
     }
@@ -83,12 +94,12 @@ public class TruffleInlining implements TruffleMetaAccessProvider {
 
     @Override
     public void addTargetToDequeue(CompilableTruffleAST target) {
-        targets.add(target);
+        targetsToDequeue.add(target);
     }
 
     @Override
     public void dequeueTargets() {
-        for (CompilableTruffleAST target : targets) {
+        for (CompilableTruffleAST target : targetsToDequeue) {
             target.dequeueInlined();
         }
     }

@@ -45,7 +45,7 @@ import com.oracle.svm.truffle.api.SubstrateCompilableTruffleAST;
 
 import jdk.vm.ci.meta.JavaConstant;
 
-abstract class IsolatedTruffleInlining<T extends TruffleMetaAccessProvider> extends IsolatedObjectProxy<T> implements TruffleMetaAccessProvider {
+final class IsolatedTruffleInlining<T extends TruffleMetaAccessProvider> extends IsolatedObjectProxy<T> implements TruffleMetaAccessProvider {
     IsolatedTruffleInlining(ClientHandle<T> handle) {
         super(handle);
     }
@@ -96,6 +96,16 @@ abstract class IsolatedTruffleInlining<T extends TruffleMetaAccessProvider> exte
     @Override
     public int countInlinedCalls() {
         return countInlinedCalls0(IsolatedCompileContext.get().getClient(), handle);
+    }
+
+    @Override
+    public CompilableTruffleAST[] inlinedTargets() {
+        return null; //TODO
+    }
+
+    @Override
+    public void addInlinedTarget(CompilableTruffleAST target) {
+        // TODO
     }
 
     @CEntryPoint
@@ -180,11 +190,5 @@ abstract class IsolatedTruffleInlining<T extends TruffleMetaAccessProvider> exte
                     ClientHandle<TruffleSourceLanguagePosition> positionHandle, int lineNumber, int offsetStart, int offsetEnd, int nodeId) {
 
         return IsolatedCompileContext.get().hand(new IsolatedTruffleSourceLanguagePosition(positionHandle, lineNumber, offsetStart, offsetEnd, nodeId));
-    }
-}
-
-final class IsolatedTruffleInliningPlan extends IsolatedTruffleInlining<TruffleMetaAccessProvider> {
-    IsolatedTruffleInliningPlan(ClientHandle<TruffleMetaAccessProvider> handle) {
-        super(handle);
     }
 }
