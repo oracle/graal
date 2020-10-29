@@ -27,6 +27,8 @@ package com.oracle.svm.core.jdk;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.graalvm.util.GuardedAnnotationAccess;
+
 /**
  * This class stores information about which packages need to be stored within each ClassLoader.
  * This information is used by {@link Target_java_lang_ClassLoader} to reset the package
@@ -52,6 +54,17 @@ public class ClassLoaderSupport {
         assert classLoader != null;
         assert packageName != null;
         assert packageValue != null;
+
+        /*
+         * Eagerly initialize the field Package.packageInfo, which stores the .package-info class
+         * (if present) with the annotations for the package. We want that class to be available
+         * without having to register it manually in the reflection configuration file.
+         * 
+         * Note that we either need to eagerly initialize that field (the approach chosen) or
+         * force-reset it to null for all packages, otherwise there can be transient problems when
+         * the lazy initialization happens in the image builder after the static analysis.
+         */
+        GuardedAnnotationAccess.getAnnotations(packageValue);
 
         ConcurrentMap<String, Package> classPackages = registeredPackages.computeIfAbsent(classLoader, k -> new ConcurrentHashMap<>());
         classPackages.putIfAbsent(packageName, packageValue);
