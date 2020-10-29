@@ -18,11 +18,16 @@ export class LicenseCheckPanel {
 
 	private readonly _panel: vscode.WebviewPanel;
 	private _disposables: vscode.Disposable[] = [];
+	private static accepted: string[] = []
 
 	public static show(extensionPath: string, licenseLabel: string, license: string): Promise<boolean> {
+		if (this.accepted.includes(license)) {
+			return Promise.resolve(true);
+		}
 		return new Promise<boolean>(resolve => {
 			const lcp = new LicenseCheckPanel(extensionPath, licenseLabel, license, (message: any) => {
 				if (message.command === 'accepted') {
+					this.accepted.push(license);
 					resolve(message.value);
 					lcp.dispose();
 				}

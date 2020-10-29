@@ -319,17 +319,7 @@ async function selectGraalVMRelease(extensionPath: string): Promise<{url: string
                 { label: 'Enterprise', description: '(Free for evaluation and development)' }
             ],
             activeItem: state.graalVMDistribution,
-            postProcess: item => {
-                if (item.label === 'Enterprise') {
-                    return getGraalVMEEReleases().then(releases => {
-                        releaseInfos = releases;
-                    });
-                } else {
-                    return getGraalVMCEReleases().then(releases => {
-                        releaseInfos = releases;
-                    });
-                }
-            },
+            postProcess: async item => releaseInfos = await (item.label === 'Enterprise' ? getGraalVMEEReleases() : getGraalVMCEReleases()),
 			shouldResume: () => Promise.resolve(false)
         });
 		return (input: utils.MultiStepInput) => pickGraalVMVersion(input, state);
@@ -598,8 +588,14 @@ async function getGraalVMCEReleases(): Promise<any> {
 async function getGraalVMEEReleases(): Promise<any> {
     return get(GDS_URL, /^application\/json/).then(rawData => {
         const info = JSON.parse(rawData);
+        let platform: string = process.platform;
+        if (platform === 'win32') {
+            platform = 'windows';
+        }
         const releases: any = {};
-        Object.values(info.Releases).forEach((releaseInfo: any) => {
+        Object.values(info.Releases)
+        .filter((releaseInfo: any) => Object.keys(releaseInfo.base).find(base => releaseInfo.base[base].os === platform) !== undefined)
+        .forEach((releaseInfo: any) => {
             if (releaseInfo.version && releaseInfo.java && releaseInfo.license) {
                 let releaseVersion = releases[releaseInfo.version];
                 if (!Object.keys(releases).find(key => releaseInfo.version.endsWith('-dev') ? key.endsWith('-dev') : releaseInfo.version.slice(0, 2) === key.slice(0, 2))) {
@@ -608,10 +604,6 @@ async function getGraalVMEEReleases(): Promise<any> {
                 if (releaseVersion) {
                     let releaseJavaVersion = releaseVersion[releaseInfo.java];
                     if (!releaseJavaVersion) {
-                        let platform: string = process.platform;
-                        if (process.platform === 'win32') {
-                            platform = 'windows';
-                        }
                         const base: string | undefined = Object.keys(releaseInfo.base).find(base => releaseInfo.base[base].os === platform);
                         if (base) {
                             releaseVersion[releaseInfo.java] = releaseJavaVersion = {};

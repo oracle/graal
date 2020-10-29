@@ -30,6 +30,7 @@ export async function createProject() {
         fs.unlinkSync(downloadedFile);
         if (files.length > 0) {
             const uri = vscode.Uri.file(options.target);
+            updateGitIgnore(options);
             if (vscode.workspace.workspaceFolders) {
                 vscode.window.showInformationMessage('New Micronaut project created', OPEN_IN_NEW_WINDOW, ADD_TO_CURRENT_WORKSPACE).then(value => {
                     if (value === OPEN_IN_NEW_WINDOW) {
@@ -51,7 +52,27 @@ export async function createProject() {
     }
 }
 
-async function selectCreateOptions(): Promise<{url: string, name: string, target: string} | undefined> {
+const GRADLE: string = 'gradle';
+const WRAPPER: string = 'wrapper';
+const GRADLE_WRAPPER: string = path.join(GRADLE, WRAPPER);
+const GRADLE_JAR: string = path.join(GRADLE_WRAPPER, `${GRADLE}-${WRAPPER}.jar`);
+const GRADLE_PROPERTIES: string = path.join(GRADLE_WRAPPER, `${GRADLE}-${WRAPPER}.properties`);
+function updateGitIgnore(options: {url: string, name: string, target: string, buildTool: string}) {
+    if (options.buildTool !== 'GRADLE') {
+        return;
+    }
+    const filePath = path.join(options.target, '.gitignore')
+    let content = fs.readFileSync(filePath).toString();
+    if (!content.includes(GRADLE_JAR)) {
+        content = `${content.trim()}\n${GRADLE_JAR}`
+    }
+    if (!content.includes(GRADLE_PROPERTIES)) {
+        content = `${content.trim()}\n${GRADLE_PROPERTIES}`
+    }
+    fs.writeFileSync(filePath, content);
+}
+
+async function selectCreateOptions(): Promise<{url: string, name: string, target: string, buildTool: string} | undefined> {
 
     interface State {
 		micronautVersion: {label: string, serviceUrl: string};
@@ -256,7 +277,8 @@ async function selectCreateOptions(): Promise<{url: string, name: string, target
             return {
                 url: state.micronautVersion.serviceUrl + CREATE + '/' + state.applicationType.name + '/' + appName + query,
                 name: state.projectName,
-                target: path.join(location[0].fsPath, state.projectName)
+                target: path.join(location[0].fsPath, state.projectName),
+                buildTool: state.buildTool.value
             };
         }
     }
