@@ -161,14 +161,14 @@ class HSTruffleInliningPlan extends HSObject implements TruffleMetaAccessProvide
     @Override
     public CompilableTruffleAST[] inlinedTargets() {
         // TODO: I'm pretty sure this is not correct
-        JNILibGraalScope<TruffleToLibGraal.Id> scope = scope().narrow(TruffleToLibGraal.Id.class);
-        JNIEnv env = scope.getEnv();
+        JNILibGraalScope<TruffleToLibGraal.Id> narrowScope = scope().narrow(TruffleToLibGraal.Id.class);
+        JNIEnv env = narrowScope.getEnv();
         JNI.JObjectArray peerArr = callInlinedTargets(env, getHandle());
         int len = JNIUtil.GetArrayLength(env, peerArr);
         CompilableTruffleAST[] res = new CompilableTruffleAST[len];
         for (int i = 0; i < len; i++) {
             JObject ast = JNIUtil.GetObjectArrayElement(env, peerArr, i);
-            res[i] = new HSCompilableTruffleAST(scope, ast);
+            res[i] = new HSCompilableTruffleAST(narrowScope, ast);
         }
         return res;
     }
