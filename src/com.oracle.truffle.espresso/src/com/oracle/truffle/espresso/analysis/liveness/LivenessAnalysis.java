@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
+import com.oracle.truffle.espresso.perf.TimerCollection;
 
 public class LivenessAnalysis {
 
@@ -113,28 +114,29 @@ public class LivenessAnalysis {
         if (method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.DISABLED) {
             return NO_ANALYSIS;
         }
-        try (DebugCloseable liveness = LIVENESS_TIMER.scope()) {
+        TimerCollection scope = method.getContext().getTimers();
+        try (DebugCloseable liveness = LIVENESS_TIMER.scope(scope)) {
             Graph<? extends LinkedBlock> graph;
-            try (DebugCloseable builder = BUILDER_TIMER.scope()) {
+            try (DebugCloseable builder = BUILDER_TIMER.scope(scope)) {
                 graph = GraphBuilder.build(method);
             }
 
             // Transform the graph into a more manageable graph consisting of only the history of
             // load/stores.
             LoadStoreFinder loadStoreClosure;
-            try (DebugCloseable loadStore = LOADSTORE_TIMER.scope()) {
+            try (DebugCloseable loadStore = LOADSTORE_TIMER.scope(scope)) {
                 loadStoreClosure = new LoadStoreFinder(graph);
                 BlockIterator.analyze(method, graph, loadStoreClosure);
             }
 
             // Computes the entry/end live sets for each variable for each block.
             BlockBoundaryFinder blockBoundaryFinder;
-            try (DebugCloseable boundary = STATE_TIMER.scope()) {
+            try (DebugCloseable boundary = STATE_TIMER.scope(scope)) {
                 blockBoundaryFinder = new BlockBoundaryFinder(method, loadStoreClosure.result());
                 DepthFirstBlockIterator.analyze(method, graph, blockBoundaryFinder);
             }
 
-            try (DebugCloseable propagation = PROPAGATE_TIMER.scope()) {
+            try (DebugCloseable propagation = PROPAGATE_TIMER.scope(scope)) {
                 // Forces loop ends to inherit the loop entry state, and propagates the changes.
                 LoopPropagatorClosure loopPropagation = new LoopPropagatorClosure(graph, blockBoundaryFinder.result());
                 while (loopPropagation.process(graph)) {
@@ -158,7 +160,7 @@ public class LivenessAnalysis {
 
             // Using the live sets and history, build a set of action for each bci, such that it
             // frees as early as possible each dead local.
-            try (DebugCloseable actionFinder = ACTION_TIMER.scope()) {
+            try (DebugCloseable actionFinder = ACTION_TIMER.scope(scope)) {
                 Builder builder = new Builder(graph, method, blockBoundaryFinder.result());
                 builder.build();
                 boolean compiledCodeOnly = method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.COMPILED;

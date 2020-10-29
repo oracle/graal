@@ -23,59 +23,40 @@
 
 package com.oracle.truffle.espresso.perf;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.TruffleLogger;
 
-public abstract class DebugTimer {
+public final class DebugTimer {
     static final boolean DEBUG_TIMER_ENABLED = true;
 
-    private static final List<DebugTimer> timers = new ArrayList<>();
-
-    protected final String name;
+    final String name;
 
     private DebugTimer(String name) {
         this.name = name;
     }
 
     public static DebugTimer create(String name) {
-        if (DEBUG_TIMER_ENABLED) {
-            DebugTimer result = new Default(name);
-            timers.add(result);
-            return result;
-        } else {
-            return NoTimer.INSTANCE;
-        }
+        return new DebugTimer(name);
     }
 
-    public DebugCloseable scope() {
-        if (DebugTimer.DEBUG_TIMER_ENABLED) {
-            return new AutoTimer.Default(this);
-        } else {
-            return AutoTimer.NO_TIMER;
-        }
+    public DebugCloseable scope(TimerCollection timers) {
+        return timers.scope(this);
     }
 
-    public static void report(TruffleLogger logger) {
-        for (DebugTimer timer : timers) {
-            timer.doReport(logger);
-        }
+    static DebugTimerImpl spawn() {
+        return new Default();
     }
 
-    abstract void tick(long tick);
+    static abstract class DebugTimerImpl {
+        abstract void tick(long tick);
 
-    protected abstract void doReport(TruffleLogger logger);
+        abstract void report(TruffleLogger logger, String name);
+    }
 
-    private static final class Default extends DebugTimer {
+    private static final class Default extends DebugTimerImpl {
         private final AtomicLong clock = new AtomicLong();
-
         private final AtomicLong counter = new AtomicLong();
-
-        Default(String name) {
-            super(name);
-        }
 
         @Override
         void tick(long tick) {
@@ -84,46 +65,33 @@ public abstract class DebugTimer {
         }
 
         @Override
-        protected void doReport(TruffleLogger logger) {
-            long count = counter.get();
-            long avg = (count == 0) ? 0 : (clock.get() / count);
-            logger.info(name + " avg: " + avg);
+        void report(TruffleLogger logger, String name) {
+            if (counter.get() == 0) {
+                logger.info(name + ": " + 0);
+            } else {
+                logger.info(name + ": " + (clock.get() / counter.get()));
+            }
         }
-
     }
 
-    private static final class NoTimer extends DebugTimer {
-
-        private static final NoTimer INSTANCE = new NoTimer();
-
-        NoTimer() {
-            super(null);
-        }
-
-        @Override
-        void tick(long tick) {
-        }
-
-        @Override
-        protected void doReport(TruffleLogger logger) {
-        }
-
-    }
-
-    public abstract static class AutoTimer implements DebugCloseable {
-        private static final AutoTimer NO_TIMER = new NoTimer();
+    abstract static class AutoTimer implements DebugCloseable {
+        static final AutoTimer NO_TIMER = new NoTimer();
 
         private AutoTimer() {
+        }
+
+        static DebugCloseable scope(DebugTimerImpl impl) {
+            return new Default(impl);
         }
 
         @Override
         public abstract void close();
 
         private static final class Default extends AutoTimer {
-            private final DebugTimer timer;
+            private final DebugTimerImpl timer;
             private final long tick;
 
-            private Default(DebugTimer timer) {
+            private Default(DebugTimerImpl timer) {
                 this.timer = timer;
                 this.tick = System.nanoTime();
             }

@@ -62,6 +62,7 @@ import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -78,6 +79,10 @@ public final class EspressoContext {
     private final TruffleLanguage.Env env;
 
     private String[] mainArguments;
+
+    // region Debug
+    private final TimerCollection timers;
+    // endregion Debug
 
     // region Runtime
     private final StringTable strings;
@@ -186,6 +191,8 @@ public final class EspressoContext {
         this.threadManager = new EspressoThreadManager(this);
         this.referenceDrainer = new EspressoReferenceDrainer(this);
         this.shutdownManager = new EspressoShutdownHandler(this, threadManager, referenceDrainer);
+
+        this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
 
         // null if not specified
         this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions);
@@ -631,4 +638,12 @@ public final class EspressoContext {
     }
 
     // endregion ReferenceDrain
+
+    // region DebugAccess
+
+    public TimerCollection getTimers() {
+        return timers;
+    }
+
+    // endregion DebugAccess
 }

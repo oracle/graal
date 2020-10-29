@@ -591,7 +591,7 @@ public final class MethodVerifier implements ContextAccess {
             }
             throw new ClassFormatError("Concrete method has no code attribute: " + m);
         }
-        try (DebugCloseable t = VERIFIER_TIMER.scope()) {
+        try (DebugCloseable t = VERIFIER_TIMER.scope(m.getContext().getTimers())) {
             new MethodVerifier(codeAttribute, m).verify();
         }
     }

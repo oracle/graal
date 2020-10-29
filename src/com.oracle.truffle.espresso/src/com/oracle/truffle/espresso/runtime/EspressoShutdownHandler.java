@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.impl.ContextAccess;
-import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
 class EspressoShutdownHandler implements ContextAccess {
@@ -233,7 +232,7 @@ class EspressoShutdownHandler implements ContextAccess {
             assert !hostToGuestReferenceDrainThread.isAlive();
         }
 
-        DebugTimer.report(context.getLogger());
+        context.getTimers().report(context.getLogger());
 
         throw new EspressoExitException(getExitStatus());
     }
