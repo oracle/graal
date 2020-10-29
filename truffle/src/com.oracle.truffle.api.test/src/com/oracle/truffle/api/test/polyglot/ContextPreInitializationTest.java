@@ -949,13 +949,18 @@ public class ContextPreInitializationTest {
         // logging is done to System.err
         final PrintStream origErr = System.err;
         final ByteArrayOutputStream preInitErr = new ByteArrayOutputStream();
+        String origLogFile = System.getProperty("polyglot.log.file");
         try (PrintStream printStream = new PrintStream(preInitErr)) {
             System.setErr(printStream);
             System.setProperty("polyglot.log.engine.level", "FINE");
+            System.clearProperty("polyglot.log.file");
             doContextPreinitialize(FIRST);
         } finally {
             System.setErr(origErr);
             System.clearProperty("polyglot.log.engine.level");
+            if (origLogFile != null) {
+                System.setProperty("polyglot.log.file", origLogFile);
+            }
         }
         final String preInitLog = preInitErr.toString("UTF-8");
         assertTrue(preInitLog.contains("Pre-initialized context for language: ContextPreInitializationFirst"));

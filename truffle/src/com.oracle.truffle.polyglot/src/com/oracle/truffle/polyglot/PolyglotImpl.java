@@ -320,23 +320,19 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Used for preinitialized contexts and fallback engine.
      */
     PolyglotEngineImpl createDefaultEngine() {
-        final Handler logHandler = PolyglotLoggers.createStreamHandler(System.err, false, true);
-        try {
-            Map<String, String> options = new HashMap<>();
-            PolyglotEngineImpl.readOptionsFromSystemProperties(options);
-            LogConfig logConfig = new LogConfig();
-            OptionValuesImpl engineOptions = PolyglotImpl.createEngineOptions(options, logConfig, true);
-            EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels, logConfig.logFile);
-            DispatchOutputStream out = INSTRUMENT.createDispatchOutput(System.out);
-            DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.out);
-            final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
-                            TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader(), true, true, null, logHandler);
-            // ready for use -> allowed to escape instance
-            loggerProvider.setEngine(engine);
-            return engine;
-        } finally {
-            logHandler.flush();
-        }
+        Map<String, String> options = new HashMap<>();
+        PolyglotEngineImpl.readOptionsFromSystemProperties(options);
+        LogConfig logConfig = new LogConfig();
+        OptionValuesImpl engineOptions = PolyglotImpl.createEngineOptions(options, logConfig, true);
+        DispatchOutputStream out = INSTRUMENT.createDispatchOutput(System.out);
+        DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.err);
+        Handler logHandler = PolyglotEngineImpl.createLogHandler(logConfig, err);
+        EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels, logConfig.logFile);
+        final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
+                        TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader(), true, true, null, logHandler);
+        // ready for use -> allowed to escape instance
+        loggerProvider.setEngine(engine);
+        return engine;
     }
 
     /**
