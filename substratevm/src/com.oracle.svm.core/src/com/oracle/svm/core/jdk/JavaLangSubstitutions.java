@@ -49,7 +49,6 @@ import java.util.function.Predicate;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -101,12 +100,6 @@ final class Target_java_lang_Object {
     @TargetElement(name = "hashCode")
     private int hashCodeSubst() {
         return System.identityHashCode(this);
-    }
-
-    @Substitute
-    @TargetElement(name = "toString")
-    private String toStringSubst() {
-        return getClass().getName() + "@" + Long.toHexString(Word.objectToUntrackedPointer(this).rawValue());
     }
 
     @Substitute
