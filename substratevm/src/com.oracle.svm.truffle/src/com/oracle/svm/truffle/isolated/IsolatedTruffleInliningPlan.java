@@ -100,7 +100,7 @@ final class IsolatedTruffleInlining<T extends TruffleMetaAccessProvider> extends
 
     @Override
     public CompilableTruffleAST[] inlinedTargets() {
-        return inlinedTargets0(IsolatedCompileContext.get().getClient(), handle);
+        return IsolatedCompileContext.get().unhand(inlinedTargets0(IsolatedCompileContext.get().getClient(), handle));
     }
 
     @Override
@@ -197,11 +197,11 @@ final class IsolatedTruffleInlining<T extends TruffleMetaAccessProvider> extends
 
     @CEntryPoint
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
-    private static CompilableTruffleAST[] inlinedTargets0(@SuppressWarnings("unused") ClientIsolateThread client,
+    private static CompilerHandle<CompilableTruffleAST[]> inlinedTargets0(@SuppressWarnings("unused") ClientIsolateThread client,
                                                           ClientHandle<? extends TruffleMetaAccessProvider> handle) {
         // TODO: I'm quite sure this is incorrect.
         TruffleMetaAccessProvider truffleMetaAccessProvider = IsolatedCompileClient.get().unhand(handle);
-        return truffleMetaAccessProvider.inlinedTargets();
+        return IsolatedCompileContext.get().hand(truffleMetaAccessProvider.inlinedTargets());
     }
 
     @CEntryPoint
