@@ -121,12 +121,8 @@ public final class RuntimeCodeInfoAccess {
 
     public static CodeInfoTether beforeInstallInCurrentIsolate(CodeInfo info, SubstrateInstalledCode installedCode) {
         CodeInfoTether tether = new CodeInfoTether(true);
-        beforeInstallInCurrentIsolate(info, installedCode, tether);
-        return tether;
-    }
-
-    public static void beforeInstallInCurrentIsolate(CodeInfo info, SubstrateInstalledCode installedCode, CodeInfoTether tether) {
         setObjectData(info, tether, installedCode.getName(), installedCode);
+        return tether;
     }
 
     @Uninterruptible(reason = "Makes the object data visible to the GC.")
@@ -139,6 +135,14 @@ public final class RuntimeCodeInfoAccess {
             // after setting all the object data, notify the GC
             Heap.getHeap().getRuntimeCodeInfoGCSupport().registerObjectFields(info);
         }
+    }
+
+    public static Object[] prepareHeapObjectData(CodeInfoTether tether, String name, SubstrateInstalledCode installedCode) {
+        Object[] objectFields = new Object[CodeInfoImpl.OBJFIELDS_COUNT];
+        objectFields[CodeInfoImpl.TETHER_OBJFIELD] = tether;
+        objectFields[CodeInfoImpl.NAME_OBJFIELD] = name;
+        objectFields[CodeInfoImpl.INSTALLEDCODE_OBJFIELD] = installedCode;
+        return objectFields;
     }
 
     public static boolean areAllObjectsOnImageHeap(CodeInfo info) {
@@ -182,9 +186,15 @@ public final class RuntimeCodeInfoAccess {
     }
 
     public static CodeInfo allocateMethodInfo() {
-        CodeInfoImpl info = UnmanagedMemory.calloc(SizeOf.unsigned(CodeInfoImpl.class));
         NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(Object[].class, CodeInfoImpl.OBJFIELDS_COUNT);
-        info.setObjectFields(objectFields);
+        return allocateMethodInfo(objectFields);
+    }
+
+    public static CodeInfo allocateMethodInfo(NonmovableObjectArray<Object> objectData) {
+        CodeInfoImpl info = UnmanagedMemory.calloc(SizeOf.unsigned(CodeInfoImpl.class));
+
+        assert objectData.isNonNull() && NonmovableArrays.lengthOf(objectData) == CodeInfoImpl.OBJFIELDS_COUNT;
+        info.setObjectFields(objectData);
 
         // Make the object visible to the GC (before writing any heap data into the object).
         RuntimeCodeInfoMemory.singleton().add(info);
