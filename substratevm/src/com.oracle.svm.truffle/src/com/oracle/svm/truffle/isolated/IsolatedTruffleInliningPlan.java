@@ -147,7 +147,7 @@ final class IsolatedTruffleInlining<T extends TruffleMetaAccessProvider> extends
 
     @CEntryPoint
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
-    private void addInlinedTarget0(@SuppressWarnings("unused") ClientIsolateThread client,
+    private static void addInlinedTarget0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<? extends TruffleMetaAccessProvider> providerHandle,
                     ClientHandle<SubstrateCompilableTruffleAST> targetHandle) {
         final IsolatedCompileClient isolatedCompileClient = IsolatedCompileClient.get();

@@ -190,7 +190,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
             IsolatedCompilableTruffleAST compilable = new IsolatedCompilableTruffleAST(compilableHandle);
             delegate.initialize(options, compilable, firstCompilation);
             TruffleCompilation compilation = new IsolatedCompilationIdentifier(compilationIdentifierHandle, compilable);
-            IsolatedTruffleInlining inlining = new IsolatedTruffleInlining(inliningHandle);
+            IsolatedTruffleInlining<TruffleMetaAccessProvider> inlining = new IsolatedTruffleInlining<>(inliningHandle);
             TruffleCompilationTask task = null;
             if (taskHandle.notEqual(IsolatedHandles.nullHandle())) {
                 task = new IsolatedTruffleCompilationTask(taskHandle);
