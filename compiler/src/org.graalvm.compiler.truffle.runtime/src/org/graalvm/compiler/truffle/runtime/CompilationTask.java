@@ -100,6 +100,10 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         return false;
     }
 
+    void reset() {
+        cancelled = false;
+    }
+
     public void finished() {
         final OptimizedCallTarget target = targetRef.get();
         if (target != null) {

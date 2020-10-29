@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.junit.Assert.assertEquals;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
@@ -181,24 +182,70 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         }
     }
 
+    @Test
+    public void testBlockCompilationMaximumGraalNodeCount() {
+        int blockSize = 100;
+        int nodeCount = 1000;
+        setupContext("engine.CompileImmediately", "true",
+                        "engine.BackgroundCompilation", "false",
+                        "engine.PartialBlockCompilationSize", String.valueOf(blockSize),
+                        "engine.MaximumGraalNodeCount", "20000");
+        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        AbstractTestNode[] children = new AbstractTestNode[nodeCount];
+        for (int i = 0; i < children.length; i++) {
+            children[i] = new ExpensiveTestNode();
+        }
+        BlockNode<AbstractTestNode> block = BlockNode.create(children, new NodeExecutor());
+        OptimizedCallTarget compilable = (OptimizedCallTarget) runtime.createCallTarget(new TestRootNode(block));
+        TestListener listener = new TestListener(compilable);
+        try {
+            runtime.addListener(listener);
+            compilable.compile(!compilable.engine.multiTier);
+            List<EventType> expectedEvents = new ArrayList<>();
+            // Main CallTarget
+            expectedEvents.add(EventType.ENQUEUED);
+            expectedEvents.add(EventType.COMPILATION_STARTED);
+            expectedEvents.add(EventType.COMPILATION_FAILURE);
+            expectedEvents.add(EventType.DEQUEUED);
+            // Main CallTarget enqueued for re-compilation
+            expectedEvents.add(EventType.ENQUEUED);
+            // New partial blocks CallTargets
+            for (int i = 0; i < nodeCount / blockSize; i++) {
+                expectedEvents.add(EventType.ENQUEUED);
+                expectedEvents.add(EventType.COMPILATION_STARTED);
+                expectedEvents.add(EventType.TRUFFLE_TIER_FINISHED);
+                expectedEvents.add(EventType.GRAAL_TIER_FINISHED);
+                expectedEvents.add(EventType.COMPILATION_SUCCESS);
+            }
+            // Main CallTarget re-compilation
+            expectedEvents.add(EventType.COMPILATION_STARTED);
+            expectedEvents.add(EventType.TRUFFLE_TIER_FINISHED);
+            expectedEvents.add(EventType.GRAAL_TIER_FINISHED);
+            expectedEvents.add(EventType.COMPILATION_SUCCESS);
+            listener.assertEvents(expectedEvents.toArray(new EventType[expectedEvents.size()]));
+        } finally {
+            runtime.removeListener(listener);
+        }
+    }
+
     private static RootNode createFailureNode() {
         CompilerAssertsTest.NeverPartOfCompilationTestNode result = new CompilerAssertsTest.NeverPartOfCompilationTestNode();
         return new RootTestNode(new FrameDescriptor(), "neverPartOfCompilation", result);
     }
 
     private static RootNode createBlocks() {
-        BlockNode<TestNode> block = createBlocks(1, 2);
+        BlockNode<AbstractTestNode> block = createBlocks(1, 2);
         return new TestRootNode(block);
     }
 
-    private static BlockNode<TestNode> createBlocks(int depth, int blockSize) {
+    private static BlockNode<AbstractTestNode> createBlocks(int depth, int blockSize) {
         if (depth == 0) {
             return null;
         }
         NodeExecutor nodeExecutor = new NodeExecutor();
-        TestNode[] children = new TestNode[blockSize];
+        AbstractTestNode[] children = new AbstractTestNode[blockSize];
         for (int i = 0; i < children.length; i++) {
-            children[i] = new TestNode(createBlocks(depth - 1, blockSize));
+            children[i] = new NestedTestNode(createBlocks(depth - 1, blockSize));
         }
         return BlockNode.create(children, nodeExecutor);
     }
@@ -214,19 +261,48 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         }
     }
 
-    private static final class TestNode extends Node {
+    private abstract static class AbstractTestNode extends Node {
+
+        public abstract Object execute(VirtualFrame frame);
+
+    }
+
+    private static final class NestedTestNode extends AbstractTestNode {
 
         @Child private BlockNode<?> block;
 
-        TestNode(BlockNode<?> block) {
+        NestedTestNode(BlockNode<?> block) {
             this.block = block;
         }
 
+        @Override
         public Object execute(VirtualFrame frame) {
             if (block != null) {
                 block.executeGeneric(frame, BlockNode.NO_ARGUMENT);
             }
             return true;
+        }
+    }
+
+    private static final class ExpensiveTestNode extends AbstractTestNode {
+
+        static volatile int res;
+
+        ExpensiveTestNode() {
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            int a = res;
+            int b = other(a);
+            a = (int) Math.sqrt(a * a - b * b);
+            res = a;
+            return res;
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private static int other(int limit) {
+            return (int) (Math.random() * limit);
         }
     }
 
@@ -245,10 +321,10 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         }
     }
 
-    private static final class NodeExecutor implements BlockNode.ElementExecutor<TestNode> {
+    private static final class NodeExecutor implements BlockNode.ElementExecutor<AbstractTestNode> {
 
         @Override
-        public void executeVoid(VirtualFrame frame, TestNode node, int index, int argument) {
+        public void executeVoid(VirtualFrame frame, AbstractTestNode node, int index, int argument) {
             node.execute(frame);
         }
     }
