@@ -1225,6 +1225,14 @@ public final class ObjectKlass extends Klass {
         return !Modifier.isStatic(m.getFlags()) && !Modifier.isPrivate(m.getFlags()) && !Name._init_.equals(m.getName());
     }
 
+    public void removedByRedefintion() {
+        // currently implemented as removing all methods only
+        // more is needed when we support field changes
+        for (Method declaredMethod : getDeclaredMethods()) {
+            declaredMethod.removedByRedefinition();
+        }
+    }
+
     private static final class RedefinitionCache {
         final Assumption assumption;
         final RuntimeConstantPool pool;
