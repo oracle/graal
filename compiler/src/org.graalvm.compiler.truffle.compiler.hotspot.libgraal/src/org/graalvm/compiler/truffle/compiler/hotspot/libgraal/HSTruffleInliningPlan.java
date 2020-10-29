@@ -60,6 +60,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleIn
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callInlinedTargets;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callSetCallCount;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callSetInlinedCallCount;
+import static org.graalvm.libgraal.jni.JNILibGraalScope.scope;
 import static org.graalvm.libgraal.jni.JNIUtil.createString;
 
 import java.net.URI;
@@ -72,10 +73,12 @@ import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.jni.HSObject;
+import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNI.JNIEnv;
 import org.graalvm.libgraal.jni.JNI.JObject;
 import org.graalvm.libgraal.jni.JNI.JString;
 import org.graalvm.libgraal.jni.JNILibGraalScope;
+import org.graalvm.libgraal.jni.JNIUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -157,8 +160,17 @@ class HSTruffleInliningPlan extends HSObject implements TruffleMetaAccessProvide
     @TruffleFromLibGraal(InlinedTargets)
     @Override
     public CompilableTruffleAST[] inlinedTargets() {
-        // TODO: This is broken and needs fixing
-        return null; // callInlinedTargets(scope.getEnv(), getHandle());
+        // TODO: I'm pretty sure this is not correct
+        JNILibGraalScope<TruffleToLibGraal.Id> scope = scope().narrow(TruffleToLibGraal.Id.class);
+        JNIEnv env = scope.getEnv();
+        JNI.JObjectArray peerArr = callInlinedTargets(env, getHandle());
+        int len = JNIUtil.GetArrayLength(env, peerArr);
+        CompilableTruffleAST[] res = new CompilableTruffleAST[len];
+        for (int i = 0; i < len; i++) {
+            JObject ast = JNIUtil.GetObjectArrayElement(env, peerArr, i);
+            res[i] = new HSCompilableTruffleAST(scope, ast);
+        }
+        return res;
     }
 
     @TruffleFromLibGraal(AddInlinedTarget)
