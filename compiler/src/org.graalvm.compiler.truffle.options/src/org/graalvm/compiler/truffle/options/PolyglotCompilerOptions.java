@@ -329,9 +329,6 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print the entire AST after each compilation", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceCompilationAST = new OptionKey<>(false);
 
-    @Option(help = "Print the inlined call tree for each compiled method", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> TraceCompilationCallTree = new OptionKey<>(false);
-
     @Option(help = "Print information for inlining decisions.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
 
