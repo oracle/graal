@@ -25,8 +25,11 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Map;
 
 public class ConstantPoolPatcher {
     public static void getDirectInnerClassNames(String fileSystemName, byte[] bytes, ArrayList<String> innerNames) {
@@ -88,5 +91,93 @@ public class ConstantPoolPatcher {
             }
             i++;
         }
+    }
+
+    public static byte[] patchConstantPool(byte[] bytes, Map<String, String> rules) {
+        byte[] result = bytes;
+        ClassfileStream stream = new ClassfileStream(bytes, null);
+
+        // skip magic and version - 8 bytes
+        stream.skip(8);
+        final int length = stream.readU2();
+
+        int byteArrayGrowth = 0;
+        int i = 1;
+        while (i < length) {
+            final int tagByte = stream.readU1();
+            final ConstantPool.Tag tag = ConstantPool.Tag.fromValue(tagByte);
+
+            switch (tag) {
+                case UTF8:
+                    int position = stream.getPosition() + 2; // utfLength is first two bytes
+                    ByteSequence byteSequence = stream.readByteSequenceUTF();
+                    String value = byteSequence.toString();
+
+                    if (rules.containsKey(value)) {
+                        int originalLegth = byteSequence.length();
+                        byte[] replacedBytes = ModifiedUtf8.fromJavaString(rules.get(value));
+                        int newLength = replacedBytes.length;
+                        if (originalLegth == newLength) {
+                            System.arraycopy(replacedBytes, 0, result, position + byteArrayGrowth, replacedBytes.length);
+                        } else {
+                            int diff = newLength - originalLegth;
+                            byteArrayGrowth += diff;
+
+                            // make room for the longer class name
+                            result = Arrays.copyOf(result, result.length + diff);
+
+                            int currentPosition = stream.getPosition();
+                            // shift the tail of array
+                            System.arraycopy(bytes, currentPosition, result, currentPosition + byteArrayGrowth, bytes.length - currentPosition);
+
+                            // update utfLength
+                            char utfLength = (char) newLength;
+                            int utfLengthPosition = position - 2 + byteArrayGrowth - diff;
+                            result[utfLengthPosition] = (byte) (utfLength >> 8);
+                            result[utfLengthPosition + 1] = (byte) (utfLength);
+
+                            // insert patched byte array
+                            System.arraycopy(replacedBytes, 0, result, utfLengthPosition + 2, replacedBytes.length);
+                        }
+                    }
+                    break;
+                case CLASS:
+                case STRING:
+                case METHODTYPE:
+                    stream.readU2();
+                    break;
+                case FIELD_REF:
+                case METHOD_REF:
+                case INTERFACE_METHOD_REF:
+                case NAME_AND_TYPE:
+                case DYNAMIC:
+                case INVOKEDYNAMIC:
+                    stream.readU2();
+                    stream.readU2();
+                    break;
+                case INTEGER:
+                    stream.readS4();
+                    break;
+                case FLOAT:
+                    stream.readFloat();
+                    break;
+                case LONG:
+                    stream.readS8();
+                    ++i;
+                    break;
+                case DOUBLE:
+                    stream.readDouble();
+                    ++i;
+                    break;
+                case METHODHANDLE:
+                    stream.readU1();
+                    stream.readU2();
+                    break;
+                default:
+                    break;
+            }
+            i++;
+        }
+        return result;
     }
 }

@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -47,6 +46,7 @@ public final class InnerClassRedefiner {
     public static final int METHOD_FINGERPRINT_EQUALS = 8;
     public static final int ENCLOSING_METHOD_FINGERPRINT_EQUALS = 4;
     public static final int FIELD_FINGERPRINT_EQUALS = 2;
+    public static final int MAX_SCORE = METHOD_FINGERPRINT_EQUALS + ENCLOSING_METHOD_FINGERPRINT_EQUALS + FIELD_FINGERPRINT_EQUALS;
 
 
     // map from classloader to a map of class names to inner class infos
@@ -57,8 +57,8 @@ public final class InnerClassRedefiner {
     public static ClassInfo[] matchAnonymousInnerClasses(RedefineInfo[] redefineInfos, EspressoContext context, List<ObjectKlass> removedInnerClasses) {
         hotswapState.clear();
         ArrayList<RedefineInfo> unhandled = new ArrayList<>(redefineInfos.length);
-        Map<String, ClassInfo> handled = new HashMap<>(redefineInfos.length);
         Collections.addAll(unhandled, redefineInfos);
+        Map<String, ClassInfo> handled = new HashMap<>(redefineInfos.length);
         // build inner/outer relationship from top-level to leaf class in order
         // each round below handles classes where the outer class was previously
         // handled
@@ -91,12 +91,24 @@ public final class InnerClassRedefiner {
             }
         }
 
+        // store renaming rules to be used for constant pool patching when class renaming happens
+        Map<StaticObject, Map<String, String>> renamingRules = new HashMap<>(0);
         // begin matching from collected top-level classes
         for (ClassInfo info : hotswapState.values()) {
-            matchClassInfo(info, context, removedInnerClasses);
+            matchClassInfo(info, context, removedInnerClasses, renamingRules);
         }
+
+        // get the full list of changed classes
         ArrayList<ClassInfo> result = new ArrayList<>();
         getAllHotswapClasses(hotswapState.values(), result);
+
+        // now, do the constant pool patching
+        for (ClassInfo classInfo : result) {
+            Map<String, String> rules = renamingRules.get(classInfo.getClassLoader());
+            if (rules != null && !rules.isEmpty()) {
+                classInfo.patchBytes(ConstantPoolPatcher.patchConstantPool(classInfo.getBytes(), rules));
+            }
+        }
         hotswapState.clear();
         return result.toArray(new ClassInfo[0]);
     }
@@ -158,7 +170,7 @@ public final class InnerClassRedefiner {
         return innerName.substring(0, innerName.lastIndexOf('$'));
     }
 
-    private static void matchClassInfo(ClassInfo hotSwapInfo, EspressoContext context, List<ObjectKlass> removedInnerClasses) {
+    private static void matchClassInfo(ClassInfo hotSwapInfo, EspressoContext context, List<ObjectKlass> removedInnerClasses, Map<StaticObject, Map<String, String>> renamingRules) {
         Klass klass = hotSwapInfo.getKlass();
 
         // try to fetch all direct inner classes
@@ -179,6 +191,7 @@ public final class InnerClassRedefiner {
             }
             String name = outerInfo.generateNextUniqueInnerName();
             hotSwapInfo.rename(name);
+            addRenamingRule(renamingRules, hotSwapInfo.getClassLoader(), hotSwapInfo.getOriginalName(), hotSwapInfo.getNewName());
         } else {
             ClassInfo previousInfo = getGlobalClassInfo(klass, context);
             ClassInfo[] previousInnerClasses = previousInfo.getInnerClasses();
@@ -202,6 +215,10 @@ public final class InnerClassRedefiner {
                         if (score > 0 && score > maxScore) {
                             maxScore = score;
                             bestMatch = removedClass;
+                            if (maxScore == MAX_SCORE) {
+                                // found a perfect match, so stop iterating
+                                break;
+                            }
                         }
                     }
                     if (bestMatch != null) {
@@ -209,6 +226,7 @@ public final class InnerClassRedefiner {
                         // rename class and associate with previous klass object
                         if (!info.getOriginalName().equals(bestMatch.getOriginalName())) {
                             info.rename(bestMatch.getOriginalName());
+                            addRenamingRule(renamingRules, info.getClassLoader(), info.getOriginalName(), info.getNewName());
                         }
                         info.setKlass(bestMatch.getKlass());
                     }
@@ -220,8 +238,23 @@ public final class InnerClassRedefiner {
         }
 
         for (ClassInfo innerClass : hotSwapInfo.getInnerClasses()) {
-            matchClassInfo(innerClass, context, removedInnerClasses);
+            matchClassInfo(innerClass, context, removedInnerClasses, renamingRules);
         }
+    }
+
+    private static void addRenamingRule(Map<StaticObject, Map<String, String>> renamingRules, StaticObject classLoader, String originalName, String newName) {
+        Map<String, String> classLoaderRules = renamingRules.get(classLoader);
+        if (classLoaderRules == null) {
+            classLoaderRules = new HashMap<>(4);
+            renamingRules.put(classLoader, classLoaderRules);
+        }
+        // TODO(Gregersen) - are the below rules enough to cover all cases for anonymous inner classes?
+        // add simple class names
+        classLoaderRules.put(originalName, newName);
+        // add type names
+        classLoaderRules.put("L" + originalName + ";", "L" + newName + ";");
+        // add <init> signature names
+        classLoaderRules.put("(L" + originalName + ";)V", "(L" + newName + ";)V");
     }
 
     public static ClassInfo getGlobalClassInfo(Klass klass, EspressoContext context) {

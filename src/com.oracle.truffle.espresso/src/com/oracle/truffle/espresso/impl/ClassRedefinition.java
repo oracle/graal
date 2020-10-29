@@ -125,10 +125,10 @@ public final class ClassRedefinition {
         for (ClassInfo redefineInfo : redefineInfos) {
             KlassRef klass = redefineInfo.getKlass();
             if (klass == null) {
-                // new anonymous inner class
-                // TODO - create a new Klass instance and register it within the class registry
-                // so it will be found when class loading occurs
-                System.out.println("NEED TO HANDLE A NEW CLASS: " + redefineInfo.getNewName());
+                // new anonymous inner class with unique synthetic name
+                // define the new class and pre-register it within the class registry
+                ClassRegistry registry = context.getRegistries().getClassRegistry(redefineInfo.getClassLoader());
+                registry.defineKlass(null, redefineInfo.getBytes());
                 continue;
             }
             byte[] bytes = redefineInfo.getBytes();

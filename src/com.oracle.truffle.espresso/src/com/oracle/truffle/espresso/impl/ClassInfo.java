@@ -239,4 +239,7 @@ public final class ClassInfo {
         return getNewName() + "$hot" + nextNewClass++;
     }
 
+    public void patchBytes(byte[] patchedBytes) {
+        this.bytes = patchedBytes;
+    }
 }
