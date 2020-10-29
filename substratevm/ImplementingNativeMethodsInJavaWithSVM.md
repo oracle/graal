@@ -13,7 +13,7 @@ continue reading to the [Native Image JNI support](JNI.md) guide instead.
 ## Create a Shared Library
 
 First of all one has to use the `native-image` builder to generate a shared library
-with some JNI-compatible [entry points](README.md#images-and-entry-points).
+with some JNI-compatible [entry points](README.md#build-a-shared-library).
 Start with the Java code:
 ```java
 package org.pkg.implnative;
@@ -43,7 +43,7 @@ $GRAALVM/bin/native-image --shared -H:Name=libnativeimpl -cp nativeimpl
 The `libnativeimpl.so` is generated. We are ready to use it from standard
 Java code.
 
-## Bind Java Native Method
+## Bind a Java Native Method
 
 Now we need another Java class to use the native library generated in the previous step:
 ```java

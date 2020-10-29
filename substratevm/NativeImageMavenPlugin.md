@@ -48,9 +48,8 @@ specified in the `<configuration>` node of the plugin. When `mvn package` comple
 
 ## Maven Plugin Customization
 
-When using GraalVM Enterprise as the `JAVA_HOME` environment, the plugin builds a native image with Enterprise features enabled, e.g., an executable will automatically be built with [compressed references](https://medium.com/graalvm/isolates-and-compressed-references-more-flexible-and-efficient-memory-management-for-graalvm-a044cc50b67e) and other optimizations enabled.
-
-It is also possible to customize `native-image-maven-plugin` within a
+If you use Native Image Maven plugin, it will pick up all the configuration for your application stored below the  _META-INF/native-image/_ resource location, as described in [Native Image Build Configuration](BuildConfiguration.md).
+It is also possible to customize the plugin within a
 `<configuration>` node. The following configurations are available.
 
 1. Configuration parameter `<mainClass>`: if the execution fails with the `no main manifest attribute, in target/<name>.jar` error, the main class should be specified. By default the plugin consults several locations in the  `pom.xml` file in the following order to determine what the main class of the image should be:
@@ -70,3 +69,5 @@ It is also possible to customize `native-image-maven-plugin` within a
     <skip>false</skip>
 </configuration>
 ```
+
+If you use GraalVM Enterprise as the `JAVA_HOME` environment, the plugin builds a native image with Enterprise features enabled, e.g., an executable will automatically be built with [compressed references](https://medium.com/graalvm/isolates-and-compressed-references-more-flexible-and-efficient-memory-management-for-graalvm-a044cc50b67e) and other optimizations enabled.

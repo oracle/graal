@@ -1,7 +1,7 @@
 # Compiling to LLVM Bitcode
 
 GraalVM can execute C/C++, Rust, and other languages that can be compiled to LLVM bitcode.
-As a first step, you have to compile a program to LLVM bitcode using some LLVM compiler front end, for example, `clang` for C and C++, `rust` for the Rust programing language, etc.
+As the first step, you have to compile a program to LLVM bitcode using some LLVM compiler front end, for example, `clang` for C and C++, `rust` for the Rust programing language, etc.
 
 ## File Format
 
@@ -22,24 +22,28 @@ The GraalVM LLVM runtime utilizes this information to find and load dependencies
 ## LLVM Toolchain for Compiling C/C++
 
 To simplify compiling C/C++ to executables with embedded bitcode, GraalVM comes with a pre-built LLVM toolchain.
-The LLVM toolchain can be installed with the [GraalVM Updater](https://www.graalvm.org/reference-manual/graalvm-updater), `gu`, tool:
+The toolchain contains compilers such as `clang` for C or `clang++` for C++, but also other tools that are needed
+for building native projects such as a linker (`ld`), or an archiver (`ar`) for creating static libraries.
+
+The LLVM toolchain can be added to GraalVM on demand with the [GraalVM Updater](https://www.graalvm.org/reference-manual/graalvm-updater) tool:
 ```shell
 $GRAALVM_HOME/bin/gu install llvm-toolchain
 ```
+
+The above command will install the LLVM toolchain from the GitHub catalog for GraalVM Community users.
+For GraalVM Enterprise users, the [manual installation](https://www.graalvm.org/reference-manual/graalvm-updater/#manual-installation) is required.
 
 To get the location of the toolchain, use the `--print-toolchain-path` argument of `lli`:
 ```shell
 export LLVM_TOOLCHAIN=$($GRAALVM_HOME/bin/lli --print-toolchain-path)
 ```
 
-The toolchain contains compilers such as `clang` for C or `clang++` for C++, but also other tools that are needed
-for building native projects such as a linker (`ld`), or an archiver (`ar`) for creating static libraries.
 See the content of the toolchain path for a list of available tools:
 ```shell
 ls $LLVM_TOOLCHAIN
 ```
 
-Use those tools just as you would for native compilation. For example, the C code file `hello.c`:
+Use those tools just as you would for native compilation. For example, save this C code in a file named `hello.c`:
 ```c
 #include <stdio.h>
 
@@ -49,12 +53,12 @@ int main() {
 }
 ```
 
-You can compile `hello.c` to an executable with embedded LLVM bitcode as follows:
+Then you can compile `hello.c` to an executable with embedded LLVM bitcode as follows:
 ```shell
 $LLVM_TOOLCHAIN/clang hello.c -o hello
 ```
 
-The resulting executable `hello` can be executed on GraalVM using `lli`:
+The resulting executable, `hello`, can be executed on GraalVM using `lli`:
 ```shell
 $GRAALVM_HOME/bin/lli hello
 ```
@@ -77,7 +81,7 @@ int main() {
 }
 ```
 
-This can be run with:
+This _hello-curses.c_ file can be then compiled and run with:
 ```shell
 $LLVM_TOOLCHAIN/clang hello-curses.c -lncurses -o hello-curses
 lli hello-curses
@@ -105,8 +109,8 @@ Hello, C++ World!
 
 ## Running Rust
 
-The LLVM toolchain that is bundled with GraalVM does not come with the Rust
-compiler. To install Rust, run the following in your terminal, then follow the
+The LLVM toolchain, bundled with GraalVM, does not come with the Rust
+compiler. To install Rust, run the following in your command prompt, then follow the
 onscreen instructions:
 ```shell
 curl https://sh.rustup.rs -sSf | sh

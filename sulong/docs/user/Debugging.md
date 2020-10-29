@@ -3,11 +3,11 @@
 The GraalVM LLVM runtime supports source-level (e.g., the C language) debugging with the [Chrome Developer Tools](https://developers.google.com/web/tools/chrome-devtools/) using GraalVM's Chrome Inspector implementation.
 This includes support for single-stepping, breakpoints, and inspection of local and global variables.
 
-To use this feature, make sure to compile your program with debug information by specifying the `-g` argument when compiling with `clang` (the LLVM toolchain shipped with GraalVM will automatically enable debug information generation).
+To use this feature, make sure to compile your program with debug information enabled by specifying the `-g` argument when compiling with `clang` (the LLVM toolchain shipped with GraalVM will automatically enable debug information).
 This gives you the ability to step through the program's source code and set breakpoints in it.
 
-With GraalVM 20.0 and older, the option `--llvm.enableLVI=true` is needed for being able to inspect variables
-during debugging. This option is not enabled by default as it decreases the program's run-time performance.
+With GraalVM 20.0 and older, the option `--llvm.enableLVI=true` is needed for being able to inspect variables during debugging.
+This option is not enabled by default as it decreases the program's run-time performance.
 Starting with GraalVM 20.1, this option is not needed anymore and thus deprecated.
 
 To start debugging, run `lli` with the `--inspect` option:
@@ -35,7 +35,7 @@ To enable this behavior you need to pass the arguments `lli --inspect.Suspend=fa
 ## Locating Source Files
 
 Debug information in LLVM bitcode files contains absolute search paths to identify the
-location of source code. If the source didn't move, it should be found automatically.
+location of source code. If the source files did not move, it should be found automatically.
 
 If the source files moved, or were compiled on a different machine, a search path can be
 specified using the `--inspect.SourcePath=<path>` option (multiple paths can be separated

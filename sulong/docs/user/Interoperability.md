@@ -1,11 +1,11 @@
 # Interoperability
 
 GraalVM supports several other programming languages including JavaScript, Python, Ruby, and R.
-While GraalVM's implementation of `lli` is designed to run LLVM bitcode, it also provides an API for programming language interoperability that lets you execute code from any other GraalVM-suppored language.
+While GraalVM's implementation of `lli` is designed to run LLVM bitcode, it also provides the API for programming language interoperability that lets you execute code from any other GraalVM-supported language.
 
 Dynamic languages like JavaScript usually access object members by name. Since
 normally names are not preserved in LLVM bitcode, it must be compiled with debug
-info enabled (the LLVM toolchain shipped with GraalVM will automatically enable
+information enabled (the LLVM toolchain shipped with GraalVM will automatically enable
 debugging information).
 
 The following example demonstrates how you can use the API for interoperability
@@ -47,7 +47,7 @@ void printPoint(struct Point *p) {
 ```
 
 Make sure `LLVM_TOOLCHAIN` resolves to the GraalVM LLVM toolchain (`lli --print-toolchain-path`),
-then compile _cpart.c_  (the polyglot-mock library defines the polyglot
+and then compile _cpart.c_  (the polyglot-mock library defines the polyglot
 API functions used in the example):
 ```shell
 $LLVM_TOOLCHAIN/clang -shared cpart.c -lpolyglot-mock -o cpart.so

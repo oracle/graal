@@ -22,4 +22,4 @@ Generally, all optimization levels should work, but for a better result, it is
 recommended to compile the bitcode with the optimization level `-O1`.
 
 For cross-language interoperability, the `-mem2reg` optimization is required.
-There are two ways to get that, either compile with at least `-O1`, or use the `opt` tool to apply the `-mem2reg` optimization manually.
+There are two ways to get that: either compile with at least `-O1`, or use the `opt` tool to apply the `-mem2reg` optimization manually.
