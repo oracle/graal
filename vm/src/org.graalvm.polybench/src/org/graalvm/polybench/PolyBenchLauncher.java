@@ -104,6 +104,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                     case "peak-time":
                         config.metric = new PeakTimeMetric();
                         break;
+                    case "none":
+                        config.metric = new NoMetric();
+                        break;
                     default:
                         throw abort("Unknown metric: " + value);
                 }
@@ -166,12 +169,18 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     @Override
     protected void launch(Context.Builder contextBuilder) {
         validateArguments();
+        contextBuilder.allowAllAccess(true);
         runHarness(contextBuilder);
     }
 
     @Override
     protected String getLanguageId() {
         return "js";
+    }
+
+    @Override
+    protected String[] getDefaultLanguages() {
+        return new String[0];
     }
 
     @Override
