@@ -98,6 +98,10 @@ public class ServiceLoaderFeature implements Feature {
                     "sun.util.locale.provider.LocaleDataMetaInfo"   // see LocaleSubstitutions
     ));
 
+    private static final Set<String> SERVICE_PROVIDERS_TO_SKIP = new HashSet<>(Arrays.asList(
+                    "com.sun.jndi.rmi.registry.RegistryContextFactory"      // GR-26547
+    ));
+
     /** Copy of private field {@code ServiceLoader.PREFIX}. */
     private static final String LOCATION_PREFIX = "META-INF/services/";
 
@@ -232,6 +236,13 @@ public class ServiceLoaderFeature implements Feature {
                  */
                 if (trace) {
                     System.out.println("  IGNORING HotSpot-specific implementation class: " + implementationClassName);
+                }
+                continue;
+            }
+
+            if (SERVICE_PROVIDERS_TO_SKIP.contains(implementationClassName)) {
+                if (trace) {
+                    System.out.println("  ignoring implementation class: " + implementationClassName);
                 }
                 continue;
             }
