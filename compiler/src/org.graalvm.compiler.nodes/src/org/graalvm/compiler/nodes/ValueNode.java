@@ -220,6 +220,12 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         assert checkReplaceAtUsagesInvariants(other);
     }
 
+    @Override
+    protected void replaceAtAllUsages(Node other, Node toBeDeleted) {
+        super.replaceAtAllUsages(other, toBeDeleted);
+        assert checkReplaceAtUsagesInvariants(other);
+    }
+
     private boolean checkReplaceAtUsagesInvariants(Node other) {
         assert other == null || other instanceof ValueNode;
         if (this.hasUsages() && !this.stamp(NodeView.DEFAULT).isEmpty() && !(other instanceof PhiNode) && other != null) {
