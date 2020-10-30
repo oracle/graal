@@ -33,6 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
@@ -87,6 +88,13 @@ public class ServiceLoaderFeature implements Feature {
 
         @Option(help = "When enabled, each service loader resource and class will be printed out to standard output", type = OptionType.Debug) //
         public static final HostedOptionKey<Boolean> TraceServiceLoaderFeature = new HostedOptionKey<>(false);
+
+        @Option(help = "Comma-separated list of services that should be excluded", type = OptionType.Expert) //
+        public static final HostedOptionKey<String[]> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(new String[0]);
+
+        @Option(help = "Comma-separated list of service providers that should be excluded", type = OptionType.Expert) //
+        public static final HostedOptionKey<String[]> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(new String[0]);
+
     }
 
     /**
@@ -121,6 +129,12 @@ public class ServiceLoaderFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return Options.UseServiceLoaderFeature.getValue();
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        Collections.addAll(SERVICES_TO_SKIP, Options.ServiceLoaderFeatureExcludeServices.getValue());
+        Collections.addAll(SERVICE_PROVIDERS_TO_SKIP, Options.ServiceLoaderFeatureExcludeServiceProviders.getValue());
     }
 
     @Override
