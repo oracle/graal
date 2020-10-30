@@ -46,8 +46,8 @@ import static org.graalvm.wasm.api.ImportExportKind.memory;
 import static org.graalvm.wasm.api.ImportExportKind.table;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import org.graalvm.wasm.ImportDescriptor;
@@ -56,6 +56,7 @@ import org.graalvm.wasm.WasmCustomSection;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -94,23 +95,36 @@ public class Module extends Dictionary {
     }
 
     public Sequence<ModuleImportDescriptor> imports() {
+        final LinkedHashMap<ImportDescriptor, Integer> importedGlobalDescriptors = module.importedGlobalDescriptors();
         final ArrayList<ModuleImportDescriptor> list = new ArrayList<>();
-        for (WasmFunction f : module.importedFunctions()) {
-            list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), function.name(), functionTypeToString(f)));
-        }
-        final ImportDescriptor tableDescriptor = module.importedTable();
-        if (tableDescriptor != null) {
-            list.add(new ModuleImportDescriptor(tableDescriptor.moduleName, tableDescriptor.memberName, table.name(), null));
-        }
-        final ImportDescriptor memoryDescriptor = module.importedMemory();
-        if (memoryDescriptor != null) {
-            list.add(new ModuleImportDescriptor(memoryDescriptor.moduleName, memoryDescriptor.memberName, memory.name(), null));
-        }
-        for (Map.Entry<Integer, ImportDescriptor> entry : module.importedGlobals().entrySet()) {
-            int index = entry.getKey();
-            String valueType = ValueType.fromByteValue(module.globalValueType(index)).toString();
-            ImportDescriptor descriptor = entry.getValue();
-            list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, global.name(), valueType));
+        for (ImportDescriptor descriptor : module.importedSymbols()) {
+            switch (descriptor.identifier) {
+                case ImportIdentifier.FUNCTION:
+                    final WasmFunction f = module.importedFunction(descriptor);
+                    list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), function.name(), functionTypeToString(f)));
+                    break;
+                case ImportIdentifier.TABLE:
+                    if (Objects.equals(module.importedTable(), descriptor)) {
+                        list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, table.name(), null));
+                    } else {
+                        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Table import inconsistent.");
+                    }
+                    break;
+                case ImportIdentifier.MEMORY:
+                    if (Objects.equals(module.importedMemory(), descriptor)) {
+                        list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, memory.name(), null));
+                    } else {
+                        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Memory import inconsistent.");
+                    }
+                    break;
+                case ImportIdentifier.GLOBAL:
+                    final Integer index = importedGlobalDescriptors.get(descriptor);
+                    String valueType = ValueType.fromByteValue(module.globalValueType(index)).toString();
+                    list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, global.name(), valueType));
+                    break;
+                default:
+                    throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier);
+            }
         }
         return new Sequence<>(list);
     }
