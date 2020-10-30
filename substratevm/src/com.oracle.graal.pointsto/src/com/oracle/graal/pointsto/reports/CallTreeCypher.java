@@ -24,9 +24,9 @@ import java.util.stream.Stream;
 public class CallTreeCypher {
 
     // TODO temporarily use a system property to try different values
-    private static final int BATCH_SIZE = Integer.getInteger("cypher.batch.size", 256);
+    private static final int BATCH_SIZE = Integer.getInteger("cypher.batch.size", 512);
 
-    private static final String METHOD_INFO_FORMAT = "properties:{name:'%n', signature:'" + CallTreePrinter.METHOD_FORMAT + "'}";
+    private static final String METHOD_INFO_FORMAT = "name:'%n', signature:'" + CallTreePrinter.METHOD_FORMAT + "'";
 
     private static final AtomicInteger virtualNodeId = new AtomicInteger(-1);
 
@@ -55,7 +55,7 @@ public class CallTreeCypher {
         final String unwindMethod = unwindMethod();
         final String script = methodsBatches.stream()
                 .map(methodBatch -> methodBatch.stream()
-                        .map(method -> String.format("{_id:%d, %s}", method.id, method.method.format(METHOD_INFO_FORMAT)))
+                        .map(method -> String.format("{_id:%d, %s}", method.id, asProperties(method.method.format(METHOD_INFO_FORMAT))))
                         .collect(Collectors.joining(", ", ":param rows => [", "]"))
                 )
                 .collect(Collectors.joining(unwindMethod, "", unwindMethod));
@@ -63,16 +63,28 @@ public class CallTreeCypher {
         writer.print(script);
     }
 
+    private static String asProperties(String properties) {
+        return "properties:{" + properties + "}";
+    }
+
     private static void printVirtualNodes(Map<VirtualInvokeId, Integer> virtualNodes, PrintWriter writer) {
         final Collection<List<Map.Entry<VirtualInvokeId, Integer>>> virtualNodesBatches = batched(virtualNodes.entrySet());
-        final String unwindMethod = unwindMethod();
+        final String unwindMethod = unwindVirtualMethod();
         final String script = virtualNodesBatches.stream()
                 .map(virtualNodesBatch -> virtualNodesBatch.stream()
-                        .map(virtualNode -> String.format("{_id:%d, %s}", virtualNode.getValue(), virtualNode.getKey().methodInfo))
+                        .map(virtualNode -> String.format("{_id:%d, %s}", virtualNode.getValue(), virtualMethodProperties(virtualNode.getKey())))
                         .collect(Collectors.joining(", ", ":param rows => [", "]"))
                 )
                 .collect(Collectors.joining(unwindMethod, "", unwindMethod));
         writer.print(script);
+    }
+
+    private static String virtualMethodProperties(VirtualInvokeId virtualNode) {
+        final String linkedIndexes = virtualNode.bytecodeIndexes.stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining("->"));
+        String properties = virtualNode.methodInfo + ", bci: '" + linkedIndexes + "'";
+        return asProperties(properties);
     }
 
     private static String vmEntryPoint() {
@@ -86,6 +98,14 @@ public class CallTreeCypher {
                 "UNWIND $rows as row\n" +
                 "CREATE (n:`UNIQUE IMPORT LABEL`{`UNIQUE IMPORT ID`: row._id})\n" +
                 "  SET n += row.properties SET n:Method;\n" +
+                ":commit\n\n";
+    }
+
+    private static String unwindVirtualMethod() {
+        return "\n\n:begin\n" +
+                "UNWIND $rows as row\n" +
+                "CREATE (n:`UNIQUE IMPORT LABEL`{`UNIQUE IMPORT ID`: row._id})\n" +
+                "  SET n += row.properties SET n:VirtualMethod;\n" +
                 ":commit\n\n";
     }
 
