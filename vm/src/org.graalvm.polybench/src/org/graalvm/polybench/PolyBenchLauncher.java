@@ -185,7 +185,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             case interpreter:
                 contextBuilder.option("engine.Compilation", "false");
                 break;
-            case default_:
+            case standard:
                 contextBuilder.option("engine.Compilation", "true");
                 break;
             default:
@@ -239,13 +239,13 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
 
     private void repeatIterations(Context context, String languageId, String name, boolean warmup, int iterations) {
         Value run = lookup(context, languageId, "run");
-        // enter explicitly to avoid context switches for each iteration
+        // Enter explicitly to avoid context switches for each iteration.
         context.enter();
         try {
             for (int i = 0; i < iterations; i++) {
                 config.metric.beforeIteration(warmup, i, config);
 
-                // executeVoid is the fastest way to do the transition to polyglot
+                // The executeVoid method is the fastest way to do the transition to guest.
                 run.executeVoid();
 
                 config.metric.afterIteration(warmup, i, config);

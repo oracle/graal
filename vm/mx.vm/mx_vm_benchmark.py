@@ -40,7 +40,7 @@ _native_image_vm_registry = mx_benchmark.VmRegistry('NativeImage', 'ni-vm')
 _gu_vm_registry = mx_benchmark.VmRegistry('GraalUpdater', 'gu-vm')
 _polybench_vm_registry = mx_benchmark.VmRegistry('PolyBench', 'polybench-vm')
 _polybench_modes = [
-    ('default', ['--mode=default']),
+    ('standard', ['--mode=standard']),
     ('interpreter', ['--mode=interpreter']),
 ]
 

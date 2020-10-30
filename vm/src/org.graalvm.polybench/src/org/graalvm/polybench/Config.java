@@ -39,7 +39,7 @@ class Config {
         this.path = null;
         this.warmupIterations = 10;
         this.iterations = 10;
-        this.mode = Mode.default_;
+        this.mode = Mode.standard;
         this.metric = new PeakTimeMetric();
     }
 
@@ -53,30 +53,15 @@ class Config {
 
     enum Mode {
         interpreter,
-        default_("default");
-
-        private final String name;
-
-        Mode() {
-            this.name = name();
-        }
-
-        Mode(String label) {
-            this.name = label;
-        }
+        standard;
 
         static Mode parse(String name) throws IllegalArgumentException {
             for (Mode mode : Mode.values()) {
-                if (name.equals(mode.name)) {
+                if (name.equals(mode.name())) {
                     return mode;
                 }
             }
             throw new IllegalArgumentException("Unknown execution-mode: " + name);
-        }
-
-        @Override
-        public String toString() {
-            return name;
         }
 
     }
