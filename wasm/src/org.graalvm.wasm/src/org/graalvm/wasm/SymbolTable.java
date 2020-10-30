@@ -185,6 +185,11 @@ public abstract class SymbolTable {
     @CompilationFinal private int typeCount;
 
     /**
+     * List of the names of all the exported symbols.
+     */
+    private final ArrayList<String> exportedSymbols;
+
+    /**
      * Stores the function objects for a WebAssembly module.
      *
      * This array is monotonically populated from left to right during parsing. Any code that uses
@@ -285,6 +290,7 @@ public abstract class SymbolTable {
         this.typeEquivalenceClasses = new int[INITIAL_TYPE_SIZE];
         this.typeDataSize = 0;
         this.typeCount = 0;
+        this.exportedSymbols = new ArrayList<>();
         this.functions = new WasmFunction[INITIAL_FUNCTION_TYPES_SIZE];
         this.numFunctions = 0;
         this.importedFunctions = new ArrayList<>();
@@ -537,9 +543,19 @@ public abstract class SymbolTable {
         return new FunctionType(functionTypeArgumentTypes(index).toArray(), functionTypeReturnType(index));
     }
 
+    protected void exportSymbol(String name) {
+        checkNotParsed();
+        checkUniqueExport(name);
+        exportedSymbols.add(name);
+    }
+
+    public List<String> exportedSymbols() {
+        return exportedSymbols;
+    }
+
     public void exportFunction(int functionIndex, String exportName) {
         checkNotParsed();
-        checkUniqueExport(exportName);
+        exportSymbol(exportName);
         exportedFunctions.put(exportName, functions[functionIndex]);
         exportedFunctionsByIndex.put(functionIndex, exportName);
         module().addLinkAction((context, instance) -> context.linker().resolveFunctionExport(module(), functionIndex, exportName));
@@ -678,7 +694,7 @@ public abstract class SymbolTable {
 
     void exportGlobal(String name, int index) {
         checkNotParsed();
-        checkUniqueExport(name);
+        exportSymbol(name);
         if (globalExported(index)) {
             throw new WasmMemoryException("Global " + index + " already exported with the name: " + nameOfExportedGlobal(index));
         }
@@ -745,7 +761,7 @@ public abstract class SymbolTable {
 
     public void exportTable(String name) {
         checkNotParsed();
-        checkUniqueExport(name);
+        exportSymbol(name);
         if (exportedTable != null) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, "A table has been already exported from this module.");
         }
@@ -813,7 +829,7 @@ public abstract class SymbolTable {
 
     public void exportMemory(String name) {
         checkNotParsed();
-        checkUniqueExport(name);
+        exportSymbol(name);
         if (exportedMemory != null) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, "A memory has been already exported from this module.");
         }

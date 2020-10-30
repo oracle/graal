@@ -293,6 +293,30 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testExportOrder() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMixedExports, null);
+            final Instance instance = instantiatedSource.instance();
+            final Dictionary exports = instance.exports();
+            final Object members = exports.getMembers(false);
+            String[] expected = new String[]{"f1", "g1", "t", "m", "g2", "f2"};
+            try {
+                final InteropLibrary lib = InteropLibrary.getUncached();
+                for (int i = 0; i < lib.getArraySize(members); i++) {
+                    final Object member = lib.readArrayElement(members, i);
+                    Assert.assertEquals("Member " + i + " should correspond to the expected export.", expected[i], lib.asString(member));
+                }
+            } catch (UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            } catch (InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+    }
+
+    @Test
     public void testCustomSections() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
@@ -537,4 +561,22 @@ public class WasmJsApiSuite {
                     (byte) 0x00, (byte) 0x06, (byte) 0x04, (byte) 0x65, (byte) 0x76, (byte) 0x65, (byte) 0x6e, (byte) 0x06
     };
 
+    // (module
+    // (func (export "f1"))
+    // (global (export "g1") i32 (i32.const 1))
+    // (table (export "t") 1 anyfunc)
+    // (memory (export "m") 1)
+    // (global (export "g2") f64 (f64.const 0))
+    // (func (export "f2"))
+    // )
+    private static final byte[] binaryWithMixedExports = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x04, (byte) 0x04, (byte) 0x01, (byte) 0x70, (byte) 0x00, (byte) 0x01, (byte) 0x05,
+                    (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x01, (byte) 0x06, (byte) 0x12, (byte) 0x02, (byte) 0x7f, (byte) 0x00, (byte) 0x41, (byte) 0x01, (byte) 0x0b, (byte) 0x7c,
+                    (byte) 0x00, (byte) 0x44, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x07, (byte) 0x1d,
+                    (byte) 0x06, (byte) 0x02, (byte) 0x66, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x02, (byte) 0x67, (byte) 0x31, (byte) 0x03, (byte) 0x00, (byte) 0x01, (byte) 0x74,
+                    (byte) 0x01, (byte) 0x00, (byte) 0x01, (byte) 0x6d, (byte) 0x02, (byte) 0x00, (byte) 0x02, (byte) 0x67, (byte) 0x32, (byte) 0x03, (byte) 0x01, (byte) 0x02, (byte) 0x66,
+                    (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x07, (byte) 0x02, (byte) 0x02, (byte) 0x00, (byte) 0x0b, (byte) 0x02, (byte) 0x00, (byte) 0x0b, (byte) 0x00,
+                    (byte) 0x0c, (byte) 0x04, (byte) 0x6e, (byte) 0x61, (byte) 0x6d, (byte) 0x65, (byte) 0x02, (byte) 0x05, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x00,
+    };
 }
