@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.jni;
 import java.nio.file.Path;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -59,6 +61,10 @@ public final class NativeLibrary {
         } catch (IllegalArgumentException e) {
             EspressoLanguage.getCurrentContext().getLogger().log(Level.SEVERE, "TruffleNFI native library isolation is not supported.", e);
             throw EspressoError.shouldNotReachHere(e);
+        } catch (AbstractTruffleException e) {
+            assert "com.oracle.truffle.nfi.impl.NFIUnsatisfiedLinkError".equals(e.getClass().getName());
+            TruffleLogger.getLogger(EspressoLanguage.ID, NativeLibrary.class).fine(e.getMessage());
+            return null;
         }
     }
 
