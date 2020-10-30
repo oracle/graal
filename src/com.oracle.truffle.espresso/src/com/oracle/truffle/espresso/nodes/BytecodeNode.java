@@ -291,6 +291,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.InstanceOfNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
@@ -352,6 +353,12 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     @Children private QuickNode[] nodes = QuickNode.EMPTY_ARRAY;
     @Children private QuickNode[] sparseNodes = QuickNode.EMPTY_ARRAY;
+    /**
+     * Ideally, we would want one such node per AASTORE bytecode. Unfortunately, the AASTORE
+     * bytecode is a single byte long, so we cannot quicken it, and it is far too common to pay for
+     * spawning the sparse nodes array.
+     */
+    @Child private EspressoReferenceArrayStoreNode refArrayStoreNode;
 
     @CompilationFinal(dimensions = 1) //
     private final FrameSlot[] locals;
@@ -1436,7 +1443,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 case Float:   getInterpreterToVM().setArrayFloat(popFloat(frame, top - 1), index, array, this);       break;
                 case Long:    getInterpreterToVM().setArrayLong(popLong(frame, top - 1), index, array, this);         break;
                 case Double:  getInterpreterToVM().setArrayDouble(popDouble(frame, top - 1), index, array, this);     break;
-                case Object:  getInterpreterToVM().setArrayObject(popObject(frame, top - 1), index, array, this);     break;
+                case Object:  referenceArrayStore(frame, top, index, array);     break;
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere();
@@ -1450,6 +1457,14 @@ public final class BytecodeNode extends EspressoMethodNode {
             // The stack effect difference vs. original bytecode is always 0.
             quickenArrayStore(frame, top, curBCI, storeOpcode, kind);
         }
+    }
+
+    private void referenceArrayStore(VirtualFrame frame, int top, int index, StaticObject array) {
+        if (refArrayStoreNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            refArrayStoreNode = new EspressoReferenceArrayStoreNode(getContext());
+        }
+        refArrayStoreNode.arrayStore(popObject(frame, top - 1), index, array);
     }
 
     private int checkBackEdge(int curBCI, int targetBCI, int top, int opcode) {

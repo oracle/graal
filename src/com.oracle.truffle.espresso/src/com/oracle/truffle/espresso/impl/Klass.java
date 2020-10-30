@@ -713,6 +713,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return getElementalType().isFinalFlagSet();
     }
 
+    public final boolean isFinal() {
+        return ModifiersProvider.super.isFinalFlagSet();
+    }
+
     /**
      * Checks whether this type is initialized. If a type is initialized it implies that it was
      * linked and that the static initializer has run.
@@ -765,6 +769,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (isInterface()) {
             return checkInterfaceSubclassing(other);
         }
+        return checkRegularClassSubclassing(other);
+    }
+
+    public boolean checkRegularClassSubclassing(Klass other) {
         int depth = getHierarchyDepth();
         return other.getHierarchyDepth() >= depth && other.getSuperTypes()[depth] == this;
     }
@@ -773,7 +781,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return id;
     }
 
-    boolean checkInterfaceSubclassing(Klass other) {
+    public boolean checkInterfaceSubclassing(Klass other) {
         Klass[] interfaces = other.getTransitiveInterfacesList();
         return fastLookup(this, interfaces) >= 0;
     }
