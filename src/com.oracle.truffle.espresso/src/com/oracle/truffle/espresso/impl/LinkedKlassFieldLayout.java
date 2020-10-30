@@ -35,25 +35,22 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import sun.misc.Unsafe;
 
 final class LinkedKlassFieldLayout {
-    /**
+    /*
      * If the object model does not start on a long-aligned offset. To manage, we will align our
      * indexes to the actual relative address to the start of the object. Note that we still make a
      * pretty strong assumption here: All arrays are allocated at an address aligned with a *long*
+     * 
+     * Note that we cannot use static final fields here, as SVM initializes them at build time using
+     * HotSpot's values, and thus the values for base and alignment would not be correct.
      */
-    private static final int ALIGNMENT_CORRECTION;
-    private static final int BASE;
 
-    static {
-        assert Unsafe.ARRAY_BYTE_INDEX_SCALE == 1;
+    private static int base() {
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET;
+    }
 
-        BASE = Unsafe.ARRAY_BYTE_BASE_OFFSET;
-
+    private static int alignmentCorrection() {
         int misalignment = Unsafe.ARRAY_BYTE_BASE_OFFSET % Unsafe.ARRAY_LONG_INDEX_SCALE;
-        if (misalignment == 0) {
-            ALIGNMENT_CORRECTION = 0;
-        } else {
-            ALIGNMENT_CORRECTION = Unsafe.ARRAY_LONG_INDEX_SCALE - misalignment;
-        }
+        return misalignment == 0 ? 0 : Unsafe.ARRAY_LONG_INDEX_SCALE - misalignment;
     }
 
     private static final int N_PRIMITIVES = 8;
@@ -187,11 +184,11 @@ final class LinkedKlassFieldLayout {
             nextStaticObjectFieldIndex = superKlass.getStaticObjectFieldsCount();
         } else {
             // Align the starting offset to a long.
-            superTotalInstanceByteCount = BASE + ALIGNMENT_CORRECTION;
-            superTotalStaticByteCount = BASE + ALIGNMENT_CORRECTION;
+            superTotalInstanceByteCount = base() + alignmentCorrection();
+            superTotalStaticByteCount = base() + alignmentCorrection();
             // Register a hole if we had to realign.
-            if (ALIGNMENT_CORRECTION > 0) {
-                leftoverHoles = new int[][]{{BASE, BASE + ALIGNMENT_CORRECTION}};
+            if (alignmentCorrection() > 0) {
+                leftoverHoles = new int[][]{{base(), base() + alignmentCorrection()}};
             } else {
                 leftoverHoles = new int[0][];
             }
@@ -234,26 +231,26 @@ final class LinkedKlassFieldLayout {
             instanceFields[instanceFieldInsertionIndex++] = hiddenField;
         }
 
-        int instancePrimToAlloc = getSizeToAlloc(instancePrimitiveFieldIndexes);
-        int staticPrimToAlloc = getSizeToAlloc(staticPrimitiveFieldIndexes);
+        int instancePrimToAlloc = getSizeToAlloc(superKlass == null ? 0 : superKlass.getInstancePrimitiveToAlloc(), instancePrimitiveFieldIndexes);
+        int staticPrimToAlloc = getSizeToAlloc(superKlass == null ? 0 : superKlass.getStaticPrimitiveToAlloc(), staticPrimitiveFieldIndexes);
 
         return new LinkedKlassFieldLayout(
-                        instanceFields,
-                        staticFields,
-                        instancePrimitiveFieldIndexes.schedule.nextLeftoverHoles,
-                        instancePrimToAlloc,
-                        staticPrimToAlloc,
-                        instancePrimitiveFieldIndexes.offsets[N_PRIMITIVES - 1],
-                        staticPrimitiveFieldIndexes.offsets[N_PRIMITIVES - 1],
-                        nextFieldTableSlot, nextObjectFieldIndex, nextStaticObjectFieldIndex);
+                        instanceFields, staticFields, instancePrimitiveFieldIndexes.schedule.nextLeftoverHoles,
+                        instancePrimToAlloc, staticPrimToAlloc,
+                        instancePrimitiveFieldIndexes.offsets[N_PRIMITIVES - 1], staticPrimitiveFieldIndexes.offsets[N_PRIMITIVES - 1],
+                        nextFieldTableSlot,
+                        nextObjectFieldIndex, nextStaticObjectFieldIndex);
     }
 
-    private static int getSizeToAlloc(PrimitiveFieldIndexes fieldIndexes) {
-        int toAlloc = fieldIndexes.offsets[N_PRIMITIVES - 1] - BASE;
+    private static int getSizeToAlloc(int superToAlloc, PrimitiveFieldIndexes fieldIndexes) {
+        int toAlloc = fieldIndexes.offsets[N_PRIMITIVES - 1] - base();
         assert toAlloc >= 0;
-        if (toAlloc == ALIGNMENT_CORRECTION && fieldIndexes.schedule.isEmpty()) {
-            // No need to allocate primitive field array if there is no such fields.
-            toAlloc = 0;
+        if (toAlloc == alignmentCorrection() && fieldIndexes.schedule.isEmpty()) {
+            // If superKlass has fields in the alignment hole, we will need to allocate. If not, we
+            // can save an array. Note that if such a field exists, we will allocate an array of
+            // size at least the alignment correction, since we fill holes from the right to the
+            // left.
+            toAlloc = superToAlloc;
         }
         return toAlloc;
     }
@@ -426,11 +423,13 @@ final class LinkedKlassFieldLayout {
     private static final class FillingSchedule {
         static final int[][] EMPTY_INT_ARRAY_ARRAY = new int[0][];
 
-        List<ScheduleEntry> schedule;
+        final List<ScheduleEntry> schedule;
         int[][] nextLeftoverHoles;
 
+        final boolean isEmpty;
+
         boolean isEmpty() {
-            return schedule.isEmpty();
+            return isEmpty;
         }
 
         static FillingSchedule create(int holeStart, int holeEnd, int[] counts, int[][] leftoverHoles) {
@@ -510,11 +509,13 @@ final class LinkedKlassFieldLayout {
 
         private FillingSchedule(List<ScheduleEntry> schedule) {
             this.schedule = schedule;
+            this.isEmpty = schedule == null || schedule.isEmpty();
         }
 
         private FillingSchedule(List<ScheduleEntry> schedule, List<int[]> nextHoles) {
             this.schedule = schedule;
             this.nextLeftoverHoles = nextHoles.isEmpty() ? null : nextHoles.toArray(EMPTY_INT_ARRAY_ARRAY);
+            this.isEmpty = schedule != null && schedule.isEmpty();
         }
 
         ScheduleEntry query(JavaKind kind) {
