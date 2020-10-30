@@ -42,8 +42,6 @@
 package org.graalvm.wasm.exception;
 
 public enum Failure {
-    EXIT(Type.EXIT, "program exited"),
-
     UNSPECIFIED_TRAP(Type.TRAP, "unspecified"),
     INT_DIVIDE_BY_ZERO(Type.TRAP, "integer divide by zero"),
     INT_OVERFLOW(Type.TRAP, "integer overflow"),
@@ -63,7 +61,6 @@ public enum Failure {
     OTHER_ARITHMETIC_EXCEPTION(Type.INTERNAL, "non-standard arithmetic exception");
 
     public enum Type {
-        EXIT("exit"),
         TRAP("trap"),
         EXHAUSTION("exhaustion"),
         MALFORMED("malformed"),

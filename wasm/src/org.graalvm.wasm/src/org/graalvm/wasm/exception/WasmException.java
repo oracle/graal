@@ -104,8 +104,6 @@ public final class WasmException extends AbstractTruffleException {
     @ExportMessage
     public ExceptionType getExceptionType() {
         switch (failure.type) {
-            case EXIT:
-                return ExceptionType.EXIT;
             case MALFORMED:
             case INVALID:
             case UNLINKABLE:
