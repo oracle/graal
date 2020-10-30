@@ -48,7 +48,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
-import com.oracle.svm.core.heap.ObjectHeader.HeapKind;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -95,7 +94,11 @@ public final class NonmovableArrays {
         if (array.isNull()) {
             throw OUT_OF_MEMORY_ERROR;
         }
-        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(array, hub, HeapKind.Unmanaged, true);
+
+        ObjectHeader header = Heap.getHeap().getObjectHeader();
+        Word encodedHeader = header.encodeAsUnmanagedObjectHeader(hub);
+        header.initializeHeaderOfNewObject(array, encodedHeader, true);
+
         array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
         // already zero-initialized thanks to calloc()
         trackUnmanagedArray((NonmovableArray<?>) array);
