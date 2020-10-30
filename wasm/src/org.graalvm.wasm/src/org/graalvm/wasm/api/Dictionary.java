@@ -115,7 +115,7 @@ public class Dictionary implements TruffleObject {
 
     @SuppressWarnings("unused")
     @ExportMessage(name = "toDisplayString")
-    public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+    public Object toDisplayString(boolean allowSideEffects) {
         return this.getClass().getName() + "[" + members + "]";
     }
 }

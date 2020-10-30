@@ -48,6 +48,7 @@ import static org.graalvm.wasm.api.ImportExportKind.table;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.graalvm.wasm.ImportDescriptor;
 import org.graalvm.wasm.WasmContext;
@@ -55,6 +56,8 @@ import org.graalvm.wasm.WasmCustomSection;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 public class Module extends Dictionary {
     private final WasmModule module;
@@ -70,22 +73,22 @@ public class Module extends Dictionary {
 
     public Sequence<ModuleExportDescriptor> exports() {
         final ArrayList<ModuleExportDescriptor> list = new ArrayList<>();
-        for (Map.Entry<String, WasmFunction> entry : module.exportedFunctions().entrySet()) {
-            list.add(new ModuleExportDescriptor(entry.getKey(), function.name(), functionTypeToString(entry.getValue())));
-        }
-        final String exportedTable = module.exportedTable();
-        if (exportedTable != null) {
-            list.add(new ModuleExportDescriptor(exportedTable, table.name(), null));
-        }
-        final String exportedMemory = module.exportedMemory();
-        if (exportedMemory != null) {
-            list.add(new ModuleExportDescriptor(exportedMemory, memory.name(), null));
-        }
-        for (Map.Entry<String, Integer> entry : module.exportedGlobals().entrySet()) {
-            String name = entry.getKey();
-            int index = entry.getValue();
-            String valueType = ValueType.fromByteValue(module.globalValueType(index)).toString();
-            list.add(new ModuleExportDescriptor(name, global.name(), valueType));
+        for (String name : module.exportedSymbols()) {
+            WasmFunction f = module.exportedFunctions().get(name);
+            Integer globalIndex = module.exportedGlobals().get(name);
+
+            if (Objects.equals(module.exportedMemory(), name)) {
+                list.add(new ModuleExportDescriptor(name, memory.name(), null));
+            } else if (Objects.equals(module.exportedTable(), name)) {
+                list.add(new ModuleExportDescriptor(name, table.name(), null));
+            } else if (f != null) {
+                list.add(new ModuleExportDescriptor(name, function.name(), functionTypeToString(f)));
+            } else if (globalIndex != null) {
+                String valueType = ValueType.fromByteValue(module.globalValueType(globalIndex)).toString();
+                list.add(new ModuleExportDescriptor(name, global.name(), valueType));
+            } else {
+                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Exported symbol list does not match the actual exports.");
+            }
         }
         return new Sequence<>(list);
     }

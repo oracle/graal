@@ -297,15 +297,17 @@ public class WasmJsApiSuite {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMixedExports, null);
+            final Module module = instantiatedSource.module();
             final Instance instance = instantiatedSource.instance();
-            final Dictionary exports = instance.exports();
-            final Object members = exports.getMembers(false);
+            final Sequence<ModuleExportDescriptor> moduleExports = module.exports();
+            final Object instanceMembers = instance.exports().getMembers(false);
             String[] expected = new String[]{"f1", "g1", "t", "m", "g2", "f2"};
             try {
                 final InteropLibrary lib = InteropLibrary.getUncached();
-                for (int i = 0; i < lib.getArraySize(members); i++) {
-                    final Object member = lib.readArrayElement(members, i);
-                    Assert.assertEquals("Member " + i + " should correspond to the expected export.", expected[i], lib.asString(member));
+                for (int i = 0; i < lib.getArraySize(instanceMembers); i++) {
+                    final Object instanceMember = lib.readArrayElement(instanceMembers, i);
+                    Assert.assertEquals("Module member " + i + " should correspond to the expected export.", expected[i], ((ModuleExportDescriptor) moduleExports.readArrayElement(i)).name());
+                    Assert.assertEquals("Instance member " + i + " should correspond to the expected export.", expected[i], lib.asString(instanceMember));
                 }
             } catch (UnsupportedMessageException e) {
                 throw new RuntimeException(e);

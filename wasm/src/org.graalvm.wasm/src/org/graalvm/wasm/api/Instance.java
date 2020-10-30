@@ -247,7 +247,14 @@ public class Instance extends Dictionary {
         for (String name : instance.module().exportedSymbols()) {
             WasmFunction function = instance.module().exportedFunctions().get(name);
             Integer globalIndex = instance.module().exportedGlobals().get(name);
-            if (function != null) {
+
+            if (Objects.equals(instance.module().exportedMemory(), name)) {
+                final WasmMemory memory = instance.memory();
+                e.addMember(name, new Memory(memory));
+            } else if (Objects.equals(instance.module().exportedTable(), name)) {
+                final WasmTable table = instance.table();
+                e.addMember(name, new Table(table));
+            } else if (function != null) {
                 final CallTarget target = instance.target(function.index());
                 e.addMember(name, new Executable(args -> {
                     final Object prev = truffleContext.enter(null);
@@ -257,12 +264,6 @@ public class Instance extends Dictionary {
                         truffleContext.leave(null, prev);
                     }
                 }));
-            } else if (Objects.equals(instance.module().exportedMemory(), name)) {
-                final WasmMemory memory = instance.memory();
-                e.addMember(name, new Memory(memory));
-            } else if (Objects.equals(instance.module().exportedTable(), name)) {
-                final WasmTable table = instance.table();
-                e.addMember(name, new Table(table));
             } else if (globalIndex != null) {
                 final int index = globalIndex;
                 final int address = instance.globalAddress(index);

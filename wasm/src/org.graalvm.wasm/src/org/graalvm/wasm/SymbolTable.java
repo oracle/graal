@@ -187,7 +187,7 @@ public abstract class SymbolTable {
     /**
      * List of the names of all the exported symbols.
      */
-    private final ArrayList<String> exportedSymbols;
+    private final List<String> exportedSymbols;
 
     /**
      * Stores the function objects for a WebAssembly module.
@@ -201,7 +201,7 @@ public abstract class SymbolTable {
     /**
      * List of all imported functions.
      */
-    private final ArrayList<WasmFunction> importedFunctions;
+    private final List<WasmFunction> importedFunctions;
 
     /**
      * Map from exported function names to respective functions.
