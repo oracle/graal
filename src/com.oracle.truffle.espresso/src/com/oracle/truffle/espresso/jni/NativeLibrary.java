@@ -62,7 +62,9 @@ public final class NativeLibrary {
             EspressoLanguage.getCurrentContext().getLogger().log(Level.SEVERE, "TruffleNFI native library isolation is not supported.", e);
             throw EspressoError.shouldNotReachHere(e);
         } catch (AbstractTruffleException e) {
+            // TODO(peterssen): Remove assert once GR-27045 reaches a definitive consensus.
             assert "com.oracle.truffle.nfi.impl.NFIUnsatisfiedLinkError".equals(e.getClass().getName());
+            // We treat AbstractTruffleException as if it were an UnsatisfiedLinkError.
             TruffleLogger.getLogger(EspressoLanguage.ID, NativeLibrary.class).fine(e.getMessage());
             return null;
         }
