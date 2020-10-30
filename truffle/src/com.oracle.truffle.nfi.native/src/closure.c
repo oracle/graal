@@ -64,7 +64,6 @@ struct closure_data {
 
     struct __TruffleContextInternal *context;
     int envArgIdx;
-    int skippedArgCount;
 
     jweak callTarget; // weak to break reference cycle, see comment in ClosureNativePointer.java
 
@@ -88,34 +87,33 @@ void processEnvArg(struct closure_data *closure, void **args, JNIEnv **jniEnv, s
 }
 
 static jobjectArray create_arg_buffers(struct __TruffleContextInternal *ctx, JNIEnv *env, struct closure_data *data, ffi_cif *cif, void **args, jobject retBuffer) {
-    int length = cif->nargs - data->skippedArgCount;
+    int length = cif->nargs;
     jobjectArray argBuffers;
-    int argIdx, i;
+    int i;
 
     if (retBuffer) {
         length += 1;
     }
 
     argBuffers = (*env)->NewObjectArray(env, length, ctx->Object, NULL);
-    argIdx = 0;
     for (i = 0; i < cif->nargs; i++) {
         switch (data->argTypes[i]) {
             case ARG_BUFFER: {
                     jobject buffer = (*env)->NewDirectByteBuffer(env, args[i], cif->arg_types[i]->size);
-                    (*env)->SetObjectArrayElement(env, argBuffers, argIdx++, buffer);
+                    (*env)->SetObjectArrayElement(env, argBuffers, i, buffer);
                     (*env)->DeleteLocalRef(env, buffer);
                 }
                 break;
 
             case ARG_STRING: {
                     jstring str = (*env)->NewStringUTF(env, *(const char **) args[i]);
-                    (*env)->SetObjectArrayElement(env, argBuffers, argIdx++, str);
+                    (*env)->SetObjectArrayElement(env, argBuffers, i, str);
                     (*env)->DeleteLocalRef(env, str);
                 }
                 break;
 
             case ARG_OBJECT:
-                (*env)->SetObjectArrayElement(env, argBuffers, argIdx++, *(jobject *) args[i]);
+                (*env)->SetObjectArrayElement(env, argBuffers, i, *(jobject *) args[i]);
                 break;
 
             case ARG_SKIP:
@@ -292,7 +290,6 @@ jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject c
 
     data->context = ctx;
     data->envArgIdx = -1;
-    data->skippedArgCount = 0;
 
     sigInfo = (*env)->GetObjectField(env, signature, ctx->LibFFISignature_signatureInfo);
     argTypes = (jobjectArray) (*env)->GetObjectField(env, sigInfo, ctx->CachedSignatureInfo_argTypes);
@@ -306,7 +303,6 @@ jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject c
             data->argTypes[i] = ARG_OBJECT;            
         } else if ((*env)->IsInstanceOf(env, argType, ctx->LibFFIType_EnvType)) {
             data->argTypes[i] = ARG_SKIP;
-            data->skippedArgCount++;
             data->envArgIdx = i;
         } else {
             data->argTypes[i] = ARG_BUFFER;

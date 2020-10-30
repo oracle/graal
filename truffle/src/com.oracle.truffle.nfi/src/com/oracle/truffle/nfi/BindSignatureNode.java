@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,69 +40,82 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.spi.NativeSymbolLibrary;
-import com.oracle.truffle.nfi.spi.types.NativeSignature;
+import com.oracle.truffle.api.source.Source;
 
+/**
+ * Implements the deprecated symbol.bind(signature).
+ *
+ * Users should migrate to signature.bind(symbol), to separate parsing the signature from the actual
+ * bind call, and improve code sharing.
+ */
 @GenerateUncached
 abstract class BindSignatureNode extends Node {
 
-    abstract Object execute(Object symbol, Object signature) throws UnsupportedMessageException, UnsupportedTypeException;
+    abstract Object execute(NFISymbol symbol, Object signature) throws UnsupportedMessageException, UnsupportedTypeException;
 
     static String asString(InteropLibrary interop, Object signature) throws UnsupportedTypeException {
         try {
             return interop.asString(signature);
         } catch (UnsupportedMessageException ex) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnsupportedTypeException.create(new Object[]{signature});
         }
     }
 
-    static Object parseSignature(Object symbol, Object signature, InteropLibrary interop, NativeSymbolLibrary symbolLibrary) throws UnsupportedMessageException, UnsupportedTypeException {
-        String sigString = asString(interop, signature);
-        NativeSignature parsed = parseSignature(sigString);
-        return symbolLibrary.prepareSignature(symbol, parsed);
+    @TruffleBoundary
+    static Source createSignatureSource(String backend, Object signature) throws UnsupportedTypeException {
+        String sigString = asString(InteropLibrary.getUncached(), signature);
+        return Source.newBuilder("nfi", String.format("with %s %s", backend, sigString), "bind").build();
     }
 
     @TruffleBoundary
-    static NativeSignature parseSignature(String signature) {
-        return Parser.parseSignature(signature);
+    static NFISignature parseSignature(String backend, Object signature, ContextReference<NFIContext> ctxRef) throws UnsupportedTypeException {
+        Source source = createSignatureSource(backend, signature);
+        CallTarget ct = ctxRef.get().env.parseInternal(source);
+        return (NFISignature) ct.call();
     }
 
-    @Specialization(limit = "5", guards = "signature == cachedSignature")
+    @Specialization(limit = "5", guards = {"symbol.backend == cachedBackend", "signature == cachedSignature"})
     @SuppressWarnings("unused")
-    static Object doCachedSignature(Object symbol, Object signature,
+    static Object doCachedSignature(NFISymbol symbol, Object signature,
+                    @Cached("symbol.backend") String cachedBackend,
                     @Cached("signature") Object cachedSignature,
-                    @CachedLibrary("cachedSignature") InteropLibrary interop,
-                    @CachedLibrary("symbol") NativeSymbolLibrary symbolLibrary,
-                    @Cached("parseSignature(symbol, cachedSignature, interop, symbolLibrary)") Object parsedSignature) {
-        return NFISymbol.createBound(symbol, parsedSignature);
+                    @CachedContext(NFILanguage.class) ContextReference<NFIContext> ctxRef,
+                    // FIXME(rs) invalid sharing
+                    @Cached("parseSignature(cachedBackend, cachedSignature, ctxRef)") NFISignature parsedSignature) {
+        return NFISymbol.createBound(symbol.backend, symbol.nativeSymbol, parsedSignature);
     }
 
     @Specialization(limit = "5", guards = "cachedSignature.equals(asString(interop, signature))", replaces = "doCachedSignature")
     @SuppressWarnings("unused")
-    static Object doCachedSignatureString(Object symbol, Object signature,
+    static Object doCachedSignatureString(NFISymbol symbol, Object signature,
                     @CachedLibrary("signature") InteropLibrary interop,
                     @Cached("asString(interop, signature)") String cachedSignature,
-                    @CachedLibrary("symbol") NativeSymbolLibrary symbolLibrary,
-                    @Cached("parseSignature(symbol, signature, interop, symbolLibrary)") Object parsedSignature) {
-        return NFISymbol.createBound(symbol, parsedSignature);
+                    @Cached("createSignatureSource(symbol.backend, cachedSignature)") Source signatureSource,
+                    @CachedContext(NFILanguage.class) NFIContext ctx,
+                    @Cached IndirectCallNode call) {
+        CallTarget parsedSignature = ctx.env.parseInternal(signatureSource);
+        return NFISymbol.createBound(symbol.backend, symbol.nativeSymbol, (NFISignature) call.call(parsedSignature));
     }
 
-    @Specialization(limit = "3", replaces = {"doCachedSignature", "doCachedSignatureString"})
-    static Object doGeneric(Object symbol, Object signature,
-                    @CachedLibrary("signature") InteropLibrary interop,
-                    @CachedLibrary("symbol") NativeSymbolLibrary symbolLibrary) throws UnsupportedMessageException, UnsupportedTypeException {
-        return NFISymbol.createBound(symbol, parseSignature(symbol, signature, interop, symbolLibrary));
+    @Specialization(replaces = {"doCachedSignature", "doCachedSignatureString"})
+    static Object doGeneric(NFISymbol symbol, Object signature,
+                    @CachedContext(NFILanguage.class) ContextReference<NFIContext> ctxRef) throws UnsupportedTypeException {
+        return NFISymbol.createBound(symbol.backend, symbol.nativeSymbol, parseSignature(symbol.backend, signature, ctxRef));
     }
 
 }

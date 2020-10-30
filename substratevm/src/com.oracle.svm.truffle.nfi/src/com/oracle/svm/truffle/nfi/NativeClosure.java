@@ -64,19 +64,10 @@ final class NativeClosure {
 
     private final CallTarget callTarget;
     private final Target_com_oracle_truffle_nfi_impl_LibFFISignature signature;
-    private final int skippedArgCount;
 
     private NativeClosure(CallTarget callTarget, Target_com_oracle_truffle_nfi_impl_LibFFISignature signature) {
         this.callTarget = callTarget;
         this.signature = signature;
-
-        int skipped = 0;
-        for (Object type : signature.signatureInfo.getArgTypes()) {
-            if (Target_com_oracle_truffle_nfi_impl_LibFFIType_EnvType.class.isInstance(type)) {
-                skipped++;
-            }
-        }
-        this.skippedArgCount = skipped;
     }
 
     private ByteBuffer createRetBuffer(PointerBase buffer) {
@@ -106,34 +97,33 @@ final class NativeClosure {
 
     private Object call(WordPointer argPointers, ByteBuffer retBuffer) {
         Target_com_oracle_truffle_nfi_impl_LibFFIType_CachedTypeInfo[] argTypes = signature.signatureInfo.getArgTypes();
-        int length = argTypes.length - skippedArgCount;
+        int length = argTypes.length;
         if (retBuffer != null) {
             length++;
         }
 
-        int argIdx = 0;
         Object[] args = new Object[length];
         for (int i = 0; i < argTypes.length; i++) {
             Object type = argTypes[i];
             if (Target_com_oracle_truffle_nfi_impl_LibFFIType_StringType.class.isInstance(type)) {
                 CCharPointerPointer argPtr = argPointers.read(i);
-                args[argIdx++] = TruffleNFISupport.utf8ToJavaString(argPtr.read());
+                args[i] = TruffleNFISupport.utf8ToJavaString(argPtr.read());
             } else if (Target_com_oracle_truffle_nfi_impl_LibFFIType_ObjectType.class.isInstance(type)) {
                 WordPointer argPtr = argPointers.read(i);
-                args[argIdx++] = ImageSingletons.lookup(TruffleNFISupport.class).resolveHandle(argPtr.read());
+                args[i] = ImageSingletons.lookup(TruffleNFISupport.class).resolveHandle(argPtr.read());
             } else if (Target_com_oracle_truffle_nfi_impl_LibFFIType_NullableType.class.isInstance(type)) {
                 WordPointer argPtr = argPointers.read(i);
-                args[argIdx++] = ImageSingletons.lookup(TruffleNFISupport.class).resolveHandle(argPtr.read());
+                args[i] = ImageSingletons.lookup(TruffleNFISupport.class).resolveHandle(argPtr.read());
             } else if (Target_com_oracle_truffle_nfi_impl_LibFFIType_EnvType.class.isInstance(type)) {
                 // skip
             } else {
                 WordPointer argPtr = argPointers.read(i);
-                args[argIdx++] = CTypeConversion.asByteBuffer(argPtr, argTypes[i].size);
+                args[i] = CTypeConversion.asByteBuffer(argPtr, argTypes[i].size);
             }
         }
 
         if (retBuffer != null) {
-            args[argIdx] = retBuffer;
+            args[argTypes.length] = retBuffer;
         }
 
         return callTarget.call(args);

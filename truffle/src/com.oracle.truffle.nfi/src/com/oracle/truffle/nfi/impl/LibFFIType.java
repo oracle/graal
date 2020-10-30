@@ -44,8 +44,6 @@ import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -63,6 +61,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.impl.ClosureArgumentNode.BufferClosureArgumentNode;
+import com.oracle.truffle.nfi.impl.ClosureArgumentNode.InjectedClosureArgumentNode;
 import com.oracle.truffle.nfi.impl.ClosureArgumentNode.ObjectClosureArgumentNode;
 import com.oracle.truffle.nfi.impl.ClosureArgumentNode.StringClosureArgumentNode;
 import com.oracle.truffle.nfi.impl.LibFFIType.ArrayType.HostObjectHelperNode.WrongTypeException;
@@ -186,12 +185,12 @@ final class LibFFIType {
     @ExportLibrary(NativeArgumentLibrary.class)
     abstract static class BasicType extends CachedTypeInfo {
 
-        final NFILanguageImpl language;
+        final NFILanguageImpl nfiLanguage;
         final NativeSimpleType simpleType;
 
         BasicType(NFILanguageImpl language, NativeSimpleType simpleType, int size, int alignment, int objectCount, Direction direction) {
             super(size, alignment, objectCount, direction, false);
-            this.language = language;
+            this.nfiLanguage = language;
             this.simpleType = simpleType;
         }
 
@@ -319,13 +318,13 @@ final class LibFFIType {
     static final class SimpleType extends BasicType {
 
         SimpleType(NFILanguageImpl language, NativeSimpleType simpleType, int size, int alignment) {
-            super(language, simpleType, size, alignment, 0);
+            super(language, simpleType, size, alignment, simpleType == NativeSimpleType.POINTER ? 1 : 0);
         }
 
         public Object fromPrimitive(long primitive) {
             switch (simpleType) {
                 case VOID:
-                    return NativePointer.create(language, 0);
+                    return NativePointer.create(nfiLanguage, 0);
                 case UINT8:
                     return primitive & (short) 0xFF;
                 case SINT8:
@@ -358,7 +357,7 @@ final class LibFFIType {
                 case DOUBLE:
                     return Double.longBitsToDouble(primitive);
                 case POINTER:
-                    return NativePointer.create(language, primitive);
+                    return NativePointer.create(nfiLanguage, primitive);
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(simpleType.name());
@@ -377,11 +376,11 @@ final class LibFFIType {
                 case UINT8:
                 case UINT16:
                 case UINT32:
-                    return language.lookupSimpleTypeInfo(NativeSimpleType.UINT64);
+                    return nfiLanguage.lookupSimpleTypeInfo(NativeSimpleType.UINT64);
                 case SINT8:
                 case SINT16:
                 case SINT32:
-                    return language.lookupSimpleTypeInfo(NativeSimpleType.SINT64);
+                    return nfiLanguage.lookupSimpleTypeInfo(NativeSimpleType.SINT64);
                 default:
                     return this;
             }
@@ -698,7 +697,7 @@ final class LibFFIType {
                      * duration of the call by storing it in the object arguments array. The native
                      * code will ignore this entry in the array.
                      */
-                    buffer.putObject(TypeTag.CLOSURE, closure, 0);
+                    buffer.putObject(TypeTag.KEEPALIVE, closure, 0);
                 }
 
                 buffer.putPointer(closure.nativePointer.getCodePointer(), type.size);
@@ -778,7 +777,7 @@ final class LibFFIType {
 
         @Override
         public ClosureArgumentNode createClosureArgumentNode() {
-            throw new AssertionError("createClosureArgumentNode should not be called on injected argument");
+            return new InjectedClosureArgumentNode();
         }
     }
 }

@@ -125,7 +125,7 @@ extern __thread int errnoMirror;
 enum TypeTag {
     OBJECT = 0,
     STRING,
-    CLOSURE,
+    KEEPALIVE,
     ENV,
 
     BOOLEAN_ARRAY,

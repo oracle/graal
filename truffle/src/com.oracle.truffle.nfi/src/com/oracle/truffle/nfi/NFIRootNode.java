@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.NFIRootNodeFactory.LookupAndBindNodeGen;
+import com.oracle.truffle.nfi.NativeSource.ParsedLibrary;
 
 class NFIRootNode extends RootNode {
 
@@ -85,7 +86,7 @@ class NFIRootNode extends RootNode {
     @Child DirectCallNode loadLibrary;
     @Children LookupAndBindNode[] lookupAndBind;
 
-    NFIRootNode(NFILanguage language, CallTarget loadLibrary, NativeSource source) {
+    NFIRootNode(NFILanguage language, CallTarget loadLibrary, ParsedLibrary source) {
         super(language);
         this.loadLibrary = DirectCallNode.create(loadLibrary);
         this.lookupAndBind = new LookupAndBindNode[source.preBoundSymbolsLength()];

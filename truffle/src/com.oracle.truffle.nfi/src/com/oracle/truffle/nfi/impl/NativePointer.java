@@ -109,7 +109,7 @@ class NativePointer implements TruffleObject {
     @TruffleBoundary
     Object prepareSignature(NativeSignature signature,
                     @CachedContext(NFILanguageImpl.class) NFIContext ctx) {
-        LibFFISignature ret = LibFFISignature.create(ctx, signature);
+        LibFFISignature ret = null; // FIXME LibFFISignature.create(ctx, signature);
         if (ret.signatureInfo.getAllowedCallDirection() == Direction.NATIVE_TO_JAVA_ONLY) {
             throw new IllegalArgumentException("signature is only valid for native to Java callbacks");
         }
@@ -124,7 +124,7 @@ class NativePointer implements TruffleObject {
             throw UnsupportedTypeException.create(new Object[]{signature});
         }
 
-        return execute.execute(this, (LibFFISignature) signature, args);
+        return execute.execute(this.nativePointer, (LibFFISignature) signature, args);
     }
 
     @ExportMessage

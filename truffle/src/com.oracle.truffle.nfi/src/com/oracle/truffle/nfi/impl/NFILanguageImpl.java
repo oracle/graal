@@ -63,6 +63,7 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
 
     @CompilationFinal(dimensions = 1) final CachedTypeInfo[] simpleTypeMap = new CachedTypeInfo[NativeSimpleType.values().length];
     @CompilationFinal(dimensions = 1) final CachedTypeInfo[] arrayTypeMap = new CachedTypeInfo[NativeSimpleType.values().length];
+    @CompilationFinal CachedTypeInfo cachedEnvType;
 
     CachedTypeInfo lookupSimpleTypeInfo(NativeSimpleType type) {
         return simpleTypeMap[type.ordinal()];

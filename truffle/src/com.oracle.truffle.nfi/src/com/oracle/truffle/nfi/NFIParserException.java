@@ -38,55 +38,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.test.parser.backend;
+package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.nfi.spi.NFIBackendSignatureBuilderLibrary;
-import com.oracle.truffle.nfi.spi.NFIBackendSignatureLibrary;
-import java.util.ArrayList;
 
-@ExportLibrary(NFIBackendSignatureBuilderLibrary.class)
-@ExportLibrary(NFIBackendSignatureLibrary.class)
-public class TestSignature implements TruffleObject {
+@ExportLibrary(InteropLibrary.class)
+class NFIParserException extends AbstractTruffleException {
 
-    public Object retType;
-    public final ArrayList<Object> argTypes = new ArrayList<>();
+    private static final long serialVersionUID = 1L;
 
-    public static final int NOT_VARARGS = -1;
-    public int fixedArgCount = NOT_VARARGS;
+    private final boolean incompleteSource;
 
-    @ExportMessage
-    final void setReturnType(Object retType) {
-        this.retType = retType;
+    NFIParserException(String message, boolean incompleteSource) {
+        super(message, null);
+        this.incompleteSource = incompleteSource;
     }
 
     @ExportMessage
-    @TruffleBoundary
-    final void addArgument(Object type) {
-        argTypes.add(type);
+    ExceptionType getExceptionType() {
+        return ExceptionType.PARSE_ERROR;
     }
 
     @ExportMessage
-    @TruffleBoundary
-    final void makeVarargs() {
-        fixedArgCount = argTypes.size();
-    }
-
-    @ExportMessage
-    final Object build() {
-        return this;
-    }
-
-    @ExportMessage
-    final Object call(Object function, Object... args) {
-        return new TestCallInfo(this, function, args);
-    }
-
-    @ExportMessage
-    final Object createClosure(Object executable) {
-        return new TestClosure(this, executable);
+    boolean isExceptionIncompleteSource() {
+        return incompleteSource;
     }
 }

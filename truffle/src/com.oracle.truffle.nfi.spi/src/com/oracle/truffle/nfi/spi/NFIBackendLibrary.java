@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,55 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.test.parser.backend;
+package com.oracle.truffle.nfi.spi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.nfi.spi.NFIBackendSignatureBuilderLibrary;
-import com.oracle.truffle.nfi.spi.NFIBackendSignatureLibrary;
-import java.util.ArrayList;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
-@ExportLibrary(NFIBackendSignatureBuilderLibrary.class)
-@ExportLibrary(NFIBackendSignatureLibrary.class)
-public class TestSignature implements TruffleObject {
+@GenerateLibrary
+public abstract class NFIBackendLibrary extends Library {
 
-    public Object retType;
-    public final ArrayList<Object> argTypes = new ArrayList<>();
+    public abstract Object getSimpleType(Object backend, NativeSimpleType type);
 
-    public static final int NOT_VARARGS = -1;
-    public int fixedArgCount = NOT_VARARGS;
+    public abstract Object getArrayType(Object backend, NativeSimpleType type);
 
-    @ExportMessage
-    final void setReturnType(Object retType) {
-        this.retType = retType;
-    }
+    public abstract Object getEnvType(Object backend);
 
-    @ExportMessage
-    @TruffleBoundary
-    final void addArgument(Object type) {
-        argTypes.add(type);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    final void makeVarargs() {
-        fixedArgCount = argTypes.size();
-    }
-
-    @ExportMessage
-    final Object build() {
-        return this;
-    }
-
-    @ExportMessage
-    final Object call(Object function, Object... args) {
-        return new TestCallInfo(this, function, args);
-    }
-
-    @ExportMessage
-    final Object createClosure(Object executable) {
-        return new TestClosure(this, executable);
-    }
+    public abstract Object createSignatureBuilder(Object backend);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,28 @@
  */
 package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
-import com.oracle.truffle.nfi.spi.types.NativeTypeMirror;
 import com.oracle.truffle.nfi.spi.types.NativeSignature;
 import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.Lexer.Token;
+import com.oracle.truffle.nfi.NativeSource.Content;
+import com.oracle.truffle.nfi.NativeSource.ParsedLibrary;
+import com.oracle.truffle.nfi.NativeSource.ParsedSignature;
+import com.oracle.truffle.nfi.SignatureRootNode.ArgumentBuilderNode;
+import com.oracle.truffle.nfi.SignatureRootNode.BuildSignatureNode;
+import com.oracle.truffle.nfi.SignatureRootNode.GetTypeNode;
+import com.oracle.truffle.nfi.SignatureRootNodeFactory.AddArgumentNodeGen;
+import com.oracle.truffle.nfi.SignatureRootNodeFactory.BuildSignatureNodeGen;
+import com.oracle.truffle.nfi.SignatureRootNodeFactory.GetArrayTypeNodeGen;
+import com.oracle.truffle.nfi.SignatureRootNodeFactory.GetEnvTypeNodeGen;
+import com.oracle.truffle.nfi.SignatureRootNodeFactory.GetSignatureTypeNodeGen;
+import com.oracle.truffle.nfi.SignatureRootNodeFactory.GetSimpleTypeNodeGen;
+import com.oracle.truffle.nfi.SignatureRootNodeFactory.MakeVarargsNodeGen;
+import com.oracle.truffle.nfi.SignatureRootNodeFactory.SetRetTypeNodeGen;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.spi.types.TypeFactory;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Helper for implementors of the Truffle NFI.
@@ -94,10 +107,11 @@ import java.util.List;
 final class Parser extends TypeFactory {
 
     static NativeSignature parseSignature(CharSequence source) {
-        Parser parser = new Parser(source);
+        /*Parser parser = new Parser(source);
         NativeSignature ret = parser.parseSignature();
         parser.expect(Token.EOF);
-        return ret;
+        return ret;*/
+        return null;
     }
 
     static NativeSource parseNFISource(CharSequence source) {
@@ -115,7 +129,7 @@ final class Parser extends TypeFactory {
 
     private void expect(Token token) {
         if (lexer.next() != token) {
-            throw new IllegalArgumentException(String.format("unexpected token: expected '%s', but got '%s'", token.getName(), lexer.currentValue()));
+            throw lexer.fail("unexpected token: expected '%s', but got '%s'", token.getName(), lexer.currentValue());
         }
     }
 
@@ -124,35 +138,52 @@ final class Parser extends TypeFactory {
         if (lexer.peek() == Token.IDENTIFIER && lexer.peekValue().equalsIgnoreCase("with")) {
             lexer.next();
             if (lexer.next() != Token.IDENTIFIER) {
-                throw new IllegalArgumentException("Expecting NFI impementation identifier");
+                throw lexer.fail("Expecting NFI backend identifier");
             }
             nfiId = lexer.currentValue();
         }
 
-        NativeLibraryDescriptor descriptor = parseLibraryDescriptor();
-        NativeSource ret = new NativeSource(nfiId, descriptor);
-        if (lexer.next() == Token.OPENBRACE) {
-            for (;;) {
-                Token closeOrId = lexer.next();
-                if (closeOrId == Token.CLOSEBRACE) {
-                    break;
-                }
-                if (closeOrId != Token.IDENTIFIER) {
-                    throw new IllegalArgumentException("Expecting identifier in library body");
-                }
-                String ident = lexer.currentValue();
+        Content c = parseNFISourceContent();
+        return new NativeSource(nfiId, c);
+    }
 
-                lexer.mark();
-                parseSignature();
-                ret.register(ident, lexer.markedValue());
+    private Content parseNFISourceContent() {
+        switch (lexer.peek()) {
+            case IDENTIFIER: {
+                NativeLibraryDescriptor descriptor = parseLibraryDescriptor();
+                ParsedLibrary ret = new ParsedLibrary(descriptor);
+                if (lexer.next() == Token.OPENBRACE) {
+                    for (;;) {
+                        Token closeOrId = lexer.next();
+                        if (closeOrId == Token.CLOSEBRACE) {
+                            break;
+                        }
+                        if (closeOrId != Token.IDENTIFIER) {
+                            throw lexer.fail("Expecting identifier in library body");
+                        }
+                        String ident = lexer.currentValue();
 
-                if (lexer.next() != Token.SEMICOLON) {
-                    throw new IllegalArgumentException("Expecting semicolon");
+                        lexer.mark();
+                        parseSignature();
+                        ret.register(ident, lexer.markedValue());
+
+                        if (lexer.next() != Token.SEMICOLON) {
+                            throw lexer.fail("Expecting semicolon");
+                        }
+                    }
                 }
+                return ret;
             }
-        }
 
-        return ret;
+            case OPENPAREN: {
+                BuildSignatureNode buildSig = parseSignature();
+                return new ParsedSignature(buildSig);
+            }
+
+            default:
+                lexer.next();
+                throw lexer.fail("Expecting identifier or '('");
+        }
     }
 
     private NativeLibraryDescriptor parseLibraryDescriptor() {
@@ -166,7 +197,7 @@ final class Parser extends TypeFactory {
                     return createDefaultLibrary();
             }
         }
-        throw new IllegalArgumentException(String.format("expected 'load' or 'default', but got '%s'", keyword));
+        throw lexer.fail("expected 'load' or 'default', but got '%s'", keyword);
     }
 
     private String parseIdentOrString() {
@@ -202,78 +233,84 @@ final class Parser extends TypeFactory {
         } while (nextToken == Token.OR);
 
         if (nextToken != Token.CLOSEPAREN) {
-            throw new IllegalArgumentException(String.format("unexpected token: expected '|' or ')', but got '%s'", lexer.currentValue()));
+            throw lexer.fail("unexpected token: expected '|' or ')', but got '%s'", lexer.currentValue());
         }
 
         return flags;
     }
 
-    private NativeTypeMirror parseType() {
+    private GetTypeNode parseType() {
         switch (lexer.peek()) {
             case OPENPAREN:
-                return createFunctionTypeMirror(parseSignature());
+                BuildSignatureNode signature = parseSignature();
+                return GetSignatureTypeNodeGen.create(signature);
             case OPENBRACKET:
                 return parseArrayType();
             case IDENTIFIER:
                 return parseSimpleType(true);
             default:
-                throw new IllegalArgumentException(String.format("expected type, but got '%s'", lexer.currentValue()));
+                lexer.next();
+                throw lexer.fail("expected type, but got '%s'", lexer.currentValue());
         }
     }
 
-    private NativeSignature parseSignature() {
+    private BuildSignatureNode parseSignature() {
         expect(Token.OPENPAREN);
 
-        List<NativeTypeMirror> args;
-        int fixedArgCount = -1;
-        if (lexer.peek() == Token.CLOSEPAREN) {
+        ArrayList<ArgumentBuilderNode> args = new ArrayList<>();
+
+        Token nextToken = lexer.peek();
+        if (nextToken == Token.CLOSEPAREN) {
             lexer.next();
-            args = Collections.emptyList();
         } else {
-            args = new ArrayList<>();
-            Token nextToken;
             do {
                 if (lexer.peek() == Token.ELLIPSIS) {
                     lexer.next();
-                    fixedArgCount = args.size();
+                    args.add(MakeVarargsNodeGen.create());
                 }
 
-                args.add(parseType());
+                GetTypeNode type = parseType();
+                args.add(AddArgumentNodeGen.create(type));
+
                 nextToken = lexer.next();
             } while (nextToken == Token.COMMA);
+        }
 
-            if (nextToken != Token.CLOSEPAREN) {
-                throw new IllegalArgumentException(String.format("unexpected token: expected ',' or ')', but got '%s'", lexer.currentValue()));
-            }
+        if (nextToken != Token.CLOSEPAREN) {
+            throw lexer.fail("unexpected token: expected ',' or ')', but got '%s'", lexer.currentValue());
         }
 
         expect(Token.COLON);
 
-        NativeTypeMirror retType = parseType();
+        GetTypeNode retType = parseType();
+        args.add(SetRetTypeNodeGen.create(retType));
 
-        if (fixedArgCount >= 0) {
-            return createVarargsSignature(retType, fixedArgCount, args);
-        } else {
-            return createSignature(retType, args);
-        }
+        return BuildSignatureNodeGen.create(args.toArray(ArgumentBuilderNode.EMPTY));
     }
 
-    private NativeTypeMirror parseArrayType() {
+    private GetTypeNode parseArrayType() {
         expect(Token.OPENBRACKET);
-        NativeTypeMirror elementType = parseSimpleType(false);
+        expect(Token.IDENTIFIER);
+        NativeSimpleType type = getSimpleType(lexer.currentValue());
         expect(Token.CLOSEBRACKET);
-
-        return createArrayTypeMirror(elementType);
+        return GetArrayTypeNodeGen.create(type);
     }
 
-    private NativeTypeMirror parseSimpleType(boolean envAllowed) {
+    private GetTypeNode parseSimpleType(boolean envAllowed) {
         expect(Token.IDENTIFIER);
         String identifier = lexer.currentValue();
         if (envAllowed && "env".equalsIgnoreCase(identifier)) {
-            return createEnvTypeMirror();
+            return GetEnvTypeNodeGen.create();
         } else {
-            NativeSimpleType simpleType = NativeSimpleType.valueOf(identifier.toUpperCase());
-            return createSimpleTypeMirror(simpleType);
+            return GetSimpleTypeNodeGen.create(getSimpleType(identifier));
+        }
+    }
+
+    private NativeSimpleType getSimpleType(String identifier) {
+        try {
+            return NativeSimpleType.valueOf(identifier.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw lexer.fail("unknown simple type '%s'", identifier);
         }
     }
 }

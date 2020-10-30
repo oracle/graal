@@ -62,6 +62,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.impl.LibFFIClosureFactory.UnboxStringNodeGen;
 import com.oracle.truffle.nfi.impl.LibFFISignature.CachedSignatureInfo;
 import com.oracle.truffle.nfi.impl.LibFFIType.CachedTypeInfo;
+import com.oracle.truffle.nfi.impl.NativeArgumentBuffer.TypeTag;
 
 @ExportLibrary(InteropLibrary.class)
 final class LibFFIClosure implements TruffleObject {
@@ -151,12 +152,9 @@ final class LibFFIClosure implements TruffleObject {
             this.interop = InteropLibrary.getFactory().create(receiver);
 
             CachedTypeInfo[] args = signature.getArgTypes();
-            argNodes = new ClosureArgumentNode[signature.getRealArgCount()];
-            int nodeIdx = 0;
-            for (CachedTypeInfo arg : args) {
-                if (!arg.injectedArgument) {
-                    argNodes[nodeIdx++] = arg.createClosureArgumentNode();
-                }
+            argNodes = new ClosureArgumentNode[args.length];
+            for (int i = 0; i < args.length; i++) {
+                argNodes[i] = args[i].createClosureArgumentNode();
             }
         }
 
@@ -191,6 +189,14 @@ final class LibFFIClosure implements TruffleObject {
             try {
                 nativeArguments.serialize(retType, nativeRetBuffer, ret);
                 if (nativeRetBuffer.getPatchCount() > 0) {
+                    if (nativeRetBuffer.getPatchCount() == 1 && TypeTag.getTag(nativeRetBuffer.patches[0]) == TypeTag.KEEPALIVE) {
+                        // special case for closure ret: we need to increment the refcount
+                        Object keepalive = nativeRetBuffer.objects[0];
+                        if (keepalive instanceof LibFFIClosure) {
+                            ((LibFFIClosure) keepalive).nativePointer.addRef();
+                            return null;
+                        }
+                    }
                     return new RetPatches(nativeRetBuffer.getPatchCount(), nativeRetBuffer.patches, nativeRetBuffer.objects);
                 }
             } catch (UnsupportedTypeException ex) {

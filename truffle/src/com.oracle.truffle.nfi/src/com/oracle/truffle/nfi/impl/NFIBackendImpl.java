@@ -45,12 +45,23 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.nfi.impl.LibFFISignature.SignatureBuilder;
 import com.oracle.truffle.nfi.spi.NFIBackend;
+import com.oracle.truffle.nfi.spi.NFIBackendLibrary;
 import com.oracle.truffle.nfi.spi.NFIBackendTools;
 import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
 
+@ExportLibrary(NFIBackendLibrary.class)
+@SuppressWarnings("static-method")
 final class NFIBackendImpl implements NFIBackend {
 
     private final NFILanguageImpl language;
@@ -162,5 +173,34 @@ final class NFIBackendImpl implements NFIBackend {
             }
             return LibFFILibrary.createDefault();
         }
+    }
+
+    @ExportMessage
+    Object getSimpleType(NativeSimpleType type,
+                    @CachedContext(NFILanguageImpl.class) NFIContext ctx) {
+        return ctx.lookupSimpleType(type);
+    }
+
+    @ExportMessage
+    Object getArrayType(NativeSimpleType type,
+                    @CachedContext(NFILanguageImpl.class) NFIContext ctx) {
+        return ctx.lookupArrayType(type);
+    }
+
+    @ExportMessage
+    Object getEnvType(@CachedContext(NFILanguageImpl.class) NFIContext ctx) {
+        return ctx.lookupEnvType();
+    }
+
+    @ExportMessage
+    Object createSignatureBuilder(
+                    @CachedLibrary("this") NFIBackendLibrary self,
+                    @CachedContext(NFILanguageImpl.class) NFIContext ctx,
+                    @Cached ArrayBuilderFactory builderFactory) {
+        if (!ctx.env.isNativeAccessAllowed()) {
+            CompilerDirectives.transferToInterpreter();
+            throw new NFIUnsatisfiedLinkError("Access to native code is not allowed by the host environment.", self);
+        }
+        return new SignatureBuilder(builderFactory);
     }
 }

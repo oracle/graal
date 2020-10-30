@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,45 +40,84 @@
  */
 package com.oracle.truffle.nfi.test.parser;
 
-import com.oracle.truffle.nfi.spi.types.NativeSignature;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.nfi.test.parser.backend.TestSignature;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+@RunWith(TruffleRunner.class)
 public class VarargsParseSignatureTest extends ParseSignatureTest {
 
-    private static void testVarargs(String signatureString, int expectedArgCount, int expectedFixedArgCount) {
-        NativeSignature signature = parseSignature(signatureString);
-        Assert.assertEquals("argument count", expectedArgCount, signature.getArgTypes().size());
-        Assert.assertEquals("fixed argument count", expectedFixedArgCount, signature.getFixedArgCount());
+    private static void testVarargs(CallTarget parse, int expectedArgCount, int expectedFixedArgCount) {
+        TestSignature signature = getSignature(parse, expectedArgCount);
+        Assert.assertEquals("argument count", expectedArgCount, signature.argTypes.size());
         if (expectedArgCount == expectedFixedArgCount) {
-            Assert.assertFalse(signature.isVarargs());
+            Assert.assertTrue("not varargs", signature.fixedArgCount == TestSignature.NOT_VARARGS);
         } else {
-            Assert.assertTrue(signature.isVarargs());
+            Assert.assertEquals("fixed argument count", expectedFixedArgCount, signature.fixedArgCount);
+        }
+    }
+
+    public class ParseFixedArgs extends ParseSignatureNode {
+
+        public ParseFixedArgs() {
+            super("(float, double) : void");
         }
     }
 
     @Test
-    public void testFixedArgs() {
-        testVarargs("(float, double) : void", 2, 2);
+    public void testFixedArgs(@Inject(ParseFixedArgs.class) CallTarget parse) {
+        testVarargs(parse, 2, 2);
+    }
+
+    public class ParseNoFixedArgs extends ParseSignatureNode {
+
+        public ParseNoFixedArgs() {
+            super("(...float, double) : void");
+        }
     }
 
     @Test
-    public void testNoFixedArgs() {
-        testVarargs("(...float, double) : void", 2, 0);
+    public void testNoFixedArgs(@Inject(ParseNoFixedArgs.class) CallTarget parse) {
+        testVarargs(parse, 2, 0);
+    }
+
+    public class ParseTwoFixedArgs extends ParseSignatureNode {
+
+        public ParseTwoFixedArgs() {
+            super("(object, pointer, ...float, double) : void");
+        }
     }
 
     @Test
-    public void testTwoFixedArgs() {
-        testVarargs("(object, pointer, ...float, double) : void", 4, 2);
+    public void testTwoFixedArgs(@Inject(ParseTwoFixedArgs.class) CallTarget parse) {
+        testVarargs(parse, 4, 2);
+    }
+
+    public class ParseOneVararg extends ParseSignatureNode {
+
+        public ParseOneVararg() {
+            super("(string, ...sint32) : void");
+        }
     }
 
     @Test
-    public void testOneVararg() {
-        testVarargs("(string, ...sint32) : void", 2, 1);
+    public void testOneVararg(@Inject(ParseOneVararg.class) CallTarget parse) {
+        testVarargs(parse, 2, 1);
+    }
+
+    public class ParseTwoVarargs extends ParseSignatureNode {
+
+        public ParseTwoVarargs() {
+            super("(string, ...object, uint32) : void");
+        }
     }
 
     @Test
-    public void testTwoVarargs() {
-        testVarargs("(string, ...object, uint32) : void", 3, 1);
+    public void testTwoVarargs(@Inject(ParseTwoVarargs.class) CallTarget parse) {
+        testVarargs(parse, 3, 1);
     }
 }

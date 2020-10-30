@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,55 +38,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.test.parser.backend;
+package com.oracle.truffle.nfi.spi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.nfi.spi.NFIBackendSignatureBuilderLibrary;
-import com.oracle.truffle.nfi.spi.NFIBackendSignatureLibrary;
-import java.util.ArrayList;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
-@ExportLibrary(NFIBackendSignatureBuilderLibrary.class)
-@ExportLibrary(NFIBackendSignatureLibrary.class)
-public class TestSignature implements TruffleObject {
+/**
+ * Library that specifies the protocol between the Truffle NFI and its backend implementations.
+ */
+@GenerateLibrary
+@SuppressWarnings("unused")
+public abstract class NFIBackendSignatureLibrary extends Library {
 
-    public Object retType;
-    public final ArrayList<Object> argTypes = new ArrayList<>();
+    /**
+     * Call a native function with this signature.
+     */
+    public abstract Object call(Object signature, Object functionPointer, Object... args) throws ArityException, UnsupportedTypeException, UnsupportedMessageException;
 
-    public static final int NOT_VARARGS = -1;
-    public int fixedArgCount = NOT_VARARGS;
-
-    @ExportMessage
-    final void setReturnType(Object retType) {
-        this.retType = retType;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    final void addArgument(Object type) {
-        argTypes.add(type);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    final void makeVarargs() {
-        fixedArgCount = argTypes.size();
-    }
-
-    @ExportMessage
-    final Object build() {
-        return this;
-    }
-
-    @ExportMessage
-    final Object call(Object function, Object... args) {
-        return new TestCallInfo(this, function, args);
-    }
-
-    @ExportMessage
-    final Object createClosure(Object executable) {
-        return new TestClosure(this, executable);
-    }
+    /**
+     * Create a function pointer closure that calls back into an executable object.
+     *
+     * This message must return something that's compatible with {@link NativeSimpleType#POINTER}.
+     * The returned pointer should be a function pointer. Calling that function pointer sends the
+     * {@link InteropLibrary#execute} message to the executable object. The returned object should
+     * not be executable.
+     */
+    public abstract Object createClosure(Object signature, Object executable);
 }

@@ -97,4 +97,12 @@ abstract class ClosureArgumentNode extends Node {
             }
         }
     }
+
+    static class InjectedClosureArgumentNode extends ClosureArgumentNode {
+
+        @Override
+        public Object execute(Object arg) {
+            return new NativePointer(0);
+        }
+    }
 }
