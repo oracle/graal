@@ -128,11 +128,12 @@ public final class ClassRedefinition {
                 // new anonymous inner class with unique synthetic name
                 // define the new class and pre-register it within the class registry
                 ClassRegistry registry = context.getRegistries().getClassRegistry(redefineInfo.getClassLoader());
-                registry.defineKlass(null, redefineInfo.getBytes());
+                ObjectKlass newKlass = registry.defineKlass(null, redefineInfo.getBytes());
+                redefineInfo.setKlass(newKlass);
                 continue;
             }
             byte[] bytes = redefineInfo.getBytes();
-            ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), "L" + redefineInfo.getNewName() + ";", null, context, redefineInfo.getPatches());
+            ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), "L" + redefineInfo.getNewName() + ";", null, context);
             ClassChange classChange;
             DetectedChange detectedChange = new DetectedChange();
             if (klass instanceof ObjectKlass) {

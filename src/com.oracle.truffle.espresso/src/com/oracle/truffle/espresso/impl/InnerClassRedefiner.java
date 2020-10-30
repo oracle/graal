@@ -46,8 +46,10 @@ public final class InnerClassRedefiner {
     public static final int METHOD_FINGERPRINT_EQUALS = 8;
     public static final int ENCLOSING_METHOD_FINGERPRINT_EQUALS = 4;
     public static final int FIELD_FINGERPRINT_EQUALS = 2;
-    public static final int MAX_SCORE = METHOD_FINGERPRINT_EQUALS + ENCLOSING_METHOD_FINGERPRINT_EQUALS + FIELD_FINGERPRINT_EQUALS;
+    public static final int NUMBER_INNER_CLASSES = 1;
+    public static final int MAX_SCORE = METHOD_FINGERPRINT_EQUALS + ENCLOSING_METHOD_FINGERPRINT_EQUALS + FIELD_FINGERPRINT_EQUALS + NUMBER_INNER_CLASSES;
 
+    public static final String HOT_CLASS_MARKER = "$hot";
 
     // map from classloader to a map of class names to inner class infos
     private static final Map<StaticObject, Map<String, ClassInfo>> innerClassInfoMap = new WeakHashMap<>();
@@ -299,5 +301,46 @@ public final class InnerClassRedefiner {
             }
         }
         return result.toArray(new Klass[result.size()]);
+    }
+
+    public static void commit(ClassInfo[] infos) {
+        // first commit changed and new class infos to cache
+        ArrayList<ClassInfo> newInnerClasses = new ArrayList<>(0);
+        for (ClassInfo info : infos) {
+            StaticObject classLoader = info.getClassLoader();
+            Map<String, ClassInfo> classLoaderMap = innerClassInfoMap.get(classLoader);
+            if (classLoaderMap == null) {
+                classLoaderMap = new HashMap<>(1);
+                innerClassInfoMap.put(classLoader, classLoaderMap);
+            }
+            ClassInfo cachedInfo = classLoaderMap.get(info.getNewName());
+
+            // update the previous classinfo
+            if (cachedInfo != null) {
+                cachedInfo.update(info);
+            } else {
+                // cache new info
+                ClassInfo newInfo = ClassInfo.copyFrom(info);
+                classLoaderMap.put(newInfo.getOriginalName(), newInfo);
+                newInnerClasses.add(newInfo);
+            }
+        }
+        // with everything in cache, update new inner/outer bindings in cache
+        for (ClassInfo info : newInnerClasses) {
+            // find the outer ClassInfo in global cache
+            // and add to inner classes
+            String outerClassName = InnerClassRedefiner.getOuterClassName(info.getNewName());
+            ClassInfo outerClassInfo = getGlobalClassInfo(outerClassName, info.getClassLoader());
+            outerClassInfo.addInnerClass(info);
+        }
+    }
+
+    public static void onInnerClassRemoved(ObjectKlass removedInnerClass) {
+        Map<String, ClassInfo> classLoaderMap = innerClassInfoMap.get(removedInnerClass.getDefiningClassLoader());
+        // remove the inner class
+        ClassInfo removed = classLoaderMap.remove(removedInnerClass.getNameAsString());
+        // remove from list in outer class
+        ClassInfo outerInfo = classLoaderMap.get(getOuterClassName(removedInnerClass.getNameAsString()));
+        outerInfo.removeInner(removed);
     }
 }

@@ -669,8 +669,15 @@ public final class JDWPContextImpl implements JDWPContext {
 
             // mark the removed classes "removed"
             for (ObjectKlass removedInnerClass : removedInnerClasses) {
+                // mark the klass instance as removed
                 removedInnerClass.removedByRedefintion();
+
+                // remove from cache
+                InnerClassRedefiner.onInnerClassRemoved(removedInnerClass);
             }
+
+            // tell the InnerClassRedefiner to commit the changes to cache
+            InnerClassRedefiner.commit(matchedInfos);
         } catch (RedefintionNotSupportedException ex) {
             return ex.getErrorCode();
         } finally {
