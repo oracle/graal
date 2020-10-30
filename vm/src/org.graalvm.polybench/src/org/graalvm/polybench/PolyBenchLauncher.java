@@ -201,7 +201,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             try {
                 language = Source.findLanguage(file);
                 if (language == null) {
-                    abort("Could not determine the language for file " + file);
+                    throw abort("Could not determine the language for file " + file);
                 }
                 source = Source.newBuilder(language, file).build();
             } catch (IOException e) {
