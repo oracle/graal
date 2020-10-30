@@ -993,10 +993,13 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             @Pointer
             TruffleObject lib = NativeLibrary.loadLibrary(Paths.get(name));
+            if (lib == null) {
+                throw Meta.throwExceptionWithMessage(getMeta().java_lang_UnsatisfiedLinkError, name);
+            }
             java.lang.reflect.Field f = lib.getClass().getDeclaredField("handle");
             f.setAccessible(true);
             long handle = (long) f.get(lib);
-            getLogger().fine(String.format("JVM_LoadLibrary: Succesfuly loaded '%s' with handle %x", name, handle));
+            getLogger().fine(String.format("JVM_LoadLibrary: Successfully loaded '%s' with handle %x", name, handle));
             handle2Lib.put(handle, lib);
             return RawPointer.create(handle);
         } catch (IllegalAccessException | NoSuchFieldException e) {
