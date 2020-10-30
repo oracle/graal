@@ -57,17 +57,14 @@ public class TruffleInlining implements TruffleMetaAccessProvider {
         return nodeSources;
     }
 
-    @Override
     public int countCalls() {
         return callCount;
     }
 
-    @Override
     public int countInlinedCalls() {
         return inlinedCallCount;
     }
 
-    @Override
     public CompilableTruffleAST[] inlinedTargets() {
         return inlinedTargets.toArray(new CompilableTruffleAST[0]);
     }
@@ -97,7 +94,6 @@ public class TruffleInlining implements TruffleMetaAccessProvider {
         targetsToDequeue.add(target);
     }
 
-    @Override
     public void dequeueTargets() {
         for (CompilableTruffleAST target : targetsToDequeue) {
             target.dequeueInlined();

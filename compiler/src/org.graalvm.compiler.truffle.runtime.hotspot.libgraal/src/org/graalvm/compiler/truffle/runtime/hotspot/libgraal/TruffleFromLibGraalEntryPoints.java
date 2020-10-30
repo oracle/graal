@@ -35,12 +35,9 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CancelCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CompilableToString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ConsumeOptimizedAssumptionDependency;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CountCalls;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CountInlinedCalls;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateInliningPlan;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.DequeueInlined;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.DequeueTargets;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallNodes;
@@ -67,7 +64,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetSuppliedString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetTruffleCallBoundaryMethods;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.InlinedTargets;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsInliningForced;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsLastTier;
@@ -460,21 +456,6 @@ final class TruffleFromLibGraalEntryPoints {
         ((TruffleMetaAccessProvider) inliningPlan).addTargetToDequeue((CompilableTruffleAST) compilableTruffleAST);
     }
 
-    @TruffleFromLibGraal(DequeueTargets)
-    static void dequeueTargets(Object inliningPlan) {
-        ((TruffleMetaAccessProvider) inliningPlan).dequeueTargets();
-    }
-
-    @TruffleFromLibGraal(CountCalls)
-    static int countCalls(Object inliningPlan) {
-        return ((TruffleMetaAccessProvider) inliningPlan).countCalls();
-    }
-
-    @TruffleFromLibGraal(CountInlinedCalls)
-    static int countInlinedCalls(Object inliningPlan) {
-        return ((TruffleMetaAccessProvider) inliningPlan).countInlinedCalls();
-    }
-
     @TruffleFromLibGraal(SetCallCount)
     static void setCallCount(Object inliningPlan, int count) {
         ((TruffleMetaAccessProvider) inliningPlan).setCallCount(count);
@@ -490,10 +471,6 @@ final class TruffleFromLibGraalEntryPoints {
         ((TruffleMetaAccessProvider) inlining).addInlinedTarget(((CompilableTruffleAST) target));
     }
 
-    @TruffleFromLibGraal(InlinedTargets)
-    static Object[] inlinedTargets(Object inlining) {
-        return ((TruffleMetaAccessProvider) inlining).inlinedTargets();
-    }
     /*----------------------*/
 
     /**

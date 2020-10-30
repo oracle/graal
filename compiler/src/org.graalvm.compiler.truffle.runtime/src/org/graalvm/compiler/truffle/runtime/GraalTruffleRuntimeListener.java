@@ -28,7 +28,6 @@ import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -109,7 +108,7 @@ public interface GraalTruffleRuntimeListener {
      * @param inliningDecision the inlining plan used during partial evaluation
      * @param graph access to compiler graph info
      */
-    default void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleMetaAccessProvider inliningDecision, GraphInfo graph) {
+    default void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
     }
 
     /**
@@ -130,7 +129,7 @@ public interface GraalTruffleRuntimeListener {
      * @param graph access to compiler graph info
      * @param result access to compilation result info
      */
-    default void onCompilationSuccess(OptimizedCallTarget target, TruffleMetaAccessProvider inliningDecision, GraphInfo graph, CompilationResultInfo result) {
+    default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
     }
 
     /**

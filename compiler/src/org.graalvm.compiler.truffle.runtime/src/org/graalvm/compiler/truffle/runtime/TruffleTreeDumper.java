@@ -36,7 +36,6 @@ import java.util.Map;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.graphio.GraphBlocks;
 import org.graalvm.graphio.GraphOutput;
@@ -194,7 +193,7 @@ public final class TruffleTreeDumper {
             return astBlock;
         }
 
-        private static void traverseNodes(Node parent, ASTNode astParent, AST ast, TruffleMetaAccessProvider inliningDecisions, TruffleNodeSources nodeSources, ASTBlock currentBlock) {
+        private static void traverseNodes(Node parent, ASTNode astParent, AST ast, TruffleInlining inliningDecisions, TruffleNodeSources nodeSources, ASTBlock currentBlock) {
             for (Map.Entry<String, Node> entry : findNamedNodeChildren(parent).entrySet()) {
                 final String label = entry.getKey();
                 final Node node = entry.getValue();

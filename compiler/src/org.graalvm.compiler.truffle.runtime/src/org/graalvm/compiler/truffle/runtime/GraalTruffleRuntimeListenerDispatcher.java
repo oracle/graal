@@ -79,7 +79,7 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
-    public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleMetaAccessProvider inliningDecision, GraphInfo graph) {
+    public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
         invokeListeners((l) -> l.onCompilationTruffleTierFinished(target, inliningDecision, graph));
     }
 
@@ -89,7 +89,7 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
-    public void onCompilationSuccess(OptimizedCallTarget target, TruffleMetaAccessProvider inliningDecision, GraphInfo graph, CompilationResultInfo result) {
+    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
         invokeListeners((l) -> l.onCompilationSuccess(target, inliningDecision, graph, result));
     }
 
@@ -142,7 +142,7 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
 
     @Override
     public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph) {
-        onCompilationTruffleTierFinished((OptimizedCallTarget) compilable, inliningPlan, graph);
+        onCompilationTruffleTierFinished((OptimizedCallTarget) compilable, (TruffleInlining) inliningPlan, graph);
     }
 
     @Override
@@ -152,7 +152,7 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
 
     @Override
     public void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph, CompilationResultInfo result) {
-        onCompilationSuccess((OptimizedCallTarget) compilable, inliningPlan, graph, result);
+        onCompilationSuccess((OptimizedCallTarget) compilable, (TruffleInlining) inliningPlan, graph, result);
     }
 
     @Override

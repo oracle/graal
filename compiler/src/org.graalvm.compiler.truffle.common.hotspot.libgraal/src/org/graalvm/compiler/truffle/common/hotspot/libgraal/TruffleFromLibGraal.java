@@ -31,6 +31,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+
 import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
 
 /**
@@ -64,12 +65,9 @@ public @interface TruffleFromLibGraal {
         CancelCompilation(boolean.class, Object.class, String.class),
         CompilableToString(String.class, Object.class),
         ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, Object.class),
-        CountCalls(int.class, Object.class),
-        CountInlinedCalls(int.class, Object.class),
         CreateInliningPlan(Object.class, Object.class),
         CreateStringSupplier(Supplier.class, long.class),
         DequeueInlined(void.class, Object.class),
-        DequeueTargets(void.class, Object.class),
         FindCallNode(Object.class, Object.class, long.class),
         GetCallCount(int.class, Object.class),
         GetCallNodes(Object[].class, Object.class),
@@ -98,7 +96,6 @@ public @interface TruffleFromLibGraal {
         GetSuppliedString(String.class, Supplier.class),
         GetTruffleCallBoundaryMethods(long[].class, Object.class),
         GetURI(String.class, Object.class),
-        InlinedTargets(Object[].class, Object.class),
         IsCancelled(boolean.class, Object.class),
         IsInliningForced(boolean.class, Object.class),
         IsLastTier(boolean.class, Object.class),
