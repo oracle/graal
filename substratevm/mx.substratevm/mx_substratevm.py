@@ -1420,8 +1420,6 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
                 # Reflective access to sun.security.x509.OIDMap.nameMap
                 'java.base/sun.security.x509',
                 'java.base/jdk.internal.logger',
-                # Resource registration of resources under sun.java2d.cmm.profiles
-                'java.desktop/sun.java2d.cmm.profiles',
 
                 # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
                 'org.graalvm.sdk/org.graalvm.nativeimage.impl',
