@@ -161,8 +161,20 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void readSymbolSections() {
+        int lastNonCustomSection = -1;
         while (!isEOF()) {
             byte sectionID = read1();
+
+            if (sectionID != Section.CUSTOM) {
+                if (sectionID > lastNonCustomSection) {
+                    lastNonCustomSection = sectionID;
+                } else if (lastNonCustomSection == sectionID) {
+                    Assert.fail("Duplicated section " + sectionID, Failure.UNSPECIFIED_MALFORMED);
+                } else {
+                    Assert.fail("Section " + sectionID + " defined after section " + lastNonCustomSection, Failure.UNSPECIFIED_MALFORMED);
+                }
+            }
+
             int size = readUnsignedInt32();
             int startOffset = offset;
             switch (sectionID) {
