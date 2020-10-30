@@ -64,6 +64,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     private JNIObjectHandle javaLangReflectMethod;
     private JNIObjectHandle javaLangReflectConstructor;
 
+    final JNIObjectHandle javaLangClass;
+
     private JNIObjectHandle javaUtilCollections;
     private JNIMethodId javaUtilCollectionsEmptyEnumeration;
 
@@ -72,7 +74,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
-        JNIObjectHandle javaLangClass = findClass(env, "java/lang/Class");
+        javaLangClass = findClass(env, "java/lang/Class");
         javaLangClassForName3 = getMethodId(env, javaLangClass, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;", true);
         javaLangClassGetDeclaredMethod = getMethodId(env, javaLangClass, "getDeclaredMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;", false);
         javaLangClassGetDeclaredConstructor = getMethodId(env, javaLangClass, "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", false);

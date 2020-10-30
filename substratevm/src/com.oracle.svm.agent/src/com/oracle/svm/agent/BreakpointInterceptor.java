@@ -268,18 +268,6 @@ final class BreakpointInterceptor {
         return handleGetMethods(jni, bp, true, () -> agent.handles().getJavaLangReflectConstructor(jni));
     }
 
-    private static boolean getClasses(JNIEnvironment jni, Breakpoint bp) {
-        return handleGetMethods(jni, bp, true, () -> {
-            throw new RuntimeException("TODO: What should be returned here?");
-        });
-    }
-
-    private static boolean getDeclaredClasses(JNIEnvironment jni, Breakpoint bp) {
-        return handleGetMethods(jni, bp, true, () -> {
-            throw new RuntimeException("TODO: What should be returned here?");
-        });
-    }
-
     private static boolean handleGetMethods(JNIEnvironment jni, Breakpoint bp, boolean declaredOnly, WordSupplier<JNIObjectHandle> elementClass) {
         JNIObjectHandle callerClass = getDirectCallerClass();
         JNIObjectHandle self = getObjectArgument(0);
@@ -291,6 +279,34 @@ final class BreakpointInterceptor {
             }
             if (returnResult.notEqual(nullHandle())) {
                 returnResult = accessVerifier.filterGetMethods(jni, self, returnResult, elementClass, declaredOnly, callerClass);
+            }
+        }
+        traceBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, null);
+        if (accessVerifier != null && returnResult.notEqual(nullHandle())) {
+            jvmtiFunctions().ForceEarlyReturnObject().invoke(jvmtiEnv(), nullHandle(), returnResult);
+        }
+        return true;
+    }
+
+    private static boolean getClasses(JNIEnvironment jni, Breakpoint bp) {
+        return handleGetClasses(jni, bp, false, () -> agent.handles().javaLangClass);
+    }
+
+    private static boolean getDeclaredClasses(JNIEnvironment jni, Breakpoint bp) {
+        return handleGetClasses(jni, bp, true, () -> agent.handles().javaLangClass);
+    }
+
+    private static boolean handleGetClasses(JNIEnvironment jni, Breakpoint bp, boolean declaredOnly, WordSupplier<JNIObjectHandle> elementClass) {
+        JNIObjectHandle callerClass = getDirectCallerClass();
+        JNIObjectHandle self = getObjectArgument(0);
+        JNIObjectHandle returnResult = nullHandle();
+        if (accessVerifier != null) {
+            returnResult = Support.callObjectMethod(jni, self, bp.method);
+            if (clearException(jni)) {
+                returnResult = nullHandle();
+            }
+            if (returnResult.notEqual(nullHandle())) {
+                returnResult = accessVerifier.filterGetClasses(jni, self, returnResult, elementClass, declaredOnly, callerClass);
             }
         }
         traceBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, null);
@@ -1300,12 +1316,11 @@ final class BreakpointInterceptor {
                     brk("java/lang/Class", "getFields", "()[Ljava/lang/reflect/Field;", BreakpointInterceptor::getFields),
                     brk("java/lang/Class", "getMethods", "()[Ljava/lang/reflect/Method;", BreakpointInterceptor::getMethods),
                     brk("java/lang/Class", "getConstructors", "()[Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getConstructors),
-// brk("java/lang/Class", "getClasses", "()[Ljava/lang/Class;", BreakpointInterceptor::getClasses),
+                    brk("java/lang/Class", "getClasses", "()[Ljava/lang/Class;", BreakpointInterceptor::getClasses),
                     brk("java/lang/Class", "getDeclaredFields", "()[Ljava/lang/reflect/Field;", BreakpointInterceptor::getDeclaredFields),
                     brk("java/lang/Class", "getDeclaredMethods", "()[Ljava/lang/reflect/Method;", BreakpointInterceptor::getDeclaredMethods),
                     brk("java/lang/Class", "getDeclaredConstructors", "()[Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getDeclaredConstructors),
-// brk("java/lang/Class", "getDeclaredClasses", "()[Ljava/lang/Class;",
-// BreakpointInterceptor::getDeclaredClasses),
+                    brk("java/lang/Class", "getDeclaredClasses", "()[Ljava/lang/Class;", BreakpointInterceptor::getDeclaredClasses),
 
                     brk("java/lang/Class", "getField", "(Ljava/lang/String;)Ljava/lang/reflect/Field;", BreakpointInterceptor::getField),
                     brk("java/lang/Class", "getDeclaredField", "(Ljava/lang/String;)Ljava/lang/reflect/Field;", BreakpointInterceptor::getDeclaredField),
