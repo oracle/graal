@@ -186,7 +186,7 @@ public abstract class SymbolTable {
     @CompilationFinal private int typeCount;
 
     /**
-     * List of the names of all the imported symbols.
+     * List of the descriptors of all the imported symbols.
      */
     private final List<ImportDescriptor> importedSymbols;
 
