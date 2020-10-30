@@ -991,7 +991,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         String name = interopPointerToString(namePtr);
         getLogger().fine(String.format("JVM_LoadLibrary: '%s'", name));
         try {
-            @Pointer TruffleObject lib = NativeLibrary.loadLibrary(Paths.get(name));
+            @Pointer
+            TruffleObject lib = NativeLibrary.loadLibrary(Paths.get(name));
             if (lib == null) {
                 throw Meta.throwExceptionWithMessage(getMeta().java_lang_UnsatisfiedLinkError, name);
             }
