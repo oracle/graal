@@ -213,6 +213,7 @@ typedef uint64_t julong;
     V(JVM_IsSilentCompiler) \
     V(JVM_IsSupportedJNIVersion) \
     V(JVM_IsThreadAlive) \
+    V(JVM_IsUseContainerSupport) \
     V(JVM_IsVMGeneratedMethodIx) \
     V(JVM_LatestUserDefinedLoader) \
     V(JVM_Listen) \
@@ -832,6 +833,8 @@ jint (*JVM_MoreStackWalk)(JNIEnv *env, jobject stackStream, jlong mode, jlong an
 void (*JVM_SetBootLoaderUnnamedModule)(JNIEnv *env, jobject module);
 
 void (*JVM_WaitForReferencePendingList)(JNIEnv *env);
+
+jboolean (*JVM_IsUseContainerSupport)(void);
 
 };
 
