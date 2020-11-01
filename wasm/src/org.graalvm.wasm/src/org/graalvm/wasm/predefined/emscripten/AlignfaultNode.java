@@ -45,8 +45,6 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 public class AlignfaultNode extends AbortNode {
     public AlignfaultNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
@@ -54,7 +52,6 @@ public class AlignfaultNode extends AbortNode {
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("AlignfaultNode");
         return super.execute(frame);
     }
 

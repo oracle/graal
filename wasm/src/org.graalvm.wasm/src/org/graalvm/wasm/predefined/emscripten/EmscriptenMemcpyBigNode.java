@@ -47,8 +47,6 @@ import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 public class EmscriptenMemcpyBigNode extends WasmBuiltinRootNode {
     public EmscriptenMemcpyBigNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
@@ -58,15 +56,10 @@ public class EmscriptenMemcpyBigNode extends WasmBuiltinRootNode {
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         Object[] args = frame.getArguments();
         assert args.length == 3;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
 
         int dest = (int) args[0];
         int src = (int) args[1];
         int num = (int) args[2];
-
-        trace("EmscriptenMemcpyBigNode EXECUTE");
 
         WasmMemory memory = instance.memory();
         memory.copy(this, src, dest, num);

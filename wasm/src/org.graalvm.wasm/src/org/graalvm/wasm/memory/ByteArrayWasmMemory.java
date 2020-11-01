@@ -43,7 +43,6 @@ package org.graalvm.wasm.memory;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.WasmTracing;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -67,7 +66,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void copy(Node node, int src, int dst, int n) {
-        WasmTracing.trace("memcopy from = %d, to = %d, n = %d", src, dst, n);
         try {
             System.arraycopy(buffer, src, buffer, dst, n);
         } catch (IndexOutOfBoundsException e) {
@@ -118,189 +116,160 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public int load_i32(Node node, int address) {
-        WasmTracing.trace("load.i32 address = %d", address);
         int value;
         try {
             value = ByteArraySupport.littleEndian().getInt(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
-        WasmTracing.trace("load.i32 value = 0x%08X (%d)", value, value);
         return value;
     }
 
     @Override
     public long load_i64(Node node, int address) {
-        WasmTracing.trace("load.i64 address = %d", address);
         long value;
         try {
             value = ByteArraySupport.littleEndian().getLong(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 8);
         }
-        WasmTracing.trace("load.i64 value = 0x%016X (%d)", value, value);
         return value;
     }
 
     @Override
     public float load_f32(Node node, int address) {
-        WasmTracing.trace("load.f32 address = %d", address);
         float value;
         try {
             value = ByteArraySupport.littleEndian().getFloat(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
-        WasmTracing.trace("load.f32 address = %d, value = 0x%08X (%f)", address, Float.floatToRawIntBits(value), value);
         return value;
     }
 
     @Override
     public double load_f64(Node node, int address) {
-        WasmTracing.trace("load.f64 address = %d", address);
         double value;
         try {
             value = ByteArraySupport.littleEndian().getDouble(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 8);
         }
-        WasmTracing.trace("load.f64 address = %d, value = 0x%016X (%f)", address, Double.doubleToRawLongBits(value), value);
         return value;
     }
 
     @Override
     public int load_i32_8s(Node node, int address) {
-        WasmTracing.trace("load.i32_8s address = %d", address);
         int value;
         try {
             value = ByteArraySupport.littleEndian().getByte(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
-        WasmTracing.trace("load.i32_8s value = 0x%02X (%d)", value, value);
         return value;
     }
 
     @Override
     public int load_i32_8u(Node node, int address) {
-        WasmTracing.trace("load.i32_8u address = %d", address);
         int value;
         try {
             value = 0x0000_00ff & ByteArraySupport.littleEndian().getByte(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
-        WasmTracing.trace("load.i32_8u value = 0x%02X (%d)", value, value);
         return value;
     }
 
     @Override
     public int load_i32_16s(Node node, int address) {
-        WasmTracing.trace("load.i32_16s address = %d", address);
         int value;
         try {
             value = ByteArraySupport.littleEndian().getShort(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
-        WasmTracing.trace("load.i32_16s value = 0x%04X (%d)", value, value);
         return value;
     }
 
     @Override
     public int load_i32_16u(Node node, int address) {
-        WasmTracing.trace("load.i32_16u address = %d", address);
         int value;
         try {
             value = 0x0000_ffff & ByteArraySupport.littleEndian().getShort(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
-        WasmTracing.trace("load.i32_16u value = 0x%04X (%d)", value, value);
         return value;
     }
 
     @Override
     public long load_i64_8s(Node node, int address) {
-        WasmTracing.trace("load.i64_8s address = %d", address);
         long value;
         try {
             value = 0x0000_ffff & ByteArraySupport.littleEndian().getByte(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
-        WasmTracing.trace("load.i64_8s value = 0x%02X (%d)", value, value);
         return value;
     }
 
     @Override
     public long load_i64_8u(Node node, int address) {
-        WasmTracing.trace("load.i64_8u address = %d", address);
         long value;
         try {
             value = 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().getByte(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
-        WasmTracing.trace("load.i64_8u value = 0x%02X (%d)", value, value);
         return value;
     }
 
     @Override
     public long load_i64_16s(Node node, int address) {
-        WasmTracing.trace("load.i64_16s address = %d", address);
         short value;
         try {
             value = ByteArraySupport.littleEndian().getShort(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
-        WasmTracing.trace("load.i64_16s value = 0x%04X (%d)", value, value);
         return value;
     }
 
     @Override
     public long load_i64_16u(Node node, int address) {
-        WasmTracing.trace("load.i64_16u address = %d", address);
         long value;
         try {
             value = 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().getShort(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
-        WasmTracing.trace("load.i64_16u value = 0x%04X (%d)", value, value);
         return value;
     }
 
     @Override
     public long load_i64_32s(Node node, int address) {
-        WasmTracing.trace("load.i64_32s address = %d", address);
         long value;
         try {
             value = ByteArraySupport.littleEndian().getInt(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
-        WasmTracing.trace("load.i64_32s value = 0x%08X (%d)", value, value);
         return value;
     }
 
     @Override
     public long load_i64_32u(Node node, int address) {
-        WasmTracing.trace("load.i64_32u address = %d", address);
         long value;
         try {
             value = 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getInt(buffer, address);
         } catch (IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
-        WasmTracing.trace("load.i64_32u value = 0x%08X (%d)", value, value);
         return value;
     }
 
     @Override
     public void store_i32(Node node, int address, int value) {
-        WasmTracing.trace("store.i32 address = %d, value = 0x%08X (%d)", address, value, value);
         try {
             ByteArraySupport.littleEndian().putInt(buffer, address, value);
         } catch (IndexOutOfBoundsException e) {
@@ -310,7 +279,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_i64(Node node, int address, long value) {
-        WasmTracing.trace("store.i64 address = %d, value = 0x%016X (%d)", address, value, value);
         try {
             ByteArraySupport.littleEndian().putLong(buffer, address, value);
         } catch (IndexOutOfBoundsException e) {
@@ -321,7 +289,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_f32(Node node, int address, float value) {
-        WasmTracing.trace("store.f32 address = %d, value = 0x%08X (%f)", address, Float.floatToRawIntBits(value), value);
         try {
             ByteArraySupport.littleEndian().putFloat(buffer, address, value);
         } catch (IndexOutOfBoundsException e) {
@@ -332,7 +299,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_f64(Node node, int address, double value) {
-        WasmTracing.trace("store.f64 address = %d, value = 0x%016X (%f)", address, Double.doubleToRawLongBits(value), value);
         try {
             ByteArraySupport.littleEndian().putDouble(buffer, address, value);
         } catch (IndexOutOfBoundsException e) {
@@ -342,7 +308,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_i32_8(Node node, int address, byte value) {
-        WasmTracing.trace("store.i32_8 address = %d, value = 0x%02X (%d)", address, value, value);
         try {
             ByteArraySupport.littleEndian().putByte(buffer, address, value);
         } catch (IndexOutOfBoundsException e) {
@@ -352,7 +317,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_i32_16(Node node, int address, short value) {
-        WasmTracing.trace("store.i32_16 address = %d, value = 0x%04X (%d)", address, value, value);
         try {
             ByteArraySupport.littleEndian().putShort(buffer, address, value);
         } catch (IndexOutOfBoundsException e) {
@@ -362,7 +326,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_i64_8(Node node, int address, byte value) {
-        WasmTracing.trace("store.i64_8 address = %d, value = 0x%02X (%d)", address, value, value);
         try {
             ByteArraySupport.littleEndian().putByte(buffer, address, value);
         } catch (IndexOutOfBoundsException e) {
@@ -372,7 +335,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_i64_16(Node node, int address, short value) {
-        WasmTracing.trace("store.i64_16 address = %d, value = 0x%04X (%d)", address, value, value);
         try {
             ByteArraySupport.littleEndian().putShort(buffer, address, value);
         } catch (IndexOutOfBoundsException e) {
@@ -382,7 +344,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void store_i64_32(Node node, int address, int value) {
-        WasmTracing.trace("store.i64_32 address = %d, value = 0x%08X (%d)", address, value, value);
         try {
             ByteArraySupport.littleEndian().putInt(buffer, address, value);
         } catch (IndexOutOfBoundsException e) {

@@ -48,8 +48,6 @@ import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 public class GetTimeOfDayNode extends WasmBuiltinRootNode {
     public GetTimeOfDayNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
@@ -59,13 +57,8 @@ public class GetTimeOfDayNode extends WasmBuiltinRootNode {
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         Object[] args = frame.getArguments();
         assert args.length == 2;
-        for (Object arg : args) {
-            trace("GetTimeOfDayNode argument: %s", arg);
-        }
 
         int ptr = (int) args[0];
-
-        trace("GetTimeOfDayNode EXECUTE");
 
         long now = getCurrentTime();
         WasmMemory memory = instance.memory();
