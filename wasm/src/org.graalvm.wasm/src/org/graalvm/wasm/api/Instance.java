@@ -61,6 +61,7 @@ import org.graalvm.wasm.memory.WasmMemory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 @ExportLibrary(InteropLibrary.class)
 public class Instance extends Dictionary {
@@ -243,40 +244,39 @@ public class Instance extends Dictionary {
 
     private Dictionary initializeExports(WasmContext context) {
         Dictionary e = new Dictionary();
-        for (Map.Entry<String, WasmFunction> entry : instance.symbolTable().exportedFunctions().entrySet()) {
-            String name = entry.getKey();
-            WasmFunction function = entry.getValue();
-            final CallTarget target = instance.target(function.index());
-            e.addMember(name, new Executable(args -> {
-                final Object prev = truffleContext.enter(null);
-                try {
-                    return target.call(args);
-                } finally {
-                    truffleContext.leave(null, prev);
+        for (String name : instance.module().exportedSymbols()) {
+            WasmFunction function = instance.module().exportedFunctions().get(name);
+            Integer globalIndex = instance.module().exportedGlobals().get(name);
+
+            if (function != null) {
+                final CallTarget target = instance.target(function.index());
+                e.addMember(name, new Executable(args -> {
+                    final Object prev = truffleContext.enter(null);
+                    try {
+                        return target.call(args);
+                    } finally {
+                        truffleContext.leave(null, prev);
+                    }
+                }));
+            } else if (globalIndex != null) {
+                final int index = globalIndex;
+                final int address = instance.globalAddress(index);
+                if (address < 0) {
+                    Object global = context.globals().externalGlobal(address);
+                    e.addMember(name, global);
+                } else {
+                    final ValueType valueType = ValueType.fromByteValue(instance.symbolTable().globalValueType(index));
+                    final boolean mutable = instance.symbolTable().isGlobalMutable(index);
+                    e.addMember(name, new ProxyGlobal(new GlobalDescriptor(valueType.name(), mutable), context.globals(), address));
                 }
-            }));
-        }
-        final String exportedMemory = instance.symbolTable().exportedMemory();
-        if (exportedMemory != null) {
-            final WasmMemory memory = instance.memory();
-            e.addMember(exportedMemory, new Memory(memory));
-        }
-        final String exportedTable = instance.symbolTable().exportedTable();
-        if (exportedTable != null) {
-            final WasmTable table = instance.table();
-            e.addMember(exportedTable, new Table(table));
-        }
-        for (Map.Entry<String, Integer> entry : instance.symbolTable().exportedGlobals().entrySet()) {
-            final String name = entry.getKey();
-            final int index = entry.getValue();
-            final int address = instance.globalAddress(index);
-            if (address < 0) {
-                Object global = context.globals().externalGlobal(address);
-                e.addMember(name, global);
+            } else if (Objects.equals(instance.module().exportedMemory(), name)) {
+                final WasmMemory memory = instance.memory();
+                e.addMember(name, new Memory(memory));
+            } else if (Objects.equals(instance.module().exportedTable(), name)) {
+                final WasmTable table = instance.table();
+                e.addMember(name, new Table(table));
             } else {
-                final ValueType valueType = ValueType.fromByteValue(instance.symbolTable().globalValueType(index));
-                final boolean mutable = instance.symbolTable().isGlobalMutable(index);
-                e.addMember(name, new ProxyGlobal(new GlobalDescriptor(valueType.name(), mutable), context.globals(), address));
+                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Exported symbol list does not match the actual exports.");
             }
         }
         return e;
