@@ -733,7 +733,7 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
         addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
 
-        if (OS.getCurrent() == OS.LINUX || JavaVersionUtil.JAVA_SPEC >= 11) {
+        if (OS.getCurrent() == OS.LINUX && JavaVersionUtil.JAVA_SPEC >= 11) {
             addImageBuilderJavaArgs("-Dawt.toolkit=sun.awt.X11.XToolkit");
             addImageBuilderJavaArgs("-Djava.awt.graphicsenv=sun.awt.X11GraphicsEnvironment");
             addImageBuilderJavaArgs("-Djava.awt.printerjob=sun.print.PSPrinterJob");

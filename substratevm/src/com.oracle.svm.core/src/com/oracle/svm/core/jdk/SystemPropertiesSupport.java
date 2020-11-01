@@ -111,7 +111,7 @@ public abstract class SystemPropertiesSupport {
 
         initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
 
-        if (OS.getCurrent() == OS.LINUX || JavaVersionUtil.JAVA_SPEC >= 11) {
+        if (OS.getCurrent() == OS.LINUX && JavaVersionUtil.JAVA_SPEC >= 11) {
             initializeProperty("awt.toolkit", "sun.awt.X11.XToolkit");
             initializeProperty("java.awt.graphicsenv", "sun.awt.X11GraphicsEnvironment");
             initializeProperty("java.awt.printerjob", "sun.print.PSPrinterJob");
