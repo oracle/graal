@@ -7,6 +7,9 @@ New features:
 * Introduced [handles API](projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/handles.h)
   for storing managed pointers in native memory.
 
+* Enabled AST sharing in the GraalVM LLVM runtime. This allows code of bitcode libraries
+  to be shared between multiple contexts within a single engine.
+
 Changes:
 
 * Updated LLVM toolchain to version 10.0.0.

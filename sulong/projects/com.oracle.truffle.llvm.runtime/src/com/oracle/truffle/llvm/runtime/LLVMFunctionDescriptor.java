@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -191,10 +192,17 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
     @ExportMessage
     static class Execute {
 
-        @Specialization(limit = "5", guards = "self == cachedSelf")
-        static Object doCached(@SuppressWarnings("unused") LLVMFunctionDescriptor self, Object[] args,
+        @Specialization(limit = "5", guards = "self == cachedSelf", assumptions = "singleContextAssumption()")
+        static Object doDescriptor(@SuppressWarnings("unused") LLVMFunctionDescriptor self, Object[] args,
                         @Cached("self") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedSelf,
                         @Cached("createCall(cachedSelf)") DirectCallNode call) {
+            return call.call(args);
+        }
+
+        @Specialization(replaces = "doDescriptor", limit = "5", guards = "self.getFunctionCode() == cachedFunctionCode")
+        static Object doCached(@SuppressWarnings("unused") LLVMFunctionDescriptor self, Object[] args,
+                        @Cached("self.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode cachedFunctionCode,
+                        @Cached("createCall(self)") DirectCallNode call) {
             return call.call(args);
         }
 
@@ -209,6 +217,11 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
             callNode.forceInlining();
             return callNode;
         }
+
+        protected static Assumption singleContextAssumption() {
+            return LLVMLanguage.getLanguage().singleContextAssumption;
+        }
+
     }
 
     @ExportMessage
