@@ -39,6 +39,8 @@ import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 
+import java.util.ServiceLoader;
+
 @AutomaticFeature
 public class LibCFeature implements Feature {
 
@@ -69,21 +71,15 @@ public class LibCFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        LibCBase libc;
         String targetLibC = LibCOptions.UseLibC.getValue();
-        switch (targetLibC) {
-            case GLibC.NAME:
-                libc = new GLibC();
-                break;
-            case MuslLibC.NAME:
-                libc = new MuslLibC();
-                break;
-            case BionicLibC.NAME:
-                libc = new BionicLibC();
-                break;
-            default:
-                throw UserError.abort("Unknown libc %s selected. Please use one of the available libc implementations.", targetLibC);
+        ServiceLoader<LibCBase> loader = ServiceLoader.load(LibCBase.class);
+        for (LibCBase libc : loader) {
+            if (libc.getName().equals(targetLibC)) {
+                libc.checkIfLibCSupported();
+                ImageSingletons.add(LibCBase.class, libc);
+                return;
+            }
         }
-        ImageSingletons.add(LibCBase.class, libc);
+        throw UserError.abort("Unknown libc %s selected. Please use one of the available libc implementations.", targetLibC);
     }
 }
