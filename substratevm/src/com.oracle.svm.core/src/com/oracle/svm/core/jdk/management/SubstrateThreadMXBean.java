@@ -35,6 +35,7 @@ import javax.management.ObjectName;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
 import sun.management.Util;
@@ -57,6 +58,7 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
     SubstrateThreadMXBean() {
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void noteThreadStart(Thread thread) {
         totalStartedThreadCount.incrementAndGet();
         int curThreadCount = threadCount.incrementAndGet();
@@ -66,6 +68,7 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void noteThreadFinish(Thread thread) {
         threadCount.decrementAndGet();
         if (thread.isDaemon()) {

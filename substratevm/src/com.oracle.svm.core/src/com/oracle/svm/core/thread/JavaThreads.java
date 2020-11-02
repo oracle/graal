@@ -62,7 +62,6 @@ import com.oracle.svm.core.heap.ReferenceHandlerThreadFeature;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
-import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -503,11 +502,11 @@ public abstract class JavaThreads {
         ObjectHandles.getGlobal().destroy(threadHandle);
 
         singleton().unattachedStartedThreads.decrementAndGet();
-
         singleton().beforeThreadRun(thread);
-        ManagementSupport.getSingleton().noteThreadStart(thread);
 
         try {
+            ThreadListenerSupport.get().beforeThreadStart(CurrentIsolate.getCurrentThread(), thread);
+
             if (VMThreads.isTearingDown()) {
                 /*
                  * As a newly started thread, we might not have been interrupted like the Java
@@ -517,12 +516,11 @@ public abstract class JavaThreads {
             }
 
             thread.run();
-
         } catch (Throwable ex) {
             dispatchUncaughtException(thread, ex);
         } finally {
             exit(thread);
-            ManagementSupport.getSingleton().noteThreadFinish(thread);
+            ThreadListenerSupport.get().afterThreadExit(CurrentIsolate.getCurrentThread(), thread);
         }
     }
 

@@ -31,6 +31,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.thread.JavaThreads;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -84,6 +85,13 @@ public class VMInspection implements Feature {
     @Fold
     public static boolean isEnabled() {
         return VMInspectionOptions.AllowVMInspection.getValue();
+    }
+
+    public static class VMInspectionEnabled implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return VMInspectionOptions.AllowVMInspection.getValue();
+        }
     }
 }
 

@@ -523,6 +523,47 @@ suite = {
             "spotbugs": "false",
         },
 
+        "com.oracle.svm.jfr": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core",
+                "com.oracle.svm.hosted",
+                "com.oracle.svm.util",
+                "com.oracle.graal.pointsto"
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "11+",
+            "requires": [
+                "jdk.jfr",
+                "jdk.management",
+                "jdk.unsupported"
+            ],
+            "requiresConcealed": {
+                "jdk.jfr": [
+                    "jdk.jfr.internal",
+                    "jdk.jfr.internal.consumer",
+                    "jdk.jfr.internal.jfc",
+                    "jdk.jfr.internal.handlers",
+                    "jdk.jfr.events"
+                ],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code"
+                ],
+                "java.base": [
+                    "jdk.internal.misc",
+                    "jdk.internal.util.xml",
+                    "jdk.internal.util.xml.impl",
+                    "jdk.internal.org.xml.sax.helpers"
+                ]
+            },
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.driver": {
             "subDir": "src",
             "sourceDirs": [
@@ -972,6 +1013,7 @@ suite = {
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.jni",
+                "com.oracle.svm.jfr",
                 "com.oracle.svm.reflect",
                 "com.oracle.svm.methodhandles"
             ],

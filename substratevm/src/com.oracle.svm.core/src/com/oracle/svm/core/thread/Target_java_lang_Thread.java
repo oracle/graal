@@ -50,7 +50,7 @@ import com.oracle.svm.core.util.VMError;
 
 @TargetClass(Thread.class)
 @SuppressWarnings({"unused"})
-final class Target_java_lang_Thread {
+public final class Target_java_lang_Thread {
 
     /** Every thread has a boolean for noting whether this thread is interrupted. */
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
@@ -169,7 +169,13 @@ final class Target_java_lang_Thread {
         daemon = asDaemon;
     }
 
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Substitute
+    public long getId() {
+        return tid;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
     static Thread currentThread() {
         return JavaThreads.currentThread.get();

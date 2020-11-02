@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jdk;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -450,6 +451,61 @@ public class UninterruptibleUtils {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int compareUnsigned(int x, int y) {
             return compare(x + java.lang.Integer.MIN_VALUE, y + java.lang.Integer.MIN_VALUE);
+        }
+    }
+
+    public static class String {
+        /**
+         * Gets the length of String when encoded using modified UTF8 (null characters that are
+         * present in the input will be encoded in a way that they do not interfere with a
+         * null-terminator).
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int modifiedUtf8Length(java.lang.String string, boolean addNullTerminator) {
+            int result = 0;
+            for (int i = 0; i < string.length(); i++) {
+                int c = string.charAt(i);
+                if (c >= 0x0001 && c <= 0x007F) {
+                    result += 1;
+                } else if (c <= 0x07FF) {
+                    result += 2;
+                } else {
+                    result += 3;
+                }
+            }
+            return result + (addNullTerminator ? 1 : 0);
+        }
+
+        /**
+         * Writes the encoded String into the given buffer using the modified UTF8 encoding (null
+         * characters that are present in the input will be encoded in a way that they do not
+         * interfere with the null terminator).
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void toModifiedUtf8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator) {
+            Pointer pos = buffer;
+            for (int i = 0; i < string.length(); i++) {
+                char c = string.charAt(i);
+                if (c >= 0x0001 && c <= 0x007F) {
+                    pos.writeByte(0, (byte) c);
+                    pos = pos.add(1);
+                } else if (c <= 0x07FF) {
+                    pos.writeByte(0, (byte) (0xC0 | (c >> 6)));
+                    pos.writeByte(1, (byte) (0x80 | (c & 0x3F)));
+                    pos = pos.add(2);
+                } else {
+                    pos.writeByte(0, (byte) (0xE0 | (c >> 12)));
+                    pos.writeByte(1, (byte) (0x80 | ((c >> 6) & 0x3F)));
+                    pos.writeByte(2, (byte) (0x80 | (c & 0x3f)));
+                    pos = pos.add(3);
+                }
+            }
+
+            if (addNullTerminator) {
+                pos.writeByte(0, (byte) 0);
+                pos = pos.add(1);
+            }
+            VMError.guarantee(pos.belowOrEqual(bufferEnd), "Must not write out of bounds.");
         }
     }
 }
