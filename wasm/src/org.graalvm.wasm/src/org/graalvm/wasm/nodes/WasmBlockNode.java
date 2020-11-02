@@ -1420,6 +1420,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         }
     }
 
+    // Checkstyle: stop method name check
+
     private void global_set(WasmContext context, VirtualFrame frame, int stackPointer, int index) {
         byte type = instance().symbolTable().globalValueType(index);
         // For global.set, we don't need to make sure that the referenced global is
@@ -2786,6 +2788,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         double result = x;
         pushDouble(frame, stackPointer - 1, result);
     }
+
+    // Checkstyle: resume method name check
 
     private boolean popCondition(VirtualFrame frame, int stackPointer) {
         int condition = popInt(frame, stackPointer);
