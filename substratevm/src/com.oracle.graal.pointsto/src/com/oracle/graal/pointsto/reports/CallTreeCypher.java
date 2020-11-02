@@ -24,7 +24,7 @@ import java.util.stream.Stream;
 public class CallTreeCypher {
 
     // TODO temporarily use a system property to try different values
-    private static final int BATCH_SIZE = Integer.getInteger("cypher.batch.size", 512);
+    private static final int BATCH_SIZE = Integer.getInteger("cypher.batch.size", 256);
 
     private static final String METHOD_INFO_FORMAT = "name:'%n', signature:'" + CallTreePrinter.METHOD_FORMAT + "'";
 
@@ -45,55 +45,82 @@ public class CallTreeCypher {
     }
 
     private static void printCypher(Map<AnalysisMethod, MethodNode> methodToNode, PrintWriter writer) {
-        writer.print(vmEntryPoint());
-        printMethodNodes(methodToNode.values(), writer);
-        printMethodEdges(methodToNode, writer);
+        writer.print(snippetVM());
+        printAll(methodToNode, writer);
     }
 
-    private static void printMethodNodes(Collection<MethodNode> methods, PrintWriter writer) {
-        final Collection<List<MethodNode>> methodsBatches = batched(methods);
-        final String unwindMethod = unwindMethod();
-        final String script = methodsBatches.stream()
+    private static String snippetVM() {
+        return ":param rows => [{_id:-1, properties:{name:'VM'}}]\n" +
+                ":begin\n" +
+                "UNWIND $rows as row\n" +
+                "CREATE (n:`UNIQUE IMPORT LABEL`{`UNIQUE IMPORT ID`: row._id})\n" +
+                "  SET n += row.properties SET n:VM;\n" +
+                ":commit\n\n";
+    }
+
+    private static void printAll(Map<AnalysisMethod, MethodNode> methodToNode, PrintWriter writer) {
+        Set<MethodNode> entryNodes = new HashSet<>();
+        Set<MethodNode> nonVirtualNodes = new HashSet<>();
+        Map<VirtualInvokeId, Integer> virtualNodes = new HashMap<>();
+
+        Map<Integer, Set<BciEndEdge>> directEdges = new HashMap<>();
+        Map<Integer, Set<BciEndEdge>> virtualEdges = new HashMap<>();
+        Map<Integer, Set<Integer>> overridenByEdges = new HashMap<>();
+
+        final Iterator<MethodNode> iterator = methodToNode.values().stream().filter(n -> n.isEntryPoint).iterator();
+        while (iterator.hasNext()) {
+            final MethodNode node = iterator.next();
+            entryNodes.add(node);
+            walkNodes(node, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes);
+        }
+
+        printNodes(entryNodes, writer);
+        printNodes(nonVirtualNodes, writer);
+        printVirtualNodes(virtualNodes, writer);
+
+        printEntryEdges(entryNodes, writer);
+        printBciEdges("DIRECT", directEdges, writer);
+        printBciEdges("VIRTUAL", virtualEdges, writer);
+        printNonBciEdges(overridenByEdges, writer);
+    }
+
+    private static void walkNodes(MethodNode methodNode, Map<Integer, Set<BciEndEdge>> directEdges, Map<Integer, Set<BciEndEdge>> virtualEdges, Map<Integer, Set<Integer>> overridenByEdges, Map<VirtualInvokeId, Integer> virtualNodes, Set<MethodNode> nonVirtualNodes) {
+        for (InvokeNode invoke : methodNode.invokes) {
+            if (invoke.isDirectInvoke) {
+                if (invoke.callees.size() > 0) {
+                    Node calleeNode = invoke.callees.get(0);
+                    addDirectEdge(methodNode.id, invoke, calleeNode, directEdges, nonVirtualNodes);
+                    if (calleeNode instanceof MethodNode) {
+                        walkNodes((MethodNode) calleeNode, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes);
+                    }
+                }
+            } else {
+                final int virtualNodeId = addVirtualNode(invoke, virtualNodes);
+                addVirtualMethodEdge(methodNode.id, invoke, virtualNodeId, virtualEdges);
+                for (Node calleeNode : invoke.callees) {
+                    addOverridenByEdge(virtualNodeId, calleeNode, overridenByEdges, nonVirtualNodes);
+                    if (calleeNode instanceof MethodNode) {
+                        walkNodes((MethodNode) calleeNode, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void printNodes(Set<MethodNode> nodes, PrintWriter writer) {
+        final Collection<List<MethodNode>> batches = batched(nodes);
+        final String snippet = snippetMethod();
+        final String script = batches.stream()
                 .map(methodBatch -> methodBatch.stream()
                         .map(method -> String.format("{_id:%d, %s}", method.id, asProperties(method.method.format(METHOD_INFO_FORMAT))))
                         .collect(Collectors.joining(", ", ":param rows => [", "]"))
                 )
-                .collect(Collectors.joining(unwindMethod, "", unwindMethod));
+                .collect(Collectors.joining(snippet, "", snippet));
 
         writer.print(script);
     }
 
-    private static String asProperties(String properties) {
-        return "properties:{" + properties + "}";
-    }
-
-    private static void printVirtualNodes(Map<VirtualInvokeId, Integer> virtualNodes, PrintWriter writer) {
-        final Collection<List<Map.Entry<VirtualInvokeId, Integer>>> virtualNodesBatches = batched(virtualNodes.entrySet());
-        final String unwindMethod = unwindVirtualMethod();
-        final String script = virtualNodesBatches.stream()
-                .map(virtualNodesBatch -> virtualNodesBatch.stream()
-                        .map(virtualNode -> String.format("{_id:%d, %s}", virtualNode.getValue(), virtualMethodProperties(virtualNode.getKey())))
-                        .collect(Collectors.joining(", ", ":param rows => [", "]"))
-                )
-                .collect(Collectors.joining(unwindMethod, "", unwindMethod));
-        writer.print(script);
-    }
-
-    private static String virtualMethodProperties(VirtualInvokeId virtualNode) {
-        final String linkedIndexes = virtualNode.bytecodeIndexes.stream()
-                .map(String::valueOf)
-                .collect(Collectors.joining("->"));
-        String properties = virtualNode.methodInfo + ", bci: '" + linkedIndexes + "'";
-        return asProperties(properties);
-    }
-
-    private static String vmEntryPoint() {
-        return ":begin\n" +
-                "CREATE (v:VM {name: 'VM'});\n" +
-                ":commit\n\n";
-    }
-
-    private static String unwindMethod() {
+    private static String snippetMethod() {
         return "\n\n:begin\n" +
                 "UNWIND $rows as row\n" +
                 "CREATE (n:`UNIQUE IMPORT LABEL`{`UNIQUE IMPORT ID`: row._id})\n" +
@@ -101,105 +128,70 @@ public class CallTreeCypher {
                 ":commit\n\n";
     }
 
-    private static String unwindVirtualMethod() {
-        return "\n\n:begin\n" +
-                "UNWIND $rows as row\n" +
-                "CREATE (n:`UNIQUE IMPORT LABEL`{`UNIQUE IMPORT ID`: row._id})\n" +
-                "  SET n += row.properties SET n:VirtualMethod;\n" +
-                ":commit\n\n";
-    }
-
-    private static void printMethodEdges(Map<AnalysisMethod, MethodNode> methodToNode, PrintWriter writer) {
-        Map<VirtualInvokeId, Integer> virtualNodes = new HashMap<>();
-
-        Map<Integer, Set<Integer>> directEdges = new HashMap<>();
-        Map<Integer, Set<Integer>> virtualEdges = new HashMap<>();
-        Map<Integer, Set<Integer>> overridenByEdges = new HashMap<>();
-
-        final Iterator<MethodNode> iterator = methodToNode.values().stream().filter(n -> n.isEntryPoint).iterator();
-        while (iterator.hasNext()) {
-            final MethodNode node = iterator.next();
-            writer.print(entryEdge(node.method.format(CallTreePrinter.METHOD_FORMAT)));
-            addMethodEdges(node, directEdges, virtualEdges, overridenByEdges, virtualNodes);
-        }
-
-        printVirtualNodes(virtualNodes, writer);
-        printEdges("DIRECT", directEdges, writer);
-        printEdges("VIRTUAL", virtualEdges, writer);
-        printEdges("OVERRIDDEN_BY", overridenByEdges, writer);
-    }
-
-    private static String entryEdge(String signature) {
-        return "\n\nMATCH (v:VM),(m:Method)\n" +
-                "  WHERE v.name = 'VM' AND m.signature = '" + signature + "'\n" +
-                "CREATE (v)-[r:ENTRY]->(m);\n\n";
-    }
-
-    private static void addMethodEdges(MethodNode methodNode, Map<Integer, Set<Integer>> directEdges, Map<Integer, Set<Integer>> virtualEdges, Map<Integer, Set<Integer>> overridenByEdges, Map<VirtualInvokeId, Integer> virtualNodes) {
-        for (InvokeNode invoke : methodNode.invokes) {
-            if (invoke.isDirectInvoke) {
-                if (invoke.callees.size() > 0) {
-                    Node calleeNode = invoke.callees.get(0);
-                    addMethodEdge(methodNode.id, calleeNode, directEdges);
-                    if (calleeNode instanceof MethodNode) {
-                        addMethodEdges((MethodNode) calleeNode, directEdges, virtualEdges, overridenByEdges, virtualNodes);
-                    }
-                }
-            } else {
-                final int virtualNodeId = addVirtualNode(invoke, virtualNodes);
-                addVirtualMethodEdge(methodNode.id, virtualNodeId, virtualEdges);
-                for (Node calleeNode : invoke.callees) {
-                    addMethodEdge(virtualNodeId, calleeNode, overridenByEdges);
-                    if (calleeNode instanceof MethodNode) {
-                        addMethodEdges((MethodNode) calleeNode, directEdges, virtualEdges, overridenByEdges, virtualNodes);
-                    }
-                }
-            }
-        }
-    }
-
     private static int addVirtualNode(InvokeNode node, Map<VirtualInvokeId, Integer> virtualNodes) {
         final String methodInfo = node.targetMethod.format(METHOD_INFO_FORMAT);
-        final List<Integer> bytecodeIndexes = Stream.of(node.sourceReferences)
-                .map(source -> source.bci)
-                .collect(Collectors.toList());
+        final List<Integer> bytecodeIndexes = bytecodeIndexes(node);
 
         final VirtualInvokeId id = new VirtualInvokeId(methodInfo, bytecodeIndexes);
         return virtualNodes.computeIfAbsent(id, k -> CallTreeCypher.virtualNodeId.getAndIncrement());
     }
 
-    private static void addVirtualMethodEdge(int startId, int endId, Map<Integer, Set<Integer>> edges) {
-        Set<Integer> nodeEdges = edges.computeIfAbsent(startId, k -> new HashSet<>());
-        nodeEdges.add(endId);
+    private static void addVirtualMethodEdge(int startId, InvokeNode invoke, int endId, Map<Integer, Set<BciEndEdge>> edges) {
+        Set<BciEndEdge> nodeEdges = edges.computeIfAbsent(startId, k -> new HashSet<>());
+        nodeEdges.add(new BciEndEdge(endId, bytecodeIndexes(invoke)));
     }
 
-    private static void addMethodEdge(int nodeId, Node calleeNode, Map<Integer, Set<Integer>> edges) {
+    private static void addDirectEdge(int nodeId, InvokeNode invoke, Node calleeNode, Map<Integer, Set<BciEndEdge>> edges, Set<MethodNode> nodes) {
+        Set<BciEndEdge> nodeEdges = edges.computeIfAbsent(nodeId, k -> new HashSet<>());
+        MethodNode methodNode = calleeNode instanceof MethodNode
+                ? (MethodNode) calleeNode
+                : ((MethodNodeReference) calleeNode).methodNode;
+        nodes.add(methodNode);
+        nodeEdges.add(new BciEndEdge(methodNode.id, bytecodeIndexes(invoke)));
+    }
+
+    private static List<Integer> bytecodeIndexes(InvokeNode node) {
+        return Stream.of(node.sourceReferences)
+                .map(source -> source.bci)
+                .collect(Collectors.toList());
+    }
+
+    private static void printVirtualNodes(Map<VirtualInvokeId, Integer> virtualNodes, PrintWriter writer) {
+        final Collection<List<Map.Entry<VirtualInvokeId, Integer>>> virtualNodesBatches = batched(virtualNodes.entrySet());
+        final String snippet = snippetMethod();
+        final String script = virtualNodesBatches.stream()
+                .map(virtualNodesBatch -> virtualNodesBatch.stream()
+                        .map(virtualNode -> String.format("{_id:%d, %s}", virtualNode.getValue(), asProperties(virtualNode.getKey().methodInfo)))
+                        .collect(Collectors.joining(", ", ":param rows => [", "]"))
+                )
+                .collect(Collectors.joining(snippet, "", snippet));
+        writer.print(script);
+    }
+
+    private static void addOverridenByEdge(int nodeId, Node calleeNode, Map<Integer, Set<Integer>> edges, Set<MethodNode> nodes) {
         Set<Integer> nodeEdges = edges.computeIfAbsent(nodeId, k -> new HashSet<>());
         MethodNode methodNode = calleeNode instanceof MethodNode
                 ? (MethodNode) calleeNode
                 : ((MethodNodeReference) calleeNode).methodNode;
+        nodes.add(methodNode);
         nodeEdges.add(methodNode.id);
     }
 
-    private static void printEdges(String edgeName, Map<Integer, Set<Integer>> edges, PrintWriter writer) {
-        final Set<Edge> idEdges = edges.entrySet().stream()
-                .flatMap(entry -> entry.getValue().stream().map(endId -> new Edge(entry.getKey(), endId)))
-                .collect(Collectors.toSet());
+    private static void printEntryEdges(Set<MethodNode> edges, PrintWriter writer) {
+        final Collection<List<MethodNode>> batchedEdges = batched(edges);
 
-        final Collection<List<Edge>> batchedEdges = batched(idEdges);
-
-        final String unwindEdge = edge(edgeName);
+        final String snippet = snippetNonBciEdge("ENTRY");
         final String script = batchedEdges.stream()
                 .map(edgesBatch -> edgesBatch.stream()
-                        .map(edge -> String.format("{start: {_id:%d}, end: {_id:%d}}", edge.startId, edge.endId))
+                        .map(edge -> String.format("{start: {_id:%d}, end: {_id:%d}}", -1, edge.id))
                         .collect(Collectors.joining(", ", ":param rows => [", "]"))
                 )
-                .collect(Collectors.joining(unwindEdge, "", unwindEdge));
+                .collect(Collectors.joining(snippet, "", snippet));
 
         writer.print(script);
     }
 
-    private static String edge(String edgeName) {
+    private static String snippetNonBciEdge(String edgeName) {
         return "\n\n:begin\n" +
                 "UNWIND $rows as row\n" +
                 "MATCH (start:`UNIQUE IMPORT LABEL`\n" +
@@ -210,6 +202,63 @@ public class CallTreeCypher {
                 ":commit\n\n";
     }
 
+    private static void printBciEdges(String edgeName, Map<Integer, Set<BciEndEdge>> edges, PrintWriter writer) {
+        final Set<BciEdge> idEdges = edges.entrySet().stream()
+                .flatMap(entry -> entry.getValue().stream().map(endId -> new BciEdge(entry.getKey(), endId)))
+                .collect(Collectors.toSet());
+
+        final Collection<List<BciEdge>> batchedEdges = batched(idEdges);
+
+        final String unwindEdge = snippetBciEdge(edgeName);
+        final String script = batchedEdges.stream()
+                .map(edgesBatch -> edgesBatch.stream()
+                        .map(edge -> String.format("{start: {_id:%d}, end: {_id:%d}, bci: '%s'}", edge.startId, edge.endEdge.id, showBytecodeIndexes(edge.endEdge.bytecodeIndexes)))
+                        .collect(Collectors.joining(", ", ":param rows => [", "]"))
+                )
+                .collect(Collectors.joining(unwindEdge, "", unwindEdge));
+
+        writer.print(script);
+    }
+
+    private static String showBytecodeIndexes(List<Integer> bytecodeIndexes) {
+        return bytecodeIndexes.stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining("->"));
+    }
+
+    private static String snippetBciEdge(String edgeName) {
+        return "\n\n:begin\n" +
+                "UNWIND $rows as row\n" +
+                "MATCH (start:`UNIQUE IMPORT LABEL`\n" +
+                "               {`UNIQUE IMPORT ID`: row.start._id})\n" +
+                "MATCH (end:`UNIQUE IMPORT LABEL`\n" +
+                "               {`UNIQUE IMPORT ID`: row.end._id})\n" +
+                "CREATE (start)-[r:" + edgeName + " { bci: row.bci }]->(end);\n" +
+                ":commit\n\n";
+    }
+
+    private static void printNonBciEdges(Map<Integer, Set<Integer>> edges, PrintWriter writer) {
+        final Set<NonBciEdge> idEdges = edges.entrySet().stream()
+                .flatMap(entry -> entry.getValue().stream().map(endId -> new NonBciEdge(entry.getKey(), endId)))
+                .collect(Collectors.toSet());
+
+        final Collection<List<NonBciEdge>> batchedEdges = batched(idEdges);
+
+        final String unwindEdge = snippetNonBciEdge("OVERRIDDEN_BY");
+        final String script = batchedEdges.stream()
+                .map(edgesBatch -> edgesBatch.stream()
+                        .map(edge -> String.format("{start: {_id:%d}, end: {_id:%d}}", edge.startId, edge.endId))
+                        .collect(Collectors.joining(", ", ":param rows => [", "]"))
+                )
+                .collect(Collectors.joining(unwindEdge, "", unwindEdge));
+
+        writer.print(script);
+    }
+
+    private static String asProperties(String properties) {
+        return "properties:{" + properties + "}";
+    }
+
     private static <E> Collection<List<E>> batched(Collection<E> methods) {
         final AtomicInteger counter = new AtomicInteger();
         return methods.stream()
@@ -217,17 +266,53 @@ public class CallTreeCypher {
                 .values();
     }
 
-    private static final class Edge {
+    private static final class NonBciEdge {
+
         final int startId;
         final int endId;
 
-        private Edge(int startId, int endId) {
+        private NonBciEdge(int startId, int endId) {
             this.startId = startId;
             this.endId = endId;
         }
     }
 
+    private static final class BciEdge {
+        final int startId;
+        final BciEndEdge endEdge;
+
+        private BciEdge(int startId, BciEndEdge endEdge) {
+            this.startId = startId;
+            this.endEdge = endEdge;
+        }
+    }
+
+    private static final class BciEndEdge {
+        final int id;
+        final List<Integer> bytecodeIndexes;
+
+        private BciEndEdge(int id, List<Integer> bytecodeIndexes) {
+            this.id = id;
+            this.bytecodeIndexes = bytecodeIndexes;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            BciEndEdge endEdge = (BciEndEdge) o;
+            return id == endEdge.id &&
+                    bytecodeIndexes.equals(endEdge.bytecodeIndexes);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(id, bytecodeIndexes);
+        }
+    }
+
     private static final class VirtualInvokeId {
+
         final String methodInfo;
         final List<Integer> bytecodeIndexes;
 
