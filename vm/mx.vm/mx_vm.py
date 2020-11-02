@@ -103,6 +103,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 ))
 
 
+polybench_benchmark_methods = ["_run"]
+
+
 # pylint: disable=line-too-long
 ce_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'js', 'lg', 'lsp', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']
 ce_complete_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'gwa', 'ins', 'insight', 'js', 'lg', 'llp', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']
@@ -166,6 +169,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     output_base = self.get_output_base()
                     return GraalVmWasmSourceFileTask(self, args, output_base)
 
+                def isBenchmarkProject(self):
+                    return self.name.startswith("benchmarks.")
+
             class GraalVmWasmSourceFileTask(mx_wasm.GraalWasmSourceFileTask):
                 def needsBuild(self, newestInput):
                     is_needed, reason = super(GraalVmWasmSourceFileTask, self).needsBuild(newestInput)
@@ -176,6 +182,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         if not os.path.exists(f):
                             return True, "symlink '{}' does not exist".format(f)
                         return False, ''
+
+                def benchmark_methods(self):
+                    return polybench_benchmark_methods
 
                 def build(self):
                     super(GraalVmWasmSourceFileTask, self).build()
