@@ -40,41 +40,44 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNode;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetVirtualMemberPtrNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
-public abstract class LLVMInteropReadMemberNode extends LLVMNode {
-    public abstract Object execute(LLVMPointer receiver, String ident, LLVMInteropType exportType) throws UnsupportedMessageException, UnknownIdentifierException;
+public abstract class LLVMInteropWriteMemberNode extends LLVMNode {
+    public abstract void execute(LLVMPointer receiver, String ident, Object value, LLVMInteropType exportType) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException;
 
     @Specialization
-    public Object doClazzFieldRead(LLVMPointer receiver, String ident, LLVMInteropType.Clazz clazz, @CachedLibrary(limit = "5") InteropLibrary interop,
-                    @Cached LLVMForeignReadNode read, @Cached LLVMForeignGetMemberPointerNode getMemberPtr, @Cached LLVMForeignGetVirtualMemberPtrNode virtualMemberPtr)
-                    throws UnsupportedMessageException, UnknownIdentifierException {
+    public void doClazzFieldRead(LLVMPointer receiver, String ident, Object value, LLVMInteropType.Clazz clazz, @CachedLibrary(limit = "5") InteropLibrary interop,
+                    @Cached LLVMForeignGetVirtualMemberPtrNode virtualMemberPtrNode, @Cached LLVMForeignGetMemberPointerNode getMemberPtr, @Cached LLVMForeignWriteNode write)
+                    throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
         List<Pair<LLVMInteropType.StructMember, LLVMInteropType.ClazzInheritance>> list = clazz.getMemberAccessList(ident);
         if (list != null && list.size() > 0) {
             Object ret = receiver;
             for (Pair<LLVMInteropType.StructMember, LLVMInteropType.ClazzInheritance> p : list) {
                 if (p.getRight().virtual) {
-                    LLVMPointer elemPtr = virtualMemberPtr.execute(receiver, clazz.findMember(ident), LLVMPointer.cast(ret).getExportType());
-                    return read.execute(elemPtr, elemPtr.getExportType());
+                    LLVMPointer elemPtr = virtualMemberPtrNode.execute(LLVMPointer.cast(ret), clazz.findMember(ident), LLVMPointer.cast(ret).getExportType());
+                    write.execute(elemPtr, elemPtr.getExportType(), value);
+                    return;
                 } else {
                     ret = interop.readMember(ret, p.getLeft().name);
                 }
             }
-            return interop.readMember(ret, ident);
+            interop.writeMember(ret, ident, value);
+        } else {
+            doNormal(receiver, ident, value, clazz, getMemberPtr, write);
         }
-        return doNormal(receiver, ident, clazz, getMemberPtr, read);
     }
 
     @Specialization
-    public Object doNormal(LLVMPointer receiver, String ident, LLVMInteropType exportType, @Cached LLVMForeignGetMemberPointerNode getElementPointer,
-                    @Cached LLVMForeignReadNode read) throws UnsupportedMessageException, UnknownIdentifierException {
+    public void doNormal(LLVMPointer receiver, String ident, Object value, LLVMInteropType exportType, @Cached LLVMForeignGetMemberPointerNode getElementPointer,
+                    @Cached LLVMForeignWriteNode write) throws UnsupportedMessageException, UnknownIdentifierException {
         LLVMPointer ptr = getElementPointer.execute(exportType, receiver, ident);
-        return read.execute(ptr, ptr.getExportType());
+        write.execute(ptr, ptr.getExportType(), value);
     }
 }

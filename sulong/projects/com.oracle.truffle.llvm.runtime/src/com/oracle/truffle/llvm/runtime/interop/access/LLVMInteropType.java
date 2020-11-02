@@ -344,18 +344,18 @@ public abstract class LLVMInteropType implements TruffleObject {
             return null;
         }
 
-        public LinkedList<Pair<StructMember, Boolean>> getMemberAccessList(String ident) {
+        public LinkedList<Pair<StructMember, ClazzInheritance>> getMemberAccessList(String ident) {
             for (StructMember member : members) {
                 if (member.name.equals(ident)) {
                     return new LinkedList<>();
                 }
             }
             for (ClazzInheritance ci : superclasses) {
-                LinkedList<Pair<StructMember, Boolean>> list = ci.superClass.getMemberAccessList(ident);
+                LinkedList<Pair<StructMember, ClazzInheritance>> list = ci.superClass.getMemberAccessList(ident);
                 if (list != null) {
                     for (StructMember member : members) {
                         if (member.type.equals(ci.superClass)) {
-                            list.addFirst(Pair.create(member, ci.virtual));
+                            list.addFirst(Pair.create(member, ci));
                             return list;
                         }
                     }

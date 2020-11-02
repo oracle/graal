@@ -28,25 +28,27 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.oracle.truffle.llvm.runtime.interop.access;
+package com.oracle.truffle.llvm.runtime.interop.export;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
-public abstract class LLVMInteropReadVirtualMemberNode extends LLVMNode {
-    public abstract Object execute(LLVMPointer receiver, LLVMInteropType.StructMember structMember, LLVMInteropType type) throws UnsupportedMessageException, UnknownIdentifierException;
+public abstract class LLVMForeignGetVirtualMemberPtrNode extends LLVMNode {
+
+    public abstract LLVMPointer execute(LLVMPointer receiver, LLVMInteropType.StructMember structMember, LLVMInteropType type) throws UnsupportedMessageException, UnknownIdentifierException;
 
     @Specialization
-    public Object doResolving(LLVMPointer receiver, LLVMInteropType.StructMember structMember, LLVMInteropType.Clazz clazz, @CachedLibrary(limit = "5") InteropLibrary interop)
-                    throws UnsupportedMessageException, UnknownIdentifierException {
+    public LLVMPointer doResolve(LLVMPointer receiver, LLVMInteropType.StructMember structMember, LLVMInteropType.Clazz clazz, @CachedLibrary(limit = "5") InteropLibrary interop,
+                    @Cached LLVMForeignReadNode read) throws UnsupportedMessageException, UnknownIdentifierException {
         LLVMInteropType.StructMember vtable = clazz.findMember(0);
         Object o = interop.readMember(receiver, vtable.name);
         while (vtable.type instanceof LLVMInteropType.Clazz) {
@@ -56,18 +58,16 @@ public abstract class LLVMInteropReadVirtualMemberNode extends LLVMNode {
         if (LLVMPointer.isInstance(o)) {
             // long int this_offset = tableAddr[-24 Bytes]
             LLVMPointer thisOffsetElementPtr = LLVMPointer.cast(o).increment(-24);
-            LLVMLoadNode loadThisOffsetNode = insert(LLVMLoadNode.create(LLVMInteropType.ValueKind.I64));
-            Object thisOffsetObj = loadThisOffsetNode.executeWithTarget(thisOffsetElementPtr);
+            Object thisOffsetObj = read.execute(thisOffsetElementPtr, LLVMInteropType.ValueKind.I64.type);
             // void* base = (byte*) &derived + this_offset
             if (thisOffsetObj instanceof Long) {
                 Object basePtr = receiver.increment((long) thisOffsetObj);
-                // return base[fieldOffset]
-                LLVMPointer elemPtr = LLVMPointer.cast(basePtr).increment(structMember.startOffset);
-                LLVMInteropType.ValueKind kind = structMember.type instanceof LLVMInteropType.Value ? ((LLVMInteropType.Value) structMember.type).kind : LLVMInteropType.ValueKind.POINTER;
-                LLVMLoadNode loadFinal = insert(LLVMLoadNode.create(kind));
-                return loadFinal.executeWithTarget(elemPtr);
+                // return &(base[fieldOffset])
+                LLVMPointer elemPtr = LLVMPointer.cast(basePtr).increment(structMember.startOffset).export(structMember.type);
+                return elemPtr;
             }
         }
-        return null;
+        throw UnsupportedMessageException.create();
     }
+
 }
