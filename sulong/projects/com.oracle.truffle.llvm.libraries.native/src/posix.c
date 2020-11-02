@@ -65,7 +65,7 @@
 #define CALL(type, name, ...)                                                                                                                        \
     {                                                                                                                                                \
         fprintf(stderr, "Syscalls (" #name ") not supported on this OS.\n");                                                                         \
-        return (type) -ENOSYS;                                                                                                                              \
+        return (type) -ENOSYS;                                                                                                                       \
     }
 #endif
 
