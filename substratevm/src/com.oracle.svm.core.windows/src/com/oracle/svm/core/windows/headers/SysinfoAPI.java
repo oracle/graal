@@ -30,6 +30,8 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
 import org.graalvm.word.PointerBase;
 
 // Checkstyle: stop
@@ -43,6 +45,10 @@ public class SysinfoAPI {
     /** Return information about the current computer system. */
     @CFunction(transition = NO_TRANSITION)
     public static native void GetSystemInfo(SYSTEM_INFO lpSystemInfo);
+
+    /** Retrieves the path of the system directory.. */
+    @CFunction(transition = NO_TRANSITION)
+    public static native int GetSystemDirectoryW(WCharPointer lpBuffer, int uSize);
 
     /** Structure containing information about the current computer system. */
     @CStruct
@@ -119,6 +125,46 @@ public class SysinfoAPI {
         long ullAvailExtendedVirtual();
     }
 
+    @CStruct
+    public interface OSVERSIONINFOEX extends PointerBase {
+        @CField
+        int dwOSVersionInfoSize();
+
+        @CField
+        void dwOSVersionInfoSize(int value);
+
+        @CField
+        int dwMajorVersion();
+
+        @CField
+        int dwMinorVersion();
+
+        @CField
+        int dwBuildNumber();
+
+        @CField
+        int dwPlatformId();
+
+        @CField
+        CCharPointer szCSDVersion();
+
+        @CField
+        short wServicePackMajor();
+
+        @CField
+        short wServicePackMinor();
+
+        @CField
+        short wSuiteMask();
+
+        @CField
+        byte wProductType();
+
+        @CField
+        byte wReserved();
+    }
+
     @CFunction(transition = NO_TRANSITION)
-    public static native int GetVersion();
+    public static native int GetVersionEx(OSVERSIONINFOEX lpVersionInformation);
+
 }

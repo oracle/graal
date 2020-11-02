@@ -47,6 +47,15 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
     }
 
     @Override
+    protected String osNameValue() {
+        Utsname.utsname name = StackValue.get(Utsname.utsname.class);
+        if (Utsname.uname(name) >= 0) {
+            return CTypeConversion.toJavaString(name.sysname());
+        }
+        return "Unknown";
+    }
+
+    @Override
     protected String osVersionValue() {
         Utsname.utsname name = StackValue.get(Utsname.utsname.class);
         if (Utsname.uname(name) >= 0) {

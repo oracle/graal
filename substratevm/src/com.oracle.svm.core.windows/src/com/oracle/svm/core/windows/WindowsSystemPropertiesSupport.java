@@ -24,21 +24,6 @@
  */
 package com.oracle.svm.core.windows;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
@@ -48,13 +33,37 @@ import com.oracle.svm.core.windows.headers.LibC;
 import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SysinfoAPI;
+import com.oracle.svm.core.windows.headers.VerRsrc;
 import com.oracle.svm.core.windows.headers.WinBase;
+import com.oracle.svm.core.windows.headers.WinVer;
+import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.c.type.VoidPointer;
+import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
+import java.nio.charset.StandardCharsets;
 
 @Platforms(Platform.WINDOWS.class)
 public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 
     /* Null-terminated wide-character string. */
     private static final byte[] USERNAME = "USERNAME\0".getBytes(StandardCharsets.UTF_16LE);
+    private static final byte[] KERNEL_DLL = "\\kernel32.dll\0".getBytes(StandardCharsets.UTF_16LE);
+    private static final byte[] ROOT_PATH = "\\\0".getBytes(StandardCharsets.UTF_16LE);
+
+    private static final int VER_NT_WORKSTATION = 0x0000001;
+    private static final int VER_PLATFORM_WIN32_WINDOWS = 1;
+    private static final int VER_PLATFORM_WIN32_NT = 2;
 
     @Override
     protected String userNameValue() {
@@ -122,13 +131,205 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
         return CTypeConversion.toJavaString((CCharPointer) wcString, SizeOf.unsigned(WCharPointer.class).multiply(length), StandardCharsets.UTF_16LE);
     }
 
+    private Pair<String, String> cachedOsNameAndVersion;
+
+    public Pair<String, String> getOsNameAndVersion() {
+        int majorVersion;
+        int minorVersion;
+        int buildNumber;
+        boolean isWorkstation;
+        boolean is64bit;
+        int platformId;
+
+        /*
+         * Reimplementation of code from java_props_md.c
+         */
+        SysinfoAPI.OSVERSIONINFOEX ver = StackValue.get(SysinfoAPI.OSVERSIONINFOEX.class);
+        ver.dwOSVersionInfoSize(SizeOf.get(SysinfoAPI.OSVERSIONINFOEX.class));
+        SysinfoAPI.GetVersionEx(ver);
+
+        // Since Windows 8.1 we cannot trust this interface to return correct version
+
+        majorVersion = ver.dwMajorVersion();
+        minorVersion = ver.dwMinorVersion();
+        buildNumber = ver.dwBuildNumber();
+
+        isWorkstation = (ver.wProductType() == VER_NT_WORKSTATION);
+        is64bit = true; // ATM we only support 64-bit Windows OS's
+        platformId = ver.dwPlatformId();
+
+        do {
+            LibC.WCharPointer kernel32Path = StackValue.get(WinBase.MAX_PATH, LibC.WCharPointer.class);
+            LibC.WCharPointer kernel32Dll = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(KERNEL_DLL), 0);
+            int len = WinBase.MAX_PATH - (int) LibC.wcslen(kernel32Dll).rawValue() - 1;
+            int ret = SysinfoAPI.GetSystemDirectoryW(kernel32Path, len);
+            if (ret == 0 || ret > len) {
+                break;
+            }
+
+            LibC.wcsncat(kernel32Path, kernel32Dll, WordFactory.unsigned(WinBase.MAX_PATH - ret));
+
+            int versionSize = WinVer.GetFileVersionInfoSizeW(kernel32Path, WordFactory.nullPointer());
+            if (versionSize == 0) {
+                break;
+            }
+
+            VoidPointer versionInfo = LibC.malloc(WordFactory.unsigned(versionSize));
+            if (versionInfo.isNull()) {
+                break;
+            }
+
+            ret = WinVer.GetFileVersionInfoW(kernel32Path, 0, versionSize, versionInfo);
+            if (ret == 0) {
+                LibC.free(versionInfo);
+                break;
+            }
+
+            CIntPointer lengthPointer = StackValue.get(CIntPointer.class);
+            WordPointer fileInfoPointer = StackValue.get(WordPointer.class);
+
+            LibC.WCharPointer rootPath = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(ROOT_PATH), 0);
+            ret = WinVer.VerQueryValueW(versionInfo, rootPath, fileInfoPointer, lengthPointer);
+            if (ret == 0) {
+                LibC.free(versionInfo);
+                break;
+            }
+            VerRsrc.VS_FIXEDFILEINFO fileInfo = fileInfoPointer.read();
+            majorVersion = (short) (fileInfo.dwProductVersionMS() >> 16); // HIWORD
+            minorVersion = (short) fileInfo.dwProductVersionMS(); // LOWORD
+            buildNumber = (short) (fileInfo.dwProductVersionLS() >> 16); // HIWORD
+            LibC.free(versionInfo);
+        } while (false);
+
+        String osVersion = majorVersion + "." + minorVersion;
+        String osName;
+
+        switch (platformId) {
+            case VER_PLATFORM_WIN32_WINDOWS:
+                if (majorVersion == 4) {
+                    switch (minorVersion) {
+                        case 0:
+                            osName = "Windows 95";
+                            break;
+                        case 10:
+                            osName = "Windows 98";
+                            break;
+                        case 90:
+                            osName = "Windows Me";
+                            break;
+                        default:
+                            osName = "Windows 9X (unknown)";
+                            break;
+                    }
+                } else {
+                    osName = "Windows 9X (unknown)";
+                }
+                break;
+            case VER_PLATFORM_WIN32_NT:
+                if (majorVersion <= 4) {
+                    osName = "Windows NT";
+                } else if (majorVersion == 5) {
+                    switch (minorVersion) {
+                        case 0:
+                            osName = "Windows 2000";
+                            break;
+                        case 1:
+                            osName = "Windows XP";
+                            break;
+                        case 2:
+                            if (isWorkstation && is64bit) {
+                                osName = "Windows XP"; /* 64 bit */
+                            } else {
+                                osName = "Windows 2003";
+                            }
+                            break;
+                        default:
+                            osName = "Windows NT (unknown)";
+                            break;
+                    }
+                } else if (majorVersion == 6) {
+                    if (isWorkstation) {
+                        switch (minorVersion) {
+                            case 0:
+                                osName = "Windows Vista";
+                                break;
+                            case 1:
+                                osName = "Windows 7";
+                                break;
+                            case 2:
+                                osName = "Windows 8";
+                                break;
+                            case 3:
+                                osName = "Windows 8.1";
+                                break;
+                            default:
+                                osName = "Windows NT (unknown)";
+                        }
+                    } else {
+                        switch (minorVersion) {
+                            case 0:
+                                osName = "Windows Server 2008";
+                                break;
+                            case 1:
+                                osName = "Windows Server 2008 R2";
+                                break;
+                            case 2:
+                                osName = "Windows Server 2012";
+                                break;
+                            case 3:
+                                osName = "Windows Server 2012 R2";
+                                break;
+                            default:
+                                osName = "Windows NT (unknown)";
+                        }
+                    }
+                } else if (majorVersion == 10) {
+                    if (isWorkstation) {
+                        switch (minorVersion) {
+                            case 0:
+                                osName = "Windows 10";
+                                break;
+                            default:
+                                osName = "Windows NT (unknown)";
+                        }
+                    } else {
+                        switch (minorVersion) {
+                            case 0:
+                                if (buildNumber > 17762) {
+                                    osName = "Windows Server 2019";
+                                } else {
+                                    osName = "Windows Server 2016";
+                                }
+                                break;
+                            default:
+                                osName = "Windows NT (unknown)";
+                        }
+                    }
+                } else {
+                    osName = "Windows NT (unknown)";
+                }
+                break;
+            default:
+                osName = "Windows (unknown)";
+                break;
+        }
+        return Pair.create(osName, osVersion);
+    }
+
+    @Override
+    protected String osNameValue() {
+        if (cachedOsNameAndVersion == null) {
+            cachedOsNameAndVersion = getOsNameAndVersion();
+        }
+        return cachedOsNameAndVersion.getLeft();
+    }
+
     @Override
     protected String osVersionValue() {
-        ByteBuffer versionBytes = ByteBuffer.allocate(4);
-        versionBytes.putInt(SysinfoAPI.GetVersion());
-        int majorVersion = versionBytes.get(3);
-        int minorVersion = versionBytes.get(2);
-        return majorVersion + "." + minorVersion;
+        if (cachedOsNameAndVersion == null) {
+            cachedOsNameAndVersion = getOsNameAndVersion();
+        }
+        return cachedOsNameAndVersion.getRight();
     }
 }
 

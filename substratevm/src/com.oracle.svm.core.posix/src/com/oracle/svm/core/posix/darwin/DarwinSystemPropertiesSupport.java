@@ -25,6 +25,7 @@
 package com.oracle.svm.core.posix.darwin;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -58,6 +59,11 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
              */
             return "/var/tmp";
         }
+    }
+
+    @Override
+    protected String osNameValue() {
+        return Platform.includedIn(Platform.IOS.class) ? "iOS" : "Mac OS X";
     }
 
     private static volatile String osVersionValue = null;
