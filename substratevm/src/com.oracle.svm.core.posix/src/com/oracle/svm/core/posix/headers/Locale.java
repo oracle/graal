@@ -63,32 +63,32 @@ public class Locale {
     public static native int LC_MESSAGES();
 
     @LibC(value = GLibC.class)
-    @Platforms(Platform.LINUX.class)
+    @Platforms(Platform.LINUX_BASE.class)
     @CConstant
     public static native int LC_PAPER();
 
     @LibC(value = GLibC.class)
-    @Platforms(Platform.LINUX.class)
+    @Platforms(Platform.LINUX_BASE.class)
     @CConstant
     public static native int LC_NAME();
 
     @LibC(value = GLibC.class)
-    @Platforms(Platform.LINUX.class)
+    @Platforms(Platform.LINUX_BASE.class)
     @CConstant
     public static native int LC_ADDRESS();
 
     @LibC(value = GLibC.class)
-    @Platforms(Platform.LINUX.class)
+    @Platforms(Platform.LINUX_BASE.class)
     @CConstant
     public static native int LC_TELEPHONE();
 
     @LibC(value = GLibC.class)
-    @Platforms(Platform.LINUX.class)
+    @Platforms(Platform.LINUX_BASE.class)
     @CConstant
     public static native int LC_MEASUREMENT();
 
     @LibC(value = GLibC.class)
-    @Platforms(Platform.LINUX.class)
+    @Platforms(Platform.LINUX_BASE.class)
     @CConstant
     public static native int LC_IDENTIFICATION();
 

@@ -48,7 +48,7 @@ public class LLVMDirectives implements CContext.Directives {
     public List<String> getLibraries() {
         List<String> libraries = new ArrayList<>();
         libraries.add("m");
-        if (Platform.includedIn(Platform.LINUX.class) && LLVMOptions.BitcodeOptimizations.getValue()) {
+        if (Platform.includedIn(Platform.LINUX_BASE.class) && LLVMOptions.BitcodeOptimizations.getValue()) {
             libraries.add("atomic");
         }
         return libraries;

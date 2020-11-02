@@ -83,7 +83,7 @@ public class CSourceCodeWriter {
 
     public void writeCStandardHeaders() {
         if (NativeImageOptions.getCStandard().compatibleWith(C99)) {
-            if (!Platform.includedIn(Platform.WINDOWS.class)) {
+            if (!Platform.includedIn(Platform.WINDOWS_BASE.class)) {
                 /*
                  * CStandard says we are C99 compatible yet we cannot include stdbool.h because old
                  * Windows native compilers do not support it. This should be fixed.

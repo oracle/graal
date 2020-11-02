@@ -50,7 +50,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
  * not open file descriptors that would need to be closed.
  */
 @AutomaticFeature
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 class NativeSecureRandomFilesCloser implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -89,13 +89,13 @@ class NativeSecureRandomFilesCloser implements Feature {
 }
 
 @TargetClass(className = "sun.security.provider.NativePRNG")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 final class Target_sun_security_provider_NativePRNG {
     @Alias static Target_sun_security_provider_NativePRNG_RandomIO INSTANCE;
 }
 
 @TargetClass(className = "sun.security.provider.NativePRNG", innerClass = "RandomIO")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 final class Target_sun_security_provider_NativePRNG_RandomIO {
     @Alias InputStream seedIn;
     @Alias InputStream nextIn;

@@ -39,7 +39,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.WINDOWS;
+import org.graalvm.nativeimage.Platform.WINDOWS_BASE;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -71,7 +71,7 @@ public class VMInspection implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         RuntimeSupport.getRuntimeSupport().addStartupHook(() -> {
             DumpAllStacks.install();
-            if (VMInspectionOptions.AllowVMInspection.getValue() && !Platform.includedIn(WINDOWS.class)) {
+            if (VMInspectionOptions.AllowVMInspection.getValue() && !Platform.includedIn(WINDOWS_BASE.class)) {
                 /* We have enough signals to enable the rest. */
                 DumpHeapReport.install();
                 if (DeoptimizationSupport.enabled()) {
@@ -97,7 +97,7 @@ class VMInspectionOptions {
 
 class DumpAllStacks implements SignalHandler {
     static void install() {
-        Signal.handle(Platform.includedIn(WINDOWS.class) ? new Signal("BREAK") : new Signal("QUIT"), new DumpAllStacks());
+        Signal.handle(Platform.includedIn(Platform.WINDOWS_BASE.class) ? new Signal("BREAK") : new Signal("QUIT"), new DumpAllStacks());
     }
 
     @Override

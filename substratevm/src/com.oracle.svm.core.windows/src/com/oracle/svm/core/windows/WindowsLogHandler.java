@@ -39,7 +39,7 @@ import com.oracle.svm.core.windows.headers.LibC;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 
 @AutomaticFeature
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 class WindowsLogHandlerFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {

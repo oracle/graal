@@ -34,7 +34,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 @TargetClass(java.lang.System.class)
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 final class Target_java_lang_System {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) static volatile Console cons;
@@ -52,7 +52,7 @@ final class Target_java_lang_System {
 }
 
 /** Dummy class to have a class with the file's name. */
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 public final class WindowsJavaLangSubstitutions {
 
     /** Private constructor: No instances. */

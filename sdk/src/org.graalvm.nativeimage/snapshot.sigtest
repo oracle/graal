@@ -228,7 +228,7 @@ CLSS public abstract interface static org.graalvm.nativeimage.Platform$AMD64
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform
 
-CLSS public abstract interface static org.graalvm.nativeimage.Platform$DARWIN
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$DARWIN_BASE
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
 
@@ -236,14 +236,14 @@ CLSS public final static org.graalvm.nativeimage.Platform$DARWIN_AARCH64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AARCH64
-intf org.graalvm.nativeimage.Platform$DARWIN
+intf org.graalvm.nativeimage.Platform$DARWIN_BASE
 supr java.lang.Object
 
 CLSS public static org.graalvm.nativeimage.Platform$DARWIN_AMD64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AMD64
-intf org.graalvm.nativeimage.Platform$DARWIN
+intf org.graalvm.nativeimage.Platform$DARWIN_BASE
 supr java.lang.Object
 
 CLSS public final static org.graalvm.nativeimage.Platform$HOSTED_ONLY
@@ -251,7 +251,7 @@ CLSS public final static org.graalvm.nativeimage.Platform$HOSTED_ONLY
 intf org.graalvm.nativeimage.Platform
 supr java.lang.Object
 
-CLSS public abstract interface static org.graalvm.nativeimage.Platform$LINUX
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$LINUX_BASE
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
 
@@ -259,17 +259,17 @@ CLSS public final static org.graalvm.nativeimage.Platform$LINUX_AARCH64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AARCH64
-intf org.graalvm.nativeimage.Platform$LINUX
+intf org.graalvm.nativeimage.Platform$LINUX_BASE
 supr java.lang.Object
 
 CLSS public static org.graalvm.nativeimage.Platform$LINUX_AMD64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AMD64
-intf org.graalvm.nativeimage.Platform$LINUX
+intf org.graalvm.nativeimage.Platform$LINUX_BASE
 supr java.lang.Object
 
-CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS_BASE
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
 
@@ -277,7 +277,7 @@ CLSS public static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AMD64
-intf org.graalvm.nativeimage.Platform$WINDOWS
+intf org.graalvm.nativeimage.Platform$WINDOWS_BASE
 supr java.lang.Object
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.Platforms

@@ -41,7 +41,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
  * Basic functions from the standard Visual Studio C Run-Time library
  */
 @CContext(WindowsDirectives.class)
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 public class LibC {
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native <T extends PointerBase> T malloc(UnsignedWord size);

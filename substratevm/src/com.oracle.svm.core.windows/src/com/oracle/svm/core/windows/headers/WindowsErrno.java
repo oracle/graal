@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 
 // Checkstyle: stop
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 public class WindowsErrno {
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)

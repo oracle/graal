@@ -84,7 +84,7 @@ final class JLineFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
+        if (Platform.includedIn(Platform.WINDOWS_BASE.class)) {
             Stream.concat(JNI_CLASS_NAMES.stream(), RUNTIME_INIT_CLASS_NAMES.stream())
                             .map(access::findClassByName)
                             .filter(Objects::nonNull)
@@ -99,7 +99,7 @@ final class JLineFeature implements Feature {
                         .toArray();
         access.registerReachabilityHandler(JLineFeature::registerTerminalConstructor, createMethods);
 
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
+        if (Platform.includedIn(Platform.WINDOWS_BASE.class)) {
             /*
              * Each listed class has a native method named "init" that initializes all declared
              * fields of the class using JNI. So when the "init" method gets reachable (which means
@@ -121,7 +121,7 @@ final class JLineFeature implements Feature {
          * implementation class, they also need to provide a reflection configuration for that
          * class.
          */
-        Class<?> terminalClass = access.findClassByName(Platform.includedIn(Platform.WINDOWS.class) ? "jline.AnsiWindowsTerminal" : "jline.UnixTerminal");
+        Class<?> terminalClass = access.findClassByName(Platform.includedIn(Platform.WINDOWS_BASE.class) ? "jline.AnsiWindowsTerminal" : "jline.UnixTerminal");
         if (terminalClass != null) {
             RuntimeReflection.register(terminalClass);
             RuntimeReflection.register(terminalClass.getDeclaredConstructors());

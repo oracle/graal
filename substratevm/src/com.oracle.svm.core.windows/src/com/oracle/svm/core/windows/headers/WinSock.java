@@ -38,7 +38,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 // Checkstyle: stop
 
 @CContext(WindowsDirectives.class)
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 public class WinSock {
 
     /**

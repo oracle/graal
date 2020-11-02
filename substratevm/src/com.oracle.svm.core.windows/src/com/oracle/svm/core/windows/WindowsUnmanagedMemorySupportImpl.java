@@ -65,7 +65,7 @@ class WindowsUnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
 }
 
 @AutomaticFeature
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 class UnmanagedMemoryFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

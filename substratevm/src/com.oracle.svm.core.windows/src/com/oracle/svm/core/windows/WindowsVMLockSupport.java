@@ -59,7 +59,7 @@ import jdk.vm.ci.meta.JavaKind;
  * implemented via Windows locking primitives.
  */
 @AutomaticFeature
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 final class WindowsVMLockFeature implements Feature {
 
     private final ClassInstanceReplacer<VMMutex, WindowsVMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, WindowsVMMutex>(VMMutex.class) {

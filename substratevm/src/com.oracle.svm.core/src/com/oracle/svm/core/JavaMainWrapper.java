@@ -183,7 +183,7 @@ public class JavaMainWrapper {
     }
 
     private static boolean isArgumentBlockSupported() {
-        if (!Platform.includedIn(Platform.LINUX.class) && !Platform.includedIn(Platform.DARWIN.class)) {
+        if (!Platform.includedIn(Platform.LINUX_BASE.class) && !Platform.includedIn(Platform.DARWIN_BASE.class)) {
             return false;
         }
         CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();

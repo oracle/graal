@@ -293,7 +293,7 @@ public final class NativeLibraries {
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             Path staticLibPath = baseSearchPath.resolve("static");
             Path platformDependentPath = staticLibPath.resolve((ImageSingletons.lookup(Platform.class).getOS() + "-" + ImageSingletons.lookup(Platform.class).getArchitecture()).toLowerCase());
-            if (ImageSingletons.lookup(Platform.class) instanceof Platform.LINUX) {
+            if (ImageSingletons.lookup(Platform.class) instanceof Platform.LINUX_BASE) {
                 platformDependentPath = platformDependentPath.resolve(LibCBase.singleton().getName());
                 if (LibCBase.singleton().requiresLibCSpecificStaticJDKLibraries()) {
                     return platformDependentPath;
@@ -341,7 +341,7 @@ public final class NativeLibraries {
                             !CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue()) {
                 /* Fail if we will statically link JDK libraries but do not have them available */
                 String libCMessage = "";
-                if (Platform.includedIn(Platform.LINUX.class)) {
+                if (Platform.includedIn(Platform.LINUX_BASE.class)) {
                     libCMessage = " (target libc: " + LibCBase.singleton().getName() + ")";
                 }
                 String jdkDownloadURL = (JavaVersionUtil.JAVA_SPEC > 8 ? JVMCIVersionCheck.JVMCI11_RELEASES_URL : JVMCIVersionCheck.JVMCI8_RELEASES_URL);

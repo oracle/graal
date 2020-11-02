@@ -52,7 +52,7 @@ import com.oracle.svm.truffle.nfi.TruffleNFISupport;
 import com.oracle.truffle.api.CompilerDirectives;
 
 @AutomaticFeature
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 public final class PosixTruffleNFIFeature implements Feature {
 
     @Override
@@ -69,7 +69,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     static int isolatedNamespaceFlag = ISOLATED_NAMESPACE_NOT_SUPPORTED_FLAG;
 
     static void initialize() {
-        if (Platform.includedIn(Platform.LINUX.class)) {
+        if (Platform.includedIn(Platform.LINUX_BASE.class)) {
             isolatedNamespaceFlag = LibCBase.singleton().hasIsolatedNamespaces() ? ISOLATED_NAMESPACE_FLAG : ISOLATED_NAMESPACE_NOT_SUPPORTED_FLAG;
         }
         ImageSingletons.add(TruffleNFISupport.class, new PosixTruffleNFISupport());
@@ -80,10 +80,10 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     }
 
     private static String getErrnoGetterFunctionName() {
-        if (Platform.includedIn(Platform.LINUX.class)) {
+        if (Platform.includedIn(Platform.LINUX_BASE.class)) {
             return "__errno_location";
         }
-        if (Platform.includedIn(Platform.DARWIN.class)) {
+        if (Platform.includedIn(Platform.DARWIN_BASE.class)) {
             return "__error";
         }
         throw VMError.unsupportedFeature("unsupported platform for TruffleNFIFeature");
@@ -144,7 +144,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     @Override
     protected long loadLibraryImpl(long nativeContext, String name, int flags) {
         PointerBase handle;
-        if (Platform.includedIn(Platform.LINUX.class) && LibCBase.targetLibCIs(GLibC.class) && (flags & isolatedNamespaceFlag) != 0) {
+        if (Platform.includedIn(Platform.LINUX_BASE.class) && LibCBase.targetLibCIs(GLibC.class) && (flags & isolatedNamespaceFlag) != 0) {
             handle = loadLibraryInNamespace(nativeContext, name, flags & ~isolatedNamespaceFlag);
         } else {
             handle = PosixUtils.dlopen(name, flags);

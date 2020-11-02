@@ -23,7 +23,7 @@
  * questions.
  */
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 package com.oracle.svm.core.posix;
 
 import org.graalvm.nativeimage.Platform;

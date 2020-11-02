@@ -38,7 +38,7 @@ import org.graalvm.word.PointerBase;
  * Definitions for Windows syncapi.h header file
  */
 @CContext(WindowsDirectives.class)
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 public class SynchAPI {
 
     @CFunction

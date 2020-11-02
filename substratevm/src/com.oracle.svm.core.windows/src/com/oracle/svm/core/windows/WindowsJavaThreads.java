@@ -61,7 +61,7 @@ import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 public final class WindowsJavaThreads extends JavaThreads {
     @Platforms(HOSTED_ONLY.class)
     WindowsJavaThreads() {
@@ -148,7 +148,7 @@ public final class WindowsJavaThreads extends JavaThreads {
     }
 }
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 class WindowsParkEvent extends ParkEvent {
 
     /**
@@ -203,7 +203,7 @@ class WindowsParkEvent extends ParkEvent {
     }
 }
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 class WindowsParkEventFactory implements ParkEventFactory {
     @Override
     public ParkEvent create() {
@@ -212,7 +212,7 @@ class WindowsParkEventFactory implements ParkEventFactory {
 }
 
 @AutomaticFeature
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 class WindowsThreadsFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

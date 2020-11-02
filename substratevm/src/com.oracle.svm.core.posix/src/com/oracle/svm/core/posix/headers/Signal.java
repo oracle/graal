@@ -94,7 +94,7 @@ public class Signal {
     public interface siginfo_t extends PointerBase {
     }
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms(Platform.LINUX_BASE.class)
     @CPointerTo(nameOfCType = "long long int")
     public interface GregsPointer extends PointerBase {
         long read(int index);
@@ -143,11 +143,11 @@ public class Signal {
         mcontext_t uc_mcontext();
 
         @CField("uc_mcontext")
-        @Platforms({Platform.DARWIN.class})
+        @Platforms({Platform.DARWIN_BASE.class})
         MContext64 uc_mcontext64();
     }
 
-    @Platforms({Platform.DARWIN.class})
+    @Platforms({Platform.DARWIN_BASE.class})
     @CStruct(value = "__darwin_mcontext64", addStructKeyword = true)
     public interface MContext64 extends PointerBase {
 
@@ -298,7 +298,7 @@ public class Signal {
         public native int getCValue();
     }
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms(Platform.LINUX_BASE.class)
     @CEnum
     @CContext(PosixDirectives.class)
     public enum LinuxSignalEnum {
@@ -309,7 +309,7 @@ public class Signal {
         public native int getCValue();
     }
 
-    @Platforms(Platform.DARWIN.class)
+    @Platforms(Platform.DARWIN_BASE.class)
     @CEnum
     @CContext(PosixDirectives.class)
     public enum DarwinSignalEnum {

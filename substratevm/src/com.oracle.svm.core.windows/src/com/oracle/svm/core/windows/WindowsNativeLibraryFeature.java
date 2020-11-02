@@ -50,7 +50,7 @@ import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 import com.oracle.svm.core.windows.headers.WinSock;
 
 @AutomaticFeature
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 class WindowsNativeLibraryFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -183,7 +183,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
 }
 
 @TargetClass(className = "java.io.WinNTFileSystem")
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 final class Target_java_io_WinNTFileSystem {
     @Alias
     static native void initIDs();

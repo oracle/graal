@@ -135,7 +135,7 @@ final class Target_java_io_FileOutputStream_JNI {
     static native void initIDs();
 }
 
-@Platforms({Platform.DARWIN.class, Platform.LINUX.class})
+@Platforms({Platform.DARWIN_BASE.class, Platform.LINUX_BASE.class})
 @CLibrary("z")
 class ZLib {
 }

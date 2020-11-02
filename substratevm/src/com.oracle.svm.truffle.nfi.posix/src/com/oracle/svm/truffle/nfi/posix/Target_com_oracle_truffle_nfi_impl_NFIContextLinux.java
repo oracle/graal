@@ -32,7 +32,7 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.truffle.nfi.TruffleNFIFeature;
 
-@Platforms(Platform.LINUX.class)
+@Platforms(Platform.LINUX_BASE.class)
 @TargetClass(className = "com.oracle.truffle.nfi.impl.NFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_impl_NFIContextLinux {
 

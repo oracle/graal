@@ -158,7 +158,7 @@ public class CAnnotationProcessor {
         Path binary = tempDirectory.resolve(compilerInvoker.asExecutableName(fileName.substring(0, fileName.lastIndexOf("."))));
         ArrayList<String> options = new ArrayList<>();
         options.addAll(codeCtx.getDirectives().getOptions());
-        if (Platform.includedIn(Platform.LINUX.class)) {
+        if (Platform.includedIn(Platform.LINUX_BASE.class)) {
             options.addAll(LibCBase.singleton().getAdditionalQueryCodeCompilerOptions());
         }
         compilerInvoker.compileAndParseError(SubstrateOptions.StrictQueryCodeCompilation.getValue(), options, queryFile, binary, this::reportCompilerError);

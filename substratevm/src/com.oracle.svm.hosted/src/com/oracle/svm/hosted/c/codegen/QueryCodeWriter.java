@@ -70,7 +70,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     public QueryCodeWriter(Path tempDirectory) {
         writer = new CSourceCodeWriter(tempDirectory);
         elementForLineNumber = new ArrayList<>();
-        isWindows = Platform.includedIn(Platform.WINDOWS.class);
+        isWindows = Platform.includedIn(Platform.WINDOWS_BASE.class);
 
         String formatL64 = "%" + (isWindows ? "ll" : "l");
         formatSInt64 = formatL64 + "d";

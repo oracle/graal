@@ -34,7 +34,7 @@ import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.truffle.nfi.TruffleNFIFeature;
 
 @TargetClass(className = "com.oracle.truffle.nfi.impl.NFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 final class Target_com_oracle_truffle_nfi_impl_NFIContextPosix {
 
     // Checkstyle: stop

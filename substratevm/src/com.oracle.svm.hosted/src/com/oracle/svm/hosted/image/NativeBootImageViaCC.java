@@ -83,7 +83,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
          * The Darwin linker sometimes segfaults when option -dead_strip is used. Thus, Linux is the
          * only platform were RemoveUnusedSymbols can be safely enabled per default.
          */
-        return Platform.includedIn(Platform.LINUX.class);
+        return Platform.includedIn(Platform.LINUX_BASE.class);
     }
 
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
@@ -232,7 +232,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                     throw UserError.abort("%s does not support building static executable images.", OS.getCurrent().name());
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
-                    if (Platform.includedIn(Platform.DARWIN.class)) {
+                    if (Platform.includedIn(Platform.DARWIN_BASE.class)) {
                         cmd.add("-undefined");
                         cmd.add("dynamic_lookup");
                     }

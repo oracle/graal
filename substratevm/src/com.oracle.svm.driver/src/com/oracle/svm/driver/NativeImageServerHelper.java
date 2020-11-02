@@ -37,13 +37,13 @@ import org.graalvm.nativeimage.c.function.CFunction;
 public class NativeImageServerHelper {
     @Fold
     public static boolean isInConfiguration() {
-        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
+        return Platform.includedIn(Platform.LINUX_BASE.class) || Platform.includedIn(Platform.DARWIN_BASE.class);
     }
 
     /*
      * Ensures started server keeps running even after native-image completes.
      */
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
     static int daemonize(Runnable runnable) {
         int pid = Unistd.fork();
         switch (pid) {
@@ -62,7 +62,7 @@ public class NativeImageServerHelper {
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 class UnistdDirectives implements CContext.Directives {
     @Override
     public boolean isInConfiguration() {
@@ -80,7 +80,7 @@ class UnistdDirectives implements CContext.Directives {
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 @CContext(UnistdDirectives.class)
 class Unistd {
     /**

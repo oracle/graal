@@ -31,11 +31,11 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 public final class WindowsJavaNIOSubstitutions {
 
     @TargetClass(className = "sun.nio.fs.Cancellable")
-    @Platforms({Platform.WINDOWS.class})
+    @Platforms({Platform.WINDOWS_BASE.class})
     static final class Target_sun_nio_fs_Cancellable {
         @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Manual)//
         private long pollingAddress;

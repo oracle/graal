@@ -65,7 +65,7 @@ public class PolyglotNativeAPIFeature implements Feature {
                 throw new RuntimeException(e);
             }
         });
-        if (Platform.includedIn(Platform.DARWIN.class)) {
+        if (Platform.includedIn(Platform.DARWIN_BASE.class)) {
             // on Darwin, change the `id` install name
             String id = System.getProperty("org.graalvm.polyglot.install_name_id");
             if (id == null) {

@@ -51,7 +51,7 @@ public class Jvm {
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native int JVM_ActiveProcessorCount();
 
-    @Platforms(Platform.WINDOWS.class)
+    @Platforms(Platform.WINDOWS_BASE.class)
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native VoidPointer JVM_RegisterSignal(int sig, VoidPointer handler);
 }

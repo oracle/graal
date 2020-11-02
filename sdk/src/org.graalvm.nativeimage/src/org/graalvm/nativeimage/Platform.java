@@ -137,6 +137,33 @@ public interface Platform {
     }
 
     /*
+     * Operating system bases.
+     */
+    /**
+     * Interface encapsulating all linux-derived operating systems.
+     *
+     * @since 20.3
+     */
+    interface LINUX_BASE extends InternalPlatform.PLATFORM_JNI {
+    }
+
+    /**
+     * Interface encapsulating all darwin-derived operating systems.
+     *
+     * @since 20.3
+     */
+    interface DARWIN_BASE extends InternalPlatform.PLATFORM_JNI {
+    }
+
+    /**
+     * Interface encapsulating all windows-derived operating systems.
+     *
+     * @since 20.3
+     */
+    interface WINDOWS_BASE extends InternalPlatform.PLATFORM_JNI {
+    }
+
+    /*
      * The standard operating systems that are supported.
      */
     /**
@@ -144,7 +171,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    interface LINUX extends InternalPlatform.PLATFORM_JNI {
+    interface LINUX extends LINUX_BASE {
         default String getOS() {
             return "linux";
         }
@@ -155,7 +182,7 @@ public interface Platform {
      *
      * @since 20.3
      */
-    interface ANDROID extends LINUX {
+    interface ANDROID extends LINUX_BASE {
         default String getOS() {
             return "android";
         }
@@ -166,7 +193,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    interface DARWIN extends InternalPlatform.PLATFORM_JNI {
+    interface DARWIN extends DARWIN_BASE {
         default String getOS() {
             return "darwin";
         }
@@ -177,7 +204,7 @@ public interface Platform {
      *
      * @since 20.3
      */
-    interface IOS extends DARWIN {
+    interface IOS extends DARWIN_BASE {
         default String getOS() {
             return "ios";
         }
@@ -188,7 +215,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    interface WINDOWS extends InternalPlatform.PLATFORM_JNI {
+    interface WINDOWS extends WINDOWS_BASE {
         default String getOS() {
             return "windows";
         }
@@ -202,7 +229,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    class LINUX_AMD64 implements LINUX, AMD64 {
+    class LINUX_AMD64 implements LINUX_BASE, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -219,7 +246,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    final class LINUX_AARCH64 implements LINUX, AARCH64 {
+    final class LINUX_AARCH64 implements LINUX_BASE, AARCH64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -253,7 +280,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    final class DARWIN_AMD64 implements DARWIN, AMD64 {
+    final class DARWIN_AMD64 implements DARWIN_BASE, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -269,7 +296,7 @@ public interface Platform {
      *
      * @since 2.0
      */
-    final class DARWIN_AARCH64 implements DARWIN, AARCH64 {
+    final class DARWIN_AARCH64 implements DARWIN_BASE, AARCH64 {
 
         /**
          * Instantiates a marker instance of this platform.

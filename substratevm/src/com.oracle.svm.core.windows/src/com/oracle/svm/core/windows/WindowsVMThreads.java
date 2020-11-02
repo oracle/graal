@@ -95,7 +95,7 @@ public final class WindowsVMThreads extends VMThreads {
 }
 
 @AutomaticFeature
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 class WindowsVMThreadsFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

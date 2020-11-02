@@ -175,7 +175,7 @@ final class Target_jdk_internal_jrtfs_JrtFileSystemProvider {
  * approach is implemented here.
  */
 @TargetClass(className = "sun.nio.fs.UnixFileSystem")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 final class Target_sun_nio_fs_UnixFileSystem {
 
     @Alias //
@@ -221,12 +221,12 @@ final class Target_sun_nio_fs_UnixFileSystem {
 }
 
 @TargetClass(className = "sun.nio.fs.UnixFileSystemProvider")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 final class Target_sun_nio_fs_UnixFileSystemProvider {
 }
 
 @TargetClass(className = "sun.nio.fs.UnixPath")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 final class Target_sun_nio_fs_UnixPath {
 }
 
@@ -245,7 +245,7 @@ class NeedsReinitializationProvider implements RecomputeFieldValue.CustomFieldVa
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 class UnixFileSystemAccessors {
 
     /*
@@ -329,7 +329,7 @@ class UnixFileSystemAccessors {
  */
 
 @TargetClass(className = "sun.nio.fs.WindowsFileSystem")
-@Platforms({Platform.WINDOWS.class})
+@Platforms({Platform.WINDOWS_BASE.class})
 final class Target_sun_nio_fs_WindowsFileSystem {
 
     @Alias //
@@ -354,11 +354,11 @@ final class Target_sun_nio_fs_WindowsFileSystem {
 }
 
 @TargetClass(className = "sun.nio.fs.WindowsFileSystemProvider")
-@Platforms({Platform.WINDOWS.class})
+@Platforms({Platform.WINDOWS_BASE.class})
 final class Target_sun_nio_fs_WindowsFileSystemProvider {
 }
 
-@Platforms({Platform.WINDOWS.class})
+@Platforms({Platform.WINDOWS_BASE.class})
 class WindowsFileSystemAccessors {
     static String getDefaultDirectory(Target_sun_nio_fs_WindowsFileSystem that) {
         if (that.needsReinitialization != NeedsReinitializationProvider.STATUS_REINITIALIZED) {
@@ -399,7 +399,7 @@ class WindowsFileSystemAccessors {
 }
 
 @TargetClass(className = "java.io.UnixFileSystem")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 final class Target_java_io_UnixFileSystem {
 
     @Alias @InjectAccessors(UserDirAccessors.class) //
@@ -431,7 +431,7 @@ final class Target_java_io_FileSystem {
      * Linux/MacOS only: disable the usage of the javaHomePrefixCache. On Windows, the prefix cache
      * is not specific to the Java home directory and therefore can remain enabled.
      */
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class}) //
+    @Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class}) //
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
     static boolean useCanonPrefixCache = false;
 
@@ -446,14 +446,14 @@ class UserDirAccessors {
          * Note that on Windows, we normalize the property value (JDK-8198997) and do not use the
          * `StaticProperty.userDir()` like the rest (JDK-8066709).
          */
-        return Platform.includedIn(Platform.WINDOWS.class)
+        return Platform.includedIn(Platform.WINDOWS_BASE.class)
                         ? that.normalize(System.getProperty("user.dir"))
                         : ImageSingletons.lookup(SystemPropertiesSupport.class).userDir();
     }
 }
 
 @TargetClass(className = "java.io.WinNTFileSystem")
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 final class Target_java_io_WinNTFileSystem {
 
     @Alias @InjectAccessors(UserDirAccessors.class) //

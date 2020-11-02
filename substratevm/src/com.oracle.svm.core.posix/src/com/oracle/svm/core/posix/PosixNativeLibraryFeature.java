@@ -81,7 +81,7 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
             Resource.rlimit rlp = StackValue.get(Resource.rlimit.class);
             if (Resource.getrlimit(Resource.RLIMIT_NOFILE(), rlp) == 0) {
                 UnsignedWord newValue = rlp.rlim_max();
-                if (Platform.includedIn(Platform.DARWIN.class)) {
+                if (Platform.includedIn(Platform.DARWIN_BASE.class)) {
                     // On Darwin, getrlimit may return RLIM_INFINITY for rlim_max, but then OPEN_MAX
                     // must be used for setrlimit or it will fail with errno EINVAL.
                     newValue = WordFactory.unsigned(DarwinSyslimits.OPEN_MAX());
@@ -178,8 +178,8 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         private boolean doLoad() {
             // Make sure the jvm.lib is available for linking
             // Need a better place to put this.
-            if (Platform.includedIn(Platform.LINUX.class) ||
-                            Platform.includedIn(Platform.DARWIN.class)) {
+            if (Platform.includedIn(Platform.LINUX_BASE.class) ||
+                            Platform.includedIn(Platform.DARWIN_BASE.class)) {
                 Jvm.initialize();
             }
 

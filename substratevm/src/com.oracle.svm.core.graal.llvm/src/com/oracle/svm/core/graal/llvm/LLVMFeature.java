@@ -72,7 +72,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
  * from Graal graphs, and compile this bitcode into machine code.
  */
 @AutomaticFeature
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX_BASE.class, Platform.DARWIN_BASE.class})
 public class LLVMFeature implements Feature, GraalFeature {
 
     @Override

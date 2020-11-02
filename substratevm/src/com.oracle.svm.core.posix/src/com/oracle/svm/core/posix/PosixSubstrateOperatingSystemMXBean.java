@@ -91,10 +91,10 @@ class PosixSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean
     }
 
     private static int fstat(int fd) {
-        if (Platform.includedIn(Platform.LINUX.class)) {
+        if (Platform.includedIn(Platform.LINUX_BASE.class)) {
             LinuxStat.stat64 stat = StackValue.get(LinuxStat.stat64.class);
             return LinuxStat.fstat64(fd, stat);
-        } else if (Platform.includedIn(Platform.DARWIN.class)) {
+        } else if (Platform.includedIn(Platform.DARWIN_BASE.class)) {
             DarwinStat.stat64 stat = StackValue.get(DarwinStat.stat64.class);
             return DarwinStat.fstat64(fd, stat);
         } else {

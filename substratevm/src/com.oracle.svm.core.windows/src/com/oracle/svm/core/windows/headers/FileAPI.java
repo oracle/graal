@@ -44,7 +44,7 @@ import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
  * Definitions manually translated from the Windows header file fileapi.h.
  */
 @CContext(WindowsDirectives.class)
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 public class FileAPI {
 
     @CFunction

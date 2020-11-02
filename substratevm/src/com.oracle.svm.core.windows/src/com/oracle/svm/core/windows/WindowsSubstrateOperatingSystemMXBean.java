@@ -40,7 +40,7 @@ class WindowsSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBe
 
 }
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 @AutomaticFeature
 class WindowsSubstrateOperatingSystemMXBeanFeature implements Feature {
     @Override

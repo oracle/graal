@@ -53,7 +53,7 @@ import org.graalvm.word.WordFactory;
 
 import java.nio.charset.StandardCharsets;
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 
     /* Null-terminated wide-character string. */
@@ -333,7 +333,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
     }
 }
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 @AutomaticFeature
 class WindowsSystemPropertiesFeature implements Feature {
     @Override

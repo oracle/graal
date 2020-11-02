@@ -96,7 +96,7 @@ public class Dlfcn {
     @CFunction
     public static native int dladdr(WordBase address, Dl_info info);
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms(Platform.LINUX_BASE.class)
     @CContext(PosixDirectives.class)
     @CLibrary("dl")
     @LibC(GLibC.class)

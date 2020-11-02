@@ -23,7 +23,7 @@
  * questions.
  */
 
-@Platforms({Platform.DARWIN.class})
+@Platforms({Platform.DARWIN_BASE.class})
 package com.oracle.svm.core.posix.headers.darwin;
 
 import org.graalvm.nativeimage.Platform;

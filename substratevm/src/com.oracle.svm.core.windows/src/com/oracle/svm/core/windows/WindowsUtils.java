@@ -51,7 +51,7 @@ import com.oracle.svm.core.windows.headers.WinBase;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 public class WindowsUtils {
 
     @TargetClass(className = "java.lang.ProcessImpl")

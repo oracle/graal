@@ -94,7 +94,7 @@ public class PosixUtils {
                 return Locale.LC_MESSAGES();
         }
 
-        if (Platform.includedIn(Platform.LINUX.class) && ImageSingletons.lookup(LibCBase.class).getClass().equals(GLibC.class)) {
+        if (Platform.includedIn(Platform.LINUX_BASE.class) && ImageSingletons.lookup(LibCBase.class).getClass().equals(GLibC.class)) {
             switch (category) {
                 case "LC_PAPER":
                     return Locale.LC_PAPER();

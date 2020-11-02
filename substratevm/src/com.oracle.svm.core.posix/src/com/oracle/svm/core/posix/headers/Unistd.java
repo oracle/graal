@@ -75,11 +75,11 @@ public class Unistd {
     public static native int _SC_PAGE_SIZE();
 
     @CConstant
-    @Platforms(Platform.LINUX.class)
+    @Platforms(Platform.LINUX_BASE.class)
     public static native int _SC_PHYS_PAGES();
 
     @CConstant
-    @Platforms(Platform.DARWIN.class)
+    @Platforms(Platform.DARWIN_BASE.class)
     public static native int _CS_DARWIN_USER_TEMP_DIR();
 
     @CFunction

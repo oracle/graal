@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.util.VMError;
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 public class WindowsDirectives implements CContext.Directives {
 
     private static final String[] windowsLibs = new String[]{
@@ -49,12 +49,12 @@ public class WindowsDirectives implements CContext.Directives {
 
     @Override
     public boolean isInConfiguration() {
-        return Platform.includedIn(Platform.WINDOWS.class);
+        return Platform.includedIn(Platform.WINDOWS_BASE.class);
     }
 
     @Override
     public List<String> getHeaderFiles() {
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
+        if (Platform.includedIn(Platform.WINDOWS_BASE.class)) {
             List<String> result = new ArrayList<>(Arrays.asList(windowsLibs));
             return result;
         } else {

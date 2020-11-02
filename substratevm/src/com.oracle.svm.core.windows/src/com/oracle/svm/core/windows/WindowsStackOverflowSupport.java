@@ -38,7 +38,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.windows.headers.MemoryAPI;
 
-@Platforms({Platform.WINDOWS.class})
+@Platforms({Platform.WINDOWS_BASE.class})
 class WindowsStackOverflowSupport implements StackOverflowCheck.OSSupport {
 
     @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
@@ -57,7 +57,7 @@ class WindowsStackOverflowSupport implements StackOverflowCheck.OSSupport {
     }
 }
 
-@Platforms({Platform.WINDOWS.class})
+@Platforms({Platform.WINDOWS_BASE.class})
 @AutomaticFeature
 class WindowsStackOverflowSupportFeature implements Feature {
     @Override

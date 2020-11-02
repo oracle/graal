@@ -117,7 +117,7 @@ public class Containers {
         int cpuCount = Jvm.JVM_ActiveProcessorCount();
 
         int limitCount = cpuCount;
-        if (UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class)) {
+        if (UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX_BASE.class)) {
             ContainerInfo info = new ContainerInfo();
             if (info.isContainerized()) {
                 long quota = info.getCpuQuota();
@@ -198,7 +198,7 @@ final class ContainerInfo {
 }
 
 @AutomaticFeature
-@Platforms(Platform.LINUX.class)
+@Platforms(Platform.LINUX_BASE.class)
 class ContainersFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

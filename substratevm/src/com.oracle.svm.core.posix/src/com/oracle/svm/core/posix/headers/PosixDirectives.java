@@ -69,15 +69,15 @@ public class PosixDirectives implements CContext.Directives {
 
     @Override
     public boolean isInConfiguration() {
-        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
+        return Platform.includedIn(Platform.LINUX_BASE.class) || Platform.includedIn(Platform.DARWIN_BASE.class);
     }
 
     @Override
     public List<String> getHeaderFiles() {
         List<String> result = new ArrayList<>(Arrays.asList(commonLibs));
-        if (Platform.includedIn(Platform.LINUX.class)) {
+        if (Platform.includedIn(Platform.LINUX_BASE.class)) {
             result.addAll(Arrays.asList(linuxLibs));
-        } else if (Platform.includedIn(Platform.DARWIN.class)) {
+        } else if (Platform.includedIn(Platform.DARWIN_BASE.class)) {
             result.addAll(Arrays.asList(darwinLibs));
         } else {
             throw VMError.shouldNotReachHere("Unsupported OS");
@@ -87,7 +87,7 @@ public class PosixDirectives implements CContext.Directives {
 
     @Override
     public List<String> getOptions() {
-        if (Platform.includedIn(Platform.DARWIN.class)) {
+        if (Platform.includedIn(Platform.DARWIN_BASE.class)) {
             return Collections.singletonList("-ObjC");
         }
         return Collections.emptyList();
