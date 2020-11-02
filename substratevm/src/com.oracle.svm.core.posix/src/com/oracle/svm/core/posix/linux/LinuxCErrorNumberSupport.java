@@ -26,7 +26,9 @@ package com.oracle.svm.core.posix.linux;
 
 import com.oracle.svm.core.CErrorNumber.CErrorNumberSupport;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.libc.LibC;
 import com.oracle.svm.core.posix.headers.linux.LinuxErrno;
+import com.oracle.svm.core.posix.linux.libc.BionicLibC;
 
 class LinuxCErrorNumberSupport implements CErrorNumberSupport {
 
@@ -40,5 +42,21 @@ class LinuxCErrorNumberSupport implements CErrorNumberSupport {
     @Override
     public void setCErrorNumber(int value) {
         LinuxErrno.__errno_location().write(value);
+    }
+}
+
+@LibC(BionicLibC.class)
+class BionicCErrorNumberSupport extends LinuxCErrorNumberSupport {
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public int getCErrorNumber() {
+        return LinuxErrno.__errno().read();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public void setCErrorNumber(int value) {
+        LinuxErrno.__errno().write(value);
     }
 }

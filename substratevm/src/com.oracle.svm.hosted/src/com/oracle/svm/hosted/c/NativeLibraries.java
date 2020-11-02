@@ -292,9 +292,8 @@ public final class NativeLibraries {
         Path baseSearchPath = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             Path staticLibPath = baseSearchPath.resolve("static");
-            SubstrateTargetDescription target = ConfigurationValues.getTarget();
-            Path platformDependentPath = staticLibPath.resolve((OS.getCurrent().className + "-" + target.arch.getName()).toLowerCase());
-            if (OS.getCurrent() == OS.LINUX) {
+            Path platformDependentPath = staticLibPath.resolve((ImageSingletons.lookup(Platform.class).getOS() + "-" + ImageSingletons.lookup(Platform.class).getArchitecture()).toLowerCase());
+            if (ImageSingletons.lookup(Platform.class) instanceof Platform.LINUX) {
                 platformDependentPath = platformDependentPath.resolve(LibCBase.singleton().getName());
                 if (LibCBase.singleton().requiresLibCSpecificStaticJDKLibraries()) {
                     return platformDependentPath;
@@ -323,7 +322,8 @@ public final class NativeLibraries {
             if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibrary)) {
                 staticLibsDir = jdkLibDir;
             } else {
-                hint = defaultBuiltInLibraries.stream().filter(hasStaticLibrary.negate()).collect(Collectors.joining(", ", "Missing libraries:", ""));
+                String libraryLocationHint = System.lineSeparator() + "(search path: " + jdkLibDir + ")";
+                hint = defaultBuiltInLibraries.stream().filter(hasStaticLibrary.negate()).collect(Collectors.joining(", ", "Missing libraries: ", libraryLocationHint));
             }
         } catch (IOException e) {
             /* Fallthrough to next strategy */
@@ -342,7 +342,7 @@ public final class NativeLibraries {
                 /* Fail if we will statically link JDK libraries but do not have them available */
                 String libCMessage = "";
                 if (Platform.includedIn(Platform.LINUX.class)) {
-                    libCMessage = "(target libc: " + LibCBase.singleton().getName() + ")";
+                    libCMessage = " (target libc: " + LibCBase.singleton().getName() + ")";
                 }
                 String jdkDownloadURL = (JavaVersionUtil.JAVA_SPEC > 8 ? JVMCIVersionCheck.JVMCI11_RELEASES_URL : JVMCIVersionCheck.JVMCI8_RELEASES_URL);
                 UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),

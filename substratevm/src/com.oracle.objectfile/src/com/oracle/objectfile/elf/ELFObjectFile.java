@@ -52,6 +52,8 @@ import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 import com.oracle.objectfile.elf.dwarf.DwarfStrSectionImpl;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
 /**
  * Represents an ELF object file (of any kind: relocatable, shared library, executable, core, ...).
@@ -102,7 +104,8 @@ public class ELFObjectFile extends ObjectFile {
     }
 
     public ELFObjectFile(int pageSize, boolean runtimeDebugInfoGeneration) {
-        this(pageSize, System.getProperty("svm.targetArch") == null ? ELFMachine.getSystemNativeValue() : ELFMachine.from(System.getProperty("svm.targetArch")), runtimeDebugInfoGeneration);
+        this(pageSize, System.getProperty("svm.targetArch") == null ? ELFMachine.from(ImageSingletons.lookup(Platform.class).getArchitecture()) : ELFMachine.from(System.getProperty("svm.targetArch")),
+                        runtimeDebugInfoGeneration);
     }
 
     @Override

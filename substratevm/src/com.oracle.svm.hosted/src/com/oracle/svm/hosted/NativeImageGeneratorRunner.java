@@ -169,7 +169,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
          */
         NativeImageGenerator.setSystemPropertiesForImageEarly();
 
-        return new ImageClassLoader(NativeImageGenerator.defaultPlatform(nativeImageClassLoader), nativeImageClassLoaderSupport);
+        return new ImageClassLoader(NativeImageGenerator.getTargetPlatform(nativeImageClassLoader), nativeImageClassLoaderSupport);
     }
 
     public static String[] extractImagePathEntries(List<String> arguments, String pathPrefix) {

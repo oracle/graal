@@ -52,6 +52,8 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SymbolTable;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
 /**
  * Models a Mach-O relocatable object file.
@@ -80,7 +82,7 @@ public final class MachOObjectFile extends ObjectFile {
      * Create an empty Mach-O object file.
      */
     public MachOObjectFile(int pageSize) {
-        this(pageSize, MachOCpuType.from(System.getProperty("svm.targetArch") == null ? System.getProperty("os.arch") : System.getProperty("svm.targetArch")));
+        this(pageSize, MachOCpuType.from(System.getProperty("svm.targetArch") == null ? ImageSingletons.lookup(Platform.class).getArchitecture() : System.getProperty("svm.targetArch")));
     }
 
     public MachOObjectFile(int pageSize, MachOCpuType cpuType) {

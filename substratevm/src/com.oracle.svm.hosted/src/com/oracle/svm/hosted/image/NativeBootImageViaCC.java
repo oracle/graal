@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
@@ -333,6 +334,10 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 break;
         }
 
+        if (SubstrateOptions.AdditionalLinkerOptions.hasBeenSet()) {
+            inv.additionalPreOptions.add(SubstrateOptions.AdditionalLinkerOptions.getValue());
+        }
+
         Path outputFile = outputDirectory.resolve(imageName + getBootImageKind().getFilenameSuffix());
         UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
         inv.setOutputFile(outputFile);
@@ -349,6 +354,10 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         }
 
         for (String library : nativeLibs.getLibraries()) {
+            if (ImageSingletons.lookup(Platform.class) instanceof Platform.ANDROID &&
+                            (library.equals("pthread") || library.equals("rt"))) {
+                continue;
+            }
             inv.addLinkedLibrary(library);
         }
 
