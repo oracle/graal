@@ -43,6 +43,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets implements Snippets {
@@ -93,7 +94,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
 
         Word base = cardTableAddress().add(ptr.unsignedShiftRight(cardTableShift()));
         if (verifyOnly) {
-            byte cardValue = base.readByte(0, GC_CARD_LOCATION);
+            byte cardValue = base.readByte(0, LocationIdentity.any());
             AssertionNode.dynamicAssert(cardValue == dirtyCardValue(), "card must be dirty");
         } else {
             base.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);

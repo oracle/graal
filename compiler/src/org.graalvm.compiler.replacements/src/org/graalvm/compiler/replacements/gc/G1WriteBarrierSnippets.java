@@ -72,15 +72,18 @@ import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Implementation of the write barriers for the G1 garbage collector.
+ *
+ * Whenever we are reading from location that the GC might modify at a safepoint, we use
+ * {@link LocationIdentity#any()} to prevent the read elimination from removing the read. Otherwise,
+ * it could happen that the application tries to reuse a previously read value that was invalidated
+ * by the GC in the meanwhile.
+ */
 public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implements Snippets {
 
     public static final LocationIdentity GC_LOG_LOCATION = NamedLocationIdentity.mutable("GC-Log");
     public static final LocationIdentity GC_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Index");
-    public static final LocationIdentity SATB_QUEUE_MARKING_LOCATION = NamedLocationIdentity.mutable("GC-Queue-Marking");
-    public static final LocationIdentity SATB_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Queue-Index");
-    public static final LocationIdentity SATB_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GC-Queue-Buffer");
-    public static final LocationIdentity CARD_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Index");
-    public static final LocationIdentity CARD_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Buffer");
 
     public static class Counters {
         Counters(SnippetCounter.Group.Factory factory) {
@@ -131,13 +134,13 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         Word thread = getThread();
         verifyOop(object);
         Word field = Word.fromAddress(address);
-        byte markingValue = thread.readByte(satbQueueMarkingOffset(), SATB_QUEUE_MARKING_LOCATION);
+        byte markingValue = thread.readByte(satbQueueMarkingOffset(), LocationIdentity.any());
 
         boolean trace = isTracingActive(traceStartCycle);
         int gcCycle = 0;
         if (trace) {
             Pointer gcTotalCollectionsAddress = WordFactory.pointer(gcTotalCollectionsAddress());
-            gcCycle = (int) gcTotalCollectionsAddress.readLong(0);
+            gcCycle = (int) gcTotalCollectionsAddress.readLong(0, LocationIdentity.any());
             log(trace, "[%d] G1-Pre Thread %p Object %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(object).rawValue());
             log(trace, "[%d] G1-Pre Thread %p Expected Object %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(expectedObject).rawValue());
             log(trace, "[%d] G1-Pre Thread %p Field %p\n", gcCycle, thread.rawValue(), field.rawValue());
@@ -152,7 +155,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             // The load is always issued except the cases of CAS and referent field.
             Object previousObject;
             if (doLoad) {
-                previousObject = field.readObject(0, BarrierType.NONE);
+                previousObject = field.readObject(0, BarrierType.NONE, LocationIdentity.any());
                 if (trace) {
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(previousObject).rawValue());
                     verifyOop(previousObject);
@@ -172,9 +175,9 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                     // If the thread-local SATB buffer is full issue a native call which will
                     // initialize a new one and add the entry.
                     Word indexAddress = thread.add(satbQueueIndexOffset());
-                    Word indexValue = indexAddress.readWord(0, SATB_QUEUE_INDEX_LOCATION);
+                    Word indexValue = indexAddress.readWord(0, LocationIdentity.any());
                     if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
-                        Word bufferAddress = thread.readWord(satbQueueBufferOffset(), SATB_QUEUE_BUFFER_LOCATION);
+                        Word bufferAddress = thread.readWord(satbQueueBufferOffset(), LocationIdentity.any());
                         Word nextIndex = indexValue.subtract(wordSize());
                         Word logAddress = bufferAddress.add(nextIndex);
                         // Log the object to be marked as well as update the SATB's buffer next
@@ -213,7 +216,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         int gcCycle = 0;
         if (trace) {
             Pointer gcTotalCollectionsAddress = WordFactory.pointer(gcTotalCollectionsAddress());
-            gcCycle = (int) gcTotalCollectionsAddress.readLong(0);
+            gcCycle = (int) gcTotalCollectionsAddress.readLong(0, LocationIdentity.any());
             log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(object).rawValue());
             log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), oop.rawValue());
         }
@@ -232,13 +235,13 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                 // thread local card queue.
                 Word cardAddress = cardTableAddress(oop);
 
-                byte cardByte = cardAddress.readByte(0, GC_CARD_LOCATION);
+                byte cardByte = cardAddress.readByte(0, LocationIdentity.any());
                 counters.g1EffectiveAfterNullPostWriteBarrierCounter.inc();
 
                 // If the card is already dirty, (hence already enqueued) skip the insertion.
                 if (probability(NOT_FREQUENT_PROBABILITY, cardByte != youngCardValue())) {
                     MembarNode.memoryBarrier(STORE_LOAD, GC_CARD_LOCATION);
-                    byte cardByteReload = cardAddress.readByte(0, GC_CARD_LOCATION);
+                    byte cardByteReload = cardAddress.readByte(0, LocationIdentity.any());
                     if (probability(NOT_FREQUENT_PROBABILITY, cardByteReload != dirtyCardValue())) {
                         log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), WordFactory.unsigned((int) cardByte).rawValue());
                         cardAddress.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);
@@ -246,9 +249,9 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
                         // If the thread local card queue is full, issue a native call which will
                         // initialize a new one and add the card entry.
-                        Word indexValue = thread.readWord(cardQueueIndexOffset(), CARD_QUEUE_INDEX_LOCATION);
+                        Word indexValue = thread.readWord(cardQueueIndexOffset(), LocationIdentity.any());
                         if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
-                            Word bufferAddress = thread.readWord(cardQueueBufferOffset(), CARD_QUEUE_BUFFER_LOCATION);
+                            Word bufferAddress = thread.readWord(cardQueueBufferOffset(), LocationIdentity.any());
                             Word nextIndex = indexValue.subtract(wordSize());
                             Word logAddress = bufferAddress.add(nextIndex);
                             Word indexAddress = thread.add(cardQueueIndexOffset());
@@ -268,21 +271,21 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     @Snippet
     public void g1ArrayRangePreWriteBarrier(Address address, int length, @ConstantParameter int elementStride) {
         Word thread = getThread();
-        byte markingValue = thread.readByte(satbQueueMarkingOffset(), SATB_QUEUE_MARKING_LOCATION);
+        byte markingValue = thread.readByte(satbQueueMarkingOffset(), LocationIdentity.any());
         // If the concurrent marker is not enabled or the vector length is zero, return.
         if (probability(FREQUENT_PROBABILITY, markingValue == (byte) 0 || length == 0)) {
             return;
         }
 
-        Word bufferAddress = thread.readWord(satbQueueBufferOffset(), SATB_QUEUE_BUFFER_LOCATION);
+        Word bufferAddress = thread.readWord(satbQueueBufferOffset(), LocationIdentity.any());
         Word indexAddress = thread.add(satbQueueIndexOffset());
-        long indexValue = indexAddress.readWord(0, SATB_QUEUE_INDEX_LOCATION).rawValue();
+        long indexValue = indexAddress.readWord(0, LocationIdentity.any()).rawValue();
         int scale = objectArrayIndexScale();
         Word start = getPointerToFirstArrayElement(address, length, elementStride);
 
         for (int i = 0; i < length; i++) {
             Word arrElemPtr = start.add(i * scale);
-            Object previousObject = arrElemPtr.readObject(0, BarrierType.NONE);
+            Object previousObject = arrElemPtr.readObject(0, BarrierType.NONE, LocationIdentity.any());
             verifyOop(previousObject);
             if (probability(FREQUENT_PROBABILITY, previousObject != null)) {
                 if (probability(FREQUENT_PROBABILITY, indexValue != 0)) {
@@ -306,20 +309,20 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         }
 
         Word thread = getThread();
-        Word bufferAddress = thread.readWord(cardQueueBufferOffset(), CARD_QUEUE_BUFFER_LOCATION);
+        Word bufferAddress = thread.readWord(cardQueueBufferOffset(), LocationIdentity.any());
         Word indexAddress = thread.add(cardQueueIndexOffset());
-        long indexValue = thread.readWord(cardQueueIndexOffset(), CARD_QUEUE_INDEX_LOCATION).rawValue();
+        long indexValue = thread.readWord(cardQueueIndexOffset(), LocationIdentity.any()).rawValue();
 
         Word start = cardTableAddress(getPointerToFirstArrayElement(address, length, elementStride));
         Word end = cardTableAddress(getPointerToLastArrayElement(address, length, elementStride));
 
         Word cur = start;
         do {
-            byte cardByte = cur.readByte(0, GC_CARD_LOCATION);
+            byte cardByte = cur.readByte(0, LocationIdentity.any());
             // If the card is already dirty, (hence already enqueued) skip the insertion.
             if (probability(NOT_FREQUENT_PROBABILITY, cardByte != youngCardValue())) {
                 MembarNode.memoryBarrier(STORE_LOAD, GC_CARD_LOCATION);
-                byte cardByteReload = cur.readByte(0, GC_CARD_LOCATION);
+                byte cardByteReload = cur.readByte(0, LocationIdentity.any());
                 if (probability(NOT_FREQUENT_PROBABILITY, cardByteReload != dirtyCardValue())) {
                     cur.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);
                     // If the thread local card queue is full, issue a native call which will
