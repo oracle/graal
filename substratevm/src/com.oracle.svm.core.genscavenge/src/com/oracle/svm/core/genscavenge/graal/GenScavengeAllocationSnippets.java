@@ -62,9 +62,9 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 
 final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     private static final SubstrateForeignCallDescriptor SLOW_NEW_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewInstance", true,
-                    SubstrateAllocationSnippets.TLAB_TOP_IDENTITY, SubstrateAllocationSnippets.TLAB_END_IDENTITY);
+                    SubstrateAllocationSnippets.ALLOCATION_KILLED_LOCATION_IDENTITIES);
     private static final SubstrateForeignCallDescriptor SLOW_NEW_ARRAY = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewArray", true,
-                    SubstrateAllocationSnippets.TLAB_TOP_IDENTITY, SubstrateAllocationSnippets.TLAB_END_IDENTITY);
+                    SubstrateAllocationSnippets.ALLOCATION_KILLED_LOCATION_IDENTITIES);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{SLOW_NEW_INSTANCE, SLOW_NEW_ARRAY};
 
     public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {

@@ -48,6 +48,7 @@ import org.graalvm.compiler.replacements.Snippets;
 
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -57,7 +58,8 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 
 public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor ARRAYS_COPY_OF = SnippetRuntime.findForeignCall(SubstrateArraysCopyOfSnippets.class, "doArraysCopyOf", true);
+    private static final SubstrateForeignCallDescriptor ARRAYS_COPY_OF = SnippetRuntime.findForeignCall(SubstrateArraysCopyOfSnippets.class, "doArraysCopyOf", true,
+                    SubstrateAllocationSnippets.ALLOCATION_KILLED_LOCATION_IDENTITIES);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{ARRAYS_COPY_OF};
 
     public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
@@ -110,7 +112,7 @@ public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates impl
     }
 
     protected class ArraysCopyOfLowering implements NodeLoweringProvider<SubstrateArraysCopyOfNode> {
-        private final SnippetInfo arraysCopyOf = snippet(SubstrateArraysCopyOfSnippets.class, "arraysCopyOfSnippet");
+        private final SnippetInfo arraysCopyOf = snippet(SubstrateArraysCopyOfSnippets.class, "arraysCopyOfSnippet", SubstrateAllocationSnippets.ALLOCATION_LOCATIONS);
 
         @Override
         public void lower(SubstrateArraysCopyOfNode node, LoweringTool tool) {
