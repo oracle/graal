@@ -44,9 +44,9 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
         this.context = context;
     }
 
-    @Specialization(guards = "isPrimitive(k)")
-    protected boolean typeCheckPrimitive(Klass typeToCheck, Klass k) {
-        return k == typeToCheck;
+    @Specialization(guards = "typeToCheck == k")
+    protected boolean typeCheckEquals(Klass typeToCheck, Klass k) {
+        return true;
     }
 
     @Specialization(guards = "isJLObject(typeToCheck)")
@@ -59,12 +59,27 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
         return typeToCheck == k;
     }
 
-    @Specialization(replaces = {"typeCheckPrimitive", "typeCheckJLObject", "typeCheckFinal"}, guards = {"typeToCheck == cachedTTC", "k == cachedKlass"}, limit = "LIMIT")
+    @Specialization(replaces = {"typeCheckEquals", "typeCheckJLObject", "typeCheckFinal"}, guards = {"typeToCheck == cachedTTC", "k == cachedKlass"}, limit = "LIMIT")
     protected boolean typeCheckCached(Klass typeToCheck, Klass k,
                     @Cached("typeToCheck") Klass cachedTTC,
                     @Cached("k") Klass cachedKlass,
                     @Cached("doTypeCheck(typeToCheck, k)") boolean result) {
         return result;
+    }
+
+    @Specialization(replaces = "typeCheckCached", guards = "typeToCheck == k")
+    protected boolean typeCheckEqualsAfterCache(Klass typeToCheck, Klass k) {
+        return true;
+    }
+
+    @Specialization(replaces = "typeCheckCached", guards = "isJLObject(typeToCheck)")
+    protected boolean typeCheckJLObjectAfterCache(Klass typeToCheck, Klass k) {
+        return true;
+    }
+
+    @Specialization(replaces = "typeCheckCached", guards = "isFinal(typeToCheck)")
+    protected boolean typeCheckFinalAfterCache(ObjectKlass typeToCheck, Klass k) {
+        return typeToCheck == k;
     }
 
     @Specialization(replaces = "typeCheckCached", guards = "arraySameDim(typeToCheck, k)")
@@ -110,10 +125,6 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
         return typeToCheck.isAssignableFrom(k);
     }
 
-    protected TypeCheckNode createChild() {
-        return TypeCheckNodeGen.create(context);
-    }
-
     protected boolean arraySameDim(ArrayKlass k1, ArrayKlass k2) {
         return k1.getDimension() == k2.getDimension();
     }
@@ -124,6 +135,10 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
 
     protected boolean isInterface(Klass k) {
         return k.isInterface();
+    }
+
+    protected TypeCheckNode createChild() {
+        return TypeCheckNodeGen.create(context);
     }
 
     @Override
