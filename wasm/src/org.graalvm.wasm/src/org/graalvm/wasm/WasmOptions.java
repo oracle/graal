@@ -49,7 +49,7 @@ import org.graalvm.options.OptionType;
 @Option.Group("wasm")
 public class WasmOptions {
     @Option(help = "A comma-separated list of builtin modules to use: <linking-name>:<builtin-module-name>.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
-    public static final OptionKey<String> Builtins = new OptionKey<>("");
+    public static final OptionKey<String> Builtins = new OptionKey<>("wasi_snapshot_preview1");
 
     @Option(help = "The minimal binary size for which to use async parsing.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
     public static final OptionKey<Integer> AsyncParsingBinarySize = new OptionKey<>(100_000);
