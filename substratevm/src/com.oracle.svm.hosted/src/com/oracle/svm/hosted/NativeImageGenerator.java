@@ -45,6 +45,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -332,6 +333,16 @@ public class NativeImageGenerator {
         return (Platform) result;
     }
 
+    public static Platform loadPlatform(String os, String arch) {
+        ServiceLoader<Platform> loader = ServiceLoader.load(Platform.class);
+        for (Platform platform : loader) {
+            if (platform.getOS().equals(os) && platform.getArchitecture().equals(arch)) {
+                return platform;
+            }
+        }
+        throw UserError.abort("Platform specified as " + os + "-" + arch + " isn't supported.");
+    }
+
     public static Platform getTargetPlatform(ClassLoader classLoader) {
         /*
          * We cannot use a regular hosted option for the platform class: The code that instantiates
@@ -360,13 +371,7 @@ public class NativeImageGenerator {
             arch = SubstrateUtil.getArchitectureName();
         }
 
-        platformClassName = "org.graalvm.nativeimage.Platform$" + os.toUpperCase() + "_" + arch.toUpperCase();
-        try {
-            return loadPlatform(classLoader, platformClassName);
-        } catch (ClassNotFoundException ex) {
-            throw UserError.abort("Platform specified as " + os + "-" + arch +
-                            " isn't supported.");
-        }
+        return loadPlatform(os, arch);
     }
 
     /**

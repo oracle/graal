@@ -93,7 +93,7 @@ public interface Platform {
      * @since 21.0
      */
     default String getOS() {
-        throw new UnsupportedOperationException("Platform doesn't implement getOS");
+        throw new UnsupportedOperationException("Platform `" + this.getClass().getCanonicalName() + "`, doesn't implement getOS");
     }
 
     /**
@@ -106,7 +106,7 @@ public interface Platform {
      * @since 21.0
      */
     default String getArchitecture() {
-        throw new UnsupportedOperationException("Platform doesn't implement getArchitecture");
+        throw new UnsupportedOperationException("Platform `" + this.getClass().getCanonicalName() + "`, doesn't implement getArchitecture");
     }
 
     /*
