@@ -231,7 +231,7 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         if (this.hasUsages() && !this.stamp(NodeView.DEFAULT).isEmpty() && !(other instanceof PhiNode) && other != null) {
             Stamp thisStamp = stamp(NodeView.DEFAULT);
             Stamp otherStamp = ((ValueNode) other).stamp(NodeView.DEFAULT);
-            assert otherStamp.getClass() == thisStamp.getClass() : "stamp have to be of same class";
+            assert thisStamp.isCompatible(otherStamp) : "stamp have to be compatible";
             boolean morePrecise = otherStamp.join(thisStamp).equals(otherStamp);
             assert morePrecise : "stamp can only get more precise " + toString(Verbosity.All) + " " +
                             other.toString(Verbosity.All);
