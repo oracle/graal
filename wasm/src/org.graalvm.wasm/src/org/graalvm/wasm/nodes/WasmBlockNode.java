@@ -1952,10 +1952,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 i32_shr_u(frame, stackPointer);
                 break;
             case I32_ROTL:
-                i32_rotl(frame,  stackPointer);
+                i32_rotl(frame, stackPointer);
                 break;
             case I32_ROTR:
-                i32_rotr(frame,  stackPointer);
+                i32_rotr(frame, stackPointer);
                 break;
             case I64_ADD:
                 i64_add(frame, stackPointer);
@@ -2060,6 +2060,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         int y = popInt(frame, stackPointer - 2);
         pushInt(frame, stackPointer - 2, y != x ? 1 : 0);
     }
+
     private void i32_lt_s(VirtualFrame frame, int stackPointer) {
         int x = popInt(frame, stackPointer - 1);
         int y = popInt(frame, stackPointer - 2);
@@ -2790,7 +2791,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         int condition = popInt(frame, stackPointer);
         return condition != 0;
     }
-
 
     @TruffleBoundary
     public void resolveCallNode(int childOffset) {
