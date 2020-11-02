@@ -75,11 +75,13 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -784,19 +786,19 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         abstract Object execute(PolyglotLanguageContext context, Object receiver);
 
         @Specialization(guards = "receiver == null")
-        static Object doNull(PolyglotLanguageContext context, @SuppressWarnings("unused") Object receiver) {
-            return context.toGuestValue(receiver);
+        Object doNull(PolyglotLanguageContext context, @SuppressWarnings("unused") Object receiver) {
+            return context.toGuestValue(this, receiver);
         }
 
         @Specialization(guards = {"receiver != null", "receiver.getClass() == cachedReceiver"}, limit = "3")
-        static Object doCached(PolyglotLanguageContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
-            return context.toGuestValue(cachedReceiver.cast(receiver));
+        Object doCached(PolyglotLanguageContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
+            return context.toGuestValue(this, cachedReceiver.cast(receiver));
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
-        static Object doUncached(PolyglotLanguageContext context, Object receiver) {
-            return context.toGuestValue(receiver);
+        Object doUncached(PolyglotLanguageContext context, Object receiver) {
+            return context.toGuestValue(this, receiver);
         }
     }
 
@@ -820,7 +822,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     synchronized PolyglotValue lookupValueCache(Object guestValue) {
-        assert toGuestValue(guestValue) == guestValue : "Not a valid guest value: " + guestValue + ". Only interop values are allowed to be exported.";
+        assert toGuestValue(null, guestValue) == guestValue : "Not a valid guest value: " + guestValue + ". Only interop values are allowed to be exported.";
         Object prev = context.engine.enterIfNeeded(context);
         try {
             PolyglotValue cache = lazy.valueCache.computeIfAbsent(guestValue.getClass(), new Function<Class<?>, PolyglotValue>() {
@@ -899,15 +901,14 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return HostObject.forClass(receiver, this);
     }
 
-    Object toGuestValue(Object hostValue) {
+    Object toGuestValue(Node parentNode, Object hostValue) {
         if (hostValue instanceof Value) {
             Value receiverValue = (Value) hostValue;
             PolyglotValue valueImpl = (PolyglotValue) getAPIAccess().getImpl(receiverValue);
             PolyglotContextImpl valueContext = valueImpl.languageContext != null ? valueImpl.languageContext.context : null;
             Object valueReceiver = getAPIAccess().getReceiver(receiverValue);
             if (valueContext != this.context) {
-
-                valueReceiver = migrateValue(valueReceiver, valueContext);
+                valueReceiver = migrateValue(parentNode, valueReceiver, valueContext);
             }
             return valueReceiver;
         } else if (PolyglotImpl.isGuestPrimitive(hostValue)) {
@@ -923,13 +924,22 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         } else if (hostValue.getClass().isArray()) {
             return HostObject.forObject(hostValue, this);
         } else if (HostWrapper.isInstance(hostValue)) {
-            return migrateHostWrapper(HostWrapper.asInstance(hostValue));
+            return migrateHostWrapper(parentNode, HostWrapper.asInstance(hostValue));
         } else {
             return HostInteropReflect.asTruffleViaReflection(hostValue, this);
         }
     }
 
-    private Object migrateValue(Object value, PolyglotContextImpl valueContext) {
+    @SuppressWarnings("serial")
+    static final class ValueMigrationException extends AbstractTruffleException {
+
+        ValueMigrationException(String message, Node location) {
+            super(message, location);
+        }
+
+    }
+
+    private Object migrateValue(Node parentNode, Object value, PolyglotContextImpl valueContext) {
         // migration of guest primitives is already handled.
         if (PolyglotImpl.isGuestPrimitive(value)) {
             // allowed to be passed freely
@@ -947,18 +957,22 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             return value;
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw PolyglotEngineException.illegalArgument(String.format("The value '%s' cannot be passed from one context to another. " +
+            Node nodeContext = parentNode;
+            if (nodeContext == null || nodeContext.getRootNode() == null) {
+                nodeContext = EncapsulatingNodeReference.getCurrent().get();
+            }
+            throw new ValueMigrationException(String.format("The value '%s' cannot be passed from one context to another. " +
                             "The current context is 0x%x and the argument value originates from context 0x%x.",
-                            PolyglotValue.getValueInfo(null, value), context.hashCode(), valueContext.hashCode()));
+                            PolyglotValue.getValueInfo(null, value), context.hashCode(), valueContext.hashCode()), nodeContext);
         }
     }
 
-    private Object migrateHostWrapper(HostWrapper wrapper) {
+    private Object migrateHostWrapper(Node parentNode, HostWrapper wrapper) {
         Object wrapped = wrapper.getGuestObject();
         PolyglotContextImpl valueContext = wrapper.getContext();
         if (valueContext != this.context) {
             // migrate wrapped value to the context
-            wrapped = migrateValue(wrapped, valueContext);
+            wrapped = migrateValue(parentNode, wrapped, valueContext);
         }
         return wrapped;
     }
