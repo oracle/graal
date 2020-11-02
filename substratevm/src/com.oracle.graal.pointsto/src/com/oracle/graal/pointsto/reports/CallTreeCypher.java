@@ -61,7 +61,7 @@ public class CallTreeCypher {
     private static void printAll(Map<AnalysisMethod, MethodNode> methodToNode, PrintWriter writer) {
         Set<MethodNode> entryNodes = new HashSet<>();
         Set<MethodNode> nonVirtualNodes = new HashSet<>();
-        Map<VirtualInvokeId, Integer> virtualNodes = new HashMap<>();
+        Map<String, Integer> virtualNodes = new HashMap<>();
 
         Map<Integer, Set<BciEndEdge>> directEdges = new HashMap<>();
         Map<Integer, Set<BciEndEdge>> virtualEdges = new HashMap<>();
@@ -84,7 +84,7 @@ public class CallTreeCypher {
         printNonBciEdges(overridenByEdges, writer);
     }
 
-    private static void walkNodes(MethodNode methodNode, Map<Integer, Set<BciEndEdge>> directEdges, Map<Integer, Set<BciEndEdge>> virtualEdges, Map<Integer, Set<Integer>> overridenByEdges, Map<VirtualInvokeId, Integer> virtualNodes, Set<MethodNode> nonVirtualNodes) {
+    private static void walkNodes(MethodNode methodNode, Map<Integer, Set<BciEndEdge>> directEdges, Map<Integer, Set<BciEndEdge>> virtualEdges, Map<Integer, Set<Integer>> overridenByEdges, Map<String, Integer> virtualNodes, Set<MethodNode> nonVirtualNodes) {
         for (InvokeNode invoke : methodNode.invokes) {
             if (invoke.isDirectInvoke) {
                 if (invoke.callees.size() > 0) {
@@ -128,12 +128,9 @@ public class CallTreeCypher {
                 ":commit\n\n";
     }
 
-    private static int addVirtualNode(InvokeNode node, Map<VirtualInvokeId, Integer> virtualNodes) {
+    private static int addVirtualNode(InvokeNode node, Map<String, Integer> virtualNodes) {
         final String methodInfo = node.targetMethod.format(METHOD_INFO_FORMAT);
-        final List<Integer> bytecodeIndexes = bytecodeIndexes(node);
-
-        final VirtualInvokeId id = new VirtualInvokeId(methodInfo, bytecodeIndexes);
-        return virtualNodes.computeIfAbsent(id, k -> CallTreeCypher.virtualNodeId.getAndIncrement());
+        return virtualNodes.computeIfAbsent(methodInfo, k -> CallTreeCypher.virtualNodeId.getAndIncrement());
     }
 
     private static void addVirtualMethodEdge(int startId, InvokeNode invoke, int endId, Map<Integer, Set<BciEndEdge>> edges) {
@@ -156,12 +153,12 @@ public class CallTreeCypher {
                 .collect(Collectors.toList());
     }
 
-    private static void printVirtualNodes(Map<VirtualInvokeId, Integer> virtualNodes, PrintWriter writer) {
-        final Collection<List<Map.Entry<VirtualInvokeId, Integer>>> virtualNodesBatches = batched(virtualNodes.entrySet());
+    private static void printVirtualNodes(Map<String, Integer> virtualNodes, PrintWriter writer) {
+        final Collection<List<Map.Entry<String, Integer>>> virtualNodesBatches = batched(virtualNodes.entrySet());
         final String snippet = snippetMethod();
         final String script = virtualNodesBatches.stream()
                 .map(virtualNodesBatch -> virtualNodesBatch.stream()
-                        .map(virtualNode -> String.format("{_id:%d, %s}", virtualNode.getValue(), asProperties(virtualNode.getKey().methodInfo)))
+                        .map(virtualNode -> String.format("{_id:%d, %s}", virtualNode.getValue(), asProperties(virtualNode.getKey())))
                         .collect(Collectors.joining(", ", ":param rows => [", "]"))
                 )
                 .collect(Collectors.joining(snippet, "", snippet));
@@ -308,31 +305,6 @@ public class CallTreeCypher {
         @Override
         public int hashCode() {
             return Objects.hash(id, bytecodeIndexes);
-        }
-    }
-
-    private static final class VirtualInvokeId {
-
-        final String methodInfo;
-        final List<Integer> bytecodeIndexes;
-
-        private VirtualInvokeId(String methodInfo, List<Integer> bytecodeIndexes) {
-            this.methodInfo = methodInfo;
-            this.bytecodeIndexes = bytecodeIndexes;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            VirtualInvokeId that = (VirtualInvokeId) o;
-            return methodInfo.equals(that.methodInfo) &&
-                    bytecodeIndexes.equals(that.bytecodeIndexes);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(methodInfo, bytecodeIndexes);
         }
     }
 }
