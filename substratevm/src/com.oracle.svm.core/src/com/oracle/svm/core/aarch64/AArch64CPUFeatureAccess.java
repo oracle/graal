@@ -54,6 +54,43 @@ class AArch64CPUFeatureAccessFeature implements Feature {
 }
 
 public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
+
+    /**
+     * Determines whether a given JVMCI AArch64.CPUFeature is present on the current hardware.
+     * Because the CPUFeatures available vary across different JDK versions, the features are
+     * queried via their name, as opposed to the actual enum.
+     */
+    private static boolean isFeaturePresent(String featureName, AArch64LibCHelper.CPUFeatures cpuFeatures) {
+        switch (featureName) {
+            case "FP":
+                return cpuFeatures.fFP();
+            case "ASIMD":
+                return cpuFeatures.fASIMD();
+            case "EVTSTRM":
+                return cpuFeatures.fEVTSTRM();
+            case "AES":
+                return cpuFeatures.fAES();
+            case "PMULL":
+                return cpuFeatures.fPMULL();
+            case "SHA1":
+                return cpuFeatures.fSHA1();
+            case "SHA2":
+                return cpuFeatures.fSHA2();
+            case "CRC32":
+                return cpuFeatures.fCRC32();
+            case "LSE":
+                return cpuFeatures.fLSE();
+            case "STXR_PREFETCH":
+                return cpuFeatures.fSTXRPREFETCH();
+            case "A53MAC":
+                return cpuFeatures.fA53MAC();
+            case "DMB_ATOMICS":
+                return cpuFeatures.fDMBATOMICS();
+            default:
+                throw VMError.shouldNotReachHere("Missing feature check: " + featureName);
+        }
+    }
+
     @Platforms(Platform.AARCH64.class)
     public static EnumSet<AArch64.CPUFeature> determineHostCPUFeatures() {
         EnumSet<AArch64.CPUFeature> features = EnumSet.noneOf(AArch64.CPUFeature.class);
@@ -64,44 +101,9 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
 
         AArch64LibCHelper.determineCPUFeatures(cpuFeatures);
 
-        if (cpuFeatures.fFP()) {
-            features.add(AArch64.CPUFeature.FP);
-        }
-        if (cpuFeatures.fASIMD()) {
-            features.add(AArch64.CPUFeature.ASIMD);
-        }
-        if (cpuFeatures.fEVTSTRM()) {
-            features.add(AArch64.CPUFeature.EVTSTRM);
-        }
-        if (cpuFeatures.fAES()) {
-            features.add(AArch64.CPUFeature.AES);
-        }
-        if (cpuFeatures.fPMULL()) {
-            features.add(AArch64.CPUFeature.PMULL);
-        }
-        if (cpuFeatures.fSHA1()) {
-            features.add(AArch64.CPUFeature.SHA1);
-        }
-        if (cpuFeatures.fSHA2()) {
-            features.add(AArch64.CPUFeature.SHA2);
-        }
-        if (cpuFeatures.fCRC32()) {
-            features.add(AArch64.CPUFeature.CRC32);
-        }
-        if (cpuFeatures.fLSE()) {
-            features.add(AArch64.CPUFeature.LSE);
-        }
-        if (cpuFeatures.fSTXRPREFETCH()) {
-            features.add(AArch64.CPUFeature.STXR_PREFETCH);
-        }
-        if (cpuFeatures.fA53MAC()) {
-            features.add(AArch64.CPUFeature.A53MAC);
-        }
-        if (cpuFeatures.fDMBATOMICS()) {
-            try {
-                features.add(AArch64.CPUFeature.valueOf("DMB_ATOMICS"));
-            } catch (IllegalArgumentException e) {
-                // This JVMCI CPU feature is not available in all JDKs (JDK-8243339)
+        for (AArch64.CPUFeature feature : AArch64.CPUFeature.values()) {
+            if (isFeaturePresent(feature.name(), cpuFeatures)) {
+                features.add(feature);
             }
         }
 
