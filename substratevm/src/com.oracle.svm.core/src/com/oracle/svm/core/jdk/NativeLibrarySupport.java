@@ -136,6 +136,7 @@ public final class NativeLibrarySupport {
         try {
             canonical = asBuiltin ? file.getName() : file.getCanonicalPath();
         } catch (IOException e) {
+            System.err.println("Could not load library:" + e.toString());
             return false;
         }
         return addLibrary(asBuiltin, canonical, true);
