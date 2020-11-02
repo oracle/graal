@@ -41,6 +41,8 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.Pair;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -286,9 +288,9 @@ public abstract class LLVMInteropType implements TruffleObject {
     }
 
     public static final class ClazzInheritance {
-        final Clazz superClass;
-        final long offset;
-        final boolean virtual;
+        public final Clazz superClass;
+        public final long offset;
+        public final boolean virtual;
 
         public ClazzInheritance(Clazz superClass, long offset, boolean virtual) {
             this.superClass = superClass;
@@ -337,6 +339,26 @@ public abstract class LLVMInteropType implements TruffleObject {
                 Method method = ci.superClass.findMethod(memberName);
                 if (method != null) {
                     return method;
+                }
+            }
+            return null;
+        }
+
+        public LinkedList<Pair<StructMember, Boolean>> getMemberAccessList(String ident) {
+            for (StructMember member : members) {
+                if (member.name.equals(ident)) {
+                    return new LinkedList<>();
+                }
+            }
+            for (ClazzInheritance ci : superclasses) {
+                LinkedList<Pair<StructMember, Boolean>> list = ci.superClass.getMemberAccessList(ident);
+                if (list != null) {
+                    for (StructMember member : members) {
+                        if (member.type.equals(ci.superClass)) {
+                            list.addFirst(Pair.create(member, ci.virtual));
+                            return list;
+                        }
+                    }
                 }
             }
             return null;

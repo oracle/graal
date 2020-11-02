@@ -58,6 +58,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropInvokeNode;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropReadMemberNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Clazz;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetIndexPointerNode;
@@ -215,10 +216,8 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static Object readMember(LLVMPointerImpl receiver, String ident,
-                    @Shared("getMember") @Cached LLVMForeignGetMemberPointerNode getElementPointer,
-                    @Exclusive @Cached LLVMForeignReadNode read) throws UnsupportedMessageException, UnknownIdentifierException {
-        LLVMPointer ptr = getElementPointer.execute(receiver.getExportType(), receiver, ident);
-        return read.execute(ptr, ptr.getExportType());
+                    @Cached LLVMInteropReadMemberNode read) throws UnsupportedMessageException, UnknownIdentifierException {
+        return read.execute(receiver, ident, receiver.getExportType());
     }
 
     @ExportMessage
@@ -291,7 +290,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static void writeMember(LLVMPointerImpl receiver, String ident, Object value,
-                    @Shared("getMember") @Cached LLVMForeignGetMemberPointerNode getElementPointer,
+                    @Cached LLVMForeignGetMemberPointerNode getElementPointer,
                     @Exclusive @Cached LLVMForeignWriteNode write) throws UnsupportedMessageException, UnknownIdentifierException {
         LLVMPointer ptr = getElementPointer.execute(receiver.getExportType(), receiver, ident);
         write.execute(ptr, ptr.getExportType(), value);
