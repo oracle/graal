@@ -228,10 +228,6 @@ def _truffle_gate_runner(args, tasks):
         if t: sigtest(['--check', 'binary'])
     with Task('File name length check', tasks) as t:
         if t: check_filename_length([])
-    with Task('Check Copyrights', tasks) as t:
-        if t:
-            if mx.checkcopyrights(['--primary']) != 0:
-                t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
 
 mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 
