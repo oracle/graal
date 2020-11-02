@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.snippets.aarch64;
 
+import static com.oracle.svm.core.snippets.SnippetRuntime.NO_KILLED_LOCATIONS;
+
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
@@ -43,9 +45,8 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.Platform.AARCH64;
-import org.graalvm.word.LocationIdentity;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
@@ -63,7 +64,8 @@ import jdk.vm.ci.meta.JavaKind;
  * AArch64 does not have a remainder operation. We lower it to a stub call.
  */
 final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
-    private static final SubstrateForeignCallDescriptor FMOD = SnippetRuntime.findForeignCall(AArch64ArithmeticSnippets.class, "fmod", true, new LocationIdentity[]{});
+    private static final SubstrateForeignCallDescriptor FMOD = SnippetRuntime.findForeignCall(AArch64ArithmeticSnippets.class, "fmod", true,
+                    NO_KILLED_LOCATIONS);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{FMOD};
 
     public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {

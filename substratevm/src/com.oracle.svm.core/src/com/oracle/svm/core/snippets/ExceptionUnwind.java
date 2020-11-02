@@ -240,7 +240,7 @@ public abstract class ExceptionUnwind {
         }
     }
 
-    @Uninterruptible(reason = "Prevent deotpimization while dispatching to exception handler")
+    @Uninterruptible(reason = "Prevent deoptimization while dispatching to exception handler")
     private static void jumpToHandler(Pointer sp, CodePointer handlerIP, boolean hasCalleeSavedRegisters) {
         Throwable exception = currentException.get();
         currentException.set(null);

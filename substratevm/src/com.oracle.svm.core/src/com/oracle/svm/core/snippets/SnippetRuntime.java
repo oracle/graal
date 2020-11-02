@@ -45,24 +45,25 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SnippetRuntime {
+    public static final LocationIdentity[] NO_KILLED_LOCATIONS = new LocationIdentity[0];
 
     public static final SubstrateForeignCallDescriptor UNSUPPORTED_FEATURE = findForeignCall(SnippetRuntime.class, "unsupportedFeature", true, LocationIdentity.any());
 
     /* Implementation of runtime calls defined in a VM-independent way by Graal. */
-    public static final SubstrateForeignCallDescriptor REGISTER_FINALIZER = findForeignCall(SnippetRuntime.class, "registerFinalizer", true);
+    public static final SubstrateForeignCallDescriptor REGISTER_FINALIZER = findForeignCall(SnippetRuntime.class, "registerFinalizer", true, NO_KILLED_LOCATIONS);
 
     /*
      * Graal-defined math functions where we have optimized machine code sequences: We just register
      * the original Math function as the foreign call. The backend will emit the machine code
      * sequence.
      */
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_SIN = findForeignCall(UnaryOperation.SIN.foreignCallSignature.getName(), Math.class, "sin", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_COS = findForeignCall(UnaryOperation.COS.foreignCallSignature.getName(), Math.class, "cos", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignCall(UnaryOperation.TAN.foreignCallSignature.getName(), Math.class, "tan", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG = findForeignCall(UnaryOperation.LOG.foreignCallSignature.getName(), Math.class, "log", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG10 = findForeignCall(UnaryOperation.LOG10.foreignCallSignature.getName(), Math.class, "log10", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignCall(UnaryOperation.EXP.foreignCallSignature.getName(), Math.class, "exp", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignCall(BinaryOperation.POW.foreignCallSignature.getName(), Math.class, "pow", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_SIN = findForeignCall(UnaryOperation.SIN.foreignCallSignature.getName(), Math.class, "sin", true, NO_KILLED_LOCATIONS);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_COS = findForeignCall(UnaryOperation.COS.foreignCallSignature.getName(), Math.class, "cos", true, NO_KILLED_LOCATIONS);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignCall(UnaryOperation.TAN.foreignCallSignature.getName(), Math.class, "tan", true, NO_KILLED_LOCATIONS);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG = findForeignCall(UnaryOperation.LOG.foreignCallSignature.getName(), Math.class, "log", true, NO_KILLED_LOCATIONS);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG10 = findForeignCall(UnaryOperation.LOG10.foreignCallSignature.getName(), Math.class, "log10", true, NO_KILLED_LOCATIONS);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignCall(UnaryOperation.EXP.foreignCallSignature.getName(), Math.class, "exp", true, NO_KILLED_LOCATIONS);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignCall(BinaryOperation.POW.foreignCallSignature.getName(), Math.class, "pow", true, NO_KILLED_LOCATIONS);
 
     /*
      * These methods are intrinsified as nodes at first, but can then lowered back to a call. Ensure
@@ -98,6 +99,8 @@ public class SnippetRuntime {
 
     private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo,
                     LocationIdentity... killedLocations) {
+        VMError.guarantee(killedLocations.length > 0 || killedLocations == NO_KILLED_LOCATIONS,
+                        "Please specify killed locations or use NO_LOCATIONS if the foreign call really doesn't kill any locations.");
         Method foundMethod = null;
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (method.getName().equals(methodName)) {

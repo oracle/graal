@@ -31,6 +31,8 @@ import java.lang.reflect.Executable;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.graalvm.word.LocationIdentity;
+
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
@@ -58,7 +60,7 @@ public class FatalAssertions {
                     methodName.append(parameterType.getSimpleName());
                 }
             }
-            FOREIGN_CALLS.put(c, SnippetRuntime.findForeignCall(FatalAssertions.class, methodName.toString(), true));
+            FOREIGN_CALLS.put(c, SnippetRuntime.findForeignCall(FatalAssertions.class, methodName.toString(), true, LocationIdentity.any()));
         }
     }
 

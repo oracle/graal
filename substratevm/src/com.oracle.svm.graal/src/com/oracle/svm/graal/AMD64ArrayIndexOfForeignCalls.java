@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.graal;
 
+import static com.oracle.svm.core.snippets.SnippetRuntime.NO_KILLED_LOCATIONS;
+
 import java.util.Arrays;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -72,6 +74,7 @@ class AMD64ArrayIndexOfForeignCallsFeature implements GraalFeature {
 
 @Platforms(AMD64.class)
 class AMD64ArrayIndexOfForeignCalls {
+    // None of the following foreign calls kills any locations.
     private static final ForeignCallSignature[] ORIGINAL_FOREIGN_CALLS = {
                     AMD64ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_BYTES,
                     AMD64ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS,
@@ -91,7 +94,7 @@ class AMD64ArrayIndexOfForeignCalls {
     };
 
     static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = Arrays.stream(ORIGINAL_FOREIGN_CALLS)
-                    .map(call -> SnippetRuntime.findForeignCall(AMD64ArrayIndexOfForeignCalls.class, call.getName(), true))
+                    .map(call -> SnippetRuntime.findForeignCall(AMD64ArrayIndexOfForeignCalls.class, call.getName(), true, NO_KILLED_LOCATIONS))
                     .toArray(SubstrateForeignCallDescriptor[]::new);
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
