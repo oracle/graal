@@ -149,6 +149,59 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     if register_project:
         register_project(GraalVmSymlinks())
 
+        if mx_sdk_vm_impl.has_component('GraalWasm'):
+            import mx_wasm
+
+            class GraalVmWasmSourceFileProject(mx_wasm.GraalWasmSourceFileProject):
+                def getSourceDir(self):
+                    return self.subDir
+
+                def getProgramSources(self):
+                    for root, _, files in os.walk(self.getSourceDir()):
+                        for filename in files:
+                            if filename.endswith(".c"):
+                                yield (root, filename)
+
+                def getBuildTask(self, args):
+                    output_base = self.get_output_base()
+                    return GraalVmWasmSourceFileTask(self, args, output_base)
+
+            class GraalVmWasmSourceFileTask(mx_wasm.GraalWasmSourceFileTask):
+                def build(self):
+                    super(GraalVmWasmSourceFileTask, self).build()
+                    output_dir = self.subject.getOutputDir()
+                    for root, filename in self.subject.getProgramSources():
+                        src = join(output_dir, mx_wasm.remove_extension(filename) + ".wasm")
+                        dst = join(root, mx_wasm.remove_extension(filename) + ".wasm")
+                        if mx.is_windows():
+                            mx.copyfile(src, dst)
+                        else:
+                            os.symlink(src, dst)
+
+                def clean(self, forBuild=False):
+                    super(GraalVmWasmSourceFileTask, self).build()
+                    for root, filename in self.subject.getProgramSources():
+                        f = join(root, mx_wasm.remove_extension(filename) + ".wasm")
+                        if os.path.exists(f):
+                            if os.path.islink(f):
+                                os.unlink(f)
+                            else:
+                                mx.rmtree(f)
+                    output_dir = self.subject.getOutputDir()
+                    if not forBuild and os.path.exists(output_dir):
+                        mx.rmtree(output_dir)
+
+            register_project(GraalVmWasmSourceFileProject(
+                suite=_suite,
+                name='benchmarks.interpreter.wasm',
+                deps=[],
+                workingSets=None,
+                subDir=join(_suite.dir, 'benchmarks', 'interpreter'),
+                theLicense=None,
+                testProject=True,
+                defaultBuild=False,
+            ))
+
 
 class GraalVmSymlinks(mx.Project):
     def __init__(self, **kw_args):

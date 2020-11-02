@@ -153,11 +153,11 @@ def remove_extension(filename):
 
 class GraalWasmSourceFileProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, subDir, theLicense, **args):
-        self.subDir = subDir
         mx.ArchivableProject.__init__(self, suite, name, deps, workingSets, theLicense, **args)
+        self.subDir = subDir;
 
     def getSourceDir(self):
-        src_dir = os.path.join(self.dir, "src", self.name, self.subDir, "src")
+        src_dir = os.path.join(self.dir, self.subDir, self.name, "src")
         return src_dir
 
     def getOutputDir(self):
