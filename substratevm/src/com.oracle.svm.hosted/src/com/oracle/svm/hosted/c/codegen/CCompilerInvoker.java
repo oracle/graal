@@ -237,7 +237,7 @@ public abstract class CCompilerInvoker {
                 }
 
                 String[] triplet = guessTargetTriplet(scanner);
-                while (scanner.findInLine("gcc version ") == null || scanner.findInLine("clang version ") == null) {
+                while (scanner.findInLine("gcc version ") == null) {
                     scanner.nextLine();
                 }
 
