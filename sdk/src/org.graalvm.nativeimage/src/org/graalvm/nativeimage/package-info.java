@@ -44,7 +44,7 @@
  )
  */
 /**
- * The GraalVM SDK native-image API allows to customize the native image generation, i.e., the
+ * The GraalVM SDK Native Image API allows to customize the native image generation, i.e., the
  * ahead-of-time compilation of Java code to standalone executables. It also provides interfaces and
  * support classes that only work in the context of a native image.
  *
