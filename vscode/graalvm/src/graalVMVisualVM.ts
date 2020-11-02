@@ -33,7 +33,7 @@ export async function runVisualVMForPID(pid?: number) {
     if (!pid) {
         return;
     }
-    exec(`${executable} --openpid ${pid}`);
+    exec(`"${executable}" --openpid ${pid}`);
 }
 
 async function obtainRunningJavaProcesses(graalVMHome?: string): Promise<QuickPickProcess[] | undefined> {
@@ -41,8 +41,8 @@ async function obtainRunningJavaProcesses(graalVMHome?: string): Promise<QuickPi
     if (!executable) {
         return;
     }
-    const parts1 = await processCommand(`${executable} -l`);
-    const parts2 = await processCommand(`${executable} -m`);
+    const parts1 = await processCommand(`"${executable}" -l`);
+    const parts2 = await processCommand(`"${executable}" -m`);
     const ret: QuickPickProcess[] = [];
     parts1.forEach(p1 => {
         const p2 = parts2.find(p2 => p2.pid === p1.pid);

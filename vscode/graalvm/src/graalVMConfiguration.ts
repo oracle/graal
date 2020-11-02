@@ -51,13 +51,11 @@ export function setupProxy() {
             placeHolder: '<http(s)>://<host>:<port>',
             value: proxy
         }
-    ).then(out => {
-        if (out) {
-            if (proxy !== out) {
-                http.update('proxy', out, true).then(() => 
-                http.update('proxySupport', 'off', true)).then(() =>
-                vscode.commands.executeCommand('extension.graalvm.refreshInstallations'));
-            }
+    ).then(async out => {
+        if (proxy !== out) {
+            await http.update('proxy', out, true);
+            await http.update('proxySupport', out ? 'off' : 'on', true);
+            await vscode.commands.executeCommand('extension.graalvm.refreshInstallations');
         }
     });
 }

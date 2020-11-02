@@ -1,0 +1,5 @@
+{
+	"devDependencies": {
+		"vsce": "^1.81.1"
+	}
+}
