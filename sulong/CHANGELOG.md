@@ -14,6 +14,11 @@ Changes:
 
 * Updated LLVM toolchain to version 10.0.0.
 
+* Improved for `va_list` / varargs handling across language boundaries.
+  Using `va_start` in an LLVM function that was called from a foreign language no longer forces
+  all arguments into native memory. The resulting `va_list` object can be passed to code written
+  in other languages, and accessed there using standard interop APIs.
+
 * Moved `polyglot.h` to `graalvm/llvm/polyglot.h` and `llvm/api/toolchain.h` to `graalvm/llvm/toolchain-api.h`.
   The old header locations are deprecated, and will be removed in a future release.
 
