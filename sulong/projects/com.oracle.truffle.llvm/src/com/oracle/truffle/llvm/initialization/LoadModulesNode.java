@@ -536,7 +536,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         }
 
         language.setSulongInitContext(initContext.asFunction());
-        context.setSulongDisposeContext(disposeContext.asFunction());
+        language.setSulongDisposeContext(disposeContext.asFunction());
         return startFunction;
     }
 
