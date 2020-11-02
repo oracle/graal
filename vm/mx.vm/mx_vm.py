@@ -167,6 +167,16 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     return GraalVmWasmSourceFileTask(self, args, output_base)
 
             class GraalVmWasmSourceFileTask(mx_wasm.GraalWasmSourceFileTask):
+                def needsBuild(self, newestInput):
+                    is_needed, reason = super(GraalVmWasmSourceFileTask, self).needsBuild(newestInput)
+                    if is_needed:
+                        return is_needed, reason
+                    for root, filename in self.subject.getProgramSources():
+                        f = join(root, mx_wasm.remove_extension(filename) + ".wasm")
+                        if not os.path.exists(f):
+                            return True, "symlink '{}' does not exist".format(f)
+                        return False, ''
+
                 def build(self):
                     super(GraalVmWasmSourceFileTask, self).build()
                     output_dir = self.subject.getOutputDir()
