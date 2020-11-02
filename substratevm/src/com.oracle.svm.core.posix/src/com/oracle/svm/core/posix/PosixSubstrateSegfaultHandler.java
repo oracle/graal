@@ -111,6 +111,7 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
         structSigAction.sa_flags(Signal.SA_SIGINFO());
         structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
         Signal.sigaction(Signal.SignalEnum.SIGSEGV, structSigAction, WordFactory.nullPointer());
+        Signal.sigaction(Signal.SignalEnum.SIGBUS, structSigAction, WordFactory.nullPointer());
     }
 
     static class SingleIsolateSegfaultIsolateSetup implements IsolateCreationWatcher {
