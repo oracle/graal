@@ -532,6 +532,8 @@ public abstract class Accessor {
 
         public abstract void preinitializeContext(Object polyglotEngine);
 
+        public abstract void finalizeStore(Object polyglotEngine);
+
         public abstract Object getEngineLock(Object polyglotEngine);
     }
 
