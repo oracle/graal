@@ -318,7 +318,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     /**
      * A temporary buffer for case folding and inverting character classes.
      */
-    private final CodePointSetAccumulator charClassTmp = new CodePointSetAccumulator();
+    private CodePointSetAccumulator charClassTmp = new CodePointSetAccumulator();
     /**
      * When parsing nested character classes, we need several instances of {@link CodePointSetAccumulator}s. In order
      * to avoid having to repeatedly allocate new ones, we return unused instances to this shared pool, to be reused
@@ -623,7 +623,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private void negateCharClass() {
         charClassTmp.clear();
         curCharClass.invert(charClassTmp, inSource.getEncoding());
+        CodePointSetAccumulator swap = curCharClass;
         curCharClass = charClassTmp;
+        charClassTmp = swap;
     }
 
     /// Error reporting
