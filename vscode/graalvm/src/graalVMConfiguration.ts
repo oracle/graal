@@ -62,30 +62,31 @@ export function setupProxy() {
     });
 }
 
-export async function configureGraalVMHome(graalVMHome: string) {
-    gatherConfigurations();
+export async function configureGraalVMHome(graalVMHome: string, nonInteractive?: boolean) {
     const gr = getGVMConfig();
     if (graalVMHome !== getGVMHome(gr)) {
         await setGVMHome(graalVMHome, gr);
-        checkForMissingComponents(graalVMHome);
-        return;        
-    }
+        if (!nonInteractive) {
+            checkForMissingComponents(graalVMHome);
 
-    await defaultConfig(graalVMHome, gr);
-    
-    const toShow = configurations.filter(conf => conf.show(graalVMHome));
-    if (toShow.length > 0) {
-        const selected: ConfigurationPickItem[] = await vscode.window.showQuickPick(
-            toShow, {
-                canPickMany: true, 
-                placeHolder: 'Configure active GraalVM'
-            }) || [];
+            gatherConfigurations();
+            await defaultConfig(graalVMHome, gr);
 
-        for (const select of selected) {
-            try {
-                await select.set(graalVMHome);
-            } catch (error) {
-                vscode.window.showErrorMessage(error?.message);    
+            const toShow = configurations.filter(conf => conf.show(graalVMHome));
+            if (toShow.length > 0) {
+                const selected: ConfigurationPickItem[] = await vscode.window.showQuickPick(
+                    toShow, {
+                        canPickMany: true,
+                        placeHolder: 'Configure active GraalVM'
+                    }) || [];
+
+                for (const select of selected) {
+                    try {
+                        await select.set(graalVMHome);
+                    } catch (error) {
+                        vscode.window.showErrorMessage(error?.message);
+                    }
+                }
             }
         }
     }
