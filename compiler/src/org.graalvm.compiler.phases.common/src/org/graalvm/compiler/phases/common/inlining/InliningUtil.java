@@ -111,6 +111,7 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.TriState;
 
 public class InliningUtil extends ValueMergeUtil {
 
@@ -1020,13 +1021,16 @@ public class InliningUtil extends ValueMergeUtil {
         }
     }
 
-    private static final SpeculationReasonGroup FALLBACK_DEOPT_SPECULATION = new SpeculationReasonGroup("FallbackDeopt", ResolvedJavaMethod.class, int.class, ReceiverTypeSpeculationContext.class);
+    private static final SpeculationReasonGroup FALLBACK_DEOPT_SPECULATION = new SpeculationReasonGroup("FallbackDeopt", ResolvedJavaMethod.class, int.class, TriState.class,
+                    ReceiverTypeSpeculationContext.class);
 
     public static SpeculationLog.SpeculationReason createSpeculation(Invoke invoke, JavaTypeProfile typeProfile) {
         assert typeProfile.getNotRecordedProbability() == 0.0D;
         FrameState frameState = invoke.stateAfter();
         assert frameState != null;
-        return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), frameState.bci, new ReceiverTypeSpeculationContext(typeProfile));
+        return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), invoke.bci(),
+                        frameState.getCode().getProfilingInfo().getExceptionSeen(invoke.bci()),
+                        new ReceiverTypeSpeculationContext(typeProfile));
     }
 
     private static class ReceiverTypeSpeculationContext implements SpeculationReasonGroup.SpeculationContextObject {
