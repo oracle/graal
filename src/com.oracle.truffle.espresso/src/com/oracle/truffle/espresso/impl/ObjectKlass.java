@@ -1095,14 +1095,15 @@ public final class ObjectKlass extends Klass {
             method.redefine(newMethod, packet.parserKlass, ids);
             JDWPLogger.log("Redefining method %s.%s", JDWPLogger.LogLevel.REDEFINE, method.getDeclaringKlass().getName(), method.getName());
 
-            // look in iTable for copied methods that also needs to be invalidated
+            // look in tables for copied methods that also needs to be invalidated
             if (!method.isStatic() && !method.isPrivate() && !"<init>".equals(method.getNameAsString())) {
-                for (Method[] methods : itable) {
-                    for (Method m : methods) {
-                        if (m.identity() == method.identity()) {
-                            m.redefine(newMethod, packet.parserKlass, ids);
-                        }
-                    }
+                ArrayList<Method> copiedMethods = new ArrayList<>(1);
+                checkCopyMethods(method, itable, copiedMethods);
+                checkCopyMethods(method, vtable, copiedMethods);
+                checkCopyMethods(method, mirandaMethods, copiedMethods);
+
+                for (Method m : copiedMethods) {
+                    m.redefine(newMethod, packet.parserKlass, ids);
                 }
             }
         }
@@ -1161,6 +1162,20 @@ public final class ObjectKlass extends Klass {
         // transaction is ended
         flushReflectionCaches();
         oldVersion.assumption.invalidate();
+    }
+
+    private void checkCopyMethods(Method method, Method[][] table, ArrayList<Method> copiedMethods) {
+        for (Method[] methods : table) {
+            checkCopyMethods(method, methods, copiedMethods);
+        }
+    }
+
+    private void checkCopyMethods(Method method, Method[] table, ArrayList<Method> copiedMethods) {
+        for (Method m : table) {
+            if (m.identity() == method.identity() && m != method) {
+                copiedMethods.add(m);
+            }
+        }
     }
 
     private void flushReflectionCaches() {
