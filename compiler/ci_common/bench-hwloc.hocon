@@ -149,19 +149,17 @@ bench-scala-dacapo-all-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.bench-
 }
 
 # Renaissance-related targets
-bench-renaissance-hwloc: ${bench-renaissance}
 # Parallel executions of renaissance not yet supported : https://github.com/renaissance-benchmarks/renaissance/issues/13
-#bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common} {
-#  setup: ${bench-renaissance.setup} ${hwloc.bench-common.setup}
-#  run: [
-#    [export, "LOGDIR=${PWD}"]
-#    ${export.node0}
-#    ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments} ${hwloc.cmd.suffix}
-#    ${export.node1}
-#    ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments} ${hwloc.cmd.suffix}
-#    [wait]
-#  ]
-#}
+bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common} {
+  setup: ${bench-renaissance.setup} ${hwloc.bench-common.setup}
+  run: [
+     ${export.node0}
+     ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments}
+  ]
+  teardown: [
+    ["bench-uploader.py", "node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
+  ]
+}
 
 
 bench-renaissance-legacy-hwloc: ${bench-renaissance-legacy} ${hwloc.bench-common} {
