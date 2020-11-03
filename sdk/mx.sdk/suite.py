@@ -92,6 +92,12 @@ suite = {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
       "license" : "BSD-new"
     },
+    "JLINE316" : {
+      "sha1" : "b69304a4e45b156d43ed1aaaa0a87ad87390434d",
+      "version" : "3.16.0.0",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
+      "license" : "BSD-new"
+    },
     "LLVM_ORG" : {
       "version" : "10.0.0-4-g22d2637565-bg83994d0b4b",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
@@ -196,7 +202,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.polyglot",
         "JLINE",
-        "JLINE3",
+        "JLINE316",
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Tools",
