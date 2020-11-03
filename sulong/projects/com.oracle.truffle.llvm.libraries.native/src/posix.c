@@ -40,6 +40,8 @@
 #include <sys/uio.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
+#include <sys/param.h>
+#include <sys/mount.h>
 
 #ifdef __linux__
 #include <sys/vfs.h>
@@ -63,7 +65,7 @@
 #define CALL(type, name, ...)                                                                                                                        \
     {                                                                                                                                                \
         fprintf(stderr, "Syscalls (" #name ") not supported on this OS.\n");                                                                         \
-        return -ENOSYS;                                                                                                                              \
+        return (type) -ENOSYS;                                                                                                                       \
     }
 #endif
 

@@ -46,7 +46,6 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -266,12 +265,9 @@ public class ContextsEventsTest {
             try (Context context = Context.newBuilder().engine(engine).build()) {
                 context.eval(Source.create(InstrumentationTestLanguage.ID, "CONTEXT(STATEMENT())"));
                 for (ContextEvent event : events) {
-                    try {
-                        event.context.close();
-                        fail("Context close should fail.");
-                    } catch (UnsupportedOperationException ex) {
-                        // O.K.
-                    }
+                    // supported as long as not entered
+                    event.context.close();
+                    break;
                 }
             }
         }

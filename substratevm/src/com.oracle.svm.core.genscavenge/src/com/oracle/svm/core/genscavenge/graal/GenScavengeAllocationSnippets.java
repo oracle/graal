@@ -42,6 +42,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -71,7 +72,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
 
     public static void registerLowering(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        GenScavengeAllocationSnippets snippetReceiver = new GenScavengeAllocationSnippets();
+        SubstrateAllocationSnippets snippetReceiver = ImageSingletons.lookup(SubstrateAllocationSnippets.class);
         GenScavengeAllocationSnippets.Templates allocationSnippets = new GenScavengeAllocationSnippets.Templates(
                         snippetReceiver, options, factories, SnippetCounter.Group.NullFactory, providers, snippetReflection);
         allocationSnippets.registerLowerings(lowerings);
@@ -89,14 +90,14 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
 
     @Snippet
     public Object formatArraySnippet(Word memory, DynamicHub hub, int length, boolean rememberedSet, boolean unaligned, boolean fillContents, boolean emitMemoryBarrier,
-                    @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter AllocationSnippetCounters snippetCounters) {
+                    @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         int layoutEncoding = hubNonNull.getLayoutEncoding();
         UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
         int fillStartOffset = (int) LayoutEncoding.getArrayBaseOffset(layoutEncoding).rawValue();
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
         return formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, fillStartOffset,
-                        emitMemoryBarrier, false, supportsBulkZeroing, snippetCounters);
+                        emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
     }
 
     private static Word encodeAsObjectHeader(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
@@ -104,12 +105,12 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Override
-    protected void initializeObjectHeader(Word memory, Word objectHeader, Word prototypeMarkWord, boolean isArray) {
+    public void initializeObjectHeader(Word memory, Word objectHeader, Word prototypeMarkWord, boolean isArray) {
         ObjectHeaderImpl.initializeHeaderOfNewObject(memory, objectHeader, isArray);
     }
 
     @Override
-    protected boolean useTLAB() {
+    public boolean useTLAB() {
         return true;
     }
 
@@ -119,22 +120,22 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Override
-    protected Word getTLABInfo() {
+    public Word getTLABInfo() {
         return (Word) ThreadLocalAllocation.regularTLAB.getAddress();
     }
 
     @Override
-    protected Word readTlabTop(Word tlabInfo) {
+    public Word readTlabTop(Word tlabInfo) {
         return ((Descriptor) tlabInfo).getAllocationTop(TLAB_TOP_IDENTITY);
     }
 
     @Override
-    protected Word readTlabEnd(Word tlabInfo) {
+    public Word readTlabEnd(Word tlabInfo) {
         return ((Descriptor) tlabInfo).getAllocationEnd(TLAB_END_IDENTITY);
     }
 
     @Override
-    protected void writeTlabTop(Word tlabInfo, Word newTop) {
+    public void writeTlabTop(Word tlabInfo, Word newTop) {
         ((Descriptor) tlabInfo).setAllocationTop(newTop, TLAB_TOP_IDENTITY);
     }
 
@@ -152,7 +153,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
         private final SnippetInfo formatObject;
         private final SnippetInfo formatArray;
 
-        Templates(GenScavengeAllocationSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories,
+        Templates(SubstrateAllocationSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories,
                         SnippetCounter.Group.Factory groupFactory, Providers providers, SnippetReflectionProvider snippetReflection) {
             super(receiver, options, factories, groupFactory, providers, snippetReflection);
 
@@ -205,6 +206,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
                 args.add("fillContents", node.getFillContents());
                 args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("snippetCounters", snippetCounters);
                 template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }

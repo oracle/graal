@@ -35,6 +35,7 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
 import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -51,11 +52,13 @@ import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
+import org.graalvm.compiler.nodes.java.ValidateNewInstanceClassNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -129,25 +132,25 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter boolean maybeUnroll,
                     @ConstantParameter boolean supportsBulkZeroing,
+                    @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedHub = checkHub(hub);
         Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), length, arrayBaseOffset, log2ElementSize, fillContents,
-                        emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, profilingData);
+                        emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
 
     @Snippet
-    public Object allocateInstanceDynamic(DynamicHub hub, @ConstantParameter boolean fillContents, @ConstantParameter boolean emitMemoryBarrier,
+    public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub, @ConstantParameter boolean fillContents, @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
-        DynamicHub checkedHub = checkInstanceDynamicHub(hub);
-        UnsignedWord size = LayoutEncoding.getInstanceSize(checkedHub.getLayoutEncoding());
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), size, fillContents, emitMemoryBarrier, false, profilingData);
+        UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), size, fillContents, emitMemoryBarrier, false, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
     @Snippet
     public Object allocateArrayDynamic(DynamicHub elementType, int length, @ConstantParameter boolean fillContents, @ConstantParameter boolean emitMemoryBarrier,
-                    @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter AllocationProfilingData profilingData) {
+                    @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedArrayHub = getCheckedArrayHub(elementType);
 
         int layoutEncoding = checkedArrayHub.getLayoutEncoding();
@@ -155,13 +158,26 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
 
         Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedArrayHub), WordFactory.nullPointer(), length, arrayBaseOffset, log2ElementSize, fillContents,
-                        emitMemoryBarrier, false, supportsBulkZeroing, profilingData);
+                        emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
 
     @Snippet
     protected Object newmultiarray(DynamicHub hub, @ConstantParameter int rank, @VarargsParameter int[] dimensions) {
         return newMultiArrayImpl(Word.objectToUntrackedPointer(hub), rank, dimensions);
+    }
+
+    @Snippet
+    private static DynamicHub validateNewInstanceClass(DynamicHub hub) {
+        if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, hub != null)) {
+            DynamicHub nonNullHub = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
+            if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, LayoutEncoding.isInstance(nonNullHub.getLayoutEncoding())) &&
+                            probability(LUDICROUSLY_FAST_PATH_PROBABILITY, nonNullHub.isInstantiated())) {
+                return nonNullHub;
+            }
+        }
+        callHubErrorWithExceptionStub(HUB_ERROR, DynamicHub.toClass(hub));
+        throw UnreachableNode.unreachable();
     }
 
     /** Foreign call: {@link #NEW_MULTI_ARRAY}. */
@@ -201,7 +217,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         return result;
     }
 
-    private static DynamicHub checkHub(DynamicHub hub) {
+    public static DynamicHub checkHub(DynamicHub hub) {
         if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, hub != null)) {
             DynamicHub nonNullHub = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
             if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, nonNullHub.isInstantiated())) {
@@ -213,18 +229,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         throw UnreachableNode.unreachable();
     }
 
-    private static DynamicHub checkInstanceDynamicHub(DynamicHub hub) {
-        if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, hub != null)) {
-            DynamicHub nonNullHub = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
-            if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, LayoutEncoding.isInstance(nonNullHub.getLayoutEncoding())) &&
-                            probability(LUDICROUSLY_FAST_PATH_PROBABILITY, nonNullHub.isInstantiated())) {
-                return nonNullHub;
-            }
-        }
-
-        callHubErrorStub(HUB_ERROR, DynamicHub.toClass(hub));
-        throw UnreachableNode.unreachable();
-    }
+    @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
+    private static native void callHubErrorWithExceptionStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> hub);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     private static native void callHubErrorStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> hub);
@@ -283,7 +289,6 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         return SubstrateOptions.AllocatePrefetchStyle.getValue();
     }
 
-    @Fold
     @Override
     protected int getPrefetchLines(boolean isArray) {
         if (isArray) {
@@ -330,7 +335,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final int arrayLengthOffset() {
+    public final int arrayLengthOffset() {
         return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
     }
 
@@ -343,7 +348,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         return (int) LayoutEncoding.getArrayBaseOffset(layoutEncoding).rawValue();
     }
 
-    private static Word encodeAsTLABObjectHeader(DynamicHub hub) {
+    public static Word encodeAsTLABObjectHeader(DynamicHub hub) {
         return Heap.getHeap().getObjectHeader().encodeAsTLABObjectHeader(hub);
     }
 
@@ -395,6 +400,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         private final SnippetInfo allocateArrayDynamic;
         private final SnippetInfo allocateInstanceDynamic;
 
+        private final SnippetInfo validateNewInstanceClass;
+
         public Templates(SubstrateAllocationSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory groupFactory, Providers providers,
                         SnippetReflectionProvider snippetReflection) {
             super(options, factories, providers, snippetReflection);
@@ -406,6 +413,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
             allocateInstanceDynamic = snippet(SubstrateAllocationSnippets.class, "allocateInstanceDynamic", null, receiver, ALLOCATION_LOCATION_IDENTITIES);
             allocateArrayDynamic = snippet(SubstrateAllocationSnippets.class, "allocateArrayDynamic", null, receiver, ALLOCATION_LOCATION_IDENTITIES);
             newmultiarray = snippet(SubstrateAllocationSnippets.class, "newmultiarray", null, receiver, ALLOCATION_LOCATION_IDENTITIES);
+
+            validateNewInstanceClass = snippet(SubstrateAllocationSnippets.class, "validateNewInstanceClass", ALLOCATION_LOCATION_IDENTITIES);
         }
 
         public void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
@@ -414,6 +423,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
             lowerings.put(DynamicNewInstanceNode.class, new DynamicNewInstanceLowering());
             lowerings.put(DynamicNewArrayNode.class, new DynamicNewArrayLowering());
             lowerings.put(NewMultiArrayNode.class, new NewMultiArrayLowering());
+            lowerings.put(ValidateNewInstanceClassNode.class, new ValidateNewInstanceClassLowering());
         }
 
         private AllocationProfilingData getProfilingData(ValueNode node, ResolvedJavaType type) {
@@ -494,6 +504,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", length.isConstant());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, type));
 
                 template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -558,7 +569,20 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.addConst("fillContents", node.fillContents());
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, null));
+
+                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            }
+        }
+
+        private class ValidateNewInstanceClassLowering implements NodeLoweringProvider<ValidateNewInstanceClassNode> {
+            @Override
+            public void lower(ValidateNewInstanceClassNode node, LoweringTool tool) {
+                StructuredGraph graph = node.graph();
+
+                Arguments args = new Arguments(validateNewInstanceClass, graph.getGuardsStage(), tool.getLoweringStage());
+                args.add("hub", node.getInstanceType());
 
                 template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }

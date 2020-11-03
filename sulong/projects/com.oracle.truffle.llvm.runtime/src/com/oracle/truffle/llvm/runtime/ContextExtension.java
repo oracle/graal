@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,16 +29,44 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.TruffleLanguage.Env;
+
 /**
  * Context extensions encapsulate optional functionality that has a state and which therefore needs
  * to live on the context-level.
  */
 public interface ContextExtension {
 
-    default Class<?> extensionClass() {
-        return this.getClass();
+    /**
+     * This function will be called exactly once per context, at context initialization time.
+     */
+    default void initialize(@SuppressWarnings("unused") LLVMContext context) {
     }
 
-    default void initialize() {
+    /**
+     * Key to uniquely identify a {@link ContextExtension}. Can be retrieved from the language using
+     * {@link LLVMLanguage#lookupContextExtension}, and is safe to be cached in the AST.
+     */
+    abstract class Key<C extends ContextExtension> {
+
+        // don't allow subclassing outside of this package
+        Key() {
+        }
+
+        /**
+         * Get a context extension from a context. Safe to be used on the fast-path.
+         */
+        public abstract C get(LLVMContext ctx);
+    }
+
+    abstract class Registry {
+
+        public abstract <C extends ContextExtension> Key<C> register(Class<C> type, Factory<C> factory);
+    }
+
+    @FunctionalInterface
+    interface Factory<C extends ContextExtension> {
+
+        C create(Env env);
     }
 }

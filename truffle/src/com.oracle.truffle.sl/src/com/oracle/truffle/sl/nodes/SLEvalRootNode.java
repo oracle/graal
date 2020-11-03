@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import java.util.Collections;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -69,10 +71,12 @@ public final class SLEvalRootNode extends RootNode {
     @CompilationFinal private boolean registered;
 
     @Child private DirectCallNode mainCallNode;
+    private final SLLanguage language;
 
     public SLEvalRootNode(SLLanguage language, RootCallTarget rootFunction, Map<String, RootCallTarget> functions) {
         super(language);
-        this.functions = functions;
+        this.language = language;
+        this.functions = Collections.unmodifiableMap(functions);
         this.mainCallNode = rootFunction != null ? DirectCallNode.create(rootFunction) : null;
     }
 
@@ -98,14 +102,27 @@ public final class SLEvalRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        /* Lazy registrations of functions on first execution. */
-        if (!registered) {
-            /* Function registration is a slow-path operation that must not be compiled. */
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            lookupContextReference(SLLanguage.class).get().getFunctionRegistry().register(functions);
-            registered = true;
+        if (language.isSingleContext()) {
+            /*
+             * Lazy registrations of functions on first execution. This optimization only works in
+             * the single context case. Otherwise function registration needs to be repeated for
+             * every context on first execute.
+             */
+            if (!registered) {
+                /* Function registration is a slow-path operation that must not be compiled. */
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                registerFunctions();
+                registered = true;
+            }
+        } else {
+            /*
+             * In the multi context case we always want to ensure that functions are registered. The
+             * multi-context case is initialized with SLLanguage#initializeMultipleContexts. That
+             * typically happens when a polyglot Context was created with an explicit Engine or if
+             * an internal context was created. See Context.Builder#engine for details.
+             */
+            registerFunctions();
         }
-
         if (mainCallNode == null) {
             /* The source code did not have a "main" function, so nothing to execute. */
             return SLNull.SINGLETON;
@@ -118,4 +135,10 @@ public final class SLEvalRootNode extends RootNode {
             return mainCallNode.call(arguments);
         }
     }
+
+    @TruffleBoundary
+    private void registerFunctions() {
+        lookupContextReference(SLLanguage.class).get().getFunctionRegistry().register(functions);
+    }
+
 }

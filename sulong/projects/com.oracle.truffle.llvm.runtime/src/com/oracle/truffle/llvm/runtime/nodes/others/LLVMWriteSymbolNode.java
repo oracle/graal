@@ -35,77 +35,47 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.utilities.AssumedValue;
-import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMWriteSymbolNode extends LLVMNode {
 
-    public abstract void execute(LLVMPointer pointer, LLVMSymbol descriptor);
+    protected final LLVMSymbol symbol;
 
-    @Specialization
-    void doWrite(LLVMPointer pointer, LLVMGlobal global,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(global.getBitcodeID(false));
-        synchronized (symbols) {
-            CompilerAsserts.partialEvaluationConstant(global);
-            try {
-                int index = global.getSymbolIndex(false);
-                symbols[index] = newAssumedValue("LLVMGlobal", global.getName(), pointer);
-            } catch (LLVMIllegalSymbolIndexException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMLinkerException(this, "Writing global symbol into symbol table is inconsistent.");
-            }
+    public static final LLVMWriteSymbolNode[] EMPTY = {};
+
+    public LLVMWriteSymbolNode(LLVMSymbol symbol) {
+        if (symbol.isAlias()) {
+            throw new IllegalStateException("Writing an alias into symbol table is forbidden.");
         }
+        this.symbol = symbol;
     }
 
-    @Specialization
-    void doWrite(LLVMPointer pointer, LLVMFunction function,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(function.getBitcodeID(false));
-        synchronized (symbols) {
-            CompilerAsserts.partialEvaluationConstant(function);
-            try {
-                int index = function.getSymbolIndex(false);
-                symbols[index] = newAssumedValue("LLVMFunction", function.getName(), pointer);
-            } catch (LLVMIllegalSymbolIndexException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMLinkerException(this, "Writing function symbol into symbol table is inconsistent.");
-            }
-        }
-    }
+    public abstract void execute(LLVMPointer pointer);
 
     @Specialization
-    void doWrite(LLVMPointer pointer, LLVMAlias alias,
+    void doWrite(LLVMPointer pointer,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        LLVMSymbol target = alias.getTarget();
-        while (target.isAlias()) {
-            target = ((LLVMAlias) target).getTarget();
-        }
-        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(target.getBitcodeID(false));
+        AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(symbol.getBitcodeID(false));
         synchronized (symbols) {
-            CompilerAsserts.partialEvaluationConstant(target);
+            CompilerAsserts.partialEvaluationConstant(symbol);
             try {
-                int index = target.getSymbolIndex(false);
-                if (symbols[index] == null) {
-                    symbols[index] = newAssumedValue(target.getKind(), target.getName(), pointer);
-                }
+                int index = symbol.getSymbolIndex(false);
+                symbols[index] = newAssumedValue(symbol, pointer);
             } catch (LLVMIllegalSymbolIndexException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new LLVMLinkerException(this, "Writing alias symbol into symbol table is inconsistent.");
+                throw new LLVMLinkerException(this, "Writing symbol into symbol table is inconsistent.");
             }
         }
     }
 
     @TruffleBoundary
-    private static AssumedValue<LLVMPointer> newAssumedValue(String prefix, String name, LLVMPointer pointer) {
-        return new AssumedValue<>(prefix + "." + name, pointer);
+    private static AssumedValue<LLVMPointer> newAssumedValue(LLVMSymbol symbol, LLVMPointer pointer) {
+        return new AssumedValue<>(symbol.getKind() + "." + symbol.getName(), pointer);
     }
 }

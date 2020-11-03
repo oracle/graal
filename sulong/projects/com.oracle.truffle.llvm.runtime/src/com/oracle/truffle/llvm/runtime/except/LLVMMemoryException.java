@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.except;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -39,5 +40,14 @@ public class LLVMMemoryException extends LLVMException {
 
     public LLVMMemoryException(Node node, Throwable cause) {
         super(node, cause.getMessage(), cause);
+    }
+
+    public LLVMMemoryException(Node node, String message) {
+        super(node, message);
+    }
+
+    @TruffleBoundary
+    public LLVMMemoryException(Node location, String format, Object... args) {
+        this(location, String.format(format, args));
     }
 }

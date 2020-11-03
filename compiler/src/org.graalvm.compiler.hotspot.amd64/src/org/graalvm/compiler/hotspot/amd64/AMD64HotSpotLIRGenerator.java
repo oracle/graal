@@ -78,6 +78,7 @@ import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64Move.MoveFromRegOp;
 import org.graalvm.compiler.lir.amd64.AMD64PrefetchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ReadTimestampCounter;
+import org.graalvm.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
 import org.graalvm.compiler.lir.amd64.AMD64RestoreRegistersOp;
 import org.graalvm.compiler.lir.amd64.AMD64SaveRegistersOp;
 import org.graalvm.compiler.lir.amd64.AMD64VZeroUpper;
@@ -292,7 +293,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private LIRFrameState currentRuntimeCallInfo;
 
     @Override
-    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         currentRuntimeCallInfo = info;
         HotSpotForeignCallLinkage hsLinkage = (HotSpotForeignCallLinkage) linkage;
         AMD64 arch = (AMD64) target().arch;
@@ -308,7 +309,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
              */
             append(new AMD64VZeroUpper(arguments, getRegisterConfig()));
         }
-        super.emitForeignCallOp(linkage, result, arguments, temps, info);
+        super.emitForeignCallOp(linkage, targetAddress, result, arguments, temps, info);
     }
 
     /**
@@ -403,7 +404,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             HotSpotLIRGenerationResult generationResult = getResult();
             LIRFrameState key = currentRuntimeCallInfo;
             if (key == null) {
-                key = LIRFrameState.NO_STATE;
+                key = LIRFrameState.NO_CALLEE_SAVE_INFO;
             }
             assert !generationResult.getCalleeSaveInfo().containsKey(key);
             generationResult.getCalleeSaveInfo().put(key, save);
@@ -690,5 +691,23 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue temp) {
         return new AMD64HotSpotStrategySwitchOp(strategy, keyTargets, defaultTarget, key, temp);
+    }
+
+    @Override
+    public Value emitTimeStampWithProcid() {
+        AMD64ReadTimestampCounterWithProcid timestamp = new AMD64ReadTimestampCounterWithProcid();
+        append(timestamp);
+        // Combine RDX and RAX into a single 64-bit register.
+        AllocatableValue lo = timestamp.getLowResult();
+        Value hi = getArithmetic().emitZeroExtend(timestamp.getHighResult(), 32, 64);
+        return combineLoAndHi(lo, hi);
+    }
+
+    /**
+     * Combines two 32 bit values to a 64 bit value: ( (hi << 32) | lo ).
+     */
+    private Value combineLoAndHi(Value lo, Value hi) {
+        Value shiftedHi = getArithmetic().emitShl(hi, emitConstant(LIRKind.value(AMD64Kind.DWORD), JavaConstant.forInt(32)));
+        return getArithmetic().emitOr(shiftedHi, lo);
     }
 }

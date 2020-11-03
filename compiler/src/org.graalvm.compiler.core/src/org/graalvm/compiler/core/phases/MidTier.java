@@ -25,10 +25,11 @@
 package org.graalvm.compiler.core.phases;
 
 import static org.graalvm.compiler.core.common.GraalOptions.ConditionalElimination;
+import static org.graalvm.compiler.core.common.GraalOptions.LoopPredication;
 import static org.graalvm.compiler.core.common.GraalOptions.OptDeoptimizationGrouping;
 import static org.graalvm.compiler.core.common.GraalOptions.OptFloatingReads;
 import static org.graalvm.compiler.core.common.GraalOptions.PartialUnroll;
-import static org.graalvm.compiler.core.common.GraalOptions.ReassociateInvariants;
+import static org.graalvm.compiler.core.common.GraalOptions.ReassociateExpressions;
 import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.GuardTargets;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.NonDeoptGuardTargets;
@@ -37,8 +38,8 @@ import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.Spe
 import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.LoopPolicies;
 import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
+import org.graalvm.compiler.loop.phases.LoopPredicationPhase;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
-import org.graalvm.compiler.loop.phases.ReassociateInvariantPhase;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -53,6 +54,7 @@ import org.graalvm.compiler.phases.common.LockEliminationPhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.OptimizeDivPhase;
+import org.graalvm.compiler.phases.common.ReassociationPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.common.VerifyHeapAtReturnPhase;
 import org.graalvm.compiler.phases.common.WriteBarrierAdditionPhase;
@@ -71,6 +73,10 @@ public class MidTier extends BaseTier<MidTierContext> {
 
         if (ConditionalElimination.getValue(options)) {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, true));
+        }
+
+        if (LoopPredication.getValue(options)) {
+            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopPredicationPhase()));
         }
 
         appendPhase(new LoopSafepointEliminationPhase());
@@ -100,8 +106,8 @@ public class MidTier extends BaseTier<MidTierContext> {
             appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));
         }
 
-        if (ReassociateInvariants.getValue(options)) {
-            appendPhase(new ReassociateInvariantPhase());
+        if (ReassociateExpressions.getValue(options)) {
+            appendPhase(new ReassociationPhase(canonicalizer));
         }
 
         if (OptDeoptimizationGrouping.getValue(options)) {

@@ -26,6 +26,7 @@ package org.graalvm.compiler.replacements.nodes;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.util.Objects;
 
 import org.graalvm.compiler.core.common.type.DataPointerConstant;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -68,14 +69,46 @@ public final class CStringConstant extends DataPointerConstant {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CStringConstant that = (CStringConstant) o;
+        return Objects.equals(string, that.string);
+    }
+
+    @Override
+    public String toString() {
+        return "CStringConstant{" +
+                        "string='" + string + '\'' +
+                        '}';
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(string);
+    }
+
+    @Override
     public String toValueString() {
         return "c\"" + string + "\"";
+    }
+
+    public static boolean intrinsify(GraphBuilderContext b, CStringConstant string) {
+        b.addPush(JavaKind.Object, new ConstantNode(string, StampFactory.pointer()));
+        return true;
     }
 
     public static boolean intrinsify(GraphBuilderContext b, String string) {
         b.addPush(JavaKind.Object, new ConstantNode(new CStringConstant(string), StampFactory.pointer()));
         return true;
     }
+
+    @NodeIntrinsic
+    public static native Word cstring(@ConstantNodeParameter CStringConstant string);
 
     @NodeIntrinsic
     public static native Word cstring(@ConstantNodeParameter String string);

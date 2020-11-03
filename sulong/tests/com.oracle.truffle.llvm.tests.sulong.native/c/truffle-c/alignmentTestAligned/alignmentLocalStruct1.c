@@ -35,7 +35,12 @@ int main() {
     struct {
         int a;
     } test;
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
     char *ptr = &a;
+#pragma clang diagnostic pop
+
     if ((long) &test % __alignof__(test) != 0) {
         abort();
     }

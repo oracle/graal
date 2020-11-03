@@ -29,7 +29,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 void hello() {
     printf("hello() is being called in testfile membersTest.cc");

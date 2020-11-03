@@ -71,6 +71,8 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVT
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTZS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FDIV;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMADD;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMAX;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMIN;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMOV;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMSUB;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMUL;
@@ -130,6 +132,8 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.generalFromSize;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.simdFromSize;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 
 import org.graalvm.compiler.asm.Assembler;
@@ -2790,6 +2794,30 @@ public abstract class AArch64Assembler extends Assembler {
         emitInt(type.encoding | instr.encoding | Fp2SourceOp | rd(dst) | rs1(src1) | rs2(src2));
     }
 
+    /**
+     * dst = src1 > src2 ? src1 : src2.
+     *
+     * @param size register size.
+     * @param dst floating point register. May not be null.
+     * @param src1 floating point register. May not be null.
+     * @param src2 floating point register. May not be null.
+     */
+    public void fmax(int size, Register dst, Register src1, Register src2) {
+        fpDataProcessing2Source(FMAX, dst, src1, src2, floatFromSize(size));
+    }
+
+    /**
+     * dst = src1 < src2 ? src1 : src2.
+     *
+     * @param size register size.
+     * @param dst floating point register. May not be null.
+     * @param src1 floating point register. May not be null.
+     * @param src2 floating point register. May not be null.
+     */
+    public void fmin(int size, Register dst, Register src1, Register src2) {
+        fpDataProcessing2Source(FMIN, dst, src1, src2, floatFromSize(size));
+    }
+
     /* Floating-point Multiply-Add (5.7.9) */
 
     /**
@@ -3045,49 +3073,141 @@ public abstract class AArch64Assembler extends Assembler {
 
     public abstract static class PatchableCodeAnnotation extends CodeAnnotation {
 
-        PatchableCodeAnnotation(int instructionStartPosition) {
-            super(instructionStartPosition);
+        /**
+         * The position (bytes from the beginning of the method) of the annotated instruction.
+         */
+        public final int instructionPosition;
+
+        PatchableCodeAnnotation(int instructionPosition) {
+            this.instructionPosition = instructionPosition;
         }
 
         abstract void patch(int codePos, int relative, byte[] code);
     }
 
     /**
-     * Contains methods used for patching instruction(s) within AArch64.
+     * Contains methods for patching instructions within AArch64.
      */
     public static class PatcherUtil {
         /**
-         * Method to patch a series a bytes within a byte address with a given value.
-         *
-         * @param code the array of bytes in which patch is to be performed
-         * @param codePos where in the array the patch should be performed
-         * @param value the value to be added to the series of bytes
-         * @param bitsUsed the number of bits to patch within each byte
-         * @param offsets where with the bytes the value should be added
+         * Convert byte array instruction into an int.
          */
-        public static void writeBitSequence(byte[] code, int codePos, int value, int[] bitsUsed, int[] offsets) {
-            assert bitsUsed.length == offsets.length : "bitsUsed and offsets parameter arrays do not match";
+        public static int readInstruction(byte[] code, int pos) {
+            return ByteBuffer.wrap(code, pos, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
+        }
+
+        /**
+         * Write int representation of instruction to byte array.
+         */
+        public static void writeInstruction(byte[] code, int pos, int val) {
+            ByteBuffer.wrap(code, pos, 4).order(ByteOrder.LITTLE_ENDIAN).putInt(val);
+        }
+
+        /**
+         * Method to patch a series a bytes within an instruction.
+         *
+         * @param original Initial instruction value.
+         * @param value The value to be given to the series of bytes.
+         * @param bitsUsed The number of bits to patch within each byte.
+         * @param offsets Where within the bytes the value should be added.
+         * @return New patched instruction value.
+         */
+        public static int patchBitSequence(int original, int value, int[] bitsUsed, int[] offsets) {
+            assert bitsUsed.length == 4 && offsets.length == 4 : "bitsUsed and offsets parameter should be of length 4";
+            int result = 0;
             int curValue = value;
             for (int i = 0; i < bitsUsed.length; i++) {
                 int usedBits = bitsUsed[i];
                 if (usedBits == 0) {
-                    continue;
+                    // want to retain the original value
+                    result = result | (original & (0xFF << (8 * i)));
                 }
 
                 int offset = offsets[i];
                 int mask = (1 << usedBits) - 1;
 
-                byte patchTarget = code[codePos + i];
+                byte patchTarget = (byte) ((original >> (8 * i)) & 0xFF);
                 byte patch = (byte) (((curValue & mask) << offset) & 0xFF);
                 byte retainedPatchTarget = (byte) (patchTarget & ((~(mask << offset)) & 0xFF));
-                patchTarget = (byte) (retainedPatchTarget | patch);
-                code[codePos + i] = patchTarget;
+                int patchValue = (retainedPatchTarget | patch) & 0xFF;
+                result = result | (patchValue << (8 * i));
                 curValue = curValue >> usedBits;
             }
+            return result;
         }
 
-        public static int computeRelativePageDifference(int target, int curPos, int pageSize) {
-            int relative = target / pageSize - curPos / pageSize;
+        /**
+         * Patches adrp instruction with provided imm21 value.
+         *
+         * @param original Original instruction value.
+         * @param imm21 The value to patch.
+         * @return New patched instruction value.
+         */
+        public static int patchAdrpHi21(int original, int imm21) {
+            assert (imm21 & 0x1FFFFF) == imm21;
+            // adrp imm_hi bits
+            int immHi = (imm21 >> 2) & 0x7FFFF;
+            int immLo = imm21 & 0x3;
+            int[] adrpBits = {3, 8, 8, 2};
+            int[] adrpOffsets = {5, 0, 0, 5};
+            int patch = (immLo << 19) | immHi;
+            return patchBitSequence(original, patch, adrpBits, adrpOffsets);
+        }
+
+        /**
+         * Patches add with provided imm12 value. Note this is expected to be used in conjunction
+         * with an adrp to form a 33-bit pc-relative address.
+         *
+         * @param original Original instruction value.
+         * @param imm12 The value to patch.
+         * @return New patched instruction value.
+         */
+        public static int patchAddLo12(int original, int imm12) {
+            assert (imm12 & 0xFFF) == imm12;
+            int[] addBits = {0, 6, 6, 0};
+            int[] addOffsets = {0, 2, 0, 0};
+            return PatcherUtil.patchBitSequence(original, imm12, addBits, addOffsets);
+        }
+
+        /**
+         * Patches lar (unsigned, scaled) with provided imm12 value. Note this is expected to be
+         * used in conjunction with an adrp to perform a 33-bit pc-relative load.
+         *
+         * @param original Original instruction value.
+         * @param imm12 The *unscaled* value to patch. The method performs all necessary shifting.
+         * @param srcSize The memory operation size. This determines the scaling factor.
+         * @return New patched instruction value.
+         */
+        public static int patchLdrLo12(int original, int imm12, int srcSize) {
+            assert (imm12 & 0xFFF) == imm12;
+            assert srcSize == 64 || srcSize == 32 || srcSize == 16 || srcSize == 8;
+            int shiftSize = srcSize == 64 ? 3 : (srcSize == 32 ? 2 : (srcSize == 16 ? 1 : 0));
+            assert (shiftSize == 0) || ((imm12 & ((1 << shiftSize) - 1)) == 0);
+            int shiftedValue = (imm12 & 0xFFF) >> shiftSize;
+            int[] ldrBits = {0, 6, 6, 0};
+            int[] ldrOffsets = {0, 2, 0, 0};
+            return PatcherUtil.patchBitSequence(original, shiftedValue, ldrBits, ldrOffsets);
+        }
+
+        /**
+         * Patches mov instruction with provided imm16 value.
+         *
+         * @param original Original instruction value.
+         * @param imm16 The value to patch.
+         * @return New patched instruction value.
+         */
+        public static int patchMov(int original, int imm16) {
+            assert (imm16 & 0xFFFF) == imm16;
+            int[] movBits = {3, 8, 5, 0};
+            int[] movOffsets = {5, 0, 0, 0};
+            return PatcherUtil.patchBitSequence(original, imm16, movBits, movOffsets);
+        }
+
+        /**
+         * Computes the page-relative difference between two addresses.
+         */
+        public static int computeRelativePageDifference(long target, long curPos, int pageSize) {
+            int relative = (int) (target / pageSize - curPos / pageSize);
             return relative;
         }
     }
@@ -3117,12 +3237,12 @@ public abstract class AArch64Assembler extends Assembler {
 
         @Override
         public void patch(int codePos, int relative, byte[] code) {
-            int curValue = relative;
+            // currently only BL instructions are being patched here
+            assert instruction == AArch64Assembler.Instruction.BL : "trying to patch an unexpected instruction";
+
+            int curValue = relative; // BL is PC-relative
             assert (curValue & ((1 << shift) - 1)) == 0 : "relative offset has incorrect alignment";
             curValue = curValue >> shift;
-
-            // right this is only BL instructions are being patched here
-            assert instruction == AArch64Assembler.Instruction.BL : "trying to patch an unexpected instruction";
             GraalError.guarantee(NumUtil.isSignedNbit(operandSizeBits, curValue), "value too large to fit into space");
 
             // fill in immediate operand of operandSizeBits starting at offsetBits within
@@ -3146,7 +3266,9 @@ public abstract class AArch64Assembler extends Assembler {
 
                 offsetRemaining = 0;
             }
-            PatcherUtil.writeBitSequence(code, instructionPosition, curValue, bitsUsed, offsets);
+            int originalInst = PatcherUtil.readInstruction(code, instructionPosition);
+            int newInst = PatcherUtil.patchBitSequence(originalInst, curValue, bitsUsed, offsets);
+            PatcherUtil.writeInstruction(code, instructionPosition, newInst);
         }
     }
 

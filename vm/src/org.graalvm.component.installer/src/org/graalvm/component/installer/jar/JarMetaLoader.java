@@ -155,6 +155,9 @@ public class JarMetaLoader extends ComponentPackageLoader {
         if (licPath == null) {
             return null;
         }
+        if (licPath.contains("://")) {
+            return licPath;
+        }
         JarEntry je = jarFile.getJarEntry(licPath);
         if (je == null) {
             return null;

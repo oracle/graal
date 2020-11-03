@@ -49,7 +49,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
@@ -152,6 +155,13 @@ public final class SuspendedEvent {
     SuspendedEvent(DebuggerSession session, Thread thread, SuspendedContext context, MaterializedFrame frame, SuspendAnchor suspendAnchor,
                     InsertableNode insertableNode, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
                     List<Breakpoint> breakpoints, Map<Breakpoint, Throwable> conditionFailures) {
+        Objects.requireNonNull(session, "session");
+        Objects.requireNonNull(thread, "thread");
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(frame, "frame");
+        Objects.requireNonNull(suspendAnchor, "suspendAnchor");
+        Objects.requireNonNull(breakpoints, "breakpoints");
+        Objects.requireNonNull(conditionFailures, "conditionFailures");
         this.session = session;
         this.context = context;
         this.suspendAnchor = suspendAnchor;
@@ -161,7 +171,7 @@ public final class SuspendedEvent {
         this.returnValue = returnValue;
         this.exception = exception;
         this.conditionFailures = conditionFailures;
-        this.breakpoints = breakpoints == null ? Collections.<Breakpoint> emptyList() : Collections.<Breakpoint> unmodifiableList(breakpoints);
+        this.breakpoints = Collections.unmodifiableList(breakpoints);
         this.thread = thread;
         this.sourceSection = context.getInstrumentedSourceSection();
     }
@@ -382,9 +392,6 @@ public final class SuspendedEvent {
      */
     public Throwable getBreakpointConditionException(Breakpoint breakpoint) {
         verifyValidState(true);
-        if (conditionFailures == null) {
-            return null;
-        }
         return conditionFailures.get(breakpoint);
     }
 
@@ -434,7 +441,7 @@ public final class SuspendedEvent {
     public Iterable<DebugStackFrame> getStackFrames() {
         verifyValidState(false);
         if (cachedFrames == null) {
-            cachedFrames = new DebugStackFrameIterable();
+            cachedFrames = new DebugStackFrameIterable(session.isShowHostStackFrames());
         }
         return cachedFrames;
     }
@@ -610,7 +617,7 @@ public final class SuspendedEvent {
     }
 
     /**
-     * Prepare to execute in <strong>step out</strong> mode when guest language program execution
+     * Prepare to execute in <strong>step over</strong> mode when guest language program execution
      * resumes. In this mode, the current thread continues until it arrives to a code location with
      * one of the enabled {@link StepConfig.Builder#sourceElements(SourceElement...) source
      * elements}, ignoring any nested ones, and repeats that process
@@ -693,19 +700,72 @@ public final class SuspendedEvent {
         return "Suspended at " + getSourceSection() + " for thread " + getThread();
     }
 
+    private static final String HOST_INTEROP_NODE_NAME = "com.oracle.truffle.polyglot.HostToGuestRootNode";
+
+    private static Integer findHostDepth() {
+        return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Integer>() {
+            private int hostDepth = 0;
+
+            @Override
+            public Integer visitFrame(FrameInstance frameInstance) {
+                RootNode root = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+                if (instanceOf(HOST_INTEROP_NODE_NAME, root.getClass())) {
+                    return hostDepth;
+                }
+                hostDepth++;
+                return null;
+            }
+        });
+    }
+
+    private static boolean instanceOf(String name, Class<?> clazz) {
+        if (clazz.getName().equals(name)) {
+            return true;
+        }
+        Class<?> sClazz = clazz.getSuperclass();
+        if (sClazz != null) {
+            return instanceOf(name, sClazz);
+        } else {
+            return false;
+        }
+    }
+
+    static StackTraceElement[] cutToHostDepth(StackTraceElement[] stack) {
+        Integer hostDepth = findHostDepth();
+        if (hostDepth != null) {
+            int guestCutIndex = 0;
+            for (int i = 0; i < stack.length; i++) {
+                if (HOST_INTEROP_NODE_NAME.equals(stack[i].getClassName())) {
+                    guestCutIndex = i;
+                    break;
+                }
+            }
+            StackTraceElement[] newStack = new StackTraceElement[hostDepth + stack.length - guestCutIndex];
+            System.arraycopy(stack, guestCutIndex, newStack, hostDepth, stack.length - guestCutIndex);
+            return newStack;
+        } else {
+            return stack;
+        }
+    }
+
     private final class DebugStackFrameIterable implements Iterable<DebugStackFrame> {
 
+        private final StackTraceElement[] hostStack;
         private DebugStackFrame topStackFrame;
         private List<DebugStackFrame> otherFrames;
 
+        private DebugStackFrameIterable(boolean hostIncluded) {
+            this.hostStack = hostIncluded ? cutToHostDepth(Thread.currentThread().getStackTrace()) : null;
+        }
+
         private DebugStackFrame getTopStackFrame() {
             if (topStackFrame == null) {
-                topStackFrame = new DebugStackFrame(SuspendedEvent.this, null, 0);
+                topStackFrame = new DebugStackFrame(SuspendedEvent.this, (FrameInstance) null, 0);
             }
             return topStackFrame;
         }
 
-        private List<DebugStackFrame> getOtherFrames() {
+        private List<DebugStackFrame> getOtherFrames(boolean raw) {
             if (otherFrames == null) {
                 final List<DebugStackFrame> frameInstances = new ArrayList<>();
                 Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
@@ -719,7 +779,19 @@ public final class SuspendedEvent {
                         }
                         Node callNode = frameInstance.getCallNode();
                         if (callNode != null && !hasRootTag(callNode)) {
+                            if (raw) {
+                                frameInstances.add(null);
+                            }
                             return null;
+                        } else if (callNode == null) {
+                            RootNode root = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+                            if (root.getLanguageInfo() == null) {
+                                // No call node and no language
+                                if (raw) {
+                                    frameInstances.add(null);
+                                }
+                                return null;
+                            }
                         }
                         if (++depth <= 0) {
                             return null;
@@ -748,7 +820,9 @@ public final class SuspendedEvent {
             if (context.getStackDepth() == 0) {
                 return 0;
             }
-            if (hasRootTag(context.getInstrumentedNode())) {
+            Node node = context.getInstrumentedNode();
+            if (node instanceof RootNode || hasRootTag(node)) {
+                // RootNode can mean that we have no idea which Node we're suspended at
                 return 0;
             } else {
                 return 1; // Skip synthetic frame
@@ -756,42 +830,66 @@ public final class SuspendedEvent {
         }
 
         public Iterator<DebugStackFrame> iterator() {
-            return new Iterator<DebugStackFrame>() {
-
-                private int index = getTopFrameIndex();
-                private Iterator<DebugStackFrame> otherIterator;
-
-                public boolean hasNext() {
-                    verifyValidState(false);
-                    if (index == 0) {
-                        return true;
-                    } else {
-                        return getOtherStackFrames().hasNext();
+            if (hostStack != null) {
+                AtomicInteger frameDepth = new AtomicInteger(0);
+                return Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(hostStack, new GuestIterator(true) {
+                    @Override
+                    public DebugStackFrame next() {
+                        DebugStackFrame frame = super.next();
+                        if (frame != null) {
+                            frameDepth.set(frame.getDepth());
+                        }
+                        return frame;
                     }
-                }
-
-                public DebugStackFrame next() {
-                    verifyValidState(false);
-                    if (index == 0) {
-                        index++;
-                        return getTopStackFrame();
-                    } else {
-                        return getOtherStackFrames().next();
+                }, false, new Function<StackTraceElement, DebugStackFrame>() {
+                    @Override
+                    public DebugStackFrame apply(StackTraceElement element) {
+                        return new DebugStackFrame(SuspendedEvent.this, element, frameDepth.get());
                     }
-                }
+                }, Function.identity());
+            } else {
+                return new GuestIterator(false);
+            }
+        }
 
-                public void remove() {
-                    throw new UnsupportedOperationException();
-                }
+        private class GuestIterator implements Iterator<DebugStackFrame> {
 
-                private Iterator<DebugStackFrame> getOtherStackFrames() {
-                    if (otherIterator == null) {
-                        otherIterator = getOtherFrames().iterator();
-                    }
-                    return otherIterator;
-                }
+            private final boolean raw;
+            private int index = getTopFrameIndex();
+            private Iterator<DebugStackFrame> otherIterator;
 
-            };
+            // When raw is true, it includes also internal frames as nulls.
+            GuestIterator(boolean raw) {
+                this.raw = raw;
+            }
+
+            @Override
+            public boolean hasNext() {
+                verifyValidState(false);
+                if (index == 0) {
+                    return true;
+                } else {
+                    return getOtherStackFrames().hasNext();
+                }
+            }
+
+            @Override
+            public DebugStackFrame next() {
+                verifyValidState(false);
+                if (index == 0) {
+                    index++;
+                    return getTopStackFrame();
+                } else {
+                    return getOtherStackFrames().next();
+                }
+            }
+
+            private Iterator<DebugStackFrame> getOtherStackFrames() {
+                if (otherIterator == null) {
+                    otherIterator = getOtherFrames(raw).iterator();
+                }
+                return otherIterator;
+            }
         }
 
     }
@@ -805,6 +903,9 @@ public final class SuspendedEvent {
         DebugAsyncStackFrameLists(DebuggerSession session, Iterable<DebugStackFrame> callStack) {
             this.session = session;
             for (DebugStackFrame dFrame : callStack) {
+                if (dFrame.isHost()) {
+                    continue;
+                }
                 RootCallTarget target = dFrame.getCallTarget();
                 Frame frame = dFrame.findTruffleFrame(FrameInstance.FrameAccess.READ_ONLY);
                 List<DebugStackTraceElement> asyncStack = getAsynchronousStackFrames(session, target, frame);
@@ -868,6 +969,9 @@ public final class SuspendedEvent {
                 while (lastLevel < level) {
                     boolean added = false;
                     for (DebugStackTraceElement tElement : stacks.get(lastLevel)) {
+                        if (tElement.isHost()) {
+                            continue;
+                        }
                         RootCallTarget target = tElement.traceElement.getTarget();
                         Frame frame = tElement.traceElement.getFrame();
                         List<DebugStackTraceElement> asyncStack = getAsynchronousStackFrames(session, target, frame);

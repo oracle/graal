@@ -716,8 +716,13 @@ public class GraphUtil {
      * @return The array length if one was found, or null otherwise.
      */
     public static ValueNode arrayLength(ValueNode value, FindLengthMode mode, ConstantReflectionProvider constantReflection) {
+        return arrayLength(value, mode, constantReflection, null);
+    }
+
+    private static ValueNode arrayLength(ValueNode value, FindLengthMode mode, ConstantReflectionProvider constantReflection, EconomicMap<ValueNode, ValueNode> visitedPhiInputs) {
         Objects.requireNonNull(mode);
 
+        EconomicMap<ValueNode, ValueNode> visitedPhiInputMap = visitedPhiInputs;
         ValueNode current = value;
         do {
             /*
@@ -728,7 +733,10 @@ public class GraphUtil {
                 return ((ArrayLengthProvider) current).findLength(mode, constantReflection);
 
             } else if (current instanceof ValuePhiNode) {
-                return phiArrayLength((ValuePhiNode) current, mode, constantReflection);
+                if (visitedPhiInputMap == null) {
+                    visitedPhiInputMap = EconomicMap.create();
+                }
+                return phiArrayLength((ValuePhiNode) current, mode, constantReflection, visitedPhiInputMap);
 
             } else if (current instanceof ValueProxyNode) {
                 ValueProxyNode proxy = (ValueProxyNode) current;
@@ -748,18 +756,35 @@ public class GraphUtil {
         } while (true);
     }
 
-    private static ValueNode phiArrayLength(ValuePhiNode phi, ArrayLengthProvider.FindLengthMode mode, ConstantReflectionProvider constantReflection) {
+    private static ValueNode phiArrayLength(ValuePhiNode phi, ArrayLengthProvider.FindLengthMode mode, ConstantReflectionProvider constantReflection,
+                    EconomicMap<ValueNode, ValueNode> visitedPhiInputs) {
         if (phi.merge() instanceof LoopBeginNode) {
-            /* Avoid cycle detection by not processing phi functions that could introduce cycles. */
+            /*
+             * Avoid fixed point computation by not processing phi functions that could introduce
+             * cycles.
+             */
             return null;
         }
 
         ValueNode singleLength = null;
         for (int i = 0; i < phi.values().count(); i++) {
             ValueNode input = phi.values().get(i);
-            ValueNode length = arrayLength(input, mode, constantReflection);
-            if (length == null) {
+            if (input == null) {
                 return null;
+            }
+            /*
+             * Multi-way phis can have the same input along many paths. Avoid the exponential blowup
+             * from visiting them many times.
+             */
+            ValueNode length = null;
+            if (visitedPhiInputs.containsKey(input)) {
+                length = visitedPhiInputs.get(input);
+            } else {
+                length = arrayLength(input, mode, constantReflection, visitedPhiInputs);
+                if (length == null) {
+                    return null;
+                }
+                visitedPhiInputs.put(input, length);
             }
             assert length.stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Int;
 

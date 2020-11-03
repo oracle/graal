@@ -28,10 +28,10 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 long function(int test[]) {
-    return test;
+    return (long) test;
 }
 
 int main() {
     int a[3] = { 0 };
-    return function(a) == a;
+    return function(a) == (long) a;
 }

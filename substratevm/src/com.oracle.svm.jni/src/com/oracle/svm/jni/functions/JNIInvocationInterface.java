@@ -30,8 +30,6 @@ import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_4;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_6;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_8;
 
-import java.io.CharConversionException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
@@ -112,10 +110,10 @@ final class JNIInvocationInterface {
             static void enter(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
                 if (!SubstrateOptions.SpawnIsolates.getValue()) {
                     int error = CEntryPointActions.enterIsolate((Isolate) CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
-                    if (error != CEntryPointErrors.UNINITIALIZED_ISOLATE) {
-                        if (error == CEntryPointErrors.NO_ERROR) {
-                            CEntryPointActions.leave();
-                        }
+                    if (error == CEntryPointErrors.NO_ERROR) {
+                        CEntryPointActions.leave();
+                        CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_EEXIST());
+                    } else if (error != CEntryPointErrors.UNINITIALIZED_ISOLATE) {
                         CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_EEXIST());
                     }
                 }
@@ -309,13 +307,7 @@ final class JNIInvocationInterface {
                 String name = null;
                 if (args.isNonNull() && args.getVersion() != JNIVersion.JNI_VERSION_1_1()) {
                     group = JNIObjectHandles.getObject(args.getGroup());
-                    if (args.getName().isNonNull()) {
-                        ByteBuffer buffer = CTypeConversion.asByteBuffer(args.getName(), Integer.MAX_VALUE);
-                        try {
-                            name = Utf8.utf8ToString(true, buffer);
-                        } catch (CharConversionException ignore) {
-                        }
-                    }
+                    name = Utf8.utf8ToString(args.getName());
                 }
 
                 /*

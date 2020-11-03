@@ -42,7 +42,6 @@ package com.oracle.truffle.object;
 
 import java.util.Objects;
 
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 
 /** @since 0.17 or earlier */
@@ -159,15 +158,15 @@ public abstract class Transition {
 
     /** @since 0.17 or earlier */
     public static final class ObjectTypeTransition extends Transition {
-        private final ObjectType objectType;
+        private final Object objectType;
 
         /** @since 0.17 or earlier */
-        public ObjectTypeTransition(ObjectType objectType) {
+        public ObjectTypeTransition(Object objectType) {
             this.objectType = objectType;
         }
 
         /** @since 0.17 or earlier */
-        public ObjectType getObjectType() {
+        public Object getObjectType() {
             return objectType;
         }
 

@@ -153,11 +153,11 @@ def remove_extension(filename):
 
 class GraalWasmSourceFileProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, subDir, theLicense, **args):
-        self.subDir = subDir
         mx.ArchivableProject.__init__(self, suite, name, deps, workingSets, theLicense, **args)
+        self.subDir = subDir
 
     def getSourceDir(self):
-        src_dir = os.path.join(self.dir, "src", self.name, self.subDir, "src")
+        src_dir = os.path.join(self.dir, self.subDir, self.name, "src")
         return src_dir
 
     def getOutputDir(self):
@@ -244,6 +244,9 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
     def __str__(self):
         return 'Building {} with Emscripten'.format(self.subject.name)
 
+    def benchmark_methods(self):
+        return benchmark_methods
+
     def build(self):
         source_dir = self.subject.getSourceDir()
         output_dir = self.subject.getOutputDir()
@@ -264,7 +267,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
             include_flags = ["-I", os.path.join(_suite.dir, "includes", self.project.includeset)]
         emcc_flags = ["-s", "EXIT_RUNTIME=1", "-s", "STANDALONE_WASM", "-s", "WASM_BIGINT"] + cc_flags
         if self.project.isBenchmarkProject():
-            emcc_flags = emcc_flags + ["-s", "EXPORTED_FUNCTIONS=" + str(benchmark_methods).replace("'", "\"") + ""]
+            emcc_flags = emcc_flags + ["-s", "EXPORTED_FUNCTIONS=" + str(self.benchmark_methods()).replace("'", "\"") + ""]
         subdir_program_names = defaultdict(lambda: [])
         for root, filename in self.subject.getProgramSources():
             subdir = os.path.relpath(root, self.subject.getSourceDir())

@@ -41,7 +41,7 @@
 suite = {
   "mxversion" : "5.270.1",
   "name" : "sdk",
-  "version" : "20.3.0",
+  "version" : "21.0.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -84,27 +84,32 @@ suite = {
         "groupId" : "jline",
         "artifactId" : "jline",
         "version" : "2.14.6",
-      },
+      }
+    },
+    "JLINE3" : {
+      "sha1" : "f925a217db222ba24ce5b66b18a02511151929bb",
+      "version" : "3.13.2.1",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
       "license" : "BSD-new"
     },
     "LLVM_ORG" : {
-      "version" : "9.0.0-5-g80b1d876fd-bg83994d0b4b",
+      "version" : "10.0.0-4-g22d2637565-bg83994d0b4b",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "os_arch" : {
         "linux" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
-            "sha1" : "9343a50712a5cce4d6c0376c409cced4a6c9d90c",
+            "sha1" : "7fa523a9a1a40674da5ad6c3bdd91375bb566830",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
-            "sha1" : "08c612ee826c6df031caa0d40b26dc0e8977c2a2",
+            "sha1" : "6ae659cc5bab9e76b457b595f7e84943aa97e056",
           }
         },
         "darwin" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "sha1" : "4d51403d4d891573dc321d106494b391d964f3a0",
+            "sha1" : "8b9e665f1b734d41c62a83b1b6081ffe50f63a4c",
           }
         },
         "<others>": {
@@ -116,20 +121,19 @@ suite = {
       }
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
-      "version" : "9.0.0-5-g80b1d876fd-bg83994d0b4b",
+      "version" : "10.0.0-4-g22d2637565-bg83994d0b4b",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
       "urls" : ["{host}/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
-      "sha1" : "43e65c50e38f45f7777ff91481508921031f9ca6",
+      "sha1" : "c70e1aef1e685eb9c7294d8dacbc1b5c35c1bc21",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      # version difference as the binaries were repackaged but the sources stayed the same
-      "version" : "9.0.0-5-g80b1d876fd-bg0c808efbe5",
+      "version" : "10.0.0-4-g22d2637565-bg83994d0b4b",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
-      "sha1" : "27bea70346768ee43893df3f65cf785c5b5d0342",
+      "sha1" : "be5a38ed0dd5b48b6a936d826318f5c142b3b0f0",
       "license" : "Apache-2.0-LLVM",
       },
   },
@@ -192,6 +196,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.polyglot",
         "JLINE",
+        "JLINE3",
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Tools",
@@ -311,6 +316,9 @@ suite = {
         ],
         "uses" : [
           "org.graalvm.polyglot.impl.AbstractPolyglotImpl"
+        ],
+        "opens" : [
+          "org.graalvm.polyglot to org.graalvm.truffle"
         ],
       },
       "description" : "GraalVM is an ecosystem for compiling and running applications written in multiple languages.\nGraalVM removes the isolation between programming languages and enables interoperability in a shared runtime.",
@@ -449,15 +457,7 @@ suite = {
           "extracted-dependency:LLVM_ORG_COMPILER_RT_LINUX",
           "file:3rd_party_license_llvm-toolchain.txt",
         ],
-        "./patches/" : [
-          "file:patches/*",
-        ],
-        "./patches/graalvm-llvm-runtime/" : [
-          "file:../sulong/patches/*",
-        ],
-        "./patches/native-image/" : [
-          "file:../substratevm/patches/*"
-        ],
+        "./patches/" : "file:llvm-patches",
       },
       "platformDependent" : True,
       "maven": False,

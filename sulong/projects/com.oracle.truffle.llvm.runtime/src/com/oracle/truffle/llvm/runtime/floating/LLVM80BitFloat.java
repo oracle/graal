@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.floating;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -43,6 +41,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -421,45 +420,37 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
 
     public byte[] getBytesBigEndian() {
         byte[] array = new byte[BYTE_WIDTH];
-        ByteBuffer bb = ByteBuffer.wrap(array);
-        bb.order(ByteOrder.BIG_ENDIAN);
         short signWithExponent = getExponent();
         short signBit = sign ? (short) bit(Short.SIZE - 1) : 0;
         signWithExponent |= signBit;
-        bb.putShort(signWithExponent);
-        bb.putLong(getFraction());
+        ByteArraySupport.bigEndian().putShort(array, 0, signWithExponent);
+        ByteArraySupport.bigEndian().putLong(array, 2, getFraction());
         return array;
     }
 
     public byte[] getBytes() {
         byte[] array = new byte[BYTE_WIDTH];
-        ByteBuffer bb = ByteBuffer.wrap(array);
-        bb.order(ByteOrder.LITTLE_ENDIAN);
         short signWithExponent = getExponent();
         short signBit = sign ? (short) bit(Short.SIZE - 1) : 0;
         signWithExponent |= signBit;
-        bb.putLong(getFraction());
-        bb.putShort(signWithExponent);
+        ByteArraySupport.littleEndian().putLong(array, 0, getFraction());
+        ByteArraySupport.littleEndian().putShort(array, 8, signWithExponent);
         return array;
     }
 
     public static LLVM80BitFloat fromBytesBigEndian(byte[] bytes) {
         assert bytes.length == BYTE_WIDTH;
-        ByteBuffer bb = ByteBuffer.wrap(bytes);
-        bb.order(ByteOrder.BIG_ENDIAN);
-        short readShort = bb.getShort();
+        short readShort = ByteArraySupport.bigEndian().getShort(bytes, 0);
         int exponent = readShort & BinaryHelper.getBitMask(EXPONENT_BIT_WIDTH);
-        long fraction = bb.getLong();
+        long fraction = ByteArraySupport.bigEndian().getLong(bytes, 2);
         boolean signSet = getBit(Short.SIZE, readShort);
         return LLVM80BitFloat.fromRawValues(signSet, exponent, fraction);
     }
 
     public static LLVM80BitFloat fromBytes(byte[] bytes) {
         assert bytes.length == BYTE_WIDTH;
-        ByteBuffer bb = ByteBuffer.wrap(bytes);
-        bb.order(ByteOrder.LITTLE_ENDIAN);
-        long fraction = bb.getLong();
-        short readShort = bb.getShort();
+        long fraction = ByteArraySupport.littleEndian().getLong(bytes, 0);
+        short readShort = ByteArraySupport.littleEndian().getShort(bytes, 8);
         int exponent = readShort & BinaryHelper.getBitMask(EXPONENT_BIT_WIDTH);
         boolean signSet = getBit(Short.SIZE, readShort);
         return LLVM80BitFloat.fromRawValues(signSet, exponent, fraction);
@@ -594,7 +585,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         protected Object createFunction() {
             LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
             NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-            return nfiContextExtension == null ? null : nfiContextExtension.getNativeFunction(context, "__sulong_fp80_" + name, "(UINT64,UINT64,UINT64):VOID");
+            return nfiContextExtension == null ? null : nfiContextExtension.getNativeFunction("__sulong_fp80_" + name, "(UINT64,UINT64,UINT64):VOID");
         }
 
         public abstract LLVM80BitFloat execute(LLVM80BitFloat x, LLVM80BitFloat y);

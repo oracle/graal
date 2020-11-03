@@ -29,28 +29,28 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory;
 
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class FreeReadOnlyGlobalsBlockNode extends LLVMNode implements LLVMMemoryOpNode {
+public abstract class FreeReadOnlyGlobalsBlockNode extends LLVMNode implements LLVMMemoryOpNode {
 
-    @Child InteropLibrary interop;
-
-    private final Object freeGlobalsBlock;
-
-    public FreeReadOnlyGlobalsBlockNode(LLVMContext context) {
-        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        this.freeGlobalsBlock = nfiContextExtension.getNativeFunction(context, "__sulong_free_globals_block", "(POINTER):VOID");
-        this.interop = InteropLibrary.getFactory().create(freeGlobalsBlock);
+    public FreeReadOnlyGlobalsBlockNode() {
     }
 
-    @Override
-    public void execute(LLVMPointer ptr) {
+    @Specialization(limit = "1")
+    public void execute(LLVMPointer ptr,
+                    @SuppressWarnings("unused") @CachedContext(LLVMLanguage.class) LLVMContext ctx,
+                    @Bind("ctx.getFreeReadOnlyGlobalsBlockFunction()") Object freeGlobalsBlock,
+                    @CachedLibrary("freeGlobalsBlock") InteropLibrary interop) {
         try {
             interop.execute(freeGlobalsBlock, ptr);
         } catch (InteropException ex) {

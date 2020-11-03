@@ -52,11 +52,12 @@ import org.graalvm.wasm.utils.cases.WasmCase;
 import org.graalvm.wasm.utils.cases.WasmCaseData;
 import org.graalvm.wasm.utils.cases.WasmStringCase;
 import org.junit.Test;
+import org.graalvm.wasm.test.WasmFileSuite;
 
-import org.graalvm.wasm.test.WasmSuiteBase;
+import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
 
-public class ValidationSuite extends WasmSuiteBase {
-    private WasmCase[] testCases = {
+public class ValidationSuite extends WasmFileSuite {
+    private final WasmCase[] testCases = {
                     // # 3.2 Types
 
                     // ## 3.2.1 Limits
@@ -66,7 +67,7 @@ public class ValidationSuite extends WasmSuiteBase {
                     // The arity `m` must not be larger than 1.
                     // Validated in: SymbolTable.allocateFunctionType
                     binaryCase(
-                                    "Function: cannot return more than one value",
+                                    "Function - cannot return more than one value",
                                     "A function can return at most one result.",
                                     // (module
                                     // (func $f (result i32) i32.const 42 i32.const 42)
@@ -78,15 +79,15 @@ public class ValidationSuite extends WasmSuiteBase {
                     // Validated in: BinaryParser.readTableLimits
                     // Note: Limit is lowered to `2^31 - 1` due to Java indices limit.
                     stringCase(
-                                    "Table: initial size out of bounds",
+                                    "Table - initial size out of bounds",
                                     "Invalid initial table size, must be less than upper bound: 2147483648 should be <= 2147483647.",
                                     "(table $table1 2147483648 funcref)"),
                     stringCase(
-                                    "Table: initial size out of bounds",
+                                    "Table - initial size out of bounds",
                                     "Invalid max table size, must be less than upper bound: 2147483648 should be <= 2147483647.",
                                     "(table $table1 1 2147483648 funcref)"),
                     stringCase(
-                                    "Table: max size lower than initial size",
+                                    "Table - max size lower than initial size",
                                     "Invalid initial table size, must be less than max table size: 2 should be <= 1.",
                                     "(table $table1 2 1 funcref)"),
 
@@ -94,15 +95,15 @@ public class ValidationSuite extends WasmSuiteBase {
                     // The limits `limits` must be valid within range `2^16`.
                     // Validated in: BinaryParser.readMemoryLimits
                     stringCase(
-                                    "Memory: initial size out of bounds",
+                                    "Memory - initial size out of bounds",
                                     "Invalid initial memory size, must be less than upper bound: 2147483648 should be <= 65536.",
                                     "(memory $memory1 2147483648)"),
                     stringCase(
-                                    "Memory: max size out of bounds",
+                                    "Memory - max size out of bounds",
                                     "Invalid max memory size, must be less than upper bound: 2147483648 should be <= 65536.",
                                     "(memory $memory1 1 2147483648)"),
                     stringCase(
-                                    "Memory: max size lower than initial size",
+                                    "Memory - max size lower than initial size",
                                     "Invalid initial memory size, must be less than max memory size: 2 should be <= 1.",
                                     "(memory $memory1 2 1)"),
 
@@ -115,11 +116,11 @@ public class ValidationSuite extends WasmSuiteBase {
                     // The type `C.types[x]` must be defined in the context.
                     // Validated in: SymbolTable.allocateFunction
                     stringCase(
-                                    "Function: invalid type index",
+                                    "Function - invalid type index",
                                     "Function type out of bounds: 1 should be < 1.",
                                     "(type (func (result i32))) (func (export \"f\") (type 1))"),
                     stringCase(
-                                    "Function: invalid type index",
+                                    "Function - invalid type index",
                                     "Function type out of bounds: 4294967254 should be < 1.",
                                     "(type (func (result i32))) (func (export \"f\") (type 4294967254))"),
 
@@ -149,7 +150,7 @@ public class ValidationSuite extends WasmSuiteBase {
                     // The table `C.tables[x]` must be defined in the context.
                     // Validated in: BinaryParser.readElementSection
                     binaryCase(
-                                    "Element segment: invalid table index",
+                                    "Element segment - invalid table index",
                                     "Invalid table index: 5 should = 0.",
                                     // (module
                                     // (table 1 funcref)
@@ -173,7 +174,7 @@ public class ValidationSuite extends WasmSuiteBase {
                     // context.
                     // Validated in: SymbolTable.function
                     stringCase(
-                                    "Element segments: invalid function index",
+                                    "Element segments - invalid function index",
                                     "Function index out of bounds: 1 should be < 1.",
                                     "(table 1 funcref) (elem (i32.const 0) 1)"),
 
@@ -181,7 +182,7 @@ public class ValidationSuite extends WasmSuiteBase {
                     // The memory `C.mems[x]` must be defined in the context.
                     // Validated in: BinaryParser.readDataSection
                     binaryCase(
-                                    "Data segment: invalid memory index",
+                                    "Data segment - invalid memory index",
                                     "Invalid memory index, only the memory index 0 is currently supported.: 5 should = 0.",
                                     // (module
                                     // (memory 1)
@@ -199,63 +200,96 @@ public class ValidationSuite extends WasmSuiteBase {
                     // The function `C.funcs[x]` must be defined in the context.
                     // Validated in: SymbolTable.function
                     stringCase(
-                                    "Start function: invalid index",
+                                    "Start function - invalid index",
                                     "Function index out of bounds: 1 should be < 1.",
                                     "(start 1)"),
 
                     // The type of `C.funcs[x]` must be [] -> [].
                     // Validated in SymbolTable.startFunction
                     stringCase(
-                                    "Start function: returns a value",
+                                    "Start function - returns a value",
                                     "Start function cannot return a value.",
                                     "(start 0) (func (result i32) i32.const 42)"),
                     stringCase(
-                                    "Start function: takes arguments",
+                                    "Start function - takes arguments",
                                     "Start function cannot take arguments.",
                                     "(start 0) (func (param i32))"),
 
                     // The length of `C.tables` must not be larger than 1.
                     // Validated in: BinaryParser.readTableSection
                     stringCase(
-                                    "Module: two tables (2 locals)",
+                                    "Module - two tables (2 locals)",
                                     "Can import or declare at most one table per module: 2 should be <= 1.",
                                     "(table $table1 1 funcref) (table $table2 1 funcref)"),
                     stringCase(
-                                    "Module: two tables (1 local and 1 import)",
+                                    "Module - two tables (1 local and 1 import)",
                                     "Can import or declare at most one table per module: 2 should be <= 1.",
                                     "(table $table2 (import \"some\" \"table\") 1 funcref) (table $table1 1 funcref)"),
                     // Validated in: SymbolTable.validateSingleTable
                     stringCase(
-                                    "Module: two tables (2 imports)",
+                                    "Module - two tables (2 imports)",
                                     "A table has been already imported in the module.",
                                     "(table $table1 (import \"some\" \"table\") 1 funcref) (table $table2 (import \"some\" \"table\") 1 funcref)"),
 
                     // The length of `C.mems` must not be larger than 1.
                     // Validated in: BinaryParser.readMemorySection
                     stringCase(
-                                    "Module: two memories (2 locals)",
+                                    "Module - two memories (2 locals)",
                                     "Can import or declare at most one memory per module: 2 should be <= 1.",
                                     "(memory $mem1 1) (memory $mem2 1)"),
                     stringCase(
-                                    "Module: two memories (1 local and 1 import)",
+                                    "Module - two memories (1 local and 1 import)",
                                     "Can import or declare at most one memory per module: 2 should be <= 1.",
                                     "(memory $mem1 (import \"some\" \"memory\") 1) (memory $mem2 1)"),
                     // Validated in: SymbolTable.validateSingleMemory
                     stringCase(
-                                    "Module: two memories (2 imports)",
+                                    "Module - two memories (2 imports)",
                                     "Memory has been already imported in the module.",
                                     "(memory $mem1 (import \"some\" \"memory\") 1) (memory $mem2 (import \"some\" \"memory\") 1)"),
 
                     // All export names `export_i.name` must be different.
                     // Validated in: SymbolTable.checkUniqueExport
                     stringCase(
-                                    "Module: duplicate export (2 functions)",
+                                    "Module - duplicate export (2 functions)",
                                     "All export names must be different, but 'a' is exported twice.",
                                     "(func (export \"a\") (result i32) i32.const 42) (func (export \"a\") (result i32) i32.const 42)"),
                     stringCase(
-                                    "Module: duplicate export (function and memory)",
+                                    "Module - duplicate export (function and memory)",
                                     "All export names must be different, but 'a' is exported twice.",
                                     "(func (export \"a\") (result i32) i32.const 42) (memory (export \"a\") 1)"),
+
+                    binaryCase(
+                                    "Custom Section - missing name",
+                                    "The binary is truncated at: 10",
+                                    "0061 736d 0100 0000 0000"),
+
+                    binaryCase(
+                                    "Custom Section - excessive name length",
+                                    "Declared section (0x00) size is incorrect: 4 should = 1.",
+                                    "0061 736d 0100 0000 0001 0300 0100"),
+
+                    binaryCase(
+                                    "Incorrect order of sections",
+                                    "Section 6 defined after section 7",
+                                    // (global (export "g1") i32 (i32.const 1)) but with export
+                                    // section defined before global section
+                                    "0061 736d 0100 0000 0706 0102 6731 0300 0606 017f 0041 010b"),
+
+                    binaryCase(
+                                    "Duplicated sections",
+                                    "Duplicated section 6",
+                                    // (global (export "g1") i32 (i32.const 1))
+                                    // (global (export "g2") i64 (i64.const 0)) but with each
+                                    // export/global using its own export/global section
+                                    "0061 736d 0100 0000 0606 017f 0041 010b 0606 017e 0042 000b 0706 0102 6731 0300 0706 0102 6732 0301"),
+
+                    binaryCase(
+                                    "Export name - overlong encoding",
+                                    "Invalid UTF-8 encoding of the name at: 23",
+                                    // (func (export \"\\F0\\82\\82\\AC\")
+                                    // (result i32) i32.const 42)
+                                    // F0 82 82 AC is UTF-8 overlong encoding of Euro sign
+                                    "0061 736d 0100 0000 0105 0160 0001 7f03 0201 0007 0801 04F0 8282 AC00 000a 0601 0400 412a 0b")
     };
 
     private static Properties opts = SystemProperties.createFromOptions(
@@ -286,15 +320,5 @@ public class ValidationSuite extends WasmSuiteBase {
 
     private static WasmBinaryCase binaryCase(String name, String errorMessage, String hexString) {
         return WasmCase.create(name, WasmCase.expectedThrows(errorMessage, WasmCaseData.ErrorType.Validation), hexStringToByteArray(hexString), opts);
-    }
-
-    private static byte[] hexStringToByteArray(String input) {
-        String s = input.replaceAll("\\s+", "");
-        int len = s.length();
-        byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4) + Character.digit(s.charAt(i + 1), 16));
-        }
-        return data;
     }
 }

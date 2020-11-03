@@ -55,7 +55,6 @@ import java.util.Set;
 import java.util.StringJoiner;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Platform;
@@ -64,7 +63,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.util.DirectAnnotationAccess;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -132,6 +131,25 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private int typeID;
 
     /**
+     * In our current version, type checks are accomplished by performing a range check on a value
+     * from an array. The slot to read from the checked type is determined by
+     * {@link #getTypeCheckSlot()} and the check passes if {@link #getTypeCheckStart()} <= value <
+     * ({@link #getTypeCheckStart()} + {@link #getTypeCheckRange()}).
+     */
+    private short typeCheckStart;
+
+    /**
+     * The number of ids which are in valid range for a type check.
+     */
+    private short typeCheckRange;
+
+    /**
+     *
+     * The value slot within the type id slot array to read when comparing against this type.
+     */
+    private short typeCheckSlot;
+
+    /**
      * The offset of the synthetic field which stores whatever is used for monitorEnter/monitorExit
      * by an instance of this class. If 0, then instances of this class can not be locked.
      * <p>
@@ -172,6 +190,16 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      * Is this a Hidden Class (Since JDK 15).
      */
     private boolean isHidden;
+
+    /**
+     * Is this a Record Class (Since JDK 15).
+     */
+    private boolean isRecord;
+
+    /**
+     * Holds assertionStatus determined by {@link RuntimeAssertionsSupport}.
+     */
+    private final boolean assertionStatus;
 
     /**
      * The {@link Modifier modifiers} of this class.
@@ -284,6 +312,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     @Hybrid.Bitset private BitSet instanceOfBits;
 
+    /**
+     * Array containing this type's type check id information. During a type check, a requested
+     * column of this array is read to determine if this value fits within the range of ids which
+     * match the assignee's type.
+     */
+    @Hybrid.TypeIDSlots private short[] typeCheckSlots;
+
     @Hybrid.Array private CFunctionPointer[] vtable;
 
     private GenericInfo genericInfo;
@@ -340,7 +375,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, HubType hubType, ReferenceType referenceType, boolean isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName,
-                    int modifiers, ClassLoader classLoader, boolean isHidden, Class<?> nestHost) {
+                    int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus) {
         this.name = name;
         this.hubType = hubType.getValue();
         this.referenceType = referenceType.getValue();
@@ -352,7 +387,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.modifiers = modifiers;
         this.classLoader = classLoader;
         this.isHidden = isHidden;
+        this.isRecord = isRecord;
         this.nestHost = nestHost;
+        this.assertionStatus = assertionStatus;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -365,6 +402,27 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setClassInitializationInfo(ClassInitializationInfo classInitializationInfo) {
         this.classInitializationInfo = classInitializationInfo;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setData(int layoutEncoding, int typeID, int monitorOffset, int hashCodeOffset,
+                    short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots,
+                    CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated) {
+        this.layoutEncoding = layoutEncoding;
+        this.typeID = typeID;
+        this.monitorOffset = monitorOffset;
+        this.hashCodeOffset = hashCodeOffset;
+        this.typeCheckStart = typeCheckStart;
+        this.typeCheckRange = typeCheckRange;
+        this.typeCheckSlot = typeCheckSlot;
+        this.typeCheckSlots = typeCheckSlots;
+        this.vtable = vtable;
+
+        if ((int) referenceMapIndex != referenceMapIndex) {
+            throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");
+        }
+        this.referenceMapIndex = (int) referenceMapIndex;
+        this.isInstantiated = isInstantiated;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -531,6 +589,18 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return typeID;
     }
 
+    public short getTypeCheckSlot() {
+        return typeCheckSlot;
+    }
+
+    public short getTypeCheckStart() {
+        return typeCheckStart;
+    }
+
+    public short getTypeCheckRange() {
+        return typeCheckRange;
+    }
+
     public int getMonitorOffset() {
         return monitorOffset;
     }
@@ -622,28 +692,17 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private boolean isInstance(@SuppressWarnings("unused") Object obj) {
-        throw VMError.shouldNotReachHere("Substituted in SubstrateGraphBuilderPlugins.");
+        throw VMError.shouldNotReachHere("Intrinsified in StandardGraphBuilderPlugins.");
     }
 
     @Substitute
     private Object cast(@SuppressWarnings("unused") Object obj) {
-        throw VMError.shouldNotReachHere("Substituted in SubstrateGraphBuilderPlugins.");
+        throw VMError.shouldNotReachHere("Intrinsified in StandardGraphBuilderPlugins.");
     }
 
     @Substitute
-    @TargetElement(name = "isAssignableFrom")
-    private boolean isAssignableFromClass(Class<?> cls) {
-        return isAssignableFromHub(fromClass(cls));
-    }
-
-    public boolean isAssignableFromHub(DynamicHub hub) {
-        int checkTypeID = hub.getTypeID();
-        for (int i = 0; i < assignableFromMatches.length; i += 2) {
-            if (UnsignedMath.belowThan(checkTypeID - assignableFromMatches[i], assignableFromMatches[i + 1])) {
-                return true;
-            }
-        }
-        return false;
+    private boolean isAssignableFrom(@SuppressWarnings("unused") Class<?> cls) {
+        throw VMError.shouldNotReachHere("Intrinsified in StandardGraphBuilderPlugins.");
     }
 
     @Substitute
@@ -773,6 +832,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @TargetElement(onlyWith = JDK15OrLater.class)
     public boolean isHidden() {
         return isHidden;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    public boolean isRecord() {
+        return isRecord;
     }
 
     @Substitute
@@ -1276,7 +1341,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public boolean desiredAssertionStatus() {
-        return SubstrateOptions.getRuntimeAssertionsForClass(getName());
+        return assertionStatus;
     }
 
     @Substitute //
@@ -1330,12 +1395,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         /* See open/src/hotspot/share/prims/jvm.cpp#1522. */
     }
 
-    @Substitute //
+    @KeepOriginal //
     @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings({"unused"})
-    List<Method> getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes) {
-        throw VMError.unsupportedFeature("JDK11OrLater: DynamicHub.getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes)");
-    }
+    private native List<Method> getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes);
 
     @Substitute
     @TargetElement(onlyWith = JDK11OrLater.class)

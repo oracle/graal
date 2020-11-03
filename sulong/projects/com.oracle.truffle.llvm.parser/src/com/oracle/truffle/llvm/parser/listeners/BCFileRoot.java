@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import java.util.List;
-
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoModuleProcessor;
 import com.oracle.truffle.llvm.parser.model.IRScope;
@@ -40,8 +38,9 @@ import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.parser.text.LLSourceBuilder;
 import com.oracle.truffle.llvm.parser.util.SymbolNameMangling;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
+
+import java.util.List;
 
 public final class BCFileRoot implements ParserListener {
 
@@ -71,11 +70,12 @@ public final class BCFileRoot implements ParserListener {
         }
     }
 
-    public void exit(LLVMContext context) {
+    @Override
+    public void exit() {
         int globalIndex = setMissingNames(module.getGlobalVariables(), 0);
         setMissingNames(module.getAliases(), globalIndex);
         SymbolNameMangling.demangleGlobals(module);
-        DebugInfoModuleProcessor.processModule(module, scope.getMetadata(), context);
+        DebugInfoModuleProcessor.processModule(module, scope.getMetadata());
     }
 
     private static int setMissingNames(List<? extends GlobalValueSymbol> globals, int startIndex) {

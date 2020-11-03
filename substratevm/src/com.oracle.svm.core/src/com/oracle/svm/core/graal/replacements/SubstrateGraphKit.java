@@ -56,6 +56,7 @@ import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
+import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.GraphKit;
@@ -141,6 +142,10 @@ public class SubstrateGraphKit extends GraphKit {
             return append((FixedNode) loadIndexed);
         }
         return unique((FloatingNode) loadIndexed);
+    }
+
+    public ValueNode createStoreIndexed(ValueNode array, int index, JavaKind kind, ValueNode value) {
+        return append(new StoreIndexedNode(array, ConstantNode.forInt(index, getGraph()), null, null, kind, value));
     }
 
     public ValueNode createUnboxing(ValueNode boxed, JavaKind targetKind, MetaAccessProvider metaAccess) {
@@ -278,7 +283,7 @@ public class SubstrateGraphKit extends GraphKit {
 
         if (unwinds.size() > 1) {
             MergeNode unwindMergeNode = add(new MergeNode());
-            ValueNode exceptionValue = InliningUtil.mergeValueProducers(unwindMergeNode, unwinds, null, UnwindNode::exception);
+            ValueNode exceptionValue = InliningUtil.mergeUnwindExceptions(unwindMergeNode, unwinds);
             UnwindNode unwindReplacement = add(new UnwindNode(exceptionValue));
             unwindMergeNode.setNext(unwindReplacement);
 

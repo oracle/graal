@@ -140,10 +140,12 @@ public interface CommittedMemoryProvider {
      * Change access permissions for a block of committed memory that was allocated with
      * {@link #allocate}.
      *
-     * @param start The start of the memory block
-     * @param nbytes Length of the memory block
-     * @param access protection setting
-     * @return true on success, false otherwise
+     * @param start The start of the address range to be protected, which must be a multiple of the
+     *            {@linkplain #getGranularity() granularity}.
+     * @param nbytes The size in bytes of the address range to be protected, which will be rounded
+     *            up to a multiple of the {@linkplain #getGranularity() granularity}.
+     * @param access The modes in which the memory is permitted to be accessed, see {@link Access}.
+     * @return true on success, or false otherwise.
      */
     boolean protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> access);
 }

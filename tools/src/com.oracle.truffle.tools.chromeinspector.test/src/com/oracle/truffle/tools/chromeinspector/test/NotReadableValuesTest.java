@@ -25,7 +25,6 @@
 package com.oracle.truffle.tools.chromeinspector.test;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -35,7 +34,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -45,7 +43,6 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -135,24 +132,8 @@ public class NotReadableValuesTest {
         }
 
         @Override
-        protected Iterable<Scope> findTopScopes(LanguageContext context) {
-            return Collections.singletonList(Scope.newBuilder("top", new VariablesObject()).build());
-        }
-
-        @Override
-        protected Object findMetaObject(LanguageContext context, Object value) {
-            if (value instanceof TruffleObject) {
-                return "Object";
-            }
-            return super.findMetaObject(context, value);
-        }
-
-        @Override
-        protected String toString(LanguageContext context, Object value) {
-            if (value instanceof ProxyInteropObject) {
-                return value.getClass().getSimpleName();
-            }
-            return super.toString(context, value);
+        protected Object getScope(LanguageContext context) {
+            return new VariablesObject(true);
         }
 
         final class TestRootNode extends RootNode {
@@ -228,6 +209,23 @@ public class NotReadableValuesTest {
 
             private static final String[] NAMES = new String[]{"nr_a", "object", "nr_object", "array", "nr_array"};
 
+            private final boolean isScope;
+
+            VariablesObject(boolean isScope) {
+                this.isScope = isScope;
+            }
+
+            @Override
+            protected boolean hasLanguage() {
+                // Provides the ProxyLanguage by default.
+                return true;
+            }
+
+            @Override
+            protected boolean isScope() {
+                return isScope;
+            }
+
             @Override
             protected boolean hasMembers() {
                 return true;
@@ -252,13 +250,56 @@ public class NotReadableValuesTest {
                 }
                 switch (member) {
                     case "object":
-                        return new VariablesObject();
+                        return new VariablesObject(false);
                     case "array":
                         return new ArrayValue();
                     default:
                         throw UnsupportedMessageException.create();
                 }
             }
+
+            @Override
+            protected boolean hasMetaObject() {
+                return true;
+            }
+
+            @Override
+            protected Object getMetaObject() throws UnsupportedMessageException {
+                return new MetaObject();
+            }
+
+            @Override
+            protected Object toDisplayString(boolean allowSideEffects) {
+                if (isScope) {
+                    return "top";
+                } else {
+                    return VariablesObject.class.getSimpleName();
+                }
+            }
+        }
+
+        private static class MetaObject extends ProxyInteropObject {
+
+            @Override
+            protected boolean isMetaObject() {
+                return true;
+            }
+
+            @Override
+            protected boolean isMetaInstance(Object instance) {
+                return instance instanceof VariablesObject || instance instanceof ArrayValue;
+            }
+
+            @Override
+            protected String getMetaSimpleName() throws UnsupportedMessageException {
+                return "Object";
+            }
+
+            @Override
+            protected String getMetaQualifiedName() throws UnsupportedMessageException {
+                return "Object";
+            }
+
         }
 
         private static class Names extends ProxyInteropObject {
@@ -301,6 +342,12 @@ public class NotReadableValuesTest {
             private static final Set<Long> NOT_READABLE = new HashSet<>(Arrays.asList(new Long[]{2L, 3L}));
 
             @Override
+            protected boolean hasLanguage() {
+                // Provides the ProxyLanguage by default.
+                return true;
+            }
+
+            @Override
             protected boolean hasArrayElements() {
                 return true;
             }
@@ -324,6 +371,21 @@ public class NotReadableValuesTest {
                     CompilerDirectives.transferToInterpreter();
                     throw InvalidArrayIndexException.create(index);
                 }
+            }
+
+            @Override
+            protected boolean hasMetaObject() {
+                return true;
+            }
+
+            @Override
+            protected Object getMetaObject() throws UnsupportedMessageException {
+                return new MetaObject();
+            }
+
+            @Override
+            protected Object toDisplayString(boolean allowSideEffects) {
+                return ArrayValue.class.getSimpleName();
             }
         }
     }

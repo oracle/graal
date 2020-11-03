@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
@@ -102,6 +101,7 @@ public abstract class InteropException extends Exception {
         return this;
     }
 
+    @SuppressWarnings("deprecation")
     private static void validateTruffleException(Throwable t) {
         if (CompilerDirectives.inCompiledCode()) {
             return;
@@ -109,7 +109,7 @@ public abstract class InteropException extends Exception {
         if (t == null) {
             return;
         }
-        if (!(t instanceof TruffleException)) {
+        if (!(t instanceof com.oracle.truffle.api.TruffleException)) {
             throw new IllegalArgumentException("Cause exception must implement TruffleException but was " + t.getClass() + ".");
         }
     }

@@ -35,7 +35,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -48,6 +47,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -59,7 +59,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.options.OptionValues;
 
+@Ignore("GR-26854")
 public final class EncodedGraphCacheTest extends PartialEvaluationTest {
 
     @AfterClass
@@ -127,7 +129,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
     private static OptimizedCallTarget compileAST(RootNode rootNode) {
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
-        DebugContext debug = new DebugContext.Builder(TruffleCompilerOptions.getOptions()).build();
+        DebugContext debug = new DebugContext.Builder(runtime.getGraalOptions(OptionValues.class)).build();
         try (DebugContext.Scope s = debug.scope("EncodedGraphCacheTest")) {
             CompilationIdentifier compilationId = getTruffleCompilerFromRuntime(target).createCompilationIdentifier(target);
             TruffleInliningPlan inliningPlan = new TruffleInlining(target, new DefaultInliningPolicy());
@@ -172,11 +174,17 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
                         .option("engine.CompilerIdleDelay", "0"));
 
         RootTestNode rootTestNode = rootTestNode();
-        OptimizedCallTarget callTarget = compileAST(rootTestNode);
-        TruffleCompilerImpl truffleCompiler = getTruffleCompilerFromRuntime(callTarget);
-
-        assertTrue("InvalidationTestNode.execute is cached",
-                        encodedGraphCacheContains(truffleCompiler, testMethod));
+        OptimizedCallTarget callTarget = null;
+        TruffleCompilerImpl truffleCompiler = null;
+        boolean graphWasCached = false;
+        for (int attempts = 0; attempts < 10 && !graphWasCached; attempts++) {
+            callTarget = compileAST(rootTestNode);
+            truffleCompiler = getTruffleCompilerFromRuntime(callTarget);
+            // Graph cache can be purged anytime.
+            graphWasCached = encodedGraphCacheContains(truffleCompiler, testMethod);
+        }
+        assertTrue("InvalidationTestNode.execute is cached", graphWasCached);
+        Assert.assertNotNull(truffleCompiler);
 
         // Invalidates HotSpot's leaf class assumption for DummyException.
         DummyChildException.ensureInitialized();
@@ -195,15 +203,15 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
                         encodedGraphCacheContains(truffleCompiler, testMethod));
 
         // Retry again, the encoded graph is re-parsed without the (invalidated) assumption.
-        boolean[] graphWasCached = {false};
-        for (int attempts = 0; attempts < 10 && !graphWasCached[0]; attempts++) {
+        graphWasCached = false;
+        for (int attempts = 0; attempts < 10 && !graphWasCached; attempts++) {
             // Compilation succeeds.
             callTarget = compileAST(rootTestNode);
             // But the cache can be purged anytime, retry if the graph is not cached.
-            graphWasCached[0] = encodedGraphCacheContains(truffleCompiler, testMethod);
+            graphWasCached = encodedGraphCacheContains(truffleCompiler, testMethod);
         }
 
-        Assert.assertTrue("Re-parsed graph was cached", graphWasCached[0]);
+        Assert.assertTrue("Re-parsed graph was cached", graphWasCached);
         Assert.assertEquals(42, (int) callTarget.call());
     }
 

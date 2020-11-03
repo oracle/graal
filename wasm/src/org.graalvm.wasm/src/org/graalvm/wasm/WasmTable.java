@@ -41,23 +41,21 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import org.graalvm.wasm.exception.WasmExecutionException;
-import org.graalvm.wasm.exception.WasmValidationException;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 public final class WasmTable {
-    private final int tableIndex;
     private final int maxSize;
     @CompilerDirectives.CompilationFinal(dimensions = 1) private Object[] elements;
 
-    public WasmTable(int tableIndex, int initSize, int maxSize) {
-        this.tableIndex = tableIndex;
+    public WasmTable(int initSize, int maxSize) {
         this.elements = new Object[initSize];
         this.maxSize = maxSize;
     }
 
     public void ensureSizeAtLeast(int targetSize) {
         if (maxSize >= 0 && targetSize > maxSize) {
-            throw new WasmValidationException("Table " + tableIndex + " cannot be resized to " + targetSize + ", " +
+            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Table cannot be resized to " + targetSize + ", " +
                             "declared maximum size is " + maxSize);
         }
         if (elements.length < targetSize) {
@@ -65,10 +63,6 @@ public final class WasmTable {
             System.arraycopy(elements, 0, newElements, 0, elements.length);
             elements = newElements;
         }
-    }
-
-    public int tableIndex() {
-        return tableIndex;
     }
 
     public int size() {
@@ -87,19 +81,19 @@ public final class WasmTable {
         return elements[index];
     }
 
-    public void set(int index, Object function) {
-        elements[index] = function;
+    public void set(int index, Object element) {
+        elements[index] = element;
     }
 
     public void initialize(int i, WasmFunctionInstance function) {
         if (elements[i] != null) {
-            throw new WasmValidationException("Table " + tableIndex + " already has an element at index " + i + ".");
+            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Table already has an element at index " + i + ".");
         }
         elements[i] = function;
     }
 
     @SuppressWarnings({"unused", "static-method"})
-    public boolean grow(long delta) {
-        throw new WasmExecutionException(null, "Tables cannot be grown.");
+    public boolean grow(int delta) {
+        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Tables cannot be grown.");
     }
 }

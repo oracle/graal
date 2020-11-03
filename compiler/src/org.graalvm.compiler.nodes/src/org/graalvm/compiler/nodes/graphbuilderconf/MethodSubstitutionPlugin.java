@@ -33,6 +33,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -214,6 +215,10 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
     @Override
     public StackTraceElement getApplySourceLocation(MetaAccessProvider metaAccess) {
         Class<?> c = getClass();
+        if (IS_IN_NATIVE_IMAGE) {
+            // Provide a dummy result so exceptions can be properly thrown
+            return new StackTraceElement(c.getName(), "execute", null, -1);
+        }
         for (Method m : c.getDeclaredMethods()) {
             if (m.getName().equals("execute")) {
                 return metaAccess.lookupJavaMethod(m).asStackTraceElement(0);
@@ -226,6 +231,28 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
     public String toString() {
         return String.format("%s[%s.%s(%s)]", getClass().getSimpleName(), declaringClass.getName(), substituteName,
                         Arrays.asList(parameters).stream().map(c -> c.getTypeName()).collect(Collectors.joining(", ")));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        MethodSubstitutionPlugin that = (MethodSubstitutionPlugin) o;
+        return originalIsStatic == that.originalIsStatic &&
+                        Objects.equals(declaringClass, that.declaringClass) &&
+                        Objects.equals(substituteName, that.substituteName) &&
+                        Objects.equals(originalName, that.originalName) &&
+                        Arrays.equals(parameters, that.parameters);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(declaringClass, substituteName, originalName, originalIsStatic);
+        return result;
     }
 
     public String originalMethodAsString() {

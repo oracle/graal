@@ -124,6 +124,7 @@ final class PECoff {
 
         static final int IMAGE_SCN_LNK_NRELOC_OVFL        = 0x01000000;
 
+        static final int IMAGE_SCN_MEM_DISCARDABLE        = 0x02000000;
         static final int IMAGE_SCN_MEM_SHARED             = 0x10000000;
         static final int IMAGE_SCN_MEM_EXECUTE            = 0x20000000;
         static final int IMAGE_SCN_MEM_READ               = 0x40000000;
@@ -202,7 +203,8 @@ final class PECoff {
         static final int IMAGE_REL_AMD64_REL32_3  = 0x7;
         static final int IMAGE_REL_AMD64_REL32_4  = 0x8;
         static final int IMAGE_REL_AMD64_REL32_5  = 0x9;
-
+        static final int IMAGE_REL_AMD64_SECTION  = 0xa;
+        static final int IMAGE_REL_AMD64_SECREL   = 0xb;
     }
     //@formatter:on
     // Checkstyle: resume

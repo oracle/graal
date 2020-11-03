@@ -27,7 +27,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
+
+#include <stdlib.h>
+#include <graalvm/llvm/polyglot.h>
 
 struct Point {
     int x;
@@ -36,7 +38,10 @@ struct Point {
     struct Point *(*add)(struct Point *p);
 };
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 POLYGLOT_DECLARE_STRUCT(Point)
+#pragma clang diagnostic pop
 
 extern "C" int distSquared(void *a, void *b) {
     int distX = polyglot_as_Point(b)->x - polyglot_as_Point(a)->x;
@@ -136,7 +141,7 @@ extern "C" void flipPoint(void *value) {
 }
 
 extern "C" int sumPoints(void *pointArray) {
-    int sum;
+    int sum = 0;
 
     struct Point *arr = polyglot_as_Point_array(pointArray);
     int len = polyglot_get_array_size(pointArray);
@@ -165,7 +170,7 @@ extern "C" double modifyAndCall(void *value) {
 }
 
 extern "C" struct Point *addAndSwapPoint(struct Point *point, int ix, int iy) {
-    struct Point incr = { ix, iy };
+    struct Point incr = { ix, iy, NULL, NULL };
     struct Point *ret = point->add(&incr);
     int tmp = ret->x;
     ret->x = ret->y;
@@ -179,7 +184,10 @@ struct Nested {
     struct Nested *next;
 };
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 POLYGLOT_DECLARE_STRUCT(Nested)
+#pragma clang diagnostic pop
 
 extern "C" void fillNested(void *arg) {
     int value = 42;
@@ -203,7 +211,10 @@ struct BitFields {
     int z;
 };
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 POLYGLOT_DECLARE_STRUCT(BitFields)
+#pragma clang diagnostic pop
 
 extern "C" int accessBitFields(void *arg) {
     struct BitFields *obj = polyglot_as_BitFields(arg);
@@ -215,7 +226,10 @@ struct FusedArray {
     struct Point path[0];
 };
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 POLYGLOT_DECLARE_STRUCT(FusedArray)
+#pragma clang diagnostic pop
 
 extern "C" void fillFusedArray(void *arg) {
     struct FusedArray *fused = polyglot_as_FusedArray(arg);
@@ -235,7 +249,10 @@ struct Complex {
     double im;
 };
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 POLYGLOT_DECLARE_STRUCT(Complex)
+#pragma clang diagnostic pop
 
 extern "C" long readTypeMismatch(struct Complex *c) {
     long *ptr = (long *) c;

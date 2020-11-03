@@ -72,6 +72,8 @@ public class VMThreadLocalInfo {
     public final boolean isObject;
     public final JavaKind storageKind;
     public final Class<?> valueClass;
+    public final int maxOffset;
+
     @UnknownObjectField(types = {String.class}) public String name;
     @UnknownPrimitiveField public int offset;
     @UnknownPrimitiveField public int sizeInBytes;
@@ -80,6 +82,7 @@ public class VMThreadLocalInfo {
     public VMThreadLocalInfo(FastThreadLocal threadLocal) {
         this.threadLocalClass = threadLocal.getClass();
         this.locationIdentity = threadLocal.getLocationIdentity();
+        this.maxOffset = threadLocal.getMaxOffset();
 
         if (threadLocalClass == FastThreadLocalBytes.class) {
             sizeSupplier = ((FastThreadLocalBytes<?>) threadLocal).getSizeSupplier();

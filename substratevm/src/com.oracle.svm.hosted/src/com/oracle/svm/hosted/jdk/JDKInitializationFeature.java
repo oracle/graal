@@ -117,5 +117,7 @@ public class JDKInitializationFeature implements Feature {
         RuntimeClassInitialization.initializeAtBuildTime("sun.security.x509", "Core JDK classes are initialized at build time");
         RuntimeClassInitialization.initializeAtBuildTime("sun.security.smartcardio", "Core JDK classes are initialized at build time");
 
+        // contains a SecureRandom reference, therefore it can't be included in the image heap
+        RuntimeClassInitialization.initializeAtRunTime(com.sun.jndi.dns.DnsClient.class);
     }
 }

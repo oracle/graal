@@ -6,9 +6,11 @@ The accepted values are:
                          stopped using speculative execution barrier instructions.
           GuardTargets - Branch targets relevant to Java memory safety are instrumented
                          with barrier instructions. This option has less performance impact
-                         than AllTargets. Note that memory accesses through UNSAFE are not
-                         covered by this mitigation. This includes libraries built upon UNSAFE,
-                         such as java.nio.ByteBuffer.
+                         than AllTargets. 
   NonDeoptGuardTargets - Same as GuardTargets, except that branches which deoptimize are not
                          protected since they can not be executed repeatedly and are thus less
                          likely to be successfully exploited in an attack.
+
+                         
+Note that all modes except "None" will also instrument branch target blocks containing UNSAFE memory accesses
+with barrier instructions.

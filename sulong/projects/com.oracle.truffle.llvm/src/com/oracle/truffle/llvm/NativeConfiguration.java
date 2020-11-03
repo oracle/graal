@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,16 +29,11 @@
  */
 package com.oracle.truffle.llvm;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.NativeConfigurationFactory.Key;
 import com.oracle.truffle.llvm.parser.factories.BasicIntrinsicsProvider;
 import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
 import com.oracle.truffle.llvm.parser.factories.BasicPlatformCapability;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
@@ -52,7 +47,6 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 public final class NativeConfiguration implements Configuration {
 
@@ -60,24 +54,18 @@ public final class NativeConfiguration implements Configuration {
     private final LLVMIntrinsicProvider intrinsicProvider;
     private final PlatformCapability<?> platformCapability;
 
-    NativeConfiguration(LLVMLanguage language, Key key) {
+    NativeConfiguration(LLVMLanguage language, ContextExtension.Registry ctxExtRegistry, Key key) {
         loader = new DefaultLoader();
         intrinsicProvider = new BasicIntrinsicsProvider(language);
         platformCapability = BasicPlatformCapability.create(key.loadCxxLibraries);
-    }
-
-    @Override
-    public NodeFactory createNodeFactory(LLVMContext context, DataLayout dataLayout) {
-        return new BasicNodeFactory(context, dataLayout);
-    }
-
-    @Override
-    public List<ContextExtension> createContextExtensions(TruffleLanguage.Env env) {
-        List<ContextExtension> result = new ArrayList<>();
-        if (env.getOptions().get(SulongEngineOption.ENABLE_NFI)) {
-            result.add(new NFIContextExtension(env));
+        if (key.enableNFI) {
+            ctxExtRegistry.register(NFIContextExtension.class, NFIContextExtension::new);
         }
-        return result;
+    }
+
+    @Override
+    public NodeFactory createNodeFactory(LLVMLanguage language, DataLayout dataLayout) {
+        return new BasicNodeFactory(language, dataLayout);
     }
 
     @Override

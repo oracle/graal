@@ -34,6 +34,7 @@ import com.oracle.svm.core.meta.ObjectConstantEquality;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -122,5 +123,9 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
          * represented by the DynamicHub.
          */
         return asJavaClass(type);
+    }
+
+    public int getImageHeapOffset(@SuppressWarnings("unused") JavaConstant constant) {
+        throw VMError.shouldNotReachHere("Can only be used during JIT compilation at run time: " + getClass().getName());
     }
 }

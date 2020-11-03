@@ -114,13 +114,16 @@ meth public com.oracle.truffle.api.debug.DebugValue getReceiver()
 meth public com.oracle.truffle.api.debug.DebugValue getRootInstance()
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
 meth public java.lang.Iterable<com.oracle.truffle.api.debug.DebugValue> getArguments()
+ anno 0 java.lang.Deprecated()
 meth public java.lang.Iterable<com.oracle.truffle.api.debug.DebugValue> getDeclaredValues()
 meth public java.lang.String getName()
 supr java.lang.Object
-hfds event,frame,iterator,language,parent,root,scope,session,variables
+hfds INTEROP,NODE,event,frame,language,node,parent,root,scope,session,variables
+hcls SubtractedKeys,SubtractedVariables
 
 CLSS public final com.oracle.truffle.api.debug.DebugStackFrame
 meth public boolean equals(java.lang.Object)
+meth public boolean isHost()
 meth public boolean isInternal()
 meth public com.oracle.truffle.api.debug.DebugScope getScope()
 meth public com.oracle.truffle.api.debug.DebugValue eval(java.lang.String)
@@ -129,17 +132,20 @@ meth public com.oracle.truffle.api.nodes.LanguageInfo getLanguage()
 meth public com.oracle.truffle.api.nodes.Node getRawNode(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>)
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
 meth public int hashCode()
+meth public java.lang.StackTraceElement getHostTraceElement()
 meth public java.lang.String getName()
 supr java.lang.Object
-hfds currentFrame,depth,event
+hfds currentFrame,depth,event,hostTraceElement
 
 CLSS public final com.oracle.truffle.api.debug.DebugStackTraceElement
+meth public boolean isHost()
 meth public boolean isInternal()
 meth public com.oracle.truffle.api.debug.DebugScope getScope()
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
+meth public java.lang.StackTraceElement getHostTraceElement()
 meth public java.lang.String getName()
 supr java.lang.Object
-hfds session,stackTrace,traceElement
+hfds hostTraceElement,session,stackTraceElement,traceElement
 
 CLSS public abstract interface com.oracle.truffle.api.debug.DebugThreadsListener
 meth public abstract void threadDisposed(com.oracle.truffle.api.debug.DebugContext,java.lang.Thread)
@@ -230,6 +236,7 @@ intf java.io.Closeable
 meth public boolean isBreakpointsActive()
  anno 0 java.lang.Deprecated()
 meth public boolean isBreakpointsActive(com.oracle.truffle.api.debug.Breakpoint$Kind)
+meth public boolean suspendHere(com.oracle.truffle.api.nodes.Node)
 meth public com.oracle.truffle.api.debug.Breakpoint install(com.oracle.truffle.api.debug.Breakpoint)
 meth public com.oracle.truffle.api.debug.DebugScope getTopScope(java.lang.String)
 meth public com.oracle.truffle.api.debug.Debugger getDebugger()
@@ -245,6 +252,7 @@ meth public void setBreakpointsActive(boolean)
  anno 0 java.lang.Deprecated()
 meth public void setBreakpointsActive(com.oracle.truffle.api.debug.Breakpoint$Kind,boolean)
 meth public void setContextsListener(com.oracle.truffle.api.debug.DebugContextsListener,boolean)
+meth public void setShowHostStackFrames(boolean)
 meth public void setSourcePath(java.lang.Iterable<java.net.URI>)
 meth public void setSteppingFilter(com.oracle.truffle.api.debug.SuspensionFilter)
 meth public void setThreadsListener(com.oracle.truffle.api.debug.DebugThreadsListener,boolean)
@@ -252,7 +260,7 @@ meth public void suspend(java.lang.Thread)
 meth public void suspendAll()
 meth public void suspendNextExecution()
 supr java.lang.Object
-hfds ANCHOR_SET_AFTER,ANCHOR_SET_ALL,ANCHOR_SET_BEFORE,SESSIONS,allBindings,alwaysHaltBreakpointsActive,breakpoints,breakpointsUnresolved,breakpointsUnresolvedEmpty,callback,closed,currentSuspendedEventMap,debugger,exceptionBreakpointsActive,executionLifecycle,hasExpressionElement,hasRootElement,ignoreLanguageContextInitialization,includeInternal,locationBreakpointsActive,sessionId,sourceElements,sourceFilter,sources,stepping,strategyMap,suspendAll,suspendNext,suspensionFilterUnchanged,syntaxElementsBinding,threadSuspensions
+hfds ANCHOR_SET_AFTER,ANCHOR_SET_ALL,ANCHOR_SET_BEFORE,SESSIONS,allBindings,alwaysHaltBreakpointsActive,breakpoints,breakpointsUnresolved,breakpointsUnresolvedEmpty,callback,closed,currentSuspendedEventMap,debugger,exceptionBreakpointsActive,executionLifecycle,hasExpressionElement,hasRootElement,ignoreLanguageContextInitialization,inEvalInContext,includeInternal,locationBreakpointsActive,sessionId,showHostStackFrames,sourceElements,sourceFilter,sources,stepping,strategyMap,suspendAll,suspendNext,suspensionFilterUnchanged,syntaxElementsBinding,threadSuspensions
 hcls Caller,RootSteppingDepthNode,StableBoolean,SteppingNode,ThreadSuspension
 
 CLSS public final com.oracle.truffle.api.debug.DebuggerTags
@@ -323,7 +331,7 @@ meth public void prepareKill()
 meth public void prepareUnwindFrame(com.oracle.truffle.api.debug.DebugStackFrame)
 meth public void setReturnValue(com.oracle.truffle.api.debug.DebugValue)
 supr java.lang.Object
-hfds breakpoints,cachedAsyncFrames,cachedFrames,conditionFailures,context,disposed,exception,inputValuesProvider,insertableNode,materializedFrame,nextStrategy,returnValue,session,sourceSection,suspendAnchor,thread
+hfds HOST_INTEROP_NODE_NAME,breakpoints,cachedAsyncFrames,cachedFrames,conditionFailures,context,disposed,exception,inputValuesProvider,insertableNode,materializedFrame,nextStrategy,returnValue,session,sourceSection,suspendAnchor,thread
 hcls DebugAsyncStackFrameLists,DebugStackFrameIterable
 
 CLSS public final com.oracle.truffle.api.debug.SuspensionFilter

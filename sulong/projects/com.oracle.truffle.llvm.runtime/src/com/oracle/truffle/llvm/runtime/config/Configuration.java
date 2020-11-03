@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,24 +29,13 @@
  */
 package com.oracle.truffle.llvm.runtime.config;
 
-import java.util.List;
-
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.llvm.runtime.ContextExtension;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 
 public interface Configuration {
 
-    NodeFactory createNodeFactory(LLVMContext context, DataLayout dataLayout);
-
-    /**
-     * Context extensions encapsulate optional functionality that has a state and which therefore
-     * needs to live on the context-level. This function will be called once per context, at context
-     * initialization time.
-     */
-    List<ContextExtension> createContextExtensions(Env env);
+    NodeFactory createNodeFactory(LLVMLanguage language, DataLayout dataLayout);
 
     /**
      * Capabilities encapsulate functionality that is stateless, or has just static state that is

@@ -191,11 +191,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         if (management != null) {
             try {
                 management.initialize(this, config);
-            } catch (ThreadDeath td) {
-                throw td;
             } catch (Throwable error) {
-                TTY.println("Cannot install GraalVM MBean due to " + error.getMessage());
-                management = null;
+                handleManagementInitializationFailure(error);
             }
         }
 
@@ -549,6 +546,14 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
      */
     public HotSpotGraalManagementRegistration getManagement() {
         return management;
+    }
+
+    public void handleManagementInitializationFailure(Throwable cause) {
+        if (cause instanceof ThreadDeath) {
+            throw (ThreadDeath) cause;
+        }
+        TTY.println("Cannot install GraalVM MBean due to " + cause.getMessage());
+        management = null;
     }
 
     /**

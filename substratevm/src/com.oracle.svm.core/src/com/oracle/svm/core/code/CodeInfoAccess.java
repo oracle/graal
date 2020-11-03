@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -78,7 +78,7 @@ public final class CodeInfoAccess {
 
     @Fold
     static boolean haveAssertions() {
-        return SubstrateOptions.getRuntimeAssertionsForClass(CodeInfoAccess.class.getName());
+        return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(CodeInfoAccess.class);
     }
 
     @Uninterruptible(reason = "The handle should only be accessed from uninterruptible code to prevent that the GC frees the CodeInfo.", callerMustBe = true)
@@ -142,32 +142,56 @@ public final class CodeInfoAccess {
         return cast(info).getState();
     }
 
+    /** @see CodeInfoImpl#getCodeStart */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CodePointer getCodeStart(CodeInfo info) {
         return cast(info).getCodeStart();
     }
 
+    /** @see CodeInfoImpl#getCodeSize */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getCodeSize(CodeInfo info) {
         return cast(info).getCodeSize();
     }
 
-    public static UnsignedWord getMetadataSize(CodeInfo info) {
+    /** @see CodeInfoImpl#getDataSize */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getDataSize(CodeInfo info) {
+        return cast(info).getDataSize();
+    }
+
+    /** @see CodeInfoImpl#getDataOffset */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getDataOffset(CodeInfo info) {
+        return cast(info).getDataOffset();
+    }
+
+    /** @see CodeInfoImpl#getCodeAndDataMemorySize */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getCodeAndDataMemorySize(CodeInfo info) {
+        return cast(info).getCodeAndDataMemorySize();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getNativeMetadataSize(CodeInfo info) {
         CodeInfoImpl impl = cast(info);
-        return SizeOf.unsigned(CodeInfo.class)
-                        .add(NonmovableArrays.byteSizeOf(impl.getObjectFields()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getCodeInfoIndex()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getCodeInfoEncodings()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getStackReferenceMapEncoding()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoEncodings()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoObjectConstants()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceClasses()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceMethodNames()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoNames()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationStartOffsets()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationEncodings()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationObjectConstants()))
-                        .add(NonmovableArrays.byteSizeOf(impl.getCodeConstantsReferenceMapEncoding()));
+        UnsignedWord size = SizeOf.unsigned(CodeInfo.class);
+        if (!impl.getAllObjectsAreInImageHeap()) {
+            size = size.add(NonmovableArrays.byteSizeOf(impl.getObjectFields()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getCodeInfoIndex()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getCodeInfoEncodings()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getStackReferenceMapEncoding()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoEncodings()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoObjectConstants()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceClasses()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceMethodNames()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoNames()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationStartOffsets()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationEncodings()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationObjectConstants()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getCodeConstantsReferenceMapEncoding()));
+        }
+        return size;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -31,6 +31,7 @@ import java.util.Map;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.remote.FileDownloader;
 
 /**
  * Abstraction that loads metadata for a given component.
@@ -87,4 +88,8 @@ public interface MetadataLoader extends Closeable {
      * @return ComponentInfo with completed metadata
      */
     ComponentInfo completeMetadata() throws IOException;
+
+    default FileDownloader configureRelatedDownloader(FileDownloader dn) {
+        return dn;
+    }
 }

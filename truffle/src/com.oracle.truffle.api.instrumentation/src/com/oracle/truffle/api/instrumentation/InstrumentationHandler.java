@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import static com.oracle.truffle.api.instrumentation.InstrumentAccessor.ENGINE;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -69,6 +71,10 @@ import java.util.function.Supplier;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.io.MessageTransport;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
@@ -149,6 +155,8 @@ final class InstrumentationHandler {
     private final Collection<EventBinding.Allocation<? extends AllocationListener>> allocationBindings = new EventBindingList<>(2);
     private final Collection<EventBinding<? extends ContextsListener>> contextsBindings = new EventBindingList<>(8);
     private final Collection<EventBinding<? extends ThreadsListener>> threadsBindings = new EventBindingList<>(8);
+    private final Collection<EventBinding<? extends ThreadsActivationListener>> threadsActivationBindings = new EventBindingList<>(8);
+    @CompilationFinal private volatile StableThreadsActivationListeners stableActivationListeners;
 
     /*
      * Fast lookup of instrumenter instances based on a key provided by the accessor.
@@ -177,10 +185,22 @@ final class InstrumentationHandler {
     }
 
     void onLoad(RootNode root) {
-        if (!InstrumentAccessor.nodesAccess().isInstrumentable(root)) {
+        if (TRACE) {
+            String name = root.getName();
+            if (name == null) {
+                name = root.getClass().getName();
+            }
+            String lang = "None";
+            LanguageInfo info = root.getLanguageInfo();
+            if (info != null) {
+                lang = info.getId();
+            }
+            trace("ON-LOAD: %-5s CallTarget: %s%n", lang, name);
+        }
+
+        if (InstrumentAccessor.nodesAccess().getPolyglotEngine(root) == null) {
             return;
         }
-        assert root.getLanguageInfo() != null;
 
         loadedRoots.add(root);
 
@@ -199,7 +219,6 @@ final class InstrumentationHandler {
         if (!InstrumentAccessor.nodesAccess().isInstrumentable(root)) {
             return;
         }
-        assert root.getLanguageInfo() != null;
 
         executedRoots.add(root);
 
@@ -222,8 +241,22 @@ final class InstrumentationHandler {
         }
 
         Env env = new Env(polyglotInstrument, out, err, in, messageInterceptor);
+        TruffleInstrument instrument = (TruffleInstrument) instrumentSupplier.get();
+        if (instrument.contextLocals == null) {
+            instrument.contextLocals = Collections.emptyList();
+        } else {
+            instrument.contextLocals = Collections.unmodifiableList(instrument.contextLocals);
+        }
+        ENGINE.initializeInstrumentContextLocal(instrument.contextLocals, polyglotInstrument);
+
+        if (instrument.contextThreadLocals == null) {
+            instrument.contextThreadLocals = Collections.emptyList();
+        } else {
+            instrument.contextThreadLocals = Collections.unmodifiableList(instrument.contextThreadLocals);
+        }
+        ENGINE.initializeInstrumentContextThreadLocal(instrument.contextThreadLocals, polyglotInstrument);
+
         try {
-            TruffleInstrument instrument = (TruffleInstrument) instrumentSupplier.get();
             env.instrumenter = new InstrumentClientInstrumenter(env, instrumentClassName);
             env.instrumenter.instrument = instrument;
         } catch (Exception e) {
@@ -263,7 +296,7 @@ final class InstrumentationHandler {
         disposedInstrumenter.dispose();
 
         if (cleanupRequired) {
-            Collection<EventBinding.Source<?>> disposedExecutionBindings = filterBindingsForInstrumenter(executionBindings, disposedInstrumenter);
+            Collection<EventBinding<?>> disposedExecutionBindings = filterBindingsForInstrumenter(executionBindings, disposedInstrumenter);
             setDisposingBindingsBulk(disposedExecutionBindings);
             if (!disposedExecutionBindings.isEmpty()) {
                 VisitorBuilder visitorBuilder = new VisitorBuilder();
@@ -272,13 +305,13 @@ final class InstrumentationHandler {
             }
             disposeBindingsBulk(disposedExecutionBindings);
             executionBindings.removeAll(disposedExecutionBindings);
-            Collection<EventBinding.Source<?>> disposedSourceSectionBindings = filterBindingsForInstrumenter(sourceSectionBindings, disposedInstrumenter);
+            Collection<EventBinding<?>> disposedSourceSectionBindings = filterBindingsForInstrumenter(sourceSectionBindings, disposedInstrumenter);
             disposeBindingsBulk(disposedSourceSectionBindings);
             sourceSectionBindings.removeAll(disposedSourceSectionBindings);
             Lock sourceLoadedBindingsWriteLock = sourceLoadedBindingsLock.writeLock();
             sourceLoadedBindingsWriteLock.lock();
             try {
-                Collection<EventBinding.Source<?>> disposedSourceLoadedBindings = filterBindingsForInstrumenter(sourceLoadedBindings, disposedInstrumenter);
+                Collection<EventBinding<?>> disposedSourceLoadedBindings = filterBindingsForInstrumenter(sourceLoadedBindings, disposedInstrumenter);
                 disposeBindingsBulk(disposedSourceLoadedBindings);
                 sourceLoadedBindings.removeAll(disposedSourceLoadedBindings);
             } finally {
@@ -287,7 +320,7 @@ final class InstrumentationHandler {
             Lock sourceExecutedBindingsWriteLock = sourceExecutedBindingsLock.writeLock();
             sourceExecutedBindingsWriteLock.lock();
             try {
-                Collection<EventBinding.Source<?>> disposedSourceExecutedBindings = filterBindingsForInstrumenter(sourceExecutedBindings, disposedInstrumenter);
+                Collection<EventBinding<?>> disposedSourceExecutedBindings = filterBindingsForInstrumenter(sourceExecutedBindings, disposedInstrumenter);
                 disposeBindingsBulk(disposedSourceExecutedBindings);
                 sourceExecutedBindings.removeAll(disposedSourceExecutedBindings);
             } finally {
@@ -295,19 +328,27 @@ final class InstrumentationHandler {
             }
             disposeOutputBindingsBulk(out, outputStdBindings);
             disposeOutputBindingsBulk(err, outputErrBindings);
+
+            synchronized (threadsActivationBindings) {
+                Collection<EventBinding<?>> disposedThreadsActivationBindings = filterBindingsForInstrumenter(threadsActivationBindings, disposedInstrumenter);
+                if (!disposedThreadsActivationBindings.isEmpty()) {
+                    disposeBindingsBulk(disposedThreadsActivationBindings);
+                    invalidateThreadsActivationListeners();
+                }
+            }
         }
         if (TRACE) {
             trace("END: Disposed instrumenter %n", key);
         }
     }
 
-    private static void setDisposingBindingsBulk(Collection<EventBinding.Source<?>> list) {
+    private static void setDisposingBindingsBulk(Collection<EventBinding<?>> list) {
         for (EventBinding<?> binding : list) {
             binding.setDisposingBulk();
         }
     }
 
-    private static void disposeBindingsBulk(Collection<EventBinding.Source<?>> list) {
+    private static void disposeBindingsBulk(Collection<EventBinding<?>> list) {
         for (EventBinding<?> binding : list) {
             binding.disposeBulk();
         }
@@ -644,6 +685,10 @@ final class InstrumentationHandler {
                 // binding disposed
             } else if (elm instanceof ThreadsListener) {
                 // binding disposed
+            } else if (elm instanceof ThreadsActivationListener) {
+                synchronized (threadsActivationBindings) {
+                    invalidateThreadsActivationListeners();
+                }
             } else {
                 assert false : "Unexpected binding " + binding + " with element " + elm;
             }
@@ -827,12 +872,12 @@ final class InstrumentationHandler {
         }
     }
 
-    private static Collection<EventBinding.Source<?>> filterBindingsForInstrumenter(Collection<EventBinding.Source<?>> bindings, AbstractInstrumenter instrumenter) {
+    private static Collection<EventBinding<?>> filterBindingsForInstrumenter(Collection<? extends EventBinding<?>> bindings, AbstractInstrumenter instrumenter) {
         if (bindings.isEmpty()) {
             return Collections.emptyList();
         }
-        Collection<EventBinding.Source<?>> newBindings = new ArrayList<>();
-        for (EventBinding.Source<?> binding : bindings) {
+        Collection<EventBinding<?>> newBindings = new ArrayList<>();
+        for (EventBinding<?> binding : bindings) {
             if (binding.getInstrumenter() == instrumenter) {
                 newBindings.add(binding);
             }
@@ -944,6 +989,59 @@ final class InstrumentationHandler {
         return addThreadsBinding(new EventBinding<>(instrumenter, listener), includeStartedThreads);
     }
 
+    private <T extends ThreadsActivationListener> EventBinding<T> attachThreadsActivationListener(AbstractInstrumenter instrumenter, T listener) {
+        assert listener != null;
+        EventBinding<T> binding = new EventBinding<>(instrumenter, listener);
+        if (TRACE) {
+            trace("BEGIN: Adding threads activaiton binding %s%n", binding.getElement());
+        }
+        synchronized (threadsActivationBindings) {
+            threadsActivationBindings.add(binding);
+            invalidateThreadsActivationListeners();
+        }
+        if (TRACE) {
+            trace("END: Added threads activation binding %s%n", binding.getElement());
+        }
+        return binding;
+    }
+
+    private void invalidateThreadsActivationListeners() {
+        assert Thread.holdsLock(threadsActivationBindings);
+        StableThreadsActivationListeners stableListeners = stableActivationListeners;
+        if (stableListeners != null) {
+            stableListeners.assumption.invalidate();
+            stableActivationListeners = null;
+        }
+    }
+
+    ThreadsActivationListener[] getThreadsActivationListeners() {
+        StableThreadsActivationListeners stableListeners = stableActivationListeners;
+        if (stableListeners == null || !stableListeners.assumption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            stableListeners = updateStableActivationListeners();
+        }
+        return stableListeners.listeners;
+    }
+
+    private StableThreadsActivationListeners updateStableActivationListeners() {
+        StableThreadsActivationListeners stableListeners;
+        synchronized (threadsActivationBindings) {
+            stableListeners = stableActivationListeners;
+            if (stableListeners == null || !stableListeners.assumption.isValid()) {
+                List<ThreadsActivationListener> listeners = new ArrayList<>();
+                for (EventBinding<? extends ThreadsActivationListener> binding : threadsActivationBindings) {
+                    listeners.add(binding.getElement());
+                }
+                StableThreadsActivationListeners oldListeners = stableListeners;
+                this.stableActivationListeners = stableListeners = new StableThreadsActivationListeners(listeners.toArray(new ThreadsActivationListener[listeners.size()]));
+                if (oldListeners != null) {
+                    oldListeners.assumption.invalidate();
+                }
+            }
+        }
+        return stableListeners;
+    }
+
     boolean hasContextBindings() {
         return !contextsBindings.isEmpty();
     }
@@ -957,6 +1055,12 @@ final class InstrumentationHandler {
     void notifyContextClosed(TruffleContext context) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
             binding.getElement().onContextClosed(context);
+        }
+    }
+
+    void notifyContextResetLimit(TruffleContext context) {
+        for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
+            binding.getElement().onContextResetLimits(context);
         }
     }
 
@@ -1038,6 +1142,14 @@ final class InstrumentationHandler {
     private static void visitRoot(RootNode root, final Node node, final Visitor visitor, boolean forceRootBitComputation, boolean firstExecution, boolean setExecutedRootNodeBit) {
         if (TRACE) {
             trace("BEGIN: Visit root %s for %s%n", root.toString(), visitor);
+        }
+
+        if (InstrumentAccessor.runtimeAccess().isOSRRootNode(root)) {
+            /*
+             * OSR Root nodes are always traversed by the parent root node. So walking OSR root
+             * nodes would be redundant work.
+             */
+            return;
         }
 
         visitor.preVisit(root, firstExecution);
@@ -2082,6 +2194,11 @@ final class InstrumentationHandler {
         }
 
         @Override
+        public EventBinding<? extends ThreadsActivationListener> attachThreadsActivationListener(ThreadsActivationListener listener) {
+            return InstrumentationHandler.this.attachThreadsActivationListener(this, listener);
+        }
+
+        @Override
         <T> T lookup(InstrumentationHandler handler, Class<T> type) {
             if (services != null) {
                 for (Object service : services) {
@@ -2143,6 +2260,10 @@ final class InstrumentationHandler {
             throw new UnsupportedOperationException("Not supported in engine instrumenter.");
         }
 
+        @Override
+        public EventBinding<? extends ThreadsActivationListener> attachThreadsActivationListener(ThreadsActivationListener listener) {
+            throw new UnsupportedOperationException("Not supported in engine instrumenter.");
+        }
     }
 
     /**
@@ -2220,6 +2341,11 @@ final class InstrumentationHandler {
         }
 
         @Override
+        public EventBinding<? extends ThreadsActivationListener> attachThreadsActivationListener(ThreadsActivationListener listener) {
+            throw new UnsupportedOperationException("Not supported in language instrumenter.");
+        }
+
+        @Override
         void doFinalize() {
             // nothing to do
         }
@@ -2248,7 +2374,7 @@ final class InstrumentationHandler {
 
         abstract <T> T lookup(InstrumentationHandler handler, Class<T> type);
 
-        public void disposeBinding(EventBinding<?> binding) {
+        void disposeBinding(EventBinding<?> binding) {
             InstrumentationHandler.this.disposeBinding(binding);
         }
 
@@ -2689,4 +2815,17 @@ final class InstrumentationHandler {
             return element.get();
         }
     }
+
+    static final class StableThreadsActivationListeners {
+
+        final Assumption assumption;
+        @CompilationFinal(dimensions = 1) final ThreadsActivationListener[] listeners;
+
+        StableThreadsActivationListeners(ThreadsActivationListener[] listeners) {
+            this.assumption = Truffle.getRuntime().createAssumption("Activation listeners stable.");
+            this.listeners = listeners;
+        }
+
+    }
+
 }

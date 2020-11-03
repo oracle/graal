@@ -80,7 +80,7 @@ final class WindowsTruffleNFISupport extends TruffleNFISupport {
         HMODULE dlhandle = WinBase.LoadLibraryA(dllPathPtr);
         if (dlhandle.isNull()) {
             CompilerDirectives.transferToInterpreter();
-            throw new UnsatisfiedLinkError(WindowsUtils.lastErrorString(dllPath));
+            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(dllPath)), RuntimeException.class);
         }
         return dlhandle.rawValue();
     }
@@ -107,7 +107,7 @@ final class WindowsTruffleNFISupport extends TruffleNFISupport {
 
         if (ret.isNull()) {
             CompilerDirectives.transferToInterpreter();
-            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(name)), UnsatisfiedLinkError.class);
+            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(name)), RuntimeException.class);
         }
         return ret.rawValue();
     }

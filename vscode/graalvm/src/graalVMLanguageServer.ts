@@ -9,7 +9,8 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as utils from './utils';
 import * as net from 'net';
-import { LanguageClient, LanguageClientOptions, StreamInfo } from 'vscode-languageclient';
+import { GenericNotificationHandler, LanguageClient, LanguageClientOptions, StreamInfo } from 'vscode-languageclient';
+import { getGVMConfig } from './graalVMConfiguration';
 
 export const LSPORT: number = 8123;
 const POLYGLOT: string = 'polyglot';
@@ -24,11 +25,11 @@ export function registerLanguageServer(server: (() => Thenable<string>)): void {
 }
 
 export function startLanguageServer(graalVMHome: string) {
-	const inProcessServer = vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean;
+	const inProcessServer = getGVMConfig().get('languageServer.inProcessServer') as boolean;
 	if (!inProcessServer || delegateLanguageServers.size > 0) {
 		const re = utils.findExecutable(POLYGLOT, graalVMHome);
 		if (re) {
-			let serverWorkDir: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.currentWorkDir') as string;
+			let serverWorkDir: string | undefined = getGVMConfig().get('languageServer.currentWorkDir') as string;
 			if (!serverWorkDir) {
 				serverWorkDir = vscode.workspace.rootPath;
 			}
@@ -110,7 +111,7 @@ export function stopLanguageServer(): Thenable<void> {
 
 export async function lspArgs(): Promise<string[]> {
 	const port = utils.random(3000, 50000);
-    let delegateServers: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.delegateServers') as string;
+    let delegateServers: string | undefined = getGVMConfig().get('languageServer.delegateServers') as string;
 	const s = Array.from(delegateLanguageServers).map(server => server());
 	const r = await hasRSource();
     return Promise.all(s).then((servers) => {
@@ -144,6 +145,16 @@ async function hasRSource(): Promise<boolean> {
 		}
 	}
 	return hasR;
+}
+
+export async function onClientNotification(method: string, handler: GenericNotificationHandler): Promise<boolean> {
+	if (languageClient) {
+		let isSuccessful = false;
+		await languageClient.then((client) => client.onNotification(method, handler)).then(() => isSuccessful = true);
+		return isSuccessful;
+	} else {
+		return false;
+	}
 }
 
 function terminateLanguageServer() {

@@ -60,6 +60,7 @@ import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -80,11 +81,15 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.Position;
+import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.loop.LoopEx;
 import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.loop.phases.LoopTransformations;
 import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -161,6 +166,7 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import org.graalvm.compiler.replacements.nodes.LoadSnippetVarargParameterNode;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
@@ -281,7 +287,7 @@ public class SnippetTemplate {
         }
     }
 
-    protected static class EagerSnippetInfo extends SnippetInfo {
+    public static class EagerSnippetInfo extends SnippetInfo {
         protected final SnippetParameterInfo snippetParameterInfo;
 
         protected EagerSnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver, SnippetParameterInfo snippetParameterInfo) {
@@ -342,6 +348,9 @@ public class SnippetTemplate {
 
         public Arguments addConst(String name, Object value) {
             assert value != null;
+            if (value instanceof CStringConstant) {
+                return addConst(name, value, StampFactory.pointer());
+            }
             return addConst(name, value, null);
         }
 
@@ -564,6 +573,7 @@ public class SnippetTemplate {
 
         protected final OptionValues options;
         protected final Providers providers;
+        protected final MetaAccessProvider metaAccess;
         protected final SnippetReflectionProvider snippetReflection;
         protected final Iterable<DebugHandlersFactory> factories;
         protected final TargetDescription target;
@@ -572,6 +582,7 @@ public class SnippetTemplate {
         protected AbstractTemplates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
             this.options = options;
             this.providers = providers;
+            this.metaAccess = providers.getMetaAccess();
             this.snippetReflection = snippetReflection;
             this.target = target;
             this.factories = factories;
@@ -583,11 +594,11 @@ public class SnippetTemplate {
             }
         }
 
-        public Providers getProviders() {
-            return providers;
+        public MetaAccessProvider getMetaAccess() {
+            return metaAccess;
         }
 
-        public static Method findMethod(Class<? extends Snippets> declaringClass, String methodName, Method except) {
+        public static Method findMethod(Class<?> declaringClass, String methodName, Method except) {
             for (Method m : declaringClass.getDeclaredMethods()) {
                 if (m.getName().equals(methodName) && !m.equals(except)) {
                     return m;
@@ -627,7 +638,7 @@ public class SnippetTemplate {
         protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, ResolvedJavaMethod original, Object receiver,
                         LocationIdentity... initialPrivateLocations) {
             assert methodName != null;
-            ResolvedJavaMethod javaMethod = findMethod(providers.getMetaAccess(), declaringClass, methodName);
+            ResolvedJavaMethod javaMethod = findMethod(getMetaAccess(), declaringClass, methodName);
             assert javaMethod != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + " named " + methodName;
             providers.getReplacements().registerSnippet(javaMethod, original, receiver, GraalOptions.TrackNodeSourcePosition.getValue(options), options);
             LocationIdentity[] privateLocations = GraalOptions.SnippetCounters.getValue(options) ? SnippetCounterNode.addSnippetCounters(initialPrivateLocations) : initialPrivateLocations;
@@ -1127,7 +1138,12 @@ public class SnippetTemplate {
                     } else {
                         canonicalizer = CanonicalizerPhase.create();
                     }
-                    LoopTransformations.fullUnroll(loop, providers, canonicalizer);
+                    try {
+                        LoopTransformations.fullUnroll(loop, providers, canonicalizer);
+                    } catch (RetryableBailoutException e) {
+                        // This is a hard error in this context
+                        throw new GraalError(e, snippetCopy.toString());
+                    }
                     CanonicalizerPhase.create().applyIncremental(snippetCopy, providers, mark, false);
                     loop.deleteUnusedNodes();
                 }
@@ -1161,7 +1177,7 @@ public class SnippetTemplate {
     private static boolean checkConstantArgument(MetaAccessProvider metaAccess, final ResolvedJavaMethod method, Signature signature, int paramIndex, String name, Object arg, JavaKind kind) {
         ResolvedJavaType type = signature.getParameterType(paramIndex, method.getDeclaringClass()).resolve(method.getDeclaringClass());
         if (metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(type)) {
-            assert arg instanceof JavaConstant : method + ": word constant parameters must be passed boxed in a Constant value: " + arg;
+            assert arg instanceof Constant || arg instanceof ConstantNode : method + ": word constant parameters must be passed boxed in a Constant value: " + arg;
             return true;
         }
         if (kind != JavaKind.Object) {
@@ -1592,6 +1608,7 @@ public class SnippetTemplate {
 
             // Replace all usages of the replacee with the value returned by the snippet
             ValueNode returnValue = null;
+            AbstractBeginNode originalWithExceptionNextNode = null;
             if (returnNode != null && !(replacee instanceof ControlSinkNode)) {
                 ReturnNode returnDuplicate = (ReturnNode) duplicates.get(returnNode);
                 returnValue = returnDuplicate.result();
@@ -1609,7 +1626,7 @@ public class SnippetTemplate {
                         fwn.setNext(null);
                     } else if (replacee instanceof WithExceptionNode) {
                         WithExceptionNode withExceptionNode = (WithExceptionNode) replacee;
-                        next = withExceptionNode.next();
+                        next = originalWithExceptionNextNode = withExceptionNode.next();
                         withExceptionNode.setNext(null);
                     }
                     returnDuplicate.replaceAndDelete(next);
@@ -1627,7 +1644,31 @@ public class SnippetTemplate {
                 GraphUtil.killCFG(unwindPathDuplicate);
 
             } else {
-                GraalError.guarantee(!(replacee instanceof WithExceptionNode), "Snippet does not have an UnwindNode, but replacee is a node with an exception handler");
+                /*
+                 * Since the snippet unwindPath is null, a placeholder WithExceptionNode needs to be
+                 * added for any WithExceptionNode replacee. This placeholder WithExceptionNode
+                 * temporarily preserves the replacee's original exception edge and is needed
+                 * because lowering should not remove edges from the original CFG.
+                 */
+                if (replacee instanceof WithExceptionNode) {
+                    GraalError.guarantee(!replacee.graph().isAfterFloatingReadPhase(), "Using a snippet with an UnwindNode after floating reads would require support for the memory graph");
+                    GraalError.guarantee(originalWithExceptionNextNode != null, "Need to have next node to link placeholder to.");
+
+                    WithExceptionNode newExceptionNode = replacee.graph().add(new PlaceholderWithExceptionNode());
+
+                    /*
+                     * First attaching placeholder as predecessor of original WithExceptionNode next
+                     * edge.
+                     */
+                    ((FixedWithNextNode) originalWithExceptionNextNode.predecessor()).setNext(newExceptionNode);
+                    newExceptionNode.setNext(originalWithExceptionNextNode);
+
+                    /* Now connecting exception edge. */
+                    WithExceptionNode oldExceptionNode = (WithExceptionNode) replacee;
+                    AbstractBeginNode exceptionEdge = oldExceptionNode.exceptionEdge();
+                    oldExceptionNode.setExceptionEdge(null);
+                    newExceptionNode.setExceptionEdge(exceptionEdge);
+                }
             }
 
             if (killReplacee) {
@@ -2046,12 +2087,12 @@ public class SnippetTemplate {
         for (int i = offset; i < args.info.getParameterCount(); i++) {
             if (args.info.isConstantParameter(i)) {
                 JavaKind kind = signature.getParameterKind(i - offset);
-                assert checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
+                assert IS_IN_NATIVE_IMAGE || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
 
             } else if (args.info.isVarargsParameter(i)) {
                 assert args.values[i] instanceof Varargs;
                 Varargs varargs = (Varargs) args.values[i];
-                assert checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
+                assert IS_IN_NATIVE_IMAGE || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
             }
         }
         return true;
@@ -2059,5 +2100,27 @@ public class SnippetTemplate {
 
     public void setMayRemoveLocation(boolean mayRemoveLocation) {
         this.mayRemoveLocation = mayRemoveLocation;
+    }
+}
+
+/**
+ * This class represent a temporary WithExceptionNode which will be removed during the following
+ * simplification phase. This class is needed during lowering to temporarily preserve the original
+ * CFG edges for select snippet lowerings.
+ */
+@NodeInfo(size = NodeSize.SIZE_0, cycles = NodeCycles.CYCLES_0, cyclesRationale = "This node is immediately removed on next simplification pass")
+final class PlaceholderWithExceptionNode extends WithExceptionNode implements Simplifiable {
+    static final NodeClass<PlaceholderWithExceptionNode> TYPE = NodeClass.create(PlaceholderWithExceptionNode.class);
+
+    protected PlaceholderWithExceptionNode() {
+        super(TYPE, StampFactory.forVoid());
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (exceptionEdge != null) {
+            killExceptionEdge();
+        }
+        graph().removeSplit(this, next());
     }
 }

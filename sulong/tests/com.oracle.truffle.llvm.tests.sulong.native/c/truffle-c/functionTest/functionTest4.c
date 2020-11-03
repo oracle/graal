@@ -37,4 +37,5 @@ int main() {
 
 int foo(int *a) {
     *a = *a * 2 + 1;
+    return *a;
 }

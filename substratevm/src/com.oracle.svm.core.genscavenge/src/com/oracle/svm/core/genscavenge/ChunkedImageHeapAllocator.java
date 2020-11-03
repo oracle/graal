@@ -28,8 +28,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -41,7 +39,6 @@ import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms(Platform.HOSTED_ONLY.class)
 class ChunkedImageHeapAllocator {
     /** A pseudo-partition for filler objects, see {@link FillerObjectDummyPartition}. */
     private static final ImageHeapPartition FILLERS_DUMMY_PARTITION = new FillerObjectDummyPartition();
@@ -272,8 +269,8 @@ class ChunkedImageHeapAllocator {
  */
 final class FillerObjectDummyPartition implements ImageHeapPartition {
     /**
-     * Zero so that the {@linkplain ImageHeapObject#getOffsetInPartition() partition-relative
-     * offsets} of filler objects are always their absolute locations.
+     * Zero so that the partition-relative offsets of filler objects are always their absolute
+     * locations.
      */
     @Override
     public long getStartOffset() {
@@ -282,11 +279,6 @@ final class FillerObjectDummyPartition implements ImageHeapPartition {
 
     @Override
     public String getName() {
-        throw VMError.shouldNotReachHere();
-    }
-
-    @Override
-    public boolean isWritable() {
         throw VMError.shouldNotReachHere();
     }
 

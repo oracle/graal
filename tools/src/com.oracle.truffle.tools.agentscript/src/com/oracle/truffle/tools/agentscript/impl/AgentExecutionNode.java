@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,26 +24,29 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
 final class AgentExecutionNode extends ExecutionEventNode {
     @Node.Child private InteropLibrary enterDispatch;
     @Node.Child private InteropLibrary exitDispatch;
-    private final TruffleInstrument.Env env;
+    @Node.Child private NodeLibrary nodeDispatch;
+    @Node.Child private InteropLibrary exceptionDispatch;
     private final Object enter;
     private final Object exit;
     private final EventContextObject ctx;
+    private final Node instrumentedNode;
 
-    AgentExecutionNode(TruffleInstrument.Env env, Object enter, Object exit, EventContextObject ctx) {
-        this.env = env;
+    AgentExecutionNode(Object enter, Object exit, EventContextObject ctx) {
         this.enter = enter;
         if (enter != null) {
             this.enterDispatch = InteropLibrary.getFactory().create(enter);
@@ -52,18 +55,24 @@ final class AgentExecutionNode extends ExecutionEventNode {
         if (exit != null) {
             this.exitDispatch = InteropLibrary.getFactory().create(exit);
         }
+        Node node = ctx.getInstrumentedNode();
+        this.nodeDispatch = NodeLibrary.getFactory().create(node);
+        if (enter != null || exit != null) {
+            this.exceptionDispatch = InteropLibrary.getFactory().createDispatched(3);
+        }
         this.ctx = ctx;
+        this.instrumentedNode = node;
     }
 
     @Override
     protected void onEnter(VirtualFrame frame) {
         if (enter != null) {
             try {
-                enterDispatch.execute(enter, ctx, new VariablesObject(env, this, frame, null));
+                enterDispatch.execute(enter, ctx, getVariables(frame, true, null));
             } catch (InteropException ex) {
                 throw ctx.wrap(enter, 2, ex);
             } catch (RuntimeException ex) {
-                throw ctx.rethrow(ex);
+                throw ctx.rethrow(ex, exceptionDispatch);
             }
         }
     }
@@ -72,11 +81,11 @@ final class AgentExecutionNode extends ExecutionEventNode {
     protected void onReturnValue(VirtualFrame frame, Object returnValue) {
         if (exit != null) {
             try {
-                exitDispatch.execute(exit, ctx, new VariablesObject(env, this, frame, returnValue));
+                exitDispatch.execute(exit, ctx, getVariables(frame, false, returnValue));
             } catch (InteropException ex) {
                 throw ctx.wrap(exit, 2, ex);
             } catch (RuntimeException ex) {
-                throw ctx.rethrow(ex);
+                throw ctx.rethrow(ex, exceptionDispatch);
             }
         }
     }
@@ -85,11 +94,11 @@ final class AgentExecutionNode extends ExecutionEventNode {
     protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
         if (exit != null) {
             try {
-                exitDispatch.execute(exit, ctx, new VariablesObject(env, this, frame, null));
+                exitDispatch.execute(exit, ctx, getVariables(frame, false, null));
             } catch (InteropException ex) {
                 throw ctx.wrap(exit, 2, ex);
             } catch (RuntimeException ex) {
-                throw ctx.rethrow(ex);
+                throw ctx.rethrow(ex, exceptionDispatch);
             }
         }
     }
@@ -114,12 +123,29 @@ final class AgentExecutionNode extends ExecutionEventNode {
         return context.createUnwind(NullObject.nullCheck(returnValue));
     }
 
-    static ExecutionEventNodeFactory factory(TruffleInstrument.Env env, final Object enter, final Object exit) {
+    private Object getVariables(VirtualFrame frame, boolean nodeEnter, Object returnValue) {
+        if (nodeDispatch.hasScope(instrumentedNode, frame)) {
+            try {
+                Object scope = nodeDispatch.getScope(instrumentedNode, frame, nodeEnter);
+                if (returnValue != null) {
+                    return new VariablesObject(scope, returnValue);
+                } else {
+                    return scope;
+                }
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        } else {
+            return ArrayObject.array();
+        }
+    }
+
+    static ExecutionEventNodeFactory factory(final Object enter, final Object exit) {
         return new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
                 final EventContextObject ctx = new EventContextObject(context);
-                return new AgentExecutionNode(env, enter, exit, ctx);
+                return new AgentExecutionNode(enter, exit, ctx);
             }
         };
     }

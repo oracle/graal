@@ -90,13 +90,17 @@ public final class ReferenceInternals {
         return Word.objectToUntrackedPointer(instance).add(WordFactory.unsigned(Target_java_lang_ref_Reference.referentFieldOffset));
     }
 
+    public static long getReferentFieldOffset() {
+        return Target_java_lang_ref_Reference.referentFieldOffset;
+    }
+
     /** Barrier-less read of {@link Target_java_lang_ref_Reference#discovered}. */
     public static <T> Reference<?> getNextDiscovered(Reference<T> instance) {
         return KnownIntrinsics.convertUnknownValue(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)), Reference.class);
     }
 
-    public static <T> Pointer getNextDiscoveredFieldAddress(Reference<T> instance) {
-        return Word.objectToUntrackedPointer(instance).add(WordFactory.unsigned(Target_java_lang_ref_Reference.discoveredFieldOffset));
+    public static long getNextDiscoveredFieldOffset() {
+        return Target_java_lang_ref_Reference.discoveredFieldOffset;
     }
 
     /** Barrier-less write of {@link Target_java_lang_ref_Reference#discovered}. */

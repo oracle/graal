@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,20 +31,29 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
+import org.graalvm.compiler.nodes.ImplicitNullCheckNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
+import jdk.vm.ci.meta.JavaConstant;
+
 @NodeInfo(allowedUsageTypes = Guard, cycles = CYCLES_2, size = SIZE_2)
-public final class NullCheckNode extends DeoptimizingFixedWithNextNode implements LIRLowerable, GuardingNode {
+public final class NullCheckNode extends ImplicitNullCheckNode implements LIRLowerable, GuardingNode {
 
     public static final NodeClass<NullCheckNode> TYPE = NodeClass.create(NullCheckNode.class);
     @Input ValueNode object;
 
     public NullCheckNode(ValueNode object) {
+        this(object, null, null);
+    }
+
+    public NullCheckNode(ValueNode object, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
         super(TYPE, StampFactory.forVoid());
         this.object = object;
+        assert (deoptReasonAndAction == null) == (deoptSpeculation == null);
+        this.deoptReasonAndAction = deoptReasonAndAction;
+        this.deoptSpeculation = deoptSpeculation;
     }
 
     public ValueNode getObject() {

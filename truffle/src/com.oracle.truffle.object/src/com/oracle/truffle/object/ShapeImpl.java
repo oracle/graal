@@ -102,7 +102,7 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     protected final LayoutImpl layout;
     /** @since 0.17 or earlier */
-    protected final com.oracle.truffle.api.object.ObjectType objectType;
+    protected final Object objectType;
     /** @since 0.17 or earlier */
     protected final ShapeImpl parent;
     /** @since 0.17 or earlier */
@@ -158,6 +158,13 @@ public abstract class ShapeImpl extends Shape {
     private static final AtomicReferenceFieldUpdater<ShapeImpl, PropertyAssumptions> PROPERTY_ASSUMPTIONS_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(ShapeImpl.class, PropertyAssumptions.class, "sharedPropertyAssumptions");
 
+    /** Shared shape flag. */
+    protected static final int FLAG_SHARED_SHAPE = 1 << 16;
+    /** Flag that is set if {@link Shape.Builder#propertyAssumptions(boolean)} is true. */
+    protected static final int FLAG_ALLOW_PROPERTY_ASSUMPTIONS = 1 << 17;
+    /** Automatic flag that is set if the shape has instance properties. */
+    protected static final int FLAG_HAS_INSTANCE_PROPERTIES = 1 << 18;
+
     /**
      * Private constructor.
      *
@@ -170,7 +177,7 @@ public abstract class ShapeImpl extends Shape {
     private ShapeImpl(Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap, Transition transitionFromParent, int objectArraySize, int objectFieldSize,
                     int primitiveFieldSize, int primitiveArraySize, boolean hasPrimitiveArray, int flags, Assumption singleContextAssumption) {
         this.layout = (LayoutImpl) layout;
-        this.objectType = (com.oracle.truffle.api.object.ObjectType) Objects.requireNonNull(objectType);
+        this.objectType = Objects.requireNonNull(objectType);
         this.propertyMap = Objects.requireNonNull(propertyMap);
         this.root = parent != null ? parent.getRoot() : this;
         this.parent = parent;
@@ -193,7 +200,14 @@ public abstract class ShapeImpl extends Shape {
 
         this.validAssumption = createValidAssumption();
 
-        this.flags = flags;
+        int allFlags = flags;
+        if ((allFlags & FLAG_HAS_INSTANCE_PROPERTIES) == 0) {
+            if (objectFieldSize != 0 || objectArraySize != 0 || primitiveFieldSize != 0 || primitiveArraySize != 0) {
+                allFlags |= FLAG_HAS_INSTANCE_PROPERTIES;
+            }
+        }
+
+        this.flags = allFlags;
         this.transitionFromParent = transitionFromParent;
         this.sharedData = sharedData;
         assert parent == null || this.sharedData == parent.sharedData;
@@ -329,7 +343,7 @@ public abstract class ShapeImpl extends Shape {
      */
     @Override
     protected boolean hasInstanceProperties() {
-        return objectFieldSize != 0 || objectArraySize != 0 || primitiveFieldSize != 0 || primitiveArraySize != 0;
+        return (flags & FLAG_HAS_INSTANCE_PROPERTIES) != 0;
     }
 
     /**
@@ -934,25 +948,33 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @Override
     public com.oracle.truffle.api.object.ObjectType getObjectType() {
-        return objectType;
+        return (com.oracle.truffle.api.object.ObjectType) objectType;
     }
 
     @Override
     public Object getDynamicType() {
-        return getObjectType();
+        return objectType;
     }
 
     @TruffleBoundary
     @Override
-    protected Shape setDynamicType(Object newObjectType) {
+    protected ShapeImpl setDynamicType(Object newObjectType) {
         Objects.requireNonNull(newObjectType, "dynamicType");
-        if (!(newObjectType instanceof ObjectType)) {
-            throw new IllegalArgumentException("dynamicType must be an instance of ObjectType");
-        }
         if (getDynamicType() == newObjectType) {
             return this;
         }
-        return changeType((ObjectType) newObjectType);
+        if (getLayout().isLegacyLayout() && !(newObjectType instanceof ObjectType)) {
+            throw new IllegalArgumentException("dynamicType must be an instance of ObjectType");
+        }
+        ObjectTypeTransition transition = new ObjectTypeTransition(newObjectType);
+        ShapeImpl cachedShape = queryTransition(transition);
+        if (cachedShape != null) {
+            return cachedShape;
+        }
+
+        ShapeImpl newShape = createShape(layout, sharedData, this, newObjectType, propertyMap, transition, allocator(), flags);
+        addDirectTransition(transition, newShape);
+        return newShape;
     }
 
     /** @since 0.17 or earlier */
@@ -1057,18 +1079,7 @@ public abstract class ShapeImpl extends Shape {
     @Override
     @TruffleBoundary
     public final ShapeImpl changeType(ObjectType newObjectType) {
-        if (getObjectType() == newObjectType) {
-            return this;
-        }
-        ObjectTypeTransition transition = new ObjectTypeTransition(newObjectType);
-        ShapeImpl cachedShape = queryTransition(transition);
-        if (cachedShape != null) {
-            return cachedShape;
-        }
-
-        ShapeImpl newShape = createShape(layout, sharedData, this, newObjectType, propertyMap, transition, allocator(), flags);
-        addDirectTransition(transition, newShape);
-        return newShape;
+        return setDynamicType(newObjectType);
     }
 
     @TruffleBoundary
@@ -1181,10 +1192,6 @@ public abstract class ShapeImpl extends Shape {
     /** Bits available to API users. */
     protected static final int OBJECT_FLAGS_MASK = 0x0000_00ff;
     protected static final int OBJECT_FLAGS_SHIFT = 0;
-
-    /** Shared shape flag. */
-    protected static final int FLAG_SHARED_SHAPE = 1 << 16;
-    protected static final int FLAG_ALLOW_PROPERTY_ASSUMPTIONS = 1 << 17;
 
     protected static int getObjectFlags(int flags) {
         return ((flags & OBJECT_FLAGS_MASK) >>> OBJECT_FLAGS_SHIFT);

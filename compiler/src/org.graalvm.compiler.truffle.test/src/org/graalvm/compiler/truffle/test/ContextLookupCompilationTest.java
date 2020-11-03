@@ -25,6 +25,13 @@
 package org.graalvm.compiler.truffle.test;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -40,6 +47,8 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.ContextLocal;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
@@ -84,6 +93,111 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         context.initialize(SHARED_LANGUAGE);
         context.enter();
         return context;
+    }
+
+    @Test
+    public void testContextLocalRead() {
+        Engine engine = Engine.create();
+        createContext(engine);
+        Shared language = Shared.get();
+
+        assertCompiling(createContextLocalRead(language, 50));
+        Assert.assertEquals("Invalid number of magic number reads.", 1,
+                        countFieldReads(lastCompiledGraph, ContextLocalValue.class, "magicNumber"));
+
+        // second context still folds to a single read.
+        Context c1 = createContext(engine);
+        assertCompiling(createContextLocalRead(language, 50));
+        Assert.assertEquals("Invalid number of magic number reads.", 1,
+                        countFieldReads(lastCompiledGraph, ContextLocalValue.class, "magicNumber"));
+        touchOnThread(c1);
+
+        /*
+         * Unfortunately we cannot fold reads with multiple threads yet. GR-8222
+         */
+        assertCompiling(createContextLocalRead(language, 50));
+        Assert.assertEquals("Invalid number of magic number reads.", 50,
+                        countFieldReads(lastCompiledGraph, ContextLocalValue.class, "magicNumber"));
+    }
+
+    private static RootNode createContextLocalRead(Shared language, int lookups) {
+        RootNode root = new RootNode(language) {
+            @SuppressWarnings("unchecked")
+            @Override
+            @ExplodeLoop
+            public Object execute(VirtualFrame frame) {
+                int sum = 0;
+                for (int i = 0; i < lookups; i++) {
+                    sum += language.local.get().magicNumber;
+                }
+                return sum;
+            }
+        };
+        return root;
+    }
+
+    @Test
+    public void testContextThreadLocalRead() throws Throwable {
+        Engine engine = Engine.create();
+        Context c = createContext(engine);
+        Shared language = Shared.get();
+
+        assertCompiling(createContextThreadLocalRead(language, 50));
+        Assert.assertEquals("Invalid number of magic number reads.", 1,
+                        countFieldReads(lastCompiledGraph, ContextLocalValue.class, "magicNumber"));
+
+        // second context still folds to a single read.
+        createContext(engine);
+        assertCompiling(createContextThreadLocalRead(language, 50));
+        Assert.assertEquals("Invalid number of magic number reads.", 1,
+                        countFieldReads(lastCompiledGraph, ContextLocalValue.class, "magicNumber"));
+
+        submitOnThreads(new Runnable() {
+            @Override
+            public void run() {
+                c.enter();
+                assertCompiling(createContextThreadLocalRead(language, 50));
+                Assert.assertEquals("Invalid number of magic number reads thread index ", 50,
+                                countFieldReads(lastCompiledGraph, ContextLocalValue.class, "magicNumber"));
+                c.leave();
+            }
+        }, 10);
+
+    }
+
+    private static void submitOnThreads(Runnable run, int numberOfThreads) throws Throwable {
+        ExecutorService service = Executors.newFixedThreadPool(numberOfThreads);
+
+        List<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < numberOfThreads; i++) {
+            futures.add(service.submit(run));
+        }
+        for (Future<?> future : futures) {
+            try {
+                future.get();
+            } catch (ExecutionException e) {
+                throw e.getCause();
+            }
+        }
+
+        service.shutdown();
+        service.awaitTermination(10000, TimeUnit.MILLISECONDS);
+    }
+
+    private static RootNode createContextThreadLocalRead(Shared language, int lookups) {
+        RootNode root = new RootNode(language) {
+            @SuppressWarnings("unchecked")
+            @Override
+            @ExplodeLoop
+            public Object execute(VirtualFrame frame) {
+                int sum = 0;
+                for (int i = 0; i < lookups; i++) {
+                    sum += language.threadLocal.get().magicNumber;
+                }
+                return sum;
+            }
+        };
+        return root;
     }
 
     @Test
@@ -146,13 +260,13 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         assertLookupsNoSharing();
 
         TruffleContext innerContext = Shared.getCurrentContext().env.newContextBuilder().build();
-        Object prev = innerContext.enter();
+        Object prev = innerContext.enter(null);
         try {
             Context.getCurrent().initialize(EXCLUSIVE_LANGUAGE);
             Context.getCurrent().initialize(SHARED_LANGUAGE);
             assertLookupsInnerContext();
         } finally {
-            innerContext.leave(prev);
+            innerContext.leave(null, prev);
         }
         assertLookupsInnerContext();
         context.leave();
@@ -536,7 +650,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         }
     }
 
-    private static void resetSingleContextState() {
+    static void resetSingleContextState() {
         try {
             Class<?> c = Class.forName("com.oracle.truffle.polyglot.PolyglotContextImpl");
             java.lang.reflect.Method m = c.getDeclaredMethod("resetSingleContextState", boolean.class);
@@ -582,8 +696,17 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     }
 
+    static final class ContextLocalValue {
+
+        int magicNumber = 42;
+
+    }
+
     @Registration(id = SHARED_LANGUAGE, name = SHARED_LANGUAGE, contextPolicy = ContextPolicy.SHARED)
     public static class Shared extends TruffleLanguage<LanguageContext> {
+
+        final ContextLocal<ContextLocalValue> local = createContextLocal((e) -> new ContextLocalValue());
+        final ContextThreadLocal<ContextLocalValue> threadLocal = createContextThreadLocal((e, t) -> new ContextLocalValue());
 
         @Override
         protected LanguageContext createContext(Env env) {
@@ -604,7 +727,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
             return getCurrentContext(Shared.class);
         }
 
-        public static TruffleLanguage<LanguageContext> get() {
+        public static Shared get() {
             return getCurrentLanguage(Shared.class);
         }
 

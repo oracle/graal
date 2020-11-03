@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,11 @@
  */
 package org.graalvm.compiler.lir;
 
-import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isConstantJavaValue;
 import static jdk.vm.ci.code.ValueUtil.isIllegalJavaValue;
 import static jdk.vm.ci.code.ValueUtil.isVirtualObject;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -52,7 +52,8 @@ import jdk.vm.ci.meta.Value;
  */
 public class LIRFrameState {
 
-    public static final LIRFrameState NO_STATE = new LIRFrameState(null, null, null);
+    // A special marker denoting no callee save info.
+    public static final LIRFrameState NO_CALLEE_SAVE_INFO = new LIRFrameState(null, null, null);
 
     public final BytecodeFrame topFrame;
     private final VirtualObject[] virtualObjects;

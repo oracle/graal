@@ -113,14 +113,32 @@ interface CodeInfoImpl extends CodeInfo {
     @RawField
     void setTier(int tier);
 
+    /** The address of the first instruction of this compiled code. */
     @RawField
     CodePointer getCodeStart();
 
     @RawField
     void setCodeStart(CodePointer codeStart);
 
+    /** The size of the instructions of this compiled code. */
     @RawField
     UnsignedWord getCodeSize();
+
+    /** The offset of this compiled code's data section from {@link #getCodeStart}. */
+    @RawField
+    UnsignedWord getDataOffset();
+
+    /** The size of this compiled code's data section at {@link #getDataOffset}. */
+    @RawField
+    UnsignedWord getDataSize();
+
+    /**
+     * The sum of the {@linkplain #getCodeSize size of the instructions}, the
+     * {@linkplain #getDataOffset size of the padding to the beginning of the data section}, and the
+     * {@linkplain #getDataSize size of the data section}.
+     */
+    @RawField
+    UnsignedWord getCodeAndDataMemorySize();
 
     @RawField
     NonmovableArray<Byte> getStackReferenceMapEncoding();
@@ -130,6 +148,15 @@ interface CodeInfoImpl extends CodeInfo {
 
     @RawField
     void setCodeSize(UnsignedWord codeSize);
+
+    @RawField
+    void setDataOffset(UnsignedWord dataOffset);
+
+    @RawField
+    void setDataSize(UnsignedWord dataSize);
+
+    @RawField
+    void setCodeAndDataMemorySize(UnsignedWord codeAndDataMemorySize);
 
     @RawField
     NonmovableArray<Byte> getCodeInfoIndex();
@@ -218,4 +245,10 @@ interface CodeInfoImpl extends CodeInfo {
     /** GC-specific data that may only be accessed by the GC. */
     @RawField
     Word getGCData();
+
+    @RawField
+    void setAllObjectsAreInImageHeap(boolean value);
+
+    @RawField
+    boolean getAllObjectsAreInImageHeap();
 }

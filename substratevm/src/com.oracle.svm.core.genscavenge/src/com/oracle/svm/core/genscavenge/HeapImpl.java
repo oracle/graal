@@ -42,6 +42,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
@@ -51,6 +52,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
@@ -243,10 +245,6 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    Space getAllocationSpace() {
-        return getYoungGeneration().getEden();
-    }
-
     @AlwaysInline("GC performance")
     Object promoteObject(Object original, UnsignedWord header) {
         Log trace = Log.noopLog().string("[HeapImpl.promoteObject:").string("  original: ").object(original);
@@ -287,6 +285,7 @@ public final class HeapImpl extends Heap {
         return youngGeneration;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     OldGeneration getOldGeneration() {
         return oldGeneration;
     }
@@ -295,38 +294,14 @@ public final class HeapImpl extends Heap {
         return pinHead;
     }
 
-    /**
-     * Returns the size (in bytes) of the heap currently used for aligned and unaligned chunks. It
-     * excludes chunks that are unused.
-     */
-    UnsignedWord getUsedChunkBytes() {
-        UnsignedWord youngBytes = getYoungUsedChunkBytes();
-        UnsignedWord oldBytes = getOldUsedChunkBytes();
-        return youngBytes.add(oldBytes);
+    @Uninterruptible(reason = "Necessary to return a reasonably consistent value (a GC can change the queried values).")
+    public UnsignedWord getUsedBytes() {
+        return getOldGeneration().getChunkBytes().add(HeapPolicy.getYoungUsedBytes());
     }
 
-    UnsignedWord getYoungUsedChunkBytes() {
-        return getYoungGeneration().getChunkUsedBytes();
-    }
-
-    UnsignedWord getOldUsedChunkBytes() {
-        Log trace = Log.noopLog().string("[HeapImpl.getOldUsedChunkBytes:");
-        SpaceAccounting from = getOldGeneration().getFromSpace().getAccounting();
-        UnsignedWord fromBytes = from.getAlignedChunkBytes().add(from.getUnalignedChunkBytes());
-        SpaceAccounting to = getOldGeneration().getToSpace().getAccounting();
-        UnsignedWord toBytes = to.getAlignedChunkBytes().add(to.getUnalignedChunkBytes());
-        UnsignedWord result = fromBytes.add(toBytes);
-        // @formatter:off
-        if (trace.isEnabled()) {
-            trace
-                            .string("  fromAligned: ").unsigned(from.getAlignedChunkBytes())
-                            .string("  fromUnaligned: ").signed(from.getUnalignedChunkBytes())
-                            .string("  toAligned: ").unsigned(to.getAlignedChunkBytes())
-                            .string("  toUnaligned: ").signed(to.getUnalignedChunkBytes())
-                            .string("  returns: ").unsigned(result).string(" ]").newline();
-        }
-        // @formatter:on
-        return result;
+    @Uninterruptible(reason = "Necessary to return a reasonably consistent value (a GC can change the queried values).")
+    public UnsignedWord getCommittedBytes() {
+        return getUsedBytes().add(getChunkProvider().getBytesInUnusedChunks());
     }
 
     void report(Log log) {
@@ -384,7 +359,11 @@ public final class HeapImpl extends Heap {
         return log;
     }
 
-    /** Return a list of all the classes in the heap. */
+    @Override
+    public int getClassCount() {
+        return imageHeapInfo.dynamicHubCount;
+    }
+
     @Override
     public List<Class<?>> getClassList() {
         /* Two threads might race to set classList, but they compute the same result. */
@@ -393,6 +372,7 @@ public final class HeapImpl extends Heap {
             ImageHeapWalker.walkRegions(imageHeapInfo, new ClassListBuilderVisitor(list));
             classList = Collections.unmodifiableList(list);
         }
+        assert classList.size() == imageHeapInfo.dynamicHubCount;
         return classList;
     }
 
@@ -436,32 +416,32 @@ public final class HeapImpl extends Heap {
 
     @Fold
     static boolean getVerifyHeapBeforeGC() {
-        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapBeforeCollection.getValue());
+        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapBeforeCollection.getValue());
     }
 
     @Fold
     static boolean getVerifyHeapAfterGC() {
-        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapAfterCollection.getValue());
+        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyHeapAfterCollection.getValue());
     }
 
     @Fold
     static boolean getVerifyStackBeforeGC() {
-        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackBeforeCollection.getValue());
+        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackBeforeCollection.getValue());
     }
 
     @Fold
     static boolean getVerifyStackAfterGC() {
-        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackAfterCollection.getValue());
+        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackAfterCollection.getValue());
     }
 
     @Fold
     static boolean getVerifyDirtyCardBeforeGC() {
-        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyDirtyCardsBeforeCollection.getValue());
+        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyDirtyCardsBeforeCollection.getValue());
     }
 
     @Fold
     static boolean getVerifyDirtyCardAfterGC() {
-        return (SubstrateOptions.VerifyHeap.getValue() || HeapOptions.VerifyDirtyCardsAfterCollection.getValue());
+        return (SubstrateGCOptions.VerifyHeap.getValue() || HeapOptions.VerifyDirtyCardsAfterCollection.getValue());
     }
 
     @NeverInline("Starting a stack walk in the caller frame")
@@ -510,42 +490,6 @@ public final class HeapImpl extends Heap {
             assert heapVerifier != null : "No heap verifier!";
             HeapVerifier.verifyDirtyCard(true);
         }
-    }
-
-    /*
-     * Methods for java.lang.Runtime.*Memory(), quoting from that JavaDoc.
-     */
-
-    /**
-     * @return an approximation to the total amount of memory currently available for future
-     *         allocated objects, measured in bytes.
-     */
-    UnsignedWord freeMemory() {
-        // Report "chunk bytes" rather than the slower but more accurate "object bytes".
-        return maxMemory().subtract(HeapPolicy.getYoungUsedBytes()).subtract(getOldUsedChunkBytes());
-    }
-
-    /**
-     * @return the total amount of memory currently available for current and future objects,
-     *         measured in bytes.
-     */
-    UnsignedWord totalMemory() {
-        return maxMemory();
-    }
-
-    /**
-     * @return the maximum amount of memory that the virtual machine will attempt to use, measured
-     *         in bytes
-     */
-    @SuppressWarnings("static-method")
-    UnsignedWord maxMemory() {
-        /* Get physical memory size, so it gets set correctly instead of being estimated. */
-        PhysicalMemory.size();
-        /*
-         * This only reports the memory that will be used for heap-allocated objects. For example,
-         * it does not include memory in the chunk free list, or memory in the image heap.
-         */
-        return HeapPolicy.getMaximumHeapSize();
     }
 
     @Override
@@ -631,7 +575,7 @@ public final class HeapImpl extends Heap {
     @Override
     public CardTableBarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
         ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
-        return new CardTableBarrierSet(objectArrayType);
+        return new SubstrateCardTableBarrierSet(objectArrayType);
     }
 
     void addToReferencePendingList(Reference<?> list) {
@@ -780,23 +724,21 @@ public final class HeapImpl extends Heap {
 final class Target_java_lang_Runtime {
     @Substitute
     private long freeMemory() {
-        return HeapImpl.getHeapImpl().freeMemory().rawValue();
+        return maxMemory() - HeapImpl.getHeapImpl().getUsedBytes().rawValue();
     }
 
     @Substitute
     private long totalMemory() {
-        return HeapImpl.getHeapImpl().totalMemory().rawValue();
+        return maxMemory();
     }
 
     @Substitute
     private long maxMemory() {
-        return HeapImpl.getHeapImpl().maxMemory().rawValue();
+        // Query the physical memory size, so it gets set correctly instead of being estimated.
+        PhysicalMemory.size();
+        return HeapPolicy.getMaximumHeapSize().rawValue();
     }
 
-    /**
-     * The JavaDoc for {@link Runtime#gc()} says 'When control returns from the method call, the
-     * virtual machine has made its best effort to recycle all discarded objects.'.
-     */
     @Substitute
     private void gc() {
         HeapImpl.getHeapImpl().getHeapPolicy().getUserRequestedGCPolicy().maybeCauseCollection(GCCause.JavaLangSystemGC);

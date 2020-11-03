@@ -168,6 +168,7 @@ public class SLNodeFactory {
          * specialized.
          */
         final SLReadArgumentNode readArg = new SLReadArgumentNode(parameterCount);
+        readArg.setSourceSection(nameToken.getStartIndex(), nameToken.getText().length());
         SLExpressionNode assignment = createAssignment(createStringLiteral(nameToken, false), readArg, parameterCount);
         methodNodes.add(assignment);
         parameterCount++;
@@ -181,7 +182,7 @@ public class SLNodeFactory {
             methodNodes.add(bodyNode);
             final int bodyEndPos = bodyNode.getSourceEndIndex();
             final SourceSection functionSrc = source.createSection(functionStartPos, bodyEndPos - functionStartPos);
-            final SLStatementNode methodBlock = finishBlock(methodNodes, functionBodyStartPos, bodyEndPos - functionBodyStartPos);
+            final SLStatementNode methodBlock = finishBlock(methodNodes, parameterCount, functionBodyStartPos, bodyEndPos - functionBodyStartPos);
             assert lexicalScope == null : "Wrong scoping of blocks in parser";
 
             final SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(methodBlock);
@@ -204,6 +205,10 @@ public class SLNodeFactory {
     }
 
     public SLStatementNode finishBlock(List<SLStatementNode> bodyNodes, int startPos, int length) {
+        return finishBlock(bodyNodes, 0, startPos, length);
+    }
+
+    public SLStatementNode finishBlock(List<SLStatementNode> bodyNodes, int skipCount, int startPos, int length) {
         lexicalScope = lexicalScope.outer;
 
         if (containsNull(bodyNodes)) {
@@ -212,7 +217,9 @@ public class SLNodeFactory {
 
         List<SLStatementNode> flattenedNodes = new ArrayList<>(bodyNodes.size());
         flattenBlocks(bodyNodes, flattenedNodes);
-        for (SLStatementNode statement : flattenedNodes) {
+        int n = flattenedNodes.size();
+        for (int i = skipCount; i < n; i++) {
+            SLStatementNode statement = flattenedNodes.get(i);
             if (statement.hasSource() && !isHaltInCondition(statement)) {
                 statement.addStatementTag();
             }
@@ -452,15 +459,18 @@ public class SLNodeFactory {
                         name,
                         argumentIndex,
                         FrameSlotKind.Illegal);
-        lexicalScope.locals.put(name, frameSlot);
-        final SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot, nameNode);
+        FrameSlot existingSlot = lexicalScope.locals.put(name, frameSlot);
+        boolean newVariable = existingSlot == null;
+        final SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot, nameNode, newVariable);
 
         if (valueNode.hasSource()) {
             final int start = nameNode.getSourceCharIndex();
             final int length = valueNode.getSourceEndIndex() - start;
             result.setSourceSection(start, length);
         }
-        result.addExpressionTag();
+        if (argumentIndex == null) {
+            result.addExpressionTag();
+        }
 
         return result;
     }

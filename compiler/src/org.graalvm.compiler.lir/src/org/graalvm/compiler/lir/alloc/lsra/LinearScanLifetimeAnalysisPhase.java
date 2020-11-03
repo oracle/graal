@@ -28,6 +28,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.isCast;
 import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.debug.LIRGenerationDebugContext.getSourceForOperandFromDebugContext;
@@ -69,7 +70,6 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
@@ -538,7 +538,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
         }
 
         Interval interval = allocator.getOrCreateInterval(operand);
-        if (!kind.equals(LIRKind.Illegal)) {
+        if (!kind.equals(LIRKind.Illegal) && !isCast(operand)) {
             interval.setKind(kind);
         }
 
@@ -558,7 +558,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
         }
 
         Interval interval = allocator.getOrCreateInterval(operand);
-        if (!kind.equals(LIRKind.Illegal)) {
+        if (!kind.equals(LIRKind.Illegal) && !isCast(operand)) {
             interval.setKind(kind);
         }
 
@@ -906,7 +906,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
      * @param interval The interval for this defined value.
      * @return Returns the value which is moved to the instruction and which can be reused at all
      *         reload-locations in case the interval of this instruction is spilled. Currently this
-     *         can only be a {@link JavaConstant}.
+     *         can only be a {@link LoadConstantOp#canRematerialize() rematerializable constant
+     *         load}.
      */
     protected Constant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
         if (LoadConstantOp.isLoadConstantOp(op)) {
@@ -929,8 +930,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                 }
             }
             Constant constant = move.getConstant();
-            if (!(constant instanceof JavaConstant)) {
-                // Other kinds of constants might not be supported by the generic move operation.
+            if (!move.canRematerialize()) {
                 return null;
             }
             return constant;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -263,26 +263,28 @@ public class SLExceptionTest {
         }
     }
 
-    private static void assertHostFrame(Iterator<StackFrame> frames, String className, String methodName) {
+    static void assertHostFrame(Iterator<StackFrame> frames, String className, String methodName) {
         assertTrue(frames.hasNext());
         StackFrame frame = frames.next();
-        assertTrue(frame.isHostFrame());
-        assertFalse(frame.isGuestFrame());
-        assertEquals("host", frame.getLanguage().getId());
-        assertEquals("Host", frame.getLanguage().getName());
-        assertEquals(className + "." + methodName, frame.getRootName());
-        assertNull(frame.getSourceLocation());
+        String info = frame.toString();
+        assertTrue(info, frame.isHostFrame());
+        assertFalse(info, frame.isGuestFrame());
+        assertEquals(info, "host", frame.getLanguage().getId());
+        assertEquals(info, "Host", frame.getLanguage().getName());
+        assertEquals(info, className + "." + methodName, frame.getRootName());
+        assertNull(info, frame.getSourceLocation());
         assertNotNull(frame.toString());
 
         StackTraceElement hostFrame = frame.toHostFrame();
-        assertEquals(className, hostFrame.getClassName());
-        assertEquals(methodName, hostFrame.getMethodName());
+        info = hostFrame.toString();
+        assertEquals(info, className, hostFrame.getClassName());
+        assertEquals(info, methodName, hostFrame.getMethodName());
         assertNotNull(hostFrame.toString());
-        assertTrue(hostFrame.equals(hostFrame));
+        assertTrue(info, hostFrame.equals(hostFrame));
         assertNotEquals(0, hostFrame.hashCode());
     }
 
-    private static void assertGuestFrame(Iterator<StackFrame> frames, String languageId, String rootName, String fileName, int charIndex, int endIndex) {
+    static void assertGuestFrame(Iterator<StackFrame> frames, String languageId, String rootName, String fileName, int charIndex, int endIndex) {
         assertTrue(frames.hasNext());
         StackFrame frame = frames.next();
         assertTrue(frame.toString(), frame.isGuestFrame());
@@ -299,6 +301,21 @@ public class SLExceptionTest {
         assertEquals(rootName, hostFrame.getMethodName());
         assertEquals(frame.getSourceLocation().getStartLine(), hostFrame.getLineNumber());
         assertEquals(fileName, hostFrame.getFileName());
+        assertNotNull(hostFrame.toString());
+        assertTrue(hostFrame.equals(hostFrame));
+        assertNotEquals(0, hostFrame.hashCode());
+    }
+
+    static void assertGuestFrame(Iterator<StackFrame> frames, String languageId, String rootName) {
+        assertTrue(frames.hasNext());
+        StackFrame frame = frames.next();
+        assertTrue(frame.toString(), frame.isGuestFrame());
+        assertEquals(languageId, frame.getLanguage().getId());
+        assertEquals(rootName, frame.getRootName());
+
+        StackTraceElement hostFrame = frame.toHostFrame();
+        assertEquals("<" + languageId + ">", hostFrame.getClassName());
+        assertEquals(rootName, hostFrame.getMethodName());
         assertNotNull(hostFrame.toString());
         assertTrue(hostFrame.equals(hostFrame));
         assertNotEquals(0, hostFrame.hashCode());

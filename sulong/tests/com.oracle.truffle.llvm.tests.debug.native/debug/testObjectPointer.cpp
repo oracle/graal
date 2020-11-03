@@ -54,7 +54,7 @@ public:
     }
 };
 
-static void myStaticMethod(MyClass &myClass) {
+static void myStaticMethod(__attribute__((unused)) MyClass &myClass) {
 }
 
 #define MYCLASS_ARGS 16, 3.2f, 4.657, 149237354238697, 'e', -32768, -1, 32767
@@ -64,7 +64,7 @@ MyClass *globalPtr = new MyClass(MYCLASS_ARGS);
 
 // set constructor priority to ensure 'start' is
 // not executed prior to the global initializers
-int start() __attribute__((constructor(65536))) {
+__attribute__((constructor(65536))) int start() {
     MyClass localObj(MYCLASS_ARGS);
     MyClass *localPtr = new MyClass(MYCLASS_ARGS);
 

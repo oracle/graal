@@ -24,7 +24,7 @@
  */
 package org.graalvm.tools.insight.test;
 
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -573,10 +573,15 @@ public class InsightObjectTest {
             // @formatter:off
             Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
                 "ROOT(\n" +
-                "  DEFINE(mul,\n" +
+                "  DEFINE(do_mul,\n" +
                 "    ARGUMENT(a),\n" +
                 "    ARGUMENT(b),\n" +
                 "    EXPRESSION\n" +
+                "  ),\n" +
+                "  DEFINE(mul,\n" +
+                "    ARGUMENT(a),\n" +
+                "    ARGUMENT(b),\n" +
+                "    CALL_WITH(do_mul, 1, READ_VAR(a), READ_VAR(b))\n" +
                 "  ),\n" +
                 "  CALL(mul, CONSTANT(6), CONSTANT(7))\n" +
                 ")",
@@ -589,13 +594,13 @@ public class InsightObjectTest {
                 assertTrue(names.isEmpty());
                 names.addAll(frame.keySet());
             };
-            agentAPI.on("enter", captureNames, createConfig(true, false, false, "mul.*", null));
+            agentAPI.on("enter", captureNames, createConfig(true, false, false, "do_mul.*", null));
             c.eval(sampleScript);
             agentAPI.off("enter", captureNames);
 
             Assert.assertArrayEquals("THIS, a and b found", new Object[]{"THIS", "a", "b"}, names.toArray());
 
-            Object[] values = {0, 0};
+            Object[] values = {0, 0, 0};
             agentAPI.on("enter", (ctx, frame) -> {
                 values[0] = frame.get("a");
                 values[1] = frame.get("b");
@@ -605,13 +610,22 @@ public class InsightObjectTest {
                 assertEquals("ahoj", frame.get("a"));
                 try {
                     frame.put("c", 42);
+                    fail("Expecting an exception when setting unknown variable c");
                 } catch (IllegalArgumentException t) {
-                    if (t.getMessage().contains("identifier 'c'")) {
-                        return;
+                    if (!t.getMessage().contains("identifier 'c'")) {
+                        fail(t.getMessage());
                     }
                 }
-                fail("Expecting an exception when setting unknown variable c");
-            }, InsightObjectFactory.createConfig(true, false, false, "mul", null));
+                values[2] = frame.get("THIS");
+                try {
+                    frame.put("THIS", 42);
+                    fail("Expecting an exception when setting THIS");
+                } catch (IllegalArgumentException t) {
+                    if (!t.getMessage().contains("identifier 'THIS'")) {
+                        fail(t.getMessage());
+                    }
+                }
+            }, InsightObjectFactory.createConfig(true, false, false, "do_mul", null));
 
             Value mul = c.getBindings(InstrumentationTestLanguage.ID).getMember("mul");
             assertNotNull("mul function found", mul);
@@ -626,6 +640,7 @@ public class InsightObjectTest {
 
                 assertEquals(i + "th: a has been read", a, values[0]);
                 assertEquals(i + "th: b has been read", b, values[1]);
+                assertEquals(i + "th: THIS has been read", 1, values[2]);
             }
         }
     }
@@ -726,7 +741,7 @@ public class InsightObjectTest {
                 try {
                     ctx.returnValue(Collections.emptyMap());
                 } catch (RuntimeException ex) {
-                    assertTrue("Expecting TruffleException: " + ex, ex instanceof TruffleException);
+                    assertTrue("Expecting TruffleException: " + ex, ex instanceof AbstractTruffleException);
                 }
                 ctx.returnNow(42);
             };

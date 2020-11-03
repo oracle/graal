@@ -35,6 +35,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <unistd.h>
+#include <string.h>
 
 #define measure_diff(clk_id) measure_diff_impl(clk_id, #clk_id)
 

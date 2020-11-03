@@ -38,11 +38,11 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.CastConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
-import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyLLVMIRFunction;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
@@ -55,12 +55,10 @@ import java.util.List;
 public final class LLVMParser {
     private final Source source;
     private final LLVMParserRuntime runtime;
-    private final ExternalLibrary library;
 
     public LLVMParser(Source source, LLVMParserRuntime runtime) {
         this.source = source;
         this.runtime = runtime;
-        this.library = runtime.getLibrary();
     }
 
     public LLVMParserResult parse(ModelModule module, DataLayout targetDataLayout) {
@@ -113,7 +111,6 @@ public final class LLVMParser {
         assert !global.isExternal();
         // handle the file scope
         LLVMGlobal globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID(), global.isExported());
-        globalSymbol.define(global.getType(), library);
         runtime.getFileScope().register(globalSymbol);
     }
 
@@ -124,10 +121,10 @@ public final class LLVMParser {
         LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(runtime, functionDefinition, source, model.getFunctionParser(functionDefinition),
                         model.getFunctionProcessor(), dataLayout);
         Function function = new LazyLLVMIRFunction(lazyConverter);
-        LLVMFunction llvmFunction = LLVMFunction.create(functionSymbol.getName(), library, function, functionSymbol.getType(), runtime.getBitcodeID(), functionSymbol.getIndex(),
-                        functionDefinition.isExported());
+        LLVMFunction llvmFunction = LLVMFunction.create(functionSymbol.getName(), function, functionSymbol.getType(), runtime.getBitcodeID(), functionSymbol.getIndex(),
+                        functionDefinition.isExported(), runtime.getFile().getPath());
         runtime.getFileScope().register(llvmFunction);
-        final boolean cxxInterop = runtime.getContext().getEnv().getOptions().get(SulongEngineOption.CXX_INTEROP);
+        final boolean cxxInterop = LLVMLanguage.getContext().getEnv().getOptions().get(SulongEngineOption.CXX_INTEROP);
         if (cxxInterop) {
             model.getFunctionParser(functionDefinition).parseLinkageName(runtime);
         }
@@ -166,7 +163,7 @@ public final class LLVMParser {
     private void defineAlias(String existingName, String newName, boolean newExported) {
         // handle the file scope
         LLVMSymbol aliasTarget = runtime.lookupSymbol(existingName);
-        LLVMAlias aliasSymbol = new LLVMAlias(library, newName, aliasTarget, newExported);
+        LLVMAlias aliasSymbol = new LLVMAlias(newName, aliasTarget, newExported);
         runtime.getFileScope().register(aliasSymbol);
     }
 }

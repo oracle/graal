@@ -60,8 +60,9 @@ public interface CompilableTruffleAST {
      * @param permanentBailout specifies if a bailout is due to a condition that probably won't
      *            change if this AST is compiled again. This value is meaningless if
      *            {@code bailout == false}.
+     * @param graphTooBig graph was too big
      */
-    void onCompilationFailed(Supplier<String> serializedException, boolean bailout, boolean permanentBailout);
+    void onCompilationFailed(Supplier<String> serializedException, boolean bailout, boolean permanentBailout, boolean graphTooBig);
 
     /**
      * Gets a descriptive name for this call target.
@@ -93,6 +94,11 @@ public interface CompilableTruffleAST {
      * Cancel the compilation of this truffle ast.
      */
     boolean cancelCompilation(CharSequence reason);
+
+    /**
+     * Cancel the compilation of this truffle ast.
+     */
+    void dequeueInlined();
 
     /**
      * @param ast the ast to compare to
@@ -140,4 +146,10 @@ public interface CompilableTruffleAST {
         e.printStackTrace(pw);
         return sw.toString();
     }
+
+    /**
+     * @return <code>true</code> is the root nodes of this AST trivial, <code>false</code>
+     *         otherwise.
+     */
+    boolean isTrivial();
 }

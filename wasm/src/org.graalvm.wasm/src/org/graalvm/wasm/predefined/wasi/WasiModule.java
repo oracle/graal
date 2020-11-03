@@ -48,23 +48,23 @@ import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.emscripten.UnimplementedNode;
 
-import static org.graalvm.wasm.ValueTypes.I32_TYPE;
-import static org.graalvm.wasm.ValueTypes.I64_TYPE;
+import static org.graalvm.wasm.WasmType.I32_TYPE;
+import static org.graalvm.wasm.WasmType.I64_TYPE;
 
 public class WasiModule extends BuiltinModule {
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        WasmInstance module = new WasmInstance(new WasmModule(name, null, storeConstantsPolicy), storeConstantsPolicy);
-        importMemory(module, "main", "memory", 0, 0);
-        defineFunction(module, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsSizesGetNode(language, module));
-        defineFunction(module, "args_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsGetNode(language, module));
-        defineFunction(module, "clock_time_get", types(I32_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new WasiClockTimeGet(language, module));
-        defineFunction(module, "proc_exit", types(I32_TYPE), types(), new WasiProcExitNode(language, module));
-        defineFunction(module, "fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWrite(language, module));
-        defineFunction(module, "fd_read", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_read", language, module));
-        defineFunction(module, "fd_close", types(I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_close", language, module));
-        defineFunction(module, "fd_seek", types(I32_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_seek", language, module));
-        return module;
+        WasmInstance instance = new WasmInstance(new WasmModule(name, null, storeConstantsPolicy), storeConstantsPolicy);
+        importMemory(instance, "main", "memory", 0, 0);
+        defineFunction(instance, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsSizesGetNode(language, instance));
+        defineFunction(instance, "args_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsGetNode(language, instance));
+        defineFunction(instance, "clock_time_get", types(I32_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new WasiClockTimeGetNode(language, instance));
+        defineFunction(instance, "proc_exit", types(I32_TYPE), types(), new WasiProcExitNode(language, instance));
+        defineFunction(instance, "fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWriteNode(language, instance));
+        defineFunction(instance, "fd_read", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_read", language, instance));
+        defineFunction(instance, "fd_close", types(I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_close", language, instance));
+        defineFunction(instance, "fd_seek", types(I32_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_seek", language, instance));
+        return instance;
     }
 }

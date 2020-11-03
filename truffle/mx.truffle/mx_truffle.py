@@ -812,3 +812,5 @@ mx.update_commands(_suite, {
     'create-dsl-parser' : [create_dsl_parser, "create the DSL expression parser using antlr"],
     'create-sl-parser' : [create_sl_parser, "create the SimpleLanguage parser using antlr"],
 })
+
+mx_gate.add_jacoco_includes(['org.graalvm.*', 'com.oracle.truffle.*'])

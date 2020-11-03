@@ -41,8 +41,8 @@
 package org.graalvm.wasm.predefined.testutil;
 
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.predefined.BuiltinModule;
@@ -52,7 +52,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.graalvm.wasm.ValueTypes.I32_TYPE;
+import static org.graalvm.wasm.WasmType.I32_TYPE;
 
 public class TestutilModule extends BuiltinModule {
     public static class Options {
@@ -60,9 +60,6 @@ public class TestutilModule extends BuiltinModule {
     }
 
     public static class Names {
-        public static final String RESET_CONTEXT = "__testutil_reset_context";
-        public static final String SAVE_CONTEXT = "__testutil_save_context";
-        public static final String COMPARE_CONTEXTS = "__testutil_compare_contexts";
         public static final String RUN_CUSTOM_INITIALIZATION = "__testutil_run_custom_initialization";
         public static final String SAVE_BINARY_FILE = "__testutil_save_binary_file";
     }
@@ -87,18 +84,15 @@ public class TestutilModule extends BuiltinModule {
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         final Path temporaryDirectory = createTemporaryDirectory();
         final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        WasmInstance module = new WasmInstance(new WasmModule(name, null, storeConstantsPolicy), storeConstantsPolicy);
+        WasmInstance instance = new WasmInstance(new WasmModule(name, null, storeConstantsPolicy), storeConstantsPolicy);
 
         // Note: in the following methods, the types are not important here, since these methods
         // are not accessed by Wasm code.
-        defineFunction(module, Names.RESET_CONTEXT, types(), types(), new ResetContextNode(language, module));
-        defineFunction(module, Names.SAVE_CONTEXT, types(), types(), new SaveContextNode(language, module));
-        defineFunction(module, Names.COMPARE_CONTEXTS, types(), types(), new CompareContextsNode(language, module));
-        defineFunction(module, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitialization(language));
+        defineFunction(instance, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitializationNode(language));
 
         // The following methods are exposed to the Wasm test programs.
-        defineFunction(module, Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), new SaveBinaryFile(language, temporaryDirectory));
+        defineFunction(instance, Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), new SaveBinaryFileNode(language, temporaryDirectory));
 
-        return module;
+        return instance;
     }
 }

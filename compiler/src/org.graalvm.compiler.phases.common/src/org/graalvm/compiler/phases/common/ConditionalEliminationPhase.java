@@ -86,6 +86,7 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
@@ -108,6 +109,45 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
 
+/**
+ * Performs conditional branch elimination on a {@link StructuredGraph}. This is done by optimizing
+ * {@link LogicNode}s to be conditionally (flow-sensitive) {@code true} or {@code false}. If such a
+ * condition is input to a control split node, i.e., an {@link IfNode} a subsequent application of
+ * the {@link CanonicalizerPhase} can remove the unconditional branch from the graph.
+ *
+ * In order to prove conditions this phase build the
+ * <a href="https://en.wikipedia.org/wiki/Dominator_(graph_theory)">Dominator Tree</a> of a method
+ * and traverses it depth first. Every time the traversal encounters a basic block whose predecessor
+ * has multiple successors (i.e., the predecessor block ends with a control flow split node) it
+ * inspects the control split's condition in detail: The condition leading to the current block
+ * carries value & type information for the operands of the condition.
+ *
+ * Consider the following example where a variable {@code a} is used in a condition 3 times.
+ * Traversing the dominator tree depth first and recording the value ranges for {@code a} after
+ * every condition effectively makes the last condition {@code a == 0} trivially true.
+ *
+ * <pre>
+ * if (a >= 0) {
+ *     // a in [0:Integer.MAX_VAL]
+ *     if (a < 1) {
+ *         // a in [Integer.MIN_VAL,0] && a in [0:Integer.MAX_VAL]
+ *         // --> a in [0]
+ *         if (a == 0) { // true
+ *         }
+ *     }
+ * }
+ * </pre>
+ *
+ * @implNote This phase considers the following nodes (all of which have a
+ *           {@link InputType#Condition} input edge):
+ *           <ul>
+ *           <li>{@link IfNode}
+ *           <li>{@link SwitchNode}
+ *           <li>{@link GuardNode}
+ *           <li>{@link FixedGuardNode}
+ *           <li>{@link ConditionAnchorNode}
+ *           </ul>
+ */
 public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
 
     private static final CounterKey counterStampsRegistered = DebugContext.counter("StampsRegistered");

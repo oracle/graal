@@ -50,6 +50,10 @@ final class InteropAccessor extends Accessor {
 
     static final InteropAccessor ACCESSOR = new InteropAccessor();
 
+    static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
+
+    static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
+
     private InteropAccessor() {
     }
 
@@ -95,8 +99,19 @@ final class InteropAccessor extends Accessor {
         }
 
         @Override
+        public boolean isInteropType(Object result) {
+            return AssertUtils.isInteropValue(result);
+        }
+
+        @Override
         public boolean isExecutableObject(Object value) {
-            return InteropLibrary.getFactory().getUncached().isExecutable(value);
+            return InteropLibrary.getUncached().isExecutable(value);
+        }
+
+        @Override
+        public boolean isScopeObject(Object receiver) {
+            InteropLibrary interop = InteropLibrary.getUncached();
+            return interop.isScope(receiver) && interop.hasMembers(receiver);
         }
 
         @Override
@@ -116,7 +131,6 @@ final class InteropAccessor extends Accessor {
             }
             return receiver;
         }
-
     }
 
     static final class EmptyTruffleObject implements TruffleObject {

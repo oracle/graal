@@ -120,6 +120,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -1829,7 +1830,7 @@ public class ValueAPITest {
 
     @Test
     public void testGuestException() {
-        Value exceptionValue = context.asValue(new ExceptionWrapper(new RuntimeException("expected")));
+        Value exceptionValue = context.asValue(new ExceptionWrapper(new LanguageException("expected")));
         assertValue(exceptionValue, EXCEPTION);
         try {
             exceptionValue.throwException();
@@ -1864,6 +1865,26 @@ public class ValueAPITest {
                 return null;
             }
         }));
+    }
+
+    @Test
+    public void testMetaObjectNull() {
+        Value nullValue = context.asValue(null);
+        assertFalse(context.asValue(nullValue).isMetaObject());
+        assertNull(context.asValue(nullValue).getMetaObject());
+
+        assertFalse(context.asValue(null).isMetaObject());
+        assertNull(context.asValue(null).getMetaObject());
+    }
+
+    @Test
+    public void testIsMetaInstanceNull() {
+        Value nullValue = context.asValue(null);
+        assertFalse(context.asValue(Object.class).isMetaInstance(nullValue));
+        assertFalse(context.asValue(Void.class).isMetaInstance(nullValue));
+
+        assertFalse(context.asValue(Object.class).isMetaInstance(null));
+        assertFalse(context.asValue(Void.class).isMetaInstance(null));
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -2003,11 +2024,34 @@ public class ValueAPITest {
         }
     }
 
+    @SuppressWarnings("serial")
+    private static final class LanguageException extends AbstractTruffleException {
+
+        LanguageException(String message) {
+            super(message);
+        }
+    }
+
     @Test
     public void testPrimitiveAndObject() {
         BooleanAndDelegate o = new BooleanAndDelegate(new TestArray(new String[0]));
         Value v = context.asValue(o);
         ValueAssert.assertValue(v, Trait.ARRAY_ELEMENTS, Trait.BOOLEAN);
+    }
+
+    @Test
+    public void testBadNarrowingConversions() {
+        final long[] badIndices = {-1L << 32, -1L << 32 + 1, 1L << 32, 1L << 32 + 1, Long.MIN_VALUE, Long.MAX_VALUE};
+        for (long index : badIndices) {
+            Value list = context.asValue(new ArrayList<>(Arrays.asList(1, 2, 3)));
+            AbstractPolyglotTest.assertFails(() -> list.getArrayElement(index), ArrayIndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> list.setArrayElement(index, 42), ArrayIndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> list.removeArrayElement(index), ArrayIndexOutOfBoundsException.class);
+
+            Value array = context.asValue(new int[]{1, 2, 3});
+            AbstractPolyglotTest.assertFails(() -> array.getArrayElement(index), ArrayIndexOutOfBoundsException.class);
+            AbstractPolyglotTest.assertFails(() -> array.setArrayElement(index, 42), ArrayIndexOutOfBoundsException.class);
+        }
     }
 
 }

@@ -28,11 +28,11 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 PROJECT_NAME           = "GraalVM LLVM Runtime C API"
-STRIP_FROM_PATH        = projects/com.oracle.truffle.llvm.libraries.bitcode/include
+STRIP_FROM_PATH        = projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include
 JAVADOC_AUTOBRIEF      = YES
 OPTIMIZE_OUTPUT_FOR_C  = YES
 SHOW_FILES             = NO
-INPUT                  = projects/com.oracle.truffle.llvm.libraries.bitcode/include
+INPUT                  = projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include
 FILE_PATTERNS          = *.c \
                          *.cc \
                          *.cxx \
@@ -44,7 +44,8 @@ FILE_PATTERNS          = *.c \
                          *.hpp \
                          *.h++
 RECURSIVE              = YES
-EXCLUDE_PATTERNS       = *-internal.h
+EXTRACT_STATIC         = YES
+EXCLUDE_PATTERNS       = internal/*
 EXAMPLE_PATH           = tests/com.oracle.truffle.llvm.tests.interop.native/interop
 EXAMPLE_PATTERNS       = polyglotToolchain.c
 HTML_OUTPUT            = doxygen

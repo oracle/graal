@@ -55,7 +55,9 @@ public class WasmFunctionInstance implements TruffleObject {
     private final CallTarget target;
 
     /**
-     * Represents a WebAssembly function.
+     * Represents a call target that is a WebAssembly function or an imported function.
+     *
+     * If the function is imported, then function is set to {@code null}.
      */
     public WasmFunctionInstance(WasmFunction function, CallTarget target) {
         this.function = function;

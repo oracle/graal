@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Formatter;
 import java.util.List;
+import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
@@ -56,6 +57,7 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
+import jdk.vm.ci.hotspot.VMField;
 import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.MetaUtil;
@@ -387,8 +389,18 @@ public class CheckGraalIntrinsics extends GraalTest {
             }
         }
 
+        if (hasAESElectronicCodebookStubRoutineFields()) {
+            add(toBeInvestigated,
+                            "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I",
+                            "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
+        }
+
         if (isJDK11OrHigher()) {
-            // Relevant for Java flight recorder
+            if (!(arch instanceof AArch64)) {
+                add(toBeInvestigated,
+                                "java/lang/Math.abs(I)I",
+                                "java/lang/Math.abs(J)J");
+            }
             add(toBeInvestigated,
                             "java/lang/CharacterDataLatin1.isDigit(I)Z",
                             "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
@@ -405,13 +417,12 @@ public class CheckGraalIntrinsics extends GraalTest {
             if (!(arch instanceof AArch64)) {
                 add(toBeInvestigated,
                                 "java/lang/Math.abs(I)I",
-                                "java/lang/Math.abs(J)J");
+                                "java/lang/Math.abs(J)J",
+                                "java/lang/Math.max(DD)D",
+                                "java/lang/Math.max(FF)F",
+                                "java/lang/Math.min(DD)D",
+                                "java/lang/Math.min(FF)F");
             }
-            add(toBeInvestigated,
-                            "java/lang/Math.max(DD)D",
-                            "java/lang/Math.max(FF)F",
-                            "java/lang/Math.min(DD)D",
-                            "java/lang/Math.min(FF)F");
             add(toBeInvestigated,
                             "jdk/internal/misc/Unsafe.writeback0(J)V",
                             "jdk/internal/misc/Unsafe.writebackPostSync0()V",
@@ -420,14 +431,16 @@ public class CheckGraalIntrinsics extends GraalTest {
 
         if (isJDK14OrHigher()) {
             add(toBeInvestigated,
-                            "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I",
-                            "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I",
                             "java/math/BigInteger.shiftLeftImplWorker([I[IIII)V",
                             "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
         }
 
         if (isJDK16OrHigher()) {
             add(toBeInvestigated,
+                            "java/lang/Math.copySign(DD)D",
+                            "java/lang/Math.copySign(FF)F",
+                            "java/lang/Math.signum(D)D",
+                            "java/lang/Math.signum(F)F",
                             "sun/security/provider/MD5.implCompress0([BI)V");
         }
 
@@ -575,6 +588,19 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (!config.useSHA512Intrinsics()) {
             add(ignore, "sun/security/provider/SHA5." + shaCompressName + "([BI)V");
         }
+    }
+
+    /**
+     * Determines if the StubRoutines corresponding to JDK-8225625 are potentially available. That
+     * is, are the fields pointing to these routines defined. The routines themselves will only be
+     * generated if the following code in the VM condition is true:
+     * {@code VM_Version::supports_vaes() && VM_Version::supports_avx512vl() && VM_Version::supports_avx512dq()}
+     */
+    private boolean hasAESElectronicCodebookStubRoutineFields() {
+        HotSpotVMConfigStore store = config.getStore();
+        Map<String, VMField> fields = store.getFields();
+        return fields.containsKey("StubRoutines::_electronicCodeBook_encryptAESCrypt") &&
+                        fields.containsKey("StubRoutines::_electronicCodeBook_decryptAESCrypt");
     }
 
     private static boolean isJDK9OrHigher() {

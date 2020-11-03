@@ -34,6 +34,16 @@ public interface SubstrateInstalledCode {
 
     long getAddress();
 
+    /**
+     * Returns the last method object passed to {@link #setAddress}. The return value might be
+     * passed as the argument to future calls to {@link #setAddress}.
+     * <p>
+     * May return {@code null} if the subclass does not have a use for the method object (also not
+     * in {@link #setAddress}) and therefore no need to retain it. Expected to return {@code null}
+     * if {@link #setAddress} has never been called, or after {@link #clearAddress} has been called.
+     */
+    ResolvedJavaMethod getMethod();
+
     void setAddress(long address, ResolvedJavaMethod method);
 
     void clearAddress();

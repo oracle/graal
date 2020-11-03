@@ -41,7 +41,7 @@
 #
 
 # If you update this number make sure the graalvm.version value in ./pom.xml matches
-VERSION="20.3.0-dev"
+VERSION="21.0.0-dev"
 
 MAIN_CLASS="com.oracle.truffle.sl.launcher.SLMain"
 SCRIPT_HOME="$(cd "$(dirname "$0")" && pwd -P)"
@@ -115,7 +115,7 @@ if [[ "$GRAALVM_VERSION" != "" ]]; then
         -dump)
             JAVA_ARGS+=("-Dpolyglot.engine.AllowExperimentalOptions=true" "-Dgraal.Dump=Truffle:1" "-Dpolyglot.engine.BackgroundCompilation=false" "-Dpolyglot.engine.TraceCompilation=true" "-Dpolyglot.engine.TraceCompilationDetails=true") ;;
         -disassemble)
-            JAVA_ARGS+=("-Dpolyglot.engine.AllowExperimentalOptions=true" "-XX:CompileCommand=print,*OptimizedCallTarget.callRoot" "-XX:CompileCommand=exclude,*OptimizedCallTarget.callRoot" "-Dpolyglot.engine.BackgroundCompilation=false" "-Dpolyglot.engine.TraceCompilation=true" "-Dpolyglot.engine.TraceCompilationDetails=true") ;;
+            JAVA_ARGS+=("-Dpolyglot.engine.AllowExperimentalOptions=true" "-XX:CompileCommand=print,*OptimizedCallTarget.profiledPERoot" "-XX:CompileCommand=exclude,*OptimizedCallTarget.profiledPERoot" "-Dpolyglot.engine.BackgroundCompilation=false" "-Dpolyglot.engine.TraceCompilation=true" "-Dpolyglot.engine.TraceCompilationDetails=true") ;;
         -J*)
             opt=${opt:2}
             JAVA_ARGS+=("$opt") ;;

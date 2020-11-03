@@ -33,7 +33,6 @@ int main(void) {
     char buf[16];
     int fd;
     ssize_t size;
-    int i;
     fd = open("LICENSE", O_RDONLY, 0);
     if (fd < 0) {
         perror("Cannot open file");

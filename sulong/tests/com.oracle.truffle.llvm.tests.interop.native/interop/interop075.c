@@ -29,7 +29,10 @@
  */
 int *needsStack() {
     int a = 5;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-stack-address"
     return &a;
+#pragma clang diagnostic pop
 }
 
 int noStack() {

@@ -77,6 +77,7 @@ public class SubstrateType extends NodeClass implements SharedType {
 
     @UnknownPrimitiveField private int instanceOfFromTypeID;
     @UnknownPrimitiveField private int instanceOfNumTypeIDs;
+
     @UnknownObjectField(types = {DynamicHub.class}) protected DynamicHub uniqueConcreteImplementation;
 
     public SubstrateType(JavaKind kind, DynamicHub hub) {
@@ -109,9 +110,14 @@ public class SubstrateType extends NodeClass implements SharedType {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setTypeCheckData(int instanceOfFromTypeID, int instanceOfNumTypeIDs, DynamicHub uniqueConcreteImplementation) {
+    public void setLegacyTypeCheckData(int instanceOfFromTypeID, int instanceOfNumTypeIDs, DynamicHub uniqueConcreteImplementation) {
         this.instanceOfFromTypeID = instanceOfFromTypeID;
         this.instanceOfNumTypeIDs = instanceOfNumTypeIDs;
+        this.uniqueConcreteImplementation = uniqueConcreteImplementation;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setTypeCheckData(DynamicHub uniqueConcreteImplementation) {
         this.uniqueConcreteImplementation = uniqueConcreteImplementation;
     }
 
@@ -212,14 +218,14 @@ public class SubstrateType extends NodeClass implements SharedType {
 
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
-        return hub.isAssignableFromHub(((SubstrateType) other).hub);
+        return DynamicHub.toClass(hub).isAssignableFrom(DynamicHub.toClass(((SubstrateType) other).hub));
     }
 
     @Override
     public boolean isInstance(JavaConstant obj) {
         if (obj.getJavaKind() == JavaKind.Object && !obj.isNull()) {
             DynamicHub objHub = KnownIntrinsics.readHub(SubstrateObjectConstant.asObject(obj));
-            return hub.isAssignableFromHub(objHub);
+            return DynamicHub.toClass(hub).isAssignableFrom(DynamicHub.toClass(objHub));
         }
         return false;
     }

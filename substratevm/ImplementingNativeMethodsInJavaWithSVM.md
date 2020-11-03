@@ -6,15 +6,15 @@ a result one can use the same language to write the application logic
 as well as the system calls.
 
 Note that this document describes the opposite of what is commonly done via JNI:
-Usually low-level system operations are implemented in C and invoked from Java
+usually low-level system operations are implemented in C and invoked from Java
 using JNI. If you are interested in how Native Image supports the common use case,
-continue reading to [Native Image JNI support](JNI.md) guide instead.
+continue reading to the [Native Image JNI support](JNI.md) guide instead.
 
 ## Create a Shared Library
 
-First of all one has to use the `native-image` command to generate a shared library
-with some JNI-compatible [entry points](SubstrateVM.md#images-and-entry-points).
-Let's start with the Java code:
+First of all one has to use the `native-image` builder to generate a shared library
+with some JNI-compatible [entry points](README.md#build-a-shared-library).
+Start with the Java code:
 ```java
 package org.pkg.implnative;
 
@@ -28,22 +28,22 @@ public final class NativeImpl {
     }
 }
 ```
-After being processed by the `native-image` command the code
+After being processed by the `native-image` builder, the code
 [exposes a C function](C-API.md) `Java_org_pkg_apinative_Native_add`
 (the name follows conventions of JNI that will be handy later) and
-a SubstrateVM signature typical for JNI methods. The first parameter
-is a reference to `JNIEnv*` value, the second parameter is a reference
+a Native Image signature typical for JNI methods. The first parameter
+is a reference to the `JNIEnv*` value. The second parameter is a reference
 to the `jclass` value for the class declaring the method. The third parameter is a
-portable (e.g. `long`) identifier of the [SubstrateVM isolatethread](C-API.md).
+portable (e.g., `long`) identifier of the [Native Image isolatethread](C-API.md).
 The rest of the parameters are the actual parameters of the Java `Native.add`
-method described in the next section. Compile the code with shared option on:
-```
+method described in the next section. Compile the code with the `--shared` option:
+```shell
 $GRAALVM/bin/native-image --shared -H:Name=libnativeimpl -cp nativeimpl
 ```
-and the `libnativeimpl.so` is generated. We are ready to use it from standard
+The `libnativeimpl.so` is generated. We are ready to use it from standard
 Java code.
 
-## Bind Java Native Method
+## Bind a Java Native Method
 
 Now we need another Java class to use the native library generated in the previous step:
 ```java
@@ -53,15 +53,15 @@ public final class Native {
     private static native int add(long isolateThreadId, int a, int b);
 }
 ```
-the package name of the class as well as name of the method has to correspond
+The package name of the class, as well as the name of the method, has to correspond
 (after the [JNI mangling](https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/design.html))
 to the name of the `@CEntryPoint` introduced previously. The first argument is
-a portable (e.g. `long`) identifier of the SubstrateVM isolate thread. The rest of the arguments
-matches the parameters of the entry point.
+a portable (e.g., `long`) identifier of the Native Image isolate thread. The rest of the arguments
+match the parameters of the entry point.
 
 ## Loading the Native Library
 
-The next step is to bind the JDK with the generated `.so` library - e.g.
+The next step is to bind the JDK with the generated `.so` library. For example,
 make sure the implementation of the native `Native.add` method is loaded.
 Simple `load` or `loadLibrary` calls will do:
 ```java
@@ -70,13 +70,13 @@ public static void main(String[] args) {
     // ...
 }
 ```
-under the assumption your `LD_LIBRARY_PATH` environment variable is specified
-or `java.library.path` Java property is properly set.
+This is assuming your `LD_LIBRARY_PATH` environment variable is specified,
+or the `java.library.path` Java property is properly set.
 
-## Initializing the Substrate VM
+## Initializing a Native Image Isolate
 
-Before making calls to the `Native.add` method, we need to create a Substrate VM
-isolate. Substrate VM provides special built-in to allow that:
+Before making calls to the `Native.add` method, we need to create a Native Image
+isolate. Native Image provides a special built-in to allow that:
 `CEntryPoint.Builtin.CREATE_ISOLATE`. Define another method along your other
 existing `@CEntryPoint` methods. Let it return `IsolateThread` and take no parameters:
 ```java
@@ -85,12 +85,12 @@ public final class NativeImpl {
     public static native IsolateThread createIsolate();
 }
 ```
-SubstrateVM then generates default native implementation of the
+Native Image then generates default native implementation of the
 method into the final `.so` library.
-The method initializes the Substrate VM runtime and
-returns a portable identification - e.g. `long` to hold
-an instance of a [Substrate VM isolatethread](C-API.md). The isolate thread can then be used for
-multiple invocations of the native part of our code:
+The method initializes the Native Image runtime and
+returns a portable identification, e.g., `long`, to hold
+an instance of a [Native Image isolatethread](C-API.md). The isolate thread can then be used for
+multiple invocations of the native part of your code:
 ```java
 package org.pkg.apinative;
 
@@ -109,19 +109,19 @@ public final class Native {
     private static native long createIsolate();
 }
 ```
-The standard JVM is started. It initializes a Substrate VM isolate,
-attaches current thread to the isolate and the universal answer `42` is
+The standard JVM is started. It initializes a Native Image isolate,
+attaches the current thread to the isolate, and the universal answer `42` is
 then computed three times inside of the isolate.
 
 ## Calling JVM from Native Java
 
-There is a detailed [tutorial on the C interface](src/com.oracle.svm.tutorial/src/com/oracle/svm/tutorial/CInterfaceTutorial.java) of Substrate VM. The following example shows how to make a callback to JVM.
+There is a detailed [tutorial on the C interface](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.tutorial/src/com/oracle/svm/tutorial/CInterfaceTutorial.java) of Native Image. The following example shows how to make a callback to JVM.
 
-In the classical setup, when C needs to call into JVM, it uses [jni.h](JNI.md)
+In the classical setup, when C needs to call into JVM, it uses a [jni.h](JNI.md)
 header file. The file defines essential JVM structures (like `JNIEnv`) as well as
 functions one can invoke to inspect classes, access fields, and call methods
-in the JVM. In order to call these functions from our `NativeImpl` class in our
-example, we need to define appropriate Java API wrappers of the `jni.h` concepts:
+in the JVM. In order to call these functions from the `NativeImpl` class in the above
+example, you need to define appropriate Java API wrappers of the `jni.h` concepts:
 
 ```java
 @CContext(JNIHeaderDirectives.class)
@@ -166,19 +166,19 @@ interface JMethodID extends PointerBase {
 }
 ```
 
-If we leave aside the meaning of `JNIHeaderDirectives` for now, the rest
-of the interfaces is a type-safe representation of the C pointers found in the
-`jni.h` file. `JClass`, `JMethodID`, `JObject` are all pointers. Thanks to
-the above definitions we now have Java interfaces to represent
-instances of these objects in our native Java code in a type safe way.
+Leaving aside the meaning of `JNIHeaderDirectives` for now, the rest
+of the interfaces are type-safe representations of the C pointers found in the
+`jni.h` file. `JClass`, `JMethodID`, and `JObject` are all pointers. Thanks to
+the above definitions, you now have Java interfaces to represent
+instances of these objects in your native Java code in a type-safe way.
 
 The core part of any [JNI](JNI.md) API is the set of functions one can call
 when talking to the JVM. There are dozens of them, but in the `JNINativeInterface`
-definition we just define wrappers for those few that we need in our example.
-Again, we give them proper types, so in our native Java code we can use
+definition, you just define wrappers for those few that are needed in the example.
+Again, give them proper types, so in your native Java code you can use
 `GetMethodId.find(...)`, `CallStaticVoidMethod.call(...)`, etc. In addition,
 there is another important part missing in the puzzle - the `jvalue` union type
-wrapping all the possible Java primitive and object types. Here comes definition
+wrapping all the possible Java primitive and object types. Here are definitions
 of its getters and setters:
 
 ```java
@@ -209,10 +209,10 @@ interface JValue extends PointerBase {
     JValue addressOf(int index);
 }
 ```
-The `addressOf` method is a special Substrate VM construct used to perform
-C pointer arithmetics. Given a pointer one can treat it as initial element of
-an array, then for example, use `addressOf(1)` to access the subsequent element.
-With this we have all the API we need to make a callback: let's redefine
+The `addressOf` method is a special Native Image construct used to perform
+C pointer arithmetics. Given a pointer, one can treat it as the initial element of
+an array, then, for example, use `addressOf(1)` to access the subsequent element.
+With this you have all the API needed to make a callback - redefine
 the previously introduced `NativeImpl.add` method to accept properly typed
 pointers, and then use these pointers to invoke a JVM method before computing
 the sum of `a + b`:
@@ -249,7 +249,7 @@ The above example seeks a static method `hello` and invokes it with eight
 on the stack. Individual parameters are accessed by use of
 the `addressOf` operator and filled with appropriate primitive values
 before the call happens. The method `hello` is defined in the class `Native`
-and just prints values of all parameters to verify they are properly
+and prints values of all parameters to verify they are properly
 propagated from the `NativeImpl.add` caller:
 
 ```
@@ -262,9 +262,9 @@ public class Native {
 ```
 
 There is just one final piece to explain: the `JNIHeaderDirectives`.
-Substrate VM C interface needs to understand the layout of the C structures. It
+The Native Image C interface needs to understand the layout of the C structures. It
 needs to know at which offset of `JNINativeInterface` structure it can find
-the pointer to `GetMethodId` function. To do so, it needs `jni.h` and additional
+the pointer to the `GetMethodId` function. To do so, it needs `jni.h` and additional
 files during compilation. One can specify them by `@CContext` annotation and
 implementation of its `Directives`:
 
@@ -299,5 +299,5 @@ The good thing is that `jni.h` is inside of every JDK, so one can use the
 can, of course, be made more robust and OS-independent.
 
 Implementing any JVM native method in Java and/or making callbacks to the JVM
-with Substrate VM should now be as easy as expanding upon the given example
+with Native Image should now be as easy as expanding upon the given example
 and invoking `native-image`.

@@ -6,37 +6,35 @@
  */
 
 import * as vscode from 'vscode';
-import * as path from 'path';
-import * as fs from 'fs';
 import { toggleCodeCoverage, activeTextEditorChaged } from './graalVMCoverage';
-import { GraalVMConfigurationProvider, GraalVMDebugAdapterTracker } from './graalVMDebug';
-import { installGraalVM, installGraalVMComponent, selectInstalledGraalVM } from './graalVMInstall';
-import { startLanguageServer, stopLanguageServer } from './graalVMLanguageServer';
-import { installRPackage, rConfig, R_LANGUAGE_SERVER_PACKAGE_NAME } from './graalVMR';
-import { installRubyGem, rubyConfig, RUBY_LANGUAGE_SERVER_GEM_NAME } from './graalVMRuby';
+import { GraalVMConfigurationProvider, GraalVMDebugAdapterDescriptorFactory, GraalVMDebugAdapterTracker } from './graalVMDebug';
+import { installGraalVM, addExistingGraalVM, installGraalVMComponent, uninstallGraalVMComponent, selectInstalledGraalVM, findGraalVMs, InstallationNodeProvider, Component, Installation, removeGraalVMInstallation } from './graalVMInstall';
+import { onClientNotification, startLanguageServer, stopLanguageServer } from './graalVMLanguageServer';
+import { installRPackage, R_LANGUAGE_SERVER_PACKAGE_NAME } from './graalVMR';
+import { installRubyGem, RUBY_LANGUAGE_SERVER_GEM_NAME } from './graalVMRuby';
 import { addNativeImageToPOM } from './graalVMNativeImage';
-import { pythonConfig } from './graalVMPython';
+import { getGVMHome, configureGraalVMHome, setupProxy } from './graalVMConfiguration';
+import { runVisualVMForPID } from './graalVMVisualVM';
 
-const OPEN_SETTINGS: string = 'Open Settings';
 const INSTALL_GRAALVM: string = 'Install GraalVM';
-const SELECT_GRAALVM: string = 'Select GraalVM';
-const INSTALL: string = 'Install ';
-const OPTIONAL_COMPONENTS: string = 'Optional GraalVM Components';
-const NATIVE_IMAGE_COMPONENT: string = 'GraalVM Native Image Component';
-const PYTHON_COMPONENT: string = 'GraalVM Python Component';
-const R_COMPONENT: string = 'GraalVM R Component';
-const RUBY_COMPONENT: string = 'GraalVM Ruby Component';
-const DONT_ASK_AGAIN: string = "Don't Ask Again";
+const SELECT_EXISTING_GRAALVM: string = 'Select Existing GraalVM';
+const SELECT_ACTIVE_GRAALVM: string = 'Set Active GraalVM';
 
 export function activate(context: vscode.ExtensionContext) {
-	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.selectGraalVMHome', () => {
-		selectInstalledGraalVM(context.globalStoragePath);
+	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.selectGraalVMHome', (installation?: Installation) => {
+		selectInstalledGraalVM(installation ? installation.home : undefined);
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.installGraalVM', () => {
-		installGraalVM(context.globalStoragePath);
+		installGraalVM(context.extensionPath);
 	}));
-	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.installGraalVMComponent', (componentId: string) => {
-		installGraalVMComponent(componentId);
+	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.addExistingGraalVM', () => {
+		addExistingGraalVM();
+	}));
+	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.installGraalVMComponent', (component: string | Component, homeFolder?: string) => {
+		installGraalVMComponent(component, homeFolder, context.extensionPath);
+	}));
+	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.uninstallGraalVMComponent', (component: string | Component, homeFolder?: string) => {
+		uninstallGraalVMComponent(component, homeFolder);
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.addNativeImageToPOM', () => {
 		addNativeImageToPOM();
@@ -45,149 +43,91 @@ export function activate(context: vscode.ExtensionContext) {
 		toggleCodeCoverage(context);
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.installRLanguageServer', () => {
-		installRPackage(R_LANGUAGE_SERVER_PACKAGE_NAME);
+		if(!installRPackage(R_LANGUAGE_SERVER_PACKAGE_NAME)){
+			vscode.window.showErrorMessage("R isn't present in GraalVM Installation.");
+		}
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.installRubyLanguageServer', () => {
-		installRubyGem(RUBY_LANGUAGE_SERVER_GEM_NAME);
+		if(!installRubyGem(RUBY_LANGUAGE_SERVER_GEM_NAME)){
+			vscode.window.showErrorMessage("Ruby isn't present in GraalVM Installation.");
+		}
 	}));
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(e => {
 		if (e) {
 			activeTextEditorChaged(e);
 		}
 	}));
+	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.setupProxy' , () => {
+		setupProxy();
+	}));
+	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.removeInstallation', (path?: string | Installation) => {
+		removeGraalVMInstallation(path instanceof Installation ? path.home : path);
+	}));
+	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.runVisualVMForPID', (pid?: number) => {
+		runVisualVMForPID(pid);
+	}));
+
+	const nodeProvider = new InstallationNodeProvider();
+	context.subscriptions.push(vscode.window.registerTreeDataProvider('graalvm-installations', nodeProvider));
+	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.refreshInstallations', () => nodeProvider.refresh()));
 	const configurationProvider = new GraalVMConfigurationProvider();
 	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('graalvm', configurationProvider));
 	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('node', configurationProvider));
+	context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('graalvm', new GraalVMDebugAdapterDescriptorFactory()));
 	context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory('graalvm', new GraalVMDebugAdapterTracker()));
 	context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
 		if (e.affectsConfiguration('graalvm.home')) {
+			vscode.commands.executeCommand('extension.graalvm.refreshInstallations');
 			config();
-			stopLanguageServer().then(() => startLanguageServer(vscode.workspace.getConfiguration('graalvm').get('home') as string));
+			stopLanguageServer().then(() => startLanguageServer(getGVMHome()));
+		} else if (e.affectsConfiguration('graalvm.installations')) {
+			vscode.commands.executeCommand('extension.graalvm.refreshInstallations');
 		} else if (e.affectsConfiguration('graalvm.languageServer.currentWorkDir') || e.affectsConfiguration('graalvm.languageServer.inProcessServer')) {
-			stopLanguageServer().then(() => startLanguageServer(vscode.workspace.getConfiguration('graalvm').get('home') as string));
+			stopLanguageServer().then(() => startLanguageServer(getGVMHome()));
 		}
 	}));
-	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
+	const graalVMHome = getGVMHome();
 	if (!graalVMHome) {
-		vscode.window.showInformationMessage('No path to GraalVM home specified.', SELECT_GRAALVM, INSTALL_GRAALVM, OPEN_SETTINGS).then(value => {
-			switch (value) {
-				case SELECT_GRAALVM:
-					vscode.commands.executeCommand('extension.graalvm.selectGraalVMHome');
-					break;
-				case INSTALL_GRAALVM:
-					vscode.commands.executeCommand('extension.graalvm.installGraalVM');
-					break;
-				case OPEN_SETTINGS:
-					vscode.commands.executeCommand('workbench.action.openSettings');
-					break;
-			}
-		});
+		setupGraalVM();
 	} else {
-		config();
 		startLanguageServer(graalVMHome);
 	}
 	vscode.window.setStatusBarMessage('GraalVM extension activated', 3000);
+	
+	// Public API
+	return {
+		onClientNotification: onClientNotification,
+	};
 }
 
 export function deactivate(): Thenable<void> {
 	return stopLanguageServer();
 }
 
+function setupGraalVM(){
+	findGraalVMs().then(vms => {
+		const items: string[] = vms.length > 0 ? [SELECT_ACTIVE_GRAALVM, INSTALL_GRAALVM] : [SELECT_EXISTING_GRAALVM, INSTALL_GRAALVM];
+		vscode.window.showInformationMessage('No active GraalVM installation found.', ...items).then(value => {
+			switch (value) {
+				case SELECT_EXISTING_GRAALVM:
+					vscode.commands.executeCommand('extension.graalvm.addExistingGraalVM');
+					break;
+				case SELECT_ACTIVE_GRAALVM:
+					vscode.commands.executeCommand('extension.graalvm.selectGraalVMHome');
+					break;
+				case INSTALL_GRAALVM:
+					vscode.commands.executeCommand('extension.graalvm.installGraalVM');
+					break;
+			}
+		});
+	});
+}
 
 function config() {
-	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
+	const graalVMHome = getGVMHome();
 	if (graalVMHome) {
-		const termConfig = vscode.workspace.getConfiguration('terminal.integrated');
-		let section: string = '';
-		if (process.platform === 'linux') {
-			section = 'env.linux';
-		} else if (process.platform === 'darwin') {
-			section = 'env.mac';
-		}
-		let env: any = termConfig.get(section);
-		env.GRAALVM_HOME = graalVMHome;
-		env.JAVA_HOME = graalVMHome;
-		let envPath = process.env.PATH;
-		if (envPath) {
-			if (!envPath.includes(`${graalVMHome}/bin`)) {
-				env.PATH = `${graalVMHome}/bin:${envPath}`;
-			}
-		} else {
-			env.PATH = `${graalVMHome}/bin`;
-		}
-		termConfig.update(section, env, true);
-		const javaConfig = vscode.workspace.getConfiguration('java');
-		if (javaConfig) {
-			const home = javaConfig.inspect('home');
-			if (home) {
-				javaConfig.update('home', graalVMHome, true);
-			}
-		}
-		const mvnConfig = vscode.workspace.getConfiguration('maven');
-		if (mvnConfig) {
-			const terminalEnv = javaConfig.inspect('terminal.customEnv');
-			if (terminalEnv) {
-				mvnConfig.update('terminal.customEnv', [{"environmentVariable": "JAVA_HOME", "value": graalVMHome}], true);
-			}
-		}
-		const missingComponents: string[] = [];
-		let componentName;
-		const executable: string = path.join(graalVMHome, 'bin', 'native-image');
-		if (!fs.existsSync(executable)) {
-			missingComponents.push('native-image');
-			componentName = NATIVE_IMAGE_COMPONENT;
-		}
-		if (!pythonConfig(graalVMHome)) {
-			missingComponents.push('python');
-			componentName = PYTHON_COMPONENT;
-		}
-		if (!rConfig(graalVMHome)) {
-			missingComponents.push('R');
-			componentName = R_COMPONENT;
-		}
-		if (!rubyConfig(graalVMHome)) {
-			missingComponents.push('ruby');
-			componentName = RUBY_COMPONENT;
-		}
-		const askForMissingComponents = vscode.workspace.getConfiguration('graalvm').get('checkForMissingComponents') as boolean;
-		if (missingComponents.length > 0 && askForMissingComponents) {
-			if (missingComponents.length > 1) {
-				const itemText = INSTALL + OPTIONAL_COMPONENTS;
-				vscode.window.showInformationMessage('Optional GraalVM components are not installed in your GraalVM.', itemText, DONT_ASK_AGAIN).then(value => {
-					switch (value) {
-						case itemText:
-							vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent');
-							const watcher:fs.FSWatcher = fs.watch(path.join(graalVMHome, 'bin'), () => {
-								pythonConfig(graalVMHome);
-								rConfig(graalVMHome);
-								rubyConfig(graalVMHome);
-								watcher.close();
-							});
-							break;
-						case DONT_ASK_AGAIN:
-							vscode.workspace.getConfiguration('graalvm').update('checkForMissingComponents', false, true);
-							break;
-					}
-				});
-			} else {
-				const itemText = INSTALL + componentName;
-				vscode.window.showInformationMessage(componentName + ' is not installed in your GraalVM.', itemText, DONT_ASK_AGAIN).then(value => {
-					switch (value) {
-						case itemText:
-							vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent', missingComponents[0]);
-							const watcher:fs.FSWatcher = fs.watch(path.join(graalVMHome + 'bin'), () => {
-								pythonConfig(graalVMHome);
-								rConfig(graalVMHome);
-								rubyConfig(graalVMHome);
-								watcher.close();
-							});
-							break;
-						case DONT_ASK_AGAIN:
-							vscode.workspace.getConfiguration('graalvm').update('checkForMissingComponents', false, true);
-							break;
-					}
-				});
-			}
-		}
+		configureGraalVMHome(graalVMHome);
+	} else {
+		setupGraalVM();
 	}
 }

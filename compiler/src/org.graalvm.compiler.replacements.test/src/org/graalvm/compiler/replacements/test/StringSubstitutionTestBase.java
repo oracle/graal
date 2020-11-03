@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.replacements.test;
 
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -71,7 +72,7 @@ public class StringSubstitutionTestBase extends MethodSubstitutionTest {
         StructuredGraph graph = testGraph(testMethod.getName());
 
         // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getSubstitution(realMethod, 0, false, null, graph.allowAssumptions(), graph.getOptions());
+        StructuredGraph replacement = getReplacements().getInlineSubstitution(realMethod, 0, Invoke.InlineControl.Normal, false, null, graph.allowAssumptions(), graph.getOptions());
         if (replacement == null) {
             assertInGraph(graph, expectedNode);
         }

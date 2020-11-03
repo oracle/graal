@@ -263,7 +263,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
          */
         for (ExportMessageData exportedElement : exportedElements) {
             if (exportedElement.isOverriden()) {
-                // must not initialize overriden elements because otherwise the parsedNodeCache gets
+                // must not initialize overridden elements because otherwise the parsedNodeCache
+                // gets
                 // confused.
                 continue;
             }
@@ -374,6 +375,15 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
+        if (isGenerateSlowPathOnly(type)) {
+            for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
+                for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
+                    if (export.isClass() && export.getSpecializedNode() != null) {
+                        NodeParser.removeFastPathSpecializations(export.getSpecializedNode());
+                    }
+                }
+            }
+        }
         return model;
     }
 

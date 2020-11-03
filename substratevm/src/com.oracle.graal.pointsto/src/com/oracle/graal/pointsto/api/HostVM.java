@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.api;
 
 import java.util.Optional;
+import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -50,6 +51,8 @@ public interface HostVM {
 
     OptionValues options();
 
+    ForkJoinPool executor();
+
     boolean isRelocatedPointer(Object originalObject);
 
     void clearInThread();
@@ -61,6 +64,8 @@ public interface HostVM {
     void checkForbidden(AnalysisType type, AnalysisType.UsageKind kind);
 
     void registerType(AnalysisType newValue);
+
+    void initializeType(AnalysisType newValue);
 
     boolean isInitialized(AnalysisType type);
 

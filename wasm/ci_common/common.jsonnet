@@ -69,6 +69,7 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   aarch64: {
     capabilities+: ['aarch64'],
+    timelimit: '1:30:00'
   },
 
   eclipse: {
@@ -104,6 +105,20 @@ local graal_suite_root = root_ci.graal_suite_root;
       EMCC_DIR: '$EMSDK_DIR/emscripten/master/'
     }
   },
+  
+  ocamlbuild: {
+    docker: {
+      "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:b_ol7_2",
+      "mount_modules": true
+    },
+    downloads+: {
+      OCAML_DIR: {name: 'ocamlbuild', version: '0.14.0', platformspecific: true},
+    },
+    environment+: {
+      PATH: "$OCAML_DIR/bin:$PATH",
+      OCAMLLIB: "$OCAML_DIR/lib/ocaml"
+    },
+  },
 
   local gate_cmd       = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
   local gate_cmd_jvmci = ['mx', '--strict-compliance', '--dynamicimports', graal_suite_root, '${JDK_JVMCI_ARGS}', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
@@ -138,7 +153,7 @@ local graal_suite_root = root_ci.graal_suite_root;
     run+: [
       gate_cmd_jvmci
     ],
-    timelimit: '45:00',
+    timelimit: '1:00:00',
   },
 
   gate_graalwasm_emsdk_jvmci: self.setup_emsdk + {
@@ -168,11 +183,12 @@ local graal_suite_root = root_ci.graal_suite_root;
     capabilities+: ['x52'],
   },
 
-  jdk8_gate_linux_eclipse_jdt   : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,
-  jdk8_gate_linux_wabt          : self.jdk8 + self.gate + self.linux + self.wabt,
-  jdk8_gate_linux_wabt_emsdk    : self.jdk8 + self.gate + self.linux + self.wabt + self.emsdk,
-  jdk8_bench_linux_wabt_emsdk   : self.jdk8 + self.bench + self.linux + self.wabt + self.emsdk,
-  jdk8_gate_windows_wabt        : self.jdk8 + self.gate + self.windows + self.wabt,
+  jdk8_gate_linux_eclipse_jdt              : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,
+  jdk8_gate_linux_wabt                     : self.jdk8 + self.gate + self.linux + self.wabt,
+  jdk8_gate_linux_wabt_emsdk               : self.jdk8 + self.gate + self.linux + self.wabt + self.emsdk,
+  jdk8_gate_linux_wabt_emsdk_ocamlbuild    : self.jdk8 + self.gate + self.linux + self.wabt + self.emsdk + self.ocamlbuild,
+  jdk8_bench_linux_wabt_emsdk              : self.jdk8 + self.bench + self.linux + self.wabt + self.emsdk,
+  jdk8_gate_windows_wabt                   : self.jdk8 + self.gate + self.windows + self.wabt,
 
-  jdk11_gate_linux_wabt         : self.jdk11 + self.gate + self.linux + self.wabt,
+  jdk11_gate_linux_wabt                    : self.jdk11 + self.gate + self.linux + self.wabt,
 }

@@ -49,6 +49,15 @@ final class InternedSources {
     private final ConcurrentHashMap<SourceImpl.Key, WeakSourceRef> table = new ConcurrentHashMap<>();
     private final ReferenceQueue<SourceImpl> deadReferences = new ReferenceQueue<>();
 
+    void add(SourceImpl source) {
+        if (!source.isCached()) {
+            return;
+        }
+
+        // we don't actually need to compute the intern checks
+        table.put(source.key, new WeakSourceRef(source, deadReferences));
+    }
+
     Source intern(SourceImpl.Key key) {
         cleanupStaleEntries();
 

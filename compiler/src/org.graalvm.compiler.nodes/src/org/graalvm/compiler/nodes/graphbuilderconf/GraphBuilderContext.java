@@ -25,7 +25,6 @@
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 
 import org.graalvm.compiler.bytecode.Bytecode;
@@ -55,6 +54,7 @@ import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
@@ -100,8 +100,8 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * immediately. If the node is a {@link StateSplit} with a null
      * {@linkplain StateSplit#stateAfter() frame state} , the frame state is initialized.
      *
-     * @param value the value to add to the graph and push to the stack. The
-     *            {@code value.getJavaKind()} kind is used when type checking this operation.
+     * @param value the value to add to the graph. The {@code value.getJavaKind()} kind is used when
+     *            type checking this operation.
      * @return a node equivalent to {@code value} in the graph
      */
     default <T extends ValueNode> T add(T value) {
@@ -288,23 +288,34 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             LogicNode condition = getGraph().unique(IsNullNode.create(value));
             GuardingNode guardingNode;
             if (needsExplicitException()) {
-                AbstractBeginNode exceptionPath = genExplicitExceptionEdge(BytecodeExceptionKind.NULL_POINTER);
-                IfNode ifNode = append(new IfNode(condition, exceptionPath, null, 0.01));
-                BeginNode nonNullPath = append(new BeginNode());
-                ifNode.setFalseSuccessor(nonNullPath);
-                guardingNode = nonNullPath;
+                guardingNode = emitBytecodeExceptionCheck(condition, false, BytecodeExceptionKind.NULL_POINTER);
             } else {
-                guardingNode = append(new FixedGuardNode(condition, NullCheckException, action, true));
+                guardingNode = append(new FixedGuardNode(condition, DeoptimizationReason.NullCheckException, action, true));
             }
-            ValueNode nonNullReceiver = getGraph().addOrUniqueWithInputs(PiNode.create(value, objectNonNull(), guardingNode.asNode()));
-            // TODO: Propogating the non-null into the frame state would
-            // remove subsequent null-checks on the same value. However,
-            // it currently causes an assertion failure when merging states.
-            //
-            // frameState.replace(value, nonNullReceiver);
-            return nonNullReceiver;
+            return getGraph().addOrUniqueWithInputs(PiNode.create(value, objectNonNull(), guardingNode.asNode()));
         }
         return value;
+    }
+
+    default AbstractBeginNode emitBytecodeExceptionCheck(LogicNode condition, boolean passingOnTrue, BytecodeExceptionKind exceptionKind, ValueNode... arguments) {
+        if (passingOnTrue ? condition.isTautology() : condition.isContradiction()) {
+            return null;
+        }
+
+        AbstractBeginNode exceptionPath = genExplicitExceptionEdge(exceptionKind, arguments);
+
+        AbstractBeginNode trueSuccessor = passingOnTrue ? null : exceptionPath;
+        AbstractBeginNode falseSuccessor = passingOnTrue ? exceptionPath : null;
+        double probability = passingOnTrue ? BranchProbabilityNode.LUDICROUSLY_FAST_PATH_PROBABILITY : BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY;
+        IfNode ifNode = append(new IfNode(condition, trueSuccessor, falseSuccessor, probability));
+
+        BeginNode passingSuccessor = append(new BeginNode());
+        if (passingOnTrue) {
+            ifNode.setTrueSuccessor(passingSuccessor);
+        } else {
+            ifNode.setFalseSuccessor(passingSuccessor);
+        }
+        return passingSuccessor;
     }
 
     default void genCheckcastDynamic(ValueNode object, ValueNode javaClass) {
@@ -313,8 +324,13 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             addPush(JavaKind.Object, object);
         } else {
             append(condition);
-            FixedGuardNode fixedGuard = add(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
-            addPush(JavaKind.Object, DynamicPiNode.create(getAssumptions(), getConstantReflection(), object, fixedGuard, javaClass));
+            GuardingNode guardingNode;
+            if (needsExplicitException()) {
+                guardingNode = emitBytecodeExceptionCheck(condition, true, BytecodeExceptionKind.CLASS_CAST, object, javaClass);
+            } else {
+                guardingNode = add(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
+            }
+            addPush(JavaKind.Object, DynamicPiNode.create(getAssumptions(), getConstantReflection(), object, guardingNode, javaClass));
         }
     }
 
@@ -367,10 +383,11 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * returns true, this method should return non-null begin nodes.
      *
      * @param exceptionKind the type of exception to be created.
+     * @param exceptionArguments the arguments for the exception.
      * @return a begin node that precedes the actual exception instantiation code.
      */
-    default AbstractBeginNode genExplicitExceptionEdge(@SuppressWarnings("ununsed") BytecodeExceptionKind exceptionKind) {
-        return null;
+    default AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionKind exceptionKind, ValueNode... exceptionArguments) {
+        throw GraalError.unimplemented();
     }
 
     /**

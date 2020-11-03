@@ -29,12 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -47,8 +49,13 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMForeignConstructorCallNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMForeignFunctionCallNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Function;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Structured;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Value;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 
 /**
@@ -67,7 +74,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
         assert !LLVMNativeMemory.isDerefHandleMemory(SULONG_FUNCTION_POINTER_TAG);
     }
 
-    private final LLVMContext context;
+    private final LLVMLanguage language;
     private final LLVMFunction llvmFunction;
     private final LLVMFunctionCode functionCode;
 
@@ -76,18 +83,36 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
     // used for calls from foreign languages
     // includes boundary conversions
-    private CallTarget foreignCallTarget;
+    private CallTarget foreignFunctionCallTarget;
+    private CallTarget foreignConstructorCallTarget;
 
     CallTarget getForeignCallTarget() {
-        if (foreignCallTarget == null) {
+        if (foreignFunctionCallTarget == null) {
             CompilerDirectives.transferToInterpreter();
             LLVMSourceFunctionType sourceType = functionCode.getFunction().getSourceType();
-            LLVMInteropType interopType = context.getInteropType(sourceType);
-            LLVMForeignCallNode foreignCall = new LLVMForeignCallNode(context.getLanguage(), this, interopType, sourceType);
-            foreignCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
-            assert foreignCallTarget != null;
+            LLVMInteropType interopType = language.getInteropType(sourceType);
+            LLVMForeignCallNode foreignCall = LLVMForeignFunctionCallNode.create(language, this, interopType, sourceType);
+            foreignFunctionCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
+            assert foreignFunctionCallTarget != null;
         }
-        return foreignCallTarget;
+        return foreignFunctionCallTarget;
+    }
+
+    CallTarget getForeignConstructorCallTarget() {
+        if (foreignConstructorCallTarget == null) {
+            CompilerDirectives.transferToInterpreter();
+            LLVMSourceFunctionType sourceType = functionCode.getFunction().getSourceType();
+            LLVMInteropType interopType = language.getInteropType(sourceType);
+            LLVMInteropType extractedType = ((Function) interopType).getParameter(0);
+            if (extractedType instanceof Value) {
+                Structured structured = ((Value) extractedType).baseType;
+                LLVMForeignCallNode foreignCall = LLVMForeignConstructorCallNode.create(
+                                language, this, interopType, sourceType, structured);
+                foreignConstructorCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
+            }
+            assert foreignConstructorCallTarget != null;
+        }
+        return foreignConstructorCallTarget;
     }
 
     private static long tagSulongFunctionPointer(int id) {
@@ -102,11 +127,11 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
         return functionCode;
     }
 
-    public LLVMFunctionDescriptor(LLVMContext context, LLVMFunction llvmFunction) {
+    public LLVMFunctionDescriptor(LLVMLanguage language, LLVMFunction llvmFunction, LLVMFunctionCode functionCode) {
         CompilerAsserts.neverPartOfCompilation();
-        this.context = context;
-        this.functionCode = new LLVMFunctionCode(context, llvmFunction);
+        this.language = language;
         this.llvmFunction = llvmFunction;
+        this.functionCode = functionCode;
     }
 
     @Override
@@ -126,10 +151,6 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
         }
 
         throw new IllegalStateException("Comparing functions from different bitcode files.");
-    }
-
-    public LLVMContext getContext() {
-        return context;
     }
 
     @ExportMessage
@@ -171,18 +192,36 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
     @ExportMessage
     static class Execute {
 
-        @Specialization(limit = "5", guards = "self == cachedSelf")
-        static Object doCached(@SuppressWarnings("unused") LLVMFunctionDescriptor self, Object[] args,
+        @Specialization(limit = "5", guards = "self == cachedSelf", assumptions = "singleContextAssumption()")
+        static Object doDescriptor(@SuppressWarnings("unused") LLVMFunctionDescriptor self, Object[] args,
                         @Cached("self") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedSelf,
-                        @Cached("create(cachedSelf.getForeignCallTarget())") DirectCallNode call) {
+                        @Cached("createCall(cachedSelf)") DirectCallNode call) {
+            return call.call(args);
+        }
+
+        @Specialization(replaces = "doDescriptor", limit = "5", guards = "self.getFunctionCode() == cachedFunctionCode")
+        static Object doCached(@SuppressWarnings("unused") LLVMFunctionDescriptor self, Object[] args,
+                        @Cached("self.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode cachedFunctionCode,
+                        @Cached("createCall(self)") DirectCallNode call) {
             return call.call(args);
         }
 
         @Specialization(replaces = "doCached")
         static Object doPolymorphic(LLVMFunctionDescriptor self, Object[] args,
-                        @Cached IndirectCallNode call) {
+                        @Exclusive @Cached IndirectCallNode call) {
             return call.call(self.getForeignCallTarget(), args);
         }
+
+        protected static DirectCallNode createCall(LLVMFunctionDescriptor self) {
+            DirectCallNode callNode = DirectCallNode.create(self.getForeignCallTarget());
+            callNode.forceInlining();
+            return callNode;
+        }
+
+        protected static Assumption singleContextAssumption() {
+            return LLVMLanguage.getLanguage().singleContextAssumption;
+        }
+
     }
 
     @ExportMessage
@@ -236,5 +275,19 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
         } else {
             throw UnknownIdentifierException.create(member);
         }
+    }
+
+    @ExportMessage
+    boolean isInstantiable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object instantiate(Object[] arguments, @Exclusive @Cached IndirectCallNode call) {
+        final Object[] newArgs = new Object[arguments.length + 1];
+        for (int i = 0; i < arguments.length; i++) {
+            newArgs[i + 1] = arguments[i];
+        }
+        return call.call(getForeignConstructorCallTarget(), newArgs);
     }
 }

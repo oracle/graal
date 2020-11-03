@@ -27,8 +27,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 #include <wchar.h>
+#include <string.h>
 
 uint64_t test_get_string_size(void *str) {
     return polyglot_get_string_size(str);
@@ -56,7 +57,7 @@ int test_as_string_utf8(void *str) {
 
 int test_as_string_utf32(void *str) {
     wchar_t buffer[100];
-    int bytes = polyglot_as_string(str, buffer, sizeof(buffer), "utf-32le");
+    int bytes = polyglot_as_string(str, (char *) buffer, sizeof(buffer), "utf-32le");
     if (wcsncmp(buffer, L"test unicode äáç€", sizeof(buffer)) == 0) {
         return bytes;
     } else {
@@ -89,9 +90,9 @@ void *test_from_string(int variant) {
         case 4:
             return polyglot_from_string_n(utf8, sizeof(utf8), "utf-8");
         case 5:
-            return polyglot_from_string(utf32, "utf-32le");
+            return polyglot_from_string((const char *) utf32, "utf-32le");
         case 6:
-            return polyglot_from_string_n(utf32, sizeof(utf32), "utf-32le");
+            return polyglot_from_string_n((const char *) utf32, sizeof(utf32), "utf-32le");
     }
     return NULL;
 }

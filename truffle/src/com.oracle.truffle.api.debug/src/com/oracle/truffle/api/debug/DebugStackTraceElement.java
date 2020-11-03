@@ -40,14 +40,13 @@
  */
 package com.oracle.truffle.api.debug;
 
-import java.util.Iterator;
-
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleStackTraceElement;
-import com.oracle.truffle.api.debug.DebugValue.HeapValue;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -68,11 +67,19 @@ public final class DebugStackTraceElement {
 
     private final DebuggerSession session;
     final TruffleStackTraceElement traceElement;
-    private StackTraceElement stackTrace;
+    private final StackTraceElement hostTraceElement;
+    private StackTraceElement stackTraceElement;
 
     DebugStackTraceElement(DebuggerSession session, TruffleStackTraceElement traceElement) {
         this.session = session;
         this.traceElement = traceElement;
+        this.hostTraceElement = null;
+    }
+
+    DebugStackTraceElement(DebuggerSession session, StackTraceElement hostTraceElement) {
+        this.session = session;
+        this.traceElement = null;
+        this.hostTraceElement = hostTraceElement;
     }
 
     /**
@@ -84,11 +91,41 @@ public final class DebugStackTraceElement {
      * @since 19.0
      */
     public boolean isInternal() {
+        if (isHost()) {
+            return false;
+        }
         RootNode root = findCurrentRoot();
         if (root == null) {
             return true;
         }
         return root.isInternal();
+    }
+
+    /**
+     * Returns <code>true</code> if this element is a host element. Host elements provide
+     * {@link #getHostTraceElement() stack trace element}, have no {@link #getScope() scope}, and no
+     * {@link #getSourceSection() source section}.
+     * <p>
+     * Host elements are provided only when {@link DebuggerSession#setShowHostStackFrames(boolean)
+     * host info} is set to <code>true</code>.
+     *
+     * @since 20.3
+     * @see DebuggerSession#setShowHostStackFrames(boolean)
+     */
+    public boolean isHost() {
+        return hostTraceElement != null;
+    }
+
+    /**
+     * Provides a host element. Returns the host stack trace element if and only if this is
+     * {@link #isHost() host} element.
+     *
+     * @return the host stack trace element, or <code>null</code> when not a host element.
+     * @since 20.3
+     * @see #isHost()
+     */
+    public StackTraceElement getHostTraceElement() {
+        return hostTraceElement;
     }
 
     /**
@@ -98,6 +135,9 @@ public final class DebugStackTraceElement {
      * @since 19.0
      */
     public String getName() {
+        if (hostTraceElement != null) {
+            return hostTraceElement.getClassName() + '.' + hostTraceElement.getMethodName();
+        }
         RootNode root = findCurrentRoot();
         if (root == null) {
             return null;
@@ -132,6 +172,9 @@ public final class DebugStackTraceElement {
      * @since 19.0
      */
     public SourceSection getSourceSection() {
+        if (isHost()) {
+            return null;
+        }
         Node node = traceElement.getLocation();
         if (node != null) {
             return session.resolveSection(node);
@@ -148,6 +191,9 @@ public final class DebugStackTraceElement {
      * @since 19.0
      */
     public DebugScope getScope() {
+        if (isHost()) {
+            return null;
+        }
         Node node = traceElement.getLocation();
         if (node == null) {
             return null;
@@ -159,20 +205,21 @@ public final class DebugStackTraceElement {
         }
         Frame elementFrame = traceElement.getFrame();
         MaterializedFrame frame = (elementFrame != null) ? elementFrame.materialize() : null;
-        Iterable<Scope> scopes = session.getDebugger().getEnv().findLocalScopes(node, frame);
-        Iterator<Scope> it = scopes.iterator();
-        if (!it.hasNext()) {
+        if (!NodeLibrary.getUncached().hasScope(node, frame)) {
             return null;
         }
-        return new DebugScope(it.next(), it, session, null, frame, root);
+        try {
+            Object scope = NodeLibrary.getUncached().getScope(node, frame, true);
+            return new DebugScope(scope, session, null, node, frame, root);
+        } catch (UnsupportedMessageException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
     }
 
-    DebugValue wrapHeapValue(Object result) {
-        LanguageInfo language = getLanguage();
-        return new HeapValue(session, language, null, result);
-    }
-
-    LanguageInfo getLanguage() {
+    private LanguageInfo getLanguage() {
+        if (isHost()) {
+            return null;
+        }
         LanguageInfo language;
         RootNode root = findCurrentRoot();
         if (root != null) {
@@ -183,7 +230,10 @@ public final class DebugStackTraceElement {
         return language;
     }
 
-    RootNode findCurrentRoot() {
+    private RootNode findCurrentRoot() {
+        if (isHost()) {
+            return null;
+        }
         Node node = traceElement.getLocation();
         if (node != null) {
             return node.getRootNode();
@@ -193,18 +243,22 @@ public final class DebugStackTraceElement {
     }
 
     StackTraceElement toTraceElement() {
-        if (stackTrace == null) {
-            LanguageInfo language = getLanguage();
-            String declaringClass = language != null ? "<" + language.getId() + ">" : "<unknown>";
-            String methodName = getName0();
-            if (methodName == null) {
-                methodName = "";
+        if (stackTraceElement == null) {
+            if (hostTraceElement != null) {
+                stackTraceElement = hostTraceElement;
+            } else {
+                LanguageInfo language = getLanguage();
+                String declaringClass = language != null ? "<" + language.getId() + ">" : "<unknown>";
+                String methodName = getName0();
+                if (methodName == null) {
+                    methodName = "";
+                }
+                SourceSection sourceLocation = getSourceSection();
+                String fileName = sourceLocation != null ? sourceLocation.getSource().getName() : "Unknown";
+                int startLine = sourceLocation != null ? sourceLocation.getStartLine() : -1;
+                stackTraceElement = new StackTraceElement(declaringClass, methodName, fileName, startLine);
             }
-            SourceSection sourceLocation = getSourceSection();
-            String fileName = sourceLocation != null ? sourceLocation.getSource().getName() : "Unknown";
-            int startLine = sourceLocation != null ? sourceLocation.getStartLine() : -1;
-            stackTrace = new StackTraceElement(declaringClass, methodName, fileName, startLine);
         }
-        return stackTrace;
+        return stackTraceElement;
     }
 }

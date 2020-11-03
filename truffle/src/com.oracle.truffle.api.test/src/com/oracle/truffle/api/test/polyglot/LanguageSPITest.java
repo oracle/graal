@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
-import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -50,6 +48,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -91,26 +92,27 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -281,19 +283,18 @@ public class LanguageSPITest {
     }
 
     @SuppressWarnings("serial")
-    private static class Interrupted extends RuntimeException implements TruffleException {
+    @ExportLibrary(InteropLibrary.class)
+    static class Interrupted extends AbstractTruffleException {
 
-        public boolean isCancelled() {
-            return true;
-        }
-
-        public Node getLocation() {
-            return null;
+        @ExportMessage
+        ExceptionType getExceptionType() {
+            return ExceptionType.INTERRUPT;
         }
     }
 
-    @SuppressWarnings("serial")
-    private static final class ParseException extends RuntimeException implements TruffleException {
+    @SuppressWarnings({"serial"})
+    @ExportLibrary(InteropLibrary.class)
+    static final class ParseException extends AbstractTruffleException {
         private final Source source;
         private final int start;
         private final int length;
@@ -305,18 +306,22 @@ public class LanguageSPITest {
             this.length = length;
         }
 
-        @Override
-        public boolean isSyntaxError() {
-            return true;
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        ExceptionType getExceptionType() {
+            return ExceptionType.PARSE_ERROR;
         }
 
-        @Override
-        public Node getLocation() {
-            return null;
+        @ExportMessage
+        boolean hasSourceLocation() {
+            return source != null;
         }
 
-        @Override
-        public SourceSection getSourceLocation() {
+        @ExportMessage(name = "getSourceLocation")
+        SourceSection getSourceSection() throws UnsupportedMessageException {
+            if (source == null) {
+                throw UnsupportedMessageException.create();
+            }
             return source.createSection(start, length);
         }
     }
@@ -360,7 +365,7 @@ public class LanguageSPITest {
                     throw new AssertionError(cause);
                 }
                 PolyglotException polyglotException = (PolyglotException) cause;
-                assertTrue(polyglotException.isCancelled());
+                assertTrue(polyglotException.isInterrupted());
             }
             engine.close();
         } finally {
@@ -461,7 +466,7 @@ public class LanguageSPITest {
                 LanguageContext outerLangContext = LanguageSPITestLanguage.getContext();
                 Object config = new Object();
                 TruffleContext innerContext = env.newContextBuilder().config("config", config).build();
-                Object p = innerContext.enter();
+                Object p = innerContext.enter(null);
                 LanguageContext innerLangContext = LanguageSPITestLanguage.getContext();
                 try {
 
@@ -480,7 +485,7 @@ public class LanguageSPITest {
                     if (assertions) {
                         boolean leaveFailed = false;
                         try {
-                            innerContext.leave("foo");
+                            innerContext.leave(null, "foo");
                         } catch (AssertionError e) {
                             leaveFailed = true;
                         }
@@ -489,13 +494,13 @@ public class LanguageSPITest {
                         }
                     }
                 } finally {
-                    innerContext.leave(p);
+                    innerContext.leave(null, p);
                 }
                 assertSame(outerLangContext, LanguageSPITestLanguage.getContext());
                 innerContext.close();
 
                 try {
-                    innerContext.enter();
+                    innerContext.enter(null);
                     fail("cannot be entered after closing");
                 } catch (IllegalStateException e) {
                 }
@@ -537,13 +542,13 @@ public class LanguageSPITest {
 
                         TruffleContext truffleContext = env.getContext();
                         // attach the Thread
-                        Object prev = truffleContext.enter();
+                        Object prev = truffleContext.enter(null);
                         try {
                             // execute Truffle code
                             env.parsePublic(source).call();
                         } finally {
                             // detach the Thread
-                            truffleContext.leave(prev);
+                            truffleContext.leave(null, prev);
                         }
                     } catch (Throwable t) {
                         error[0] = t;
@@ -561,7 +566,7 @@ public class LanguageSPITest {
                 boolean leaveFailed = false;
                 try {
                     TruffleContext truffleContext = env.getContext();
-                    truffleContext.leave(null);
+                    truffleContext.leave(null, null);
                 } catch (AssertionError e) {
                     leaveFailed = true;
                 }
@@ -581,9 +586,9 @@ public class LanguageSPITest {
         LanguageContext returnedInnerContext = eval(context, new Function<Env, Object>() {
             public Object apply(Env env) {
                 TruffleContext innerContext = env.newContextBuilder().build();
-                Object p = innerContext.enter();
+                Object p = innerContext.enter(null);
                 LanguageContext innerLangContext = LanguageSPITestLanguage.getContext();
-                innerContext.leave(p);
+                innerContext.leave(null, p);
                 return env.asGuestValue(innerLangContext);
             }
         }).asHostObject();
@@ -763,7 +768,7 @@ public class LanguageSPITest {
         assertEquals(source1.getCharacters(), lang.parseCalled.get(0).getCharacters());
 
         TruffleContext innerContext = env.newContextBuilder().build();
-        Object prev = innerContext.enter();
+        Object prev = innerContext.enter(null);
         Env innerEnv = MultiContextLanguage.getCurrentContext().env;
         innerEnv.parsePublic(truffleSource1);
         assertEquals(1, lang.parseCalled.size());
@@ -779,7 +784,7 @@ public class LanguageSPITest {
         innerEnv.parsePublic(truffleSource2);
         assertEquals(2, lang.parseCalled.size());
 
-        innerContext.leave(prev);
+        innerContext.leave(null, prev);
         innerContext.close();
 
         context.eval(source2);
@@ -815,7 +820,7 @@ public class LanguageSPITest {
         assertEquals(source1.getCharacters(), lang.parseCalled.get(0).getCharacters());
 
         TruffleContext innerContext = env.newContextBuilder().build();
-        Object prev = innerContext.enter();
+        Object prev = innerContext.enter(null);
 
         MultiContextLanguage innerLang = OneContextLanguage.getCurrentLanguage();
         assertNotSame(innerLang, lang);
@@ -832,7 +837,7 @@ public class LanguageSPITest {
         innerEnv.parsePublic(truffleSource2);
         assertEquals(2, innerLang.parseCalled.size());
 
-        innerContext.leave(prev);
+        innerContext.leave(null, prev);
         innerContext.close();
 
         assertEquals(1, lang.parseCalled.size());
@@ -1369,16 +1374,14 @@ public class LanguageSPITest {
 
     private void setupTopScopes(Object... scopesArray) {
         findScopeInvokes = 0;
+        for (int i = 0; i < scopesArray.length - 1; i++) {
+            ((TestScope) scopesArray[i]).parentScope = (TestScope) scopesArray[i + 1];
+        }
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
-            protected Iterable<Scope> findTopScopes(LanguageContext context) {
+            protected Object getScope(LanguageContext context) {
                 findScopeInvokes++;
-                List<Scope> scopes = new ArrayList<>();
-                for (int i = 0; i < scopesArray.length; i++) {
-                    Object scope = scopesArray[i];
-                    scopes.add(Scope.newBuilder(String.valueOf(i), scope).build());
-                }
-                return scopes;
+                return scopesArray[0];
             }
         });
     }
@@ -1397,7 +1400,7 @@ public class LanguageSPITest {
     @ExportLibrary(InteropLibrary.class)
     static final class TestKeysArray implements TruffleObject {
 
-        private final String[] keys;
+        @CompilationFinal(dimensions = 1) private final String[] keys;
 
         TestKeysArray(String[] keys) {
             this.keys = keys;
@@ -1432,72 +1435,137 @@ public class LanguageSPITest {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static class TestScope implements TruffleObject {
+    static final class TestScope implements TruffleObject {
 
         final Map<String, Object> values = new HashMap<>();
+        TestScope parentScope;
         boolean modifiable;
         boolean insertable;
         boolean removable;
 
         @ExportMessage
-        public boolean hasMembers() {
+        @SuppressWarnings("static-method")
+        boolean hasLanguage() {
             return true;
         }
 
         @ExportMessage
-        public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        @SuppressWarnings("static-method")
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return ProxyLanguage.class;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isScope() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
             return new TestKeysArray(values.keySet().toArray(new String[0]));
         }
 
         @ExportMessage
-        public Object readMember(String key) throws UnknownIdentifierException {
+        @TruffleBoundary
+        Object readMember(String key) throws UnknownIdentifierException {
             if (values.containsKey(key)) {
                 return values.get(key);
+            } else if (parentScope != null && parentScope.isMemberReadable(key)) {
+                return parentScope.readMember(key);
             } else {
                 throw UnknownIdentifierException.create(key);
             }
         }
 
         @ExportMessage
-        public void writeMember(String key, Object value) throws UnsupportedMessageException {
-            if (modifiable && values.containsKey(key)) {
-                values.put(key, value);
-            } else if (insertable && !values.containsKey(key)) {
-                values.put(key, value);
+        @TruffleBoundary
+        void writeMember(String key, Object value) throws UnsupportedMessageException {
+            if (isMemberModifiable(key)) {
+                if (modifiable && values.containsKey(key)) {
+                    values.put(key, value);
+                } else if (parentScope != null) {
+                    parentScope.writeMember(key, value);
+                } else {
+                    throw UnsupportedMessageException.create();
+                }
+            } else if (isMemberInsertable(key)) {
+                if (insertable && !values.containsKey(key)) {
+                    values.put(key, value);
+                } else if (parentScope != null) {
+                    parentScope.writeMember(key, value);
+                } else {
+                    throw UnsupportedMessageException.create();
+                }
             } else {
                 throw UnsupportedMessageException.create();
             }
         }
 
         @ExportMessage
-        public void removeMember(String key) throws UnsupportedMessageException {
-            if (removable && values.containsKey(key)) {
+        @TruffleBoundary
+        void removeMember(String key) throws UnsupportedMessageException {
+            boolean contains = values.containsKey(key);
+            if (removable && contains) {
                 values.remove(key);
-                return;
+            } else if (!contains && parentScope != null) {
+                parentScope.removeMember(key);
+            } else {
+                throw UnsupportedMessageException.create();
             }
-            throw UnsupportedMessageException.create();
         }
 
         @ExportMessage
-        final boolean isMemberReadable(String member) {
-            return values.containsKey(member);
+        @TruffleBoundary
+        boolean isMemberReadable(String member) {
+            return values.containsKey(member) || parentScope != null && parentScope.isMemberReadable(member);
         }
 
         @ExportMessage
-        final boolean isMemberModifiable(String member) {
-            return modifiable && values.containsKey(member);
+        @TruffleBoundary
+        boolean isMemberModifiable(String member) {
+            return modifiable && values.containsKey(member) || parentScope != null && parentScope.isMemberModifiable(member);
         }
 
         @ExportMessage
-        final boolean isMemberInsertable(String member) {
-            return insertable && !values.containsKey(member);
+        @TruffleBoundary
+        boolean isMemberInsertable(String member) {
+            return !isMemberReadable(member) && (insertable || parentScope != null && parentScope.isMemberInsertable(member));
         }
 
         @ExportMessage
-        final boolean isMemberRemovable(String member) {
-            return removable && values.containsKey(member);
+        @TruffleBoundary
+        boolean isMemberRemovable(String member) {
+            boolean contains = values.containsKey(member);
+            return removable && contains || !contains && parentScope != null && parentScope.isMemberRemovable(member);
         }
 
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return "local";
+        }
+
+        @ExportMessage
+        boolean hasScopeParent() {
+            return parentScope != null;
+        }
+
+        @ExportMessage
+        Object getScopeParent() throws UnsupportedMessageException {
+            if (parentScope != null) {
+                return parentScope;
+            } else {
+                throw UnsupportedMessageException.create();
+            }
+        }
     }
 
     @Test
@@ -1519,6 +1587,10 @@ public class LanguageSPITest {
     public void testBindingsWithSimpleScope() {
         TestScope scope = new TestScope();
         setupTopScopes(scope);
+        testBindingsWithSimpleScope(scope);
+    }
+
+    private void testBindingsWithSimpleScope(TestScope scope) {
         Context c = Context.create();
         assertEquals(0, findScopeInvokes);
         Value bindings = c.getBindings(ProxyLanguage.ID);
@@ -1569,6 +1641,10 @@ public class LanguageSPITest {
             scopes[i] = new TestScope();
         }
         setupTopScopes((Object[]) scopes);
+        testBindingsWithMultipleScopes(scopes);
+    }
+
+    private void testBindingsWithMultipleScopes(TestScope[] scopes) {
 
         Context c = Context.create();
 
@@ -1590,7 +1666,6 @@ public class LanguageSPITest {
         assertEquals("bar", scopes[1].values.get("foo"));
         assertNull(scopes[0].values.get("foo"));
         assertNull(scopes[2].values.get("foo"));
-        ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         // test it does not insert early before already existing member
         scopes[0].insertable = true;
@@ -1616,6 +1691,17 @@ public class LanguageSPITest {
         assertNotNull(scopes[2].values.get("foo"));
         assertNull(scopes[2].values.get("bar"));
         assertEquals("val", bindings.getMember("bar").asString());
+        // InteropLibrary has asserts for parent scope members being present in the scope.
+        try {
+            assertValue(bindings, ValueAssert.Trait.MEMBERS);
+            fail("The scopes are not hierarchical.");
+        } catch (PolyglotException e) {
+            // Expected as the merged scope does not contain parent scopes.
+        }
+        // Correct the scope hierarchy:
+        scopes[0].values.put("foo", "val");
+        scopes[0].values.put("bar", "val");
+        scopes[1].values.put("bar", "val");
         assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         c.close();
@@ -1924,19 +2010,8 @@ public class LanguageSPITest {
 
     }
 
-    static final Source TEST_SOURCE = Source.newBuilder("", "", "testLanguageErrorDuringInitialization").build();
-
     @SuppressWarnings("serial")
-    static class TestError extends RuntimeException implements TruffleException {
-
-        public SourceSection getSourceLocation() {
-            return TEST_SOURCE.createSection(0, 0);
-        }
-
-        public Node getLocation() {
-            return null;
-        }
-
+    static class TestError extends RuntimeException {
     }
 
     @Test
@@ -1954,7 +2029,6 @@ public class LanguageSPITest {
             fail();
         } catch (PolyglotException e) {
             assertTrue(e.isGuestException());
-            assertEquals("testLanguageErrorDuringInitialization", e.getSourceLocation().getSource().getName());
         }
         context.close();
     }

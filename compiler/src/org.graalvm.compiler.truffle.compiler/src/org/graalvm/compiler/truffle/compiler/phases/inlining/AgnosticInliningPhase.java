@@ -24,10 +24,9 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
-
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Objects;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -67,14 +66,18 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         throw new IllegalStateException("No inlining policy provider with provided name: " + name);
     }
 
-    private InliningPolicyProvider getInliningPolicyProvider() {
-        final String policy = getPolyglotOptionValue(request.options, PolyglotCompilerOptions.InliningPolicy);
-        return policy.equals("") ? POLICY_PROVIDERS.get(0) : chosenProvider(policy);
+    private InliningPolicyProvider getInliningPolicyProvider(boolean firstTier) {
+        final String policy = request.options.get(firstTier ? PolyglotCompilerOptions.FirstTierInliningPolicy : PolyglotCompilerOptions.InliningPolicy);
+        if (Objects.equals(policy, "")) {
+            return POLICY_PROVIDERS.get(firstTier ? POLICY_PROVIDERS.size() - 1 : 0);
+        } else {
+            return chosenProvider(policy);
+        }
     }
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders coreProviders) {
-        final InliningPolicy policy = getInliningPolicyProvider().get(request.options, coreProviders);
+        final InliningPolicy policy = getInliningPolicyProvider(request.isFirstTier()).get(request.options, coreProviders);
         final CallTree tree = new CallTree(partialEvaluator, request, policy);
         tree.dumpBasic("Before Inline");
         if (optionsAllowInlining()) {
@@ -88,7 +91,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
     }
 
     private Boolean optionsAllowInlining() {
-        return getPolyglotOptionValue(request.options, PolyglotCompilerOptions.Inlining) &&
-                        (getPolyglotOptionValue(request.options, PolyglotCompilerOptions.Mode) != PolyglotCompilerOptions.EngineModeEnum.LATENCY);
+        return request.options.get(PolyglotCompilerOptions.Inlining) &&
+                        (request.options.get(PolyglotCompilerOptions.Mode) != PolyglotCompilerOptions.EngineModeEnum.LATENCY);
     }
 }

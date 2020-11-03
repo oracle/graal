@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.lir.dfa;
 
+import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -92,7 +94,7 @@ public final class MarkBasePointersPhase extends AllocationPhase {
 
             @Override
             public void put(Value v) {
-                Variable base = (Variable) v.getValueKind(LIRKind.class).getDerivedReferenceBase();
+                Variable base = asVariable(v.getValueKind(LIRKind.class).getDerivedReferenceBase());
                 assert !base.getValueKind(LIRKind.class).isValue();
 
                 Set<Value> derivedRefs = baseDerivedRefs.get(base.index);
@@ -124,7 +126,7 @@ public final class MarkBasePointersPhase extends AllocationPhase {
 
             @Override
             public void remove(Value v) {
-                Variable base = (Variable) v.getValueKind(LIRKind.class).getDerivedReferenceBase();
+                Variable base = asVariable(v.getValueKind(LIRKind.class).getDerivedReferenceBase());
                 assert !base.getValueKind(LIRKind.class).isValue();
                 Set<Value> derivedRefs = baseDerivedRefs.get(base.index);
                 // Just mark the base pointer as null if no derived references exist.
@@ -148,7 +150,7 @@ public final class MarkBasePointersPhase extends AllocationPhase {
                         continue;
                     }
                     Value v = entry.iterator().next();
-                    Variable base = (Variable) v.getValueKind(LIRKind.class).getDerivedReferenceBase();
+                    Variable base = asVariable(v.getValueKind(LIRKind.class).getDerivedReferenceBase());
                     result.put(base.index, base);
                 }
                 return result;

@@ -25,7 +25,6 @@
 package com.oracle.truffle.tools.agentscript;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropException;
@@ -144,12 +143,13 @@ public abstract class FrameLibrary extends Library {
         }
 
         /**
-         * Access to current and enclosing {@link Scope}.
+         * Access to current and enclosing Scope.
          * 
          * @return iterable providing access to the frames.
          * @since 20.1
          */
-        public Iterable<Scope> findLocalScopes() {
+        @SuppressWarnings("deprecation")
+        public Iterable<com.oracle.truffle.api.Scope> findLocalScopes() {
             return env != null ? env.findLocalScopes(where, frame) : Collections.emptySet();
         }
 
@@ -181,10 +181,11 @@ public abstract class FrameLibrary extends Library {
         }
 
         @CompilerDirectives.TruffleBoundary
+        @SuppressWarnings("deprecation")
         @Override
         public Object readMember(Query env, String member) throws UnknownIdentifierException {
             InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-            for (Scope scope : env.findLocalScopes()) {
+            for (com.oracle.truffle.api.Scope scope : env.findLocalScopes()) {
                 if (scope == null) {
                     continue;
                 }
@@ -204,10 +205,11 @@ public abstract class FrameLibrary extends Library {
         }
 
         @CompilerDirectives.TruffleBoundary
+        @SuppressWarnings("deprecation")
         @Override
         public void writeMember(Query env, String member, Object value) throws UnknownIdentifierException, UnsupportedTypeException {
             InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-            for (Scope scope : env.findLocalScopes()) {
+            for (com.oracle.truffle.api.Scope scope : env.findLocalScopes()) {
                 if (scope == null) {
                     continue;
                 }
@@ -222,10 +224,11 @@ public abstract class FrameLibrary extends Library {
         }
 
         @CompilerDirectives.TruffleBoundary
+        @SuppressWarnings("deprecation")
         @Override
         public void collectNames(Query env, Set<String> names) throws InteropException {
             InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-            for (Scope scope : env.findLocalScopes()) {
+            for (com.oracle.truffle.api.Scope scope : env.findLocalScopes()) {
                 if (scope == null) {
                     continue;
                 }

@@ -24,10 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraph;
-import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.getValue;
-import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.Disable;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,6 +34,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
@@ -66,11 +64,11 @@ public final class TruffleTreeDumper {
     private static final String AFTER_INLINING = "After Inlining";
 
     public static void dump(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inliningDecision) {
-        if (getValue(PrintGraph) != Disable) {
+        if (GraalTruffleRuntime.getRuntime().isPrintGraphEnabled()) {
             try {
                 dumpASTAndCallTrees(debug, callTarget, inliningDecision, inliningDecision.getTruffleNodeSources());
             } catch (IOException ex) {
-                throw rethrowSilently(RuntimeException.class, ex);
+                throw new RuntimeException("Failed to dump AST: " + callTarget, ex);
             }
         }
     }
@@ -127,11 +125,6 @@ public final class TruffleTreeDumper {
                 }
             }
         }
-    }
-
-    @SuppressWarnings({"unused", "unchecked"})
-    private static <E extends Exception> E rethrowSilently(Class<E> type, Throwable ex) throws E {
-        throw (E) ex;
     }
 
     @SuppressWarnings("deprecation")
@@ -217,7 +210,7 @@ public final class TruffleTreeDumper {
 
     static class AST {
         final ASTNode root;
-        final List<ASTNode> nodes = new ArrayList<>();
+        final EconomicMap<Node, ASTNode> nodes = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         final List<ASTBlock> blocks = new ArrayList<>();
 
         AST(RootCallTarget target, TruffleNodeSources nodeSources) {
@@ -229,18 +222,17 @@ public final class TruffleTreeDumper {
         }
 
         ASTNode makeASTNode(Node source, TruffleNodeSources nodeSources) {
+            ASTNode seen = nodes.get(source);
+            if (seen != null) {
+                return seen;
+            }
             final ASTNode astNode = new ASTNode(source, nodeSources.getSourceLocation(source));
-            nodes.add(astNode);
+            nodes.put(source, astNode);
             return astNode;
         }
 
         ASTNode findASTNode(Node source) {
-            for (ASTNode node : nodes) {
-                if (node.source == source) {
-                    return node;
-                }
-            }
-            return null;
+            return nodes.get(source);
         }
 
         ASTBlock makeASTBlock() {
@@ -423,7 +415,7 @@ public final class TruffleTreeDumper {
 
         @Override
         public Iterable<? extends ASTNode> nodes(AST graph) {
-            return graph.nodes;
+            return graph.nodes.getValues();
         }
 
         @Override

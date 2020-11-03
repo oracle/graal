@@ -31,7 +31,7 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.Block;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 
@@ -74,8 +74,8 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                             Invoke invoke = (Invoke) node;
                             ResolvedJavaMethod method = invoke.getTargetMethod();
                             canDisableSafepoint = context.getMetaAccessExtensionProvider().isGuaranteedSafepoint(method, invoke.getInvokeKind().isDirect());
-                        } else if (node instanceof ForeignCallNode) {
-                            canDisableSafepoint = ((ForeignCallNode) node).isGuaranteedSafepoint();
+                        } else if (node instanceof ForeignCall) {
+                            canDisableSafepoint = ((ForeignCall) node).isGuaranteedSafepoint();
                         }
                         if (canDisableSafepoint) {
                             loopEnd.disableSafepoint();

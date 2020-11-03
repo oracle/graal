@@ -27,11 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <stdio.h>
+#include <stdlib.h>
 
-void printArray(int **a);
+void printArray(int *a);
 
-int main(int argc, char **argv) {
+int main() {
     int *a = malloc(sizeof(int) * 3);
     a[0] = 42;
     a[1] = 43;

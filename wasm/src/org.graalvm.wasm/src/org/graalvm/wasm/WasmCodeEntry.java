@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import org.graalvm.wasm.exception.Failure;
 
 public final class WasmCodeEntry {
     private final WasmFunction function;
@@ -96,16 +97,16 @@ public final class WasmCodeEntry {
 
     private static FrameSlotKind frameSlotKind(byte valueType) {
         switch (valueType) {
-            case ValueTypes.I32_TYPE:
+            case WasmType.I32_TYPE:
                 return FrameSlotKind.Int;
-            case ValueTypes.I64_TYPE:
+            case WasmType.I64_TYPE:
                 return FrameSlotKind.Long;
-            case ValueTypes.F32_TYPE:
+            case WasmType.F32_TYPE:
                 return FrameSlotKind.Float;
-            case ValueTypes.F64_TYPE:
+            case WasmType.F64_TYPE:
                 return FrameSlotKind.Double;
             default:
-                Assert.fail(String.format("Unknown value type: 0x%02X", valueType));
+                Assert.fail(String.format("Unknown value type: 0x%02X", valueType), Failure.UNSPECIFIED_MALFORMED);
         }
         return null;
     }

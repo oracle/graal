@@ -74,6 +74,19 @@ public interface ContextAwareExecutor {
     <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, boolean cached);
 
     /**
+     * Same as {@link ContextAwareExecutor#executeWithNestedContext(Callable)}, but allowing the
+     * definition of a timeout and an onTimeoutTask for the execution.
+     *
+     * @param taskWithResult a task which shall be executed in a Polyglot-Context-entered Thread,
+     *            which might have unwanted side-effects
+     * @param timeoutMillis time in milliseconds that taskWithResult is allowed to run.
+     * @param onTimeoutTask a task which is executed if the timeout is triggered.
+     * @return a {@link Future} to await the task's result, or the onTimeoutTask's result if the
+     *         timeout triggered.
+     */
+    <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, int timeoutMillis, Callable<T> onTimeoutTask);
+
+    /**
      * Explicitly closes and removes all cached nested Context instances.
      */
     void resetContextCache();

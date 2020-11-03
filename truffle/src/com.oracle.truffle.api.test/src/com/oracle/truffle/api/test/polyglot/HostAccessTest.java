@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -55,6 +57,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -66,10 +69,13 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.Export;
 import org.graalvm.polyglot.HostAccess.Implementable;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -101,6 +107,21 @@ public class HostAccessTest {
         assertEquals("HostAccess.NONE", HostAccess.NONE.toString());
     }
 
+    @Test
+    public void constantsCanBeCopied() {
+        verifyObjectImpl(HostAccess.NONE);
+        verifyObjectImpl(HostAccess.EXPLICIT);
+        verifyObjectImpl(HostAccess.ALL);
+    }
+
+    private static void verifyObjectImpl(HostAccess access) {
+        HostAccess otherAccess = HostAccess.newBuilder(access).build();
+        assertNotSame(access, otherAccess);
+        assertEquals(access, otherAccess);
+        assertEquals(access.hashCode(), otherAccess.hashCode());
+        assertNotNull(access.toString());
+    }
+
     public static class MyEquals {
 
         @Override
@@ -126,7 +147,6 @@ public class HostAccessTest {
             denyAccess(Object.class, false).
             build();
         // @formatter:on
-
         setupEnv(config);
 
         Value readValue = context.eval("sl", "" +
@@ -157,7 +177,6 @@ public class HostAccessTest {
             denyAccess(Object.class, false).
             build();
         // @formatter:on
-
         setupEnv(config);
         Value readValue = context.eval("sl", "" +
                         "function readValue(x, y) {\n" +
@@ -405,12 +424,15 @@ public class HostAccessTest {
             builder.allowImplementationsAnnotatedBy(FunctionalInterface.class);
             builder.allowImplementationsAnnotatedBy(HostAccess.Implementable.class);
             builder.allowAccessAnnotatedBy(HostAccess.Export.class);
-            setupEnv(builder.build());
+            HostAccess access = builder.build();
+            verifyObjectImpl(access);
+            setupEnv(access);
         }
     }
 
     private void setupEnv(HostAccess access) {
         tearDown();
+        verifyObjectImpl(access);
         context = Context.newBuilder().allowHostAccess(access).build();
     }
 
@@ -892,6 +914,479 @@ public class HostAccessTest {
 
         assertNull(context.asValue(42).as(int.class));
         assertEquals(43, context.asValue(43).asInt());
+    }
+
+    @Test
+    public void testTargetOrderStrict() {
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, Integer.class, null,
+                        (v) -> 42, TargetMappingPrecedence.HIGHEST));
+        assertEquals(42, (int) context.asValue(41).as(int.class));
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, Integer.class, null,
+                        (v) -> 42, TargetMappingPrecedence.HIGH));
+        assertEquals(42, (int) context.asValue(41).as(int.class));
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, Integer.class, null,
+                        (v) -> 41, TargetMappingPrecedence.LOW));
+        assertEquals(42, (int) context.asValue(42).as(int.class));
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, Integer.class, null,
+                        (v) -> 41, TargetMappingPrecedence.LOWEST));
+        assertEquals(42, (int) context.asValue(42).as(int.class));
+    }
+
+    @Test
+    public void testTargetOrderLoose() {
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, Character.class, null,
+                        (v) -> (char) 42, TargetMappingPrecedence.HIGHEST));
+        assertEquals((char) 42, (char) context.asValue(41).as(char.class));
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, Character.class, null,
+                        (v) -> (char) 42, TargetMappingPrecedence.HIGH));
+        assertEquals((char) 42, (char) context.asValue(41).as(char.class));
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, Character.class, null,
+                        (v) -> (char) 42, TargetMappingPrecedence.LOW));
+        assertEquals((char) 42, (char) context.asValue(41).as(char.class));
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, Character.class, null,
+                        (v) -> (char) 41, TargetMappingPrecedence.LOWEST));
+        assertEquals((char) 42, (char) context.asValue(42).as(char.class));
+    }
+
+    static class TestProxyExecutable implements ProxyExecutable {
+
+        public Object execute(Value... arguments) {
+            return "OriginalFunction";
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testTargetOrderFunctionProxy() {
+        Function<Void, String> convertedFunction = (a) -> "ConvertedFunction";
+
+        setupEnv(HostAccess.ALL);
+        assertEquals("OriginalFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, null,
+                        (v) -> convertedFunction, TargetMappingPrecedence.HIGHEST));
+        assertEquals("ConvertedFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, null,
+                        (v) -> convertedFunction, TargetMappingPrecedence.HIGH));
+        assertEquals("ConvertedFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, null,
+                        (v) -> convertedFunction, TargetMappingPrecedence.LOW));
+        assertEquals("ConvertedFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, null,
+                        (v) -> convertedFunction, TargetMappingPrecedence.LOWEST));
+        assertEquals("OriginalFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+    }
+
+    public static class NoCoercion {
+
+    }
+
+    @Implementable
+    public interface TestInterface {
+
+        String test();
+
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testTargetOrderObjectProxy() {
+        Map<String, Object> originalValues = new HashMap<>();
+        originalValues.put("test", "OriginalObject");
+        ProxyObject original = ProxyObject.fromMap(originalValues);
+
+        TestInterface converted = new TestInterface() {
+            public String test() {
+                return "ConvertedObject";
+            }
+        };
+
+        setupEnv(HostAccess.ALL);
+        assertEquals("OriginalObject", context.asValue(original).as(TestInterface.class).test());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, TestInterface.class, null,
+                        (v) -> converted, TargetMappingPrecedence.HIGHEST));
+        assertEquals("ConvertedObject", context.asValue(original).as(TestInterface.class).test());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, TestInterface.class, null,
+                        (v) -> converted, TargetMappingPrecedence.HIGH));
+        assertEquals("ConvertedObject", context.asValue(original).as(TestInterface.class).test());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, TestInterface.class, null,
+                        (v) -> converted, TargetMappingPrecedence.LOW));
+        assertEquals("ConvertedObject", context.asValue(original).as(TestInterface.class).test());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, TestInterface.class, null,
+                        (v) -> converted, TargetMappingPrecedence.LOWEST));
+        assertEquals("OriginalObject", context.asValue(original).as(TestInterface.class).test());
+
+    }
+
+    public static class HostProxyObject {
+
+        @Export
+        public String test() {
+            return "OriginalObject";
+        }
+
+    }
+
+    @Test
+    public void testTargetOrderHostProxy() {
+        HostProxyObject original = new HostProxyObject();
+
+        TestInterface converted = new TestInterface() {
+            public String test() {
+                return "ConvertedObject";
+            }
+        };
+
+        setupEnv(HostAccess.ALL);
+        assertEquals("OriginalObject", context.asValue(original).as(TestInterface.class).test());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, TestInterface.class, null,
+                        (v) -> converted, TargetMappingPrecedence.HIGHEST));
+        assertEquals("ConvertedObject", context.asValue(original).as(TestInterface.class).test());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, TestInterface.class, null,
+                        (v) -> converted, TargetMappingPrecedence.HIGH));
+        assertEquals("ConvertedObject", context.asValue(original).as(TestInterface.class).test());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, TestInterface.class, null,
+                        (v) -> converted, TargetMappingPrecedence.LOW));
+        assertEquals("ConvertedObject", context.asValue(original).as(TestInterface.class).test());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, TestInterface.class, null,
+                        (v) -> converted, TargetMappingPrecedence.LOWEST));
+        assertEquals("OriginalObject", context.asValue(original).as(TestInterface.class).test());
+
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testTargetOrderNoCoercion() {
+        NoCoercion noCoercion = new NoCoercion();
+
+        setupEnv(HostAccess.ALL);
+
+        assertFails(() -> context.asValue("").as(NoCoercion.class), ClassCastException.class);
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(String.class, NoCoercion.class, null,
+                        (v) -> noCoercion, TargetMappingPrecedence.HIGHEST));
+        assertEquals(noCoercion, context.asValue("").as(NoCoercion.class));
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(String.class, NoCoercion.class, null,
+                        (v) -> noCoercion, TargetMappingPrecedence.HIGH));
+        assertEquals(noCoercion, context.asValue("").as(NoCoercion.class));
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(String.class, NoCoercion.class, null,
+                        (v) -> noCoercion, TargetMappingPrecedence.LOW));
+        assertEquals(noCoercion, context.asValue("").as(NoCoercion.class));
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(String.class, NoCoercion.class, null,
+                        (v) -> noCoercion, TargetMappingPrecedence.LOWEST));
+        assertEquals(noCoercion, context.asValue("").as(NoCoercion.class));
+    }
+
+    @SuppressWarnings("unused")
+    public static class LooseOverload1 {
+
+        @Export
+        public String m(int s) {
+            return "int";
+        }
+
+        @Export
+        public String m(List<Object> s) {
+            return "list";
+        }
+
+    }
+
+    @Test
+    public void testLooseOverloadAssertion1() {
+        setupEnv(HostAccess.ALL);
+        assertFails(() -> context.asValue(new LooseOverload1()).invokeMember("m", (char) 42), IllegalArgumentException.class);
+    }
+
+    @SuppressWarnings("unused")
+    public static class LooseOverload2 {
+
+        @Export
+        public String m(char s) {
+            return "int";
+        }
+
+        @Export
+        public String m(List<Object> s) {
+            return "list";
+        }
+
+    }
+
+    @Test
+    public void testOverloadAssertion2() {
+        setupEnv(HostAccess.ALL);
+        assertEquals("int", context.asValue(new LooseOverload2()).invokeMember("m", 42).asString());
+    }
+
+    @SuppressWarnings("unused")
+    public static class OverloadPrecedenceStrict {
+
+        @Export
+        public String m(String s) {
+            return "String";
+        }
+
+        @Export
+        public String m(int s) {
+            return "int";
+        }
+
+    }
+
+    @Test
+    public void testConverterOverloadPrecedenceStrict() {
+        OverloadPrecedenceStrict obj = new OverloadPrecedenceStrict();
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(String.class, Integer.class, null,
+                        (v) -> Integer.parseInt(v), TargetMappingPrecedence.HIGHEST));
+        assertEquals("int", context.asValue(obj).invokeMember("m", "42").asString());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(String.class, Integer.class, null,
+                        (v) -> Integer.parseInt(v), TargetMappingPrecedence.HIGH));
+        assertFails(() -> context.asValue(obj).invokeMember("m", "42"), IllegalArgumentException.class);
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(String.class, Integer.class, null,
+                        (v) -> Integer.parseInt(v), TargetMappingPrecedence.LOW));
+        assertEquals("String", context.asValue(obj).invokeMember("m", "42").asString());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(String.class, Integer.class, null,
+                        (v) -> Integer.parseInt(v), TargetMappingPrecedence.LOWEST));
+        assertEquals("String", context.asValue(obj).invokeMember("m", "42").asString());
+    }
+
+    @SuppressWarnings("unused")
+    public static class OverloadPrecedenceLoose {
+
+        @Export
+        public String m(char s) {
+            return "int";
+        }
+
+        @Export
+        public String m(List<Object> s) {
+            return "list";
+        }
+    }
+
+    @Test
+    public void testConverterOverloadPrecedenceLoose() {
+        OverloadPrecedenceLoose obj = new OverloadPrecedenceLoose();
+
+        setupEnv(HostAccess.ALL);
+        assertEquals("int", context.asValue(obj).invokeMember("m", (char) 42).asString());
+        assertEquals("int", context.asValue(obj).invokeMember("m", 42).asString());
+        assertEquals("list", context.asValue(obj).invokeMember("m", ProxyArray.fromArray()).asString());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, List.class, null,
+                        (v) -> Arrays.asList(v), TargetMappingPrecedence.HIGHEST));
+        assertEquals("list", context.asValue(obj).invokeMember("m", 42).asString());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, List.class, null,
+                        (v) -> Arrays.asList(v), TargetMappingPrecedence.HIGH));
+        assertEquals("list", context.asValue(obj).invokeMember("m", 42).asString());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, List.class, null,
+                        (v) -> Arrays.asList(v), TargetMappingPrecedence.LOW));
+        assertFails(() -> context.asValue(obj).invokeMember("m", 42), IllegalArgumentException.class);
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Integer.class, List.class, null,
+                        (v) -> Arrays.asList(v), TargetMappingPrecedence.LOWEST));
+        assertEquals("int", context.asValue(obj).invokeMember("m", 42).asString());
+    }
+
+    @SuppressWarnings("unused")
+    public static class OverloadPrecedenceFunctionProxy {
+
+        @Export
+        public String m(Function<Value, Value> s) {
+            return "runnable";
+        }
+
+        @Export
+        public String m(Runnable s) {
+            return "runnable";
+        }
+    }
+
+    @Test
+    public void testConverterOverloadPrecedencFunctionProxy() {
+        OverloadPrecedenceFunctionProxy obj = new OverloadPrecedenceFunctionProxy();
+
+        ProxyExecutable f = new ProxyExecutable() {
+
+            @Override
+            public Object execute(Value... arguments) {
+                return 42;
+            }
+        };
+
+        setupEnv(HostAccess.ALL);
+        assertFails(() -> context.asValue(obj).invokeMember("m", f), IllegalArgumentException.class);
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Function.class, Runnable.class, null,
+                        (v) -> null, TargetMappingPrecedence.HIGHEST));
+        assertEquals("runnable", context.asValue(obj).invokeMember("m", f).asString());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Function.class, Runnable.class, null,
+                        (v) -> null, TargetMappingPrecedence.HIGH));
+        assertEquals("runnable", context.asValue(obj).invokeMember("m", f).asString());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Function.class, Runnable.class, null,
+                        (v) -> null, TargetMappingPrecedence.LOW));
+        assertEquals("runnable", context.asValue(obj).invokeMember("m", f).asString());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Function.class, Runnable.class, null,
+                        (v) -> null, TargetMappingPrecedence.LOWEST));
+        assertFails(() -> context.asValue(obj).invokeMember("m", f), IllegalArgumentException.class);
+    }
+
+    @Implementable
+    public interface TestObjectProxy1 {
+
+        String test();
+
+    }
+
+    @Implementable
+    public interface TestObjectProxy2 {
+
+        String test();
+
+    }
+
+    @SuppressWarnings("unused")
+    public static class OverloadPrecedenceObjectProxy {
+
+        @Export
+        public String m(TestObjectProxy1 s) {
+            return "proxy1";
+        }
+
+        @Export
+        public String m(TestObjectProxy2 s) {
+            return "proxy2";
+        }
+    }
+
+    @Test
+    public void testConverterOverloadPrecedencObjectProxy() {
+        Map<String, Object> originalValues = new HashMap<>();
+        originalValues.put("test", "OriginalObject");
+        ProxyObject arg = ProxyObject.fromMap(originalValues);
+
+        OverloadPrecedenceObjectProxy obj = new OverloadPrecedenceObjectProxy();
+
+        setupEnv(HostAccess.ALL);
+        assertFails(() -> context.asValue(obj).invokeMember("m", arg), IllegalArgumentException.class);
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Map.class, TestObjectProxy2.class, null,
+                        (v) -> null, TargetMappingPrecedence.HIGHEST));
+        assertEquals("proxy2", context.asValue(obj).invokeMember("m", arg).asString());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Map.class, TestObjectProxy2.class, null,
+                        (v) -> null, TargetMappingPrecedence.HIGH));
+        assertEquals("proxy2", context.asValue(obj).invokeMember("m", arg).asString());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Map.class, TestObjectProxy2.class, null,
+                        (v) -> null, TargetMappingPrecedence.LOW));
+        assertEquals("proxy2", context.asValue(obj).invokeMember("m", arg).asString());
+
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Map.class, TestObjectProxy2.class, null,
+                        (v) -> null, TargetMappingPrecedence.LOWEST));
+        assertFails(() -> context.asValue(obj).invokeMember("m", arg), IllegalArgumentException.class);
+    }
+
+    @SuppressWarnings("unused")
+    public static class OverloadPrecedenceAmbiguous {
+
+        @Export
+        public String m(String s) {
+            return "string";
+        }
+
+        @Export
+        public String m(int s) {
+            return "int";
+        }
+    }
+
+    /*
+     * Test for the example described in the target type mapping javadoc.
+     */
+    @Test
+    public void testConverterOverloadPrecedenceExample() {
+        OverloadPrecedenceAmbiguous obj = new OverloadPrecedenceAmbiguous();
+
+        setupEnv(HostAccess.newBuilder().//
+                        targetTypeMapping(String.class, Integer.class, null, (v) -> 42, TargetMappingPrecedence.HIGHEST));
+        assertEquals("int", context.asValue(obj).invokeMember("m", "").asString());
+
+        setupEnv(HostAccess.newBuilder().//
+                        targetTypeMapping(String.class, Integer.class, null, (v) -> 42, TargetMappingPrecedence.HIGH));
+        assertFails(() -> context.asValue(obj).invokeMember("m", ""), IllegalArgumentException.class);
+
+        setupEnv(HostAccess.newBuilder().//
+                        targetTypeMapping(String.class, Integer.class, null, (v) -> 42, TargetMappingPrecedence.LOW));
+        assertEquals("string", context.asValue(obj).invokeMember("m", "").asString());
+
+        setupEnv(HostAccess.newBuilder().//
+                        targetTypeMapping(String.class, Integer.class, null, (v) -> 42, TargetMappingPrecedence.LOWEST));
+        assertEquals("string", context.asValue(obj).invokeMember("m", "").asString());
+    }
+
+    @Test
+    public void testConverterOverloadPrecedenceAmbiguous2() {
+        Map<String, Object> originalValues = new HashMap<>();
+        originalValues.put("test", "OriginalObject");
+
+        OverloadPrecedenceAmbiguous obj = new OverloadPrecedenceAmbiguous();
+
+        setupEnv(HostAccess.ALL);
+        assertEquals("string", context.asValue(obj).invokeMember("m", "").asString());
+        assertEquals("int", context.asValue(obj).invokeMember("m", 42).asString());
+
+        setupEnv(HostAccess.newBuilder().//
+                        targetTypeMapping(String.class, Integer.class, null, (v) -> 42, TargetMappingPrecedence.HIGHEST).//
+                        targetTypeMapping(String.class, String.class, null, (v) -> "42", TargetMappingPrecedence.HIGHEST));
+        assertFails(() -> context.asValue(obj).invokeMember("m", ""), IllegalArgumentException.class);
+
+        setupEnv(HostAccess.newBuilder().//
+                        targetTypeMapping(String.class, Integer.class, null, (v) -> 42, TargetMappingPrecedence.HIGH).//
+                        targetTypeMapping(String.class, String.class, null, (v) -> "42", TargetMappingPrecedence.HIGH));
+        assertFails(() -> context.asValue(obj).invokeMember("m", ""), IllegalArgumentException.class);
+
+        setupEnv(HostAccess.newBuilder().//
+                        targetTypeMapping(String.class, Integer.class, null, (v) -> 42, TargetMappingPrecedence.LOW).//
+                        targetTypeMapping(String.class, String.class, null, (v) -> "42", TargetMappingPrecedence.LOW));
+        assertEquals("string", context.asValue(obj).invokeMember("m", "").asString());
+        assertEquals("int", context.asValue(obj).invokeMember("m", 42).asString());
+
+        setupEnv(HostAccess.newBuilder().//
+                        targetTypeMapping(String.class, Integer.class, null, (v) -> 42, TargetMappingPrecedence.LOWEST).//
+                        targetTypeMapping(String.class, String.class, null, (v) -> "42", TargetMappingPrecedence.LOWEST));
+        assertEquals("string", context.asValue(obj).invokeMember("m", "").asString());
+        assertEquals("int", context.asValue(obj).invokeMember("m", 42).asString());
     }
 
     @Test

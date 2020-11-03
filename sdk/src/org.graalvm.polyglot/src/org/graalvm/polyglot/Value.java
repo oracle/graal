@@ -56,6 +56,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 import org.graalvm.polyglot.proxy.Proxy;
 
@@ -871,9 +872,10 @@ public final class Value {
      * <ul>
      * <li>Custom
      * {@link HostAccess.Builder#targetTypeMapping(Class, Class, java.util.function.Predicate, Function)
-     * target type mappings} specified in the {@link HostAccess} configuration when the context is
-     * constructed. Custom target type mappings may override all the type mappings below. This
-     * allows for customization if one of the below type mappings is not suitable.
+     * target type mappings} specified in the {@link HostAccess} configuration with precedence
+     * {@link TargetMappingPrecedence#HIGHEST} or {@link TargetMappingPrecedence#HIGH}. These custom
+     * target type mappings may override all the type mappings below. This allows for customization
+     * if one of the below type mappings is not suitable.
      * <li><code>{@link Value}.class</code> is always supported and returns this instance.
      * <li>If the value represents a {@link #isHostObject() host object} then all classes
      * implemented or extended by the host object can be used as target type.
@@ -907,6 +909,10 @@ public final class Value {
      * <li><code>{@link PolyglotException}.class</code> is supported if the value is an
      * {@link #isException() exception object}.</li>
      * <li>Any Java type in the type hierarchy of a {@link #isHostObject() host object}.
+     * <li>Custom
+     * {@link HostAccess.Builder#targetTypeMapping(Class, Class, java.util.function.Predicate, Function)
+     * target type mappings} specified in the {@link HostAccess} configuration with precedence
+     * {@link TargetMappingPrecedence#LOW}.
      * <li><code>{@link Object}.class</code> is always supported. See section Object mapping rules.
      * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasMembers()
      * members} or {@link #hasArrayElements() array elements}. The returned map can be safely cast
@@ -942,10 +948,21 @@ public final class Value {
      * <li>Any interface if the value {@link #hasMembers() has members} and the interface type is
      * {@link HostAccess.Implementable implementable}. Each interface method maps to one
      * {@link #getMember(String) member} of the value. Whenever a method of the interface is
-     * executed a member with the method or field name must exist otherwise a
-     * {@link UnsupportedOperationException} is thrown when the method is executed. A member If one
-     * of the parameters cannot be mapped to the target type a {@link ClassCastException} or a
-     * {@link NullPointerException} is thrown.
+     * executed a member with the method or field name must exist otherwise an
+     * {@link UnsupportedOperationException} is thrown when the method is executed. If one of the
+     * parameters or the return value cannot be mapped to the target type a
+     * {@link ClassCastException} or a {@link NullPointerException} is thrown.
+     * <li>JVM only: Any abstract class with an accessible default constructor if the value
+     * {@link #hasMembers() has members} and the class is {@link HostAccess.Implementable
+     * implementable}. Each interface method maps to one {@link #getMember(String) member} of the
+     * value. Whenever an abstract method of the class is executed a member with the method or field
+     * name must exist otherwise an {@link UnsupportedOperationException} is thrown when the method
+     * is executed. If one of the parameters or the return value cannot be mapped to the target type
+     * a {@link ClassCastException} or a {@link NullPointerException} is thrown.
+     * <li>Custom
+     * {@link HostAccess.Builder#targetTypeMapping(Class, Class, java.util.function.Predicate, Function)
+     * target type mappings} specified in the {@link HostAccess} configuration with precedence
+     * {@link TargetMappingPrecedence#LOWEST}.
      * </ul>
      * A {@link ClassCastException} is thrown for other unsupported target types.
      * <p>
@@ -956,16 +973,20 @@ public final class Value {
      * assert context.eval("js", "undefined").as(Object.class) == null;
      * assert context.eval("js", "'foobar'").as(String.class).equals("foobar");
      * assert context.eval("js", "42").as(Integer.class) == 42;
-     * assert context.eval("js", "{foo:'bar'}").as(Map.class).get("foo").equals("bar");
+     * assert context.eval("js", "({foo:'bar'})").as(Map.class).get("foo").equals("bar");
      * assert context.eval("js", "[42]").as(List.class).get(0).equals(42);
      * assert ((Map&lt;String, Object>)context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
      *
      * &#64;FunctionalInterface interface IntFunction { int foo(int value); }
-     * assert context.eval("js", "(function(a){a})").as(IntFunction.class).foo(42) == 42;
+     * assert context.eval("js", "(function(a){return a})").as(IntFunction.class).foo(42).asInt() == 42;
      *
      * &#64;FunctionalInterface interface StringListFunction { int foo(List&lt;String&gt; value); }
-     * assert context.eval("js", "(function(a){a.length})").as(StringListFunction.class)
-     *                                                     .foo(new String[]{"42"}) == 1;
+     * assert context.eval("js", "(function(a){return a.length})")
+     *               .as(StringListFunction.class).foo(new String[]{"42"}).asInt() == 1;
+     *
+     * public abstract class AbstractClass { public AbstractClass() {} int foo(int value); }
+     * assert context.eval("js", "({foo: function(a){return a}})")
+     *               .as(AbstractClass.class).foo(42).asInt() == 42;
      * </pre>
      *
      * <h3>Object target type mapping</h3>

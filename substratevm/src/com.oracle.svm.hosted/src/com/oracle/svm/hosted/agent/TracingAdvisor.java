@@ -39,14 +39,14 @@ public class TracingAdvisor {
         for (String option : optionPairs) {
             String[] optionKeyValue = option.split("=");
             if (optionKeyValue.length != 2) {
-                throw UserError.abort("AgentTracingAdvisor: Option must be in format <option>=<val>: " + option);
+                throw UserError.abort("AgentTracingAdvisor: Option must be in format <option>=<val>: %s", option);
             }
             if (optionKeyValue[0].equals("c")) {
                 classesForInitializationTracing.add(optionKeyValue[1]);
             } else if (optionKeyValue[0].equals("o")) {
                 classesForObjectInstantiationTracing.add(optionKeyValue[1]);
             } else {
-                throw UserError.abort("AgentTracingAdvisor: Unknown option: " + optionKeyValue[0]);
+                throw UserError.abort("AgentTracingAdvisor: Unknown option: %s", optionKeyValue[0]);
             }
         }
     }

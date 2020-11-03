@@ -139,7 +139,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     private LIRFrameState currentRuntimeCallInfo;
 
     @Override
-    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         currentRuntimeCallInfo = info;
         if (AArch64Call.isNearCall(linkage)) {
             append(new AArch64Call.DirectNearForeignCallOp(linkage, result, arguments, temps, info, label));
@@ -382,7 +382,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             HotSpotLIRGenerationResult generationResult = getResult();
             LIRFrameState key = currentRuntimeCallInfo;
             if (key == null) {
-                key = LIRFrameState.NO_STATE;
+                key = LIRFrameState.NO_CALLEE_SAVE_INFO;
             }
             assert !generationResult.getCalleeSaveInfo().containsKey(key);
             generationResult.getCalleeSaveInfo().put(key, save);

@@ -43,7 +43,6 @@ import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -58,7 +57,8 @@ public class LLVMGlobalRootNode extends RootNode {
     private final DirectCallNode startFunction;
     private final int mainFunctionType;
     private final String applicationPath;
-    @Child LLVMAccessSymbolNode accessMainFunction;
+
+    @Child private LLVMAccessSymbolNode accessMainFunction;
 
     public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, LLVMFunction mainFunction, CallTarget startFunction, String applicationPath) {
         super(language, descriptor);
@@ -82,25 +82,23 @@ public class LLVMGlobalRootNode extends RootNode {
     @TruffleBoundary
     private Object executeWithoutFrame() {
         LLVMStack stack = getContext().getThreadingStack().getStack();
-        try (StackPointer basePointer = stack.newFrame()) {
-            try {
-                Object appPath = new LLVMArgumentBuffer(applicationPath);
-                LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(appPath);
-                Object[] realArgs = new Object[]{stack, mainFunctionType, applicationPathObj, accessMainFunction.execute()};
-                Object result = startFunction.call(realArgs);
-                getContext().awaitThreadTermination();
-                return (int) result;
-            } catch (LLVMExitException e) {
-                LLVMContext context = getContext();
-                // if any variant of exit or abort was called, we know that all the necessary
-                // cleanup was already done
-                context.setCleanupNecessary(false);
-                context.awaitThreadTermination();
-                return e.getExitStatus();
-            } finally {
-                // if not done already, we want at least call a shutdown command
-                getContext().shutdownThreads();
-            }
+        try {
+            Object appPath = new LLVMArgumentBuffer(applicationPath);
+            LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(appPath);
+            Object[] realArgs = new Object[]{stack, mainFunctionType, applicationPathObj, accessMainFunction.execute()};
+            Object result = startFunction.call(realArgs);
+            getContext().awaitThreadTermination();
+            return (int) result;
+        } catch (LLVMExitException e) {
+            LLVMContext context = getContext();
+            // if any variant of exit or abort was called, we know that all the necessary
+            // cleanup was already done
+            context.setCleanupNecessary(false);
+            context.awaitThreadTermination();
+            return e.getExceptionExitStatus();
+        } finally {
+            // if not done already, we want at least call a shutdown command
+            getContext().shutdownThreads();
         }
     }
 

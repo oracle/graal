@@ -60,7 +60,7 @@ bench_vm_ce_linux_base: ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_li
   setup: [
     [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog"]]
     [cd, vm]
-    [mx, --no-sources, --env, ce, build]
+    [mx, --env, ce, build]
     [mx, --dynamicimport, "/compiler", hsdis]
   ]
   teardown: [
@@ -75,7 +75,7 @@ bench-llvm-sulong-graalvm-ce: ${bench_vm_ce_linux_base} ${bench-llvm-sulong-comm
     [git, clone, --depth, "1", ${repoBase}"${BENCH_REPO_NAME}.git", "../../${BENCH_REPO_NAME}"]
   ]
   run: [
-    [mx, --no-sources, --dynamicimport, sulong-benchmarks, --env, ce, benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite:*", --, --native-vm, sulong, --native-vm-config, default, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}"]
+    [mx, --dynamicimport, sulong-benchmarks, --env, ce, benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite:*", --, --native-vm, sulong, --native-vm-config, default, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}"]
   ]
   timelimit: "10:00:01"
 }

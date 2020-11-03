@@ -27,9 +27,10 @@ package org.graalvm.polyglot.nativeapi;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.nativeimage.c.CContext.Directives;
+import com.oracle.svm.core.c.function.GraalIsolateHeader;
+import com.oracle.svm.hosted.c.DirectivesExtension;
 
-public class PolyglotNativeAPICContext implements Directives {
+public class PolyglotNativeAPICContext implements DirectivesExtension {
 
     @Override
     public List<String> getHeaderFiles() {
@@ -39,5 +40,10 @@ public class PolyglotNativeAPICContext implements Directives {
     @Override
     public List<String> getOptions() {
         return Collections.singletonList("-I" + System.getProperty("org.graalvm.polyglot.nativeapi.libraryPath"));
+    }
+
+    @Override
+    public List<String> getHeaderSnippet() {
+        return GraalIsolateHeader.getGraalIsolatePreamble();
     }
 }

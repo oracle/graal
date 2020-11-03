@@ -48,6 +48,7 @@ public abstract class TestWithSynchronousCompiling extends TestWithPolyglotOptio
     private static final String[] DEFAULT_OPTIONS = {
                     "engine.BackgroundCompilation", Boolean.FALSE.toString(), //
                     "engine.CompilationThreshold", "10", //
+                    "engine.FirstTierCompilationThreshold", "5", //
                     "engine.CompileImmediately", Boolean.FALSE.toString()
     };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,20 +48,26 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import static com.oracle.truffle.sl.test.SLExceptionTest.assertGuestFrame;
+import static com.oracle.truffle.sl.test.SLExceptionTest.assertHostFrame;
+
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.sl.SLLanguage;
-import org.graalvm.polyglot.HostAccess;
 
 public class SLJavaInteropExceptionTest {
     public static class Validator {
@@ -80,6 +86,16 @@ public class SLJavaInteropExceptionTest {
                 Value test = context.getBindings(SLLanguage.ID).getMember("test");
                 test.execute(Validator.this);
             }
+        }
+
+        @HostAccess.Export
+        @SuppressWarnings("unchecked")
+        public Object validateCallback(int index, Map<?, ?> map) throws Exception {
+            Object call = map.get(Integer.toString(index));
+            if (call == null) {
+                throw new NullPointerException("Nothing to call");
+            }
+            return ((Function<Object, Object>) call).apply(new Object[]{this, index});
         }
 
         @HostAccess.Export
@@ -126,6 +142,79 @@ public class SLJavaInteropExceptionTest {
             } catch (PolyglotException ex) {
                 assertTrue("expected HostException", ex.isHostException());
                 assertThat(ex.asHostException(), instanceOf(NoSuchElementException.class));
+                assertNoJavaInteropStackFrames(ex);
+            }
+        }
+    }
+
+    @Test
+    public void testGuestHostCallbackGuestError() throws Exception {
+        String sourceText = "function doMultiCallback(validator, n) {\n" +
+                        "    map = new();\n" +
+                        "    if (n <= 0) {\n" +
+                        "        return error();\n" +
+                        "    }\n" +
+                        "    map[n] = doCall;\n" +
+                        "    validator.validateCallback(n, map);\n" +
+                        "}\n" +
+                        "function doCall(validator, x) {\n" +
+                        "    doMultiCallback(validator, x - 1);\n" +
+                        "}";
+        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+            context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
+            Value doMultiCallback = context.getBindings(SLLanguage.ID).getMember("doMultiCallback");
+            int numCalbacks = 3;
+            try {
+                doMultiCallback.execute(new Validator(), numCalbacks);
+                fail("expected a PolyglotException but did not throw");
+            } catch (PolyglotException ex) {
+                Iterator<StackFrame> frames = ex.getPolyglotStackTrace().iterator();
+                assertGuestFrame(frames, "sl", "error");
+                assertGuestFrame(frames, "sl", "doMultiCallback", "Test", 91, 98);
+                for (int i = 0; i < numCalbacks; i++) {
+                    assertGuestFrame(frames, "sl", "doCall", "Test", 205, 238);
+                    assertHostFrame(frames, "com.oracle.truffle.polyglot.PolyglotFunction", "apply");
+                    assertHostFrame(frames, Validator.class.getName(), "validateCallback");
+                    assertGuestFrame(frames, "sl", "doMultiCallback", "Test", 131, 165);
+                }
+                assertHostFrame(frames, Value.class.getName(), "execute");
+                assertNoJavaInteropStackFrames(ex);
+            }
+        }
+    }
+
+    @Test
+    public void testGuestHostCallbackHostError() throws Exception {
+        String sourceText = "function doMultiCallback(validator, n) {\n" +
+                        "    map = new();\n" +
+                        "    if (n <= 0) {\n" +
+                        "        return validator.validateCallback(n, map); // will throw error\n" +
+                        "    }\n" +
+                        "    map[n] = doCall;\n" +
+                        "    validator.validateCallback(n, map);\n" +
+                        "}\n" +
+                        "function doCall(validator, x) {\n" +
+                        "    doMultiCallback(validator, x - 1);\n" +
+                        "}";
+        try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
+            context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
+            Value doMultiCallback = context.getBindings(SLLanguage.ID).getMember("doMultiCallback");
+            int numCalbacks = 3;
+            try {
+                doMultiCallback.execute(new Validator(), numCalbacks);
+                fail("expected a PolyglotException but did not throw");
+            } catch (PolyglotException ex) {
+                Assert.assertEquals("Nothing to call", ex.getMessage());
+                Iterator<StackFrame> frames = ex.getPolyglotStackTrace().iterator();
+                assertHostFrame(frames, Validator.class.getName(), "validateCallback");
+                assertGuestFrame(frames, "sl", "doMultiCallback", "Test", 91, 125);
+                for (int i = 0; i < numCalbacks; i++) {
+                    assertGuestFrame(frames, "sl", "doCall", "Test", 252, 285);
+                    assertHostFrame(frames, "com.oracle.truffle.polyglot.PolyglotFunction", "apply");
+                    assertHostFrame(frames, Validator.class.getName(), "validateCallback");
+                    assertGuestFrame(frames, "sl", "doMultiCallback", "Test", 178, 212);
+                }
+                assertHostFrame(frames, Value.class.getName(), "execute");
                 assertNoJavaInteropStackFrames(ex);
             }
         }

@@ -76,7 +76,7 @@ for a full example.
 
 ## C API
 There is also a C level API for accessing the Toolchain defined in
-[`llvm/api/toolchain.h`](../../projects/com.oracle.truffle.llvm.libraries.bitcode/include/llvm/api/toolchain.h).
+[`graalvm/llvm/toolchain-api.h`](../../projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/toolchain-api.h).
 It provides the following function which correspond to the Java API methods:
 
 ```C
@@ -93,8 +93,8 @@ need to be accessed via the `polyglot_*` API function:
 
 ```C
 #include <stdio.h>
-#include <polyglot.h>
-#include <llvm/api/toolchain.h>
+#include <graalvm/llvm/polyglot.h>
+#include <graalvm/llvm/toolchain-api.h>
 
 #define BUFFER_SIZE 1024
 

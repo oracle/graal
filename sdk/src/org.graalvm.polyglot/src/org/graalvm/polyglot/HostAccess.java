@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,12 +91,13 @@ public final class HostAccess {
     private final EconomicSet<Class<?>> implementableTypes;
     private final List<Object> targetMappings;
     private final boolean allowPublic;
-    private final boolean allowAllImplementations;
+    private final boolean allowAllInterfaceImplementations;
+    private final boolean allowAllClassImplementations;
     final boolean allowArrayAccess;
     final boolean allowListAccess;
     volatile Object impl;
 
-    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false);
+    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false);
 
     /**
      * Predefined host access policy that allows access to public host methods or fields that were
@@ -129,13 +130,25 @@ public final class HostAccess {
      * Equivalent of using the following builder configuration:
      *
      * <pre>
-     * HostAccess.newBuilder().allowPublicAccess(true).allowAllImplementations(true).//
-     *                 allowArrayAccess(true).allowListAccess(true).build();
+     * <code>
+     * HostAccess.newBuilder()
+     *           .allowPublicAccess(true)
+     *           .allowAllImplementations(true)
+     *           .allowAllClassImplementations(true)
+     *           .allowArrayAccess(true)
+     *           .allowListAccess(true)
+     *           .build();
+     * </code>
      * </pre>
      *
      * @since 19.0
      */
-    public static final HostAccess ALL = newBuilder().allowPublicAccess(true).allowAllImplementations(true).allowArrayAccess(true).allowListAccess(true).name("HostAccess.ALL").build();
+    public static final HostAccess ALL = newBuilder().//
+                    allowPublicAccess(true).//
+                    allowAllImplementations(true).//
+                    allowAllClassImplementations(true).//
+                    allowArrayAccess(true).allowListAccess(true).//
+                    name("HostAccess.ALL").build();
 
     /**
      * Predefined host access policy that disallows any access to public host methods or fields.
@@ -154,7 +167,7 @@ public final class HostAccess {
                     EconomicSet<Class<? extends Annotation>> implementableAnnotations,
                     EconomicSet<Class<?>> implementableTypes, List<Object> targetMappings,
                     String name,
-                    boolean allowPublic, boolean allowAllImplementations, boolean allowArrayAccess, boolean allowListAccess) {
+                    boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess) {
         // create defensive copies
         this.accessAnnotations = copySet(annotations, Equivalence.IDENTITY);
         this.excludeTypes = copyMap(excludeTypes, Equivalence.IDENTITY);
@@ -164,9 +177,117 @@ public final class HostAccess {
         this.targetMappings = targetMappings != null ? new ArrayList<>(targetMappings) : null;
         this.name = name;
         this.allowPublic = allowPublic;
-        this.allowAllImplementations = allowAllImplementations;
+        this.allowAllInterfaceImplementations = allowAllImplementations;
+        this.allowAllClassImplementations = allowAllClassImplementations;
         this.allowArrayAccess = allowArrayAccess;
         this.allowListAccess = allowListAccess;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 20.3
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof HostAccess)) {
+            return false;
+        }
+        HostAccess other = (HostAccess) obj;
+        return allowPublic == other.allowPublic//
+                        && allowAllInterfaceImplementations == other.allowAllInterfaceImplementations//
+                        && allowAllClassImplementations == other.allowAllClassImplementations//
+                        && allowArrayAccess == other.allowArrayAccess//
+                        && allowListAccess == other.allowListAccess//
+                        && equalsMap(excludeTypes, other.excludeTypes)//
+                        && equalsSet(members, other.members)//
+                        && equalsSet(implementableAnnotations, other.implementableAnnotations)//
+                        && equalsSet(implementableTypes, other.implementableTypes)//
+                        && Objects.equals(targetMappings, other.targetMappings)//
+                        && equalsSet(accessAnnotations, other.accessAnnotations);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 20.3
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(allowPublic,
+                        allowAllInterfaceImplementations,
+                        allowAllClassImplementations,
+                        allowArrayAccess,
+                        allowListAccess,
+                        hashMap(excludeTypes),
+                        hashSet(members),
+                        hashSet(implementableAnnotations),
+                        hashSet(implementableTypes),
+                        hashSet(members),
+                        targetMappings,
+                        hashSet(accessAnnotations));
+    }
+
+    private static <T, V> int hashMap(EconomicMap<T, V> map) {
+        int h = 0;
+        if (map != null) {
+            MapCursor<T, V> cursor = map.getEntries();
+            while (cursor.advance()) {
+                h += Objects.hashCode(cursor.getKey()) ^
+                                Objects.hashCode(cursor.getValue());
+            }
+        }
+        return h;
+    }
+
+    private static <V> int hashSet(EconomicSet<V> set) {
+        int h = 0;
+        if (set != null) {
+            for (V v : set) {
+                if (v != null) {
+                    h += v.hashCode();
+                }
+            }
+        }
+        return h;
+    }
+
+    private static <T, V> boolean equalsMap(EconomicMap<T, V> map0, EconomicMap<T, V> map1) {
+        if (Objects.equals(map0, map1)) {
+            return true;
+        } else if (map0 == null) {
+            return false;
+        } else if (map0.size() != map1.size()) {
+            return false;
+        }
+        MapCursor<T, V> cursor = map0.getEntries();
+        while (cursor.advance()) {
+            if (!map1.containsKey(cursor.getKey())) {
+                return false;
+            }
+            V v0 = cursor.getValue();
+            V v1 = map1.get(cursor.getKey());
+            if (!Objects.equals(v0, v1)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static <T> boolean equalsSet(EconomicSet<T> set0, EconomicSet<T> set1) {
+        if (Objects.equals(set0, set1)) {
+            return true;
+        } else if (set0 == null) {
+            return false;
+        } else if (set0.size() != set1.size()) {
+            return false;
+        }
+        for (T v : set0) {
+            if (!set1.contains(v)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static <T> EconomicSet<T> copySet(EconomicSet<T> values, Equivalence equivalence) {
@@ -211,7 +332,9 @@ public final class HostAccess {
     }
 
     boolean allowsImplementation(Class<?> type) {
-        if (allowAllImplementations) {
+        if (allowAllInterfaceImplementations && type.isInterface()) {
+            return true;
+        } else if (allowAllClassImplementations && !type.isInterface()) {
             return true;
         }
         if (implementableTypes != null && implementableTypes.contains(type)) {
@@ -354,6 +477,63 @@ public final class HostAccess {
     }
 
     /**
+     * Represents the precedence of a target type mapping. The precedence influences target type
+     * mappings in two ways:
+     * <ul>
+     * <li>The conversion order in which target mappings are performed. {@link #HIGHEST Highest} and
+     * {@link #HIGH high} precedences are invoked before all {@link Value#as(Class) default
+     * mappings}. {@link #LOW Low} after all loss less conversions and {@link #LOWEST lowest} after
+     * all other default mappings.
+     * <li>To disambiguate multiple selected overloads on method invocation. The overload precedence
+     * defines which method has precedence over other applicable methods. {@link #HIGHEST Highest}
+     * have higher and {@link #HIGH high} have the same precedence as the default loss-less mapping.
+     * The precedence {@link #LOW low} declares equal precedence than all lossy coercions and
+     * {@link #LOWEST lowest} defines precedence lower than all default mappings.
+     * </ul>
+     *
+     * @see Value#as(Class) for detailed information on conversion order.
+     * @since 20.3
+     */
+    public enum TargetMappingPrecedence {
+
+        /**
+         * Defines higher precedence and conversion order as all default mappings and target type
+         * mappings with lower precedence.
+         *
+         * @since 20.3
+         */
+        HIGHEST,
+
+        /**
+         * Defines high or default precedence and conversion order for a target type mapping. This
+         * precedence makes mappings be used before all other default mappings and treated with
+         * equal overload precedence as default loss less mappings like primitive coercions.
+         *
+         * @since 20.3
+         */
+        HIGH,
+
+        /**
+         * Defines low precedence and conversion order for a target type mapping. This precedence
+         * makes mappings be used before all other default lossy mappings and treated with equal
+         * overload precedence as default lossy mappings, like mappings to Map.
+         *
+         * @since 20.3
+         */
+        LOW,
+
+        /**
+         * Defines lowest precedence and conversion order for a target type mapping. This precedence
+         * makes mappings be used after all other default mappings and treated with lower overload
+         * precedence as all default mappings or other target type mappings.
+         *
+         * @since 20.3
+         */
+        LOWEST
+
+    }
+
+    /**
      * Builder to create a custom {@link HostAccess host access policy}.
      *
      * @since 19.0
@@ -369,6 +549,7 @@ public final class HostAccess {
         private boolean allowListAccess;
         private boolean allowArrayAccess;
         private boolean allowAllImplementations;
+        private boolean allowAllClassImplementations;
         private String name;
 
         Builder() {
@@ -387,7 +568,8 @@ public final class HostAccess {
             this.allowPublic = access.allowPublic;
             this.allowListAccess = access.allowListAccess;
             this.allowArrayAccess = access.allowArrayAccess;
-            this.allowAllImplementations = access.allowAllImplementations;
+            this.allowAllImplementations = access.allowAllInterfaceImplementations;
+            this.allowAllClassImplementations = access.allowAllClassImplementations;
         }
 
         /**
@@ -478,8 +660,14 @@ public final class HostAccess {
 
         /**
          * Allow guest languages to implement any Java interface.
+         * <p>
+         * Note that implementations implicitly export all their methods, i.e., allowing
+         * implementations of a type implies allowing access its methods via its implementations,
+         * regardless of whether the methods have been explicitly exported.
          *
          * @see HostAccess#ALL
+         * @see #allowImplementations(Class)
+         * @see #allowImplementationsAnnotatedBy(Class)
          * @since 19.0
          */
         public Builder allowAllImplementations(boolean allow) {
@@ -488,11 +676,36 @@ public final class HostAccess {
         }
 
         /**
+         * Allow guest languages to implement (extend) any Java class. Note that the default host
+         * type mappings and {@link Value#as(Class)} only implement abstract classes.
+         * <p>
+         * Note that implementations implicitly export all their methods, i.e., allowing
+         * implementations of a type implies allowing access its methods via its implementations,
+         * regardless of whether the methods have been explicitly exported.
+         *
+         * @see HostAccess#ALL
+         * @see #allowImplementations(Class)
+         * @see #allowImplementationsAnnotatedBy(Class)
+         * @see #allowAllImplementations(boolean)
+         * @since 20.3.0
+         */
+        public Builder allowAllClassImplementations(boolean allow) {
+            this.allowAllClassImplementations = allow;
+            return this;
+        }
+
+        /**
          * Allow implementations of types annotated with the given annotation. For the
          * {@link HostAccess#EXPLICIT explicit} host access present the {@link Implementable}
-         * annotation is configured for this purpose.
+         * annotation is configured for this purpose. Applies to interfaces and classes.
+         * <p>
+         * Note that implementations implicitly export all their methods, i.e., allowing
+         * implementations of a type implies allowing access its methods via its implementations,
+         * regardless of whether the methods have been explicitly exported.
          *
          * @see HostAccess.Implementable
+         * @see #allowImplementations(Class)
+         * @see Value#as(Class)
          * @since 19.0
          */
         public Builder allowImplementationsAnnotatedBy(Class<? extends Annotation> annotation) {
@@ -506,15 +719,22 @@ public final class HostAccess {
 
         /**
          * Allow implementations of this type by the guest language.
+         * <p>
+         * Note that implementations implicitly export all their methods, i.e., allowing
+         * implementations of a type implies allowing access its methods via its implementations,
+         * regardless of whether the methods have been explicitly exported.
          *
+         * @param type an interface that may be implemented or a class that may be extended.
+         * @see #allowImplementationsAnnotatedBy(Class)
+         * @see Value#as(Class)
          * @since 19.0
          */
-        public Builder allowImplementations(Class<?> interfaceClass) {
-            Objects.requireNonNull(interfaceClass);
+        public Builder allowImplementations(Class<?> type) {
+            Objects.requireNonNull(type);
             if (implementableTypes == null) {
                 implementableTypes = EconomicSet.create(Equivalence.IDENTITY);
             }
-            implementableTypes.add(interfaceClass);
+            implementableTypes.add(type);
             return this;
         }
 
@@ -540,6 +760,17 @@ public final class HostAccess {
         public Builder allowListAccess(boolean listAccess) {
             this.allowListAccess = listAccess;
             return this;
+        }
+
+        /**
+         * Adds a custom source to target type mapping for Java host calls, host field assignments
+         * and {@link Value#as(Class) explicit value conversions}. Method is equivalent to calling
+         * the targetTypeMapping method with precedence {@link TargetMappingPrecedence#HIGH}.
+         *
+         * @since 19.0
+         */
+        public <S, T> Builder targetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> accepts, Function<S, T> converter) {
+            return targetTypeMapping(sourceType, targetType, accepts, converter, TargetMappingPrecedence.HIGH);
         }
 
         /**
@@ -570,11 +801,31 @@ public final class HostAccess {
          * value the {@link Value} should be used as source type.
          * <p>
          * Multiple mappings may be added for a source or target class. Multiple mappings are
-         * applied in the order they were added. The first mapping that accepts the source value
-         * will be used. Custom target type mappings all use the same precedence when an overloaded
-         * method is selected. This means that if two methods with a custom target type mapping are
-         * applicable for a set of arguments, an {@link IllegalArgumentException} is thrown at
-         * runtime.
+         * applied in the order they were added, grouped by the {@link TargetMappingPrecedence
+         * priority} where the highest priority group is applied first. See {@link Value#as(Class)}
+         * for a detailed ordered list of the conversion order used. The first mapping that accepts
+         * the source value will be used. If the {@link TargetMappingPrecedence#HIGH default
+         * priority} is used then all custom target type mappings use the same precedence when an
+         * overloaded method is selected. This means that if two methods with a custom target type
+         * mapping are applicable for a set of arguments, an {@link IllegalArgumentException} is
+         * thrown at runtime. Using a non-default priority for the mapping allows to configure
+         * whether the method will be prioritized or deprioritized depending on the precedence.
+         * <p>
+         * For example take a configured target mapping from <code>String</code> to <code>int</code>
+         * and two overloaded methods that takes an int or a {@link String} parameter. If this
+         * method is invoked with a <code>String</code> value then there are three possible outcomes
+         * depending on the precedence that was used for the custom mapping:
+         * <ul>
+         * <li>{@link TargetMappingPrecedence#HIGHEST}: The int method overload will be selected and
+         * invoked as the target mapping has a higher precedence than default.
+         * <li>{@link TargetMappingPrecedence#HIGH}: The execution fails with an error as all
+         * overloads have equivalent precedence.
+         * <li>{@link TargetMappingPrecedence#LOW} or {@link TargetMappingPrecedence#LOWEST}: The
+         * String method overload will be selected and invoked as the target mapping has a lower
+         * precedence than default.
+         * <li>In this example the outcome of low and lowest are equivalent. There are differences
+         * between low and lowest. See {@link TargetMappingPrecedence} for details.
+         * </ul>
          * <p>
          * Primitive boxed target types will be applied to the primitive and boxed values. It is
          * therefore enough to specify a target mapping to {@link Integer} to also map to the target
@@ -642,20 +893,24 @@ public final class HostAccess {
          * @param converter a function that produces the converted value of the mapping. May return
          *            <code>null</code>. May throw {@link ClassCastException} if the source value is
          *            not convertible.
+         * @param precedence the precedence of the defined mapping which influences conversion order
+         *            and precedence with default mappings and other target type mappings.
          * @throws IllegalArgumentException for primitive target types.
-         * @since 19.0
+         * @since 20.3
          */
-        public <S, T> Builder targetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> accepts, Function<S, T> converter) {
+        public <S, T> Builder targetTypeMapping(Class<S> sourceType, Class<T> targetType,
+                        Predicate<S> accepts, Function<S, T> converter, TargetMappingPrecedence precedence) {
             Objects.requireNonNull(sourceType);
             Objects.requireNonNull(targetType);
             Objects.requireNonNull(converter);
+            Objects.requireNonNull(precedence);
             if (targetType.isPrimitive()) {
-                throw new IllegalArgumentException("Primitive target type is not supported as target mapping.");
+                throw new IllegalArgumentException("Primitive target type is not supported as target mapping. Use boxed primitives instead.");
             }
             if (targetMappings == null) {
                 targetMappings = new ArrayList<>();
             }
-            targetMappings.add(Engine.getImpl().newTargetTypeMapping(sourceType, targetType, accepts, converter));
+            targetMappings.add(Engine.getImpl().newTargetTypeMapping(sourceType, targetType, accepts, converter, precedence));
             return this;
         }
 
@@ -670,8 +925,8 @@ public final class HostAccess {
          * @since 19.0
          */
         public HostAccess build() {
-            return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic, allowAllImplementations, allowArrayAccess,
-                            allowListAccess);
+            return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic,
+                            allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess);
         }
     }
 

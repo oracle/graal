@@ -59,6 +59,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Containers;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -251,8 +252,13 @@ final class Target_java_lang_Runtime {
     @Substitute
     @Platforms(InternalPlatform.PLATFORM_JNI.class)
     private int availableProcessors() {
+        int optionValue = SubstrateOptions.ActiveProcessorCount.getValue();
+        if (optionValue > 0) {
+            return optionValue;
+        }
+
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            return Jvm.JVM_ActiveProcessorCount();
+            return Containers.activeProcessorCount();
         } else {
             return 1;
         }
@@ -789,23 +795,10 @@ final class Target_java_lang_Package {
 
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
-    static Package getPackage(Class<?> c) {
-        if (c.isPrimitive() || c.isArray()) {
-            /* Arrays and primitives don't have a package. */
-            return null;
-        }
-
-        /* Logic copied from java.lang.Package.getPackage(java.lang.Class). */
-        String name = c.getName();
-        int i = name.lastIndexOf('.');
-        if (i != -1) {
-            name = name.substring(0, i);
-            Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
-                            null, null, null, null, null);
-            return SubstrateUtil.cast(pkg, Package.class);
-        } else {
-            return null;
-        }
+    private static Package getSystemPackage(String name) {
+        Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
+                        null, null, null, null, null);
+        return SubstrateUtil.cast(pkg, Package.class);
     }
 }
 

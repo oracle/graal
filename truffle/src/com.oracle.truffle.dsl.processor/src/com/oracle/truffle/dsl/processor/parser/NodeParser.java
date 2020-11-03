@@ -101,6 +101,7 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
@@ -181,7 +182,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     public static NodeParser createExportParser(TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
-        return new NodeParser(ParseMode.EXPORTED_MESSAGE, exportLibraryType, exportDeclarationType, substituteThisToParent);
+        NodeParser parser = new NodeParser(ParseMode.EXPORTED_MESSAGE, exportLibraryType, exportDeclarationType, substituteThisToParent);
+        // the ExportsParse will take care of removing the specializations if the option is set
+        parser.setGenerateSlowPathOnly(false);
+        return parser;
     }
 
     public static NodeParser createDefaultParser() {
@@ -301,9 +305,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
         if (introspectable != null) {
             node.setGenerateIntrospection(true);
         }
-        String generateProperty = ProcessorContext.getInstance().getEnvironment().getOptions().get("truffle.dsl.GenerateSpecializationStatistics");
+        Boolean generateProperty = TruffleProcessorOptions.generateSpecializationStatistics(ProcessorContext.getInstance().getEnvironment());
         if (generateProperty != null) {
-            node.setGenerateStatistics(Boolean.parseBoolean(generateProperty));
+            node.setGenerateStatistics(generateProperty);
         }
         if (findFirstAnnotation(lookupTypes, types.SpecializationStatistics_AlwaysEnabled) != null) {
             node.setGenerateStatistics(true);
@@ -316,7 +320,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
         node.getFields().addAll(parseFields(lookupTypes, members));
         node.getChildren().addAll(parseChildren(node, lookupTypes, members));
-        node.getChildExecutions().addAll(parseExecutions(node.getFields(), node.getChildren(), members));
+        node.getChildExecutions().addAll(parseExecutions(node, node.getFields(), node.getChildren(), members));
         node.getExecutableTypes().addAll(parseExecutableTypeData(node, members, node.getSignatureSize(), context.getFrameTypes(), false));
 
         initializeExecutableTypes(node);
@@ -343,7 +347,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeUncachable(node);
 
         if (mode == ParseMode.DEFAULT) {
-            boolean emitWarnings = Boolean.parseBoolean(System.getProperty("truffle.dsl.cacheSharingWarningsEnabled", "false"));
+            boolean emitWarnings = TruffleProcessorOptions.cacheSharingWarningsEnabled(processingEnv) && //
+                            !TruffleProcessorOptions.generateSlowPathOnly(processingEnv);
             node.setSharedCaches(computeSharing(node.getTemplateType(), Arrays.asList(node), emitWarnings));
         } else {
             // sharing is computed by the ExportsParser
@@ -355,6 +360,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
         verifyConstructors(node);
         verifySpecializationThrows(node);
         verifyFrame(node);
+        if (isGenerateSlowPathOnly(node)) {
+            removeFastPathSpecializations(node);
+        }
         return node;
     }
 
@@ -1227,7 +1235,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     }
 
-    private List<NodeExecutionData> parseExecutions(List<NodeFieldData> fields, List<NodeChildData> children, List<? extends Element> elements) {
+    private List<NodeExecutionData> parseExecutions(@SuppressWarnings("unused") NodeData node, List<NodeFieldData> fields, List<NodeChildData> children, List<? extends Element> elements) {
         List<ExecutableElement> methods = ElementFilter.methodsIn(elements);
         boolean hasVarArgs = false;
         int maxSignatureSize = 0;
@@ -1591,16 +1599,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeReachability(node);
         initializeFallbackReachability(node);
         initializeCheckedExceptions(node);
-
-        List<SpecializationData> specializations = node.getSpecializations();
-        for (SpecializationData cur : specializations) {
-            for (SpecializationData contained : cur.getReplaces()) {
-                if (contained != cur) {
-                    contained.getExcludedBy().add(cur);
-                }
-            }
-        }
-
+        initializeExcludeBy(node);
         initializeSpecializationIdsWithMethodNames(node.getSpecializations());
     }
 
@@ -1799,6 +1798,30 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
             current.setReachable(shadowedBy == null);
         }
+    }
+
+    private static void initializeExcludeBy(NodeData node) {
+        List<SpecializationData> specializations = node.getSpecializations();
+        for (SpecializationData cur : specializations) {
+            for (SpecializationData contained : cur.getReplaces()) {
+                if (contained != cur) {
+                    contained.getExcludedBy().add(cur);
+                }
+            }
+        }
+    }
+
+    public static void removeFastPathSpecializations(NodeData node) {
+        List<SpecializationData> specializations = node.getSpecializations();
+        List<SpecializationData> toRemove = new ArrayList<>();
+        for (SpecializationData cur : specializations) {
+            for (SpecializationData contained : cur.getReplaces()) {
+                if (contained != cur && contained.getUncachedSpecialization() != cur) {
+                    toRemove.add(contained);
+                }
+            }
+        }
+        specializations.removeAll(toRemove);
     }
 
     private static void initializeSpecializationIdsWithMethodNames(List<SpecializationData> specializations) {
@@ -2308,6 +2331,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.addError("Library '%s' has errors. Please resolve them first.", getSimpleName(parameterType));
                 continue;
             }
+
+            cachedLibrary.setCachedLibrary(parsedLibrary);
+            if (uncachedLibrary != null) {
+                uncachedLibrary.setCachedLibrary(parsedLibrary);
+            }
+
             String expression = cachedLibrary.getCachedLibraryExpression();
             DSLExpression receiverExpression = parseCachedExpression(resolver, cachedLibrary, parsedLibrary.getSignatureReceiverType(), expression);
             if (receiverExpression == null) {
@@ -2357,7 +2386,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.setAlwaysInitialized(true);
                 continue;
             } else {
-                seenDynamicParameterBound |= specialization.isDynamicParameterBound(receiverExpression, false);
+                seenDynamicParameterBound |= specialization.isDynamicParameterBound(receiverExpression, true);
                 cachedLibrary.setDefaultExpression(receiverExpression);
 
                 String receiverName = cachedLibrary.getParameter().getVariableElement().getSimpleName().toString();

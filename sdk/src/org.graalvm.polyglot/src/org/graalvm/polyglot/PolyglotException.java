@@ -42,6 +42,7 @@ package org.graalvm.polyglot;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.time.Duration;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
@@ -310,6 +311,17 @@ public final class PolyglotException extends RuntimeException {
      */
     public boolean isCancelled() {
         return impl.isCancelled();
+    }
+
+    /**
+     * Returns <code>true</code> if the current application thread was interrupted by an
+     * {@link InterruptedException}, or by calling {@link Context#interrupt(Duration)} from the
+     * host.
+     *
+     * @since 20.3
+     */
+    public boolean isInterrupted() {
+        return impl.isInterrupted();
     }
 
     /**

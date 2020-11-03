@@ -62,7 +62,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -73,13 +72,14 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.ResourceLimitEvent;
 import org.graalvm.polyglot.ResourceLimits;
-import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.TypeLiteral;
@@ -145,7 +145,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value newValue(Object value, AbstractValueImpl impl);
 
-        public abstract Source newSource(String language, Object impl);
+        public abstract Source newSource(Object impl);
 
         public abstract SourceSection newSourceSection(Source source, Object impl);
 
@@ -235,10 +235,9 @@ public abstract class AbstractPolyglotImpl {
     protected void initialize() {
     }
 
-    public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
-                    Object logHandlerOrStream,
-                    HostAccess conf);
+    public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties, boolean allowExperimentalOptions,
+                    boolean boundEngine,
+                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf);
 
     public abstract void preInitializeEngine();
 
@@ -351,6 +350,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract String getMimeType(Object impl);
 
+        public abstract String getLanguage(Object impl);
+
     }
 
     public abstract static class AbstractSourceSectionImpl {
@@ -409,6 +410,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void close(Context sourceContext, boolean interuptExecution);
 
+        public abstract boolean interrupt(Context sourceContext, Duration timeout);
+
         public abstract Value asValue(Object hostValue);
 
         public abstract void explicitEnter(Context sourceContext);
@@ -453,6 +456,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract String getImplementationName();
 
+        public abstract Set<Source> getCachedSources();
+
     }
 
     public abstract static class AbstractExceptionImpl {
@@ -494,6 +499,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract SourceSection getSourceLocation();
 
         public abstract boolean isResourceExhausted();
+
+        public abstract boolean isInterrupted();
 
     }
 
@@ -763,9 +770,9 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract Value asValue(Object o);
 
-    public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue);
+    public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence);
 
-    public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Duration timeLimit, Duration timeLimitAccuracy, Consumer<ResourceLimitEvent> onLimit);
+    public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Consumer<ResourceLimitEvent> onLimit);
 
     public abstract Context getLimitEventContext(Object impl);
 

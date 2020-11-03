@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,13 +45,13 @@ import org.junit.Test;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.ObjectType;
-import com.oracle.truffle.api.object.dsl.Layout;
 
 import org.junit.Assert;
 
+@SuppressWarnings("deprecation")
 public class ShapePropertiesTest {
 
-    @Layout
+    @com.oracle.truffle.api.object.dsl.Layout
     public interface ShapePropertiesTestLayout {
 
         DynamicObjectFactory createShapePropertiesTestShape(int shapeProperty);

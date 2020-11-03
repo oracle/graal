@@ -40,18 +40,24 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 final class PolyglotThread extends Thread {
 
     private final PolyglotLanguageContext languageContext;
 
-    Object context;
+    PolyglotContextImpl context;
+
+    final CallTarget callTarget;
 
     PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable, ThreadGroup group, long stackSize) {
         super(group, runnable, createDefaultName(languageContext), stackSize);
         this.languageContext = languageContext;
         setUncaughtExceptionHandler(languageContext.getPolyglotExceptionHandler());
+        this.callTarget = ThreadSpawnRootNode.lookup(languageContext);
     }
 
     PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable, ThreadGroup group) {
@@ -72,24 +78,82 @@ final class PolyglotThread extends Thread {
 
     @Override
     public void run() {
-        Object prev;
-        try {
-            prev = languageContext.enterThread(this);
-        } catch (PolyglotEngineException polyglotException) {
-            if (polyglotException.closingContext) {
-                return;
-            } else {
-                throw polyglotException;
+        // always call through a HostToGuestRootNode so that stack/frame
+        // walking can determine in which context the frame was executed
+        callTarget.call(languageContext, this, new PolyglotThreadRunnable() {
+            @Override
+            @TruffleBoundary
+            public void execute() {
+                PolyglotThread.super.run();
             }
-        }
-        assert prev == null;
-        try {
-            super.run();
-        } finally {
-            languageContext.leaveThread(prev, this);
-        }
+        });
     }
 
     private static final AtomicInteger THREAD_INIT_NUMBER = new AtomicInteger(0);
 
+    // replacing Runnable with dedicated interface to avoid having Runnable.run() on the fast path,
+    // since SVM will otherwise pull in all Runnable implementations as runtime compiled methods
+    private interface PolyglotThreadRunnable {
+        void execute();
+    }
+
+    private static final class ThreadSpawnRootNode extends HostToGuestRootNode {
+
+        ThreadSpawnRootNode(PolyglotLanguageContext languageContext) {
+            super(languageContext);
+        }
+
+        @Override
+        protected Class<?> getReceiverType() {
+            return PolyglotThread.class;
+        }
+
+        @Override
+        protected boolean needsEnter() {
+            return false;
+        }
+
+        @Override
+        protected boolean needsExceptionWrapping() {
+            return false;
+        }
+
+        @Override
+        public boolean isInternal() {
+            return true;
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
+            PolyglotThread thread = (PolyglotThread) receiver;
+            PolyglotThreadRunnable run = (PolyglotThreadRunnable) args[HostToGuestRootNode.ARGUMENT_OFFSET];
+
+            PolyglotContextImpl prev;
+            try {
+                prev = languageContext.enterThread(thread);
+            } catch (PolyglotEngineException polyglotException) {
+                if (polyglotException.closingContext) {
+                    return null;
+                } else {
+                    throw polyglotException;
+                }
+            }
+            assert prev == null; // is this assertion correct?
+            try {
+                run.execute();
+            } finally {
+                languageContext.leaveThread(prev, thread);
+            }
+            return null;
+        }
+
+        public static CallTarget lookup(PolyglotLanguageContext languageContext) {
+            CallTarget target = lookupHostCodeCache(languageContext, ThreadSpawnRootNode.class, CallTarget.class);
+            if (target == null) {
+                target = installHostCodeCache(languageContext, ThreadSpawnRootNode.class, createTarget(new ThreadSpawnRootNode(languageContext)), CallTarget.class);
+            }
+            return target;
+        }
+    }
 }

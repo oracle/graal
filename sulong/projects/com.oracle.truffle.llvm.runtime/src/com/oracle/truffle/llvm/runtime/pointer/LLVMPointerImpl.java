@@ -34,14 +34,16 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 
 @ValueType
 @ExportLibrary(DynamicDispatchLibrary.class)
-class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer {
+final class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer {
 
     static final LLVMPointerImpl NULL = new LLVMPointerImpl(null, 0, null);
 
@@ -149,8 +151,8 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer {
     }
 
     @ExportMessage
-    Class<?> dispatch() {
-        if (isNative()) {
+    Class<?> dispatch(@Cached ConditionProfile isNativeProfile) {
+        if (isNativeProfile.profile(isNative())) {
             return NativePointerLibraries.class;
         } else {
             assert isManaged();

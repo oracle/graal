@@ -26,10 +26,12 @@ package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
 import org.graalvm.libgraal.jni.HSObject;
 import java.io.Closeable;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationRetry;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnFailure;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnGraalTierFinished;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnSuccess;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnTruffleTierFinished;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnCompilationRetry;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnFailure;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnGraalTierFinished;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnSuccess;
@@ -96,6 +98,14 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
         JNIEnv env = JNILibGraalScope.env();
         JString hsReason = createHSString(env, serializedException);
         callOnFailure(env, getHandle(), hsCompilable, hsReason, bailout, permanentBailout);
+    }
+
+    @TruffleFromLibGraal(OnCompilationRetry)
+    @Override
+    public void onCompilationRetry(CompilableTruffleAST compilable) {
+        JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
+        JNIEnv env = JNILibGraalScope.env();
+        callOnCompilationRetry(env, getHandle(), hsCompilable);
     }
 
     private static final class LibGraalObjectHandleScope implements Closeable {

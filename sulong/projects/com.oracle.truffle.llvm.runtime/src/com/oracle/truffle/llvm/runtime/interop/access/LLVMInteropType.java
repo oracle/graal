@@ -29,24 +29,19 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
-
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceClassLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
@@ -54,6 +49,13 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Describes how foreign interop should interpret values.
@@ -145,8 +147,8 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     public static final class Value extends LLVMInteropType {
 
-        final ValueKind kind;
-        final Structured baseType;
+        public final ValueKind kind;
+        public final Structured baseType;
 
         private static Value primitive(ValueKind kind, long size) {
             return new Value(kind, null, size);
@@ -162,12 +164,8 @@ public abstract class LLVMInteropType implements TruffleObject {
             this.baseType = baseType;
         }
 
-        public ValueKind getKind() {
-            return kind;
-        }
-
-        public Structured getBaseType() {
-            return baseType;
+        public int getSizeInBytes() {
+            return kind.foreignToLLVMType.getSizeInBytes();
         }
 
         @Override
@@ -194,9 +192,9 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     public static final class Array extends Structured {
 
-        final LLVMInteropType elementType;
-        final long elementSize;
-        final long length;
+        public final LLVMInteropType elementType;
+        public final long elementSize;
+        public final long length;
 
         Array(InteropTypeRegistry.Register elementType, long elementSize, long length) {
             super(elementSize * length);
@@ -212,18 +210,6 @@ public abstract class LLVMInteropType implements TruffleObject {
             this.length = length;
         }
 
-        public LLVMInteropType getElementType() {
-            return elementType;
-        }
-
-        public long getElementSize() {
-            return elementSize;
-        }
-
-        public long getLength() {
-            return length;
-        }
-
         @Override
         @TruffleBoundary
         protected String toString(EconomicSet<LLVMInteropType> visited) {
@@ -235,9 +221,9 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
     }
 
-    public static final class Struct extends Structured {
+    public static class Struct extends Structured {
 
-        private final String name;
+        protected final String name;
 
         @CompilationFinal(dimensions = 1) final StructMember[] members;
 
@@ -254,7 +240,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         @TruffleBoundary
         public StructMember findMember(String memberName) {
             for (StructMember member : members) {
-                if (member.getName().equals(memberName)) {
+                if (member.name.equals(memberName)) {
                     return member;
                 }
             }
@@ -271,14 +257,93 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
     }
 
+    public static final class Clazz extends Struct {
+
+        @CompilationFinal(dimensions = 1) final Method[] methods;
+        private Clazz superclass;
+
+        Clazz(String name, StructMember[] members, Method[] methods, long size) {
+            super(name, members, size);
+            this.methods = methods;
+            this.superclass = null;
+        }
+
+        public void setSuperClass(Clazz superclass) {
+            if (this.superclass == null) {
+                this.superclass = superclass;
+            }
+        }
+
+        public Method getMethod(int i) {
+            return methods[i];
+        }
+
+        public int getMethodCount() {
+            return methods.length;
+        }
+
+        @TruffleBoundary
+        public Method findMethod(String memberName) {
+            for (Method method : methods) {
+                if (method.getName().equals(memberName)) {
+                    return method;
+                } else if (method.getLinkageName().equals(memberName)) {
+                    return method;
+                }
+            }
+            if (superclass != null) {
+                return superclass.findMethod(memberName);
+            }
+            return null;
+        }
+
+        @TruffleBoundary
+        public Method findMethodByArgumentsWithSelf(String memberName, Object[] arguments) throws ArityException {
+            int expectedArgCount = -1;
+            for (Method method : methods) {
+                if (method.getName().equals(memberName)) {
+                    // check parameters to resolve overloaded methods
+                    LLVMInteropType[] types = method.parameterTypes;
+                    if (types.length + 1 == arguments.length) {
+                        return method;
+                    } else {
+                        expectedArgCount = types.length;
+                    }
+                } else if (method.getLinkageName().equals(memberName)) {
+                    return method;
+                }
+            }
+            if (superclass != null) {
+                return superclass.findMethodByArgumentsWithSelf(memberName, arguments);
+            } else if (expectedArgCount >= 0) {
+                throw ArityException.create(expectedArgCount, arguments.length - 1);
+            }
+            return null;
+        }
+
+        public Method findMethodByArguments(Object receiver, String memberName, Object[] arguments) throws ArityException, UnknownIdentifierException {
+            Object[] newArgs = new Object[arguments.length + 1];
+            newArgs[0] = receiver;
+            for (int i = 1; i < arguments.length; i++) {
+                newArgs[i] = arguments[i - 1];
+            }
+            Method method = findMethodByArgumentsWithSelf(memberName, newArgs);
+            if (method == null) {
+                throw UnknownIdentifierException.create(memberName);
+            }
+            return method;
+        }
+
+    }
+
     public static final class StructMember {
 
-        final Struct struct;
+        public final Struct struct;
 
-        final String name;
-        final long startOffset;
-        final long endOffset;
-        final LLVMInteropType type;
+        public final String name;
+        public final long startOffset;
+        public final long endOffset;
+        public final LLVMInteropType type;
 
         StructMember(Struct struct, String name, long startOffset, long endOffset, LLVMInteropType type) {
             this.struct = struct;
@@ -292,31 +357,15 @@ public abstract class LLVMInteropType implements TruffleObject {
             return startOffset <= offset && ((startOffset == endOffset) | offset < endOffset);
         }
 
-        public String getName() {
-            return name;
-        }
-
-        public LLVMInteropType getType() {
-            return type;
-        }
-
-        public Struct getStruct() {
-            return struct;
-        }
-
-        public long getStartOffset() {
-            return startOffset;
-        }
-
     }
 
-    public static final class Function extends Structured {
+    public static class Function extends Structured {
         final LLVMInteropType returnType;
         @CompilationFinal(dimensions = 1) final LLVMInteropType[] parameterTypes;
 
-        Function(InteropTypeRegistry.Register returnType, LLVMInteropType[] parameterTypes) {
+        Function(InteropTypeRegistry.Register returnType, LLVMInteropType[] parameterTypes, boolean isMethod) {
             super(0);
-            this.returnType = returnType.get(this);
+            this.returnType = returnType.get(this, isMethod);
             this.parameterTypes = parameterTypes;
         }
 
@@ -344,6 +393,45 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
     }
 
+    public static final class Method extends Function {
+
+        private final Clazz clazz;
+        private final String name;
+        private final String linkageName;
+
+        Method(Clazz clazz, String name, String linkageName, InteropTypeRegistry.Register returnType, LLVMInteropType[] parameterTypes) {
+            super(returnType, parameterTypes, true);
+            this.clazz = clazz;
+            this.name = name;
+            this.linkageName = linkageName;
+
+        }
+
+        public Clazz getObjectClass() {
+            return clazz;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getLinkageName() {
+            return linkageName;
+        }
+
+        @Override
+        @TruffleBoundary
+        protected String toString(EconomicSet<LLVMInteropType> visited) {
+            if (visited.contains(this)) {
+                return "<recursive function type>";
+            }
+            visited.add(this);
+            return String.format("%s %s(%s)", returnType == null ? "void" : returnType.toString(visited), name,
+                            Arrays.stream(parameterTypes).map(t -> t == null ? "<null>" : t.toString(visited)).collect(Collectors.joining(", ")));
+        }
+
+    }
+
     // TODO (chaeubl): Interop types contain less information than the source type so that different
     // source types can result in the creation of the same interop type. Therefore, we would need to
     // deduplicate the created interop types.
@@ -361,8 +449,14 @@ public abstract class LLVMInteropType implements TruffleObject {
             }
 
             LLVMInteropType get(LLVMInteropType self) {
-                assert !typeCache.containsKey(source);
-                typeCache.put(source, self);
+                return get(self, false);
+            }
+
+            LLVMInteropType get(LLVMInteropType self, boolean isMethod) {
+                if (!isMethod) {
+                    assert !typeCache.containsKey(source);
+                    typeCache.put(source, self);
+                }
                 return InteropTypeRegistry.this.get(target);
             }
         }
@@ -413,6 +507,8 @@ public abstract class LLVMInteropType implements TruffleObject {
         private Structured convertStructured(LLVMSourceType type) {
             if (type instanceof LLVMSourceArrayLikeType) {
                 return convertArray((LLVMSourceArrayLikeType) type);
+            } else if (type instanceof LLVMSourceClassLikeType) {
+                return convertClass((LLVMSourceClassLikeType) type);
             } else if (type instanceof LLVMSourceStructLikeType) {
                 return convertStruct((LLVMSourceStructLikeType) type);
             } else if (type instanceof LLVMSourceFunctionType) {
@@ -440,15 +536,50 @@ public abstract class LLVMInteropType implements TruffleObject {
             return ret;
         }
 
+        private Clazz convertClass(LLVMSourceClassLikeType type) {
+            Clazz ret = new Clazz(type.getName(), new StructMember[type.getDynamicElementCount()], new Method[type.getMethodCount()], type.getSize() / 8);
+            typeCache.put(type, ret);
+            for (int i = 0; i < ret.members.length; i++) {
+                LLVMSourceMemberType member = type.getDynamicElement(i);
+                LLVMSourceType memberType = member.getElementType();
+                if (memberType instanceof LLVMSourceClassLikeType) {
+                    LLVMSourceClassLikeType sourceSuperClazz = (LLVMSourceClassLikeType) memberType;
+                    if (typeCache.containsKey(sourceSuperClazz)) {
+                        Clazz superClazz = (Clazz) typeCache.get(sourceSuperClazz);
+                        ret.setSuperClass(superClazz);
+                    }
+
+                }
+                long startOffset = member.getOffset() / 8;
+                long endOffset = startOffset + (memberType.getSize() + 7) / 8;
+                ret.members[i] = new StructMember(ret, member.getName(), startOffset, endOffset, get(memberType));
+            }
+            for (int i = 0; i < ret.methods.length; i++) {
+                ret.methods[i] = convertMethod(type.getMethodName(i), type.getMethodLinkageName(i), type.getMethod(i), ret);
+            }
+            return ret;
+        }
+
         private Function convertFunction(LLVMSourceFunctionType functionType) {
             List<LLVMSourceType> parameterTypes = functionType.getParameterTypes();
             LLVMInteropType[] interopParameterTypes = new LLVMInteropType[parameterTypes.size()];
-            Function interopFunctionType = new Function(new Register(functionType, functionType.getReturnType()), interopParameterTypes);
+            Function interopFunctionType = new Function(new Register(functionType, functionType.getReturnType()), interopParameterTypes, false);
             typeCache.put(functionType, interopFunctionType);
             for (int i = 0; i < interopParameterTypes.length; i++) {
                 interopParameterTypes[i] = get(parameterTypes.get(i));
             }
             return interopFunctionType;
+        }
+
+        private Method convertMethod(String name, String linkageName, LLVMSourceFunctionType functionType, Clazz clazz) {
+            List<LLVMSourceType> parameterTypes = functionType.getParameterTypes();
+            LLVMInteropType[] interopParameterTypes = new LLVMInteropType[parameterTypes.size()];
+            Method interopMethodType = new Method(clazz, name, linkageName, new Register(functionType, functionType.getReturnType()), interopParameterTypes);
+            typeCache.put(functionType, interopMethodType);
+            for (int i = 0; i < interopParameterTypes.length; i++) {
+                interopParameterTypes[i] = get(parameterTypes.get(i));
+            }
+            return interopMethodType;
         }
 
         private static Value convertBasic(LLVMSourceBasicType type) {

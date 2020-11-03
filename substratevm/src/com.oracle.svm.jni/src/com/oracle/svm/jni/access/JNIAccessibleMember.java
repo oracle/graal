@@ -90,7 +90,7 @@ abstract class JNIAccessibleMember {
          * world, but this is fine because JNI lookups can only be done on those.
          */
         for (HostedType subType : type.getSubTypes()) {
-            if (subType.isInstantiated() || subType.getWrapped().isInTypeCheck()) {
+            if (subType.isInstantiated() || subType.getWrapped().isReachable()) {
                 /*
                  * We must use the unwrapped type to query its members in the predicate: HostedType
                  * and AnalysisType provide only members that are in our closed world, but members

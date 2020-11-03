@@ -36,7 +36,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.TimeUtils;
 
 /** A collection policy decides when to collect incrementally or completely. */
-abstract class CollectionPolicy {
+public abstract class CollectionPolicy {
     public static class Options {
         @Option(help = "The initial garbage collection policy, as a fully-qualified class name (might require quotes or escaping).")//
         public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>(ByTime.class.getName());
@@ -61,8 +61,10 @@ abstract class CollectionPolicy {
 
     public abstract void nameToLog(Log log);
 
-    static Accounting getAccounting() {
-        return HeapImpl.getHeapImpl().getGCImpl().getAccounting();
+    public abstract String getName();
+
+    static GCAccounting getAccounting() {
+        return GCImpl.getGCImpl().getAccounting();
     }
 
     public static class OnlyIncrementally extends CollectionPolicy {
@@ -79,7 +81,12 @@ abstract class CollectionPolicy {
 
         @Override
         public void nameToLog(Log log) {
-            log.string("only incrementally");
+            log.string(getName());
+        }
+
+        @Override
+        public String getName() {
+            return "only incrementally";
         }
     }
 
@@ -97,7 +104,12 @@ abstract class CollectionPolicy {
 
         @Override
         public void nameToLog(Log log) {
-            log.string("only completely");
+            log.string(getName());
+        }
+
+        @Override
+        public String getName() {
+            return "only completely";
         }
     }
 
@@ -115,7 +127,12 @@ abstract class CollectionPolicy {
 
         @Override
         public void nameToLog(Log log) {
-            log.string("never collect");
+            log.string(getName());
+        }
+
+        @Override
+        public String getName() {
+            return "never collect";
         }
     }
 
@@ -143,7 +160,12 @@ abstract class CollectionPolicy {
 
         @Override
         public void nameToLog(Log log) {
-            log.string("by time: ").signed(Options.PercentTimeInIncrementalCollection.getValue()).string("% in incremental collections");
+            log.string(getName()).string(": ").signed(Options.PercentTimeInIncrementalCollection.getValue()).string("% in incremental collections");
+        }
+
+        @Override
+        public String getName() {
+            return "by time";
         }
 
         /**
@@ -204,7 +226,12 @@ abstract class CollectionPolicy {
 
         @Override
         public void nameToLog(Log log) {
-            log.string("by space and time: ").signed(Options.PercentTimeInIncrementalCollection.getValue()).string("% in incremental collections");
+            log.string(getName()).string(": ").signed(Options.PercentTimeInIncrementalCollection.getValue()).string("% in incremental collections");
+        }
+
+        @Override
+        public String getName() {
+            return "by space and time";
         }
 
         /** If the heap is too full, request a complete collection. */

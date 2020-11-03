@@ -42,7 +42,6 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.RUNTIME;
-import static com.oracle.truffle.polyglot.EngineAccessor.SOURCE;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -78,7 +77,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.polyglot.EngineAccessor.EngineImpl;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToHostValueNode;
@@ -119,6 +117,8 @@ import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.
 abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final String TRUNCATION_SUFFIX = "...";
+
+    private static final String UNKNOWN = "Unknown";
 
     protected final PolyglotLanguageContext languageContext;
 
@@ -648,7 +648,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
 
             String valueToString;
-            String metaObjectToString = "Unknown";
+            String metaObjectToString = UNKNOWN;
             try {
                 InteropLibrary uncached = InteropLibrary.getFactory().getUncached(view);
                 if (uncached.hasMetaObject(view)) {
@@ -665,7 +665,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 languageName = "Java"; // java is our host language for now
 
                 // hide meta objects of null
-                if (metaObjectToString.equals("java.lang.Void")) {
+                if (UNKNOWN.equals(metaObjectToString) && INTEROP.isNull(receiver)) {
                     hideType = true;
                 }
             } else {
@@ -835,6 +835,9 @@ abstract class PolyglotValue extends AbstractValueImpl {
     @Override
     public SourceSection getSourceLocation(Object receiver) {
         try {
+            if (languageContext == null) {
+                return null;
+            }
             Object prev = hostEnter(languageContext);
             try {
                 InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
@@ -848,7 +851,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 if (result == null) {
                     return null;
                 }
-                return EngineImpl.createSourceSectionStatic(SOURCE.getPolyglotSource(result.getSource()), result);
+                return languageContext.getImpl().getPolyglotSourceSection(result);
             } finally {
                 hostLeave(languageContext, prev);
             }
@@ -2281,7 +2284,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Object.class};
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, null};
             }
 
             @Override
@@ -2557,7 +2560,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public Object asHostObject(Object receiver) {
-            return ((HostObject) receiver).obj;
+            return HostObject.valueOf(receiver);
         }
 
         @Override
@@ -2753,7 +2756,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         @Override
         public Object asHostObject(Object receiver) {
             if (cache.isHost) {
-                return ((HostObject) receiver).obj;
+                return HostObject.valueOf(receiver);
             } else {
                 return super.asHostObject(receiver);
             }

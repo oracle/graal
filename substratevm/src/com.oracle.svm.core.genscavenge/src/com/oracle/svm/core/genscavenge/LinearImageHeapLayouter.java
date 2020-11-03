@@ -25,7 +25,6 @@
 package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.image.AbstractImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 
@@ -62,7 +61,7 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
         for (LinearImageHeapPartition partition : getPartitions()) {
             partition.allocateObjects(allocator);
         }
-        initializeHeapInfo();
+        initializeHeapInfo(imageHeap.countDynamicHubs());
         return createDefaultLayoutInfo();
     }
 
@@ -70,10 +69,10 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
      * Store which objects are at the boundaries of the image heap partitions. Here, we also merge
      * the read-only reference partition with the read-only relocatable partition.
      */
-    private void initializeHeapInfo() {
+    private void initializeHeapInfo(int dynamicHubCount) {
         heapInfo.initialize(getReadOnlyPrimitive().firstObject, getReadOnlyPrimitive().lastObject, getReadOnlyReference().firstObject, getReadOnlyReference().lastObject,
                         getReadOnlyRelocatable().firstObject, getReadOnlyRelocatable().lastObject, getWritablePrimitive().firstObject, getWritablePrimitive().lastObject,
                         getWritableReference().firstObject, getWritableReference().lastObject, getWritableHuge().firstObject, getWritableHuge().lastObject,
-                        getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, ImageHeapInfo.NO_CHUNK, ImageHeapInfo.NO_CHUNK);
+                        getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, ImageHeapInfo.NO_CHUNK, ImageHeapInfo.NO_CHUNK, dynamicHubCount);
     }
 }

@@ -43,7 +43,10 @@ struct test {
 
 int main() {
     struct test t = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wbitfield-constant-conversion"
     t.a = 16;
+#pragma clang diagnostic pop
     t.d = 0;
     t.g = 13;
     t.j = 12;

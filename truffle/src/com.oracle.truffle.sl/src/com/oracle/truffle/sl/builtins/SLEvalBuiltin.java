@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,15 +54,17 @@ import com.oracle.truffle.sl.runtime.SLContext;
 /**
  * Builtin function to evaluate source code in any supported language.
  * <p>
- * The call target is cached against the mime type and the source code, so that if they are the same
- * each time then a direct call will be made to a cached AST, allowing it to be compiled and
+ * The call target is cached against the language id and the source code, so that if they are the
+ * same each time then a direct call will be made to a cached AST, allowing it to be compiled and
  * possibly inlined.
  */
 @NodeInfo(shortName = "eval")
 @SuppressWarnings("unused")
 public abstract class SLEvalBuiltin extends SLBuiltinNode {
 
-    @Specialization(guards = {"stringsEqual(cachedId, id)", "stringsEqual(cachedCode, code)"})
+    static final int LIMIT = 2;
+
+    @Specialization(guards = {"stringsEqual(cachedId, id)", "stringsEqual(cachedCode, code)"}, limit = "LIMIT")
     public Object evalCached(String id, String code,
                     @Cached("id") String cachedId,
                     @Cached("code") String cachedCode,

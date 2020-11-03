@@ -314,4 +314,13 @@ final class OptionValuesImpl implements OptionValues {
         }
         return 2.0f * hit / (str1.length() + str2.length());
     }
+
+    @Override
+    public String toString() {
+        if (unparsedValues != null) {
+            return unparsedValues.toString();
+        } else {
+            return values.toString();
+        }
+    }
 }

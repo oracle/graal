@@ -63,7 +63,7 @@ abstract class HostMethodDesc {
 
     abstract String getName();
 
-    abstract HostMethodDesc[] getOverloads();
+    abstract SingleMethod[] getOverloads();
 
     boolean isInternal() {
         return false;
@@ -111,8 +111,8 @@ abstract class HostMethodDesc {
         }
 
         @Override
-        public HostMethodDesc[] getOverloads() {
-            return new HostMethodDesc[]{this};
+        public SingleMethod[] getOverloads() {
+            return new SingleMethod[]{this};
         }
 
         public abstract Object invoke(Object receiver, Object[] arguments) throws Throwable;

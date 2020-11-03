@@ -53,6 +53,7 @@ public class WordTypes {
      * Resolved type for {@link WordBase}.
      */
     private final ResolvedJavaType wordBaseType;
+    private final Class<?> wordBaseClass;
 
     /**
      * Resolved type for {@link Word}.
@@ -79,6 +80,7 @@ public class WordTypes {
     public WordTypes(MetaAccessProvider metaAccess, JavaKind wordKind) {
         this.wordKind = wordKind;
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
+        this.wordBaseClass = WordBase.class;
         this.wordImplType = metaAccess.lookupJavaType(Word.class);
         this.wordFactoryType = metaAccess.lookupJavaType(WordFactory.class);
         this.objectAccessType = metaAccess.lookupJavaType(ObjectAccess.class);
@@ -140,6 +142,10 @@ public class WordTypes {
         return type instanceof ResolvedJavaType && wordBaseType.isAssignableFrom((ResolvedJavaType) type);
     }
 
+    public boolean isWord(Class<?> clazz) {
+        return wordBaseClass.isAssignableFrom(clazz);
+    }
+
     /**
      * Gets the kind for a given type, returning the {@linkplain #getWordKind() word kind} if
      * {@code type} is a {@linkplain #isWord(JavaType) word type}.
@@ -160,6 +166,11 @@ public class WordTypes {
      * Gets the stamp for a given {@linkplain #isWord(JavaType) word type}.
      */
     public Stamp getWordStamp(ResolvedJavaType type) {
+        assert isWord(type);
+        return StampFactory.forKind(wordKind);
+    }
+
+    public Stamp getWordStamp(Class<?> type) {
         assert isWord(type);
         return StampFactory.forKind(wordKind);
     }

@@ -1,8 +1,13 @@
-gateCmdSuffix : ["--kill-with-sigquit", "gate", "--strict-mode", "--extra-vm-argument=-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true -Dgraal.PrintBackendCFG=true", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
+gateCmdSuffix : ["--kill-with-sigquit", "gate", "--strict-mode", "--extra-vm-argument=-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true -Dgraal.PrintBackendCFG=true", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--extra-unittest-argument=${EXTRA_UNITTEST_ARGS}", "--tags"]
 gateCmd : ["mx", "--strict-compliance"] ${gateCmdSuffix}
 
 graalWeekly: ${graal-weekly-notifications} {
   targets: ["weekly"]
+  timelimit: "45:00"
+}
+graalDaily: ${graal-weekly-notifications} {
+  targets: ["daily"]
+  timelimit: "45:00"
 }
 gateTest : {
   environment : {
@@ -54,12 +59,7 @@ gateTestAVX1 : ${gateTest} {
 gateTestCompileImmediately : ${gateTest} {
   environment : {
     EXTRA_VM_ARGS : "-Dpolyglot.engine.AllowExperimentalOptions=true -Dpolyglot.engine.CompileImmediately=true -Dpolyglot.engine.BackgroundCompilation=false -Dtck.inlineVerifierInstrument=false"
-  }
-}
-
-gateLanguageAgnoistcInlining : ${gateTest} {
-  environment : {
-    EXTRA_VM_ARGS : "-Dpolyglot.engine.AllowExperimentalOptions=true -Dpolyglot.engine.LanguageAgnosticInlining=true"
+    EXTRA_UNITTEST_ARGS : "truffle"
   }
 }
 
@@ -188,6 +188,15 @@ gateMathStubsListener: ${linux-amd64} {
   notify_emails: [
     "yudi.zheng@oracle.com"
   ]
+}
+
+dailyJDK15Debug: ${labsjdk-ee-15Debug} {
+    targets: [daily]
+    notify_emails: [
+      "doug.simon@oracle.com"
+      "tom.rodriguez@oracle.com"
+    ]
+    timelimit: "2:00:00"
 }
 
 gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {

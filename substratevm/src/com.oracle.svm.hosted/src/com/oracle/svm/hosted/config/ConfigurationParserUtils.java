@@ -79,13 +79,13 @@ public final class ConfigurationParserUtils {
                         ConfigurationFiles.findConfigurationFiles(directoryFileName).stream());
         parsedCount += files.map(Path::toAbsolutePath).mapToInt(path -> {
             if (!Files.exists(path)) {
-                throw UserError.abort("The " + featureName + " configuration file \"" + path + "\" does not exist.");
+                throw UserError.abort("The %s configuration file \"%s\" does not exist.", featureName, path);
             }
             try (Reader reader = new FileReader(path.toFile())) {
                 doParseAndRegister(parser, reader, featureName, path, configFilesOption);
                 return 1;
             } catch (IOException e) {
-                throw UserError.abort("Could not open " + path + ": " + e.getMessage());
+                throw UserError.abort("Could not open %s: %s", path, e.getMessage());
             }
         }).sum();
 
@@ -94,10 +94,10 @@ public final class ConfigurationParserUtils {
             try {
                 urls = classLoader.findResourcesByName(s);
             } catch (IOException e) {
-                throw UserError.abort(e, "Error while looking for " + s + " in " + classLoader);
+                throw UserError.abort(e, "Error while looking for %s in %s", s, classLoader);
             }
             if (!urls.hasMoreElements()) {
-                throw UserError.abort("Could not find " + featureName + " configuration resource \"" + s + "\".");
+                throw UserError.abort("Could not find %s configuration resource \"%s\".", featureName, s);
             }
             return StreamSupport.stream(new AbstractSpliterator<URL>(Long.MAX_VALUE, Spliterator.ORDERED) {
                 @Override
@@ -120,7 +120,7 @@ public final class ConfigurationParserUtils {
                     return 1;
                 }
             } catch (IOException e) {
-                throw UserError.abort("Could not open " + url + ": " + e.getMessage());
+                throw UserError.abort("Could not open %s: %s", url, e.getMessage());
             }
         }).sum();
 
@@ -135,9 +135,8 @@ public final class ConfigurationParserUtils {
             if (errorMessage == null || errorMessage.isEmpty()) {
                 errorMessage = e.toString();
             }
-            throw UserError.abort("Error parsing " + featureName + " configuration in " + location + ":\n" + errorMessage +
-                            "\nVerify that the configuration matches the schema described in the " +
-                            SubstrateOptionsParser.commandArgument(PrintFlags, "+") + " output for option " + option.getName() + ".");
+            throw UserError.abort("Error parsing %s configuration in %s:%n%s%nVerify that the configuration matches the schema described in the %s output for option %s.",
+                            featureName, location, errorMessage, SubstrateOptionsParser.commandArgument(PrintFlags, "+"), option.getName());
         }
     }
 }

@@ -40,9 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
-
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -50,11 +47,14 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.collection.IntArrayList;
+import org.graalvm.wasm.constants.GlobalModifier;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 
 /**
  * Represents an instantiated WebAssembly module.
@@ -73,6 +73,32 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         return module().name();
     }
 
+    /**
+     * Try to infer the entry function for this instance. Not part from the spec, for testing
+     * purpose only.
+     *
+     * @return exported function named {@code _main}, exported function named {@code _start}, start
+     *         function or {@code null} in this order.
+     */
+    public WasmFunctionInstance inferEntryPoint() {
+        final WasmFunction mainFunction = symbolTable().exportedFunctions().get("_main");
+        if (mainFunction != null) {
+            return functionInstance(mainFunction);
+        }
+        final WasmFunction startFunction = symbolTable().exportedFunctions().get("_start");
+        if (startFunction != null) {
+            return functionInstance(startFunction);
+        }
+        if (symbolTable().startFunction() != null) {
+            return functionInstance(symbolTable().startFunction());
+        }
+        return null;
+    }
+
+    private WasmFunctionInstance functionInstance(WasmFunction function) {
+        return new WasmFunctionInstance(function, target(function.index()));
+    }
+
     @ExportMessage
     boolean hasMembers() {
         return true;
@@ -84,8 +110,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         final SymbolTable symbolTable = symbolTable();
         final WasmFunction function = symbolTable.exportedFunctions().get(member);
         if (function != null) {
-            final WasmFunctionInstance instance = new WasmFunctionInstance(function, target(function.index()));
-            return instance;
+            return functionInstance(function);
         }
         final Integer globalIndex = symbolTable.exportedGlobals().get(member);
         if (globalIndex != null) {
@@ -157,13 +182,13 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         final GlobalRegistry globals = WasmContext.getCurrent().globals();
         final byte type = symbolTable.globalValueType(globalIndex);
         switch (type) {
-            case ValueTypes.I32_TYPE:
+            case WasmType.I32_TYPE:
                 return globals.loadAsInt(address);
-            case ValueTypes.I64_TYPE:
+            case WasmType.I64_TYPE:
                 return globals.loadAsLong(address);
-            case ValueTypes.F32_TYPE:
+            case WasmType.F32_TYPE:
                 return globals.loadAsFloat(address);
-            case ValueTypes.F64_TYPE:
+            case WasmType.F64_TYPE:
                 return globals.loadAsDouble(address);
             default:
                 throw new RuntimeException("Unknown type: " + type);

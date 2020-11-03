@@ -37,8 +37,8 @@ typedef struct rb_io_t {
 int main() {
     rb_io_t *managed = truffle_managed_malloc(sizeof(rb_io_t));
 
-    managed->mode = 101;
-    managed->fd = 102;
+    managed->mode = (void *) 101;
+    managed->fd = (void *) 102;
 
     return 0;
 }

@@ -67,6 +67,8 @@ import java.util.function.Supplier;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionKey;
@@ -730,6 +732,13 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
         addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
+
+        if (OS.getCurrent() == OS.LINUX && JavaVersionUtil.JAVA_SPEC >= 11) {
+            addImageBuilderJavaArgs("-Dawt.toolkit=sun.awt.X11.XToolkit");
+            addImageBuilderJavaArgs("-Djava.awt.graphicsenv=sun.awt.X11GraphicsEnvironment");
+            addImageBuilderJavaArgs("-Djava.awt.printerjob=sun.print.PSPrinterJob");
+        }
+
         /*
          * The presence of CDS and custom system class loaders disables the use of archived
          * non-system class and and triggers a warning.
@@ -1062,6 +1071,18 @@ public class NativeImage {
         }
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
+        boolean afterOption = false;
+        for (String arg : customJavaArgs) {
+            if (arg.startsWith("-")) {
+                afterOption = true;
+            } else {
+                if (!afterOption) {
+                    NativeImage.showError("Found invalid image builder Java VM argument: " + arg);
+                } else {
+                    afterOption = false;
+                }
+            }
+        }
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
 
         /* Perform option consolidation of imageBuilderArgs */
@@ -1226,8 +1247,7 @@ public class NativeImage {
 
     protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         /* Construct ProcessBuilder command from final arguments */
-        ProcessBuilder pb = new ProcessBuilder();
-        List<String> command = pb.command();
+        List<String> command = new ArrayList<>();
         command.add(canonicalize(config.getJavaExecutable()).toString());
         command.addAll(javaArgs);
         if (!bcp.isEmpty()) {
@@ -1255,12 +1275,44 @@ public class NativeImage {
 
         int exitStatus = 1;
         try {
+            Path[] argsFileBox = new Path[1];
+            if (config.useJavaModules()) {
+                /* For Java > 8 we use an argument file to pass the options to the builder */
+                Path argsFile = Files.createTempFile("native-image", "args");
+                argsFileBox[0] = argsFile;
+                Runtime.getRuntime().addShutdownHook(new Thread() {
+                    @Override
+                    public void run() {
+                        if (argsFileBox[0] != null) {
+                            argsFileBox[0].toFile().delete();
+                        }
+                    }
+                });
+                Files.write(argsFile, (Iterable<String>) command.stream().skip(1).map(NativeImage::quoteFileArg)::iterator);
+                List<String> atCommand = new ArrayList<>();
+                atCommand.add(command.get(0));
+                atCommand.add("@" + argsFile);
+                command = atCommand;
+            }
+            ProcessBuilder pb = new ProcessBuilder();
+            pb.command(command);
             Process p = pb.inheritIO().start();
             exitStatus = p.waitFor();
+            if (exitStatus != 0 && isVerbose()) {
+                argsFileBox[0] = null;
+            }
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());
         }
         return exitStatus;
+    }
+
+    private static String quoteFileArg(String arg) {
+        String resultArg = arg.replaceAll(Pattern.quote("\\"), Matcher.quoteReplacement("\\\\"));
+        if (resultArg.contains(" ")) {
+            resultArg = "\"" + resultArg + "\"";
+        }
+        return resultArg;
     }
 
     private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> IS_AOT ? NativeImageServer.create(config) : new NativeImage(config);

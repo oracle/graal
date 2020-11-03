@@ -29,7 +29,7 @@ These steps will build the `wasm.jar` file in `mxbuild/dists/jdk<version>` direc
 which contains the GraalWasm implementation.
 
 
-## Running the tests
+## Running the basic tests
 
 The `build` command will also create the `wasm-tests.jar`, which contains the main test cases.
 After building GraalWasm, the tests can be run as follows:
@@ -66,6 +66,8 @@ Using runtime: org.graalvm.compiler.truffle.runtime.hotspot.java.HotSpotTruffleR
 Finished running: BranchBlockSuite
 🍀 4/4 Wasm tests passed.
 ```
+
+The `WasmTestSuite` is the aggregation of all the basic tests.
 
 
 ## Building the additional tests and benchmarks
@@ -111,6 +113,11 @@ Using runtime: org.graalvm.compiler.truffle.runtime.hotspot.java.HotSpotTruffleR
 Finished running: CSuite
 🍀 1/1 Wasm tests passed.
 ```
+
+We currently have the following extra test suites:
+
+- `CSuite` -- set of programs written in the C language
+- `WatSuite` -- set of programs written in textual WebAssembly
 
 
 ## Running the benchmarks
@@ -160,6 +167,11 @@ Result "com.oracle.truffle.wasm.benchcases.bench.CBenchmarkSuite.run":
 
 # Run complete. Total time: 00:03:47
 ```
+
+We current have the following benchmark suites:
+
+- `CMicroBenchmarkSuite` -- set of programs written in C
+- `WatBenchmarkSuite` -- set of programs written in textual WebAssembly
 
 
 ## Running WebAssembly programs using a launcher
@@ -223,7 +235,7 @@ Context context = contextBuilder.build();
 
 context.eval(source);
 
-Value mainFunction = context.getBindings("wasm").getMember("_main");
+Value mainFunction = context.getBindings("wasm").getMember("example").getMember("_main");
 mainFunction.execute();
 ```
 

@@ -120,6 +120,10 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         return object >= objectStates.length ? null : objectStates[object];
     }
 
+    public boolean hasObjectState(int object) {
+        return object >= 0 && object < objectStates.length && objectStates[object] != null;
+    }
+
     /**
      * Asserts that the given virtual object is available/reachable in the current state.
      */

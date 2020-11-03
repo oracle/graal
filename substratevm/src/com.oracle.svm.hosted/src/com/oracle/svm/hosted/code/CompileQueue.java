@@ -52,7 +52,7 @@ import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.GraalError;
@@ -101,7 +101,7 @@ import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
-import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
+import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -145,7 +145,6 @@ import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Call;
@@ -581,7 +580,7 @@ public class CompileQueue {
                                             invoke.callTarget().targetMethod().format("%H.%n(%p)") + " in " + (graph.method() == null ? graph.toString() : graph.method().format("%H.%n(%p)")));
                         }
 
-                        if (invoke.useForInlining()) {
+                        if (invoke.getInlineControl() == Invoke.InlineControl.Normal) {
                             inlined |= tryInlineTrivial(graph, invoke, !inlined);
                         }
                     }
@@ -933,9 +932,9 @@ public class CompileQueue {
 
     class HostedCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
         @Override
-        public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
+        public CompilationResultBuilder createBuilder(CodeGenProviders providers, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
                         FrameContext frameContext, OptionValues options, DebugContext debug, CompilationResult compilationResult, Register uncompressedNullRegister) {
-            return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister,
+            return new CompilationResultBuilder(providers, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister,
                             EconomicMap.wrapMap(dataCache));
         }
     }
@@ -1025,7 +1024,7 @@ public class CompileQueue {
 
         PhaseSuite<HighTierContext> highTier = suites.getHighTier();
         VMError.guarantee(highTier.removePhase(PartialEscapePhase.class));
-        VMError.guarantee(highTier.removePhase(EarlyReadEliminationPhase.class));
+        VMError.guarantee(highTier.removePhase(ReadEliminationPhase.class));
         PhaseSuite<MidTierContext> midTier = suites.getMidTier();
         VMError.guarantee(midTier.removePhase(FloatingReadPhase.class));
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();

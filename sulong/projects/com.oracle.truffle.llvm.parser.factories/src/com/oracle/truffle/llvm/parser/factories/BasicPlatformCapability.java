@@ -64,8 +64,8 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     }
 
     @Override
-    public String getPolyglotMockLibrary() {
-        return "libpolyglot-mock." + NFIContextExtension.getNativeLibrarySuffix();
+    public String getBuiltinsLibrary() {
+        return "libgraalvm-llvm." + NFIContextExtension.getNativeLibrarySuffixVersioned(1);
     }
 
     @Override
@@ -90,6 +90,11 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
         } catch (IllegalArgumentException e) {
             return new LLVMNativeSyscallNode(index);
         }
+    }
+
+    @Override
+    public String getLibrarySuffix() {
+        return NFIContextExtension.getNativeLibrarySuffix();
     }
 
     protected abstract LLVMSyscallOperationNode createSyscallNode(S syscall);

@@ -56,12 +56,14 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -120,19 +122,26 @@ final class HostObject implements TruffleObject {
     }
 
     static boolean isInstance(Object obj) {
+        return obj instanceof HostObject || obj instanceof HostException;
+    }
+
+    static boolean isHostObjectInstance(Object obj) {
         return obj instanceof HostObject;
     }
 
-    static boolean isInstance(TruffleObject obj) {
-        return obj instanceof HostObject;
-    }
-
-    HostObject withContext(PolyglotLanguageContext context) {
-        return new HostObject(this.obj, context, this.extraInfo);
+    static Object withContext(Object obj, PolyglotLanguageContext context) {
+        if (obj instanceof HostObject) {
+            HostObject hostObject = (HostObject) obj;
+            return new HostObject(hostObject.obj, context, hostObject.extraInfo);
+        } else if (obj instanceof HostException) {
+            return new HostException(((HostException) obj).getOriginal(), context.context);
+        } else {
+            throw CompilerDirectives.shouldNotReachHere("Parameter must be HostObject or HostException.");
+        }
     }
 
     static boolean isJavaInstance(Class<?> targetType, Object javaObject) {
-        if (javaObject instanceof HostObject) {
+        if (isInstance(javaObject)) {
             final Object value = valueOf(javaObject);
             return targetType.isInstance(value);
         } else {
@@ -141,8 +150,12 @@ final class HostObject implements TruffleObject {
     }
 
     static Object valueOf(Object value) {
-        final HostObject obj = (HostObject) value;
-        return obj.obj;
+        if (value instanceof HostException) {
+            return ((HostException) value).getOriginal();
+        } else {
+            final HostObject obj = (HostObject) value;
+            return obj.obj;
+        }
     }
 
     @Override
@@ -191,7 +204,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    final class KeysArray implements TruffleObject {
+    static final class KeysArray implements TruffleObject {
 
         @CompilationFinal(dimensions = 1) private final String[] keys;
 
@@ -268,6 +281,8 @@ final class HostObject implements TruffleObject {
             }
         } else if (isClass() && HostInteropReflect.CLASS_TO_STATIC.equals(name)) {
             return HostObject.forStaticClass(asClass(), languageContext);
+        } else if (HostInteropReflect.ADAPTER_SUPER_MEMBER.equals(name) && HostAdapterFactory.isAdapterInstance(this.obj)) {
+            return HostAdapterFactory.getSuperAdapter(this);
         }
         error.enter();
         throw UnknownIdentifierException.create(name);
@@ -450,7 +465,7 @@ final class HostObject implements TruffleObject {
                         @Shared("isArray") @Cached IsArrayNode isArray,
                         @Cached ArraySet arraySet,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || Integer.MAX_VALUE < index) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
@@ -481,7 +496,7 @@ final class HostObject implements TruffleObject {
                         @Shared("isList") @Cached IsListNode isList,
                         @Shared("toHost") @Cached ToHostNode toHostNode,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || Integer.MAX_VALUE < index) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
@@ -548,7 +563,7 @@ final class HostObject implements TruffleObject {
         static void doList(HostObject receiver, long index,
                         @Shared("isList") @Cached IsListNode isList,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || Integer.MAX_VALUE < index) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
@@ -588,7 +603,7 @@ final class HostObject implements TruffleObject {
                         @Shared("isArray") @Cached IsArrayNode isArray,
                         @Shared("toGuest") @Cached ToGuestValueNode toGuest,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || Integer.MAX_VALUE < index) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
@@ -610,7 +625,7 @@ final class HostObject implements TruffleObject {
                         @Shared("toGuest") @Cached ToGuestValueNode toGuest,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             try {
-                if (index > Integer.MAX_VALUE) {
+                if (index < 0 || Integer.MAX_VALUE < index) {
                     error.enter();
                     throw InvalidArrayIndexException.create(index);
                 }
@@ -1017,6 +1032,83 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
+    ExceptionType getExceptionType(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+        if (isException()) {
+            return obj instanceof InterruptedException ? ExceptionType.INTERRUPT : ExceptionType.RUNTIME_ERROR;
+        }
+        error.enter();
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean isExceptionIncompleteSource(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+        if (isException()) {
+            return false;
+        }
+        error.enter();
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    int getExceptionExitStatus(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+        error.enter();
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean hasExceptionMessage() {
+        return isException() && ((Throwable) obj).getMessage() != null;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getExceptionMessage(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+        String message = isException() ? ((Throwable) obj).getMessage() : null;
+        if (message != null) {
+            return message;
+        }
+        error.enter();
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    @SuppressWarnings("deprecation")
+    boolean hasExceptionCause() {
+        return isException() && ((Throwable) obj).getCause() instanceof com.oracle.truffle.api.TruffleException;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    @SuppressWarnings("deprecation")
+    Object getExceptionCause() throws UnsupportedMessageException {
+        if (isException()) {
+            Throwable cause = ((Throwable) obj).getCause();
+            if (cause instanceof com.oracle.truffle.api.TruffleException) {
+                return cause;
+            }
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean hasExceptionStackTrace() {
+        return isException() && TruffleStackTrace.fillIn((Throwable) obj) != null;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getExceptionStackTrace() throws UnsupportedMessageException {
+        if (isException()) {
+            return EngineAccessor.EXCEPTION.getExceptionStackTrace(obj);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
     RuntimeException throwException(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         if (isException()) {
             HostException ex = (HostException) extraInfo;
@@ -1095,19 +1187,18 @@ final class HostObject implements TruffleObject {
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean hasMetaObject() {
-        return true;
+        return !isNull();
     }
 
     @ExportMessage
     Object getMetaObject() throws UnsupportedMessageException {
-        Object javaObject = this.obj;
-        Class<?> javaType;
-        if (javaObject == null) {
-            javaType = Void.class;
+        if (hasMetaObject()) {
+            Object javaObject = this.obj;
+            Class<?> javaType = javaObject.getClass();
+            return HostObject.forClass(javaType, languageContext);
         } else {
-            javaType = javaObject.getClass();
+            throw UnsupportedMessageException.create();
         }
-        return HostObject.forClass(javaType, languageContext);
     }
 
     @SuppressWarnings("static-method")
@@ -1143,11 +1234,11 @@ final class HostObject implements TruffleObject {
         if (isClass()) {
             Class<?> c = asClass();
             if (HostObject.isInstance(other)) {
-                HostObject otherHost = ((HostObject) other);
-                if (otherHost.isNull()) {
-                    return c == Void.class;
+                Object otherHostObj = HostObject.valueOf(other);
+                if (otherHostObj == null) {
+                    return false;
                 } else {
-                    return c.isInstance(otherHost.obj);
+                    return c.isInstance(otherHostObj);
                 }
             } else if (PolyglotProxy.isProxyGuestObject(other)) {
                 PolyglotProxy otherHost = (PolyglotProxy) other;
@@ -1155,7 +1246,7 @@ final class HostObject implements TruffleObject {
             } else {
                 boolean canConvert = ToHostNode.canConvert(other, c, c,
                                 ToHostNode.allowsImplementation(languageContext, c),
-                                languageContext, ToHostNode.MAX,
+                                languageContext, ToHostNode.LOWEST,
                                 InteropLibrary.getFactory().getUncached(other),
                                 TargetMappingNode.getUncached());
                 return canConvert;

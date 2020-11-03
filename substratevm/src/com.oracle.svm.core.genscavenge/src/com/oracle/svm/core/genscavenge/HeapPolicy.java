@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -42,6 +42,7 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.XOptions;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -58,11 +59,11 @@ public final class HeapPolicy {
     @Platforms(Platform.HOSTED_ONLY.class)
     HeapPolicy(FeatureAccess access) {
         if (!SubstrateUtil.isPowerOf2(getAlignedHeapChunkSize().rawValue())) {
-            throw UserError.abort("AlignedHeapChunkSize (" + getAlignedHeapChunkSize().rawValue() + ")" + " should be a power of 2.");
+            throw UserError.abort("AlignedHeapChunkSize (%d) should be a power of 2.", getAlignedHeapChunkSize().rawValue());
         }
         if (!getLargeArrayThreshold().belowOrEqual(getAlignedHeapChunkSize())) {
-            throw UserError.abort("LargeArrayThreshold (" + getLargeArrayThreshold().rawValue() + ")" +
-                            " should be below or equal to AlignedHeapChunkSize (" + getAlignedHeapChunkSize().rawValue() + ").");
+            throw UserError.abort("LargeArrayThreshold (%d) should be below or equal to AlignedHeapChunkSize (%d).",
+                            getLargeArrayThreshold().rawValue(), getAlignedHeapChunkSize().rawValue());
         }
         userRequestedGCPolicy = instantiatePolicy(access, HeapPolicy.HintGCPolicy.class, HeapPolicyOptions.UserRequestedGCPolicy.getValue());
         collectOnAllocationPolicy = new SometimesCollectOnAllocation();
@@ -72,16 +73,16 @@ public final class HeapPolicy {
     static <T> T instantiatePolicy(FeatureAccess access, Class<T> policyClass, String className) {
         Class<?> policy = access.findClassByName(className);
         if (policy == null) {
-            throw UserError.abort("policy " + className + " does not exist. It must be a fully qualified class name.");
+            throw UserError.abort("Policy %s does not exist. It must be a fully qualified class name.", className);
         }
         Object result;
         try {
             result = policy.getDeclaredConstructor().newInstance();
         } catch (Exception ex) {
-            throw UserError.abort("policy " + className + " cannot be instantiated.");
+            throw UserError.abort("Policy %s cannot be instantiated.", className);
         }
         if (!policyClass.isInstance(result)) {
-            throw UserError.abort("policy " + className + " does not extend " + policyClass.getTypeName() + ".");
+            throw UserError.abort("Policy %s does not extend %s.", className, policyClass.getTypeName());
         }
         return policyClass.cast(result);
     }
@@ -145,7 +146,7 @@ public final class HeapPolicy {
                             .string(" ]").newline();
             return maximumYoungGenerationSize;
         }
-        long hostedValue = SubstrateOptions.MaxNewSize.getHostedValue();
+        long hostedValue = SubstrateGCOptions.MaxNewSize.getHostedValue();
         if (hostedValue != 0) {
             trace.string("  returns maximumYoungGenerationSize: ").unsigned(hostedValue).string(" ]").newline();
             return WordFactory.unsigned(hostedValue);
@@ -185,7 +186,7 @@ public final class HeapPolicy {
             HeapPolicy.setMaximumHeapSize(WordFactory.unsigned(xmx.getValue()));
             return maximumHeapSize;
         }
-        long hostedValue = SubstrateOptions.MaxHeapSize.getHostedValue();
+        long hostedValue = SubstrateGCOptions.MaxHeapSize.getHostedValue();
         if (hostedValue != 0) {
             return WordFactory.unsigned(hostedValue);
         }
@@ -245,7 +246,7 @@ public final class HeapPolicy {
             trace.string("  returns: ").unsigned(minimumHeapSize).string(" ]").newline();
             return minimumHeapSize;
         }
-        long hostedValue = SubstrateOptions.MinHeapSize.getHostedValue();
+        long hostedValue = SubstrateGCOptions.MinHeapSize.getHostedValue();
         if (hostedValue != 0) {
             trace.string("  returns: ").unsigned(hostedValue).string(" ]").newline();
             return WordFactory.unsigned(hostedValue);
@@ -314,10 +315,29 @@ public final class HeapPolicy {
      * Collection-triggering Policies
      */
 
-    static final UninterruptibleUtils.AtomicUnsigned youngUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
+    private static final UninterruptibleUtils.AtomicUnsigned edenUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
+    private static final UninterruptibleUtils.AtomicUnsigned youngUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
 
-    static UnsignedWord getYoungUsedBytes() {
+    public static void setEdenAndYoungGenBytes(UnsignedWord edenBytes, UnsignedWord youngBytes) {
+        assert VMOperation.isGCInProgress() : "would cause races otherwise";
+        youngUsedBytes.set(youngBytes);
+        edenUsedBytes.set(edenBytes);
+    }
+
+    public static void increaseEdenUsedBytes(UnsignedWord value) {
+        youngUsedBytes.addAndGet(value);
+        edenUsedBytes.addAndGet(value);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getYoungUsedBytes() {
+        assert !VMOperation.isGCInProgress() : "value is incorrect during a GC";
         return youngUsedBytes.get();
+    }
+
+    public static UnsignedWord getEdenUsedBytes() {
+        assert !VMOperation.isGCInProgress() : "value is incorrect during a GC";
+        return edenUsedBytes.get();
     }
 
     private static UnsignedWord getAllocationBeforePhysicalMemorySize() {

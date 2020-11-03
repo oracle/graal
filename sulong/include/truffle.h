@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,7 @@
 /*
  * THIS HEADER FILE IS LEGACY API. IT IS INTENDED FOR INTERNAL USAGE ONLY. DO NOT SHARE OR
  * DEPEND ON THIS INTERFACE. IT MIGHT BE CHANGED OR REMOVED AT ANY TIME. FOR STABLE API,
- * REFER TO `polyglot.h`.
+ * REFER TO HEADERS IN `graalvm/llvm/`.
  */
 
 #ifndef TRUFFLE_H
@@ -44,21 +44,39 @@ extern "C" {
 #include <stdbool.h>
 #include <stdlib.h>
 
-void truffle_load_library(const char *string);
+#include <graalvm/llvm/handles.h>
 
 // Managed operations
 void *truffle_virtual_malloc(size_t size);
 void *truffle_managed_malloc(long size);
 void *truffle_managed_memcpy(void *destination, const void *source, size_t count);
+void *truffle_assign_managed(void *dst, void *managed);
 
 // Managed objects <===> native handles
-void *truffle_handle_for_managed(void *managedObject);
-void *truffle_release_handle(void *nativeHandle);
-void *truffle_managed_from_handle(void *nativeHandle);
-bool truffle_is_handle_to_managed(void *nativeHandle);
-void *truffle_assign_managed(void *dst, void *managed);
-void *truffle_deref_handle_for_managed(void *managed);
-bool truffle_cannot_be_handle(void *nativeHandle);
+inline void *truffle_handle_for_managed(void *managedObject) {
+    return create_handle(managedObject);
+}
+
+inline void *truffle_release_handle(void *nativeHandle) {
+    release_handle(nativeHandle);
+    return NULL;
+}
+
+inline void *truffle_managed_from_handle(void *nativeHandle) {
+    return resolve_handle(nativeHandle);
+}
+
+inline bool truffle_is_handle_to_managed(void *nativeHandle) {
+    return is_handle(nativeHandle);
+}
+
+inline void *truffle_deref_handle_for_managed(void *managed) {
+    return create_deref_handle(managed);
+}
+
+inline bool truffle_cannot_be_handle(void *nativeHandle) {
+    return !points_to_handle_space(nativeHandle);
+}
 
 // wrapping functions
 void *truffle_decorate_function(void *function, void *wrapper);

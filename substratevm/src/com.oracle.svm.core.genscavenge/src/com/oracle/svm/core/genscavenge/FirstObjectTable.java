@@ -154,7 +154,7 @@ public final class FirstObjectTable {
 
     /**
      * The bias for exponential entry offsets to distinguish them from linear offset entries.
-     * 
+     *
      * The limit for {@link #EXPONENT_MAX} seems to be that for the maximal object of 2^64 bytes, I
      * never have to skip back more than (2^64)/{@link #ENTRY_SIZE_BYTES} entries, so the maximum
      * exponent I'll need is 55. So the EXPONENT_BIAS just has to leave enough room for that many
@@ -167,7 +167,7 @@ public final class FirstObjectTable {
      * In fact, the current largest object that can be allocated is an array of long (or double, or
      * Object) of size Integer.MAX_VALUE, so the largest skip back is (2^35)/512 or 2^24. That
      * leaves lots of room for special values.
-     * 
+     *
      */
     private static final int EXPONENT_BIAS = 1 + LINEAR_OFFSET_MAX - EXPONENT_MIN;
 
@@ -193,11 +193,13 @@ public final class FirstObjectTable {
 
     private static void setTableForObjectUnchecked(Pointer table, Pointer memory, Pointer start, Pointer end) {
         assert memory.belowOrEqual(start);
-        assert start.belowThan(end);
-        UnsignedWord startOffset = start.subtract(memory);
-        /* The argument "end" is just past the real end of the object, so back it up one byte. */
-        UnsignedWord endOffset = end.subtract(1).subtract(memory);
-        setTableForObjectAtLocation(table, startOffset, endOffset);
+        setTableForObjectAtOffsetUnchecked(table, start.subtract(memory), end.subtract(memory));
+    }
+
+    static void setTableForObjectAtOffsetUnchecked(Pointer table, UnsignedWord startOffset, UnsignedWord endOffset) {
+        assert startOffset.belowThan(endOffset);
+        UnsignedWord actualEndOffset = endOffset.subtract(1); // methods wants offset of last byte
+        setTableForObjectAtLocation(table, startOffset, actualEndOffset);
     }
 
     private static void setTableForObjectAtLocation(Pointer table, UnsignedWord startOffset, UnsignedWord endOffset) {

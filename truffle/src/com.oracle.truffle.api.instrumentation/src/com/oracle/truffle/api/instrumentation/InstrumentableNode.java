@@ -363,6 +363,26 @@ public interface InstrumentableNode extends NodeInterface {
     }
 
     /**
+     * Find the first {@link #isInstrumentable() instrumentable} node on it's parent chain. If the
+     * provided node is instrumentable itself, it is returned. If not, the first parent node that is
+     * instrumentable is returned, if any.
+     *
+     * @param node a Node
+     * @return the first instrumentable node, or <code>null</code> when no instrumentable parent
+     *         exists.
+     * @since 20.3
+     */
+    static Node findInstrumentableParent(Node node) {
+        Node inode = node;
+        while (inode != null && (inode instanceof WrapperNode || !(inode instanceof InstrumentableNode && ((InstrumentableNode) inode).isInstrumentable()))) {
+            inode = inode.getParent();
+        }
+        assert inode == null || inode instanceof InstrumentableNode && ((InstrumentableNode) inode).isInstrumentable() : inode;
+        assert !(inode instanceof WrapperNode) : inode;
+        return inode;
+    }
+
+    /**
      * Nodes that the instrumentation framework inserts into guest language ASTs (between
      * {@link InstrumentableNode instrumentable} guest language nodes and their parents) for the
      * purpose of interposing on execution events and reporting them via the instrumentation

@@ -65,6 +65,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * to replace {@code _klass._java_mirror._klass} with {@code _klass}. The constant folding could be
  * handled by
  * {@link ReadNode#canonicalizeRead(ValueNode, AddressNode, LocationIdentity, CanonicalizerTool)}.
+ *
+ * Note that there is no {@code Klass} for primitive types in the Java HotSpot VM. If the input
+ * {@link Class} is a primitive type, the returned value is null.
  */
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 @NodeIntrinsicFactory
@@ -77,12 +80,12 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
         this.clazz = clazz;
     }
 
-    public static ValueNode create(ValueNode clazz, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean allUsagesAvailable) {
-        return canonical(null, metaAccess, constantReflection, allUsagesAvailable, KlassPointerStamp.klass(), clazz);
+    public static ValueNode create(ValueNode clazz, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        return canonical(null, metaAccess, constantReflection, false, KlassPointerStamp.klass(), clazz);
     }
 
     public static boolean intrinsify(GraphBuilderContext b, ValueNode clazz) {
-        ValueNode clazzValue = create(clazz, b.getMetaAccess(), b.getConstantReflection(), false);
+        ValueNode clazzValue = create(clazz, b.getMetaAccess(), b.getConstantReflection());
         b.push(JavaKind.Object, b.append(clazzValue));
         return true;
     }

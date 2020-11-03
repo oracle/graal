@@ -81,9 +81,8 @@ public class HostedHeapDumpFeature implements Feature {
                 if (validPhases.contains(value)) {
                     phases.add(value);
                 } else {
-                    throw UserError.abort("Invalid value " + value + " given for " +
-                                    SubstrateOptionsParser.commandArgument(Options.DumpHeap, "") + '.' +
-                                    " Valid values are: " + String.join(", ", validPhases) + '.');
+                    throw UserError.abort("Invalid value %s given for %s. Valid values are: %s.", value,
+                                    SubstrateOptionsParser.commandArgument(Options.DumpHeap, ""), String.join(", ", validPhases));
                 }
             }
             return !phases.isEmpty();

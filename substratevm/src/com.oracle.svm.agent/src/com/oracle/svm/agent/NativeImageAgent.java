@@ -132,6 +132,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         List<String> callerFilterFiles = new ArrayList<>();
         List<String> accessFilterFiles = new ArrayList<>();
         boolean experimentalClassLoaderSupport = true;
+        boolean methodHandleSupport = false;
         boolean build = false;
         int configWritePeriod = -1; // in seconds
         int configWritePeriodInitialDelay = 1; // in seconds
@@ -201,6 +202,10 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 build = true;
             } else if (token.startsWith("build=")) {
                 build = Boolean.parseBoolean(getTokenValue(token));
+            } else if (token.equals("method-handle-support")) {
+                methodHandleSupport = true;
+            } else if (token.startsWith("method-handle-support")) {
+                methodHandleSupport = Boolean.parseBoolean(getTokenValue(token));
             } else {
                 System.err.println(MESSAGE_PREFIX + "unsupported option: '" + token + "'. Please read Configuration.md.");
                 return 1;
@@ -298,7 +303,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             if (!restrictConfigs.getResourceConfigPaths().isEmpty()) {
                 resourceVerifier = new ResourceAccessVerifier(restrictConfigs.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION), accessAdvisor);
             }
-            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, verifier, proxyVerifier, resourceVerifier, this, experimentalClassLoaderSupport);
+            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, verifier, proxyVerifier, resourceVerifier, this, experimentalClassLoaderSupport, methodHandleSupport);
         } catch (Throwable t) {
             System.err.println(MESSAGE_PREFIX + t);
             return 3;

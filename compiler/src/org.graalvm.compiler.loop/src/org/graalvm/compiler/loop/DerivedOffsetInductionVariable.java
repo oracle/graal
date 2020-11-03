@@ -153,6 +153,37 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     }
 
     @Override
+    public boolean isConstantScale(InductionVariable ref) {
+        return super.isConstantScale(ref) || base.isConstantScale(ref);
+    }
+
+    @Override
+    public long constantScale(InductionVariable ref) {
+        assert isConstantScale(ref);
+        if (this == ref) {
+            return 1;
+        }
+        return base.constantScale(ref) * (value instanceof SubNode && base.valueNode() == value.getY() ? -1 : 1);
+    }
+
+    @Override
+    public boolean offsetIsZero(InductionVariable ref) {
+        if (this == ref) {
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public ValueNode offsetNode(InductionVariable ref) {
+        assert !offsetIsZero(ref);
+        if (!base.offsetIsZero(ref)) {
+            return null;
+        }
+        return offset;
+    }
+
+    @Override
     public String toString() {
         return String.format("DerivedOffsetInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), offset);
     }

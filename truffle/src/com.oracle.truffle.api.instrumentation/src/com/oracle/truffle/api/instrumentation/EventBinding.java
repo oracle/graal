@@ -85,6 +85,10 @@ public class EventBinding<T> {
         this.element = element;
     }
 
+    final AbstractInstrumenter getInstrumenter() {
+        return instrumenter;
+    }
+
     /**
      * @return the subscriber: an {@link ExecutionEventNodeFactory} or
      *         {@link ExecutionEventListener}.
@@ -128,14 +132,12 @@ public class EventBinding<T> {
 
     static final class Source<T> extends EventBinding<T> {
 
-        private final AbstractInstrumenter instrumenter;
         private final SourceSectionFilter filterSourceSection;
         private final SourceSectionFilter inputFilter;
         private final boolean isExecutionEvent;
 
         Source(AbstractInstrumenter instrumenter, SourceSectionFilter filterSourceSection, SourceSectionFilter inputFilter, T element, boolean isExecutionEvent) {
             super(instrumenter, element);
-            this.instrumenter = instrumenter;
             this.inputFilter = inputFilter;
             this.filterSourceSection = filterSourceSection;
             this.isExecutionEvent = isExecutionEvent;
@@ -286,11 +288,7 @@ public class EventBinding<T> {
         }
 
         boolean isLanguageBinding() {
-            return instrumenter instanceof LanguageClientInstrumenter;
-        }
-
-        AbstractInstrumenter getInstrumenter() {
-            return instrumenter;
+            return getInstrumenter() instanceof LanguageClientInstrumenter;
         }
 
     }

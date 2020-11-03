@@ -33,6 +33,9 @@ int main() {
     int c = 33;
     b = &c;
     a = &b;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
     int ***d = &a;
+#pragma clang diagnostic pop
     return **a;
 }

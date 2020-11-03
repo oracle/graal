@@ -45,9 +45,9 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -68,7 +68,6 @@ import java.util.logging.StreamHandler;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import java.io.PrintStream;
 
 final class PolyglotLoggers {
 
@@ -115,14 +114,6 @@ final class PolyglotLoggers {
             return ((PolyglotStreamHandler) h1).sink == ((PolyglotStreamHandler) h2).sink;
         }
         return false;
-    }
-
-    static Function<String, TruffleLogger> createEngineLoggerProvider(PolyglotEngineImpl engine) {
-        return new EngineLoggerProvider(engine);
-    }
-
-    static Function<String, TruffleLogger> createEngineLoggerProvider(String defaultLogFile) {
-        return new EngineLoggerProvider(defaultLogFile);
     }
 
     /**
@@ -209,16 +200,16 @@ final class PolyglotLoggers {
         LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
     }
 
-    private static final class LoggerCacheImpl implements LoggerCache {
+    static final class LoggerCacheImpl implements LoggerCache {
 
         static final LoggerCache DEFAULT = new LoggerCacheImpl(PolyglotLogHandler.INSTANCE, null, true, null, Collections.emptySet());
 
         private final Handler handler;
         private final boolean useCurrentContext;
-        private final Reference<PolyglotEngineImpl> engineRef;
         private final Map<String, Level> defaultValue;
         private final Set<String> rawLoggerIds;
         private final Set<Level> implicitLevels;
+        private final WeakReference<PolyglotEngineImpl> engineRef;
 
         private LoggerCacheImpl(Handler handler, PolyglotEngineImpl engine, boolean useCurrentContext, Map<String, Level> defaultValue,
                         Set<String> rawLoggerIds, Level... implicitLevels) {
@@ -250,12 +241,10 @@ final class PolyglotLoggers {
             return engineRef == null ? null : engineRef.get();
         }
 
-        @Override
         public Handler getLogHandler() {
             return handler;
         }
 
-        @Override
         public Map<String, Level> getLogLevels() {
             if (useCurrentContext) {
                 PolyglotContextImpl context = getCurrentOuterContext();
@@ -548,19 +537,18 @@ final class PolyglotLoggers {
         }
     }
 
-    private static final class EngineLoggerProvider implements Function<String, TruffleLogger> {
+    static final class EngineLoggerProvider implements Function<String, TruffleLogger> {
 
-        private final PolyglotEngineImpl engine;
         private final String logFile;
+
         private volatile Object loggers;
+        private volatile PolyglotEngineImpl engine;
+        private final Handler logHandler;
+        private final Map<String, Level> logLevels;
 
-        EngineLoggerProvider(PolyglotEngineImpl engine) {
-            this.engine = engine;
-            this.logFile = null;
-        }
-
-        EngineLoggerProvider(String logFile) {
-            this.engine = null;
+        EngineLoggerProvider(Handler logHandler, Map<String, Level> logLevels, String logFile) {
+            this.logHandler = logHandler;
+            this.logLevels = logLevels;
             this.logFile = logFile;
         }
 
@@ -574,9 +562,9 @@ final class PolyglotLoggers {
                         LoggerCache spi;
                         Map<String, Level> levels;
                         if (engine != null) {
-                            Handler useHandler = resolveHandler(engine.logHandler);
+                            Handler useHandler = resolveHandler(logHandler);
                             spi = LoggerCacheImpl.newEngineLoggerCache(useHandler, engine, false, Collections.singleton(GRAAL_COMPILER_LOG_ID), Level.INFO);
-                            levels = engine.logLevels;
+                            levels = logLevels;
                         } else {
                             Handler useHandler;
                             if (PolyglotEngineImpl.ALLOW_IO && logFile != null) {
@@ -593,6 +581,10 @@ final class PolyglotLoggers {
                 }
             }
             return EngineAccessor.LANGUAGE.getLogger(loggerId, null, loggersCache);
+        }
+
+        void setEngine(PolyglotEngineImpl engine) {
+            this.engine = engine;
         }
 
         private static Handler resolveHandler(Handler handler) {

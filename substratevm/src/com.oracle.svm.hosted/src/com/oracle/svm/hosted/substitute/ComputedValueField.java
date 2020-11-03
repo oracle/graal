@@ -252,7 +252,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 try {
                     Constructor<?>[] constructors = targetClass.getDeclaredConstructors();
                     if (constructors.length != 1) {
-                        throw UserError.abort("The custom field value computer class " + targetClass.getName() + " has more than one constructor");
+                        throw UserError.abort("The custom field value computer class %s has more than one constructor", targetClass.getName());
                     }
                     Constructor<?> constructor = constructors[0];
 
@@ -277,8 +277,8 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                         }
                         newValue = ((CustomFieldValueTransformer) instance).transform(hMetaAccess, original, annotated, receiverValue, originalValue);
                     } else {
-                        throw UserError.abort("The custom field value computer class " + targetClass.getName() + " does not implement " + CustomFieldValueComputer.class.getSimpleName() + " or " +
-                                        CustomFieldValueTransformer.class.getSimpleName());
+                        throw UserError.abort("The custom field value computer class %s does not implement %s or %s", targetClass.getName(),
+                                        CustomFieldValueComputer.class.getSimpleName(), CustomFieldValueTransformer.class.getSimpleName());
                     }
 
                     result = originalSnippetReflection.forBoxed(annotated.getJavaKind(), newValue);

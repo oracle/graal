@@ -7,11 +7,11 @@ This document explains what the various interop messages mean in the context of 
 GraalVM LLVM runtime.
 
 Detailed reference documentation of Polyglot interop support in the GraalVM LLVM
-runtime can be found in [`polyglot.h`](../../projects/com.oracle.truffle.llvm.libraries.bitcode/include/polyglot.h)
-(located in `$GRAALVM_HOME/jre/languages/llvm/include/polyglot.h` in the GraalVM
+runtime can be found in [`graalvm/llvm/polyglot.h`](../../projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/polyglot.h)
+(located in `$GRAALVM_HOME/jre/languages/llvm/include/graalvm/llvm/polyglot.h` in the GraalVM
 distribution).
 
-To use the functions from `polyglot.h`, binaries have to link against `-lpolyglot-mock`.
+To use the functions from `graalvm/llvm/*` headers, binaries have to link against `-lgraalvm-llvm`.
 
 ## How the LLVM runtime responds to messages from other languages
 
@@ -94,7 +94,7 @@ myStruct->someField = 5;      // sends writeMember("someField", 5)
 ### explicit access
 
 Other interop messages can be sent directly using the built-ins defined in
-`polyglot.h`.
+`graalvm/llvm/polyglot.h`.
 
 ## Simulating native pointers with foreign objects
 
@@ -109,7 +109,7 @@ There are two mechanisms for achieving this.
 Any foreign objects implementing the `NativeTypeLibrary` will behave as if it were
 a native pointer pointing to the type returned by the `getNativeType` message.
 The value returned by `getNativeType` should be a `polyglot_typeid` as returned
-by a `polyglot_*_typeid` function (see `polyglot.h`).
+by a `polyglot_*_typeid` function (see `graalvm/llvm/polyglot.h`).
 
 The foreing object will then behave as if it was cast by `polyglot_as_typed(type, ...)`
 to that type.

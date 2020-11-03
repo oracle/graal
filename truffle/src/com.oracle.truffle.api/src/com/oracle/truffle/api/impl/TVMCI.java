@@ -41,15 +41,8 @@
 package com.oracle.truffle.api.impl;
 
 import java.io.Closeable;
-import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-
-import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -157,42 +150,6 @@ public abstract class TVMCI {
         protected final void finishWarmup(C testContext, T callTarget) {
             testTvmci.finishWarmup(testContext, callTarget);
         }
-    }
-
-    private static volatile Object fallbackEngineData;
-
-    /**
-     * Used to get an {@link org.graalvm.compiler.truffle.runtime.EngineData}, which contains the
-     * option values for --engine options, and other per-Engine data. Called in the
-     * {@link org.graalvm.compiler.truffle.runtime.OptimizedCallTarget} constructor.
-     * <p>
-     * The resulting instance is cached in the Engine.
-     */
-    @SuppressWarnings("unchecked")
-    protected static <T> T getOrCreateRuntimeData(RootNode rootNode, BiFunction<OptionValues, Function<String, TruffleLogger>, T> constructor) {
-        Objects.requireNonNull(constructor);
-        final Accessor.NodeSupport nodesAccess = DefaultRuntimeAccessor.NODES;
-        final EngineSupport engineAccess = DefaultRuntimeAccessor.ENGINE;
-
-        final Object polyglotEngine;
-        if (rootNode == null) {
-            polyglotEngine = engineAccess.getCurrentPolyglotEngine();
-        } else {
-            polyglotEngine = nodesAccess.getPolyglotEngine(rootNode);
-        }
-
-        if (polyglotEngine != null) {
-            return engineAccess.getOrCreateRuntimeData(polyglotEngine, constructor);
-        } else {
-            if (fallbackEngineData == null) {
-                fallbackEngineData = engineAccess.getOrCreateRuntimeData(null, constructor);
-            }
-            return (T) fallbackEngineData;
-        }
-    }
-
-    protected static void resetFallbackEngineData() {
-        fallbackEngineData = null;
     }
 
 }

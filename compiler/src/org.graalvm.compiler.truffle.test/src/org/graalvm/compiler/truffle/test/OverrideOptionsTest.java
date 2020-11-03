@@ -26,10 +26,10 @@ package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
@@ -43,10 +43,10 @@ public class OverrideOptionsTest extends TruffleCompilerImplTest {
         setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option("engine.CompileImmediately",
                         Boolean.TRUE.toString()).option("engine.InliningNodeBudget", "42").build());
         OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
-        Assert.assertEquals((Integer) 42, TruffleRuntimeOptions.getPolyglotOptionValue(callTarget.getOptionValues(), PolyglotCompilerOptions.InliningNodeBudget));
-        OptionValues values = TruffleCompilerOptions.getOptionsForCompiler(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
-        Assert.assertEquals(false, TruffleCompilerOptions.getPolyglotOptionValue(values, PolyglotCompilerOptions.BackgroundCompilation));
-        Assert.assertEquals(true, TruffleCompilerOptions.getPolyglotOptionValue(values, PolyglotCompilerOptions.CompileImmediately));
-        Assert.assertEquals((Integer) 42, TruffleCompilerOptions.getPolyglotOptionValue(values, PolyglotCompilerOptions.InliningNodeBudget));
+        Assert.assertEquals((Integer) 42, callTarget.getOptionValue(PolyglotCompilerOptions.InliningNodeBudget));
+        OptionValues values = TruffleCompilerImpl.getOptionsForCompiler(GraalTruffleRuntime.getOptionsForCompiler(callTarget));
+        Assert.assertEquals(false, values.get(PolyglotCompilerOptions.BackgroundCompilation));
+        Assert.assertEquals(true, values.get(PolyglotCompilerOptions.CompileImmediately));
+        Assert.assertEquals((Integer) 42, values.get(PolyglotCompilerOptions.InliningNodeBudget));
     }
 }

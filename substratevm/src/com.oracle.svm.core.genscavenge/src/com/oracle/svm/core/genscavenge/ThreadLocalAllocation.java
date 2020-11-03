@@ -30,7 +30,6 @@ import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLA
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -60,9 +59,9 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -111,10 +110,7 @@ public final class ThreadLocalAllocation {
     }
 
     /** TLAB for regular allocations. */
-    public static final FastThreadLocalBytes<Descriptor> regularTLAB = FastThreadLocalFactory.createBytes(ThreadLocalAllocation::getRegularTLABSize);
-
-    /** A thread-local free list of aligned chunks. */
-    static final FastThreadLocalWord<AlignedHeader> freeList = FastThreadLocalFactory.createWord();
+    public static final FastThreadLocalBytes<Descriptor> regularTLAB = FastThreadLocalFactory.createBytes(ThreadLocalAllocation::getRegularTLABSize).setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     private static final OutOfMemoryError arrayAllocationTooLarge = new OutOfMemoryError("Array allocation too large.");
 
@@ -303,12 +299,7 @@ public final class ThreadLocalAllocation {
     }
 
     static void disableAndFlushForThread(IsolateThread vmThread) {
-        retireToSpace(regularTLAB.getAddress(vmThread), HeapImpl.getHeapImpl().getAllocationSpace());
-
-        AlignedHeader alignedChunk;
-        while ((alignedChunk = popFromThreadLocalFreeList(vmThread)).isNonNull()) {
-            HeapImpl.getChunkProvider().consumeAlignedChunk(alignedChunk);
-        }
+        retireToSpace(regularTLAB.getAddress(vmThread), HeapImpl.getHeapImpl().getYoungGeneration().getEden());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -320,7 +311,6 @@ public final class ThreadLocalAllocation {
             VMError.guarantee(VMThreads.nextThread(thread).isNull(), "Other isolate threads are still active");
         }
         freeHeapChunks(regularTLAB.getAddress(thread));
-        HeapChunkProvider.freeAlignedChunkList(freeList.get());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -371,37 +361,13 @@ public final class ThreadLocalAllocation {
         log().string("  ThreadLocalAllocator.retireToSpace ]").newline();
     }
 
-    @Uninterruptible(reason = "Pushes the free list that is drained, at a safepoint, by garbage collections.")
-    private static void pushToThreadLocalFreeList(AlignedHeader alignedChunk) {
-        assert alignedChunk.isNonNull() : "Should not push a null chunk on the free list.";
-        AlignedHeader head = freeList.get();
-        HeapChunk.setNext(alignedChunk, head);
-        freeList.set(alignedChunk);
-    }
-
-    @Uninterruptible(reason = "Pops from the free list that is drained, at a safepoint, by garbage collections.")
-    private static AlignedHeader popFromThreadLocalFreeList(IsolateThread thread) {
-        AlignedHeader result = freeList.get(thread);
-        if (result.isNonNull()) {
-            AlignedHeader next = HeapChunk.getNext(result);
-            HeapChunk.setNext(result, WordFactory.nullPointer());
-            freeList.set(thread, next);
-        }
-        return result;
-    }
-
     /**
      * Retires the current allocation chunk and acquires a new one that the caller must install in
      * {@linkplain Uninterruptible uninterruptible} code via {@link #registerNewAllocationChunk}.
      */
     private static AlignedHeader prepareNewAllocationChunk(Descriptor tlab) {
         retireCurrentAllocationChunk(tlab);
-
-        AlignedHeader newChunk = popFromThreadLocalFreeList(CurrentIsolate.getCurrentThread());
-        if (newChunk.isNull()) {
-            newChunk = HeapImpl.getChunkProvider().produceAlignedChunk();
-        }
-        return newChunk;
+        return HeapImpl.getChunkProvider().produceAlignedChunk();
     }
 
     @Uninterruptible(reason = "Modifies TLAB")
@@ -447,31 +413,6 @@ public final class ThreadLocalAllocation {
              */
             tlab.setAllocationEnd(HeapChunk.getEndPointer(alignedChunk), TLAB_END_IDENTITY);
             HeapChunk.setTopPointer(alignedChunk, WordFactory.nullPointer());
-        }
-    }
-
-    public static final class TestingBackdoor {
-        public static AlignedHeader getAlignedChunkFromProvider() {
-            return HeapImpl.getChunkProvider().produceAlignedChunk();
-        }
-
-        public static AlignedHeader popFromThreadLocalFreeList() {
-            return ThreadLocalAllocation.popFromThreadLocalFreeList(CurrentIsolate.getCurrentThread());
-        }
-
-        public static void pushToThreadLocalFreeList(AlignedHeader alignedChunk) {
-            ThreadLocalAllocation.pushToThreadLocalFreeList(alignedChunk);
-        }
-
-        public static boolean isEmptyThreadLocalFreeList() {
-            return freeList.get().isNull();
-        }
-
-        public static boolean isHeadThreadLocalFreeList(AlignedHeader alignedChunk) {
-            return freeList.get().equal(alignedChunk);
-        }
-
-        private TestingBackdoor() {
         }
     }
 }

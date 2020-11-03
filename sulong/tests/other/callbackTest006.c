@@ -36,7 +36,7 @@ struct container {
 
 void store_native_function(struct container *);
 
-int main(int argc, char **argv) {
+int main() {
     struct container c;
     store_native_function(&c);
     fprintf(stderr, "%p\n", c.callback);

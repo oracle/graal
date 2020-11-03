@@ -29,6 +29,9 @@
  */
 int main() {
     int sum = 0;
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconstant-logical-operand"
     if (0 || 0 || 0 || -1) {
         sum += 1;
     }
@@ -44,5 +47,7 @@ int main() {
     if (0 || 1 || 0 || 0) {
         sum += 16;
     }
+#pragma clang diagnostic pop
+
     return sum;
 }

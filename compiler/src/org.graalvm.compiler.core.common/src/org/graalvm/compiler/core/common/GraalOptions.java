@@ -93,8 +93,8 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> LoopPeeling = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> ReassociateInvariants = new OptionKey<>(true);
+    @Option(help = "Re-associate loop invariants and constants.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> ReassociateExpressions = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> FullUnroll = new OptionKey<>(true);
@@ -113,6 +113,12 @@ public final class GraalOptions {
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseLoopLimitChecks = new OptionKey<>(true);
+
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionKey<Boolean> LoopPredication = new OptionKey<>(true);
+
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionKey<Boolean> LoopPredicationMainPath = new OptionKey<>(true);
 
     // debugging settings
     @Option(help = "", type = OptionType.Debug)

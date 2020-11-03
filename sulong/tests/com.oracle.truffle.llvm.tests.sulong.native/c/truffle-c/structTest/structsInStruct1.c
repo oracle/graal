@@ -47,6 +47,6 @@ int main() {
 
     test.second.a = 8;
     test.second.b = 3435;
-    test.second.c[3] = 43;
-    return test.first.a - test.first.b + test.first.c[2] + test.first.c[0] + test.second.a + test.second.b - test.second.c[3];
+    test.second.c[2] = 43;
+    return test.first.a - test.first.b + test.first.c[2] + test.first.c[0] + test.second.a + test.second.b - test.second.c[2];
 }

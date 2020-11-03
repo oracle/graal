@@ -165,8 +165,8 @@ public class StubUtil {
     /**
      * Exits the VM with a given error message.
      * <p>
-     * <b>Stubs must use this instead of {@link VMErrorNode#vmError(String, long)} to avoid an
-     * object constant in a RuntimeStub.</b>
+     * <b>Stubs must use this instead of {@link VMErrorNode#vmError} to avoid an object constant in
+     * a RuntimeStub.</b>
      *
      * @param message an error message
      */

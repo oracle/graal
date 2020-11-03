@@ -28,7 +28,10 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdlib.h>
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
+
+void *memmove(void *, const void *, size_t);
+void *memset(void *, int, size_t);
 
 void get_types(void (*ret)(polyglot_typeid typeid)) {
     ret(polyglot_array_typeid(polyglot_i8_typeid(), 0));

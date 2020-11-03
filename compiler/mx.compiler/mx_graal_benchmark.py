@@ -57,6 +57,8 @@ _IMAGE_JMH_BENCHMARK_ARGS = [
     '-Dnative-image.benchmark.extra-profile-run-arg=-wi',
     '-Dnative-image.benchmark.extra-profile-run-arg=1',
     '-Dnative-image.benchmark.extra-profile-run-arg=-i5',
+
+    '-Dnative-image.benchmark.benchmark-suite-name=jmh',
 ]
 
 
@@ -130,10 +132,10 @@ def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, inc
 _graal_variants = [
     ('g1gc', ['-XX:+UseG1GC'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
-    ('no-splitting', ['-Dgraal.TruffleSplitting=false'], 0),
-    ('limit-truffle-inlining', ['-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
-    ('no-splitting-limit-truffle-inlining', ['-Dgraal.TruffleSplitting=false', '-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
-    ('la-inline', ['-Dgraal.TruffleLanguageAgnosticInlining=true'], 0),
+    ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
+    ('limit-truffle-inlining', ['-Dpolyglot.engine.InliningRecursionDepth=2'], 0),
+    ('no-splitting-limit-truffle-inlining', ['-Dpolyglot.engine.Splitting=false', '-Dpolyglot.engine.InliningRecursionDepth=2'], 0),
+    ('la-inline', ['-Dpolyglot.engine.LanguageAgnosticInlining=true'], 0),
 ]
 build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 
@@ -409,7 +411,7 @@ class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite): # 
         return "graal-compiler"
 
     def extraVmArgs(self):
-        return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
+        return ['-XX:-UseJVMCIClassLoader'] + ['-Dnative-image.benchmark.benchmark-name=' + self.name()] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
 
 
 mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
@@ -418,7 +420,7 @@ mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
 class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite):
 
     def extraVmArgs(self):
-        return super(JMHJarGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
+        return super(JMHJarGraalCoreBenchmarkSuite, self).extraVmArgs() + ['-Dnative-image.benchmark.benchmark-name=' + self.name()] + _IMAGE_JMH_BENCHMARK_ARGS
 
     def name(self):
         return "jmh-jar"
@@ -436,7 +438,7 @@ mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
 class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
 
     def extraVmArgs(self):
-        return super(JMHDistGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
+        return super(JMHDistGraalCoreBenchmarkSuite, self).extraVmArgs() + ['-Dnative-image.benchmark.benchmark-name=' + self.name()] + _IMAGE_JMH_BENCHMARK_ARGS
 
     def name(self):
         return "jmh-dist"

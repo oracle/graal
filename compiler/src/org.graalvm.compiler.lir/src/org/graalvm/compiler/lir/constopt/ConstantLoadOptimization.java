@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.lir.constopt;
 
+import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.phases.LIRPhase.Options.LIROptimization;
 
@@ -201,10 +202,10 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
 
                 InstructionValueConsumer loadConsumer = (instruction, value, mode, flags) -> {
                     if (isVariable(value)) {
-                        Variable var = (Variable) value;
+                        Variable var = asVariable(value);
                         AllocatableValue base = getBasePointer(var);
-                        if (base != null && base instanceof Variable) {
-                            if (map.remove((Variable) base) != null) {
+                        if (base != null && isVariable(base)) {
+                            if (map.remove(asVariable(base)) != null) {
                                 // We do not want optimize constants which are used as base
                                 // pointer. The reason is that it would require to update all
                                 // the derived Variables (LIRKind and so on)
@@ -239,7 +240,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
 
                 InstructionValueConsumer useConsumer = (instruction, value, mode, flags) -> {
                     if (isVariable(value)) {
-                        Variable var = (Variable) value;
+                        Variable var = asVariable(value);
                         if (!phiConstants.get(var.index)) {
                             DefUseTree tree = map.get(var);
                             if (tree != null) {

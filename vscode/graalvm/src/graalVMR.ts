@@ -7,37 +7,57 @@
 
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
-import * as fs from 'fs';
 import * as net from 'net';
-import * as path from 'path';
 import { TextEncoder } from 'util';
+import * as utils from './utils';
 import { registerLanguageServer } from './graalVMLanguageServer';
+import { ConfigurationPickItem, getConf, getGVMConfig, getGVMHome } from './graalVMConfiguration';
 
 export const R_LANGUAGE_SERVER_PACKAGE_NAME: string = 'languageserver';
 const INSTALL_R_LANGUAGE_SERVER: string = 'Install R Language Server';
 
-export function rConfig(graalVMHome: string): boolean {
-	const executable: string = path.join(graalVMHome, 'bin', 'R');
-	if (fs.existsSync(executable)) {
-		setConfig(executable);
-		return true;
-	}
-	return false;
+export function getRConfigurations(): ConfigurationPickItem[] {
+    const ret: ConfigurationPickItem[] = [];
+    ret.push(new ConfigurationPickItem(
+        'Set as R runtime',
+        `(r.${getConfigSection()})`,
+        graalVMHome => {
+            const executable = utils.findExecutable('R', graalVMHome);
+            if (executable) {
+                return utils.checkRecommendedExtension('Ikuyadeu.r', 'R Language') && executable !== getConf('r').get(getConfigSection());
+            }
+            return false;
+        }, 
+        async graalVMHome => {
+            const executable = utils.findExecutable('R', graalVMHome);
+            if (executable) {
+                return setConfig(executable);
+            }
+        })
+    );
+    return ret;
 }
 
-function setConfig(path: string) {
-	const config = vscode.workspace.getConfiguration('r');
+function getConfigSection(): string {
 	let section: string = '';
 	if (process.platform === 'linux') {
 		section = 'rterm.linux';
 	} else if (process.platform === 'darwin') {
 		section = 'rterm.mac';
+	} else if (process.platform === 'win32') {
+		section = 'rterm.windows';
 	}
+	return section;
+}
+
+function setConfig(path: string) {
+	const config = getConf('r');
+	let section: string = getConfigSection();
 	const term = section ? config.inspect(section) : undefined;
 	if (term) {
 		config.update(section, path, true);
 	}
-	const startRLS = vscode.workspace.getConfiguration('graalvm').get('languageServer.startRLanguageServer') as boolean;
+	const startRLS = getGVMConfig().get('languageServer.startRLanguageServer') as boolean;
 	if (startRLS) {
 		if (!isRPackageInstalled(R_LANGUAGE_SERVER_PACKAGE_NAME)) {
 			vscode.window.showInformationMessage('Language Server package is not installed in your GraalVM R.', INSTALL_R_LANGUAGE_SERVER).then(value => {
@@ -54,42 +74,33 @@ function setConfig(path: string) {
 }
 
 function isRPackageInstalled(name: string): boolean {
-	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
-	if (graalVMHome) {
-		const executable: string = path.join(graalVMHome, 'bin', 'R');
-		if (executable) {
-			const out = cp.execFileSync(executable, ['--quiet', '--slave', '-e', `ip<-installed.packages();is.element("${name}",ip[,1])`], { encoding: 'utf8' });
-			if (out.includes('TRUE')) {
-				return true;
-			}
+	const executable = utils.findExecutable('R');
+	if (executable) {
+		const out = cp.execFileSync(executable, ['--quiet', '--slave', '-e', `ip<-installed.packages();is.element("${name}",ip[,1])`], { encoding: 'utf8' });
+		if (out.includes('TRUE')) {
+			return true;
 		}
 	}
 	return false;
 }
 
-export function installRPackage(name: string) {
-	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
-	if (graalVMHome) {
-		const executable: string = path.join(graalVMHome, 'bin', 'R');
-		if (executable) {
-			let terminal: vscode.Terminal | undefined = vscode.window.activeTerminal;
-			if (!terminal) {
-				terminal = vscode.window.createTerminal();
-			}
-			terminal.show();
-			terminal.sendText(`R_DEFAULT_PACKAGES=base ${executable.replace(/(\s+)/g, '\\$1')} --vanilla --quiet --slave -e 'utils::install.packages("${name}", Ncpus=1, INSTALL_opts="--no-docs --no-byte-compile --no-staged-install --no-test-load --use-vanilla")'`);
-		}
+export function installRPackage(name: string): boolean {
+	const executable = utils.findExecutable('R');
+	if (executable) {
+		utils.runInTerminal(`R_DEFAULT_PACKAGES=base ${executable.replace(/(\s+)/g, '\\$1')} --vanilla --quiet --slave -e 'utils::install.packages("${name}", Ncpus=1, INSTALL_opts="--no-docs --no-byte-compile --no-staged-install --no-test-load --use-vanilla")'`);
+		return true;
 	}
 	return false;
 }
 
 function startRLanguageServer(): Thenable<string> {
 	return new Promise<string>((resolve, reject) => {
-		const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
+		const gr = getGVMConfig();
+		const graalVMHome = getGVMHome(gr);
 		if (graalVMHome) {
-			const executable: string = path.join(graalVMHome, 'bin', 'R');
+			const executable = utils.findExecutable('R', graalVMHome);
 			if (executable) {
-				let serverWorkDir: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.currentWorkDir') as string;
+				let serverWorkDir: string | undefined = gr.get('languageServer.currentWorkDir') as string;
 				if (!serverWorkDir) {
 					serverWorkDir = vscode.workspace.rootPath;
 				}

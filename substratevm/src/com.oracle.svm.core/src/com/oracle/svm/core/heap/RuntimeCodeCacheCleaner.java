@@ -31,6 +31,10 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
+import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
+
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
+
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 
@@ -40,12 +44,28 @@ import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
  * longer reachable Java heap objects.
  */
 public final class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
+    /**
+     * To avoid unnecessary deoptimizations, we need to assume that objects of the following classes
+     * are reachable, even if they don't have any strong references:
+     * <ul>
+     * <li>{@link SpeculationReason} objects are embedded in the code and only needed when a
+     * deoptimization is triggered.</li>
+     * <li>{@link SharedRuntimeMethod} objects are sometimes used as artifical methods (e.g., for
+     * adapter code) and are located in the frame info object constants.</li>
+     * </ul>
+     */
+    public static final Class<?>[] CLASSES_ASSUMED_REACHABLE = {SpeculationReason.class, SharedRuntimeMethod.class};
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public RuntimeCodeCacheCleaner() {
     }
 
     @Override
     public <T extends CodeInfo> boolean visitCode(T codeInfo) {
+        if (RuntimeCodeInfoAccess.areAllObjectsOnImageHeap(codeInfo)) {
+            return true;
+        }
+
         int state = CodeInfoAccess.getState(codeInfo);
         if (state == CodeInfo.STATE_UNREACHABLE) {
             freeMemory(codeInfo);

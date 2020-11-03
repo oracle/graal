@@ -27,11 +27,14 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-long function(char t[4]) {
-    return (long) t;
+const char *function(char t[4]) {
+    return t;
 }
 
 int main() {
-    long adr = function("asdf");
+    const char *adr = function("asdf");
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wstring-compare"
     return adr == "asdf";
+#pragma clang diagnostic pop
 }

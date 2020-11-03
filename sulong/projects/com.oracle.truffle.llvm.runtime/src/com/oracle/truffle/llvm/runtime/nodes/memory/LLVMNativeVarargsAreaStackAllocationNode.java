@@ -29,40 +29,24 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
-import com.oracle.truffle.llvm.runtime.except.LLVMStackOverflowError;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMAllocaInstruction;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStackFactory.LLVMAllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode implements VarargsAreaStackAllocationNode {
 
-    @CompilationFinal private FrameSlot stackPointer;
+    @Child private LLVMAllocaInstruction allocation;
 
-    protected FrameSlot getStackPointerSlot() {
-        if (stackPointer == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
-        }
-        return stackPointer;
+    public LLVMNativeVarargsAreaStackAllocationNode() {
+        this.allocation = LLVMAllocaInstructionNodeGen.create(1, 8, null);
     }
 
     @Specialization
-    protected LLVMNativePointer alloc(VirtualFrame frame, long size,
-                    @CachedLanguage LLVMLanguage language) {
-        try {
-            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(this, frame, language.getLLVMMemory(), getStackPointerSlot(), size, 8));
-        } catch (LLVMStackOverflowError soe) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMAllocationFailureException(this, soe);
-        }
+    protected LLVMPointer alloc(VirtualFrame frame, long size) {
+        return allocation.executeWithTarget(frame, size);
     }
 }

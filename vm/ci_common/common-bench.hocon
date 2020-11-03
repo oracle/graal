@@ -1,40 +1,67 @@
-bench_js_linux: ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} {
+vm_bench_common: {
   result_file: results.json
-  upload: [bench-uploader.py, ${bench_js_linux.result_file}]
-  cmd_base: ${mx_vm_common} [--dynamicimports, js-benchmarks, benchmark, --results-file, ${bench_js_linux.result_file}]
-  config_base: ["--js-vm=graal-js", "--js-vm-config=default", "--jvm=graalvm-${VM_ENV}"]
-  cmd: ${bench_js_linux.cmd_base} ["${BENCH_SUITE}:*", --] ${bench_js_linux.config_base}
-  setup: ${common_vm.setup} [
-    ${mx_vm_common} [build]
-    [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/graalvm/js-benchmarks.git"], ../../js-benchmarks]
-  ]
-  run: [
-      ${bench_js_linux.cmd} ["--jvm-config=jvm"]
-      ${bench_js_linux.upload}
-      ${bench_js_linux.cmd} ["--jvm-config=native"]
-      ${bench_js_linux.upload}
-  ]
+  upload: [bench-uploader.py, ${vm_bench_common.result_file}]
   capabilities: [no_frequency_scaling, tmpfs25g, x52, linux, amd64]
   targets: [bench]
   timelimit: "1:00:00"
 }
 
+vm_bench_js_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} {
+  cmd_base: ${mx_vm_common} [--dynamicimports, js-benchmarks, benchmark, --results-file, ${vm_bench_common.result_file}]
+  config_base: ["--js-vm=graal-js", "--js-vm-config=default", "--jvm=graalvm-${VM_ENV}"]
+  cmd: ${vm_bench_js_linux.cmd_base} ["${BENCH_SUITE}:*", --] ${vm_bench_js_linux.config_base}
+  setup: ${common_vm.setup} [
+    ${mx_vm_common} [build]
+    [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/graalvm/js-benchmarks.git"], ../../js-benchmarks]
+  ]
+  run: [
+      ${vm_bench_js_linux.cmd} ["--jvm-config=jvm-interpreter"]
+      ${vm_bench_common.upload}
+      ${vm_bench_js_linux.cmd} ["--jvm-config=native-interpreter"]
+      ${vm_bench_common.upload}
+  ]
+}
+
+vm_bench_polybench_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd64} ${truffleruby_linux} ${custom_vm_linux} {
+  base_cmd: [mx, --env, "polybench-${VM_ENV}"]
+  bench_cmd: ${vm_bench_polybench_linux.base_cmd} [benchmark, "polybench:*", --results-file, ${vm_bench_polybench_linux.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}"]
+  downloads: {
+    WABT_DIR: {name: wabt, version: "1.0.12", platformspecific: true},
+    EMSDK_DIR: {name: emsdk, version: "1.39.13", platformspecific: true},
+  }
+  environment: {
+    EMCC_DIR: "$EMSDK_DIR/emscripten/master/"
+  }
+  setup: ${common_vm.setup} [
+    ${vm_bench_polybench_linux.base_cmd} [build, --all]
+  ]
+  run: [
+    ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=jvm-interpreter"]
+    ${vm_bench_common.upload}
+    ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=native-interpreter"]
+    ${vm_bench_common.upload}
+  ]
+  targets: [bench, daily]
+}
+
 builds += [
   # We need to expand `${common_vm_linux}` here to work around some limitations in the version of pyhocon that we use in the CI
-  ${common_vm_linux} ${bench_js_linux} { environment: { BENCH_SUITE: octane },    name: bench-vm-${vm_setup.short_name}-js-octane-linux},
-  ${common_vm_linux} ${bench_js_linux} { environment: { BENCH_SUITE: jetstream }, name: bench-vm-${vm_setup.short_name}-js-jetstream-linux}
-  ${common_vm_linux} ${bench_js_linux} { environment: { BENCH_SUITE: jetstream2}, name: bench-vm-${vm_setup.short_name}-js-jetstream2-linux}
-  ${common_vm_linux} ${bench_js_linux} { environment: { BENCH_SUITE: micro },     name: bench-vm-${vm_setup.short_name}-js-micro-linux}
-  ${common_vm_linux} ${bench_js_linux} { environment: { BENCH_SUITE: v8js },      name: bench-vm-${vm_setup.short_name}-js-v8js-linux}
-  ${common_vm_linux} ${bench_js_linux} { environment: { BENCH_SUITE: misc },      name: bench-vm-${vm_setup.short_name}-js-misc-linux}
-  ${common_vm_linux} ${bench_js_linux} { environment: { BENCH_SUITE: npm-regex }, name: bench-vm-${vm_setup.short_name}-js-npm-regex-linux}
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: octane },    name: bench-vm-${vm_setup.short_name}-js-octane-linux},
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: jetstream }, name: bench-vm-${vm_setup.short_name}-js-jetstream-linux}
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: jetstream2}, name: bench-vm-${vm_setup.short_name}-js-jetstream2-linux}
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: micro },     name: bench-vm-${vm_setup.short_name}-js-micro-linux}
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: v8js },      name: bench-vm-${vm_setup.short_name}-js-v8js-linux}
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: misc },      name: bench-vm-${vm_setup.short_name}-js-misc-linux}
+  ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: npm-regex }, name: bench-vm-${vm_setup.short_name}-js-npm-regex-linux}
 
-  ${bench_daily_vm_linux} ${bench_js_linux} {
+  ${common_vm_linux} ${vm_bench_polybench_linux} {name: bench-vm-${vm_setup.short_name}-polybench-linux}
+
+  ${bench_daily_vm_linux} ${vm_bench_js_linux} {
     run: [
-      ${mx_vm_common} [benchmark, --results-file, ${bench_js_linux.result_file}, "agentscript-graal-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=jvm", "--js=graal-js", "--js-config=default"]
-      ${bench_js_linux.upload}
-      ${mx_vm_common} [benchmark, --results-file, ${bench_js_linux.result_file}, "agentscript-graal-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=native", "--js=graal-js", "--js-config=default"]
-      ${bench_js_linux.upload}
+      ${mx_vm_common} [benchmark, --results-file, ${vm_bench_js_linux.result_file}, "agentscript-graal-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=jvm", "--js=graal-js", "--js-config=default"]
+      ${vm_bench_common.upload}
+      ${mx_vm_common} [benchmark, --results-file, ${vm_bench_js_linux.result_file}, "agentscript-graal-js:*", --, "--jvm=graalvm-${VM_ENV}", "--jvm-config=native", "--js=graal-js", "--js-config=default"]
+      ${vm_bench_common.upload}
     ]
     timelimit: "45:00"
     name: bench-vm-${vm_setup.short_name}-agentscript-js-java8-linux-amd64

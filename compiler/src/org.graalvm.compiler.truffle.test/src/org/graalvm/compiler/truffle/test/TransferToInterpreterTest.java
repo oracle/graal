@@ -75,7 +75,7 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
         Assert.assertFalse(target.isValid());
         final OptimizedCallTarget compilable = target;
         TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
-        Map<String, Object> options = runtime.getOptions();
+        Map<String, Object> options = GraalTruffleRuntime.getOptionsForCompiler(target);
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
             TruffleDebugContext debug = compiler.openDebugContext(options, compilation);
             TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());

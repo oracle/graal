@@ -89,7 +89,7 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
                 interop.writeMember(location.base, identifier, convertOutgoing.execute(value, location.type, writeType));
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Can not write member '%s'.", identifier);
+                throw new LLVMPolyglotException(this, "Cannot write member '%s'.", identifier);
             } catch (UnknownIdentifierException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Member '%s' not found.", identifier);
@@ -125,7 +125,7 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
                         @CachedLibrary("location.base") InteropLibrary interop,
                         @Cached ReinterpretLLVMAsLong toLong,
                         @Cached BranchProfile exception,
-                        @Bind("location.type.getKind().foreignToLLVMType") @SuppressWarnings("unused") ForeignToLLVMType locationType,
+                        @Bind("location.type.kind.foreignToLLVMType") @SuppressWarnings("unused") ForeignToLLVMType locationType,
                         @Bind("writeType.getSizeInBytes()") int writeTypeSizeInBytes) {
             assert identifier == (Long) location.identifier;
             long idx = identifier;
@@ -141,7 +141,7 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
                 throw new LLVMPolyglotException(this, "Invalid array index %d.", idx);
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Can not write array element %d.", idx);
+                throw new LLVMPolyglotException(this, "Cannot write array element %d.", idx);
             } catch (UnsupportedTypeException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Wrong type writing to array element %d.", idx);
@@ -152,11 +152,11 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
         void fallback(@SuppressWarnings("unused") Object identifier, AccessLocation location, Object value, ForeignToLLVMType writeType) {
             assert location.type != null;
             throw new LLVMPolyglotException(this, "Cannot write object '%s' of size %d byte(s) to foreign object of element size %d", value, writeType.getSizeInBytes(),
-                            location.type.getKind().foreignToLLVMType.getSizeInBytes());
+                            location.type.kind.foreignToLLVMType.getSizeInBytes());
         }
 
         static boolean isLocationTypeNullOrSameSize(AccessLocation location, ForeignToLLVMType accessType) {
-            return location.type == null || location.type.getKind().foreignToLLVMType.getSizeInBytes() == accessType.getSizeInBytes();
+            return location.type == null || location.type.kind.foreignToLLVMType.getSizeInBytes() == accessType.getSizeInBytes();
         }
     }
 

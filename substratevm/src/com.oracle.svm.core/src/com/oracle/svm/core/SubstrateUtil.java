@@ -626,19 +626,32 @@ public class SubstrateUtil {
     }
 
     /**
-     * Similar to {@link String#split} but with a fixed separator string instead of a regular
-     * expression. This avoids making regular expression code reachable.
+     * Similar to {@link String#split(String)} but with a fixed separator string instead of a
+     * regular expression. This avoids making regular expression code reachable.
      */
     public static String[] split(String value, String separator) {
+        return split(value, separator, 0);
+    }
+
+    /**
+     * Similar to {@link String#split(String, int)} but with a fixed separator string instead of a
+     * regular expression. This avoids making regular expression code reachable.
+     */
+    public static String[] split(String value, String separator, int limit) {
         int offset = 0;
-        int next = 0;
+        int next;
         ArrayList<String> list = null;
         while ((next = value.indexOf(separator, offset)) != -1) {
             if (list == null) {
                 list = new ArrayList<>();
             }
-            list.add(value.substring(offset, next));
-            offset = next + separator.length();
+            boolean limited = limit > 0;
+            if (!limited || list.size() < limit - 1) {
+                list.add(value.substring(offset, next));
+                offset = next + separator.length();
+            } else {
+                break;
+            }
         }
 
         if (offset == 0) {
@@ -647,7 +660,7 @@ public class SubstrateUtil {
         }
 
         /* Add remaining segment. */
-        list.add(value.substring(offset, value.length()));
+        list.add(value.substring(offset));
 
         return list.toArray(new String[list.size()]);
     }

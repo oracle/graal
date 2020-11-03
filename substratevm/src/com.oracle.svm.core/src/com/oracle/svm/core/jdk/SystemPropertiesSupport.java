@@ -30,6 +30,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.OS;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -99,6 +101,8 @@ public abstract class SystemPropertiesSupport {
         initializeProperty("java.ext.dirs", "");
         initializeProperty("java.library.path", "");
         initializeProperty("sun.arch.data.model", Integer.toString(ConfigurationValues.getTarget().wordJavaKind.getBitCount()));
+        // Some JDK libraries throws an error if 'java.home' is null.
+        initializeProperty("java.home", "undefined");
 
         String targetName = System.getProperty("svm.targetName");
         String targetArch = System.getProperty("svm.targetArch");
@@ -106,6 +110,12 @@ public abstract class SystemPropertiesSupport {
         initializeProperty("os.arch", targetArch != null ? targetArch : System.getProperty("os.arch"));
 
         initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
+
+        if (OS.getCurrent() == OS.LINUX && JavaVersionUtil.JAVA_SPEC >= 11) {
+            initializeProperty("awt.toolkit", "sun.awt.X11.XToolkit");
+            initializeProperty("java.awt.graphicsenv", "sun.awt.X11GraphicsEnvironment");
+            initializeProperty("java.awt.printerjob", "sun.print.PSPrinterJob");
+        }
 
         lazyRuntimeValues = new HashMap<>();
         lazyRuntimeValues.put("user.name", this::userName);

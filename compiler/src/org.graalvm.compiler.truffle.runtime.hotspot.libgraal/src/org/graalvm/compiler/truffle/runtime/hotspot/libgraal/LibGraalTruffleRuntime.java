@@ -28,8 +28,6 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilerIdleDelay;
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
-import java.util.Map;
-
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
@@ -38,7 +36,6 @@ import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.LibGraalScope.DetachAction;
 import org.graalvm.options.OptionValues;
-import org.graalvm.util.OptionsEncoder;
 
 import com.oracle.truffle.api.TruffleRuntime;
 
@@ -62,7 +59,9 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     @SuppressWarnings("try")
     LibGraalTruffleRuntime() {
-        runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
+        try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+            runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
+        }
     }
 
     long handle() {
@@ -111,10 +110,9 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     @SuppressWarnings("try")
     @Override
-    protected Map<String, Object> createInitialOptions() {
+    protected boolean isPrintGraphEnabled() {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            byte[] serializedOptions = TruffleToLibGraalCalls.getInitialOptions(getIsolateThread(), handle());
-            return OptionsEncoder.decode(serializedOptions);
+            return TruffleToLibGraalCalls.isPrintGraphEnabled(getIsolateThread(), handle());
         }
     }
 }

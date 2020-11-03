@@ -1,46 +1,50 @@
 # Profile-Guided Optimizations
 
-GraalVM Enterprise allows to apply profile-guided optimizations (PGO)
-for additional performance gain and higher throughput of native images. With
-PGO you can collect the profiling data in advance and then feed it to the `native-image` builder, which will use this information to optimize the performance of the resulting binary.
+GraalVM Enterprise allows to apply profile-guided optimizations (PGO) for additional performance gain and higher throughput of native images.
+With PGO you can collect the profiling data in advance and then feed it to the native image builder, which will use this information to optimize the performance of the resulting binary.
 
 Note: This feature is available with **GraalVM Enterprise** only.
 
-One approach is to gather the execution profiles at one run
-and then use them to optimize subsequent compilation(s). In other words, you create a native image with the `--pgo-instrument` option to collect the
-profile information. The `--pgo-instrument` builds an instrumented native image
-with profile-guided optimization data collected of AOT compiled code
-in the _default.iprof_ file, if nothing else is specified. Then you run an
-example program, saving the result in _default.iprof_. Finally, you create a
-second native image with `--pgo profile.iprof` flag that should be significantly
-faster. You can collect multiple profile files and add them to the image build.
+Here is how you can build an optimized native image, using the _OptimizedImage.java_ example program.
 
-1. Compile a Java program, build a native image of it with the `--pgo-instrument` option to collect the
-profiling information and run the resulting binary:
+1&#46; Save this Java program that iterates over `ArrayList` using a lambda expression to a file and compile it:
+```java
+import java.util.ArrayList;
+
+class OptimizedImage {
+  public static void main(String[] args) {
+    ArrayList<String> languages = new ArrayList<>();
+
+    languages.add("JavaScript");
+    languages.add("Python");
+    languages.add("Ruby");
+
+    System.out.print("ArrayList: ");
+
+    languages.forEach((e) -> {
+      System.out.print(e + ", ");
+    });
+  }
+}
 ```
-javac MyClass.java
-native-image --pgo-instrument MyClass
-./myclass
-```
-2. Build the second native image specifying the path to the _profile.iprof_ file containing profile-guided optimization data and run the binary:
-```
-native-image --pgo profile.iprof MyClass
-./myclass
+```shell
+javac OptimizedImage.java
 ```
 
-Another approach is to collect profiles while running your
-application in JIT mode and then use this information to generate
-a highly-optimized native binary.
+2&#46; Build an instrumented native image by appending the `--pgo-instrument` option, whose execution will collect the code-execution-frequency profiles:
+```shell
+native-image --pgo-instrument OptimizedImage
+```
 
-1. Run a Java program in JIT mode with a `-Dgraal.PGOInstrument` flag to gather the profiling information:
+3&#46; Run this instrumented image, saving the result in a _profile.iprof_ file, if nothing else is specified:
+```shell
+./optimizedimage
 ```
-java -Dgraal.PGOInstrument=myclass.iprof MyClass
+
+4&#46; Lastly, create the second native image by specifying the path to the _profile.iprof_ file and execute it.
+```shell
+native-image --pgo=profile.iprof OptimizedImage
+./optimizedimage
 ```
-2. Use the collected data to generate a native image:
-```
-native-image --pgo=myclass.iprof MyClass
-```
-3. Run the resulting binary:
-```
-./myclass
-```
+
+You can collect multiple profile files, by specifying different names, and add them to the image build.

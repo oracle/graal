@@ -552,16 +552,14 @@ suite = {
         "bin/<lib:sulong>",
         "bin/<lib:sulong++>",
       ],
-      "headers" : [
-        "include/polyglot.h",
-        "include/llvm/api/toolchain.h",
-      ],
       "buildDependencies" : [
+        "com.oracle.truffle.llvm.libraries.graalvm.llvm",
         "sdk:LLVM_TOOLCHAIN",
         "sdk:LLVM_ORG_SRC",
       ],
       "buildEnv" : {
         "CFLAGS" : "-Xclang -disable-O0-optnone",
+        "CPPFLAGS" : "-I<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
         "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
         "CLANGXX" : "<path:LLVM_TOOLCHAIN>/bin/clang++",
         "OPT" : "<path:LLVM_TOOLCHAIN>/bin/opt",
@@ -574,23 +572,27 @@ suite = {
       },
       "license" : "BSD-new",
     },
-    "com.oracle.truffle.llvm.libraries.mock" : {
+    "com.oracle.truffle.llvm.libraries.graalvm.llvm" : {
       "subDir" : "projects",
       "native" : True,
       "vpath" : True,
       "results" : [
-        "bin/<lib:polyglot-mock>",
+        "bin/<libv:graalvm-llvm.1>",
+      ],
+      "headers" : [
+        "include/graalvm/llvm/handles.h",
+        "include/graalvm/llvm/polyglot.h",
+        "include/graalvm/llvm/toolchain-api.h",
+        "include/graalvm/llvm/internal/handles-impl.h",
+        "include/graalvm/llvm/internal/polyglot-impl.h",
       ],
       "buildDependencies" : [
-        "com.oracle.truffle.llvm.libraries.bitcode",
         "SULONG_TOOLCHAIN_LAUNCHERS",
         "SULONG_BOOTSTRAP_TOOLCHAIN",
       ],
       "buildEnv" : {
-        "LIBPOLYGLOT_MOCK" : "<lib:polyglot-mock>",
+        "SONAME" : "<libv:graalvm-llvm.1>",
         "CLANG" : "<toolchainGetToolPath:native,CC>",
-        "CFLAGS" : "-Xclang -disable-O0-optnone",
-        "CPPFLAGS" : "-I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -610,7 +612,6 @@ suite = {
       "buildEnv" : {
         "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
         "LIBSULONG" : "<lib:sulong-native>",
-        "LIBPOLYGLOT" : "<lib:polyglot-mock>",
         "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include -I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
         "OS" : "<os>",
       },
@@ -628,6 +629,7 @@ suite = {
         "LLVM_INCLUDE_DOCS" : "NO",
         "LLVM_TARGETS_TO_BUILD" : "X86",
         "LIBCXXABI_INCLUDE_TESTS": "NO",
+        "LIBCXXABI_LINK_TESTS_WITH_SHARED_LIBCXX" : "YES",
         "LIBCXXABI_LIBCXX_INCLUDES" : "<path:sdk:LLVM_ORG_SRC>/libcxx/include",
         "LIBCXXABI_LIBCXX_PATH" : "<path:sdk:LLVM_ORG_SRC>/libcxx",
         "LIBCXXABI_ENABLE_STATIC" : "NO",
@@ -660,7 +662,8 @@ suite = {
       "variants" : ["O1", "O0", "O0_MEM2REG"],
       "buildRef" : False,
       "buildEnv" : {
-        "SUITE_CFLAGS" : "-g",
+        "SUITE_CFLAGS" : "-g -Wno-unused-variable -Wno-bitfield-constant-conversion",
+        "SUITE_CXXFLAGS" : "-g -Wno-unused-variable -Wno-bitfield-constant-conversion",
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
       },
       "dependencies" : [
@@ -678,7 +681,7 @@ suite = {
       "variants" : ["O1", "O0", "O0_MEM2REG"],
       "buildRef" : False,
       "buildEnv" : {
-        "SUITE_CFLAGS" : "-g",
+        "SUITE_CFLAGS" : "-g -Wno-everything",
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
       },
       "dependencies" : [
@@ -697,6 +700,7 @@ suite = {
       "buildRef" : False,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
+        "SUITE_CFLAGS" : "-Wno-unused-variable",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -715,20 +719,22 @@ suite = {
       "buildSharedObject" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
+        "SUITE_CFLAGS" : "-Wno-unused-function",
+        "SUITE_CXXFLAGS" : "-Wno-unused-function",
         "OS" : "<os>",
       },
       "os_arch" : {
         "darwin": {
           "<others>" : {
             "buildEnv" : {
-              "SUITE_LDFLAGS" : "-lpolyglot-mock -L<path:SULONG_HOME>/native/lib -lsulongtest -L<path:SULONG_TEST_NATIVE>",
+              "SUITE_LDFLAGS" : "-lgraalvm-llvm -L<path:SULONG_HOME>/native/lib -lsulongtest -L<path:SULONG_TEST_NATIVE>",
             },
           },
         },
         "<others>": {
           "<others>": {
             "buildEnv" : {
-              "SUITE_LDFLAGS" : "--no-undefined -lpolyglot-mock -L<path:SULONG_HOME>/native/lib -Wl,--undefined=callbackPointerArgTest -lsulongtest -L<path:SULONG_TEST_NATIVE>",
+              "SUITE_LDFLAGS" : "--no-undefined -lgraalvm-llvm -L<path:SULONG_HOME>/native/lib -Wl,--undefined=callbackPointerArgTest -lsulongtest -L<path:SULONG_TEST_NATIVE>",
             },
           },
         },
@@ -1023,6 +1029,7 @@ suite = {
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "SUITE_CFLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -1045,6 +1052,7 @@ suite = {
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "SUITE_CXXFLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -1094,6 +1102,7 @@ suite = {
       "buildRef" : False,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "SUITE_CFLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -1117,6 +1126,8 @@ suite = {
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "SUITE_CFLAGS" : "-Wno-everything",
+        "SUITE_CXXFLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -1140,6 +1151,7 @@ suite = {
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_LDFLAGS" : "-lm -lgmp",
+        "SUITE_CFLAGS" : "-Wno-everything",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -1161,6 +1173,9 @@ suite = {
       "vpath" : True,
       "variants" : ["O0"],
       "buildRef" : True,
+      "buildEnv" : {
+        "SUITE_CFLAGS" : "-Wno-everything",
+      },
       "dependencies" : [
         "SULONG_TEST",
       ],
@@ -1243,16 +1258,21 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
-          "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
+          "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm/bin/*",
         ],
+        "./native/lib/<lib:graalvm-llvm>": "link:<libv:graalvm-llvm.1>",
         "./include/" : [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
-        ]
+          "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm/include/*"
+        ],
+        # for source compatibility
+        "./include/polyglot.h" : "link:graalvm/llvm/polyglot.h",
+        "./include/llvm/api/toolchain.h" : "link:../../graalvm/llvm/toolchain-api.h",
+        "./native/lib/<lib:polyglot-mock>": "link:<lib:graalvm-llvm>",
       },
       "dependencies" : [
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
-        "com.oracle.truffle.llvm.libraries.mock",
+        "com.oracle.truffle.llvm.libraries.graalvm.llvm",
         "com.oracle.truffle.llvm.libraries.bitcode.libcxx",
       ],
       "license" : "BSD-new",

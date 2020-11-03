@@ -45,6 +45,7 @@ import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,35 +55,38 @@ import com.oracle.truffle.api.source.Source;
 
 final class PolyglotSourceCache {
 
-    private final ConcurrentHashMap<Object, CallTarget> sourceCache;
-    private final ReferenceQueue<Source> deadSources = new ReferenceQueue<>();
+    private final Cache strongCache;
+    private final Cache weakCache;
 
     PolyglotSourceCache() {
-        this.sourceCache = new ConcurrentHashMap<>();
+        this.weakCache = new WeakCache();
+        this.strongCache = new StrongCache();
     }
 
     CallTarget parseCached(PolyglotLanguageContext context, Source source, String[] argumentNames) {
-        cleanupStaleEntries();
-
         CallTarget target;
         if (source.isCached()) {
-            Object sourceId = EngineAccessor.SOURCE.getSourceIdentifier(source);
-            WeakSourceKey ref = new WeakSourceKey(sourceId, source, argumentNames, deadSources);
-            target = sourceCache.get(ref);
-            if (target == null) {
-                target = parseImpl(context, argumentNames, EngineAccessor.SOURCE.copySource(source));
-                CallTarget prev = sourceCache.putIfAbsent(ref, target);
-                if (prev != null) {
-                    /*
-                     * Parsed twice -> discard the one not in the cache.
-                     */
-                    target = prev;
+            Cache strong = this.strongCache;
+            boolean useStrong = context.getEngine().storeEngine;
+            if (useStrong || !strong.isEmpty()) {
+                target = strong.lookup(context, source, argumentNames, useStrong);
+                if (target != null) {
+                    // target found in strong cache
+                    return target;
+                } else {
+                    // fallback to weak cache.
                 }
             }
+            target = weakCache.lookup(context, source, argumentNames, true);
         } else {
             target = parseImpl(context, argumentNames, source);
         }
         return target;
+    }
+
+    void listCachedSources(PolyglotLanguageInstance language, Collection<org.graalvm.polyglot.Source> source) {
+        strongCache.listSources(language, source);
+        weakCache.listSources(language, source);
     }
 
     private static CallTarget parseImpl(PolyglotLanguageContext context, String[] argumentNames, Source source) {
@@ -160,20 +164,118 @@ final class PolyglotSourceCache {
         }
     }
 
-    private void cleanupStaleEntries() {
-        WeakSourceKey sourceRef = null;
-        while ((sourceRef = (WeakSourceKey) deadSources.poll()) != null) {
-            sourceCache.remove(sourceRef);
-        }
+    private abstract static class Cache {
+
+        abstract boolean isEmpty();
+
+        abstract CallTarget lookup(PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse);
+
+        abstract void listSources(PolyglotLanguageInstance language, Collection<org.graalvm.polyglot.Source> source);
     }
 
-    private static final class WeakSourceKey extends WeakReference<Source> {
+    private static final class StrongCache extends Cache {
 
-        final Object key;
+        private final ConcurrentHashMap<SourceKey, CallTarget> sourceCache = new ConcurrentHashMap<>();
+
+        @Override
+        CallTarget lookup(PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse) {
+            SourceKey key = new SourceKey(source, argumentNames);
+            CallTarget target = sourceCache.get(key);
+            if (target == null && parse) {
+                target = parseImpl(context, argumentNames, source);
+                CallTarget prevTarget = sourceCache.putIfAbsent(key, target);
+                if (prevTarget != null) {
+                    target = prevTarget;
+                }
+            }
+            return target;
+        }
+
+        @Override
+        boolean isEmpty() {
+            return sourceCache.isEmpty();
+        }
+
+        @Override
+        void listSources(PolyglotLanguageInstance language, Collection<org.graalvm.polyglot.Source> sources) {
+            PolyglotImpl polygot = language.getImpl();
+            for (SourceKey key : sourceCache.keySet()) {
+                sources.add(polygot.getOrCreatePolyglotSource((Source) key.key));
+            }
+        }
+
+    }
+
+    private static final class WeakCache extends Cache {
+
+        private final ConcurrentHashMap<WeakSourceKey, WeakCacheValue> sourceCache = new ConcurrentHashMap<>();
+        private final ReferenceQueue<Source> deadSources = new ReferenceQueue<>();
+
+        @Override
+        CallTarget lookup(PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse) {
+            cleanupStaleEntries();
+            Object sourceId = EngineAccessor.SOURCE.getSourceIdentifier(source);
+            Source sourceValue = EngineAccessor.SOURCE.copySource(source);
+            WeakSourceKey ref = new WeakSourceKey(new SourceKey(sourceId, argumentNames), source, deadSources);
+            WeakCacheValue value = sourceCache.get(ref);
+            if (value == null) {
+                if (parse) {
+                    value = new WeakCacheValue(parseImpl(context, argumentNames, sourceValue), sourceValue);
+                    WeakCacheValue prev = sourceCache.putIfAbsent(ref, value);
+                    if (prev != null) {
+                        /*
+                         * Parsed twice -> discard the one not in the cache.
+                         */
+                        value = prev;
+                    }
+                } else {
+                    return null;
+                }
+            }
+            return value.target;
+        }
+
+        @Override
+        boolean isEmpty() {
+            return sourceCache.isEmpty();
+        }
+
+        @Override
+        void listSources(PolyglotLanguageInstance language, Collection<org.graalvm.polyglot.Source> sources) {
+            cleanupStaleEntries();
+            PolyglotImpl polygot = language.getImpl();
+            for (WeakCacheValue value : sourceCache.values()) {
+                sources.add(polygot.getOrCreatePolyglotSource(value.source));
+            }
+        }
+
+        private void cleanupStaleEntries() {
+            WeakSourceKey sourceRef = null;
+            while ((sourceRef = (WeakSourceKey) deadSources.poll()) != null) {
+                sourceCache.remove(sourceRef);
+            }
+        }
+
+    }
+
+    static class WeakCacheValue {
+
+        final CallTarget target;
+        final Source source;
+
+        WeakCacheValue(CallTarget target, Source source) {
+            this.target = target;
+            this.source = source;
+        }
+
+    }
+
+    private static final class SourceKey {
+
+        private final Object key;
         private final String[] arguments;
 
-        WeakSourceKey(Object key, Source value, String[] arguments, ReferenceQueue<? super Source> q) {
-            super(value, q);
+        SourceKey(Object key, String[] arguments) {
             this.key = key;
             this.arguments = arguments != null && arguments.length == 0 ? null : arguments;
         }
@@ -189,9 +291,35 @@ final class PolyglotSourceCache {
 
         @Override
         public boolean equals(Object obj) {
+            if (obj instanceof SourceKey) {
+                SourceKey other = (SourceKey) obj;
+                return key.equals(other.key) && Arrays.equals(arguments, other.arguments);
+            } else {
+                return false;
+            }
+        }
+
+    }
+
+    private static final class WeakSourceKey extends WeakReference<Source> {
+
+        final SourceKey key;
+
+        WeakSourceKey(SourceKey key, Source value, ReferenceQueue<? super Source> q) {
+            super(value, q);
+            this.key = key;
+        }
+
+        @Override
+        public int hashCode() {
+            return key.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
             if (obj instanceof WeakSourceKey) {
                 WeakSourceKey other = (WeakSourceKey) obj;
-                return key.equals(other.key) && Arrays.equals(arguments, other.arguments);
+                return key.equals(other.key);
             } else {
                 return false;
             }

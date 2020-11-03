@@ -327,6 +327,9 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     interface ExportsGenericInterface<T> {
     }
 
+    class ExportsClass {
+    }
+
     class ExportsGenericClass<T> {
     }
 
@@ -389,6 +392,21 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     public static class ExportsGenericInterfaceDefaultLibrary {
         @ExportMessage
         static void foo(ExportsGenericInterface<?> receiver) {
+        }
+    }
+
+    @DefaultExport(ExportsClassDefaultLibrary.class)
+    @GenerateLibrary(receiverType = ExportsClass.class)
+    public abstract static class ExportsClassLibrary extends Library {
+        public void foo(Object receiver) {
+        }
+    }
+
+    // Tests also that ExportsClassDefaultLibraryGen has methods with proper signatures.
+    @ExportLibrary(value = ExportsClassLibrary.class, receiverType = ExportsClass.class)
+    public static class ExportsClassDefaultLibrary {
+        @ExportMessage
+        static void foo(ExportsClass receiver) {
         }
     }
 

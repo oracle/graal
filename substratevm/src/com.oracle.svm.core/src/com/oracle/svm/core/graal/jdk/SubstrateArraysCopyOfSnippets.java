@@ -78,7 +78,7 @@ public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates impl
         int copiedLength = originalLength < newLength ? originalLength : newLength;
         if (LayoutEncoding.isObjectArray(layoutEncoding)) {
             DynamicHub originalHub = KnownIntrinsics.readHub(original);
-            if (originalHub == hub || hub.isAssignableFromHub(originalHub)) {
+            if (originalHub == hub || DynamicHub.toClass(hub).isAssignableFrom(DynamicHub.toClass(originalHub))) {
                 ArraycopySnippets.objectCopyForward(original, 0, newArray, 0, copiedLength, layoutEncoding);
             } else {
                 ArraycopySnippets.objectStoreCheckCopyForward(original, 0, newArray, 0, copiedLength);

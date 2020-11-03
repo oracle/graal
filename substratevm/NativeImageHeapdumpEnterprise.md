@@ -1,23 +1,25 @@
 # Generating Heap Dumps from Native Images
 
-With GraalVM Enterprise you can generate heap dumps of the Native Image processes to monitor the execution.
-
-Note: This functionality is available with **GraalVM Enterprise** only.
+With GraalVM Enterprise Edition you can generate heap dumps of the Native Image processes to monitor the execution.
 
 Native Image does not implement JVMTI agent and it is not possible to trigger
-heap dump creation using tools like _Visual VM_ or _jmap_. You can build the image for your application in a way so that it can handle certain signals and then get a heap
-dump when the application receives the `USR1` signal (other supported signals are `QUIT/BREAK` for stackdumps and `USR2` to dump runtime compilation info). You only need to build your image with GraalVM Enterprise Native Image and use the `-H:+AllowVMInspection` option. Another possibility is to
+heap dump creation using tools like _VisualVM_ or _jmap_. You can build a native image for your application in a way so that it can handle certain signals and then get a heap
+dump when the application receives the `USR1` signal (other supported signals are `QUIT/BREAK` for stackdumps and `USR2` to dump runtime compilation info). You only need to build your image with GraalVM Enterprise Native Image and use the `-H:+AllowVMInspection` option.
+
+Another possibility is to
 write a special method which will generate a heap dump at certain points in the
 lifetime of your application. For example, when certain conditions are met while
-running the native image, your application code can trigger heap dump creation.
+executing a native image, your application code can trigger heap dump creation.
 A dedicated [`org.graalvm.nativeimage.VMRuntime#dumpHeap`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspection.java) API exists for this
-purpose. Both possibilities are covered in this chapter.
+purpose. Both possibilities are covered in this guide.
+
+Note: This feature is available with **GraalVM Enterprise** only.
 
 ## Handle SIGUSR1 Signal
 The following Java example is a simple multi-threaded application which runs for
 60 seconds. There is enough time to get its PID and send the SIGUSR1 signal
 which will generate a heap dump into the application's working directory. Save
-the following code as SVMHeapDump.java file on your disk:
+the following code as _SVMHeapDump.java_ file on your disk:
 ```java
 import java.text.DateFormat;
 import java.util.Date;
@@ -68,16 +70,16 @@ public class SVMHeapDump extends Thread {
 ```
 #### Build a Native Image
 Compile SVMHeapDump.java as following:
-```
+```shell
 $JAVA_HOME/bin/javac SVMHeapDump.java
 ```
-If you run it on `java`, you will see it runs for 60 seconds then finishes.
+If you run it on `java`, you will see that it runs for 60 seconds then finishes.
 
 Build a native executable and provide the `-H:+AllowVMInspection` option for the
 builder. This way the native executable will accept SIGUSR1 signal to produce a
 heap dump.
 
-```
+```shell
 $JAVA_HOME/bin/native-image SVMHeapDump -H:+AllowVMInspection
 [svmheapdump:41691]    classlist:     412.03 ms,  2.52 GB
 [svmheapdump:41691]        (cap):   1,655.34 ms,  2.52 GB
@@ -97,13 +99,13 @@ $JAVA_HOME/bin/native-image SVMHeapDump -H:+AllowVMInspection
 [svmheapdump:41691]      [total]:  47,805.47 ms,  2.62 GB
 ```
 
-The `native-image` tool analyzes existing `SVMHeapDump.class` and creates from
+The `native-image` builder analyzes existing `SVMHeapDump.class` and creates from
 it an executable file. When the command completes, `svmheapdump` is created in
 the current directory.
 
-#### Run the Application and Get the Heap Dump
+##### Run the application and check the heap dump
 Run the application:
-```
+```shell
 ./svmheapdump
 May 15, 2020, 4:28:14 PM: Hello GraalVM native image developer!
 Get PID of this process: 'ps -C svmheapdump -o pid= '
@@ -113,22 +115,22 @@ Starting thread!
 May 15, 2020, 4:28:14 PM: Thread started, it will run for 60 seconds
 ```
 
-Open the 2nd terminal to get the process ID of the running `svmheapdump` application using a command like `ps -C svmheapdump -o pid=` for Linux OS and `pgrep svmheapdump` for macOS. Copy the printed process ID, e.g. 100, and use it to send the signal to the running application:
-```
+Open the 2nd terminal to get the process ID of the running `svmheapdump`
+application using a command like `ps -C svmheapdump -o pid=` for Linux OS and
+`pgrep svmheapdump` for macOS. Copy the printed process ID, e.g. 100, and use it
+to send the signal to the running application:
+```shell
 kill -SIGUSR1 100
 ```
-The heap dump will be available at the working directory while application continues to run.
+The heap dump will be available at the working directory while the application continues to run.
 
-## Generate the Heap Dump from within a Java Application
+## Generate a Heap Dump from within a Java Application
 
 The following Java example shows how a heap dump can be generated from within
 a running Java application using `VMRuntime.dumpHeap()` after some condition is met.
 The condition to generate a heap dump is provided as an option on the command line.
-Save following Java code as _SVMHeapDumpAPI.java_.
+Save the code snippet below as _SVMHeapDumpAPI.java_.
 
-The application creates some data to have something to dump, checks the command line
-to see if heap dump has to be created and then in method `createHeapDump()` creates
-the actual heap dump performing checks for file existence.
 ```java
 import java.io.File;
 import java.io.FileOutputStream;
@@ -178,15 +180,18 @@ public class SVMHeapDumpAPI {
  }
 }
 ```
+The application creates some data to have something to dump, checks the command line
+to see if heap dump has to be created, and then in method `createHeapDump()` creates
+the actual heap dump, performing checks for file's existence.
 
 #### Building a Native Image
 In the next step, compile _SVMHeapDumpAPI.java_:
-```
+```shell
 $JAVA_HOME/bin/javac SVMHeapDumpAPI.java
 ```
 Then build a native executable:
-```
-$JAVA_HOME/bin/ native-image SVMHeapDumpAPI
+```shell
+$JAVA_HOME/bin/native-image SVMHeapDumpAPI
 [svmheapdumpapi:41691]    classlist:     447.96 ms,  2.53 GB
 [svmheapdumpapi:41691]        (cap):   2,105.64 ms,  2.53 GB
 [svmheapdumpapi:41691]        setup:   3,010.19 ms,  2.53 GB
@@ -207,12 +212,12 @@ $JAVA_HOME/bin/ native-image SVMHeapDumpAPI
 
 When the command completes, the `svmheapdumpapi` executable is created in the current directory.
 
-#### Run the Application and Check the Heap Dump
+##### Run the application and check the heap dump
 Now you can run your native image application and generate a heap dump from it
 with the output similar to one below:
-```
+```shell
 ./svmheapdumpapi --heapdump
-May 15, 2020, 4:06:36 PM: Hello GraalVM native image developer.
+Sep 15, 2020, 4:06:36 PM: Hello GraalVM native image developer.
 Your command line options are: --heapdump
   Heap dump created /var/folders/hw/s9d78jts67gdc8cfyq5fjcdm0000gp/T/SVMHeapDump-6437252222863577987.hprof, size: 8051959
 ```

@@ -70,16 +70,20 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -221,10 +225,36 @@ public abstract class NonSnippetLowerings {
                 LoadHubNode hub = null;
                 CallTargetNode loweredCallTarget;
 
-                if (invokeKind.isDirect()) {
-                    loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, callTarget.targetMethod(),
-                                    callType, invokeKind));
+                if (invokeKind.isDirect() || implementations.length == 1) {
+                    SharedMethod targetMethod = method;
+                    if (!invokeKind.isDirect()) {
+                        /*
+                         * We only have one possible implementation for a indirect call, so we can
+                         * emit a direct call to the unique implementation.
+                         */
+                        targetMethod = implementations[0];
+                    }
 
+                    if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
+                        loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]),
+                                        callTarget.returnStamp(), signature, targetMethod, callType, invokeKind));
+                    } else {
+                        /*
+                         * In runtime-compiled code, we emit indirect calls via the respective heap
+                         * objects to avoid patching and creating trampolines.
+                         */
+                        JavaConstant codeInfo = SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache());
+                        ValueNode codeInfoConstant = ConstantNode.forConstant(codeInfo, tool.getMetaAccess(), graph);
+                        ValueNode codeStartFieldOffset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), runtimeConfig.getImageCodeInfoCodeStartOffset(), graph);
+                        AddressNode codeStartField = graph.unique(new OffsetAddressNode(codeInfoConstant, codeStartFieldOffset));
+                        ReadNode codeStart = graph.add(new ReadNode(codeStartField, NamedLocationIdentity.FINAL_LOCATION, FrameAccess.getWordStamp(), BarrierType.NONE));
+                        ValueNode offset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), targetMethod.getCodeOffsetInImage(), graph);
+                        AddressNode address = graph.unique(new OffsetAddressNode(codeStart, offset));
+
+                        loweredCallTarget = graph.add(new IndirectCallTargetNode(
+                                        address, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, targetMethod, callType, invokeKind));
+                        graph.addBeforeFixed(node, codeStart);
+                    }
                 } else if (implementations.length == 0) {
                     /*
                      * We are calling an abstract method with no implementation, i.e., the
@@ -237,21 +267,11 @@ public abstract class NonSnippetLowerings {
                     unreachedGuard.lower(tool);
 
                     /*
-                     * Also lower the MethodCallTarget to avoid recursive lowering error messages.
-                     * The invoke and call target are actually dead and will be removed by a
-                     * subsequent dead code elimination pass.
+                     * Also lower the MethodCallTarget below to avoid recursive lowering error
+                     * messages. The invoke and call target are actually dead and will be removed by
+                     * a subsequent dead code elimination pass.
                      */
-                    loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType,
-                                    invokeKind));
-
-                } else if (implementations.length == 1) {
-                    /*
-                     * We only have one possible implementation for a indirect call, so we can emit
-                     * a direct call to the unique implementation.
-                     */
-                    SharedMethod uniqueImplementation = implementations[0];
-                    loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, uniqueImplementation,
-                                    callType, invokeKind));
+                    loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind));
 
                 } else {
                     int vtableEntryOffset = runtimeConfig.getVTableOffset(method.getVTableIndex());

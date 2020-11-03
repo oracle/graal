@@ -32,13 +32,13 @@ import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.R
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseExceptionProbability;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckHints;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckedInlining;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierUseEconomy;
 
 import java.io.PrintStream;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
+import java.nio.ReadOnlyBufferException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -102,6 +102,15 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.truffle.options.OptionValuesImpl;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 
 /**
  * Coordinates partial evaluation of a Truffle AST and subsequent compilation via Graal.
@@ -174,6 +183,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         ClassCastException.class,
                         BufferUnderflowException.class,
                         BufferOverflowException.class,
+                        ReadOnlyBufferException.class,
         });
         ResolvedJavaType[] tail = {
                         runtime.resolveType(metaAccess, "com.oracle.truffle.api.nodes.UnexpectedResultException"),
@@ -233,20 +243,29 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
     @Override
     public final TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
+        OptionValues graalOptions = TruffleCompilerRuntime.getRuntime().getGraalOptions(OptionValues.class);
         final DebugContext debugContext;
         if (compilation == null) {
-            debugContext = new Builder(TruffleCompilerOptions.getOptions()).build();
+            debugContext = new Builder(graalOptions).build();
         } else {
             TruffleCompilationIdentifier ident = asTruffleCompilationIdentifier(compilation);
-            OptionValues graalOptions = TruffleCompilerOptions.getOptions();
             CompilableTruffleAST compilable = ident.getCompilable();
-            org.graalvm.options.OptionValues truffleOptions = TruffleCompilerOptions.getOptionsForCompiler(options);
+            org.graalvm.options.OptionValues truffleOptions = getOptionsForCompiler(options);
             if (ExpansionStatistics.isEnabled(truffleOptions)) {
-                graalOptions = TruffleCompilerOptions.enableNodeSourcePositions(graalOptions);
+                graalOptions = enableNodeSourcePositions(graalOptions);
             }
             debugContext = createDebugContext(graalOptions, ident, compilable, DebugContext.getDefaultLogStream());
         }
         return new TruffleDebugContextImpl(debugContext);
+    }
+
+    private static OptionValues enableNodeSourcePositions(OptionValues values) {
+        if (GraalOptions.TrackNodeSourcePosition.getValue(values)) {
+            // already enabled nothing to do
+            return values;
+        } else {
+            return new OptionValues(values, GraalOptions.TrackNodeSourcePosition, Boolean.TRUE);
+        }
     }
 
     private static TruffleCompilationIdentifier asTruffleCompilationIdentifier(TruffleCompilation compilation) {
@@ -271,7 +290,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                     TruffleCompilerListener inListener) {
         Objects.requireNonNull(compilation, "Compilation must be non null.");
 
-        org.graalvm.options.OptionValues options = TruffleCompilerOptions.getOptionsForCompiler(optionsMap);
+        org.graalvm.options.OptionValues options = getOptionsForCompiler(optionsMap);
         TruffleCompilationIdentifier compilationId = asTruffleCompilationIdentifier(compilation);
         CompilableTruffleAST compilable = compilationId.getCompilable();
         boolean usingCallersDebug = truffleDebug instanceof TruffleDebugContextImpl;
@@ -284,7 +303,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                 notifyCompilableOfFailure(compilable, e);
             }
         } else {
-            final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
+            OptionValues debugContextOptionValues = TruffleCompilerRuntime.getRuntime().getGraalOptions(OptionValues.class);
             try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.getDefaultLogStream());
                             DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
                 actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, graalDebug);
@@ -301,11 +320,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             synchronized (this) {
                 if (!initialized) {
                     try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(compilable)))) {
-                        final org.graalvm.options.OptionValues options = TruffleCompilerOptions.getOptionsForCompiler(optionsMap);
+                        final org.graalvm.options.OptionValues options = getOptionsForCompiler(optionsMap);
                         partialEvaluator.initialize(options);
-                        if (firstInitialization) {
-                            TruffleCompilerOptions.checkDeprecation(compilable);
-                        }
                         initialized = true;
 
                         if (!FirstTierUseEconomy.getValue(options)) {
@@ -350,9 +366,16 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     }
 
     private static void notifyCompilableOfFailure(CompilableTruffleAST compilable, Throwable e) {
-        BailoutException bailout = e instanceof BailoutException ? (BailoutException) e : null;
+        Throwable error = e;
+        boolean graphTooBig = false;
+        if (error instanceof GraphTooBigBailoutException) {
+            error = error.getCause();
+            graphTooBig = true;
+        }
+        BailoutException bailout = error instanceof BailoutException ? (BailoutException) error : null;
         boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-        compilable.onCompilationFailed(() -> CompilableTruffleAST.serializeException(e), bailout != null, permanentBailout);
+        Throwable finalError = error;
+        compilable.onCompilationFailed(() -> CompilableTruffleAST.serializeException(finalError), bailout != null, permanentBailout, graphTooBig);
     }
 
     @Override
@@ -690,8 +713,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         protected ExceptionAction lookupAction(OptionValues compilerOptions, Throwable cause) {
             // Respect current action if it has been explicitly set.
             if (!(cause instanceof BailoutException) || ((BailoutException) cause).isPermanent()) {
-                if (TruffleCompilerOptions.areTruffleCompilationExceptionsFatal(options) ||
-                                TruffleCompilerOptions.getPolyglotOptionValue(options, CompilationFailureAction) == PolyglotCompilerOptions.ExceptionAction.Diagnose) {
+                if (areTruffleCompilationExceptionsFatal(options) ||
+                                options.get(CompilationFailureAction) == PolyglotCompilerOptions.ExceptionAction.Diagnose) {
                     // Get more info for Truffle compilation exceptions
                     // that will cause the VM to exit.
                     return Diagnose;
@@ -702,6 +725,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
         @Override
         protected DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues compilerOptions, PrintStream logStream) {
+            listener.onCompilationRetry(compilable);
             return createDebugContext(compilerOptions, compilationId, compilable, logStream);
         }
 
@@ -720,6 +744,20 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         protected Void performCompilation(DebugContext debug) {
             compileAST(options, debug, compilable, inliningPlan, compilationId, task, listener);
             return null;
+        }
+
+        /**
+         * Determines whether an exception during a Truffle compilation should result in calling
+         * {@link System#exit(int)}.
+         */
+        private boolean areTruffleCompilationExceptionsFatal(org.graalvm.options.OptionValues optionValues) {
+            /*
+             * This is duplicated in TruffleRuntimeOptions#areTruffleCompilationExceptionsFatal.
+             */
+            boolean compilationExceptionsAreFatal = optionValues.get(CompilationExceptionsAreFatal);
+            boolean performanceWarningsAreFatal = !optionValues.get(PerformanceWarningsAreFatal).isEmpty();
+            boolean exitVM = optionValues.get(CompilationFailureAction) == PolyglotCompilerOptions.ExceptionAction.ExitVM;
+            return compilationExceptionsAreFatal || performanceWarningsAreFatal || exitVM;
         }
     }
 
@@ -854,6 +892,28 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     @Override
     public final SnippetReflectionProvider getSnippetReflection() {
         return snippetReflection;
+    }
+
+    /**
+     * Converts the values of {@link PolyglotCompilerOptions} passed to the
+     * {@link TruffleCompiler#doCompile} as a {@link Map} into
+     * {@link org.graalvm.options.OptionValues}.
+     */
+    public static org.graalvm.options.OptionValues getOptionsForCompiler(Map<String, Object> options) {
+        EconomicMap<org.graalvm.options.OptionKey<?>, Object> parsedOptions = EconomicMap.create(Equivalence.IDENTITY);
+        OptionDescriptors descriptors = PolyglotCompilerOptions.getDescriptors();
+        for (Map.Entry<String, Object> e : options.entrySet()) {
+            final OptionDescriptor descriptor = descriptors.get(e.getKey());
+            final org.graalvm.options.OptionKey<?> k = descriptor != null ? descriptor.getKey() : null;
+            if (k != null) {
+                Object value = e.getValue();
+                if (value.getClass() == String.class) {
+                    value = descriptor.getKey().getType().convert((String) e.getValue());
+                }
+                parsedOptions.put(k, value);
+            }
+        }
+        return new OptionValuesImpl(descriptors, parsedOptions);
     }
 
     private class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {

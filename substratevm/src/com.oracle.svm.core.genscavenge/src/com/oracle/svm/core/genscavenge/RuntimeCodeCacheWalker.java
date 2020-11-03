@@ -28,7 +28,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -59,13 +59,17 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
     @Override
     @DuplicatedInNativeCode
     public <T extends CodeInfo> boolean visitCode(T codeInfo) {
+        if (RuntimeCodeInfoAccess.areAllObjectsOnImageHeap(codeInfo)) {
+            return true;
+        }
+
         /*
          * Before this method is called, the GC already visited *all* CodeInfo objects that are
          * reachable from the stack as strong roots. This is is an essential prerequisite for the
          * reachability analysis that is done below. Otherwise, we would wrongly invalidate too much
          * code.
          */
-        boolean invalidateCodeThatReferencesUnreachableObjects = SubstrateOptions.TreatRuntimeCodeInfoReferencesAsWeak.getValue();
+        boolean invalidateCodeThatReferencesUnreachableObjects = SubstrateGCOptions.TreatRuntimeCodeInfoReferencesAsWeak.getValue();
 
         // Read the (possibly forwarded) tether object.
         Object tether = UntetheredCodeInfoAccess.getTetherUnsafe(codeInfo);

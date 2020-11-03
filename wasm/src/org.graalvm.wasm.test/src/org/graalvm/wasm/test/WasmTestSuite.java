@@ -53,6 +53,7 @@ import org.graalvm.wasm.test.suites.linker.LinkerSuite;
 import org.graalvm.wasm.test.suites.memory.MemorySuite;
 import org.graalvm.wasm.test.suites.wasi.WasiSuite;
 import org.graalvm.wasm.test.suites.control.MultipleFunctionsSuite;
+import org.graalvm.wasm.test.suites.validation.ValidationSuite;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -78,6 +79,9 @@ import org.graalvm.wasm.test.suites.webassembly.IssueSuite;
                 WasiSuite.class,
                 LinkerSuite.class,
                 WasmPolyglotTestSuite.class,
+                WasmJsApiSuite.class,
+                ValidationSuite.class,
+                WasmLateLinkingSuite.class,
 })
 public class WasmTestSuite {
     @Test

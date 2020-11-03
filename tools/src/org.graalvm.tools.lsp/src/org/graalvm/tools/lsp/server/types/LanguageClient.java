@@ -55,4 +55,6 @@ public interface LanguageClient {
 
     // Diagnostics related methods
     void publishDiagnostics(PublishDiagnosticsParams params);
+
+    void sendCustomNotification(String method, Object params);
 }

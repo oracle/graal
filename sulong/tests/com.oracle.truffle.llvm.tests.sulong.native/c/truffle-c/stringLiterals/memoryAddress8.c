@@ -27,13 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-long adr = "asdf";
+const char *adr = "asdf";
 
-long f1() {
+const char *f1() {
     return adr;
 }
 
-long f2() {
+const char *f2() {
     return "asdf";
 }
 
