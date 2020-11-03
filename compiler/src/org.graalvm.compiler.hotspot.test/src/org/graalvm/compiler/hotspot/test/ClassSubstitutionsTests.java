@@ -25,14 +25,33 @@
 
 package org.graalvm.compiler.hotspot.test;
 
+import static org.junit.Assume.assumeTrue;
+
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Test;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ClassSubstitutionsTests extends GraalCompilerTest {
 
@@ -115,6 +134,70 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
         testConstantReturn("foldComponentType", 1);
     }
 
+    public static Object unsafeFoldComponentType(Class<?> clazz) {
+        return readComponentType(clazz);
+    }
+
+    static Runnable runTest;
+
+    static class DummyClass {
+        static {
+            runTest.run();
+        }
+
+        static void init() {
+        }
+    }
+
+    @Test
+    public void testUnsafeFoldComponentType() {
+        assumeTrue(JavaVersionUtil.JAVA_SPEC >= 9 && GraalHotSpotVMConfig.jvmciGE(GraalHotSpotVMConfig.JVMCI_20_3_b04));
+        runTest = new Runnable() {
+            @Override
+            public void run() {
+                // Run this test while inside the static initializer of DummyClass to ensure
+                // componentType has an init_lock.
+                StructuredGraph graph = parseEager("unsafeFoldComponentType", AllowAssumptions.NO);
+                HighTierContext highContext = getDefaultHighTierContext();
+                ParameterNode param = graph.getNodes().filter(ParameterNode.class).first();
+                param.replaceAtUsages(ConstantNode.forConstant(getSnippetReflection().forObject(DummyClass.class), getMetaAccess(), graph));
+                createCanonicalizerPhase().apply(graph, highContext);
+                ReturnNode returnNode = graph.getNodes().filter(ReturnNode.class).first();
+                Object result = getSnippetReflection().asObject(Object.class, returnNode.result().asJavaConstant());
+                assertDeepEquals("componentType must be null for non-array", null, result);
+            }
+        };
+        DummyClass.init();
+    }
+
+    // This should be replaced by a plugin
+    @SuppressWarnings("unused")
+    static Class<?> readComponentType(Class<?> clazz) {
+        throw new InternalError("unimplemented");
+    }
+
+    @Override
+    protected void registerInvocationPlugins(InvocationPlugins plugins) {
+        if (JavaVersionUtil.JAVA_SPEC >= 9) {
+            try {
+                Field f = Class.class.getDeclaredField("componentType");
+                Registration r = new Registration(plugins, ClassSubstitutionsTests.class);
+                r.register1("readComponentType", Class.class, new InvocationPlugin() {
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz) {
+                        ResolvedJavaField field = b.getMetaAccess().lookupJavaField(f);
+                        b.addPush(JavaKind.Object,
+                                        LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), b.getOptions(),
+                                                        b.getAssumptions(), clazz, field, false, false));
+                        return true;
+                    }
+                });
+            } catch (NoSuchFieldException e) {
+                throw new InternalError(e);
+            }
+        }
+    }
+
     @Test
     public void testFieldIsArray() {
         testConstantReturn("fieldIsArray", 1);
@@ -138,32 +221,32 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
     private static class C {
     }
 
-    private static final A a = new A();
-    private static final B b = new B();
-    private static final C c = new C();
+    private static final A aInstance = new A();
+    private static final B bInstance = new B();
+    private static final C cInstance = new C();
 
     public boolean classIsAssignable1() {
-        return a.getClass().isAssignableFrom(a.getClass());
+        return aInstance.getClass().isAssignableFrom(aInstance.getClass());
     }
 
     public boolean classIsAssignable2() {
-        return a.getClass().isAssignableFrom(b.getClass());
+        return aInstance.getClass().isAssignableFrom(bInstance.getClass());
     }
 
     public boolean classIsAssignable3() {
-        return a.getClass().isAssignableFrom(c.getClass());
+        return aInstance.getClass().isAssignableFrom(cInstance.getClass());
     }
 
     public boolean classIsAssignable4() {
-        return b.getClass().isAssignableFrom(a.getClass());
+        return bInstance.getClass().isAssignableFrom(aInstance.getClass());
     }
 
     public boolean classIsAssignable5() {
-        return c.getClass().isAssignableFrom(b.getClass());
+        return cInstance.getClass().isAssignableFrom(bInstance.getClass());
     }
 
     public boolean classIsAssignable6() {
-        return int.class.isAssignableFrom(b.getClass());
+        return int.class.isAssignableFrom(bInstance.getClass());
     }
 
     public boolean classIsAssignable7() {
