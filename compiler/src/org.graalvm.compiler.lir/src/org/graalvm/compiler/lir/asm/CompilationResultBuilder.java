@@ -292,7 +292,7 @@ public class CompilationResultBuilder {
     }
 
     public void recordImplicitException(int pcOffset, LIRFrameState info) {
-        if (GraalServices.supportArbitraryImplicitException() && info instanceof ImplicitLIRFrameState) {
+        if (GraalServices.supportsArbitraryImplicitException() && info instanceof ImplicitLIRFrameState) {
             if (pendingImplicitExceptionList == null) {
                 pendingImplicitExceptionList = new ArrayList<>(4);
             }
