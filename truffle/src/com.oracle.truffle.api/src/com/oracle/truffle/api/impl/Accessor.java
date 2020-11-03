@@ -756,6 +756,8 @@ public abstract class Accessor {
 
         public abstract void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
 
+        public abstract void finalizeStoreInstrumentationHandler(Object instrumentationHandler);
+
         public abstract boolean isInputValueSlotIdentifier(Object identifier);
 
         public abstract boolean isInstrumentable(Node node);

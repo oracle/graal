@@ -1255,6 +1255,12 @@ final class InstrumentationHandler {
         return allocationReporter;
     }
 
+    void finalizeStore() {
+        this.out = null;
+        this.err = null;
+        this.in = null;
+    }
+
     void patch(DispatchOutputStream newOut, DispatchOutputStream newErr, InputStream newIn) {
         this.out = newOut;
         this.err = newErr;
