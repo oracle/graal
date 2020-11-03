@@ -1083,8 +1083,8 @@ public final class ObjectKlass extends Klass {
         LinkedKlass linkedKlass = new LinkedKlass(parserKlass, getSuperKlass().getLinkedKlass(), interfaces);
 
         Method[][] itable = oldVersion.itable;
-        Method[] vtable = oldVersion.vtable;
-        ObjectKlass[] iKlassTable = oldVersion.iKlassTable;
+        Method[] vtable;
+        ObjectKlass[] iKlassTable;
         Method[] mirandaMethods = oldVersion.mirandaMethods;
 
         // changed methods

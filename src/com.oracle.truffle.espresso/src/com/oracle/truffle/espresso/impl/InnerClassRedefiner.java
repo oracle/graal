@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.espresso.classfile.ClassNameFromBytesException;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -69,7 +72,7 @@ public final class InnerClassRedefiner {
             while (it.hasNext()) {
                 RedefineInfo redefineInfo = it.next();
                 Klass klass = (Klass) redefineInfo.getKlass();
-                String klassName = klass.getNameAsString();
+                String klassName = klass != null ? klass.getNameAsString() : getClassNameFromBytes(redefineInfo.getClassBytes(), context);
                 Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klassName);
                 if (matcher.matches()) {
                     // anonymous inner class or nested named
@@ -77,8 +80,7 @@ public final class InnerClassRedefiner {
                     // get the outer classinfo if present
                     ClassInfo info = handled.get(getOuterClassName(klassName));
                     if (info != null) {
-                        Klass ref = (Klass) redefineInfo.getKlass();
-                        ClassInfo classInfo = ClassInfo.create(ref.getNameAsString(), redefineInfo.getClassBytes(), ref.getDefiningClassLoader(), context);
+                        ClassInfo classInfo = ClassInfo.create(klassName, redefineInfo.getClassBytes(), info.getClassLoader(), context);
                         info.addInnerClass(classInfo);
                         handled.put(klassName, classInfo);
                         it.remove();
@@ -115,6 +117,18 @@ public final class InnerClassRedefiner {
         return result.toArray(new ClassInfo[0]);
     }
 
+    // method is only reachable from test code, because we pass in bytes
+    // for new anonynous inner classes without a refTypeID
+    private static String getClassNameFromBytes(byte[] bytes, EspressoContext context) {
+        try {
+            // pass in the special test marked as the requested class name
+            ClassfileParser.parse(new ClassfileStream(bytes, null), "!TEST!", null, context);
+        } catch (ClassNameFromBytesException ex) {
+            return ex.getClassTypeName().substring(1, ex.getClassTypeName().length() - 1);
+        }
+        return null;
+    }
+
     private static void getAllHotswapClasses(Collection<ClassInfo> infos, ArrayList<ClassInfo> result) {
         for (ClassInfo info : infos) {
             result.add(info);
@@ -133,7 +147,6 @@ public final class InnerClassRedefiner {
             if (!classInfo.knowsInnerClass(innerName)) {
                 StaticObject guestString = context.getMeta().toGuestString(innerName + ".class");
                 StaticObject inputStream = (StaticObject) context.getMeta().java_lang_ClassLoader_getResourceAsStream.invokeDirect(definingLoader, guestString);
-
                 if (StaticObject.notNull(inputStream)) {
                     byte[] classBytes = readAllBytes(inputStream, context);
                     classInfo.addInnerClass(ClassInfo.create(innerName, classBytes, definingLoader, context));

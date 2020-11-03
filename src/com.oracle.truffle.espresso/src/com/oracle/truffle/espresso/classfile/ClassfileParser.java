@@ -222,6 +222,8 @@ public final class ClassfileParser {
             return parseClassImpl();
         } catch (EspressoException e) {
             throw e;
+        } catch (ClassNameFromBytesException e) {
+            throw e;
         } catch (Throwable e) {
             context.getLogger().severe("Unexpected host exception " + e + " thrown during class parsing.");
             throw e;
@@ -344,6 +346,11 @@ public final class ClassfileParser {
 
         // Checks if name in class file matches requested name
         if (requestedClassType != null && !requestedClassType.equals(classType.toString())) {
+            if ("!TEST!".equals(requestedClassType)) {
+                // throw exception including the name found in the bytecode
+                // used from test code to obtain the class name only
+                throw new ClassNameFromBytesException(classType.toString());
+            }
             throw ConstantPool.noClassDefFoundError(classType + " (wrong name: " + requestedClassType + ")");
         }
 
