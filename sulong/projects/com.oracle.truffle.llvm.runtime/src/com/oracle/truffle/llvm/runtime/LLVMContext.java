@@ -160,7 +160,7 @@ public final class LLVMContext {
         }
 
         synchronized LLVMFunctionDescriptor create(LLVMFunction functionDetail, LLVMFunctionCode functionCode) {
-            return new LLVMFunctionDescriptor(getLanguage(), functionDetail, functionCode);
+            return new LLVMFunctionDescriptor(functionDetail, functionCode);
         }
     }
 
