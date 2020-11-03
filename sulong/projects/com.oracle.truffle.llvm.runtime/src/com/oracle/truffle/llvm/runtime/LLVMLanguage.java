@@ -335,9 +335,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void finalizeContext(LLVMContext context) {
-        if (sulongDisposeContext == null) {
-            throw new IllegalStateException("Context cannot be disposed: __sulong_dispose_context was not found");
-        }
         context.finalizeContext(sulongDisposeContext);
     }
 
