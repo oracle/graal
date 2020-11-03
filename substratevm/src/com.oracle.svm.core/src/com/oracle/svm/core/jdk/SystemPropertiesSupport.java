@@ -53,6 +53,7 @@ public abstract class SystemPropertiesSupport {
     /** System properties that are taken from the VM hosting the image generator. */
     private static final String[] HOSTED_PROPERTIES = {
                     "java.version",
+                    "java.runtime.version",
                     ImageInfo.PROPERTY_IMAGE_KIND_KEY,
                     /*
                      * We do not support cross-compilation for now. Separator might also be cached
