@@ -51,19 +51,19 @@ public final class WasmCodeEntry {
     private final WasmFunction function;
     @CompilationFinal(dimensions = 1) private final byte[] data;
     @CompilationFinal(dimensions = 1) private FrameSlot[] localSlots;
-    @CompilationFinal(dimensions = 1) private FrameSlot[] stackSlots;
     @CompilationFinal(dimensions = 1) private byte[] localTypes;
     @CompilationFinal(dimensions = 1) private byte[] byteConstants;
     @CompilationFinal(dimensions = 1) private int[] intConstants;
     @CompilationFinal(dimensions = 1) private long[] longConstants;
     @CompilationFinal(dimensions = 2) private int[][] branchTables;
     @CompilationFinal(dimensions = 1) private int[] profileCounters;
+    @CompilationFinal private FrameSlot stackSlot;
+    @CompilationFinal private int maxStackSize;
 
     public WasmCodeEntry(WasmFunction function, byte[] data) {
         this.function = function;
         this.data = data;
         this.localSlots = null;
-        this.stackSlots = null;
         this.localTypes = null;
         this.byteConstants = null;
         this.intConstants = null;
@@ -81,10 +81,6 @@ public final class WasmCodeEntry {
 
     public FrameSlot localSlot(int index) {
         return localSlots[index];
-    }
-
-    public FrameSlot stackSlot(int index) {
-        return stackSlots[index];
     }
 
     public void initLocalSlots(FrameDescriptor frameDescriptor) {
@@ -111,12 +107,18 @@ public final class WasmCodeEntry {
         return null;
     }
 
-    public void initStackSlots(FrameDescriptor frameDescriptor, int maxStackSize) {
-        stackSlots = new FrameSlot[maxStackSize];
-        for (int i = 0; i != maxStackSize; ++i) {
-            FrameSlot stackSlot = frameDescriptor.addFrameSlot(localSlots.length + i, FrameSlotKind.Long);
-            stackSlots[i] = stackSlot;
-        }
+    public void initStack(FrameDescriptor frameDescriptor, int maximumStackSize) {
+        int stackSlotIndex = localSlots.length;
+        this.stackSlot = frameDescriptor.addFrameSlot(stackSlotIndex, FrameSlotKind.Object);
+        this.maxStackSize = maximumStackSize;
+    }
+
+    public int maxStackSize() {
+        return maxStackSize;
+    }
+
+    public FrameSlot stackSlot() {
+        return stackSlot;
     }
 
     public void setLocalTypes(byte[] localTypes) {
