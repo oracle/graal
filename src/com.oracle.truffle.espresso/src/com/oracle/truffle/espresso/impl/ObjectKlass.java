@@ -1096,7 +1096,7 @@ public final class ObjectKlass extends Klass {
             JDWPLogger.log("Redefining method %s.%s", JDWPLogger.LogLevel.REDEFINE, method.getDeclaringKlass().getName(), method.getName());
 
             // look in tables for copied methods that also needs to be invalidated
-            if (!method.isStatic() && !method.isPrivate() && !"<init>".equals(method.getNameAsString())) {
+            if (!method.isStatic() && !method.isPrivate() && !Name._init_.equals(method.getName())) {
                 ArrayList<Method> copiedMethods = new ArrayList<>(1);
                 checkCopyMethods(method, itable, copiedMethods);
                 checkCopyMethods(method, vtable, copiedMethods);
