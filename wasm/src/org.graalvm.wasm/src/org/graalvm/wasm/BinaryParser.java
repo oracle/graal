@@ -392,7 +392,7 @@ public class BinaryParser extends BinaryStreamParser {
             rootNode.codeEntry().setBranchTables(state.branchTables());
         }
         rootNode.codeEntry().setProfileCount(state.profileCount());
-        rootNode.codeEntry().initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize());
+        rootNode.codeEntry().initStack(rootNode.getFrameDescriptor(), state.maxStackSize());
     }
 
     private ByteArrayList readCodeEntryLocals() {

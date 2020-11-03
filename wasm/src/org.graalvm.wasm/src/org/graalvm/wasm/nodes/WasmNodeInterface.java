@@ -99,43 +99,39 @@ public interface WasmNodeInterface {
 
     /* STACK operations */
 
-    default void push(VirtualFrame frame, int slot, long value) {
-        frame.setLong(codeEntry().stackSlot(slot), value);
+    default void push(long[] stack, int slot, long value) {
+        stack[slot] = value;
     }
 
-    default void pushInt(VirtualFrame frame, int slot, int value) {
-        push(frame, slot, value & 0xffffffffL);
+    default void pushInt(long[] stack, int slot, int value) {
+        push(stack, slot, value & 0xffffffffL);
     }
 
-    default void pushFloat(VirtualFrame frame, int slot, float value) {
-        pushInt(frame, slot, Float.floatToRawIntBits(value));
+    default void pushFloat(long[] stack, int slot, float value) {
+        pushInt(stack, slot, Float.floatToRawIntBits(value));
     }
 
-    default void pushDouble(VirtualFrame frame, int slot, double value) {
-        push(frame, slot, Double.doubleToRawLongBits(value));
+    default void pushDouble(long[] stack, int slot, double value) {
+        push(stack, slot, Double.doubleToRawLongBits(value));
     }
 
-    default long pop(VirtualFrame frame, int slot) {
-        try {
-            long result = frame.getLong(codeEntry().stackSlot(slot));
-            // Needed to avoid keeping track of popped slots in FrameStates.
-            frame.setLong(codeEntry().stackSlot(slot), 0L);
-            return result;
-        } catch (FrameSlotTypeException e) {
-            throw new RuntimeException(e);
-        }
+    default long pop(long[] stack, int slot) {
+        long result = stack[slot];
+        // Needed to avoid keeping track of popped slots in FrameStates.
+        stack[slot] = 0L;
+        return result;
     }
 
-    default int popInt(VirtualFrame frame, int slot) {
-        return (int) pop(frame, slot);
+    default int popInt(long[] stack, int slot) {
+        return (int) pop(stack, slot);
     }
 
-    default float popAsFloat(VirtualFrame frame, int slot) {
-        return Float.intBitsToFloat(popInt(frame, slot));
+    default float popAsFloat(long[] stack, int slot) {
+        return Float.intBitsToFloat(popInt(stack, slot));
     }
 
-    default double popAsDouble(VirtualFrame frame, int slot) {
-        return Double.longBitsToDouble(pop(frame, slot));
+    default double popAsDouble(long[] stack, int slot) {
+        return Double.longBitsToDouble(pop(stack, slot));
     }
 
 }
