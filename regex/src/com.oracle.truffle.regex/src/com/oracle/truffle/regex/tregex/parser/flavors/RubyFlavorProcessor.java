@@ -64,7 +64,6 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
@@ -1419,6 +1418,49 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
     }
 
+    private Optional<Boolean> containsNamedCaptureGroups = Optional.empty();
+
+    private boolean containsNamedCaptureGroups() {
+        if (containsNamedCaptureGroups.isPresent()) {
+            return containsNamedCaptureGroups.get();
+        } else {
+            // We are counting capture groups, so we only care about '(' characters and special
+            // characters which can cancel the meaning of '(' - those include '\' for escapes, '[' for
+            // character classes (where '(' stands for a literal '(') and any characters after the '('
+            // which might turn into a non-capturing group or a look-around assertion.
+            int charClassDepth = 0;
+            final int restorePosition = position;
+            while (!atEnd()) {
+                switch (consumeChar()) {
+                    case '\\':
+                        // skip escaped char
+                        advance();
+                        break;
+                    case '[':
+                        charClassDepth++;
+                        if (!match("]")) {
+                            match("^]");
+                        }
+                        break;
+                    case ']':
+                        charClassDepth--;
+                        break;
+                    case '(':
+                        if (charClassDepth == 0 && match("?<")) {
+                            containsNamedCaptureGroups = Optional.of(true);
+                            return true;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+            position = restorePosition;
+            containsNamedCaptureGroups = Optional.of(false);
+            return false;
+        }
+    }
+
     /**
      * Parses one of the many syntactic forms that start with a parenthesis, assuming that the
      * parenthesis was already parsed. These consist of the following:
@@ -1465,6 +1507,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                                 default:
                                     retreat();
                                     String groupName = parseGroupName('>');
+                                    containsNamedCaptureGroups = Optional.of(true);
                                     group(true, Optional.of(groupName), start);
                                     break;
                             }
@@ -1569,6 +1612,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      *            reporting purposes
      */
     private void group(boolean capturing, Optional<String> optName, int start) {
+        if (containsNamedCaptureGroups() && !optName.isPresent()) {
+            capturing = false;
+        }
         if (capturing) {
             groups++;
             groupStack.push(new Group(groups));
