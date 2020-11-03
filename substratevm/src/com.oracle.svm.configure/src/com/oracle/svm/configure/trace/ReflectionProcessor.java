@@ -140,10 +140,16 @@ class ReflectionProcessor extends AbstractProcessor {
 
             case "getDeclaredClasses": {
                 configuration.getOrCreateType(clazz).setAllDeclaredClasses();
+                @SuppressWarnings("unchecked")
+                List<String> classes = (List<String>) entry.get("result");
+                registerClasses(classes, lazyValue(callerClass));
                 break;
             }
             case "getClasses": {
                 configuration.getOrCreateType(clazz).setAllPublicClasses();
+                @SuppressWarnings("unchecked")
+                List<String> classes = (List<String>) entry.get("result");
+                registerClasses(classes, lazyValue(callerClass));
                 break;
             }
 
@@ -230,6 +236,14 @@ class ReflectionProcessor extends AbstractProcessor {
             }
             default:
                 System.err.println("Unsupported reflection method: " + function);
+        }
+    }
+
+    private void registerClasses(List<String> classes, LazyValue<String> callerClass) {
+        for (String clazz : classes) {
+            if (!advisor.shouldIgnore(lazyValue(clazz), callerClass)) {
+                configuration.getOrCreateType(clazz);
+            }
         }
     }
 

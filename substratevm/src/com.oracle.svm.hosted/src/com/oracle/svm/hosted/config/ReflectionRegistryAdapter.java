@@ -60,12 +60,10 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
 
     @Override
     public void registerPublicClasses(Class<?> type) {
-        registry.register(type.getClasses());
     }
 
     @Override
     public void registerDeclaredClasses(Class<?> type) {
-        registry.register(type.getDeclaredClasses());
     }
 
     @Override
