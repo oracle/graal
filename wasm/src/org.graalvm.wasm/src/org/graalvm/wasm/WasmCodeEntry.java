@@ -107,10 +107,10 @@ public final class WasmCodeEntry {
         return null;
     }
 
-    public void initStack(FrameDescriptor frameDescriptor, int maxStackSize) {
+    public void initStack(FrameDescriptor frameDescriptor, int maximumStackSize) {
         int stackSlotIndex = localSlots.length;
         this.stackSlot = frameDescriptor.addFrameSlot(stackSlotIndex, FrameSlotKind.Object);
-        this.maxStackSize = maxStackSize;
+        this.maxStackSize = maximumStackSize;
     }
 
     public int maxStackSize() {
