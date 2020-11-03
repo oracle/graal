@@ -103,6 +103,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 ))
 
 
+polybench_benchmark_methods = ["_run"]
+
+
 # pylint: disable=line-too-long
 ce_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'js', 'lg', 'lsp', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']
 ce_complete_components = ['cmp', 'cov', 'dap', 'gu', 'gvm', 'gwa', 'ins', 'insight', 'js', 'lg', 'llp', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'bpolyglot', 'vvm']
@@ -148,6 +151,75 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                       'See building.md in FastR documentation for more details.').format(fastr_release_env))
     if register_project:
         register_project(GraalVmSymlinks())
+
+        if mx_sdk_vm_impl.has_component('GraalWasm'):
+            import mx_wasm
+
+            class GraalVmWasmSourceFileProject(mx_wasm.GraalWasmSourceFileProject):
+                def getSourceDir(self):
+                    return self.subDir
+
+                def getProgramSources(self):
+                    for root, _, files in os.walk(self.getSourceDir()):
+                        for filename in files:
+                            if filename.endswith(".c"):
+                                yield (root, filename)
+
+                def getBuildTask(self, args):
+                    output_base = self.get_output_base()
+                    return GraalVmWasmSourceFileTask(self, args, output_base)
+
+                def isBenchmarkProject(self):
+                    return self.name.startswith("benchmarks.")
+
+            class GraalVmWasmSourceFileTask(mx_wasm.GraalWasmSourceFileTask):
+                def needsBuild(self, newestInput):
+                    is_needed, reason = super(GraalVmWasmSourceFileTask, self).needsBuild(newestInput)
+                    if is_needed:
+                        return is_needed, reason
+                    for root, filename in self.subject.getProgramSources():
+                        f = join(root, mx_wasm.remove_extension(filename) + ".wasm")
+                        if not os.path.exists(f):
+                            return True, "symlink '{}' does not exist".format(f)
+                        return False, ''
+
+                def benchmark_methods(self):
+                    return polybench_benchmark_methods
+
+                def build(self):
+                    super(GraalVmWasmSourceFileTask, self).build()
+                    output_dir = self.subject.getOutputDir()
+                    for root, filename in self.subject.getProgramSources():
+                        src = join(output_dir, mx_wasm.remove_extension(filename) + ".wasm")
+                        dst = join(root, mx_wasm.remove_extension(filename) + ".wasm")
+                        if mx.is_windows():
+                            mx.copyfile(src, dst)
+                        else:
+                            os.symlink(src, dst)
+
+                def clean(self, forBuild=False):
+                    super(GraalVmWasmSourceFileTask, self).build()
+                    for root, filename in self.subject.getProgramSources():
+                        f = join(root, mx_wasm.remove_extension(filename) + ".wasm")
+                        if os.path.exists(f):
+                            if os.path.islink(f):
+                                os.unlink(f)
+                            else:
+                                mx.rmtree(f)
+                    output_dir = self.subject.getOutputDir()
+                    if not forBuild and os.path.exists(output_dir):
+                        mx.rmtree(output_dir)
+
+            register_project(GraalVmWasmSourceFileProject(
+                suite=_suite,
+                name='benchmarks.interpreter.wasm',
+                deps=[],
+                workingSets=None,
+                subDir=join(_suite.dir, 'benchmarks', 'interpreter'),
+                theLicense=None,
+                testProject=True,
+                defaultBuild=False,
+            ))
 
 
 class GraalVmSymlinks(mx.Project):

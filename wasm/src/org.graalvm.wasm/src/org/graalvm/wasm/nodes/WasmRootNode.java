@@ -57,8 +57,6 @@ import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmVoidResult;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 @NodeInfo(language = "wasm", description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
@@ -118,8 +116,6 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
         initializeLocals(frame);
 
-        trace("%s EXECUTE", this);
-
         body.execute(context, frame);
 
         switch (body.returnTypeId()) {
@@ -162,25 +158,21 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
             switch (kind) {
                 case Int: {
                     int argument = (int) args[i];
-                    trace("argument: 0x%08X (%d) [i32]", argument, argument);
                     frame.setInt(slot, argument);
                     break;
                 }
                 case Long: {
                     long argument = (long) args[i];
-                    trace("argument: 0x%016X (%d) [i64]", argument, argument);
                     frame.setLong(slot, argument);
                     break;
                 }
                 case Float: {
                     float argument = (float) args[i];
-                    trace("argument: %f [f32]", argument);
                     frame.setFloat(slot, argument);
                     break;
                 }
                 case Double: {
                     double argument = (double) args[i];
-                    trace("argument: %f [f64]", argument);
                     frame.setDouble(slot, argument);
                     break;
                 }

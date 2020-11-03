@@ -47,8 +47,6 @@ import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 public class SetErrNoNode extends WasmBuiltinRootNode {
     public SetErrNoNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
@@ -58,13 +56,8 @@ public class SetErrNoNode extends WasmBuiltinRootNode {
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         Object[] args = frame.getArguments();
         assert args.length == 1;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
 
         int value = (int) args[0];
-
-        trace("SetErrNoNode EXECUTE");
 
         // TODO: Get address (3120) via call to `___errno_location` WebAssembly function.
         WasmMemory memory = instance.memory();

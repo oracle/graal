@@ -25,8 +25,15 @@ vm_bench_js_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd64} ${s
 vm_bench_polybench_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd64} ${truffleruby_linux} ${custom_vm_linux} {
   base_cmd: [mx, --env, "polybench-${VM_ENV}"]
   bench_cmd: ${vm_bench_polybench_linux.base_cmd} [benchmark, "polybench:*", --results-file, ${vm_bench_polybench_linux.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}"]
+  downloads: {
+    WABT_DIR: {name: wabt, version: "1.0.12", platformspecific: true},
+    EMSDK_DIR: {name: emsdk, version: "1.39.13", platformspecific: true},
+  }
+  environment: {
+    EMCC_DIR: "$EMSDK_DIR/emscripten/master/"
+  }
   setup: ${common_vm.setup} [
-    ${vm_bench_polybench_linux.base_cmd} [build]
+    ${vm_bench_polybench_linux.base_cmd} [build, --all]
   ]
   run: [
     ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=jvm-interpreter"]
@@ -34,6 +41,7 @@ vm_bench_polybench_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd
     ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=native-interpreter"]
     ${vm_bench_common.upload}
   ]
+  targets: [bench, daily]
 }
 
 builds += [

@@ -52,8 +52,6 @@ import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import java.util.function.Consumer;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 public class WasiFdWriteNode extends WasmBuiltinRootNode {
 
     public WasiFdWriteNode(WasmLanguage language, WasmInstance module) {
@@ -64,9 +62,6 @@ public class WasiFdWriteNode extends WasmBuiltinRootNode {
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         Object[] args = frame.getArguments();
         assert args.length == 4;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
 
         int stream = (int) args[0];
         int iov = (int) args[1];
@@ -89,8 +84,6 @@ public class WasiFdWriteNode extends WasmBuiltinRootNode {
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "WasiFdWriteNode: invalid file stream");
         }
-
-        trace("WasiFdWriteNode EXECUTE");
 
         WasmMemory memory = instance.memory();
         int num = 0;

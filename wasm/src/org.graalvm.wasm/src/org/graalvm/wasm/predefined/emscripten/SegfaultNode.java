@@ -45,8 +45,6 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmInstance;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 public class SegfaultNode extends AbortNode {
     public SegfaultNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
@@ -54,7 +52,6 @@ public class SegfaultNode extends AbortNode {
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("SegfaultNode");
         return super.execute(frame);
     }
 

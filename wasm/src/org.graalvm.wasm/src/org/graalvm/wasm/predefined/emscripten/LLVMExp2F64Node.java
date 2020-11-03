@@ -47,8 +47,6 @@ import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 public class LLVMExp2F64Node extends WasmBuiltinRootNode {
     public LLVMExp2F64Node(WasmLanguage language, WasmInstance module) {
         super(language, module);
@@ -58,13 +56,8 @@ public class LLVMExp2F64Node extends WasmBuiltinRootNode {
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         Object[] args = frame.getArguments();
         assert args.length == 1;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
 
         double x = (double) args[0];
-
-        trace("LLVMExp2F64Node EXECUTE");
 
         return exp2(x);
     }

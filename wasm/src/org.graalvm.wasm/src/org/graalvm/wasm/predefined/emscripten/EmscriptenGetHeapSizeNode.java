@@ -47,8 +47,6 @@ import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 public class EmscriptenGetHeapSizeNode extends WasmBuiltinRootNode {
     public EmscriptenGetHeapSizeNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
@@ -56,8 +54,6 @@ public class EmscriptenGetHeapSizeNode extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        trace("EmscriptenGetHeapSizeNode EXECUTE");
-
         WasmMemory memory = instance.memory();
         final long byteSize = memory.byteSize();
         return (int) byteSize;
