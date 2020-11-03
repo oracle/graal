@@ -145,6 +145,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final LLVMInteropType.InteropTypeRegistry interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
 
     @CompilationFinal private LLVMFunctionCode sulongInitContextCode;
+    @CompilationFinal private LLVMFunction sulongDisposeContext;
 
     {
         /*
@@ -334,7 +335,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void finalizeContext(LLVMContext context) {
-        context.finalizeContext();
+        context.finalizeContext(sulongDisposeContext);
     }
 
     @Override
@@ -412,6 +413,10 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public void setSulongInitContext(LLVMFunction function) {
         this.sulongInitContextCode = new LLVMFunctionCode(function);
+    }
+
+    public void setSulongDisposeContext(LLVMFunction function) {
+        this.sulongDisposeContext = function;
     }
 
     private CallTarget freeGlobalBlocks;
