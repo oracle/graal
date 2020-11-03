@@ -1430,36 +1430,39 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             // characters which can cancel the meaning of '(' - those include '\' for escapes, '[' for
             // character classes (where '(' stands for a literal '(') and any characters after the '('
             // which might turn into a non-capturing group or a look-around assertion.
-            int charClassDepth = 0;
             final int restorePosition = position;
-            while (!atEnd()) {
-                switch (consumeChar()) {
-                    case '\\':
-                        // skip escaped char
-                        advance();
-                        break;
-                    case '[':
-                        charClassDepth++;
-                        if (!match("]")) {
-                            match("^]");
-                        }
-                        break;
-                    case ']':
-                        charClassDepth--;
-                        break;
-                    case '(':
-                        if (charClassDepth == 0 && match("?<")) {
-                            containsNamedCaptureGroups = Optional.of(true);
-                            return true;
-                        }
-                        break;
-                    default:
-                        break;
+            try {
+                int charClassDepth = 0;
+                while (!atEnd()) {
+                    switch (consumeChar()) {
+                        case '\\':
+                            // skip escaped char
+                            advance();
+                            break;
+                        case '[':
+                            charClassDepth++;
+                            if (!match("]")) {
+                                match("^]");
+                            }
+                            break;
+                        case ']':
+                            charClassDepth--;
+                            break;
+                        case '(':
+                            if (charClassDepth == 0 && match("?<")) {
+                                containsNamedCaptureGroups = Optional.of(true);
+                                return true;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
                 }
+                containsNamedCaptureGroups = Optional.of(false);
+                return false;
+            } finally {
+                position = restorePosition;
             }
-            position = restorePosition;
-            containsNamedCaptureGroups = Optional.of(false);
-            return false;
         }
     }
 
