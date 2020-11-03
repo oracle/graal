@@ -58,17 +58,16 @@ public abstract class LLVMInteropWriteMemberNode extends LLVMNode {
                     throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
         List<Pair<LLVMInteropType.StructMember, LLVMInteropType.ClazzInheritance>> list = clazz.getMemberAccessList(ident);
         if (list != null && list.size() > 0) {
-            Object ret = receiver;
-            for (Pair<LLVMInteropType.StructMember, LLVMInteropType.ClazzInheritance> p : list) {
-                if (p.getRight().virtual) {
-                    LLVMPointer elemPtr = virtualMemberPtrNode.execute(LLVMPointer.cast(ret), clazz.findMember(ident), LLVMPointer.cast(ret).getExportType());
-                    write.execute(elemPtr, elemPtr.getExportType(), value);
-                    return;
-                } else {
+            if (list.stream().anyMatch(l -> l.getRight().virtual)) {
+                LLVMPointer elemPtr = virtualMemberPtrNode.execute(receiver, clazz.findMember(ident), receiver.getExportType());
+                write.execute(elemPtr, elemPtr.getExportType(), value);
+            } else {
+                Object ret = receiver;
+                for (Pair<LLVMInteropType.StructMember, LLVMInteropType.ClazzInheritance> p : list) {
                     ret = interop.readMember(ret, p.getLeft().name);
                 }
+                interop.writeMember(ret, ident, value);
             }
-            interop.writeMember(ret, ident, value);
         } else {
             doNormal(receiver, ident, value, clazz, getMemberPtr, write);
         }

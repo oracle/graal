@@ -57,14 +57,14 @@ public abstract class LLVMInteropReadMemberNode extends LLVMNode {
                     throws UnsupportedMessageException, UnknownIdentifierException {
         List<Pair<LLVMInteropType.StructMember, LLVMInteropType.ClazzInheritance>> list = clazz.getMemberAccessList(ident);
         if (list != null && list.size() > 0) {
+            if (list.stream().anyMatch(l -> l.getRight().virtual)) {
+                LLVMPointer elemPtr = virtualMemberPtr.execute(receiver, clazz.findMember(ident), receiver.getExportType());
+                return read.execute(elemPtr, elemPtr.getExportType());
+            }
+
             Object ret = receiver;
             for (Pair<LLVMInteropType.StructMember, LLVMInteropType.ClazzInheritance> p : list) {
-                if (p.getRight().virtual) {
-                    LLVMPointer elemPtr = virtualMemberPtr.execute(receiver, clazz.findMember(ident), LLVMPointer.cast(ret).getExportType());
-                    return read.execute(elemPtr, elemPtr.getExportType());
-                } else {
-                    ret = interop.readMember(ret, p.getLeft().name);
-                }
+                ret = interop.readMember(ret, p.getLeft().name);
             }
             return interop.readMember(ret, ident);
         }
