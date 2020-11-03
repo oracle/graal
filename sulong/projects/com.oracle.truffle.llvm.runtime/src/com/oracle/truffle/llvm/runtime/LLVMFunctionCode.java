@@ -29,10 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -42,6 +44,10 @@ import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCodeFactory.ResolveFunctionNodeGen;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
+import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMForeignConstructorCallNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMForeignFunctionCallNode;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -360,6 +366,42 @@ public class LLVMFunctionCode {
             throw new LLVMLinkerException("Native function " + fn.toString() + " not found");
         }
         return nativeFunction;
+    }
+
+    // used for calls from foreign languages
+    // includes boundary conversions
+    private CallTarget foreignFunctionCallTarget;
+    private CallTarget foreignConstructorCallTarget;
+
+    CallTarget getForeignCallTarget(LLVMFunctionDescriptor functionDescriptor) {
+        if (foreignFunctionCallTarget == null) {
+            CompilerDirectives.transferToInterpreter();
+            LLVMLanguage language = LLVMLanguage.getLanguage();
+            LLVMSourceFunctionType sourceType = getFunction().getSourceType();
+            LLVMInteropType interopType = language.getInteropType(sourceType);
+            LLVMForeignCallNode foreignCall = LLVMForeignFunctionCallNode.create(language, functionDescriptor, interopType, sourceType);
+            foreignFunctionCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
+            assert foreignFunctionCallTarget != null;
+        }
+        return foreignFunctionCallTarget;
+    }
+
+    CallTarget getForeignConstructorCallTarget(LLVMFunctionDescriptor functionDescriptor) {
+        if (foreignConstructorCallTarget == null) {
+            CompilerDirectives.transferToInterpreter();
+            LLVMLanguage language = LLVMLanguage.getLanguage();
+            LLVMSourceFunctionType sourceType = getFunction().getSourceType();
+            LLVMInteropType interopType = language.getInteropType(sourceType);
+            LLVMInteropType extractedType = ((LLVMInteropType.Function) interopType).getParameter(0);
+            if (extractedType instanceof LLVMInteropType.Value) {
+                LLVMInteropType.Structured structured = ((LLVMInteropType.Value) extractedType).baseType;
+                LLVMForeignCallNode foreignCall = LLVMForeignConstructorCallNode.create(
+                                language, functionDescriptor, interopType, sourceType, structured);
+                foreignConstructorCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
+            }
+            assert foreignConstructorCallTarget != null;
+        }
+        return foreignConstructorCallTarget;
     }
 
     private void setFunction(Function newFunction) {
