@@ -123,8 +123,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
         this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
         this.resourceExhausted = isResourceLimit(exception);
-        InteropLibrary interop = InteropLibrary.getUncached();
-        if (interop.isException(exception)) {
+        InteropLibrary interop;
+        if (languageContext != null && (interop = InteropLibrary.getUncached()).isException(exception)) {
             try {
                 ExceptionType exceptionType = interop.getExceptionType(exception);
                 this.internal = false;
@@ -164,12 +164,24 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             this.internal = !interrupted && !cancelled && !resourceExhausted;
             this.syntaxError = false;
             this.incompleteSource = false;
-            this.exit = isLegacyTruffleExceptionExit(exception);
-            this.exitStatus = exit ? getLegacyTruffleExceptionExitStatus(exception) : 0;
-            com.oracle.truffle.api.source.SourceSection location = exception instanceof CancelExecution ? ((CancelExecution) exception).getSourceLocation()
-                            : getLegacyTruffleExceptionSourceLocation(exception);
+            if (languageContext != null) {
+                this.exit = isLegacyTruffleExceptionExit(exception);
+                this.exitStatus = exit ? getLegacyTruffleExceptionExitStatus(exception) : 0;
+                this.guestObject = getLegacyTruffleExceptionGuestObject(languageContext, exception);
+            } else {
+                this.exit = false;
+                this.exitStatus = 0;
+                this.guestObject = null;
+            }
+            com.oracle.truffle.api.source.SourceSection location;
+            if (exception instanceof CancelExecution) {
+                location = ((CancelExecution) exception).getSourceLocation();
+            } else if (languageContext != null) {
+                location = getLegacyTruffleExceptionSourceLocation(exception);
+            } else {
+                location = null;
+            }
             this.sourceLocation = location != null ? newSourceSection(location) : null;
-            this.guestObject = getLegacyTruffleExceptionGuestObject(languageContext, exception);
         }
         if (isHostException()) {
             this.message = asHostException().getMessage();
