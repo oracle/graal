@@ -397,6 +397,8 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
                             "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
                             "java/lang/CharacterDataLatin1.isWhitespace(I)Z",
+                            "java/lang/Math.abs(I)I",
+                            "java/lang/Math.abs(J)J",
                             "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
             if (!config.useBase64Intrinsics()) {
                 add(ignore,
