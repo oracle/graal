@@ -115,7 +115,6 @@ import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -1567,9 +1566,7 @@ public class NativeImageGenerator {
                 classInitializationSupport.initializeAtBuildTime(clazz, "classes annotated with " + CContext.class.getSimpleName() + " are always initialized");
             }
         }
-        for (CLibrary library : loader.findAnnotations(CLibrary.class)) {
-            nativeLibs.addAnnotated(library);
-        }
+        nativeLibs.processCLibraryAnnotations(loader);
 
         nativeLibs.finish();
         nativeLibs.reportErrors();
