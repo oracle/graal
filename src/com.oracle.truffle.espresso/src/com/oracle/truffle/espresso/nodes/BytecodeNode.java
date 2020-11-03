@@ -293,7 +293,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.InstanceOfNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.InstanceOfNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ArrayLengthNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.interop.ByteArrayLoadNodeGen;
@@ -1754,7 +1754,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
                 Klass typeToCheck = resolveType(opcode, bs.readCPI(curBCI));
-                quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck, top, curBCI), QUICK);
+                quick = injectQuick(curBCI, new InstanceOfNode(typeToCheck, top, curBCI), QUICK);
             }
         }
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);

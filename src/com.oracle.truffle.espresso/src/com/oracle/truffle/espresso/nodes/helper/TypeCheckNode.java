@@ -32,9 +32,24 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
+/**
+ * Implements specialized type checking in espresso.
+ * <p>
+ * This node has 3 stages of specialization:
+ * <ul>
+ * <li>Trivial: When the node has seen only cases which are trivial to check, only check for those.
+ * <li>Cached: The first time the node sees a non-trivial check, invalidate trivial check and start
+ * using a cache.
+ * <li>When the cache overflows, invalidate it, restore the trivial cases, and start specializing
+ * for the general case (interface, array, regular class...)
+ * </ul>
+ * <p>
+ * Note that this node can be used even if the type to check is known to be a constant, as all
+ * checks should fold.
+ */
 @SuppressWarnings("unused")
 public abstract class TypeCheckNode extends Node implements ContextAccess {
-    protected static final int LIMIT = 2;
+    protected static final int LIMIT = 5;
 
     private final EspressoContext context;
 
@@ -100,7 +115,7 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
     }
 
     @Specialization(replaces = "typeCheckCached", guards = "isInterface(typeToCheck)")
-    protected boolean typeCheckInterface(Klass typeToCheck, ObjectKlass k) {
+    protected boolean typeCheckInterface(Klass typeToCheck, Klass k) {
         return typeToCheck.checkInterfaceSubclassing(k);
     }
 
