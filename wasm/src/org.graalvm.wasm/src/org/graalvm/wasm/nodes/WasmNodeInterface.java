@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmCodeEntry;
@@ -117,8 +118,10 @@ public interface WasmNodeInterface {
 
     default long pop(long[] stack, int slot) {
         long result = stack[slot];
-        // Needed to avoid keeping track of popped slots in FrameStates.
-        stack[slot] = 0L;
+        if (CompilerDirectives.inCompiledCode()) {
+            // Needed to avoid keeping track of popped slots in FrameStates.
+            stack[slot] = 0L;
+        }
         return result;
     }
 
