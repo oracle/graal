@@ -1097,14 +1097,9 @@ public final class ObjectKlass extends Klass {
 
             // look in tables for copied methods that also needs to be invalidated
             if (!method.isStatic() && !method.isPrivate() && !Name._init_.equals(method.getName())) {
-                ArrayList<Method> copiedMethods = new ArrayList<>(1);
-                checkCopyMethods(method, itable, copiedMethods);
-                checkCopyMethods(method, vtable, copiedMethods);
-                checkCopyMethods(method, mirandaMethods, copiedMethods);
-
-                for (Method m : copiedMethods) {
-                    m.redefine(newMethod, packet.parserKlass, ids);
-                }
+                checkCopyMethods(method, itable, newMethod, packet.parserKlass, ids);
+                checkCopyMethods(method, vtable, newMethod, packet.parserKlass, ids);
+                checkCopyMethods(method, mirandaMethods, newMethod, packet.parserKlass, ids);
             }
         }
 
@@ -1164,16 +1159,16 @@ public final class ObjectKlass extends Klass {
         oldVersion.assumption.invalidate();
     }
 
-    private void checkCopyMethods(Method method, Method[][] table, ArrayList<Method> copiedMethods) {
+    private static void checkCopyMethods(Method method, Method[][] table, ParserMethod parserMethod, ParserKlass parserKlass, Ids<Object> ids) {
         for (Method[] methods : table) {
-            checkCopyMethods(method, methods, copiedMethods);
+            checkCopyMethods(method, methods, parserMethod, parserKlass, ids);
         }
     }
 
-    private void checkCopyMethods(Method method, Method[] table, ArrayList<Method> copiedMethods) {
+    private static void checkCopyMethods(Method method, Method[] table, ParserMethod parserMethod, ParserKlass parserKlass, Ids<Object> ids) {
         for (Method m : table) {
             if (m.identity() == method.identity() && m != method) {
-                copiedMethods.add(m);
+                m.redefine(parserMethod, parserKlass, ids);
             }
         }
     }
