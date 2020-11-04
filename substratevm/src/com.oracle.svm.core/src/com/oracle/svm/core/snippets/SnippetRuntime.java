@@ -101,22 +101,6 @@ public class SnippetRuntime {
 
     private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo,
                     LocationIdentity... additionalKilledLocations) {
-        /*
-         * The safepoint slowpath needs to kill the TLAB locations (see note in Safepoint.java). For
-         * the sake of simplicity, we therefore assume that the TLAB locations must be killed by
-         * every foreign call.
-         */
-        LocationIdentity[] killedLocations;
-        if (additionalKilledLocations.length == 0 || additionalKilledLocations == TLAB_LOCATIONS) {
-            killedLocations = TLAB_LOCATIONS;
-        } else if (contains(additionalKilledLocations, LocationIdentity.any())) {
-            killedLocations = additionalKilledLocations;
-        } else {
-            killedLocations = new LocationIdentity[TLAB_LOCATIONS.length + additionalKilledLocations.length];
-            System.arraycopy(TLAB_LOCATIONS, 0, killedLocations, 0, TLAB_LOCATIONS.length);
-            System.arraycopy(additionalKilledLocations, 0, killedLocations, TLAB_LOCATIONS.length, additionalKilledLocations.length);
-        }
-
         Method foundMethod = null;
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (method.getName().equals(methodName)) {
@@ -130,16 +114,37 @@ public class SnippetRuntime {
          * We cannot annotate methods from the JDK, but all other foreign call targets we want to be
          * annotated for documentation, and to avoid stripping.
          */
-        VMError.guarantee(declaringClass.getName().startsWith("java.lang") || DirectAnnotationAccess.isAnnotationPresent(foundMethod, SubstrateForeignCallTarget.class),
+        boolean isUninterruptible = DirectAnnotationAccess.isAnnotationPresent(foundMethod, Uninterruptible.class);
+        SubstrateForeignCallTarget foreignCallTargetAnnotation = DirectAnnotationAccess.getAnnotation(foundMethod, SubstrateForeignCallTarget.class);
+        VMError.guarantee(declaringClass.getName().startsWith("java.lang") || foreignCallTargetAnnotation != null,
                         "Add missing @SubstrateForeignCallTarget to " + declaringClass.getName() + "." + methodName);
 
-        boolean isGuaranteedSafepoint = needsDebugInfo && !DirectAnnotationAccess.isAnnotationPresent(foundMethod, Uninterruptible.class);
+        /*
+         * The safepoint slowpath needs to kill the TLAB locations (see note in Safepoint.java). We
+         * therefore assume that the TLAB locations must be killed by every foreign call that is not
+         * fully uninterruptible.
+         */
+        LocationIdentity[] killedLocations;
+        if (foreignCallTargetAnnotation != null && foreignCallTargetAnnotation.fullyUninterruptible()) {
+            VMError.guarantee(isUninterruptible, declaringClass.getName() + "." + methodName + " is marked as fullyUninterruptible but not annotated with @Uninterruptible.");
+            killedLocations = additionalKilledLocations;
+        } else if (additionalKilledLocations.length == 0 || additionalKilledLocations == TLAB_LOCATIONS) {
+            killedLocations = TLAB_LOCATIONS;
+        } else if (containsAny(additionalKilledLocations)) {
+            killedLocations = additionalKilledLocations;
+        } else {
+            killedLocations = new LocationIdentity[TLAB_LOCATIONS.length + additionalKilledLocations.length];
+            System.arraycopy(TLAB_LOCATIONS, 0, killedLocations, 0, TLAB_LOCATIONS.length);
+            System.arraycopy(additionalKilledLocations, 0, killedLocations, TLAB_LOCATIONS.length, additionalKilledLocations.length);
+        }
+
+        boolean isGuaranteedSafepoint = needsDebugInfo && !isUninterruptible;
         return new SubstrateForeignCallDescriptor(descriptorName, foundMethod, isReexecutable, killedLocations, needsDebugInfo, isGuaranteedSafepoint);
     }
 
-    private static boolean contains(LocationIdentity[] haystack, LocationIdentity needle) {
-        for (LocationIdentity elem : haystack) {
-            if (elem == needle) {
+    private static boolean containsAny(LocationIdentity[] locations) {
+        for (LocationIdentity location : locations) {
+            if (location.isAny()) {
                 return true;
             }
         }
