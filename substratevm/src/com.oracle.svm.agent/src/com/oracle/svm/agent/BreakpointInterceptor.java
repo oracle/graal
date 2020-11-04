@@ -299,31 +299,17 @@ final class BreakpointInterceptor {
     private static boolean handleGetClasses(JNIEnvironment jni, Breakpoint bp, boolean declaredOnly, WordSupplier<JNIObjectHandle> elementClass) {
         JNIObjectHandle callerClass = getDirectCallerClass();
         JNIObjectHandle self = getObjectArgument(0);
-        JNIObjectHandle returnResult = Support.callObjectMethod(jni, self, bp.method);
-        if (clearException(jni)) {
-            returnResult = nullHandle();
-        }
-        if (accessVerifier != null && returnResult.notEqual(nullHandle())) {
-            returnResult = accessVerifier.filterGetClasses(jni, self, returnResult, elementClass, declaredOnly, callerClass);
-        }
-        List<String> returnedClasses = new ArrayList<>();
-
-        if (returnResult.notEqual(nullHandle())) {
-            int length = jniFunctions().getGetArrayLength().invoke(jni, returnResult);
-            if (length > 0 && !clearException(jni)) {
-                for (int i = 0; i < length; i++) {
-                    JNIObjectHandle clazz = jniFunctions().getGetObjectArrayElement().invoke(jni, returnResult, i);
-                    if (!clearException(jni)) {
-                        String classname = getClassNameOrNull(jni, clazz);
-                        if (classname != null) {
-                            returnedClasses.add(classname);
-                        }
-                    }
-                }
+        JNIObjectHandle returnResult = nullHandle();
+        if (accessVerifier != null) {
+            returnResult = Support.callObjectMethod(jni, self, bp.method);
+            if (clearException(jni)) {
+                returnResult = nullHandle();
+            }
+            if (returnResult.notEqual(nullHandle())) {
+                returnResult = accessVerifier.filterGetClasses(jni, self, returnResult, elementClass, declaredOnly, callerClass);
             }
         }
-
-        traceBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, returnedClasses);
+        traceBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, null);
         if (returnResult.notEqual(nullHandle())) {
             jvmtiFunctions().ForceEarlyReturnObject().invoke(jvmtiEnv(), nullHandle(), returnResult);
         }

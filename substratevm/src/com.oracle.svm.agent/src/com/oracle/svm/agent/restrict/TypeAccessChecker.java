@@ -24,14 +24,17 @@
  */
 package com.oracle.svm.agent.restrict;
 
+import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
+import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOrNull;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.lang.reflect.Modifier;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -39,7 +42,6 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.TypeConfiguration;
@@ -47,9 +49,11 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 
 public class TypeAccessChecker {
     private final TypeConfiguration configuration;
+    private final Map<String, Boolean> innerClassesMemo = new ConcurrentHashMap<>();
 
     public TypeAccessChecker(TypeConfiguration configuration) {
         this.configuration = configuration;
@@ -59,12 +63,39 @@ public class TypeAccessChecker {
         return configuration;
     }
 
-    public boolean isClassAccessible(JNIObjectHandle clazz) {
-        return getType(clazz) != null;
+    public boolean isClassAccessible(JNIEnvironment env, String classname) {
+        return configuration.get(classname) != null || isExposedAsInnerClass(env, classname);
+    }
+
+    public boolean isClassAccessible(JNIEnvironment env, JNIObjectHandle clazz) {
+        if (getType(clazz) != null) {
+            return true;
+        }
+        String classname = getClassNameOrNull(env, clazz);
+        return classname != null && isExposedAsInnerClass(env, classname);
+    }
+
+    private boolean isExposedAsInnerClass(JNIEnvironment env, String classname) {
+        String wrappingClass = getWrappingClass(classname);
+        return wrappingClass != null && innerClassesMemo.computeIfAbsent(wrappingClass, (name) -> exposesInnerClass(env, name));
+    }
+
+    private String getWrappingClass(String classname) {
+        int split = classname.lastIndexOf('$');
+        if (split == -1) {
+            return null;
+        }
+        return classname.substring(0, split);
+    }
+
+    private boolean exposesInnerClass(JNIEnvironment env, String wrappingClass) {
+        // todo implement
+
+        return false;
     }
 
     public boolean isFieldAccessible(JNIEnvironment env, JNIObjectHandle clazz, Supplier<String> name, JNIFieldId field, JNIObjectHandle declaring) {
-        if (!isClassAccessible(clazz)) { // queried class must be registered
+        if (!isClassAccessible(env, clazz)) { // queried class must be registered
             return false;
         }
         ConfigurationType declaringType = getType(declaring);
@@ -110,7 +141,7 @@ public class TypeAccessChecker {
     }
 
     public boolean isMethodAccessible(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIMethodId method, JNIObjectHandle declaring) {
-        if (!isClassAccessible(clazz)) { // queried class must be registered
+        if (!isClassAccessible(env, clazz)) { // queried class must be registered
             return false;
         }
         boolean isConstructor = ConfigurationMethod.CONSTRUCTOR_NAME.equals(name);
