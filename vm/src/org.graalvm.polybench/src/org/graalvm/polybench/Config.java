@@ -33,8 +33,8 @@ class Config {
 
     Config() {
         this.path = null;
-        this.warmupIterations = 10;
-        this.iterations = 10;
+        this.warmupIterations = 20;
+        this.iterations = 30;
         this.mode = "default";
         this.metric = new PeakTimeMetric();
     }
