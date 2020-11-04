@@ -11,7 +11,7 @@ import * as https from 'https';
 import * as cp from 'child_process';
 import * as decompress from 'decompress';
 import * as utils from './utils';
-import { basename, dirname, join, normalize } from 'path';
+import { basename, dirname, join, normalize, delimiter } from 'path';
 import { LicenseCheckPanel } from './graalVMLicenseCheck';
 import { ConfigurationPickItem, getGVMHome, getConf, getGVMConfig, setGVMHome, configureGraalVMHome, getGVMInsts, setGVMInsts, setupProxy } from './graalVMConfiguration';
 
@@ -201,7 +201,7 @@ export function getInstallConfigurations(): ConfigurationPickItem[] {
             return setTerminalEnv(env);
         }
     ));
-
+    
     ret.push(new ConfigurationPickItem(
         'Set as Java for Terminal',
         `(PATH in ${section})`,
@@ -215,17 +215,17 @@ export function getInstallConfigurations(): ConfigurationPickItem[] {
             const path = env.PATH as string;
             const graalVMPath = join(graalVMHome, 'bin');
             if (path) {
-                const paths = path.split(':');
+                const paths = path.split(delimiter);
                 const index = paths.indexOf(graalVMPath);
                 if (index >= 0) {
                     paths.splice(index, 1);
                     paths.unshift(graalVMPath);
-                    env.PATH = paths.join(':');
+                    env.PATH = paths.join(delimiter);
                 } else {
-                    env.PATH = `${graalVMPath}:${path}`;
+                    env.PATH = `${graalVMPath}${delimiter}${path}`;
                 }
             } else {
-                env.PATH = `${graalVMPath}:${process.env.PATH}`;
+                env.PATH = `${graalVMPath}${delimiter}${process.env.PATH}`;
             }
             return setTerminalEnv(env);
         }
@@ -275,7 +275,7 @@ function dist(): string {
 
 const TERMINAL_INTEGRATED: string = 'terminal.integrated';
 function getTerminalEnv(): any {
-    return getConf(TERMINAL_INTEGRATED).get(`env.${dist()}`);
+    return getConf(TERMINAL_INTEGRATED).get(`env.${dist()}`) as any | {};
 }
 
 async function setTerminalEnv(env: any): Promise<any> {
@@ -449,7 +449,10 @@ async function extractGraalVM(downloadedFile: string, targetDir: string): Promis
         location: vscode.ProgressLocation.Notification,
         title: "Installing GraalVM..."
     }, async (_progress, _token) => {
-        const files = await decompress(downloadedFile, targetDir);
+        const files = await decompress(downloadedFile, targetDir).catch(_err =>{
+            vscode.window.showErrorMessage(`File: "${downloadedFile}" couldn't be decompressed to: "${targetDir}". Make sure the GraalVM isn't already installed in the selected location.`);
+            return [];
+        });
         if (files.length === 0) {
             return undefined;
         }
@@ -489,7 +492,7 @@ async function changeGraalVMComponent(graalVMHome: string, componentIds: string[
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: `${action === 'install' ? 'I' : 'Uni'}nstalling GraalVM Component${componentIds.length > 1 ? 's' : ' ' + componentIds[0]}`,
-            cancellable: true
+            cancellable: componentIds.length > 1
         }, async (progress, token) => {
             const incr = 100/componentIds.length;
             for (const id of componentIds) {
@@ -538,16 +541,16 @@ async function getGU(graalVMHome?: string): Promise<string> {
 }
 
 function makeGUProxy(executable:string, proxy?: string): string {
-    if (!proxy) {
-        return executable;
+    if (!proxy || getConf('http').get('proxySupport') !== 'off') {
+        return `"${executable}"`;
     }
     if (process.platform === 'win32') {
         let index = proxy.indexOf('://');
         proxy = proxy.slice(index + 3);
         index = proxy.indexOf(':');
-        return `${executable} --vm.Dhttps.proxyHost=${proxy.slice(0, index)} --vm.Dhttps.proxyPort=${proxy.slice(index + 1)}`;
+        return `"${executable}" --vm.Dhttps.proxyHost=${proxy.slice(0, index)} --vm.Dhttps.proxyPort=${proxy.slice(index + 1)}`;
     } else {
-        return `env https_proxy=${proxy} ${executable}`;
+        return `env https_proxy=${proxy} "${executable}"`;
     }
 }
 

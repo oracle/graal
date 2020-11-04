@@ -89,7 +89,7 @@ class VSCodeExtensionBuildTask(mx.ArchivableBuildTask):
     def build(self):
         vsce = join(_suite.dir, 'node_modules', '.bin', 'vsce')
         if not exists(vsce):
-            mx.run(['npm', 'install', 'vsce@1.74.0'], nonZeroIsFatal=True, cwd=_suite.dir)
+            mx.run(['npm', 'install'], nonZeroIsFatal=True, cwd=_suite.dir)
         mx.run(['npm', 'install'], nonZeroIsFatal=True, cwd=self.subject.dir)
         mx.run([vsce, 'package', '--baseImagesUrl', 'https://github.com/oracle/graal/raw/master/vscode/' + self.subject.name], nonZeroIsFatal=True, cwd=self.subject.dir)
 
