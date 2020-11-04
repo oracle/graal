@@ -95,7 +95,7 @@ public final class LibGraalHotSpotGraalManagement extends MBeanProxy<HotSpotGraa
     }
 
     private void initialize0(HotSpotGraalRuntime runtime, GraalHotSpotVMConfig config) {
-        if (!initializeJNI(config, runtime)) {
+        if (!initializeJNI(config)) {
             return;
         }
         HotSpotGraalRuntimeMBean mbean = getBean();
