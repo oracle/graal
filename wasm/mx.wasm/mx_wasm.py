@@ -47,6 +47,7 @@ import os
 import shutil
 import stat
 
+from argparse import ArgumentParser
 from collections import defaultdict
 from mx_gate import Task, add_gate_runner
 from mx_unittest import unittest
@@ -417,14 +418,16 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
 @mx.command(_suite.name, "emscripten-init")
 def emscripten_init(args):
     """Initialize the Emscripten environment."""
-    config_path = args[0]
-    emsdk_path = args[1]
+    parser = ArgumentParser(prog='mx emscripten-init', description='initialize the Emscripten environment.')
+    parser.add_argument('config_path', help='path of the config file to be generated')
+    parser.add_argument('emsdk_path', help='path of the emsdk')
+    args = parser.parse_args(args)
     mx.log("Generating Emscripten configuration...")
-    mx.log("Config file path:    " + str(config_path))
-    mx.log("Emscripten SDK path: " + str(emsdk_path))
+    mx.log("Config file path:    " + str(args.config_path))
+    mx.log("Emscripten SDK path: " + str(args.emsdk_path))
     cmd = os.path.join(_suite.dir, "generate_em_config")
     mx.log("Path to the script:  " + cmd)
-    if mx.run([cmd, config_path, emsdk_path], nonZeroIsFatal=False) != 0:
+    if mx.run([cmd, args.config_path, args.emsdk_path], nonZeroIsFatal=False) != 0:
         mx.abort("Error generating the Emscripten configuration.")
 
 
