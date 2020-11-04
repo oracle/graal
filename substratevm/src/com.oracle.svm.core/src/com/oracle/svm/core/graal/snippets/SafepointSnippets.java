@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_LOCATIONS;
+
+import java.util.Arrays;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
@@ -43,6 +46,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -68,11 +72,18 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
         lowerings.put(SafepointNode.class, new SafepointLowering());
     }
 
+    private static LocationIdentity[] getKilledLocations() {
+        int newLength = TLAB_LOCATIONS.length + 1;
+        LocationIdentity[] locations = Arrays.copyOf(TLAB_LOCATIONS, newLength);
+        locations[newLength - 1] = Safepoint.getThreadLocalSafepointRequestedLocationIdentity();
+        return locations;
+    }
+
     @NodeIntrinsic(value = ForeignCallNode.class)
     private static native void callSlowPathSafepointCheck(@ConstantNodeParameter ForeignCallDescriptor descriptor);
 
     class SafepointLowering implements NodeLoweringProvider<SafepointNode> {
-        private final SnippetInfo safepoint = snippet(SafepointSnippets.class, "safepointSnippet", Safepoint.getThreadLocalSafepointRequestedLocationIdentity());
+        private final SnippetInfo safepoint = snippet(SafepointSnippets.class, "safepointSnippet", getKilledLocations());
 
         @Override
         public void lower(SafepointNode node, LoweringTool tool) {
