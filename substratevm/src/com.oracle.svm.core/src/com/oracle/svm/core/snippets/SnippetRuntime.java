@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.snippets;
 
+import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_LOCATIONS;
+
 // Checkstyle: allow reflection
 
 import java.lang.reflect.Field;
@@ -45,25 +47,23 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SnippetRuntime {
-    public static final LocationIdentity[] NO_KILLED_LOCATIONS = new LocationIdentity[0];
-
     public static final SubstrateForeignCallDescriptor UNSUPPORTED_FEATURE = findForeignCall(SnippetRuntime.class, "unsupportedFeature", true, LocationIdentity.any());
 
     /* Implementation of runtime calls defined in a VM-independent way by Graal. */
-    public static final SubstrateForeignCallDescriptor REGISTER_FINALIZER = findForeignCall(SnippetRuntime.class, "registerFinalizer", true, NO_KILLED_LOCATIONS);
+    public static final SubstrateForeignCallDescriptor REGISTER_FINALIZER = findForeignCall(SnippetRuntime.class, "registerFinalizer", true);
 
     /*
      * Graal-defined math functions where we have optimized machine code sequences: We just register
      * the original Math function as the foreign call. The backend will emit the machine code
      * sequence.
      */
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_SIN = findForeignCall(UnaryOperation.SIN.foreignCallSignature.getName(), Math.class, "sin", true, NO_KILLED_LOCATIONS);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_COS = findForeignCall(UnaryOperation.COS.foreignCallSignature.getName(), Math.class, "cos", true, NO_KILLED_LOCATIONS);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignCall(UnaryOperation.TAN.foreignCallSignature.getName(), Math.class, "tan", true, NO_KILLED_LOCATIONS);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG = findForeignCall(UnaryOperation.LOG.foreignCallSignature.getName(), Math.class, "log", true, NO_KILLED_LOCATIONS);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG10 = findForeignCall(UnaryOperation.LOG10.foreignCallSignature.getName(), Math.class, "log10", true, NO_KILLED_LOCATIONS);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignCall(UnaryOperation.EXP.foreignCallSignature.getName(), Math.class, "exp", true, NO_KILLED_LOCATIONS);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignCall(BinaryOperation.POW.foreignCallSignature.getName(), Math.class, "pow", true, NO_KILLED_LOCATIONS);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_SIN = findForeignCall(UnaryOperation.SIN.foreignCallSignature.getName(), Math.class, "sin", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_COS = findForeignCall(UnaryOperation.COS.foreignCallSignature.getName(), Math.class, "cos", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignCall(UnaryOperation.TAN.foreignCallSignature.getName(), Math.class, "tan", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG = findForeignCall(UnaryOperation.LOG.foreignCallSignature.getName(), Math.class, "log", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG10 = findForeignCall(UnaryOperation.LOG10.foreignCallSignature.getName(), Math.class, "log10", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignCall(UnaryOperation.EXP.foreignCallSignature.getName(), Math.class, "exp", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignCall(BinaryOperation.POW.foreignCallSignature.getName(), Math.class, "pow", true);
 
     /*
      * These methods are intrinsified as nodes at first, but can then lowered back to a call. Ensure
@@ -85,22 +85,38 @@ public class SnippetRuntime {
         return result;
     }
 
-    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, LocationIdentity... killedLocations) {
-        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, killedLocations);
+    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, LocationIdentity... additionalKilledLocations) {
+        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, additionalKilledLocations);
     }
 
-    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo, LocationIdentity... killedLocations) {
-        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, needsDebugInfo, killedLocations);
+    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo,
+                    LocationIdentity... additionalKilledLocations) {
+        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, needsDebugInfo, additionalKilledLocations);
     }
 
-    private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, LocationIdentity... killedLocations) {
-        return findForeignCall(descriptorName, declaringClass, methodName, isReexecutable, true, killedLocations);
+    private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable,
+                    LocationIdentity... additionalKilledLocations) {
+        return findForeignCall(descriptorName, declaringClass, methodName, isReexecutable, true, additionalKilledLocations);
     }
 
     private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo,
-                    LocationIdentity... killedLocations) {
-        VMError.guarantee(killedLocations.length > 0 || killedLocations == NO_KILLED_LOCATIONS,
-                        "Please specify killed locations or use NO_LOCATIONS if the foreign call really doesn't kill any locations.");
+                    LocationIdentity... additionalKilledLocations) {
+        /*
+         * The safepoint slowpath needs to kill the TLAB locations (see note in Safepoint.java). For
+         * the sake of simplicity, we therefore assume that the TLAB locations must be killed by
+         * every foreign call.
+         */
+        LocationIdentity[] killedLocations;
+        if (additionalKilledLocations.length == 0 || additionalKilledLocations == TLAB_LOCATIONS) {
+            killedLocations = TLAB_LOCATIONS;
+        } else if (contains(additionalKilledLocations, LocationIdentity.any())) {
+            killedLocations = additionalKilledLocations;
+        } else {
+            killedLocations = new LocationIdentity[TLAB_LOCATIONS.length + additionalKilledLocations.length];
+            System.arraycopy(TLAB_LOCATIONS, 0, killedLocations, 0, TLAB_LOCATIONS.length);
+            System.arraycopy(additionalKilledLocations, 0, killedLocations, TLAB_LOCATIONS.length, additionalKilledLocations.length);
+        }
+
         Method foundMethod = null;
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (method.getName().equals(methodName)) {
@@ -119,6 +135,15 @@ public class SnippetRuntime {
 
         boolean isGuaranteedSafepoint = needsDebugInfo && !DirectAnnotationAccess.isAnnotationPresent(foundMethod, Uninterruptible.class);
         return new SubstrateForeignCallDescriptor(descriptorName, foundMethod, isReexecutable, killedLocations, needsDebugInfo, isGuaranteedSafepoint);
+    }
+
+    private static boolean contains(LocationIdentity[] haystack, LocationIdentity needle) {
+        for (LocationIdentity elem : haystack) {
+            if (elem == needle) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static class SubstrateForeignCallDescriptor extends ForeignCallDescriptor {

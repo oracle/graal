@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.ALLOCATION_KILLED_LOCATION_IDENTITIES;
-import static com.oracle.svm.core.snippets.SnippetRuntime.NO_KILLED_LOCATIONS;
-
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -55,7 +52,6 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.nodes.KillMemoryNode;
-import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
@@ -132,17 +128,21 @@ import com.oracle.svm.core.util.VMError;
  * @see SafepointCheckNode
  */
 public final class Safepoint {
-    // For the safepoint-related foreign calls, we must assume that they kill the allocation
-    // locations because those might be modified by a GC or when a recurring callback allocates. We
-    // ignore all other writes as those need to use volatile semantics anyways.
-    // For performance reasons, we need to assume that recurring callbacks don't do any writes that
-    // interfere in a problematic way with the read elimination that is done for the application.
-    public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_SAFEPOINT_CHECK = SnippetRuntime.findForeignCall(Safepoint.class, "enterSlowPathSafepointCheck", true,
-                    ALLOCATION_KILLED_LOCATION_IDENTITIES);
+    /*
+     * For all safepoint-related foreign calls, we must assume that they kill the TLAB locations
+     * because those might be modified by a GC or when a recurring callback allocates. We ignore all
+     * other writes as those need to use volatile semantics anyways (to prevent normal race
+     * conditions). For performance reasons, we need to assume that recurring callbacks don't do any
+     * writes that interfere in a problematic way with the read elimination that is done for the
+     * application (otherwise, we would have to kill all memory locations at every safepoint).
+     *
+     * NOTE: all locations that are killed by safepoint slowpath calls must also be killed by most
+     * other foreign calls because the call target may contain a safepoint.
+     */
+    public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_SAFEPOINT_CHECK = SnippetRuntime.findForeignCall(Safepoint.class, "enterSlowPathSafepointCheck", true);
     private static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS = SnippetRuntime.findForeignCall(Safepoint.class,
-                    "enterSlowPathTransitionFromNativeToNewStatus", true, ALLOCATION_KILLED_LOCATION_IDENTITIES);
-    private static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_TRANSITION_FROM_VM_TO_JAVA = SnippetRuntime.findForeignCall(Safepoint.class, "enterSlowPathTransitionFromVMToJava", true,
-                    ALLOCATION_KILLED_LOCATION_IDENTITIES);
+                    "enterSlowPathTransitionFromNativeToNewStatus", true);
+    private static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_TRANSITION_FROM_VM_TO_JAVA = SnippetRuntime.findForeignCall(Safepoint.class, "enterSlowPathTransitionFromVMToJava", true);
 
     /** All foreign calls defined in this class. */
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{

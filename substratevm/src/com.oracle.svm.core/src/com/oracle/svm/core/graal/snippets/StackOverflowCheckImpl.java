@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.ALLOCATION_KILLED_LOCATION_IDENTITIES;
-import static com.oracle.svm.core.snippets.SnippetRuntime.NO_KILLED_LOCATIONS;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -262,10 +260,8 @@ final class InsertStackOverflowCheckPhase extends Phase {
 }
 
 final class StackOverflowCheckSnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor THROW_CACHED_STACK_OVERFLOW_ERROR = SnippetRuntime.findForeignCall(StackOverflowCheckSnippets.class, "throwCachedStackOverflowError", true,
-                    NO_KILLED_LOCATIONS);
-    private static final SubstrateForeignCallDescriptor THROW_NEW_STACK_OVERFLOW_ERROR = SnippetRuntime.findForeignCall(StackOverflowCheckSnippets.class, "throwNewStackOverflowError", true,
-                    ALLOCATION_KILLED_LOCATION_IDENTITIES);
+    private static final SubstrateForeignCallDescriptor THROW_CACHED_STACK_OVERFLOW_ERROR = SnippetRuntime.findForeignCall(StackOverflowCheckSnippets.class, "throwCachedStackOverflowError", true);
+    private static final SubstrateForeignCallDescriptor THROW_NEW_STACK_OVERFLOW_ERROR = SnippetRuntime.findForeignCall(StackOverflowCheckSnippets.class, "throwNewStackOverflowError", true);
 
     static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{THROW_CACHED_STACK_OVERFLOW_ERROR, THROW_NEW_STACK_OVERFLOW_ERROR};
 

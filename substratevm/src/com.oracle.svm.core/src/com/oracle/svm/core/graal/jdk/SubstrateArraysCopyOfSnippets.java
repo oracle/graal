@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.graal.jdk;
 
-import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.ALLOCATION_KILLED_LOCATION_IDENTITIES;
-
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
@@ -60,8 +58,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 
 public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor ARRAYS_COPY_OF = SnippetRuntime.findForeignCall(SubstrateArraysCopyOfSnippets.class, "doArraysCopyOf", true,
-                    ALLOCATION_KILLED_LOCATION_IDENTITIES);
+    private static final SubstrateForeignCallDescriptor ARRAYS_COPY_OF = SnippetRuntime.findForeignCall(SubstrateArraysCopyOfSnippets.class, "doArraysCopyOf", true);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{ARRAYS_COPY_OF};
 
     public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
