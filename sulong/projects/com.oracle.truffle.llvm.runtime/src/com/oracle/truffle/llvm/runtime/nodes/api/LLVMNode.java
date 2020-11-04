@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
@@ -217,5 +218,9 @@ public abstract class LLVMNode extends Node {
             current = current.getParent();
         }
         return null;
+    }
+
+    public static Assumption singleContextAssumption() {
+        return LLVMLanguage.getLanguage().singleContextAssumption;
     }
 }
