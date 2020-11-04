@@ -50,6 +50,8 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
 import org.junit.Test;
 
+import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
+
 public class WasmLateLinkingSuite {
     @Test
     public void testLateMemoryLink() throws IOException {
@@ -68,6 +70,19 @@ public class WasmLateLinkingSuite {
             Value result = loadZero.execute();
             Assert.assertEquals(11, result.asInt());
         });
+    }
+
+    @Test
+    public void linkingTooLate() throws IOException, InterruptedException {
+        final Context context = Context.newBuilder("wasm").build();
+        final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", textWithExportFun));
+        final ByteSequence binaryMain = ByteSequence.create(compileWat("file1", textWithImportFunExportFun));
+        final Source sourceAux = Source.newBuilder("wasm", binaryAux, "m1").build();
+        final Source sourceMain = Source.newBuilder("wasm", binaryMain, "m2").build();
+        context.parse(sourceMain); // main
+        context.parse(sourceAux); // m1
+        final Value g = context.getBindings("wasm").getMember("main").getMember("g");
+        Assert.assertEquals(42, g.execute().asInt());
     }
 
     private static void runTest(byte[] firstBinary, Consumer<Context> testCase) throws IOException {
@@ -128,4 +143,15 @@ public class WasmLateLinkingSuite {
                     (byte) 0x5a, (byte) 0x65, (byte) 0x72, (byte) 0x6f, (byte) 0x02, (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x00,
     };
 
+    private static final String textWithExportFun = "" +
+                    "(func $f (result i32) (i32.const 42))\n" +
+                    "(export \"f\" (func $f))";
+
+    private static final String textWithImportFunExportFun = "" +
+                    "(import \"m1\" \"f\" (func $f (result i32)))\n" +
+                    "(memory (;0;) 4)\n" +
+                    "(func $h (result i32) (i32.const 43))\n" +
+                    "(export \"memory\" (memory 0))\n" +
+                    "(export \"g\" (func $f))\n" +
+                    "(export \"h\" (func $h))";
 }
