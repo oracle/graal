@@ -59,7 +59,13 @@ public final class MemoryAnchorNode extends FixedWithNextNode implements LIRLowe
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        return tool.allUsagesAvailable() && hasNoUsages() ? null : this;
+        if (tool.allUsagesAvailable() && hasNoUsages()) {
+            // GR-27194
+            if (!this.graph().isAfterFixedReadPhase()) {
+                return null;
+            }
+        }
+        return this;
     }
 
     @Override
