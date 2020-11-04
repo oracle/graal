@@ -32,21 +32,25 @@ export async function createProject() {
             const uri = vscode.Uri.file(options.target);
             updateGitIgnore(options);
             if (vscode.workspace.workspaceFolders) {
-                vscode.window.showInformationMessage('New Micronaut project created', OPEN_IN_NEW_WINDOW, ADD_TO_CURRENT_WORKSPACE).then(value => {
-                    if (value === OPEN_IN_NEW_WINDOW) {
-                        vscode.commands.executeCommand('vscode.openFolder', uri, true);
-                    } else if (value === ADD_TO_CURRENT_WORKSPACE) {
-                        vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, undefined, { uri });
-                    }
-                });
+                const value = await vscode.window.showInformationMessage('New Micronaut project created', OPEN_IN_NEW_WINDOW, ADD_TO_CURRENT_WORKSPACE);
+                if (value === OPEN_IN_NEW_WINDOW) {
+                    await vscode.commands.executeCommand('vscode.openFolder', uri, true);
+                } else if (value === ADD_TO_CURRENT_WORKSPACE) {
+                    vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, undefined, { uri });
+                }
             } else if (vscode.window.visibleTextEditors.length > 0) {
-                vscode.window.showInformationMessage('New Micronaut project created', OPEN_IN_NEW_WINDOW, OPEN_IN_CURRENT_WINDOW).then(value => {
-                    if (value) {
-                        vscode.commands.executeCommand('vscode.openFolder', uri, OPEN_IN_NEW_WINDOW === value);
-                    }
-                });
+                const value = await vscode.window.showInformationMessage('New Micronaut project created', OPEN_IN_NEW_WINDOW, OPEN_IN_CURRENT_WINDOW);
+                if (value) {
+                    await vscode.commands.executeCommand('vscode.openFolder', uri, OPEN_IN_NEW_WINDOW === value);
+                }
             } else {
-                vscode.commands.executeCommand('vscode.openFolder', uri, false);
+                await vscode.commands.executeCommand('vscode.openFolder', uri, false);
+            }
+            if (options.java) {
+                const commands: string[] = await vscode.commands.getCommands();
+                if (commands.includes('extension.graalvm.selectGraalVMHome')) {
+                    await vscode.commands.executeCommand('extension.graalvm.selectGraalVMHome', options.java, true);
+                }
             }
         }
     }
@@ -61,18 +65,21 @@ function updateGitIgnore(options: {url: string, name: string, target: string, bu
     if (options.buildTool !== 'GRADLE') {
         return;
     }
-    const filePath = path.join(options.target, '.gitignore')
+    const filePath = path.join(options.target, '.gitignore');
     let content = fs.readFileSync(filePath).toString();
     if (!content.includes(GRADLE_JAR)) {
-        content = `${content.trim()}\n${GRADLE_JAR}`
+        content = `${content.trim()}\n${GRADLE_JAR}`;
     }
     if (!content.includes(GRADLE_PROPERTIES)) {
-        content = `${content.trim()}\n${GRADLE_PROPERTIES}`
+        content = `${content.trim()}\n${GRADLE_PROPERTIES}`;
     }
     fs.writeFileSync(filePath, content);
 }
 
-async function selectCreateOptions(): Promise<{url: string, name: string, target: string, buildTool: string} | undefined> {
+async function selectCreateOptions(): Promise<{url: string, name: string, target: string, buildTool: string, java?: string} | undefined> {
+
+    const commands: string[] = await vscode.commands.getCommands();
+    const graalVMs: {name: string, path: string, active: boolean}[] = commands.includes('extension.graalvm.findGraalVMs') ? await vscode.commands.executeCommand('extension.graalvm.findGraalVMs') || [] : [];
 
     interface State {
 		micronautVersion: {label: string, serviceUrl: string};
@@ -93,7 +100,7 @@ async function selectCreateOptions(): Promise<{url: string, name: string, target
 	}
 
     const title = 'Create Micronaut Project';
-    const totalSteps = 9;
+    const totalSteps = graalVMs.length > 0 ? 9 : 8;
 
 	async function pickMicronautVersion(input: utils.MultiStepInput, state: Partial<State>) {
         const selected: any = await input.showQuickPick({
@@ -120,16 +127,18 @@ async function selectCreateOptions(): Promise<{url: string, name: string, target
 			shouldResume: () => Promise.resolve(false)
         });
         state.applicationType = selected;
-		return (input: utils.MultiStepInput) => pickJavaVersion(input, state);
+		return (input: utils.MultiStepInput) => graalVMs.length > 0 ? pickJavaVersion(input, state) : projectName(input, state);
 	}
 
 	async function pickJavaVersion(input: utils.MultiStepInput, state: Partial<State>) {
+        const items: {label: string, value: string, description?: string}[] = graalVMs.map(item => ({label: item.name, value: item.path, description: item.active ? '(active)' : undefined}));
+        items.push({label: 'Other Java', value: '', description: '(manual configuration)'});
 		const selected: any = await input.showQuickPick({
 			title,
 			step: 3,
 			totalSteps,
-			placeholder: 'Pick Java version',
-			items: getJavaVersions(),
+			placeholder: 'Pick project Java',
+			items,
 			activeItems: state.javaVersion,
 			shouldResume: () => Promise.resolve(false)
         });
@@ -140,7 +149,7 @@ async function selectCreateOptions(): Promise<{url: string, name: string, target
 	async function projectName(input: utils.MultiStepInput, state: Partial<State>) {
 		state.projectName = await input.showInputBox({
 			title,
-			step: 4,
+			step: graalVMs.length > 0 ? 4 : 3,
 			totalSteps,
 			value: state.projectName || 'demo',
 			prompt: 'Provide project name',
@@ -153,7 +162,7 @@ async function selectCreateOptions(): Promise<{url: string, name: string, target
 	async function basePackage(input: utils.MultiStepInput, state: Partial<State>) {
 		state.basePackage = await input.showInputBox({
 			title,
-			step: 5,
+			step: graalVMs.length > 0 ? 5 : 4,
 			totalSteps,
 			value: state.basePackage || 'com.example',
 			prompt: 'Provide base package',
@@ -166,7 +175,7 @@ async function selectCreateOptions(): Promise<{url: string, name: string, target
 	async function pickLanguage(input: utils.MultiStepInput, state: Partial<State>) {
 		const selected: any = await input.showQuickPick({
 			title,
-			step: 6,
+			step: graalVMs.length > 0 ? 6 : 5,
 			totalSteps,
             placeholder: 'Pick project language',
             items: getLanguages(),
@@ -180,7 +189,7 @@ async function selectCreateOptions(): Promise<{url: string, name: string, target
 	async function pickFeatures(input: utils.MultiStepInput, state: Partial<State>) {
 		const selected: any = await input.showQuickPick({
 			title,
-			step: 7,
+			step: graalVMs.length > 0 ? 7 : 6,
 			totalSteps,
             placeholder: 'Pick project features',
             items: state.micronautVersion && state.applicationType ? await getFeatures(state.micronautVersion, state.applicationType) : [],
@@ -195,7 +204,7 @@ async function selectCreateOptions(): Promise<{url: string, name: string, target
 	async function pickBuildTool(input: utils.MultiStepInput, state: Partial<State>) {
 		const selected: any = await input.showQuickPick({
 			title,
-			step: 8,
+			step: graalVMs.length > 0 ? 8 : 7,
 			totalSteps,
             placeholder: 'Pick build tool',
             items: getBuildTools(),
@@ -209,7 +218,7 @@ async function selectCreateOptions(): Promise<{url: string, name: string, target
 	async function pickTestFramework(input: utils.MultiStepInput, state: Partial<State>) {
 		const selected: any = await input.showQuickPick({
 			title,
-			step: 9,
+			step: graalVMs.length > 0 ? 9 : 8,
 			totalSteps,
             placeholder: 'Pick test framework',
             items: getTestFrameworks(),
@@ -230,42 +239,19 @@ async function selectCreateOptions(): Promise<{url: string, name: string, target
             openLabel: 'Select'
         });
         if (location && location.length > 0) {
-            let query = '';
-            if (state.javaVersion) {
-                if (query) {
-                    query += '&javaVersion=' + state.javaVersion.value;
-                } else {
-                    query = '?javaVersion=' + state.javaVersion.value;
-                }
-            }
+            let query = '?javaVersion=JDK_8';
             if (state.language) {
-                if (query) {
-                    query += '&lang=' + state.language.value;
-                } else {
-                    query = '?lang=' + state.language.value;
-                }
+                query += '&lang=' + state.language.value;
             }
             if (state.buildTool) {
-                if (query) {
-                    query += '&build=' + state.buildTool.value;
-                } else {
-                    query = '?build=' + state.buildTool.value;
-                }
+                query += '&build=' + state.buildTool.value;
             }
             if (state.testFramework) {
-                if (query) {
-                    query += '&test=' + state.testFramework.value;
-                } else {
-                    query = '?test=' + state.testFramework.value;
-                }
+                query += '&test=' + state.testFramework.value;
             }
             if (state.features) {
                 state.features.forEach((feature: {label: string, detail: string, name: string}) => {
-                    if (query) {
-                        query += '&feature=' + feature.name;
-                    } else {
-                        query = '?feature=' + feature.name;
-                    }
+                    query += '&features=' + feature.name;
                 });
             }
             let appName = state.basePackage;
@@ -278,7 +264,8 @@ async function selectCreateOptions(): Promise<{url: string, name: string, target
                 url: state.micronautVersion.serviceUrl + CREATE + '/' + state.applicationType.name + '/' + appName + query,
                 name: state.projectName,
                 target: path.join(location[0].fsPath, state.projectName),
-                buildTool: state.buildTool.value
+                buildTool: state.buildTool.value,
+                java: state.javaVersion && state.javaVersion.value.length > 0 ? state.javaVersion.value : undefined
             };
         }
     }
@@ -301,17 +288,6 @@ async function getApplicationTypes(micronautVersion: {label: string, serviceUrl:
     return get(micronautVersion.serviceUrl + APPLICATION_TYPES).then(data => {
         return JSON.parse(data).types.map((type: any) => ({ label: type.title, name: type.name }));
     });
-}
-
-function getJavaVersions(): {label: string, value: string}[] {
-    return [
-        { label: '8', value: 'JDK_8'},
-        { label: '9', value: 'JDK_9'},
-        { label: '11', value: 'JDK_11'},
-        { label: '12', value: 'JDK_12'},
-        { label: '13', value: 'JDK_13'},
-        { label: '14', value: 'JDK_14'},
-    ];
 }
 
 function getLanguages(): {label: string, value: string}[] {

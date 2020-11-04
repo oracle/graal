@@ -88,12 +88,12 @@ export async function addExistingGraalVM(): Promise<void> {
     }
 }
 
-export async function selectInstalledGraalVM(graalVMHome?: string): Promise<void> {
+export async function selectInstalledGraalVM(graalVMHome?: string, nonInteractive?: boolean): Promise<void> {
     graalVMHome = graalVMHome || await _selectInstalledGraalVM();
     if (graalVMHome) {
         const graalVMVersion = await getGraalVMVersion(graalVMHome);
         if (graalVMVersion) {
-            configureGraalVMHome(graalVMHome);
+            configureGraalVMHome(graalVMHome, nonInteractive);
         }
     }
 }
