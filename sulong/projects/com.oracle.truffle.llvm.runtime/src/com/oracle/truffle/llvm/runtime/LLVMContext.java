@@ -29,21 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -73,11 +58,27 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
+import org.graalvm.collections.EconomicMap;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public final class LLVMContext {
 
     public static final String SULONG_INIT_CONTEXT = "__sulong_init_context";
     public static final String SULONG_DISPOSE_CONTEXT = "__sulong_dispose_context";
+
+    private static final String START_METHOD_NAME = "_start";
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
@@ -144,6 +145,7 @@ public final class LLVMContext {
     private DataLayout libsulongDatalayout;
     private Boolean datalayoutInitialised;
     private final LLVMLanguage language;
+    @CompilationFinal private LLVMFunctionDescriptor startFunction;
 
     private LLVMTracerInstrument tracer;    // effectively final after initialization
 
@@ -168,6 +170,7 @@ public final class LLVMContext {
         this.language = language;
         this.libsulongDatalayout = null;
         this.datalayoutInitialised = false;
+        this.startFunction = null;
         this.env = env;
         this.initialized = false;
         this.cleanupNecessary = false;
@@ -257,17 +260,36 @@ public final class LLVMContext {
                 TruffleFile file = InternalLibraryLocator.INSTANCE.locateLibrary(this, sulongLibraryNames[i], "<default bitcode library>");
                 env.parseInternal(Source.newBuilder("llvm", file).internal(isInternalLibraryFile(file)).build());
             }
-
-            /*- TODO (PLi): after the default libraries have been loaded. The start function symbol,
-             *   the sulong initialise context, and the sulong dispose context symbol could be setup
-             *   here instead of being at findAndSetSulongSpecificFunctions in LoadModulesNode.
-             */
+            setLibsulongAuxFunction(SULONG_INIT_CONTEXT);
+            setLibsulongAuxFunction(SULONG_DISPOSE_CONTEXT);
+            setLibsulongAuxFunction(START_METHOD_NAME);
             CallTarget builtinsLibrary = env.parseInternal(Source.newBuilder("llvm",
                             env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getBuiltinsLibrary()).toUri())).internal(true).build());
             builtinsLibrary.call();
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    private void setLibsulongAuxFunction(String name) {
+        LLVMScope fileScope = language.getInternalFileScopes("libsulong");
+        LLVMSymbol contextFunction = fileScope.get(name);
+        if (contextFunction != null && contextFunction.isFunction()) {
+            if (name.equalsIgnoreCase(SULONG_INIT_CONTEXT)) {
+                language.setSulongInitContext(contextFunction.asFunction());
+            } else if (name.equalsIgnoreCase(SULONG_DISPOSE_CONTEXT)) {
+                language.setSulongDisposeContext(contextFunction.asFunction());
+            } else if (name.equalsIgnoreCase(START_METHOD_NAME)) {
+                startFunction = createFunctionDescriptor(contextFunction.asFunction(), new LLVMFunctionCode(contextFunction.asFunction()));
+            }
+        } else {
+            throw new IllegalStateException("Context cannot be initialized: " + name + " was not found in sulong libraries");
+        }
+    }
+
+    public LLVMFunctionDescriptor getStartFunction() {
+        assert startFunction != null;
+        return startFunction;
     }
 
     ContextExtension getContextExtension(int index) {

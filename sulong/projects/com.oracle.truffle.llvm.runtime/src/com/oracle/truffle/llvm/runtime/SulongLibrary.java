@@ -32,11 +32,14 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -48,10 +51,16 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Objects;
 
 /**
  * Object that is returned when a bitcode library is parsed.
@@ -62,13 +71,15 @@ public final class SulongLibrary implements TruffleObject {
 
     private final String name;
     private final LLVMScope scope;
-    private final CallTarget main;
+    @CompilerDirectives.CompilationFinal private CallTarget main;
+    private final LLVMFunction mainFunction;
     private final LLVMContext context;
 
-    public SulongLibrary(String name, LLVMScope scope, CallTarget main, LLVMContext context) {
+    public SulongLibrary(String name, LLVMScope scope, LLVMFunction mainFunction, LLVMContext context) {
         this.name = name;
         this.scope = scope;
-        this.main = main;
+        this.main = null;
+        this.mainFunction = mainFunction;
         this.context = context;
     }
 
@@ -165,9 +176,26 @@ public final class SulongLibrary implements TruffleObject {
         return lookup.execute(this, member) != null;
     }
 
+    /**
+     * Return true if the main function exists. If the main function exists, and the call target for
+     * the main method does not exists, then the main method will be lazily created.
+     * 
+     * @return true if the main function exists.
+     */
     @ExportMessage
     boolean isExecutable() {
-        return main != null;
+        if (mainFunction != null) {
+            if (main == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                RootCallTarget startCallTarget = context.getStartFunction().getFunctionCode().getLLVMIRFunctionSlowPath();
+                Path applicationPath = Paths.get(mainFunction.getStringPath());
+                RootNode rootNode = new LLVMGlobalRootNode(context.getLanguage(), new FrameDescriptor(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
+                main = Truffle.getRuntime().createCallTarget(rootNode);
+            }
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @ExportMessage
@@ -186,13 +214,19 @@ public final class SulongLibrary implements TruffleObject {
         }
 
         static DirectCallNode createMainCall(SulongLibrary library) {
-            return DirectCallNode.create(library.main);
+            if (library.isExecutable()) {
+                return DirectCallNode.create(library.main);
+            }
+            throw new IllegalStateException("Cannot create main method for sulong library: " + library.getName());
         }
 
         @Specialization(replaces = "doCached")
         static Object doGeneric(SulongLibrary library, Object[] args,
                         @Cached("create()") IndirectCallNode call) {
-            return call.call(library.main, args);
+            if (library.isExecutable()) {
+                return call.call(library.main, args);
+            }
+            throw new IllegalStateException("Cannot create main method for sulong library: " + library.getName());
         }
     }
 
