@@ -2616,35 +2616,39 @@ public final class NodeParser extends AbstractParser<NodeData> {
         List<String> guardDefinitions = getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "guards");
 
         Set<CacheExpression> handledCaches = new HashSet<>();
-        List<GuardExpression> guards = new ArrayList<>();
-        for (String guardExpression : guardDefinitions) {
-            GuardExpression guard = parseGuard(resolver, specialization, guardExpression);
 
+        List<GuardExpression> existingGuards = new ArrayList<>(specialization.getGuards());
+        for (String guardExpression : guardDefinitions) {
+            existingGuards.add(parseGuard(resolver, specialization, guardExpression));
+        }
+
+        List<GuardExpression> newGuards = new ArrayList<>();
+        for (GuardExpression guard : existingGuards) {
             if (guard.getExpression() != null) {
                 Set<CacheExpression> caches = specialization.getBoundCaches(guard.getExpression(), false);
                 for (CacheExpression cache : caches) {
                     if (handledCaches.contains(cache)) {
                         continue;
                     }
+                    handledCaches.add(cache);
                     if (cache.isGuardForNull()) {
-                        guards.add(createWeakReferenceGuard(resolver, specialization, cache));
+                        newGuards.add(createWeakReferenceGuard(resolver, specialization, cache));
                     }
                 }
-                handledCaches.addAll(caches);
             }
 
-            guards.add(guard);
+            newGuards.add(guard);
         }
         for (CacheExpression cache : specialization.getCaches()) {
             if (cache.isGuardForNull()) {
                 if (handledCaches.contains(cache)) {
                     continue;
                 }
-                guards.add(createWeakReferenceGuard(resolver, specialization, cache));
+                newGuards.add(createWeakReferenceGuard(resolver, specialization, cache));
             }
         }
-
-        specialization.getGuards().addAll(guards);
+        specialization.getGuards().clear();
+        specialization.getGuards().addAll(newGuards);
     }
 
     private GuardExpression createWeakReferenceGuard(DSLExpressionResolver resolver, SpecializationData specialization, CacheExpression cache) {
