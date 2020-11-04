@@ -45,28 +45,27 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.nfi.impl.FunctionExecuteNode.SlowPathExecuteNode;
+import com.oracle.truffle.nfi.impl.LibFFIType.CachedTypeInfo;
 import com.oracle.truffle.nfi.spi.NFIBackend;
 import com.oracle.truffle.nfi.spi.NFIBackendFactory;
 import com.oracle.truffle.nfi.spi.NFIBackendTools;
-import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
-@TruffleLanguage.Registration(id = "internal/nfi-native", name = "nfi-native", version = "0.1", characterMimeTypes = NFILanguageImpl.MIME_TYPE, internal = true, services = NFIBackendFactory.class)
+@TruffleLanguage.Registration(id = "internal/nfi-native", name = "nfi-native", version = "0.1", characterMimeTypes = NFILanguageImpl.MIME_TYPE, internal = true, services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED)
 public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
 
     public static final String MIME_TYPE = "trufflenfi/native";
 
-    @CompilationFinal private CallTarget slowPathCall;
     @CompilationFinal private NFIBackendImpl backend;
 
-    CallTarget getSlowPathCall() {
-        if (slowPathCall == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            slowPathCall = Truffle.getRuntime().createCallTarget(new SlowPathExecuteNode(this));
-        }
-        return slowPathCall;
+    @CompilationFinal(dimensions = 1) final CachedTypeInfo[] simpleTypeMap = new CachedTypeInfo[NativeSimpleType.values().length];
+    @CompilationFinal(dimensions = 1) final CachedTypeInfo[] arrayTypeMap = new CachedTypeInfo[NativeSimpleType.values().length];
+
+    CachedTypeInfo lookupSimpleTypeInfo(NativeSimpleType type) {
+        return simpleTypeMap[type.ordinal()];
     }
 
     NFIBackendTools getTools() {
@@ -85,7 +84,11 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
             @Override
             public NFIBackend createBackend(NFIBackendTools tools) {
                 if (backend == null) {
-                    backend = new NFIBackendImpl(tools);
+                    /*
+                     * Make sure there is exactly one backend instance per engine. That way we can
+                     * use identity equality on the backend object for caching decisions.
+                     */
+                    backend = new NFIBackendImpl(com.oracle.truffle.nfi.impl.NFILanguageImpl.this, tools);
                 }
                 return backend;
             }
@@ -116,119 +119,6 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
         return true;
     }
 
-    private static class LoadLibraryNode extends RootNode {
-
-        private final String name;
-        private final int flags;
-
-        @CompilationFinal private LibFFILibrary cached;
-        private final ContextReference<NFIContext> ctxRef;
-
-        LoadLibraryNode(NFILanguageImpl language, String name, int flags) {
-            super(language);
-            this.name = name;
-            this.flags = flags;
-            this.ctxRef = lookupContextReference(NFILanguageImpl.class);
-        }
-
-        @Override
-        public boolean isInternal() {
-            return true;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            if (!ctxRef.get().env.isNativeAccessAllowed()) {
-                CompilerDirectives.transferToInterpreter();
-                throw new NFIUnsatisfiedLinkError("Access to native code is not allowed by the host environment.", this);
-            }
-            if (cached == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                cached = ctxRef.get().loadLibrary(name, flags);
-            }
-            return cached;
-        }
-    }
-
-    private static class GetDefaultLibraryNode extends RootNode {
-
-        private final ContextReference<NFIContext> ctxRef;
-
-        GetDefaultLibraryNode(NFILanguageImpl language) {
-            super(language);
-            this.ctxRef = lookupContextReference(NFILanguageImpl.class);
-        }
-
-        @Override
-        public boolean isInternal() {
-            return true;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            if (!ctxRef.get().env.isNativeAccessAllowed()) {
-                CompilerDirectives.transferToInterpreter();
-                throw new NFIUnsatisfiedLinkError("Access to native code is not allowed by the host environment.", this);
-            }
-            return LibFFILibrary.createDefault();
-        }
-    }
-
-    private final class NFIBackendImpl implements NFIBackend {
-
-        final NFIBackendTools tools;
-
-        NFIBackendImpl(NFIBackendTools tools) {
-            this.tools = tools;
-        }
-
-        @Override
-        public CallTarget parse(NativeLibraryDescriptor descriptor) {
-            RootNode root;
-            NFIContext ctx = getCurrentContext(NFILanguageImpl.class);
-
-            if (descriptor.isDefaultLibrary()) {
-                root = new GetDefaultLibraryNode(NFILanguageImpl.this);
-            } else {
-                int flags = 0;
-                boolean lazyOrNow = false;
-                if (descriptor.getFlags() != null) {
-                    for (String flag : descriptor.getFlags()) {
-                        switch (flag) {
-                            case "RTLD_GLOBAL":
-                                flags |= ctx.RTLD_GLOBAL;
-                                break;
-                            case "RTLD_LOCAL":
-                                flags |= ctx.RTLD_LOCAL;
-                                break;
-                            case "RTLD_LAZY":
-                                flags |= ctx.RTLD_LAZY;
-                                lazyOrNow = true;
-                                break;
-                            case "RTLD_NOW":
-                                flags |= ctx.RTLD_NOW;
-                                lazyOrNow = true;
-                                break;
-                            case "ISOLATED_NAMESPACE":
-                                if (ctx.ISOLATED_NAMESPACE == 0) { // undefined
-                                    throw new IllegalArgumentException("isolated namespace not supported");
-                                }
-                                flags |= ctx.ISOLATED_NAMESPACE;
-                                break;
-                        }
-                    }
-                }
-                if (!lazyOrNow) {
-                    // default to 'RTLD_NOW' if neither 'RTLD_LAZY' nor 'RTLD_NOW' was specified
-                    flags |= ctx.RTLD_NOW;
-                }
-                root = new LoadLibraryNode(NFILanguageImpl.this, descriptor.getFilename(), flags);
-            }
-
-            return Truffle.getRuntime().createCallTarget(root);
-        }
-    }
-
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         return Truffle.getRuntime().createCallTarget(new RootNode(this) {
@@ -241,4 +131,7 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
         });
     }
 
+    protected static NFIContext getCurrentContext() {
+        return getCurrentContext(NFILanguageImpl.class);
+    }
 }

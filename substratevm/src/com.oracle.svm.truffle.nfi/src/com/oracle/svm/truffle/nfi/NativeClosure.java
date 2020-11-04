@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,7 +71,7 @@ final class NativeClosure {
         this.signature = signature;
 
         int skipped = 0;
-        for (Object type : signature.getArgTypes()) {
+        for (Object type : signature.signatureInfo.getArgTypes()) {
             if (Target_com_oracle_truffle_nfi_impl_LibFFIType_EnvType.class.isInstance(type)) {
                 skipped++;
             }
@@ -80,7 +80,7 @@ final class NativeClosure {
     }
 
     private ByteBuffer createRetBuffer(PointerBase buffer) {
-        Target_com_oracle_truffle_nfi_impl_LibFFIType retType = signature.getRetType();
+        Target_com_oracle_truffle_nfi_impl_LibFFIType_CachedTypeInfo retType = signature.signatureInfo.getRetType();
         int size = retType.size;
         if (size < SizeOf.get(ffi_arg.class)) {
             size = SizeOf.get(ffi_arg.class);
@@ -105,7 +105,7 @@ final class NativeClosure {
     }
 
     private Object call(WordPointer argPointers, ByteBuffer retBuffer) {
-        Target_com_oracle_truffle_nfi_impl_LibFFIType[] argTypes = signature.getArgTypes();
+        Target_com_oracle_truffle_nfi_impl_LibFFIType_CachedTypeInfo[] argTypes = signature.signatureInfo.getArgTypes();
         int length = argTypes.length - skippedArgCount;
         if (retBuffer != null) {
             length++;

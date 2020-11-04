@@ -210,24 +210,36 @@ class NFIContext {
                     return ret;
                 }
 
-            case FUNCTION:
+            case FUNCTION: {
                 NativeFunctionTypeMirror functionType = (NativeFunctionTypeMirror) type;
                 LibFFISignature signature = LibFFISignature.create(this, functionType.getSignature());
-                return new ClosureType(lookupSimpleType(NativeSimpleType.POINTER), signature, asRetType);
+                LibFFIType ptrType = lookupSimpleType(NativeSimpleType.POINTER);
+                return new LibFFIType(new ClosureType(ptrType.typeInfo, signature, asRetType), ptrType.type);
+            }
 
-            case ENV:
+            case ENV: {
                 if (asRetType) {
                     throw new AssertionError("environment pointer can not be used as return type");
                 }
-                return new EnvType(lookupSimpleType(NativeSimpleType.POINTER));
+                LibFFIType ptrType = lookupSimpleType(NativeSimpleType.POINTER);
+                return new LibFFIType(new EnvType(ptrType.typeInfo), ptrType.type);
+            }
         }
         throw new AssertionError("unsupported type");
     }
 
     protected void initializeSimpleType(NativeSimpleType simpleType, int size, int alignment, long ffiType) {
-        assert simpleTypeMap[simpleType.ordinal()] == null : "initializeSimpleType called twice for " + simpleType;
-        simpleTypeMap[simpleType.ordinal()] = LibFFIType.createSimpleType(this, simpleType, size, alignment, ffiType);
-        arrayTypeMap[simpleType.ordinal()] = LibFFIType.createArrayType(this, simpleType);
+        int idx = simpleType.ordinal();
+        int pointerIdx = NativeSimpleType.POINTER.ordinal();
+
+        assert simpleTypeMap[idx] == null : "initializeSimpleType called twice for " + simpleType;
+        if (language.simpleTypeMap[idx] == null) {
+            assert language.arrayTypeMap[idx] == null;
+            language.simpleTypeMap[idx] = LibFFIType.createSimpleTypeInfo(language, simpleType, size, alignment);
+            language.arrayTypeMap[idx] = LibFFIType.createArrayTypeInfo(language.simpleTypeMap[pointerIdx], simpleType);
+        }
+        simpleTypeMap[idx] = new LibFFIType(language.simpleTypeMap[idx], ffiType);
+        arrayTypeMap[idx] = new LibFFIType(language.arrayTypeMap[idx], simpleTypeMap[pointerIdx].type);
     }
 
     private native long initializeNativeContext();

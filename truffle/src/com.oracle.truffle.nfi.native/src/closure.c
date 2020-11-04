@@ -281,6 +281,7 @@ jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject c
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
     ffi_cif *cif = (ffi_cif*) (*env)->GetLongField(env, signature, ctx->LibFFISignature_cif);
 
+    jobject sigInfo;
     jobjectArray argTypes;
     int i;
 
@@ -293,7 +294,8 @@ jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject c
     data->envArgIdx = -1;
     data->skippedArgCount = 0;
 
-    argTypes = (jobjectArray) (*env)->GetObjectField(env, signature, ctx->LibFFISignature_argTypes);
+    sigInfo = (*env)->GetObjectField(env, signature, ctx->LibFFISignature_signatureInfo);
+    argTypes = (jobjectArray) (*env)->GetObjectField(env, sigInfo, ctx->CachedSignatureInfo_argTypes);
     for (i = 0; i < cif->nargs; i++) {
         jobject argType = (*env)->GetObjectArrayElement(env, argTypes, i);
         if ((*env)->IsInstanceOf(env, argType, ctx->LibFFIType_StringType)) {
