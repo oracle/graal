@@ -78,6 +78,16 @@
             <artifactId>svm-driver</artifactId>
             <version><svmVersion/></version>
         </dependency>
+        <dependency>
+            <groupId>org.graalvm.nativeimage</groupId>
+            <artifactId>svm</artifactId>
+            <version><svmVersion/></version>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.nativeimage</groupId>
+            <artifactId>pointsto</artifactId>
+            <version><svmVersion/></version>
+        </dependency>
 
         <dependency>
             <groupId>org.apache.maven</groupId>

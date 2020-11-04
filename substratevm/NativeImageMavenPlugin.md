@@ -25,7 +25,7 @@ separate step. It is sufficient to add `native-image-maven-plugin` into the
         <skip>false</skip>
         <imageName>example</imageName>
         <buildArgs>
-            --no-fallback
+            <buildArg>--no-fallback</buildArg>
         </buildArgs>
     </configuration>
 </plugin>
@@ -64,7 +64,7 @@ It is also possible to customize the plugin within a
     <imageName>executable-name</imageName>
     <mainClass>com.test.classname</mainClass>
     <buildArgs>
-        --no-fallback
+        <buildArg>--no-fallback</buildArg>
     </buildArgs>
     <skip>false</skip>
 </configuration>

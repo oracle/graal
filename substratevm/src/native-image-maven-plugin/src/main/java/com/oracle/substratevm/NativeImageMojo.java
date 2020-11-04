@@ -88,7 +88,7 @@ public class NativeImageMojo extends AbstractMojo {
     private String imageName;
 
     @Parameter(property = "buildArgs")//
-    private String buildArgs;
+    private List<String> buildArgs;
 
     @Parameter(property = "skip", defaultValue = "false")//
     private boolean skip;
@@ -367,7 +367,9 @@ public class NativeImageMojo extends AbstractMojo {
 
         List<String> list = new ArrayList<>();
         if (buildArgs != null && !buildArgs.isEmpty()) {
-            list.addAll(Arrays.asList(buildArgs.split("\\s+")));
+            for (String buildArg : buildArgs) {
+                list.addAll(Arrays.asList(buildArg.split("\\s+")));
+            }
         }
         if (mainClass != null && !mainClass.equals(".")) {
             list.add("-H:Class=" + mainClass);
