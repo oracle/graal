@@ -64,27 +64,29 @@ export async function configureGraalVMHome(graalVMHome: string, nonInteractive?:
     const gr = getGVMConfig();
     if (graalVMHome !== getGVMHome(gr)) {
         await setGVMHome(graalVMHome, gr);
-        if (!nonInteractive) {
-            checkForMissingComponents(graalVMHome);
+        await defaultConfig(graalVMHome, gr);
+    }
+    if (!nonInteractive) {
+        await configureInteractive(graalVMHome);
+    }
+}
 
-            gatherConfigurations();
-            await defaultConfig(graalVMHome, gr);
+async function configureInteractive(graalVMHome: string) {
+    checkForMissingComponents(graalVMHome);
+    gatherConfigurations();
+    const toShow = configurations.filter(conf => conf.show(graalVMHome));
+    if (toShow.length > 0) {
+        const selected: ConfigurationPickItem[] = await vscode.window.showQuickPick(
+            toShow, {
+                canPickMany: true,
+                placeHolder: 'Configure active GraalVM'
+            }) || [];
 
-            const toShow = configurations.filter(conf => conf.show(graalVMHome));
-            if (toShow.length > 0) {
-                const selected: ConfigurationPickItem[] = await vscode.window.showQuickPick(
-                    toShow, {
-                        canPickMany: true,
-                        placeHolder: 'Configure active GraalVM'
-                    }) || [];
-
-                for (const select of selected) {
-                    try {
-                        await select.set(graalVMHome);
-                    } catch (error) {
-                        vscode.window.showErrorMessage(error?.message);
-                    }
-                }
+        for (const select of selected) {
+            try {
+                await select.set(graalVMHome);
+            } catch (error) {
+                vscode.window.showErrorMessage(error?.message);
             }
         }
     }
