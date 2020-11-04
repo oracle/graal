@@ -1083,8 +1083,8 @@ public final class ObjectKlass extends Klass {
         LinkedKlass linkedKlass = new LinkedKlass(parserKlass, getSuperKlass().getLinkedKlass(), interfaces);
 
         Method[][] itable = oldVersion.itable;
-        Method[] vtable = oldVersion.vtable;
-        ObjectKlass[] iKlassTable = oldVersion.iKlassTable;
+        Method[] vtable;
+        ObjectKlass[] iKlassTable;
         Method[] mirandaMethods = oldVersion.mirandaMethods;
 
         // changed methods
@@ -1094,13 +1094,6 @@ public final class ObjectKlass extends Klass {
             ParserMethod newMethod = entry.getValue();
             method.redefine(newMethod, packet.parserKlass, ids);
             JDWPLogger.log("Redefining method %s.%s", JDWPLogger.LogLevel.REDEFINE, method.getDeclaringKlass().getName(), method.getName());
-
-            // look in tables for copied methods that also needs to be invalidated
-            if (!method.isStatic() && !method.isPrivate() && !Name._init_.equals(method.getName())) {
-                checkCopyMethods(method, itable, newMethod, packet.parserKlass, ids);
-                checkCopyMethods(method, vtable, newMethod, packet.parserKlass, ids);
-                checkCopyMethods(method, mirandaMethods, newMethod, packet.parserKlass, ids);
-            }
         }
 
         Set<Method> removedMethods = change.getRemovedMethods();
@@ -1157,20 +1150,6 @@ public final class ObjectKlass extends Klass {
         // transaction is ended
         flushReflectionCaches();
         oldVersion.assumption.invalidate();
-    }
-
-    private static void checkCopyMethods(Method method, Method[][] table, ParserMethod parserMethod, ParserKlass parserKlass, Ids<Object> ids) {
-        for (Method[] methods : table) {
-            checkCopyMethods(method, methods, parserMethod, parserKlass, ids);
-        }
-    }
-
-    private static void checkCopyMethods(Method method, Method[] table, ParserMethod parserMethod, ParserKlass parserKlass, Ids<Object> ids) {
-        for (Method m : table) {
-            if (m.identity() == method.identity() && m != method) {
-                m.redefine(parserMethod, parserKlass, ids);
-            }
-        }
     }
 
     private void flushReflectionCaches() {
