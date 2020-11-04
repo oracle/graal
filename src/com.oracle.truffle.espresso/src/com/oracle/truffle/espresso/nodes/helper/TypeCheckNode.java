@@ -97,12 +97,6 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
         return typeToCheck == k;
     }
 
-    @Specialization(replaces = "typeCheckCached", guards = "arraySameDim(typeToCheck, k)")
-    protected boolean typeCheckArraySameDim(ArrayKlass typeToCheck, ArrayKlass k,
-                    @Cached("createChild()") TypeCheckNode tcn) {
-        return tcn.executeTypeCheck(typeToCheck.getElementalType(), k.getElementalType());
-    }
-
     @Specialization(replaces = "typeCheckCached", guards = "arrayBiggerDim(typeToCheck, k)")
     protected boolean typeCheckArrayBiggerDim(ArrayKlass typeToCheck, ArrayKlass k) {
         return false;
@@ -114,12 +108,38 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
         return elem == getMeta().java_lang_Object || elem == getMeta().java_io_Serializable || elem == getMeta().java_lang_Cloneable;
     }
 
-    @Specialization(replaces = "typeCheckCached", guards = "isInterface(typeToCheck)")
+    /*
+     * Type checks to j.l.Object or to final class are rare enough to not warrant a runtime check in
+     * the general case for re-specialization.
+     *
+     * However, the equality check should be common enough to be worth a runtime check in the
+     * general case to re-specialize.
+     */
+
+    @Specialization(replaces = "typeCheckCached", guards = {
+                    "typeToCheck != k", // Re-specialize to add typeCheckEqualsAfterCache
+                    "arraySameDim(typeToCheck, k)",
+    })
+    protected boolean typeCheckArraySameDim(ArrayKlass typeToCheck, ArrayKlass k,
+                    @Cached("createChild()") TypeCheckNode tcn) {
+        return tcn.executeTypeCheck(typeToCheck.getElementalType(), k.getElementalType());
+    }
+
+    @Specialization(replaces = "typeCheckCached", guards = "!k.isArray()")
+    protected boolean typeCheckArrayFalse(ArrayKlass typeToCheck, Klass k) {
+        return false;
+    }
+
+    @Specialization(replaces = "typeCheckCached", guards = {
+                    "typeToCheck != k", // Re-specialize to add typeCheckEqualsAfterCache
+                    "isInterface(typeToCheck)"})
     protected boolean typeCheckInterface(Klass typeToCheck, Klass k) {
         return typeToCheck.checkInterfaceSubclassing(k);
     }
 
-    @Specialization(replaces = "typeCheckCached")
+    @Specialization(replaces = "typeCheckCached", guards = {
+                    "typeToCheck != k" // Re-specialize to add typeCheckEqualsAfterCache
+    })
     protected boolean typeCheckRegular(Klass typeToCheck, Klass k) {
         return typeToCheck.checkRegularClassSubclassing(k);
     }
