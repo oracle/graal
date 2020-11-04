@@ -414,7 +414,21 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
 #
 
 
-@mx.command("mx", "wasm")
+@mx.command(_suite.name, "emscripten-init")
+def emscripten_init(args):
+    """Initialize the Emscripten environment."""
+    config_path = args[0]
+    emsdk_path = args[1]
+    mx.log("Generating Emscripten configuration...")
+    mx.log("Config file path:    " + str(config_path))
+    mx.log("Emscripten SDK path: " + str(emsdk_path))
+    cmd = os.path.join(_suite.dir, "generate_em_config")
+    mx.log("Path to the script:  " + cmd)
+    if mx.run([cmd, config_path, emsdk_path], nonZeroIsFatal=False) != 0:
+        mx.abort("Error generating the Emscripten configuration.")
+
+
+@mx.command(_suite.name, "wasm")
 def wasm(args):
     """Run a WebAssembly program."""
     mx.get_opts().jdk = "jvmci"
