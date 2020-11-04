@@ -1156,7 +1156,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             } else {
                 targetLanguageContext = getHostContext();
             }
-            return targetLanguageContext.asValue(targetLanguageContext.toGuestValue(hostValue));
+            return targetLanguageContext.asValue(targetLanguageContext.toGuestValue(null, hostValue));
         } catch (Throwable e) {
             throw PolyglotImpl.guestToHostException(this.getHostContext(), e);
         }

@@ -149,7 +149,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                      */
                     Object receiver = exceptionObject;
                     if (receiver instanceof Proxy) {
-                        receiver = languageContext.toGuestValue(receiver);
+                        receiver = languageContext.toGuestValue(null, receiver);
                     }
                     this.guestObject = languageContext.asValue(receiver);
                 } else {
@@ -242,7 +242,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             Object exceptionObject = ((com.oracle.truffle.api.TruffleException) e).getExceptionObject();
             if (exceptionObject != null) {
                 if (exceptionObject instanceof Proxy) {
-                    exceptionObject = languageContext.toGuestValue(exceptionObject);
+                    exceptionObject = languageContext.toGuestValue(null, exceptionObject);
                 }
                 return languageContext.asValue(exceptionObject);
             }

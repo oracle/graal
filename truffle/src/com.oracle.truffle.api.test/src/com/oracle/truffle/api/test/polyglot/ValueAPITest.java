@@ -1720,7 +1720,8 @@ public class ValueAPITest {
             try {
                 context2.getPolyglotBindings().putMember("foo", nonSharableObject);
                 fail();
-            } catch (IllegalArgumentException e) {
+            } catch (PolyglotException e) {
+                assertTrue(e.getMessage(), e.getMessage().contains("cannot be passed from one context to another"));
             }
             ProxyExecutable executable = new ProxyExecutable() {
                 public Object execute(Value... arguments) {
@@ -1732,7 +1733,8 @@ public class ValueAPITest {
             try {
                 context2.asValue(executable).execute(nonSharableObject);
                 fail();
-            } catch (IllegalArgumentException e) {
+            } catch (PolyglotException e) {
+                assertTrue(e.getMessage(), e.getMessage().contains("cannot be passed from one context to another"));
             }
             nonSharableObject.toString(); // does not fails
             assertTrue(nonSharableObject.equals(nonSharableObject));
