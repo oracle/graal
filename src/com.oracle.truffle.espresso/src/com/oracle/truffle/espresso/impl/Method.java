@@ -116,6 +116,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @CompilationFinal(dimensions = 1) //
     private final Symbol<Type>[] parsedSignature;
+    private final boolean splitMethod;
 
     @CompilationFinal private int vtableIndex = -1;
     @CompilationFinal private int itableIndex = -1;
@@ -133,6 +134,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // the parts of the method that can change when it's redefined
     // are encapsulated within the methodVersion
     @CompilationFinal volatile MethodVersion methodVersion;
+
+    // the method version of the original
+    // method in case this is a split method
+    @CompilationFinal volatile MethodVersion originalMethodVersion;
+
     private final Assumption removedByRedefinition = Truffle.getRuntime().createAssumption();
 
     public Method identity() {
@@ -182,6 +188,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     Method(Method method) {
         super(method.getRawSignature(), method.getName());
         this.declaringKlass = method.declaringKlass;
+        this.splitMethod = false;
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -202,8 +209,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private Method(Method method, CodeAttribute split) {
         super(method.getRawSignature(), method.getName());
+        this.splitMethod = true;
         this.declaringKlass = method.declaringKlass;
         this.methodVersion = new MethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), split);
+        this.originalMethodVersion = method.getMethodVersion();
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -227,6 +236,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
         super(rawSignature, linkedMethod.getName());
+        this.splitMethod = false;
         this.methodVersion = new MethodVersion(pool, linkedMethod, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
         this.declaringKlass = declaringKlass;
 
@@ -990,7 +1000,29 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public MethodVersion getMethodVersion() {
         if (proxy != null) {
-            return proxy.getMethodVersion();
+            if (splitMethod) {
+                // check the original method version and split
+                // again if invalidated
+                MethodVersion original = originalMethodVersion;
+                if (!original.getAssumption().isValid()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    if (proxy.isRemovedByRedefition()) {
+                        // for a removed method, we return the latest known
+                        // method version in case active frames try to
+                        // retrieve information for obsolete methods
+                        this.removedByRedefinition();
+                        return methodVersion;
+                    }
+                    do {
+                        original = proxy.getMethodVersion();
+                    } while (!original.getAssumption().isValid());
+                    originalMethodVersion = original;
+                    methodVersion = new MethodVersion(proxy.getRuntimeConstantPool(), proxy.getLinkedMethod(), original.getCodeAttribute().forceSplit());
+                }
+                return methodVersion;
+            } else {
+                return proxy.getMethodVersion();
+            }
         }
         // block execution during class redefinition
         ClassRedefinition.check();
