@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.ALLOCATION_KILLED_LOCATION_IDENTITIES;
 import static com.oracle.svm.core.snippets.SnippetRuntime.NO_KILLED_LOCATIONS;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -54,6 +55,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.nodes.KillMemoryNode;
+import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
@@ -130,15 +132,17 @@ import com.oracle.svm.core.util.VMError;
  * @see SafepointCheckNode
  */
 public final class Safepoint {
-    // For the safepoint-related foreign calls, we can assume that they don't kill any locations as
-    // they only write to locations that are accessed using volatile semantics (because any kind of
-    // race condition can happen anyway).
+    // For the safepoint-related foreign calls, we must assume that they kill the allocation
+    // locations because those might be modified by a GC or when a recurring callback allocates. We
+    // ignore all other writes as those need to use volatile semantics anyways.
+    // For performance reasons, we need to assume that recurring callbacks don't do any writes that
+    // interfere in a problematic way with the read elimination that is done for the application.
     public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_SAFEPOINT_CHECK = SnippetRuntime.findForeignCall(Safepoint.class, "enterSlowPathSafepointCheck", true,
-                    NO_KILLED_LOCATIONS);
+                    ALLOCATION_KILLED_LOCATION_IDENTITIES);
     private static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS = SnippetRuntime.findForeignCall(Safepoint.class,
-                    "enterSlowPathTransitionFromNativeToNewStatus", true, NO_KILLED_LOCATIONS);
+                    "enterSlowPathTransitionFromNativeToNewStatus", true, ALLOCATION_KILLED_LOCATION_IDENTITIES);
     private static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_TRANSITION_FROM_VM_TO_JAVA = SnippetRuntime.findForeignCall(Safepoint.class, "enterSlowPathTransitionFromVMToJava", true,
-                    NO_KILLED_LOCATIONS);
+                    ALLOCATION_KILLED_LOCATION_IDENTITIES);
 
     /** All foreign calls defined in this class. */
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
