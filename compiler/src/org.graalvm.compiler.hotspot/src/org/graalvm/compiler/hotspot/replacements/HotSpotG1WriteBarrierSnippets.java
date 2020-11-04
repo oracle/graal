@@ -64,8 +64,10 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets {
-    public static final HotSpotForeignCallDescriptor G1WBPRECALL = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "write_barrier_pre", void.class, Object.class);
-    public static final HotSpotForeignCallDescriptor G1WBPOSTCALL = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "write_barrier_post", void.class, Word.class);
+    public static final HotSpotForeignCallDescriptor G1WBPRECALL = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, KILLED_PRE_WRITE_BARRIER_STUB_LOCATIONS, "write_barrier_pre",
+                    void.class, Object.class);
+    public static final HotSpotForeignCallDescriptor G1WBPOSTCALL = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, KILLED_POST_WRITE_BARRIER_STUB_LOCATIONS, "write_barrier_post",
+                    void.class, Word.class);
     public static final HotSpotForeignCallDescriptor VALIDATE_OBJECT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "validate_object", boolean.class, Word.class,
                     Word.class);
 
@@ -201,11 +203,16 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
             this.lowerer = new HotspotG1WriteBarrierLowerer(config, factory);
 
             HotSpotG1WriteBarrierSnippets receiver = new HotSpotG1WriteBarrierSnippets(providers.getRegisters());
-            g1PreWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1PreWriteBarrier", null, receiver, GC_INDEX_LOCATION, GC_LOG_LOCATION);
-            g1ReferentReadBarrier = snippet(G1WriteBarrierSnippets.class, "g1ReferentReadBarrier", null, receiver, GC_INDEX_LOCATION, GC_LOG_LOCATION);
-            g1PostWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1PostWriteBarrier", null, receiver, GC_CARD_LOCATION, GC_INDEX_LOCATION, GC_LOG_LOCATION);
-            g1ArrayRangePreWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1ArrayRangePreWriteBarrier", null, receiver, GC_INDEX_LOCATION, GC_LOG_LOCATION);
-            g1ArrayRangePostWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1ArrayRangePostWriteBarrier", null, receiver, GC_CARD_LOCATION, GC_INDEX_LOCATION, GC_LOG_LOCATION);
+            g1PreWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1PreWriteBarrier", null, receiver, GC_INDEX_LOCATION, GC_LOG_LOCATION, SATB_QUEUE_MARKING_LOCATION, SATB_QUEUE_INDEX_LOCATION,
+                            SATB_QUEUE_BUFFER_LOCATION);
+            g1ReferentReadBarrier = snippet(G1WriteBarrierSnippets.class, "g1ReferentReadBarrier", null, receiver, GC_INDEX_LOCATION, GC_LOG_LOCATION, SATB_QUEUE_MARKING_LOCATION,
+                            SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION);
+            g1PostWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1PostWriteBarrier", null, receiver, GC_CARD_LOCATION, GC_INDEX_LOCATION, GC_LOG_LOCATION, CARD_QUEUE_INDEX_LOCATION,
+                            CARD_QUEUE_BUFFER_LOCATION);
+            g1ArrayRangePreWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1ArrayRangePreWriteBarrier", null, receiver, GC_INDEX_LOCATION, GC_LOG_LOCATION, SATB_QUEUE_MARKING_LOCATION,
+                            SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION);
+            g1ArrayRangePostWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1ArrayRangePostWriteBarrier", null, receiver, GC_CARD_LOCATION, GC_INDEX_LOCATION, GC_LOG_LOCATION,
+                            CARD_QUEUE_INDEX_LOCATION, CARD_QUEUE_BUFFER_LOCATION);
         }
 
         public void lower(G1PreWriteBarrier barrier, LoweringTool tool) {
