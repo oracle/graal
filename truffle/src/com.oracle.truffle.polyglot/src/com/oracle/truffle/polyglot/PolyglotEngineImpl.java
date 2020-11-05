@@ -281,9 +281,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.idToPublicInstrument = Collections.unmodifiableMap(publicInstruments);
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in, messageInterceptor, storeEngine);
 
-        if (!boundEngine || storeEngine) {
+        if (!boundEngine) {
             initializeMultiContext(null);
         }
+        intitializeStore(false, this.storeEngine);
 
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
@@ -386,9 +387,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.engineOptionValues = prototype.engineOptionValues.copy();
         this.conservativeContextReferences = engineOptionValues.get(PolyglotEngineOptions.UseConservativeContextReferences);
 
-        if (!boundEngine || storeEngine) {
+        if (!boundEngine) {
             initializeMultiContext(null);
         }
+        intitializeStore(false, prototype.storeEngine);
 
         for (String languageId : idToLanguage.keySet()) {
             OptionValuesImpl prototypeOptions = prototype.idToLanguage.get(languageId).getOptionValuesIfExists();
@@ -467,11 +469,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.logHandler = newLogHandler;
         this.engineOptionValues = engineOptions;
         this.logLevels = newLogConfig.logLevels;
+        boolean wasStore = this.storeEngine;
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
 
-        if (storeEngine && boundEngine && singleContext.isValid()) {
-            singleContext.invalidate();
-        }
+        intitializeStore(wasStore, storeEngine);
 
         INSTRUMENT.patchInstrumentationHandler(instrumentationHandler, newOut, newErr, newIn);
 
@@ -1239,6 +1240,27 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
     }
 
+    /**
+     * Invoked when the engine will be stored. This must be executed before any guest language code
+     * is executed.
+     */
+    void intitializeStore(boolean previousStore, boolean newStore) {
+        if (newStore) {
+            if (previousStore && boundEngine && singleContext.isValid()) {
+                // multi-context already initialized, just the assumption was flipped by
+                // finalizeStore
+                singleContext.invalidate();
+            } else {
+                initializeMultiContext(null);
+            }
+
+            PolyglotContextImpl.singleContextState.getContextThreadLocal().enableStore();
+        }
+    }
+
+    /**
+     * Invoked when the context is closing to prepare an engine to be stored.
+     */
     void finalizeStore() {
         assert Thread.holdsLock(this.lock);
 
