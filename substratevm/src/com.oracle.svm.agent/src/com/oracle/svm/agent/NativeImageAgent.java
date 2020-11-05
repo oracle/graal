@@ -526,7 +526,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     protected void onVMInitCallback(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread) {
         accessAdvisor.setInLivePhase(true);
         BreakpointInterceptor.onVMInit(jvmti, jni);
-        JniCallInterceptor.onVMInit(jvmti, jni);
+        JniCallInterceptor.onVMInit(jni);
         if (traceWriter != null) {
             traceWriter.tracePhaseChange("live");
         }

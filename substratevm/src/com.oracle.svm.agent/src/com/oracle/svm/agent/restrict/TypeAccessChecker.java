@@ -65,11 +65,7 @@ public class TypeAccessChecker {
         this.configuration = configuration;
     }
 
-    public TypeConfiguration getConfiguration() {
-        return configuration;
-    }
-
-    public boolean isClassAccessible(JNIEnvironment env, String classname) {
+    public boolean isClassAccessible(String classname) {
         return configuration.get(classname) != null || exposedInnerClasses.contains(classname);
     }
 

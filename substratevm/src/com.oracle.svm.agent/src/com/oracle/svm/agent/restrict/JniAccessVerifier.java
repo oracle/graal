@@ -84,7 +84,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         if (shouldApproveWithoutChecks(javaName, lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
-        if (javaName.get() != null && typeAccessChecker.isClassAccessible(env, javaName.get())) {
+        if (javaName.get() != null && typeAccessChecker.isClassAccessible(javaName.get())) {
             return true;
         }
         try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to class: " + javaName.get())) {
