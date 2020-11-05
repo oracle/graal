@@ -43,8 +43,6 @@ package com.oracle.truffle.api.test.nodes;
 import static com.oracle.truffle.api.test.OSUtils.toUnixString;
 import static org.junit.Assert.assertEquals;
 
-import java.util.Iterator;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -268,25 +266,6 @@ public class NodeUtilTest {
                         "    resultNode = " + testNodeSimpleName + "\n", toUnixString(output));
     }
 
-    private static int iterate(Iterator<Node> iterator) {
-        int iterationCount = 0;
-        while (iterator.hasNext()) {
-            Node node = iterator.next();
-            if (node == null) {
-                continue;
-            }
-            if (node instanceof TestNode) {
-                ((TestNode) node).visited = iterationCount;
-            } else if (node instanceof TestRootNode) {
-                ((TestRootNode) node).visited = iterationCount;
-            } else {
-                throw new AssertionError();
-            }
-            iterationCount++;
-        }
-        return iterationCount;
-    }
-
     private static String getSimpleName(Class<?> clazz) {
         return clazz.getName().substring(clazz.getName().lastIndexOf('.') + 1);
     }
@@ -308,8 +287,6 @@ public class NodeUtilTest {
     private static class TestRootNode extends RootNode {
 
         @Child Node child0;
-
-        protected int visited;
 
         TestRootNode() {
             super(null);
