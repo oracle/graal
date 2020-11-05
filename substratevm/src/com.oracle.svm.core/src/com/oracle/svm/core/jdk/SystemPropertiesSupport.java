@@ -101,8 +101,6 @@ public abstract class SystemPropertiesSupport {
         initializeProperty("java.ext.dirs", "");
         initializeProperty("java.library.path", "");
         initializeProperty("sun.arch.data.model", Integer.toString(ConfigurationValues.getTarget().wordJavaKind.getBitCount()));
-        // Some JDK libraries throws an error if 'java.home' is null.
-        initializeProperty("java.home", "undefined");
 
         String targetName = System.getProperty("svm.targetName");
         String targetArch = System.getProperty("svm.targetArch");
