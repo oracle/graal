@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
@@ -106,7 +107,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         deleteAnnotations = new HashMap<>();
         typeSubstitutions = new HashMap<>();
-        methodSubstitutions = new HashMap<>();
+        methodSubstitutions = new ConcurrentHashMap<>();
         polymorphicMethodSubstitutions = new HashMap<>();
         fieldSubstitutions = new HashMap<>();
     }
@@ -201,7 +202,19 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
                 PolymorphicSignatureWrapperMethod wrapperMethod = new PolymorphicSignatureWrapperMethod(substitutionBaseMethod, method);
                 SubstitutionMethod substitutionMethod = new SubstitutionMethod(method, wrapperMethod);
-                register(methodSubstitutions, wrapperMethod, method, substitutionMethod);
+                synchronized (methodSubstitutions) {
+                    /*
+                     * It may happen that, during analysis, two threads are trying to register the
+                     * same variant of a polymorphic method simultaneously. This check ensures that
+                     * when this happens, the variant is registered only once and both lookups
+                     * return the same substitution.
+                     */
+                    ResolvedJavaMethod currentSubstitution = methodSubstitutions.get(method);
+                    if (currentSubstitution != null) {
+                        return currentSubstitution;
+                    }
+                    register(methodSubstitutions, wrapperMethod, method, substitutionMethod);
+                }
 
                 return substitutionMethod;
             }
