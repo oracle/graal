@@ -28,6 +28,7 @@ vm_bench_polybench_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd
   packages: {
     gcc: "==8.3.0"
     gcc-build-essentials: "==8.3.0"
+    llvm: "==8.0.1"
   }
   downloads: {
     WABT_DIR: {name: wabt, version: "1.0.12", platformspecific: true},
