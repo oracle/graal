@@ -528,7 +528,6 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     @Override
     protected void onVMInitCallback(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread) {
         accessAdvisor.setInLivePhase(true);
-        BreakpointInterceptor.onVMInit(jvmti, jni);
 
         if (reflectAccessChecker != null) {
             reflectAccessChecker.collectInnerClasses(jni, handles().javaLangClassGetClasses, handles().javaLangClassGetDeclaredClasses);
@@ -537,6 +536,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         if (jniAccessChecker != null) {
             jniAccessChecker.collectInnerClasses(jni, handles().javaLangClassGetClasses, handles().javaLangClassGetDeclaredClasses);
         }
+
+        BreakpointInterceptor.onVMInit(jvmti, jni);
 
         if (traceWriter != null) {
             traceWriter.tracePhaseChange("live");
