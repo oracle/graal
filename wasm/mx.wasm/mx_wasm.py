@@ -422,12 +422,14 @@ def emscripten_init(args):
     parser.add_argument('config_path', help='path of the config file to be generated')
     parser.add_argument('emsdk_path', help='path of the emsdk')
     args = parser.parse_args(args)
+    config_path = os.path.join(os.getcwd(), args.config_path)
+    emsdk_path = args.emsdk_path
     mx.log("Generating Emscripten configuration...")
-    mx.log("Config file path:    " + str(args.config_path))
-    mx.log("Emscripten SDK path: " + str(args.emsdk_path))
+    mx.log("Config file path:    " + str(config_path))
+    mx.log("Emscripten SDK path: " + str(emsdk_path))
     cmd = os.path.join(_suite.dir, "generate_em_config")
     mx.log("Path to the script:  " + cmd)
-    if mx.run([cmd, args.config_path, args.emsdk_path], nonZeroIsFatal=False) != 0:
+    if mx.run([cmd, config_path, emsdk_path], nonZeroIsFatal=False) != 0:
         mx.abort("Error generating the Emscripten configuration.")
 
 
