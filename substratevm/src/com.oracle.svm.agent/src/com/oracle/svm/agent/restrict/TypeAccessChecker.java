@@ -217,70 +217,41 @@ public class TypeAccessChecker {
     public void collectInnerClasses(JNIEnvironment env, NativeImageAgentJNIHandleSet handles) {
         for (ConfigurationType type : configuration.getTypes()) {
             if (type.haveAllPublicClasses() || type.haveAllDeclaredClasses()) {
-                System.out.println("Accessing " + type.getQualifiedJavaName());
                 String internalName = MetaUtil.toInternalName(type.getQualifiedJavaName());
-                System.out.println("Internal name " + internalName);
                 try (CTypeConversion.CCharPointerHolder cCharPointerHolder = Support.toCString(internalName)) {
                     JNIObjectHandle clazz = jniFunctions().getFindClass().invoke(env, cCharPointerHolder.get());
                     if (clearException(env)) {
                         System.err.println("Could not find class " + type.getQualifiedJavaName() + " to access its inner classes");
                         continue;
                     }
-                    if (type.haveAllPublicClasses()) {
-                        JNIObjectHandle array = Support.callObjectMethod(env, clazz, handles.javaLangClassGetClasses);
-                        if (clearException(env)) {
-                            System.out.println("Failed to load public inner classes of " + type.getQualifiedJavaName());
-                        } else {
-                            int lenght = jniFunctions().getGetArrayLength().invoke(env, array);
-                            if (lenght < 0 || clearException(env)) {
-                                System.out.println("Failed to get length of public inner classes array of " + type.getQualifiedJavaName());
-                            } else {
-                                for (int i = 0; i < lenght; i++) {
-                                    JNIObjectHandle elem = jniFunctions().getGetObjectArrayElement().invoke(env, array, i);
-                                    if (!clearException(env)) {
-                                        String classname = getClassNameOrNull(env, elem);
-                                        if (classname != null) {
-                                            exposedInnerClasses.add(classname);
-                                        } else {
-                                            System.out.println("failed to get classnema at " + i);
-                                        }
-                                    } else {
-                                        System.out.println("failed to get elem at " + i);
-                                    }
-                                }
-                            }
-                        }
 
+                    if (type.haveAllPublicClasses()) {
+                        collectInnerClassesOf(env, clazz, handles.javaLangClassGetClasses);
                     }
                     if (type.haveAllDeclaredClasses()) {
-                        JNIObjectHandle array = Support.callObjectMethod(env, clazz, handles.javaLangClassGetDeclaredClasses);
-                        if (clearException(env)) {
-                            System.out.println("Failed to load public inner classes of " + type.getQualifiedJavaName());
-                        } else {
-                            int lenght = jniFunctions().getGetArrayLength().invoke(env, array);
-                            if (lenght < 0 || clearException(env)) {
-                                System.out.println("Failed to get length of public inner classes array of " + type.getQualifiedJavaName());
-                            } else {
-                                for (int i = 0; i < lenght; i++) {
-                                    JNIObjectHandle elem = jniFunctions().getGetObjectArrayElement().invoke(env, array, i);
-                                    if (!clearException(env)) {
-                                        String classname = getClassNameOrNull(env, elem);
-                                        if (classname != null) {
-                                            exposedInnerClasses.add(classname);
-                                        } else {
-                                            System.out.println("failed to get classnema at " + i);
-                                        }
-                                    } else {
-                                        System.out.println("failed to get elem at " + i);
-                                    }
-                                }
-                            }
-                        }
+                        collectInnerClassesOf(env, clazz, handles.javaLangClassGetDeclaredClasses);
                     }
 
                 }
             }
         }
-        System.out.println("!!![2] Collected these inner classes " + exposedInnerClasses);
+    }
+
+    private void collectInnerClassesOf(JNIEnvironment env, JNIObjectHandle handle, JNIMethodId method) {
+        JNIObjectHandle array = Support.callObjectMethod(env, handle, method);
+        if (!clearException(env)) {
+            int length = jniFunctions().getGetArrayLength().invoke(env, array);
+            if (length > 0 && !clearException(env)) {
+                for (int i = 0; i < length; i++) {
+                    JNIObjectHandle elem = jniFunctions().getGetObjectArrayElement().invoke(env, array, i);
+                    if (!clearException(env)) {
+                        String classname = getClassNameOrNull(env, elem);
+                        if (classname != null) {
+                            exposedInnerClasses.add(classname);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
