@@ -26,6 +26,7 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -91,5 +92,9 @@ public class TypeConfiguration implements JsonPrintable {
             prefix = ",\n";
         }
         writer.newline().append(']').newline();
+    }
+
+    public Collection<ConfigurationType> getTypes() {
+        return types.values();
     }
 }

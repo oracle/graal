@@ -26,10 +26,10 @@ package com.oracle.svm.agent;
 
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 
-import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
 
 public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
@@ -58,6 +58,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaLangInvokeMemberNameIsMethod;
     final JNIMethodId javaLangInvokeMemberNameIsField;
     final JNIMethodId javaLangInvokeMemberNameIsConstructor;
+    public final JNIMethodId javaLangClassGetClasses;
+    public final JNIMethodId javaLangClassGetDeclaredClasses;
 
     // HotSpot crashes when looking these up eagerly
     private JNIObjectHandle javaLangReflectField;
@@ -80,6 +82,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangClassGetDeclaredConstructor = getMethodId(env, javaLangClass, "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", false);
         javaLangClassGetDeclaredField = getMethodId(env, javaLangClass, "getDeclaredField", "(Ljava/lang/String;)Ljava/lang/reflect/Field;", false);
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
+        javaLangClassGetClasses = getMethodId(env, javaLangClass, "getClasses", "()[Ljava/lang/Class;", false);
+        javaLangClassGetDeclaredClasses = getMethodId(env, javaLangClass, "getDeclaredClasses", "()[Ljava/lang/Class;", false);
 
         JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
         javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);

@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.agent.restrict;
 
+import static com.oracle.svm.configure.trace.LazyValueUtils.lazyGet;
+import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
 import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOr;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.toCString;
-import static com.oracle.svm.configure.trace.LazyValueUtils.lazyGet;
-import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 
 import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.StackValue;
@@ -84,7 +84,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         if (shouldApproveWithoutChecks(javaName, lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
-        if (javaName.get() != null && typeAccessChecker.getConfiguration().get(javaName.get()) != null) {
+        if (javaName.get() != null && typeAccessChecker.isClassAccessible(env, javaName.get())) {
             return true;
         }
         try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to class: " + javaName.get())) {
@@ -219,5 +219,9 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
             return true;
         }
         return typeAccessChecker.getType(arrayClass) != null;
+    }
+
+    public void collectInnerClasses(JNIEnvironment jni) {
+        typeAccessChecker.collectInnerClasses(jni, agent.handles());
     }
 }

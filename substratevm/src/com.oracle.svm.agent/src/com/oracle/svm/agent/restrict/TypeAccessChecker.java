@@ -25,6 +25,7 @@
 package com.oracle.svm.agent.restrict;
 
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
+import static com.oracle.svm.jvmtiagentbase.Support.clearException;
 import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
 import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOrNull;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
@@ -33,15 +34,17 @@ import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.lang.reflect.Modifier;
-import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
+import com.oracle.svm.agent.NativeImageAgentJNIHandleSet;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.TypeConfiguration;
@@ -49,11 +52,14 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jvmtiagentbase.Support;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 
+import jdk.vm.ci.meta.MetaUtil;
+
 public class TypeAccessChecker {
+    private final Set<String> exposedInnerClasses = ConcurrentHashMap.newKeySet();
     private final TypeConfiguration configuration;
-    private final Map<String, Boolean> innerClassesMemo = new ConcurrentHashMap<>();
 
     public TypeAccessChecker(TypeConfiguration configuration) {
         this.configuration = configuration;
@@ -64,7 +70,7 @@ public class TypeAccessChecker {
     }
 
     public boolean isClassAccessible(JNIEnvironment env, String classname) {
-        return configuration.get(classname) != null || isExposedAsInnerClass(env, classname);
+        return configuration.get(classname) != null || exposedInnerClasses.contains(classname);
     }
 
     public boolean isClassAccessible(JNIEnvironment env, JNIObjectHandle clazz) {
@@ -72,26 +78,7 @@ public class TypeAccessChecker {
             return true;
         }
         String classname = getClassNameOrNull(env, clazz);
-        return classname != null && isExposedAsInnerClass(env, classname);
-    }
-
-    private boolean isExposedAsInnerClass(JNIEnvironment env, String classname) {
-        String wrappingClass = getWrappingClass(classname);
-        return wrappingClass != null && innerClassesMemo.computeIfAbsent(wrappingClass, (name) -> exposesInnerClass(env, name));
-    }
-
-    private String getWrappingClass(String classname) {
-        int split = classname.lastIndexOf('$');
-        if (split == -1) {
-            return null;
-        }
-        return classname.substring(0, split);
-    }
-
-    private boolean exposesInnerClass(JNIEnvironment env, String wrappingClass) {
-        // todo implement
-
-        return false;
+        return classname != null && exposedInnerClasses.contains(classname);
     }
 
     public boolean isFieldAccessible(JNIEnvironment env, JNIObjectHandle clazz, Supplier<String> name, JNIFieldId field, JNIObjectHandle declaring) {
@@ -225,5 +212,75 @@ public class TypeAccessChecker {
             }
         }
         return false;
+    }
+
+    public void collectInnerClasses(JNIEnvironment env, NativeImageAgentJNIHandleSet handles) {
+        for (ConfigurationType type : configuration.getTypes()) {
+            if (type.haveAllPublicClasses() || type.haveAllDeclaredClasses()) {
+                System.out.println("Accessing " + type.getQualifiedJavaName());
+                String internalName = MetaUtil.toInternalName(type.getQualifiedJavaName());
+                System.out.println("Internal name " + internalName);
+                try (CTypeConversion.CCharPointerHolder cCharPointerHolder = Support.toCString(internalName)) {
+                    JNIObjectHandle clazz = jniFunctions().getFindClass().invoke(env, cCharPointerHolder.get());
+                    if (clearException(env)) {
+                        System.err.println("Could not find class " + type.getQualifiedJavaName() + " to access its inner classes");
+                        continue;
+                    }
+                    if (type.haveAllPublicClasses()) {
+                        JNIObjectHandle array = Support.callObjectMethod(env, clazz, handles.javaLangClassGetClasses);
+                        if (clearException(env)) {
+                            System.out.println("Failed to load public inner classes of " + type.getQualifiedJavaName());
+                        } else {
+                            int lenght = jniFunctions().getGetArrayLength().invoke(env, array);
+                            if (lenght < 0 || clearException(env)) {
+                                System.out.println("Failed to get length of public inner classes array of " + type.getQualifiedJavaName());
+                            } else {
+                                for (int i = 0; i < lenght; i++) {
+                                    JNIObjectHandle elem = jniFunctions().getGetObjectArrayElement().invoke(env, array, i);
+                                    if (!clearException(env)) {
+                                        String classname = getClassNameOrNull(env, elem);
+                                        if (classname != null) {
+                                            exposedInnerClasses.add(classname);
+                                        } else {
+                                            System.out.println("failed to get classnema at " + i);
+                                        }
+                                    } else {
+                                        System.out.println("failed to get elem at " + i);
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                    if (type.haveAllDeclaredClasses()) {
+                        JNIObjectHandle array = Support.callObjectMethod(env, clazz, handles.javaLangClassGetDeclaredClasses);
+                        if (clearException(env)) {
+                            System.out.println("Failed to load public inner classes of " + type.getQualifiedJavaName());
+                        } else {
+                            int lenght = jniFunctions().getGetArrayLength().invoke(env, array);
+                            if (lenght < 0 || clearException(env)) {
+                                System.out.println("Failed to get length of public inner classes array of " + type.getQualifiedJavaName());
+                            } else {
+                                for (int i = 0; i < lenght; i++) {
+                                    JNIObjectHandle elem = jniFunctions().getGetObjectArrayElement().invoke(env, array, i);
+                                    if (!clearException(env)) {
+                                        String classname = getClassNameOrNull(env, elem);
+                                        if (classname != null) {
+                                            exposedInnerClasses.add(classname);
+                                        } else {
+                                            System.out.println("failed to get classnema at " + i);
+                                        }
+                                    } else {
+                                        System.out.println("failed to get elem at " + i);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
+        }
+        System.out.println("!!![2] Collected these inner classes " + exposedInnerClasses);
     }
 }

@@ -55,13 +55,8 @@ import java.util.regex.Pattern;
 
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
-import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
-import com.oracle.svm.jvmtiagentbase.Support;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
 import com.oracle.svm.agent.restrict.JniAccessVerifier;
 import com.oracle.svm.agent.restrict.ProxyAccessVerifier;
 import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
@@ -81,7 +76,12 @@ import com.oracle.svm.driver.NativeImage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIJavaVM;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-import org.graalvm.nativeimage.hosted.Feature;
+import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
+import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
+import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
 
 public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHandleSet> {
     private static final String AGENT_NAME = "native-image-agent";
@@ -526,6 +526,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     protected void onVMInitCallback(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread) {
         accessAdvisor.setInLivePhase(true);
         BreakpointInterceptor.onVMInit(jvmti, jni);
+        JniCallInterceptor.onVMInit(jvmti, jni);
         if (traceWriter != null) {
             traceWriter.tracePhaseChange("live");
         }
