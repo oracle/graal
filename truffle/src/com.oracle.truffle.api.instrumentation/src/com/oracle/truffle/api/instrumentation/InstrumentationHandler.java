@@ -1152,6 +1152,8 @@ final class InstrumentationHandler {
             return;
         }
 
+        visitor.rootBits = RootNodeBits.get(root);
+        visitor.setExecutedRootNodeBit = setExecutedRootNodeBit;
         visitor.preVisit(root, firstExecution);
         try {
             Lock lock = InstrumentAccessor.nodesAccess().getLock(node);
@@ -1163,7 +1165,6 @@ final class InstrumentationHandler {
                     if (TRACE) {
                         trace("BEGIN: Traverse root %s for %s%n", root.toString(), visitor);
                     }
-                    visitor.setExecutedRootNodeBit = setExecutedRootNodeBit;
                     if (forceRootBitComputation) {
                         visitor.computingRootNodeBits = RootNodeBits.isUninitialized(visitor.rootBits) ? RootNodeBits.getAll() : visitor.rootBits;
                     } else if (RootNodeBits.isUninitialized(visitor.rootBits)) {
@@ -1352,10 +1353,7 @@ final class InstrumentationHandler {
             return false;
         }
 
-        protected void preVisit(SourceSection rootSourceSection) {
-            if (rootSourceSection != null) {
-                // no-op, just to avoid build warning
-            }
+        protected void preVisit(@SuppressWarnings("unused") SourceSection rootSourceSection, @SuppressWarnings("unused") boolean executedRoot) {
         }
 
         protected void postVisitCleanup() {
@@ -1393,7 +1391,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void preVisit(SourceSection rootSourceSection) {
+        protected void preVisit(SourceSection rootSourceSection, boolean executedRoot) {
             List<BindingLoadSourceSectionEvent> localSourceSectionLoadedList = threadLocalSourceSectionLoadedList.get();
             if (localSourceSectionLoadedList == null) {
                 localSourceSectionLoadedList = new ArrayList<>();
@@ -1484,7 +1482,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void preVisit(SourceSection rootSourceSection) {
+        protected void preVisit(SourceSection rootSourceSection, boolean executedRoot) {
             Map<Source, Void> localNewSources = threadLocalNewSources.get();
             if (localNewSources == null) {
                 localNewSources = new LinkedHashMap<>();
@@ -1495,7 +1493,7 @@ final class InstrumentationHandler {
             }
             this.newSources = localNewSources;
 
-            if (rootSourceSection != null) {
+            if (rootSourceSection != null && (!performOnlyOnExecutedAST || executedRoot)) {
                 adoptSource(rootSourceSection.getSource());
             }
         }
@@ -2013,7 +2011,7 @@ final class InstrumentationHandler {
             this.materializeTags = (Set<Class<? extends Tag>>) (this.materializeLimitedTags == null ? this.providedTags : this.materializeLimitedTags);
 
             for (VisitOperation operation : operations) {
-                operation.preVisit(rootSourceSection);
+                operation.preVisit(rootSourceSection, setExecutedRootNodeBit || RootNodeBits.wasExecuted(rootBits));
             }
         }
 
