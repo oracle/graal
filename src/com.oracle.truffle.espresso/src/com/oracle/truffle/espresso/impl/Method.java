@@ -135,10 +135,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // are encapsulated within the methodVersion
     @CompilationFinal volatile MethodVersion methodVersion;
 
-    // the method version of the original
-    // method in case this is a split method
-    @CompilationFinal volatile MethodVersion originalMethodVersion;
-
     private final Assumption removedByRedefinition = Truffle.getRuntime().createAssumption();
 
     public Method identity() {
@@ -212,7 +208,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         this.splitMethod = true;
         this.declaringKlass = method.declaringKlass;
         this.methodVersion = new MethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), split);
-        this.originalMethodVersion = method.getMethodVersion();
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -999,30 +994,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public MethodVersion getMethodVersion() {
-        if (proxy != null) {
-            if (splitMethod) {
-                // check the original method version and split
-                // again if invalidated
-                MethodVersion original = originalMethodVersion;
-                if (!original.getAssumption().isValid()) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    if (proxy.isRemovedByRedefition()) {
-                        // for a removed method, we return the latest known
-                        // method version in case active frames try to
-                        // retrieve information for obsolete methods
-                        this.removedByRedefinition();
-                        return methodVersion;
-                    }
-                    do {
-                        original = proxy.getMethodVersion();
-                    } while (!original.getAssumption().isValid());
-                    originalMethodVersion = original;
-                    methodVersion = new MethodVersion(proxy.getRuntimeConstantPool(), proxy.getLinkedMethod(), original.getCodeAttribute().forceSplit());
-                }
-                return methodVersion;
-            } else {
-                return proxy.getMethodVersion();
-            }
+        if (proxy != null && !splitMethod) {
+            return proxy.getMethodVersion();
         }
         // block execution during class redefinition
         ClassRedefinition.check();
