@@ -44,7 +44,6 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
-import com.oracle.svm.agent.NativeImageAgentJNIHandleSet;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.TypeConfiguration;
@@ -210,7 +209,7 @@ public class TypeAccessChecker {
         return false;
     }
 
-    public void collectInnerClasses(JNIEnvironment env, NativeImageAgentJNIHandleSet handles) {
+    public void collectInnerClasses(JNIEnvironment env, JNIMethodId publicClassesHandle, JNIMethodId declaredClassesHandle) {
         for (ConfigurationType type : configuration.getTypes()) {
             if (type.haveAllPublicClasses() || type.haveAllDeclaredClasses()) {
                 String internalName = MetaUtil.toInternalName(type.getQualifiedJavaName());
@@ -222,10 +221,10 @@ public class TypeAccessChecker {
                     }
 
                     if (type.haveAllPublicClasses()) {
-                        collectInnerClassesOf(env, clazz, handles.javaLangClassGetClasses);
+                        collectInnerClassesOf(env, clazz, publicClassesHandle);
                     }
                     if (type.haveAllDeclaredClasses()) {
-                        collectInnerClassesOf(env, clazz, handles.javaLangClassGetDeclaredClasses);
+                        collectInnerClassesOf(env, clazz, declaredClassesHandle);
                     }
 
                 }

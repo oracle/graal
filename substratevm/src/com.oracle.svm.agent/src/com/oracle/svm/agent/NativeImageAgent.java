@@ -106,6 +106,10 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
     private AccessAdvisor accessAdvisor;
 
+    private TypeAccessChecker reflectAccessChecker = null;
+
+    private TypeAccessChecker jniAccessChecker = null;
+
     private static String getTokenValue(String token) {
         return token.substring(token.indexOf('=') + 1);
     }
@@ -288,7 +292,6 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         }
 
         accessAdvisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
-        TypeAccessChecker reflectAccessChecker = null;
         try {
             ReflectAccessVerifier verifier = null;
             if (!restrictConfigs.getReflectConfigPaths().isEmpty()) {
@@ -311,8 +314,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         try {
             JniAccessVerifier verifier = null;
             if (!restrictConfigs.getJniConfigPaths().isEmpty()) {
-                TypeAccessChecker accessChecker = new TypeAccessChecker(restrictConfigs.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
-                verifier = new JniAccessVerifier(accessChecker, reflectAccessChecker, accessAdvisor, this);
+                jniAccessChecker = new TypeAccessChecker(restrictConfigs.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
+                verifier = new JniAccessVerifier(jniAccessChecker, reflectAccessChecker, accessAdvisor, this);
             }
             JniCallInterceptor.onLoad(traceWriter, verifier, this);
         } catch (Throwable t) {
@@ -526,7 +529,15 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     protected void onVMInitCallback(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread) {
         accessAdvisor.setInLivePhase(true);
         BreakpointInterceptor.onVMInit(jvmti, jni);
-        JniCallInterceptor.onVMInit(jni);
+
+        if (reflectAccessChecker != null) {
+            reflectAccessChecker.collectInnerClasses(jni, handles().javaLangClassGetClasses, handles().javaLangClassGetDeclaredClasses);
+        }
+
+        if (jniAccessChecker != null) {
+            jniAccessChecker.collectInnerClasses(jni, handles().javaLangClassGetClasses, handles().javaLangClassGetDeclaredClasses);
+        }
+
         if (traceWriter != null) {
             traceWriter.tracePhaseChange("live");
         }

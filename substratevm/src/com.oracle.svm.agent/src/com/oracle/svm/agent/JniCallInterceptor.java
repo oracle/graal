@@ -355,12 +355,6 @@ final class JniCallInterceptor {
         check(jvmti.getFunctions().Deallocate().invoke(jvmti, functions));
     }
 
-    public static void onVMInit(JNIEnvironment jni) {
-        if (accessVerifier != null) {
-            accessVerifier.collectInnerClasses(jni);
-        }
-    }
-
     public static void onUnload() {
         jvmtiFunctions().SetJNIFunctionTable().invoke(jvmtiEnv(), jniFunctions()); // restore
 
