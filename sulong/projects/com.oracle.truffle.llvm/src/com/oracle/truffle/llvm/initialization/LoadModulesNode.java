@@ -108,6 +108,7 @@ public final class LoadModulesNode extends LLVMRootNode {
     final LLVMParserResult parserResult;
     final LLVMLanguage language;
     private boolean hasInitialised;
+    private LLVMFunction mainFunction;
 
     protected enum LLVMLoadingPhase {
         ALL,
@@ -139,6 +140,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         this.dependencies = new DirectCallNode[dependenciesSource.size()];
         this.hasInitialised = false;
         this.initContext = null;
+        this.mainFunction = null;
         String moduleName = parserResult.getRuntime().getLibraryName();
         this.initSymbols = new InitializeSymbolsNode(parserResult, parserResult.getRuntime().getNodeFactory(), lazyParsing,
                         isInternalSulongLibrary, moduleName);
@@ -196,6 +198,7 @@ public final class LoadModulesNode extends LLVMRootNode {
                         throw new IllegalStateException("Unknown dependency.");
                     }
                 }
+                mainFunction = findMainFunction(parserResult);
                 initContext = this.insert(language.createInitializeContextNode());
                 hasInitialised = true;
             }
@@ -203,7 +206,7 @@ public final class LoadModulesNode extends LLVMRootNode {
             LLVMScope scope = loadModule(frame, context);
             // Only the root library (not a dependency) will scope a non-null scope.
             if (scope != null) {
-                return new SulongLibrary(sourceName, scope, findMainFunction(parserResult), context);
+                return new SulongLibrary(sourceName, scope, mainFunction, context);
             }
         }
         return null;
