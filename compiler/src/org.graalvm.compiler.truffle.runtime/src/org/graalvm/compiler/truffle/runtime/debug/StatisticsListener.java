@@ -40,6 +40,7 @@ import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.nodes.NodeVisitor;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
@@ -210,11 +211,15 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     private static Collection<Class<?>> nodeClasses(TruffleInlining inliningDecision) {
         Collection<Class<?>> nodeClasses = new ArrayList<>();
         for (CompilableTruffleAST ast : inliningDecision.inlinedTargets()) {
-            for (Node node : ((OptimizedCallTarget) ast).nodeIterable()) {
-                if (node != null) {
-                    nodeClasses.add(node.getClass());
+            ((OptimizedCallTarget) ast).accept(new NodeVisitor() {
+                @Override
+                public boolean visit(Node node) {
+                    if (node != null) {
+                        nodeClasses.add(node.getClass());
+                    }
+                    return true;
                 }
-            }
+            });
         }
         return nodeClasses;
     }

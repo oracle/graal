@@ -73,6 +73,7 @@ public final class NodeUtil {
     }
 
     /** @since 0.8 or earlier */
+    @Deprecated
     public static Iterator<Node> makeRecursiveIterator(Node node) {
         return new RecursiveNodeIterator(node);
     }

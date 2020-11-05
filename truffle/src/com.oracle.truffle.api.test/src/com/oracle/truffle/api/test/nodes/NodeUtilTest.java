@@ -41,9 +41,7 @@
 package com.oracle.truffle.api.test.nodes;
 
 import static com.oracle.truffle.api.test.OSUtils.toUnixString;
-import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 import java.util.Iterator;
 
@@ -57,20 +55,6 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class NodeUtilTest {
-
-    @Test
-    public void testRecursiveIterator1() {
-        TestRootNode root = new TestRootNode();
-        TestNode testNode = new TestNode();
-        root.child0 = testNode;
-        root.adoptChildren();
-
-        int count = iterate(NodeUtil.makeRecursiveIterator(root));
-
-        assertThat(count, is(2));
-        assertThat(root.visited, is(0));
-        assertThat(testNode.visited, is(1));
-    }
 
     @Test
     public void testReplaceReplaced() {
@@ -153,33 +137,6 @@ public class NodeUtilTest {
         });
 
         Assert.assertEquals(4, count[0]);
-        Assert.assertEquals(1, testForEachNode.visited);
-        Assert.assertEquals(1, testNode1.visited);
-        Assert.assertEquals(1, testNode2.visited);
-        Assert.assertEquals(1, testNode3.visited);
-    }
-
-    @Test
-    public void testRecursiveIterator() {
-        TestRootNode root = new TestRootNode();
-        TestForEachNode testForEachNode = new TestForEachNode(1);
-        root.child0 = testForEachNode;
-        TestNode testNode1 = new TestNode();
-        testForEachNode.firstChild = testNode1;
-        TestNode testNode2 = new TestNode();
-        testForEachNode.children[0] = testNode2;
-        TestNode testNode3 = new TestNode();
-        testForEachNode.lastChild = testNode3;
-        root.adoptChildren();
-
-        int count = 0;
-        Iterable<Node> iterable = () -> NodeUtil.makeRecursiveIterator(testForEachNode);
-        for (Node node : iterable) {
-            ((VisitableNode) node).visited++;
-            count++;
-        }
-
-        Assert.assertEquals(4, count);
         Assert.assertEquals(1, testForEachNode.visited);
         Assert.assertEquals(1, testNode1.visited);
         Assert.assertEquals(1, testNode2.visited);

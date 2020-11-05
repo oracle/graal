@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -957,15 +956,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     public final void accept(NodeVisitor visitor) {
         getRootNode().accept(visitor);
-    }
-
-    public final Iterable<Node> nodeIterable() {
-        Iterator<Node> iterator = nodeIterator();
-        return () -> iterator;
-    }
-
-    public final Iterator<Node> nodeIterator() {
-        return NodeUtil.makeRecursiveIterator(this.getRootNode());
     }
 
     @Override
