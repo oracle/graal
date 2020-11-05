@@ -24,6 +24,7 @@ bench-jvmci : {
 
 bench-common : ${compilerCommon} {
   environment: {
+    MX_PYTHON_VERSION : "3",
     BENCH_RESULTS_FILE_PATH : "bench-results.json"
   }
   setup: ${compilerCommon.setup} [
