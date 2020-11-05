@@ -111,7 +111,7 @@ export async function findGraalVMs(): Promise<{name: string, path: string}[]> {
         addPathToJava(normalize(process.env.JAVA_HOME), paths);
     }
     if (process.env.PATH) {
-        process.env.PATH.split(':')
+        process.env.PATH.split(delimiter)
             .filter(p => basename(p) === 'bin')
             .forEach(p => addPathToJava(dirname(p), paths));
     }
