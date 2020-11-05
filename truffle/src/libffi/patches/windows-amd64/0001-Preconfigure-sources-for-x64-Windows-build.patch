@@ -1,38 +1,30 @@
-From fb39feb5e053cd0482576c4d58880f509f76ad61 Mon Sep 17 00:00:00 2001
-From: =?UTF-8?q?Aleksandar=20Pejovi=C4=87?= <aleksandar.pejovic@oracle.com>
-Date: Fri, 25 Jan 2019 22:11:34 +0100
-Subject: [PATCH 2/3] Preconfigure sources for x64 Windows build
+From de2dd98c10fe393f86db67be1d2cfce9606b9e5a Mon Sep 17 00:00:00 2001
+From: Roland Schatz <roland.schatz@oracle.com>
+Date: Wed, 21 Oct 2020 12:52:24 +0200
+Subject: [PATCH 1/2] Preconfigure sources for x64 Windows build
 
-The configuration was done using Git for Windows to run
-`configure` from Developer Command Prompt:
+The configuration was created with this command from
+the Developer Command Prompt (with Git for windows on
+the PATH for sh.exe):
 
-> sh configure ^
-    --disable-builddir ^
-    --disable-dependency-tracking ^
-    --disable-shared ^
-    CC="./msvcc.sh -m64" ^
-    CXX="./msvcc.sh -m64" ^
-    LD=link ^
-    CPP="cl -nologo -EP" ^
-    CXXCPP="cl -nologo -EP" ^
-    --build=amd64-mingw64
+sh ./configure LD=link --target=amd64-mingw64 --disable-dependency-tracking --disable-builddir
 ---
- fficonfig.h.in => fficonfig.h    | 119 ++++++++++++++++---------------
- include/{ffi.h.in => ffi.h}      |  20 +++---
+ fficonfig.h.in => fficonfig.h    | 117 ++++++++++++++++---------------
+ include/{ffi.h.in => ffi.h}      |  18 ++---
  {src/x86 => include}/ffitarget.h |   0
- 3 files changed, 70 insertions(+), 69 deletions(-)
- rename fficonfig.h.in => fficonfig.h (70%)
- rename include/{ffi.h.in => ffi.h} (97%)
+ 3 files changed, 68 insertions(+), 67 deletions(-)
+ rename fficonfig.h.in => fficonfig.h (71%)
+ rename include/{ffi.h.in => ffi.h} (98%)
  rename {src/x86 => include}/ffitarget.h (100%)
 
 diff --git a/fficonfig.h.in b/fficonfig.h
-similarity index 70%
+similarity index 71%
 rename from fficonfig.h.in
 rename to fficonfig.h
-index 8aec513..00f09db 100644
+index c675685..8a271fb 100644
 --- a/fficonfig.h.in
 +++ b/fficonfig.h
-@@ -1,165 +1,166 @@
+@@ -1,161 +1,162 @@
 +/* fficonfig.h.  Generated from fficonfig.h.in by configure.  */
  /* fficonfig.h.in.  Generated from configure.ac by autoheader.  */
  
@@ -48,7 +40,7 @@ index 8aec513..00f09db 100644
  
  /* Define to 1 if using `alloca.c'. */
 -#undef C_ALLOCA
-+/* #undef C_ALLOCA */
++#define C_ALLOCA 1
  
  /* Define to the flags needed for the .section .eh_frame directive. */
 -#undef EH_FRAME_FLAGS
@@ -80,16 +72,12 @@ index 8aec513..00f09db 100644
  
  /* Define to 1 if you have `alloca', as a function or macro. */
 -#undef HAVE_ALLOCA
-+#define HAVE_ALLOCA 1
++/* #undef HAVE_ALLOCA */
  
  /* Define to 1 if you have <alloca.h> and it should be used (not on Ultrix).
     */
 -#undef HAVE_ALLOCA_H
 +/* #undef HAVE_ALLOCA_H */
- 
- /* Define if your assembler supports .ascii. */
--#undef HAVE_AS_ASCII_PSEUDO_OP
-+/* #undef HAVE_AS_ASCII_PSEUDO_OP */
  
  /* Define if your assembler supports .cfi_* directives. */
 -#undef HAVE_AS_CFI_PSEUDO_OP
@@ -99,14 +87,14 @@ index 8aec513..00f09db 100644
 -#undef HAVE_AS_REGISTER_PSEUDO_OP
 +/* #undef HAVE_AS_REGISTER_PSEUDO_OP */
  
+ /* Define if the compiler uses zarch features. */
+-#undef HAVE_AS_S390_ZARCH
++/* #undef HAVE_AS_S390_ZARCH */
+ 
  /* Define if your assembler and linker support unaligned PC relative relocs.
     */
 -#undef HAVE_AS_SPARC_UA_PCREL
 +/* #undef HAVE_AS_SPARC_UA_PCREL */
- 
- /* Define if your assembler supports .string. */
--#undef HAVE_AS_STRING_PSEUDO_OP
-+/* #undef HAVE_AS_STRING_PSEUDO_OP */
  
  /* Define if your assembler supports unwind section type. */
 -#undef HAVE_AS_X86_64_UNWIND_SECTION_TYPE
@@ -114,7 +102,7 @@ index 8aec513..00f09db 100644
  
  /* Define if your assembler supports PC relative relocs. */
 -#undef HAVE_AS_X86_PCREL
-+/* #undef HAVE_AS_X86_PCREL */
++#define HAVE_AS_X86_PCREL 1
  
  /* Define to 1 if you have the <dlfcn.h> header file. */
 -#undef HAVE_DLFCN_H
@@ -200,14 +188,13 @@ index 8aec513..00f09db 100644
 -#undef HAVE_UNISTD_H
 +/* #undef HAVE_UNISTD_H */
  
- /* Define to the sub-directory in which libtool stores uninstalled libraries.
-    */
+ /* Define to 1 if GNU symbol versioning is used for libatomic. */
+-#undef LIBFFI_GNU_SYMBOL_VERSIONING
++/* #undef LIBFFI_GNU_SYMBOL_VERSIONING */
+ 
+ /* Define to the sub-directory where libtool stores uninstalled libraries. */
 -#undef LT_OBJDIR
 +#define LT_OBJDIR ".libs/"
- 
- /* Define to 1 if your C compiler doesn't accept -c and -o together. */
--#undef NO_MINUS_C_MINUS_O
-+/* #undef NO_MINUS_C_MINUS_O */
  
  /* Name of package */
 -#undef PACKAGE
@@ -215,7 +202,7 @@ index 8aec513..00f09db 100644
  
  /* Define to the address where bug reports for this package should be sent. */
 -#undef PACKAGE_BUGREPORT
-+#define PACKAGE_BUGREPORT "http://github.com/atgreen/libffi/issues"
++#define PACKAGE_BUGREPORT "http://github.com/libffi/libffi/issues"
  
  /* Define to the full name of this package. */
 -#undef PACKAGE_NAME
@@ -223,7 +210,7 @@ index 8aec513..00f09db 100644
  
  /* Define to the full name and version of this package. */
 -#undef PACKAGE_STRING
-+#define PACKAGE_STRING "libffi 3.2.1"
++#define PACKAGE_STRING "libffi 3.3"
  
  /* Define to the one symbol short name of this package. */
 -#undef PACKAGE_TARNAME
@@ -235,15 +222,15 @@ index 8aec513..00f09db 100644
  
  /* Define to the version of this package. */
 -#undef PACKAGE_VERSION
-+#define PACKAGE_VERSION "3.2.1"
++#define PACKAGE_VERSION "3.3"
  
  /* The size of `double', as computed by sizeof. */
 -#undef SIZEOF_DOUBLE
-+#define SIZEOF_DOUBLE 8
++#define SIZEOF_DOUBLE 0
  
  /* The size of `long double', as computed by sizeof. */
 -#undef SIZEOF_LONG_DOUBLE
-+#define SIZEOF_LONG_DOUBLE 8
++#define SIZEOF_LONG_DOUBLE 0
  
  /* The size of `size_t', as computed by sizeof. */
 -#undef SIZEOF_SIZE_T
@@ -251,12 +238,12 @@ index 8aec513..00f09db 100644
  
  /* If using the C implementation of alloca, define if you know the
     direction of stack growth for your system; otherwise it will be
-@@ -167,20 +168,20 @@
+@@ -163,20 +164,20 @@
  	STACK_DIRECTION > 0 => grows toward higher addresses
  	STACK_DIRECTION < 0 => grows toward lower addresses
  	STACK_DIRECTION = 0 => direction of growth unknown */
 -#undef STACK_DIRECTION
-+/* #undef STACK_DIRECTION */
++#define STACK_DIRECTION -1
  
  /* Define to 1 if you have the ANSI C header files. */
 -#undef STDC_HEADERS
@@ -273,16 +260,16 @@ index 8aec513..00f09db 100644
  
  /* Version number of package */
 -#undef VERSION
-+#define VERSION "3.2.1"
++#define VERSION "3.3"
  
  /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
     significant byte first (like Motorola and SPARC, unlike Intel). */
-@@ -190,12 +191,12 @@
+@@ -186,12 +187,12 @@
  # endif
  #else
  # ifndef WORDS_BIGENDIAN
 -#  undef WORDS_BIGENDIAN
-+/* #  undef WORDS_BIGENDIAN */
++#  define WORDS_BIGENDIAN 1
  # endif
  #endif
  
@@ -293,20 +280,20 @@ index 8aec513..00f09db 100644
  
  #ifdef HAVE_HIDDEN_VISIBILITY_ATTRIBUTE
 diff --git a/include/ffi.h.in b/include/ffi.h
-similarity index 97%
+similarity index 98%
 rename from include/ffi.h.in
 rename to include/ffi.h
-index f403ae0..37ba0e7 100644
+index 71cc05c..5edd4a9 100644
 --- a/include/ffi.h.in
 +++ b/include/ffi.h
 @@ -1,5 +1,5 @@
  /* -----------------------------------------------------------------*-C-*-
--   libffi @VERSION@ - Copyright (c) 2011, 2014 Anthony Green
-+   libffi 3.2.1 - Copyright (c) 2011, 2014 Anthony Green
+-   libffi @VERSION@ - Copyright (c) 2011, 2014, 2019 Anthony Green
++   libffi 3.3 - Copyright (c) 2011, 2014, 2019 Anthony Green
                      - Copyright (c) 1996-2003, 2007, 2008 Red Hat, Inc.
  
     Permission is hereby granted, free of charge, to any person
-@@ -58,8 +58,8 @@ extern "C" {
+@@ -49,8 +49,8 @@ extern "C" {
  #endif
  
  /* Specify which architecture libffi is configured for. */
@@ -317,7 +304,7 @@ index f403ae0..37ba0e7 100644
  #endif
  
  /* ---- System configuration information --------------------------------- */
-@@ -194,7 +194,7 @@ FFI_EXTERN ffi_type ffi_type_float;
+@@ -197,7 +197,7 @@ FFI_EXTERN ffi_type ffi_type_float;
  FFI_EXTERN ffi_type ffi_type_double;
  FFI_EXTERN ffi_type ffi_type_pointer;
  
@@ -326,7 +313,7 @@ index f403ae0..37ba0e7 100644
  FFI_EXTERN ffi_type ffi_type_longdouble;
  #else
  #define ffi_type_longdouble ffi_type_double
-@@ -203,7 +203,7 @@ FFI_EXTERN ffi_type ffi_type_longdouble;
+@@ -206,7 +206,7 @@ FFI_EXTERN ffi_type ffi_type_longdouble;
  #ifdef FFI_TARGET_HAS_COMPLEX_TYPE
  FFI_EXTERN ffi_type ffi_type_complex_float;
  FFI_EXTERN ffi_type ffi_type_complex_double;
@@ -335,16 +322,7 @@ index f403ae0..37ba0e7 100644
  FFI_EXTERN ffi_type ffi_type_complex_longdouble;
  #else
  #define ffi_type_complex_longdouble ffi_type_complex_double
-@@ -231,7 +231,7 @@ typedef struct {
- #endif
- } ffi_cif;
- 
--#if @HAVE_LONG_DOUBLE_VARIANT@
-+#if 0
- /* Used to adjust size/alignment of ffi types.  */
- void ffi_prep_types (ffi_abi abi);
- #endif
-@@ -312,7 +312,7 @@ size_t ffi_java_raw_size (ffi_cif *cif);
+@@ -306,7 +306,7 @@ size_t ffi_java_raw_size (ffi_cif *cif) __attribute__((deprecated));
  __declspec(align(8))
  #endif
  typedef struct {
@@ -353,7 +331,7 @@ index f403ae0..37ba0e7 100644
    void *trampoline_table;
    void *trampoline_table_entry;
  #else
-@@ -350,7 +350,7 @@ ffi_prep_closure_loc (ffi_closure*,
+@@ -353,7 +353,7 @@ ffi_prep_closure_loc (ffi_closure*,
  # pragma pack 8
  #endif
  typedef struct {
@@ -362,7 +340,7 @@ index f403ae0..37ba0e7 100644
    void *trampoline_table;
    void *trampoline_table_entry;
  #else
-@@ -375,7 +375,7 @@ typedef struct {
+@@ -378,7 +378,7 @@ typedef struct {
  } ffi_raw_closure;
  
  typedef struct {
@@ -371,7 +349,7 @@ index f403ae0..37ba0e7 100644
    void *trampoline_table;
    void *trampoline_table_entry;
  #else
-@@ -460,7 +460,7 @@ void ffi_call(ffi_cif *cif,
+@@ -488,7 +488,7 @@ ffi_status ffi_get_struct_offsets (ffi_abi abi, ffi_type *struct_type,
  #define FFI_TYPE_INT        1
  #define FFI_TYPE_FLOAT      2    
  #define FFI_TYPE_DOUBLE     3
@@ -385,5 +363,5 @@ similarity index 100%
 rename from src/x86/ffitarget.h
 rename to include/ffitarget.h
 -- 
-2.17.0.windows.1
+2.28.0
 
