@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.vars;
 
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -37,6 +36,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
@@ -53,6 +53,8 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
     @CompilationFinal(dimensions = 1) private final byte[] data;
     @CompilationFinal(dimensions = 1) private final int[] offsets;
     @CompilationFinal(dimensions = 1) private final int[] sizes;
+
+    private static final ByteArraySupport byteSupport = ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN ? ByteArraySupport.bigEndian() : ByteArraySupport.littleEndian();
 
     /**
      * This node initializes a block of memory with a with combination of raw bytes and explicit
@@ -76,26 +78,30 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
                     @Cached LLVMI64OffsetStoreNode storeI64) {
         int offset = 0;
         int nextStore = 0;
-        ByteBuffer view = ByteBuffer.wrap(data);
-        view.order(ByteOrder.nativeOrder());
         while (offset < data.length) {
             int nextStoreOffset = offsets[nextStore];
-            while (offset < nextStoreOffset && ((offset & 0x7) != 0)) {
-                storeI8.executeWithTarget(address, offset, data[offset]);
-                offset++;
-            }
-            while (offset < (nextStoreOffset - 7)) {
-                storeI64.executeWithTarget(address, offset, view.getLong(offset));
-                offset += Long.BYTES;
-            }
-            while (offset < nextStoreOffset) {
-                storeI8.executeWithTarget(address, offset, data[offset]);
-                offset++;
-            }
+            offset = initializePrimitiveBlock(address, storeI8, storeI64, offset, nextStoreOffset);
             if (nextStore < stores.length) {
                 stores[nextStore].executeWithTarget(frame, address, nextStoreOffset);
                 offset += sizes[nextStore++];
             }
         }
+    }
+
+    private int initializePrimitiveBlock(LLVMPointer address, LLVMI8OffsetStoreNode storeI8, LLVMI64OffsetStoreNode storeI64, int startOffset, int nextStoreOffset) {
+        int offset = startOffset;
+        while (offset < nextStoreOffset && ((offset & 0x7) != 0)) {
+            storeI8.executeWithTarget(address, offset, data[offset]);
+            offset++;
+        }
+        while (offset < (nextStoreOffset - 7)) {
+            storeI64.executeWithTarget(address, offset, byteSupport.getLong(data, offset));
+            offset += Long.BYTES;
+        }
+        while (offset < nextStoreOffset) {
+            storeI8.executeWithTarget(address, offset, data[offset]);
+            offset++;
+        }
+        return offset;
     }
 }
