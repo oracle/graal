@@ -132,7 +132,6 @@ public final class LLVMContext {
 
     // pThread state
     private final LLVMPThreadContext pThreadContext;
-    private LLVMFunction sulongDisposeContext;
 
     // globals block function
     @CompilationFinal Object freeGlobalsBlockFunction;
@@ -160,7 +159,7 @@ public final class LLVMContext {
         }
 
         synchronized LLVMFunctionDescriptor create(LLVMFunction functionDetail, LLVMFunctionCode functionCode) {
-            return new LLVMFunctionDescriptor(getLanguage(), functionDetail, functionCode);
+            return new LLVMFunctionDescriptor(functionDetail, functionCode);
         }
     }
 
@@ -215,10 +214,6 @@ public final class LLVMContext {
     private static Object[] getMainArguments(Env environment) {
         Object mainArgs = environment.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
         return mainArgs == null ? environment.getApplicationArguments() : (Object[]) mainArgs;
-    }
-
-    public void setSulongDisposeContext(LLVMFunction function) {
-        this.sulongDisposeContext = function;
     }
 
     @SuppressWarnings("unchecked")
@@ -403,7 +398,7 @@ public final class LLVMContext {
         return libsulongDatalayout;
     }
 
-    void finalizeContext() {
+    void finalizeContext(LLVMFunction sulongDisposeContext) {
         // join all created pthread - threads
         pThreadContext.joinAllThreads();
 
