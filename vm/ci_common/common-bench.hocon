@@ -33,7 +33,9 @@ vm_bench_polybench_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd
     EMCC_DIR: "$EMSDK_DIR/emscripten/master/"
   }
   setup: ${common_vm.setup} [
-    ${vm_bench_polybench_linux.base_cmd} [--dy, /wasm, emscripten-init, ./.emscripten-config, "$EMSDK_DIR"]
+    [set-export, ROOT_DIR, [pwd]],
+    [set-export, EM_CONFIG, "$ROOT_DIR/.emscripten-config"],
+    ${vm_bench_polybench_linux.base_cmd} [--dy, /wasm, emscripten-init, "$EM_CONFIG", "$EMSDK_DIR"]
     ${vm_bench_polybench_linux.base_cmd} [build, --all]
   ]
   run: [
