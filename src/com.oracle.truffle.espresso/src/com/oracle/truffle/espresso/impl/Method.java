@@ -185,6 +185,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         super(method.getRawSignature(), method.getName());
         this.declaringKlass = method.declaringKlass;
         this.splitMethod = false;
+        this.methodVersion = new MethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getCodeAttribute());
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -969,13 +970,24 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
 
-    public void redefine(ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
+    public SharedRedefinitionContent redefine(ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
         // invalidate old version
         // install the new method version immediately
         LinkedMethod newLinkedMethod = new LinkedMethod(newMethod);
         RuntimeConstantPool runtimePool = new RuntimeConstantPool(getContext(), newKlass.getConstantPool(), getDeclaringKlass().getDefiningClassLoader());
+        CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Name.Code);
         MethodVersion oldVersion = methodVersion;
-        methodVersion = new MethodVersion(runtimePool, newLinkedMethod, (CodeAttribute) newMethod.getAttribute(Name.Code));
+        methodVersion = new MethodVersion(runtimePool, newLinkedMethod, newCodeAttribute);
+        oldVersion.getAssumption().invalidate();
+        ids.replaceObject(oldVersion, methodVersion);
+        return new SharedRedefinitionContent(newLinkedMethod, runtimePool, newCodeAttribute);
+    }
+
+    public void redefine(SharedRedefinitionContent content, Ids<Object> ids) {
+        // invalidate old version
+        // install the new method version immediately
+        MethodVersion oldVersion = methodVersion;
+        methodVersion = new MethodVersion(content.getPool(), content.getLinkedMethod(), content.codeAttribute);
         oldVersion.getAssumption().invalidate();
         ids.replaceObject(oldVersion, methodVersion);
     }
@@ -994,9 +1006,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public MethodVersion getMethodVersion() {
-        if (proxy != null && !splitMethod) {
-            return proxy.getMethodVersion();
-        }
         // block execution during class redefinition
         ClassRedefinition.check();
 
@@ -1321,6 +1330,31 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 }
             }
             return bci;
+        }
+    }
+
+    class SharedRedefinitionContent {
+
+        private final LinkedMethod linkedMethod;
+        private final RuntimeConstantPool pool;
+        private final CodeAttribute codeAttribute;
+
+        SharedRedefinitionContent(LinkedMethod linkedMethod, RuntimeConstantPool pool, CodeAttribute codeAttribute) {
+            this.linkedMethod = linkedMethod;
+            this.pool = pool;
+            this.codeAttribute = codeAttribute;
+        }
+
+        public LinkedMethod getLinkedMethod() {
+            return linkedMethod;
+        }
+
+        public RuntimeConstantPool getPool() {
+            return pool;
+        }
+
+        public CodeAttribute getCodeAttribute() {
+            return codeAttribute;
         }
     }
     // endregion jdwp-specific
