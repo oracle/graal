@@ -145,7 +145,6 @@ public final class LLVMContext {
     private DataLayout libsulongDatalayout;
     private Boolean datalayoutInitialised;
     private final LLVMLanguage language;
-    @CompilationFinal private LLVMFunctionDescriptor startFunction;
 
     private LLVMTracerInstrument tracer;    // effectively final after initialization
 
@@ -170,7 +169,6 @@ public final class LLVMContext {
         this.language = language;
         this.libsulongDatalayout = null;
         this.datalayoutInitialised = false;
-        this.startFunction = null;
         this.env = env;
         this.initialized = false;
         this.cleanupNecessary = false;
@@ -280,16 +278,11 @@ public final class LLVMContext {
             } else if (name.equalsIgnoreCase(SULONG_DISPOSE_CONTEXT)) {
                 language.setSulongDisposeContext(contextFunction.asFunction());
             } else if (name.equalsIgnoreCase(START_METHOD_NAME)) {
-                startFunction = createFunctionDescriptor(contextFunction.asFunction(), new LLVMFunctionCode(contextFunction.asFunction()));
+                language.setStartFunctionCode(new LLVMFunctionCode(contextFunction.asFunction()));
             }
         } else {
             throw new IllegalStateException("Context cannot be initialized: " + name + " was not found in sulong libraries");
         }
-    }
-
-    public LLVMFunctionDescriptor getStartFunction() {
-        assert startFunction != null;
-        return startFunction;
     }
 
     ContextExtension getContextExtension(int index) {
