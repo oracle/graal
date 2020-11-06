@@ -164,7 +164,7 @@ public abstract class NativeEnv {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    protected static final class RawPointer implements TruffleObject {
+    public static final class RawPointer implements TruffleObject {
         private final long rawPtr;
 
         private static final RawPointer NULL = new RawPointer(0L);
@@ -239,10 +239,10 @@ public abstract class NativeEnv {
     public static @Pointer TruffleObject loadLibraryInternal(List<Path> searchPaths, String name, boolean notFoundIsFatal) {
         for (Path path : searchPaths) {
             Path libPath = path.resolve(System.mapLibraryName(name));
-            try {
-                return NativeLibrary.loadLibrary(libPath.toAbsolutePath());
-            } catch (UnsatisfiedLinkError e) {
-                // continue
+            @Pointer
+            TruffleObject library = NativeLibrary.loadLibrary(libPath.toAbsolutePath());
+            if (library != null) {
+                return library;
             }
         }
         if (notFoundIsFatal) {

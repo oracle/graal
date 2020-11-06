@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -32,7 +31,9 @@ import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
-public final class EspressoException extends RuntimeException implements TruffleException {
+// TODO(peterssen): Fix deprecation, GR-26729
+@SuppressWarnings("deprecation")
+public final class EspressoException extends RuntimeException implements com.oracle.truffle.api.TruffleException {
     private static final long serialVersionUID = -7667957575377419520L;
     private final StaticObject exception;
 

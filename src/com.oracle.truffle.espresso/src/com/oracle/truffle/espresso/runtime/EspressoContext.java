@@ -40,7 +40,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -58,16 +57,12 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.substitutions.EspressoReference;
-import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
@@ -81,23 +76,85 @@ public final class EspressoContext {
 
     private final EspressoLanguage language;
     private final TruffleLanguage.Env env;
+
+    private String[] mainArguments;
+
+    // region Runtime
     private final StringTable strings;
     private final ClassRegistries registries;
     private final Substitutions substitutions;
     private final MethodHandleIntrinsics methodHandleIntrinsics;
-    private final EspressoThreadManager threadManager;
-    private StaticObject mainThreadGroup;
+    // endregion Runtime
 
+    // region Helpers
+    private final EspressoThreadManager threadManager;
+    private final EspressoShutdownHandler shutdownManager;
+    private final EspressoReferenceDrainer referenceDrainer;
+    // endregion Helpers
+
+    // region ID
     private final AtomicInteger klassIdProvider = new AtomicInteger();
     private final AtomicInteger loaderIdProvider = new AtomicInteger();
     private final int bootClassLoaderID = getNewLoaderId();
+    // endregion ID
 
+    // region InitControl
     public long initDoneTimeNanos;
+    @CompilationFinal private boolean modulesInitialized = false;
+    @CompilationFinal private boolean metaInitialized = false;
+    private boolean initialized = false;
+    private Classpath bootClasspath;
+    // endregion InitControl
 
-    private boolean mainThreadCreated;
+    // region JDWP
     private JDWPContextImpl jdwpContext;
     private VMListener eventListener;
     private boolean contextReady;
+    // endregion JDWP
+
+    // region Options
+    // Checkstyle: stop field name check
+
+    // Performance control
+    public final boolean InlineFieldAccessors;
+    public final boolean InlineMethodHandle;
+    public final boolean SplitMethodHandles;
+
+    // Behavior control
+    public final boolean EnableManagement;
+    public final boolean MultiThreaded;
+    public final boolean SoftExit;
+    public final EspressoOptions.VerifyMode Verify;
+    public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
+    public final boolean IsolatedNamespace;
+
+    // Debug option
+    public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
+
+    // Checkstyle: resume field name check
+    // endregion Options
+
+    // Must be initialized after the context instance creation.
+
+    // region VM
+    @CompilationFinal private Meta meta;
+    @CompilationFinal private VM vm;
+    @CompilationFinal private JniEnv jniEnv;
+    @CompilationFinal private InterpreterToVM interpreterToVM;
+    @CompilationFinal private JImageLibrary jimageLibrary;
+    @CompilationFinal private EspressoProperties vmProperties;
+    @CompilationFinal private JavaVersion javaVersion;
+    // endregion VM
+
+    @CompilationFinal private EspressoException stackOverflow;
+    @CompilationFinal private EspressoException outOfMemory;
+
+    // region ThreadDeprecated
+    // Set on calling guest Thread.stop0(), or when closing context.
+    @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
+    @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
+    @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
+    // endregion ThreadDeprecated
 
     public TruffleLogger getLogger() {
         return logger;
@@ -115,46 +172,33 @@ public final class EspressoContext {
         return bootClassLoaderID;
     }
 
-    @CompilationFinal private boolean modulesInitialized = false;
-    @CompilationFinal private boolean metaInitialized = false;
-    private boolean initialized = false;
-
-    private Classpath bootClasspath;
-    private String[] mainArguments;
-
-    // Must be initialized after the context instance creation.
-    @CompilationFinal private InterpreterToVM interpreterToVM;
-    @CompilationFinal private Meta meta;
-    @CompilationFinal private JniEnv jniEnv;
-    @CompilationFinal private VM vm;
-    @CompilationFinal private JImageLibrary jimageLibrary;
-    @CompilationFinal private EspressoProperties vmProperties;
-    @CompilationFinal private JavaVersion javaVersion;
-
-    @CompilationFinal private EspressoException stackOverflow;
-    @CompilationFinal private EspressoException outOfMemory;
-
-    // Set on calling guest Thread.stop0(), or when closing context.
-    @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
-    @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
-    @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
-
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
         this.language = language;
+
         this.registries = new ClassRegistries(this);
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);
         this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
+
         this.threadManager = new EspressoThreadManager(this);
-        this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions); // null if not
-                                                                              // specified
+        this.referenceDrainer = new EspressoReferenceDrainer(this);
+        this.shutdownManager = new EspressoShutdownHandler(this, threadManager, referenceDrainer);
+
+        // null if not specified
+        this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions);
+
         this.InlineFieldAccessors = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.InlineFieldAccessors);
         this.InlineMethodHandle = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.InlineMethodHandle);
         this.SplitMethodHandles = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.SplitMethodHandles);
         this.Verify = env.getOptions().get(EspressoOptions.Verify);
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
+        this.MultiThreaded = env.getOptions().get(EspressoOptions.MultiThreaded);
+        this.SoftExit = env.getOptions().get(EspressoOptions.SoftExit);
+
+        // Isolated (native) namespaces via dlmopen is only supported on Linux.
+        this.IsolatedNamespace = env.getOptions().get(EspressoOptions.UseTruffleNFIIsolatedNamespace) && OS.getCurrent() == OS.Linux;
     }
 
     public ClassRegistries getRegistries() {
@@ -231,10 +275,7 @@ public final class EspressoContext {
         this.initialized = true;
         this.jdwpContext = new JDWPContextImpl(this);
         this.eventListener = jdwpContext.jdwpInit(env, getMainThread());
-        if (getEnv().getOptions().get(EspressoOptions.MultiThreaded)) {
-            hostToGuestReferenceDrainThread.setDaemon(true);
-            hostToGuestReferenceDrainThread.start();
-        }
+        referenceDrainer.startReferenceDrain();
     }
 
     public VMListener getJDWPListener() {
@@ -253,109 +294,8 @@ public final class EspressoContext {
         }
     }
 
-    private Thread hostToGuestReferenceDrainThread;
-
     public Meta getMeta() {
         return meta;
-    }
-
-    public ReferenceQueue<StaticObject> getReferenceQueue() {
-        return referenceQueue;
-    }
-
-    private final ReferenceQueue<StaticObject> referenceQueue = new ReferenceQueue<>();
-    private volatile StaticObject referencePendingList = StaticObject.NULL;
-    private final Object pendingLock = new Object() {
-    };
-
-    public StaticObject getAndClearReferencePendingList() {
-        // Should be under guest lock
-        synchronized (pendingLock) {
-            StaticObject res = referencePendingList;
-            referencePendingList = StaticObject.NULL;
-            return res;
-        }
-    }
-
-    public boolean hasReferencePendingList() {
-        return !StaticObject.isNull(referencePendingList);
-    }
-
-    public void waitForReferencePendingList() {
-        if (hasReferencePendingList()) {
-            return;
-        }
-        doWaitForReferencePendingList();
-    }
-
-    @TruffleBoundary
-    private void doWaitForReferencePendingList() {
-        try {
-            synchronized (pendingLock) {
-                // Wait until the reference drain updates the list.
-                while (!hasReferencePendingList()) {
-                    pendingLock.wait();
-                }
-            }
-        } catch (InterruptedException e) {
-            /*
-             * The guest handler thread will attempt emptying the reference list by re-obtaining it.
-             * If the list is not null, then everything will proceed as normal. In the case it is
-             * empty, the guest handler will simply loop back into waiting. This looping back into
-             * waiting done in guest code gives us a chance to reach an espresso safe point (a back
-             * edge), thus giving us the possibility to stop this thread when tearing down the VM.
-             */
-        }
-    }
-
-    private abstract class ReferenceDrain implements Runnable {
-        SubstitutionProfiler profiler = new SubstitutionProfiler();
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        public void run() {
-            final StaticObject lock = (StaticObject) meta.java_lang_ref_Reference_lock.get(meta.java_lang_ref_Reference.tryInitializeAndGetStatics());
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
-                    // HotSpot's "new behavior": Walk down the list, self-looping the next field
-                    // so that the References are not considered active.
-                    EspressoReference head;
-                    do {
-                        head = (EspressoReference) referenceQueue.remove();
-                        assert head != null;
-                    } while (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(head.getGuestReference())));
-
-                    lock.getLock().lock();
-                    try {
-                        assert Target_java_lang_Thread.holdsLock(lock, meta) : "must hold Reference.lock at the guest level";
-                        casNextIfNullAndMaybeClear(head);
-
-                        EspressoReference prev = head;
-                        EspressoReference ref;
-                        while ((ref = (EspressoReference) referenceQueue.poll()) != null) {
-                            if (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(ref.getGuestReference()))) {
-                                continue;
-                            }
-                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());
-                            casNextIfNullAndMaybeClear(ref);
-                            prev = ref;
-                        }
-
-                        meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
-                        updateReferencePendingList(head, prev, lock);
-                    } finally {
-                        lock.getLock().unlock();
-                    }
-                } catch (InterruptedException e) {
-                    // ignore
-                    return;
-                }
-            }
-        }
-
-        @SuppressWarnings("rawtypes")
-        protected abstract void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock);
     }
 
     private void spawnVM() {
@@ -391,44 +331,17 @@ public final class EspressoContext {
             initializeKnownClass(type);
         }
 
-        createMainThread();
+        threadManager.createMainThread(meta);
 
         initializeKnownClass(Type.java_lang_ref_Finalizer);
 
-        boolean multiThreaded = getEnv().getOptions().get(EspressoOptions.MultiThreaded);
-        if (getJavaVersion().java8OrEarlier()) {
-            // Initialize reference queue
-            if (multiThreaded) {
-                this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
-                    @SuppressWarnings("rawtypes")
-                    @Override
-                    protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
-                        StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
-                        meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
-                        getVM().JVM_MonitorNotify(lock, profiler);
+        referenceDrainer.initReferenceDrain();
 
-                    }
-                });
-            }
+        // Call guest initialization
+        if (getJavaVersion().java8OrEarlier()) {
             meta.java_lang_System_initializeSystemClass.invokeDirect(null);
-        } else if (getJavaVersion().java9OrLater()) {
-            // Initialize reference queue
-            if (multiThreaded) {
-                this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
-                    @SuppressWarnings("rawtypes")
-                    @Override
-                    protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
-                        synchronized (pendingLock) {
-                            StaticObject obj = referencePendingList;
-                            referencePendingList = head.getGuestReference();
-                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
-                            getVM().JVM_MonitorNotify(lock, profiler);
-                            pendingLock.notifyAll();
-                        }
-                    }
-                });
-            }
-            // Call guest initialization
+        } else {
+            assert getJavaVersion().java9OrLater();
             meta.java_lang_System_initPhase1.invokeDirect(null);
             int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, false);
             if (e != 0) {
@@ -437,6 +350,7 @@ public final class EspressoContext {
             modulesInitialized = true;
             meta.java_lang_System_initPhase3.invokeDirect(null);
         }
+
         meta.postSystemInit();
 
         // System exceptions.
@@ -473,96 +387,6 @@ public final class EspressoContext {
         initDoneTimeNanos = System.nanoTime();
         long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
         getLogger().log(Level.FINE, "VM booted in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
-
-        // Truffle considers a language to be multi-threaded if it creates at least one
-        // polyglot thread, even if the thread is never started.
-        EspressoError.guarantee(multiThreaded || hostToGuestReferenceDrainThread == null,
-                        "The reference drain thread cannot be created with --java.MultiThreaded=false");
-    }
-
-    private void casNextIfNullAndMaybeClear(@SuppressWarnings("rawtypes") EspressoReference wrapper) {
-        StaticObject ref = wrapper.getGuestReference();
-        // Cleaner references extends PhantomReference but are cleared.
-        // See HotSpot's ReferenceProcessor::process_discovered_references in referenceProcessor.cpp
-        if (InterpreterToVM.instanceOf(ref, ref.getKlass().getMeta().sun_misc_Cleaner)) {
-            wrapper.clear();
-        }
-        ref.compareAndSwapField(meta.java_lang_ref_Reference_next, StaticObject.NULL, ref);
-    }
-
-    /**
-     * The order in which methods are called and fields are set here is important, it mimics
-     * HotSpot's implementation.
-     */
-    private void createMainThread() {
-        StaticObject systemThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
-        meta.java_lang_ThreadGroup.lookupDeclaredMethod(Name._init_, Signature._void) // private
-                                                                                      // ThreadGroup()
-                        .invokeDirect(systemThreadGroup);
-        StaticObject mainThread = meta.java_lang_Thread.allocateInstance();
-        // Allow guest Thread.currentThread() to work.
-        mainThread.setIntField(meta.java_lang_Thread_priority, Thread.NORM_PRIORITY);
-        mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
-        mainThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
-        mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
-
-        threadManager.registerMainThread(Thread.currentThread(), mainThread);
-
-        // Guest Thread.currentThread() must work as this point.
-        meta.java_lang_ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
-                        .lookupDeclaredMethod(Name._init_, Signature._void_ThreadGroup_String) //
-                        .invokeDirect(mainThreadGroup,
-                                        /* parent */ systemThreadGroup,
-                                        /* name */ meta.toGuestString("main"));
-
-        meta.java_lang_Thread // public Thread(ThreadGroup group, String name)
-                        .lookupDeclaredMethod(Name._init_, Signature._void_ThreadGroup_String) //
-                        .invokeDirect(mainThread,
-                                        /* group */ mainThreadGroup,
-                                        /* name */ meta.toGuestString("main"));
-        mainThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
-
-        mainThreadCreated = true;
-    }
-
-    /**
-     * Creates a new guest thread from the host thread, and adds it to the main thread group.
-     */
-    public synchronized void createThread(Thread hostThread) {
-        if (meta == null) {
-            // initial thread used to initialize the context and spawn the VM.
-            // Don't attempt guest thread creation
-            return;
-        }
-        if (getGuestThreadFromHost(hostThread) != null) {
-            // already a live guest thread for this host thread
-            return;
-        }
-        StaticObject guestThread = meta.java_lang_Thread.allocateInstance();
-        // Allow guest Thread.currentThread() to work.
-        guestThread.setIntField(meta.java_lang_Thread_priority, Thread.NORM_PRIORITY);
-        guestThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
-        guestThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
-
-        // register the new guest thread
-        threadManager.registerThread(hostThread, guestThread);
-
-        meta.java_lang_Thread // public Thread(ThreadGroup group, String name)
-                        .lookupDeclaredMethod(Name._init_, Signature._void_ThreadGroup_Runnable) //
-                        .invokeDirect(guestThread,
-                                        /* group */ mainThreadGroup,
-                                        /* runnable */ StaticObject.NULL);
-        guestThread.setIntField(meta.java_lang_Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
-
-        // now add to the main thread group
-        meta.java_lang_ThreadGroup // public void add(Thread t)
-                        .lookupDeclaredMethod(Name.add, Signature._void_Thread).invokeDirect(mainThreadGroup,
-                                        /* thread */ guestThread);
-    }
-
-    public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {
-        // simply calling Thread.exit() will do most of what's needed
-        // TODO(Gregersen) - /browse/GR-20077
     }
 
     private void initVmProperties() {
@@ -658,7 +482,32 @@ public final class EspressoContext {
     public EspressoException getOutOfMemory() {
         return outOfMemory;
     }
-    // Thread management
+
+    public void prepareDispose() {
+        jdwpContext.finalizeContext();
+    }
+
+    public void begin() {
+        this.contextReady = true;
+    }
+
+    public boolean canEnterOtherThread() {
+        return contextReady;
+    }
+
+    // region Thread management
+
+    /**
+     * Creates a new guest thread from the host thread, and adds it to the main thread group.
+     */
+    public void createThread(Thread hostThread) {
+        threadManager.createGuestThreadFromHost(hostThread, meta);
+    }
+
+    public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {
+        // simply calling Thread.exit() will do most of what's needed
+        // TODO(Gregersen) - /browse/GR-20077
+    }
 
     public StaticObject getGuestThreadFromHost(Thread host) {
         return threadManager.getGuestThreadFromHost(host);
@@ -722,29 +571,8 @@ public final class EspressoContext {
         return !noSuspend.isValid();
     }
 
-    // region Options
-
-    // Checkstyle: stop field name check
-
-    public final boolean InlineFieldAccessors;
-    public final boolean InlineMethodHandle;
-    public final boolean SplitMethodHandles;
-
-    public final EspressoOptions.VerifyMode Verify;
-    public final JDWPOptions JDWPOptions;
-    public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
-    public final boolean EnableManagement;
-
-    public EspressoOptions.SpecCompliancyMode specCompliancyMode() {
-        return SpecCompliancyMode;
-    }
-
-    // Checkstyle: resume field name check
-
-    // endregion Options
-
     public boolean isMainThreadCreated() {
-        return mainThreadCreated;
+        return threadManager.isMainThreadCreated();
     }
 
     public StaticObject getMainThread() {
@@ -752,291 +580,52 @@ public final class EspressoContext {
     }
 
     public StaticObject getMainThreadGroup() {
-        return mainThreadGroup;
+        return threadManager.getMainThreadGroup();
     }
 
-    public void prepareDispose() {
-        jdwpContext.finalizeContext();
-    }
-
-    public void begin() {
-        this.contextReady = true;
-    }
-
-    public boolean canEnterOtherThread() {
-        return contextReady;
-    }
+    // endregion Thread management
 
     // region Shutdown
 
-    /**
-     * Controls behavior of context closing. Until an exit method has been called, context closing
-     * waits for all non-daemon threads to finish.
-     */
-    private volatile boolean isClosing = false;
-    private volatile int exitStatus = -1;
+    public Object getShutdownSynchronizer() {
+        return shutdownManager.getShutdownSynchronizer();
+    }
+
+    public void doExit(int code) {
+        shutdownManager.doExit(code);
+    }
+
+    public void destroyVM() {
+        shutdownManager.destroyVM();
+    }
 
     public boolean isClosing() {
-        return isClosing;
+        return shutdownManager.isClosing();
     }
 
     public int getExitStatus() {
-        assert isClosing();
-        if (isExitStatusUninit()) {
-            return 0;
-        }
-        return exitStatus;
-    }
-
-    private boolean isExitStatusUninit() {
-        return !isClosing;
-    }
-
-    private void beginClose(int code) {
-        assert Thread.holdsLock(getShutdownSynchronizer());
-        isClosing = true;
-        exitStatus = code;
-    }
-
-    /**
-     * On return of the main method, host main thread waits on this synchronizer. Once a thread
-     * terminates, or an exit method is called, it is notified
-     */
-    private final Object shutdownSynchronizer = new Object() {
-    };
-
-    public Object getShutdownSynchronizer() {
-        return shutdownSynchronizer;
-    }
-
-    /**
-     * Starts the teardown process of the VM if it was not already started.
-     * 
-     * Notify any thread waiting for teardown (through {@link #destroyVM()}) to immediately return
-     * and let us do the job.
-     */
-    @TruffleBoundary
-    public void doExit(int code) {
-        if (!isClosing()) {
-            Object sync = getShutdownSynchronizer();
-            synchronized (sync) {
-                if (isClosing()) {
-                    throw new EspressoExitException(getExitStatus());
-                }
-                beginClose(code);
-                // Wake up spinning main thread.
-                sync.notifyAll();
-            }
-            teardown();
-        }
-        // At this point, the exit code given should have been registered. If not, this means that
-        // another closing was started before us, and we should use the previous' exit code.
-        throw new EspressoExitException(getExitStatus());
-    }
-
-    /**
-     * Implements the {@code <DestroyJavaVM>} command of Espresso.
-     * <li>Waits for all other non-daemon thread to naturally terminate.
-     * <li>If all threads have terminated, and no other thread called an exit method, then:
-     * <li>This calls guest {@code java.lang.Shutdown#shutdown()}
-     * <li>Proceeds to teadown leftover daemon threads.
-     */
-    @TruffleBoundary
-    public void destroyVM() {
-        waitForClose();
-        try {
-            getMeta().java_lang_reflect_Shutdown_shutdown.invokeDirect(null);
-        } catch (EspressoException | EspressoExitException e) {
-            /* Suppress guest exception so as not to bypass teardown */
-        }
-        if (isClosing()) {
-            // Skip if Shutdown.shutdown called an exit method.
-            throw new EspressoExitException(getExitStatus());
-        }
-        Object s = getShutdownSynchronizer();
-        synchronized (s) {
-            if (isClosing()) {
-                // If a daemon thread called an exit in-between
-                throw new EspressoExitException(getExitStatus());
-            }
-            beginClose(0);
-        }
-        teardown();
-
-    }
-
-    private void waitForClose() throws EspressoExitException {
-        Object synchronizer = getShutdownSynchronizer();
-        Thread initiating = Thread.currentThread();
-        synchronized (synchronizer) {
-            while (true) {
-                if (isClosing()) {
-                    throw new EspressoExitException(getExitStatus());
-                }
-                if (hasActiveNonDaemon(initiating)) {
-                    try {
-                        synchronizer.wait();
-                    } catch (InterruptedException e) {
-                        /* loop back */
-                    }
-                } else {
-                    return;
-                }
-            }
-        }
-    }
-
-    private boolean hasActiveNonDaemon(Thread initiating) {
-        for (StaticObject guest : threadManager.activeThreads()) {
-            Thread host = Target_java_lang_Thread.getHostFromGuestThread(guest);
-            if (host != initiating && !host.isDaemon()) {
-                if (host.isAlive()) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private static final long MAX_KILL_PHASE_WAIT = 100;
-
-    public void teardown() {
-        assert isClosing();
-        invalidateNoThreadStop("Killing the VM");
-        Thread initiatingThread = Thread.currentThread();
-
-        // Phase 0: wait.
-        boolean nextPhase = !waitSpin(initiatingThread);
-
-        if (getEnv().getOptions().get(EspressoOptions.SoftExit)) {
-            if (nextPhase) {
-                // Phase 1: Interrupt threads, and stops daemons.
-                teardownPhase1(initiatingThread);
-                nextPhase = !waitSpin(initiatingThread);
-            }
-
-            if (nextPhase) {
-                // Phase 2: Stop all threads.
-                teardownPhase2(initiatingThread);
-                nextPhase = !waitSpin(initiatingThread);
-            }
-        }
-
-        if (nextPhase) {
-            // Phase 3: Force kill with host EspressoExitException. Obtains the exit code from the
-            // context.
-            teardownPhase3(initiatingThread);
-            nextPhase = !waitSpin(initiatingThread);
-        }
-
-        if (nextPhase) {
-            getLogger().severe("Could not gracefully stop executing threads in context closing.");
-            // Phase 4: Forcefully command the context to forget any leftover thread.
-            teardownPhase4(initiatingThread);
-        }
-
-        if (getEnv().getOptions().get(EspressoOptions.MultiThreaded)) {
-            hostToGuestReferenceDrainThread.interrupt();
-            try {
-                hostToGuestReferenceDrainThread.join();
-            } catch (InterruptedException e) {
-                // ignore
-            }
-        } else {
-            assert !hostToGuestReferenceDrainThread.isAlive();
-        }
-
-        throw new EspressoExitException(getExitStatus());
-    }
-
-    /**
-     * Triggers soft interruption of active threads. This sends an interrupt signal to all leftover
-     * threads, gving them a chance to gracefully exit.
-     */
-    private void teardownPhase1(Thread initiatingThread) {
-        for (StaticObject guest : threadManager.activeThreads()) {
-            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
-            if (t.isAlive() && t != initiatingThread) {
-                if (t.isDaemon()) {
-                    Target_java_lang_Thread.killThread(guest);
-                }
-                Target_java_lang_Thread.interrupt0(guest);
-            }
-        }
-    }
-
-    /**
-     * Slightly harder interruption of leftover threads. Equivalent of guest Thread.stop(). Gives
-     * leftover threads a chance to terminate in guest code (running finaly blocks).
-     */
-    private void teardownPhase2(Thread initiatingThread) {
-        for (StaticObject guest : threadManager.activeThreads()) {
-            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
-            if (t.isAlive() && t != initiatingThread) {
-                Target_java_lang_Thread.killThread(guest);
-                Target_java_lang_Thread.interrupt0(guest);
-            }
-        }
-    }
-
-    /**
-     * Threads still alive at this point gets sent an uncatchable host exception. This forces the
-     * thread to never execute guest code again. In particular, this means that no finally blocks
-     * will be executed. Still, monitors entered through the monitorenter bytecode will be unlocked.
-     */
-    private void teardownPhase3(Thread initiatingThread) {
-        for (StaticObject guest : threadManager.activeThreads()) {
-            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
-            if (t.isAlive() && t != initiatingThread) {
-                /*
-                 * Currently, threads in native can not be killed in Espresso. This translates into
-                 * a polyglot-side java.lang.IllegalStateException: The language did not complete
-                 * all polyglot threads but should have.
-                 */
-                Target_java_lang_Thread.forceKillThread(guest);
-                Target_java_lang_Thread.interrupt0(guest);
-            }
-        }
-    }
-
-    /**
-     * All threads still alive by that point are considered rogue, and we have no control over them.
-     */
-    private void teardownPhase4(Thread initiatingThread) {
-        for (StaticObject guest : threadManager.activeThreads()) {
-            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
-            if (t.isAlive() && t != initiatingThread) {
-                // TODO(garcia): Tell truffle to forget about this thread
-                // Or
-                // TODO(garcia): Gracefully exit and allow stopping threads in native.
-            }
-        }
-    }
-
-    /**
-     * Waits for some time for all executing threads to gracefully finish.
-     *
-     * @return true if all threads are completed, false otherwise.
-     */
-    private boolean waitSpin(Thread initiatingThread) {
-        long tick = System.currentTimeMillis();
-        spinLoop: //
-        while (true) {
-            long time = System.currentTimeMillis() - tick;
-            if (time > MAX_KILL_PHASE_WAIT) {
-                return false;
-            }
-            for (StaticObject guest : threadManager.activeThreads()) {
-                Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
-                if (t != initiatingThread) {
-                    if (t.isAlive()) {
-                        continue spinLoop;
-                    }
-                }
-            }
-            return true;
-        }
+        return shutdownManager.getExitStatus();
     }
 
     // endregion Shutdown
+
+    // region ReferenceDrain
+
+    public ReferenceQueue<StaticObject> getReferenceQueue() {
+        return referenceDrainer.getReferenceQueue();
+    }
+
+    public StaticObject getAndClearReferencePendingList() {
+        return referenceDrainer.getAndClearReferencePendingList();
+    }
+
+    public boolean hasReferencePendingList() {
+        return referenceDrainer.hasReferencePendingList();
+    }
+
+    public void waitForReferencePendingList() {
+        referenceDrainer.waitForReferencePendingList();
+    }
+
+    // endregion ReferenceDrain
 }

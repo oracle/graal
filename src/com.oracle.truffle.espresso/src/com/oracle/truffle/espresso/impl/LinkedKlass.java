@@ -87,16 +87,24 @@ public final class LinkedKlass {
         return fieldLayout.objectFields;
     }
 
-    public int getPrimitiveFieldTotalByteCount() {
-        return fieldLayout.primitiveFieldTotalByteCount;
+    public int getInstancePrimitiveToAlloc() {
+        return fieldLayout.instanceToAlloc;
+    }
+
+    public int getPrimitiveInstanceFieldLastOffset() {
+        return fieldLayout.primInstanceLastOffset;
     }
 
     public int getStaticObjectFieldsCount() {
         return fieldLayout.staticObjectFields;
     }
 
-    public int getPrimitiveStaticFieldTotalByteCount() {
-        return fieldLayout.primitiveStaticFieldTotalByteCount;
+    public int getStaticPrimitiveToAlloc() {
+        return fieldLayout.staticToAlloc;
+    }
+
+    public int getPrimitiveStaticFieldLastOffset() {
+        return fieldLayout.primStaticLastOffset;
     }
 
     int getFlags() {

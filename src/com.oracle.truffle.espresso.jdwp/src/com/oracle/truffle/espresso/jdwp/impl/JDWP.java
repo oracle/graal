@@ -2404,6 +2404,11 @@ final class JDWP {
                 }
 
                 int arrayLength = context.getArrayLength(array);
+                if (arrayLength == -1) {
+                    // can happen for foreign arrays
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
+                }
 
                 reply.writeInt(arrayLength);
                 return new CommandResult(reply);

@@ -1083,7 +1083,7 @@ public final class ObjectKlass extends Klass {
         LinkedKlass linkedKlass = new LinkedKlass(parserKlass, getSuperKlass().getLinkedKlass(), interfaces);
 
         Method[][] itable = oldVersion.itable;
-        Method[] vtable;
+        Method[] vtable = oldVersion.vtable;
         ObjectKlass[] iKlassTable;
         Method[] mirandaMethods = oldVersion.mirandaMethods;
 
@@ -1092,8 +1092,15 @@ public final class ObjectKlass extends Klass {
         for (Map.Entry<Method, ParserMethod> entry : changedMethodBodies.entrySet()) {
             Method method = entry.getKey();
             ParserMethod newMethod = entry.getValue();
-            method.redefine(newMethod, packet.parserKlass, ids);
+            Method.SharedRedefinitionContent redefineContent = method.redefine(newMethod, packet.parserKlass, ids);
             JDWPLogger.log("Redefining method %s.%s", JDWPLogger.LogLevel.REDEFINE, method.getDeclaringKlass().getName(), method.getName());
+
+            // look in tables for copied methods that also needs to be invalidated
+            if (!method.isStatic() && !method.isPrivate() && !Name._init_.equals(method.getName())) {
+                checkCopyMethods(method, itable, redefineContent, ids);
+                checkCopyMethods(method, vtable, redefineContent, ids);
+                checkCopyMethods(method, mirandaMethods, redefineContent, ids);
+            }
         }
 
         Set<Method> removedMethods = change.getRemovedMethods();
@@ -1150,6 +1157,20 @@ public final class ObjectKlass extends Klass {
         // transaction is ended
         flushReflectionCaches();
         oldVersion.assumption.invalidate();
+    }
+
+    private static void checkCopyMethods(Method method, Method[][] table, Method.SharedRedefinitionContent content, Ids<Object> ids) {
+        for (Method[] methods : table) {
+            checkCopyMethods(method, methods, content, ids);
+        }
+    }
+
+    private static void checkCopyMethods(Method method, Method[] table, Method.SharedRedefinitionContent content, Ids<Object> ids) {
+        for (Method m : table) {
+            if (m.identity() == method.identity() && m != method) {
+                m.redefine(content, ids);
+            }
+        }
     }
 
     private void flushReflectionCaches() {

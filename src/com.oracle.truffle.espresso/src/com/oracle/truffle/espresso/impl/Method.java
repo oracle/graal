@@ -133,6 +133,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // the parts of the method that can change when it's redefined
     // are encapsulated within the methodVersion
     @CompilationFinal volatile MethodVersion methodVersion;
+
     private final Assumption removedByRedefinition = Truffle.getRuntime().createAssumption();
 
     public Method identity() {
@@ -182,8 +183,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     Method(Method method) {
         super(method.getRawSignature(), method.getName());
         this.declaringKlass = method.declaringKlass;
-
-        initMethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getCodeAttribute());
+        this.methodVersion = new MethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getCodeAttribute());
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -192,20 +192,20 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
         }
 
-        this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
-
-        initRefKind();
         // Proxy the method, so that we have the same callTarget if it is not yet initialized.
-        // Allows for not duplicating the codeAttribute
+        // Allows for not duplicating the methodVersion
         this.proxy = method.proxy == null ? method : method.proxy;
         this.poisonPill = method.poisonPill;
         this.isLeaf = method.isLeaf;
+        this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
+
+        initRefKind();
     }
 
     private Method(Method method, CodeAttribute split) {
         super(method.getRawSignature(), method.getName());
         this.declaringKlass = method.declaringKlass;
-        initMethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), split);
+        this.methodVersion = new MethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), split);
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -213,15 +213,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
         }
-
-        this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
-
-        initRefKind();
         // Proxy the method, so that we have the same callTarget if it is not yet initialized.
         // Allows for not duplicating the codeAttribute
         this.proxy = method.proxy == null ? method : method.proxy;
         this.poisonPill = method.poisonPill;
         this.isLeaf = method.isLeaf;
+        this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
+
+        initRefKind();
     }
 
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, RuntimeConstantPool pool) {
@@ -230,7 +229,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
         super(rawSignature, linkedMethod.getName());
-        initMethodVersion(pool, linkedMethod, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
+        this.methodVersion = new MethodVersion(pool, linkedMethod, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
         this.declaringKlass = declaringKlass;
 
         try {
@@ -245,10 +244,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         initRefKind();
         this.proxy = null;
         this.isLeaf = Truffle.getRuntime().createAssumption();
-    }
-
-    private void initMethodVersion(RuntimeConstantPool runtimeConstantPool, LinkedMethod linkedMethod, CodeAttribute codeAttribute) {
-        this.methodVersion = new MethodVersion(runtimeConstantPool, linkedMethod, codeAttribute);
     }
 
     public int getRefKind() {
@@ -971,13 +966,24 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
 
-    public void redefine(ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
+    public SharedRedefinitionContent redefine(ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
         // invalidate old version
         // install the new method version immediately
         LinkedMethod newLinkedMethod = new LinkedMethod(newMethod);
         RuntimeConstantPool runtimePool = new RuntimeConstantPool(getContext(), newKlass.getConstantPool(), getDeclaringKlass().getDefiningClassLoader());
+        CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Name.Code);
         MethodVersion oldVersion = methodVersion;
-        methodVersion = new MethodVersion(runtimePool, newLinkedMethod, (CodeAttribute) newMethod.getAttribute(Name.Code));
+        methodVersion = new MethodVersion(runtimePool, newLinkedMethod, newCodeAttribute);
+        oldVersion.getAssumption().invalidate();
+        ids.replaceObject(oldVersion, methodVersion);
+        return new SharedRedefinitionContent(newLinkedMethod, runtimePool, newCodeAttribute);
+    }
+
+    public void redefine(SharedRedefinitionContent content, Ids<Object> ids) {
+        // invalidate old version
+        // install the new method version immediately
+        MethodVersion oldVersion = methodVersion;
+        methodVersion = new MethodVersion(content.getPool(), content.getLinkedMethod(), content.codeAttribute);
         oldVersion.getAssumption().invalidate();
         ids.replaceObject(oldVersion, methodVersion);
     }
@@ -1063,7 +1069,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 Meta meta = getMeta();
                 if (poisonPill) {
                     // Conflicting Maximally-specific non-abstract interface methods.
-                    if (getJavaVersion().java9OrLater() && getContext().specCompliancyMode() == EspressoOptions.SpecCompliancyMode.HOTSPOT) {
+                    if (getJavaVersion().java9OrLater() && getContext().SpecCompliancyMode == EspressoOptions.SpecCompliancyMode.HOTSPOT) {
                         /*
                          * Supposed to be IncompatibleClassChangeError (see
                          * jvms-6.5.invokeinterface), but HotSpot throws AbstractMethodError.
@@ -1320,6 +1326,31 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 }
             }
             return bci;
+        }
+    }
+
+    class SharedRedefinitionContent {
+
+        private final LinkedMethod linkedMethod;
+        private final RuntimeConstantPool pool;
+        private final CodeAttribute codeAttribute;
+
+        SharedRedefinitionContent(LinkedMethod linkedMethod, RuntimeConstantPool pool, CodeAttribute codeAttribute) {
+            this.linkedMethod = linkedMethod;
+            this.pool = pool;
+            this.codeAttribute = codeAttribute;
+        }
+
+        public LinkedMethod getLinkedMethod() {
+            return linkedMethod;
+        }
+
+        public RuntimeConstantPool getPool() {
+            return pool;
+        }
+
+        public CodeAttribute getCodeAttribute() {
+            return codeAttribute;
         }
     }
     // endregion jdwp-specific

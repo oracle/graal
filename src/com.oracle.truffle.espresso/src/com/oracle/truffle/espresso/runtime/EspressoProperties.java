@@ -354,6 +354,15 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
         throw EspressoError.shouldNotReachHere("Cannot find boot class path.");
     }
 
+    protected static void expandEnvToPath(String envName, List<Path> paths) {
+        String envPath = System.getenv(envName);
+        if (envPath != null) {
+            for (String e : envPath.split(File.pathSeparator)) {
+                paths.add(Paths.get(e));
+            }
+        }
+    }
+
     @Override
     Path defaultJavaHome() {
         throw EspressoError.shouldNotReachHere("Java home not defined, use --java.JavaHome=/path/to/java/home");
@@ -416,7 +425,9 @@ final class LinuxBuilder extends PlatformBuilder {
     @Override
     List<Path> defaultJavaLibraryPath() {
         List<Path> paths = new ArrayList<>();
+        expandEnvToPath("LD_LIBRARY_PATH", paths);
         paths.add(SYS_EXT_DIR.resolve("lib").resolve(CPU_ARCH));
+        paths.add(SYS_EXT_DIR.resolve("lib"));
         paths.addAll(DEFAULT_LIBPATH);
         return paths;
     }
@@ -457,6 +468,8 @@ final class DarwinBuilder extends PlatformBuilder {
     @Override
     List<Path> defaultJavaLibraryPath() {
         List<Path> paths = new ArrayList<>();
+        expandEnvToPath("DYLD_LIBRARY_PATH", paths);
+        expandEnvToPath("JAVA_LIBRARY_PATH", paths);
         paths.add(userHomeDir().resolve(SYS_EXTENSIONS_DIR));
         paths.addAll(SYS_EXTENSIONS_DIRS);
         paths.add(Paths.get("."));
@@ -516,13 +529,7 @@ final class WindowsBuilder extends PlatformBuilder {
         libraryPath.add(windowsRoot);
 
         // 5. The PATH environment variable
-        String envPath = System.getenv("PATH");
-        if (envPath != null) {
-            String[] paths = envPath.split(File.pathSeparator);
-            for (String p : paths) {
-                libraryPath.add(Paths.get(p));
-            }
-        }
+        expandEnvToPath("PATH", libraryPath);
 
         // 6. The current directory
         libraryPath.add(Paths.get("."));

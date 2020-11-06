@@ -22,10 +22,11 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
-public final class EspressoExitException extends RuntimeException implements TruffleException {
+// TODO(peterssen): Fix deprecation, GR-26729
+@SuppressWarnings("deprecation")
+public final class EspressoExitException extends RuntimeException implements com.oracle.truffle.api.TruffleException {
 
     private static final long serialVersionUID = 7140601650442131207L;
 

@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "5.273.8",
+    "mxversion": "5.273.10",
     "name": "espresso",
 
     # ------------- licenses
@@ -42,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "77db2af9e42fde0287bf6bd0976e49de325d26b9",
+                "version": "a145eed23fd5026c9cea83b77604a8aff6b58432",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -52,7 +52,7 @@ suite = {
                 "name": "tools",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "77db2af9e42fde0287bf6bd0976e49de325d26b9",
+                "version": "a145eed23fd5026c9cea83b77604a8aff6b58432",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -60,7 +60,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "d7043a7ed3a156307539ad2afc813386742e43d1",
+                "version": "a72ca6e7f72a4f3b019630baf2a17423eec39072",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -215,6 +215,31 @@ suite = {
                 "<others>": {
                     "<others>": {
                         "cflags": ["-Wall", "-Werror"],
+                    },
+                },
+            },
+        },
+
+        # Shared library to overcome certain, but not all, dlmopen limitations/bugs,
+        # allowing native isolated namespaces to be rather usable.
+        "com.oracle.truffle.espresso.eden": {
+            "subDir": "src",
+            "native": "shared_lib",
+            "deliverable": "eden",
+            "platformDependent": True,
+            "os_arch": {
+                "linux": {
+                    "<others>": {
+                        "cflags" : ["-g", "-fPIC", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+                        "ldflags": [
+                            "-Wl,-soname,libeden.so",
+                        ],
+                        "ldlibs" : ["-ldl"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "Linux-only",
                     },
                 },
             },
@@ -422,6 +447,7 @@ suite = {
                     "file:mx.espresso/reflectconfig.json",
                 ],
                 "lib/": [
+                    "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                 ],

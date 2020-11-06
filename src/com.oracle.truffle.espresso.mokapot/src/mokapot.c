@@ -1407,6 +1407,10 @@ JNIEXPORT void JNICALL JVM_WaitForReferencePendingList(JNIEnv *env) {
   (*getEnv())->JVM_WaitForReferencePendingList(env);
 }
 
+JNIEXPORT jboolean JNICALL JVM_IsUseContainerSupport(void) {
+  return JNI_FALSE;
+}
+
 // region Invocation API
 
 JNIEXPORT jint JNICALL JNI_GetCreatedJavaVMs(JavaVM **vm_buf, jsize buf_len, jsize *numVMs) {

@@ -44,6 +44,12 @@ JNIEXPORT jlong JNICALL pop_long(struct Varargs* varargs);
 JNIEXPORT jobject JNICALL pop_object(struct Varargs* varargs);
 JNIEXPORT void* JNICALL pop_word(struct Varargs* varargs);
 
+JNIEXPORT void * JNICALL allocateMemory(size_t size);
+JNIEXPORT void JNICALL freeMemory(void *ptr);
+JNIEXPORT void * JNICALL reallocateMemory(void *ptr, size_t new_size);
+JNIEXPORT void JNICALL ctypeInit(void);
+JNIEXPORT jlong JNICALL get_SIZE_MAX();
+
 #endif // _NESPRESSO_H
 
 

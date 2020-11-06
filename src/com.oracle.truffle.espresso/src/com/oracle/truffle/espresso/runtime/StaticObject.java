@@ -1357,7 +1357,8 @@ public final class StaticObject implements TruffleObject {
         this.klass = klass;
         LinkedKlass lk = klass.getLinkedKlass();
         this.fields = lk.getObjectFieldsCount() > 0 ? new Object[lk.getObjectFieldsCount()] : null;
-        this.primitiveFields = lk.getPrimitiveFieldTotalByteCount() > 0 ? new byte[lk.getPrimitiveFieldTotalByteCount()] : null;
+        int toAlloc = lk.getInstancePrimitiveToAlloc();
+        this.primitiveFields = toAlloc > 0 ? new byte[toAlloc] : null;
         initInstanceFields(klass);
     }
 
@@ -1366,8 +1367,8 @@ public final class StaticObject implements TruffleObject {
         ObjectKlass guestClass = klass.getMeta().java_lang_Class;
         this.klass = guestClass;
         LinkedKlass lgk = guestClass.getLinkedKlass();
-        int primitiveFieldCount = lgk.getPrimitiveFieldTotalByteCount();
         this.fields = lgk.getObjectFieldsCount() > 0 ? new Object[lgk.getObjectFieldsCount()] : null;
+        int primitiveFieldCount = lgk.getInstancePrimitiveToAlloc();
         this.primitiveFields = primitiveFieldCount > 0 ? new byte[primitiveFieldCount] : null;
         initInstanceFields(guestClass);
         if (klass.getContext().getJavaVersion().modulesEnabled()) {
@@ -1396,7 +1397,8 @@ public final class StaticObject implements TruffleObject {
         this.klass = klass;
         LinkedKlass lk = klass.getLinkedKlass();
         this.fields = lk.getStaticObjectFieldsCount() > 0 ? new Object[lk.getStaticObjectFieldsCount()] : null;
-        this.primitiveFields = lk.getPrimitiveStaticFieldTotalByteCount() > 0 ? new byte[lk.getPrimitiveStaticFieldTotalByteCount()] : null;
+        int toAlloc = lk.getStaticPrimitiveToAlloc();
+        this.primitiveFields = toAlloc > 0 ? new byte[toAlloc] : null;
         initStaticFields(klass);
     }
 
