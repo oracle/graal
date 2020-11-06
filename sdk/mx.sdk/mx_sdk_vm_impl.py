@@ -586,7 +586,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 _add(layout, "<jre_base>/lib/<arch>/server/vm.properties", "string:name=" + vm_name)
 
             if _src_jdk_version == 8:
-                # Add release file
+                # Generate and add the 'release' file.
+                # On JDK9+ this is done in GraalVmJImageBuildTask because it depends on the result of jlink.
                 _sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
                 _metadata = self._get_metadata(_sorted_suites, join(exclude_base, 'release'))
                 _add(layout, "<jdk_base>/release", "string:{}".format(_metadata))
