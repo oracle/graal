@@ -43,7 +43,7 @@ public final class InstanceOfNode extends QuickNode {
     }
 
     @Override
-    public final int execute(final VirtualFrame frame) {
+    public int execute(final VirtualFrame frame) {
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = root.popObject(frame, top - 1);

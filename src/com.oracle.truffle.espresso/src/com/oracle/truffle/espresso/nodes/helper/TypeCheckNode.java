@@ -66,7 +66,7 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
 
     @Specialization(guards = "isJLObject(typeToCheck)")
     protected boolean typeCheckJLObject(Klass typeToCheck, Klass k) {
-        return true;
+        return !k.isPrimitive();
     }
 
     @Specialization(guards = "isFinal(typeToCheck)")
@@ -89,7 +89,7 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
 
     @Specialization(replaces = "typeCheckCached", guards = "isJLObject(typeToCheck)")
     protected boolean typeCheckJLObjectAfterCache(Klass typeToCheck, Klass k) {
-        return true;
+        return !k.isPrimitive();
     }
 
     @Specialization(replaces = "typeCheckCached", guards = "isFinal(typeToCheck)")
