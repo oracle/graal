@@ -171,13 +171,13 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
     private static void tryUseTrappingNullCheck(AbstractDeoptimizeNode deopt, Node predecessor, DeoptimizationReason deoptimizationReason,
                     Speculation speculation, long implicitNullCheckLimit, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
         assert predecessor != null;
-        if (!GraalServices.supportArbitraryImplicitException() && deoptimizationReason != DeoptimizationReason.NullCheckException && deoptimizationReason != DeoptimizationReason.UnreachedCode &&
+        if (!GraalServices.supportsArbitraryImplicitException() && deoptimizationReason != DeoptimizationReason.NullCheckException && deoptimizationReason != DeoptimizationReason.UnreachedCode &&
                         deoptimizationReason != DeoptimizationReason.TypeCheckedInliningViolated) {
             deopt.getDebug().log(DebugContext.INFO_LEVEL, "Not a null check or unreached %s", predecessor);
             return;
         }
         assert speculation != null;
-        if (!GraalServices.supportArbitraryImplicitException() && !speculation.equals(SpeculationLog.NO_SPECULATION)) {
+        if (!GraalServices.supportsArbitraryImplicitException() && !speculation.equals(SpeculationLog.NO_SPECULATION)) {
             deopt.getDebug().log(DebugContext.INFO_LEVEL, "Has a speculation %s", predecessor);
             return;
         }
