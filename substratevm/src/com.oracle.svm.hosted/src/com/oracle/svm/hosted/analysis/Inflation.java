@@ -124,7 +124,7 @@ public class Inflation extends BigBang {
         universe.getTypes().stream().filter(AnalysisType::isReachable).forEach(this::checkType);
 
         /* Scan hubs of all types that end up in the native image. */
-        universe.getTypes().stream().filter(type -> type.isInstantiated() || type.isReachable() || type.isPrimitive()).forEach(type -> scanHub(objectScanner, type));
+        universe.getTypes().stream().filter(AnalysisType::isReachable).forEach(type -> scanHub(objectScanner, type));
     }
 
     @Override
@@ -652,13 +652,13 @@ public class Inflation extends BigBang {
      * number of annotations on a class, then we might return a lower number.
      */
     private static boolean isAnnotationUsed(AnalysisType annotationType) {
-        if (annotationType.isInstantiated() || annotationType.isReachable()) {
+        if (annotationType.isReachable()) {
             return true;
         }
         assert annotationType.getInterfaces().length == 1 : annotationType;
 
         AnalysisType annotationInterfaceType = annotationType.getInterfaces()[0];
-        return annotationInterfaceType.isInstantiated() || annotationInterfaceType.isReachable();
+        return annotationInterfaceType.isReachable();
     }
 
     public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {

@@ -706,7 +706,9 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     public boolean isInstantiated() {
-        return isInHeap || isAllocated;
+        boolean instantiated = isInHeap || isAllocated;
+        assert !instantiated || isReachable;
+        return instantiated;
     }
 
     /**

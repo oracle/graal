@@ -63,7 +63,7 @@ public final class ClassValueFeature implements Feature {
         FeatureImpl.DuringAnalysisAccessImpl impl = (FeatureImpl.DuringAnalysisAccessImpl) access;
         List<AnalysisType> types = impl.getUniverse().getTypes();
         for (AnalysisType t : types) {
-            if (!t.isInstantiated() && !t.isReachable()) {
+            if (!t.isReachable()) {
                 continue;
             }
             Class<?> clazz = t.getJavaClass();
