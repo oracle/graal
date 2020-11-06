@@ -41,7 +41,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public abstract class InvokeInterfaceNode extends QuickNode {
 
     final Method resolutionSeed;
-    final int itableIndex;
     final Klass declaringKlass;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
@@ -52,7 +51,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass", assumptions = "resolvedMethod.getAssumption()")
     Object callVirtualDirect(StaticObject receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
-                    @Cached("methodLookup(receiver, itableIndex, declaringKlass)") MethodVersion resolvedMethod,
+                    @Cached("methodLookup(receiver, resolutionSeed, declaringKlass)") MethodVersion resolvedMethod,
                     @Cached("create(resolvedMethod.getMethod().getCallTarget())") DirectCallNode directCallNode) {
         return directCallNode.call(args);
     }
@@ -61,20 +60,20 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
         // itable Lookup
-        return indirectCallNode.call(methodLookup(receiver, itableIndex, declaringKlass).getMethod().getCallTarget(), arguments);
+        return indirectCallNode.call(methodLookup(receiver, resolutionSeed, declaringKlass).getMethod().getCallTarget(), arguments);
     }
 
     InvokeInterfaceNode(Method resolutionSeed, int top, int curBCI) {
         super(top, curBCI);
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
-        this.itableIndex = resolutionSeed.getITableIndex();
         this.declaringKlass = resolutionSeed.getDeclaringKlass();
     }
 
-    protected static MethodVersion methodLookup(StaticObject receiver, int itableIndex, Klass declaringKlass) {
+    protected static MethodVersion methodLookup(StaticObject receiver, Method resolutionSeed, Klass declaringKlass) {
         assert !receiver.getKlass().isArray();
-        Method method = ((ObjectKlass) receiver.getKlass()).itableLookup(declaringKlass, itableIndex);
+        int iTableIndex = resolutionSeed.getITableIndex();
+        Method method = ((ObjectKlass) receiver.getKlass()).itableLookup(declaringKlass, iTableIndex);
         if (!method.isPublic()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Meta meta = receiver.getKlass().getMeta();
