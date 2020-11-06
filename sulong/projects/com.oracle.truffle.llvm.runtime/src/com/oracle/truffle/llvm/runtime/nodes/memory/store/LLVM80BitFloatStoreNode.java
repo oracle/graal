@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -41,9 +42,10 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetRecei
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
+@GenerateUncached
 public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
 
-    static LLVM80BitFloatStoreNode create() {
+    public static LLVM80BitFloatStoreNode create() {
         return LLVM80BitFloatStoreNodeGen.create(null, null);
     }
 

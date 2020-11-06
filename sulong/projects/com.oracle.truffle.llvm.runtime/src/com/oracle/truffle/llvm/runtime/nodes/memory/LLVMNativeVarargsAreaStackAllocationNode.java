@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMAllocaInstruction;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStackFactory.LLVMAllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -43,6 +44,10 @@ public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode 
 
     public LLVMNativeVarargsAreaStackAllocationNode() {
         this.allocation = LLVMAllocaInstructionNodeGen.create(1, 8, null);
+    }
+
+    public void setStackAccess(LLVMStackAccess stackAccess) {
+        this.allocation.setStackAccess(stackAccess);
     }
 
     @Specialization

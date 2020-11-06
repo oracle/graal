@@ -30,6 +30,7 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
@@ -59,8 +60,8 @@ final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<Linux
     // va_list is implemented.
 
     @Override
-    public Object createVAListStorage() {
-        return new LLVMX86_64VaListStorage();
+    public Object createVAListStorage(RootNode rootNode) {
+        return new LLVMX86_64VaListStorage(rootNode);
     }
 
     @Override
@@ -69,8 +70,8 @@ final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<Linux
     }
 
     @Override
-    public Object createNativeVAListWrapper(LLVMNativePointer vaListPtr) {
-        return new LLVMX86_64VaListStorage.NativeVAListWrapper(vaListPtr);
+    public Object createNativeVAListWrapper(LLVMNativePointer vaListPtr, RootNode rootNode) {
+        return new LLVMX86_64VaListStorage.NativeVAListWrapper(vaListPtr, rootNode);
     }
 
 }

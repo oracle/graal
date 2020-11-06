@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnsupportedSyscallNode;
@@ -69,7 +70,7 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
     }
 
     @Override
-    public Object createVAListStorage() {
+    public Object createVAListStorage(RootNode rootNode) {
         CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException("Should not reach.");
     }
@@ -81,7 +82,7 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
     }
 
     @Override
-    public Object createNativeVAListWrapper(LLVMNativePointer vaListPtr) {
+    public Object createNativeVAListWrapper(LLVMNativePointer vaListPtr, RootNode rootNode) {
         CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException("Should not reach.");
     }

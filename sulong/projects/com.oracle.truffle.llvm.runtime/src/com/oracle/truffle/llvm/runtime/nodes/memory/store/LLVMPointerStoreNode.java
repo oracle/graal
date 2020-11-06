@@ -45,6 +45,10 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 @GenerateUncached
 public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
 
+    public static LLVMPointerStoreNode create() {
+        return LLVMPointerStoreNodeGen.create(null, null);
+    }
+
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected void doAddress(LLVMNativePointer addr, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
