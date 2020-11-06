@@ -448,8 +448,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 explicitReceiver = true;
             }
 
-            LibraryParser parser = new LibraryParser();
-            LibraryData libraryData = parser.parse(fromTypeMirror(libraryMirror));
+            Map<TypeElement, LibraryData> libraryCache = ProcessorContext.getInstance().getCacheMap(LibraryParser.class);
+            LibraryData libraryData = libraryCache.computeIfAbsent(fromTypeMirror(libraryMirror), (t) -> new LibraryParser().parse(t));
 
             ExportsLibrary lib = new ExportsLibrary(context, type, exportAnnotationMirror, model, libraryData, receiverClass, explicitReceiver);
             ExportsLibrary otherLib = model.getExportedLibraries().get(libraryId);
