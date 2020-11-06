@@ -7,12 +7,21 @@
 
 const vscode = acquireVsCodeApi();
 document.addEventListener("DOMContentLoaded", function(event) {
+    const emailInput = document.getElementById('email');
+    emailInput.addEventListener('input', () => {
+        emailInput.setCustomValidity('');
+        if (!emailInput.checkValidity()) {
+            emailInput.setCustomValidity('Please provide a valid email address');
+        }
+    });
     const acceptButton = document.getElementById('accept');
     acceptButton.addEventListener('click', () => {
-        vscode.postMessage({ command: 'accepted', value: true });
+        if (emailInput.reportValidity()) {
+            vscode.postMessage({ command: 'accepted', email: emailInput.value });
+        }
     });
     const rejectButton = document.getElementById('reject');
     rejectButton.addEventListener('click', () => {
-        vscode.postMessage({ command: 'accepted', value: false });
+        vscode.postMessage({ command: 'rejected' });
     });
 });
