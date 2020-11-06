@@ -1554,15 +1554,15 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
                     Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                     EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader) {
+        PolyglotContextImpl context;
+        boolean replayEvents;
         try {
-            PolyglotContextImpl context;
             synchronized (this.lock) {
                 checkState();
                 if (boundEngine && !contexts.isEmpty()) {
                     throw PolyglotEngineException.illegalArgument("Automatically created engines cannot be used to create more than one context. " +
                                     "Use Engine.newBuilder().build() to construct a new engine and pass it using Context.newBuilder().engine(engine).build().");
                 }
-
                 initializeHostAccess(hostAccess);
             }
             EconomicSet<String> allowedLanguages = EconomicSet.create();
@@ -1606,15 +1606,12 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             } else {
                 useErr = INSTRUMENT.createDelegatingOutput(configErr, this.err);
             }
-
             Handler useHandler = PolyglotLoggers.asHandler(logHandlerOrStream);
             useHandler = useHandler != null ? useHandler : logHandler;
             useHandler = useHandler != null ? useHandler
                             : PolyglotLoggers.createDefaultHandler(
                                             configErr == null ? INSTRUMENT.getOut(this.err) : configErr);
-
             final InputStream useIn = configIn == null ? this.in : configIn;
-
             final ProcessHandler useProcessHandler;
             if (allowCreateProcess) {
                 if (!ALLOW_CREATE_PROCESS) {
@@ -1624,7 +1621,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             } else {
                 useProcessHandler = null;
             }
-
             if (!ALLOW_ENVIRONMENT_ACCESS && environmentAccess != EnvironmentAccess.NONE) {
                 throw PolyglotEngineException.illegalArgument("Cannot allow EnvironmentAccess because the privilege is removed at image build time");
             }
@@ -1634,7 +1630,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                             allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
                             environmentAccess, environment, zone, polyglotLimits, hostClassLoader);
             context = loadPreinitializedContext(config, hostAccess);
-            boolean replayEvents = false;
+            replayEvents = false;
             if (context == null) {
                 synchronized (this.lock) {
                     checkState();
@@ -1644,13 +1640,15 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             } else if (context.engine == this) {
                 replayEvents = true;
             }
-
+        } catch (Throwable t) {
+            throw PolyglotImpl.guestToHostException(this, t);
+        }
+        try {
             if (!replayEvents) { // is new context
                 synchronized (context) {
                     context.initializeContextLocals();
                 }
             }
-
             if (replayEvents && EngineAccessor.INSTRUMENT.hasContextBindings(this)) {
                 // replace events for preinitialized contexts
                 // events must be replayed without engine lock.
@@ -1663,7 +1661,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
             return context.creatorApi;
         } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(this, t);
+            throw PolyglotImpl.guestToHostException(context.getHostContext(), t);
         }
     }
 
