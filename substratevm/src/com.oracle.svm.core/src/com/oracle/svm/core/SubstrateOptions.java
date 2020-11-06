@@ -169,7 +169,7 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "The maximum number of lines in the stack trace for Java exceptions (-1 means all)", type = OptionType.User)//
+    @Option(help = "The maximum number of lines in the stack trace for Java exceptions (0 means all)", type = OptionType.User)//
     public static final RuntimeOptionKey<Integer> MaxJavaStackTraceDepth = new RuntimeOptionKey<>(1024);
 
     /* Same option name and specification as the Java HotSpot VM. */
