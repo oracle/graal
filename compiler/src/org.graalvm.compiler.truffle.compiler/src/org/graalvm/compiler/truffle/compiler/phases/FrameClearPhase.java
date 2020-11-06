@@ -90,21 +90,27 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class FrameClearPhase extends BasePhase<CoreProviders> {
     private final CanonicalizerPhase canonicalizer;
+    private final CompilableTruffleAST compilable;
 
+    // Information on the FrameWithoutBoxing class
     private final ResolvedJavaType frameType;
     private final int tagArrayIndex;
     private final int objectArrayIndex;
     private final int primitiveArrayIndex;
 
+    // Values for tags in the tag slot of the frames
     private final int illegalTag;
     private final int objectTag;
 
+    // Constants to insert on clear.
     private ValueNode nullConstant;
     private ValueNode zeroConstant;
 
-    private final CompilableTruffleAST compilable;
-
+    // Cached phis that have been proven can be illegals
     private final EconomicSet<ValueNode> knownIllegals = EconomicSet.create();
+    // Cached phis that have been proven not to be illegals
+    private final EconomicSet<ValueNode> knownSafe = EconomicSet.create();
+    // Cached tag nodes that have already reported a performance warning.
     private final EconomicSet<ValueNode> reported = EconomicSet.create();
 
     public FrameClearPhase(KnownTruffleTypes knownTruffleTypes, CanonicalizerPhase canonicalizer, CompilableTruffleAST compilable) {
@@ -140,12 +146,7 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        try {
-            doRun(graph, context);
-        } catch (Throwable e) {
-            e.printStackTrace();
-            throw e;
-        }
+        doRun(graph, context);
     }
 
     private void doRun(StructuredGraph graph, CoreProviders context) {
@@ -155,14 +156,14 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
         for (FrameState fs : graph.getNodes(FrameState.TYPE)) {
             EconomicMap<VirtualObjectNode, EscapeObjectState> objectStates = getObjectStateMappings(fs);
             for (EscapeObjectState objectState : objectStates.getValues()) {
+                // Iterate over escaped truffle frames in the FrameState
                 if ((objectState instanceof VirtualObjectState) && objectState.object().type().equals(frameType)) {
                     VirtualObjectState vObjState = (VirtualObjectState) objectState;
                     ValueNode tagArrayValue = vObjState.values().get(tagArrayIndex);
+                    // make sure everything is virtual
                     if ((tagArrayValue instanceof VirtualArrayNode) &&
                                     (vObjState.values().get(objectArrayIndex) instanceof VirtualArrayNode) &&
                                     (vObjState.values().get(primitiveArrayIndex) instanceof VirtualArrayNode)) {
-                        // make sure everything is virtual
-
                         EscapeObjectState tagArrayVirtual = objectStates.get((VirtualArrayNode) tagArrayValue);
                         EscapeObjectState objectArrayVirtual = objectStates.get((VirtualArrayNode) vObjState.values().get(objectArrayIndex));
                         EscapeObjectState primitiveArrayVirtual = objectStates.get((VirtualArrayNode) vObjState.values().get(primitiveArrayIndex));
@@ -198,7 +199,7 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
                 // Circular phi node: explore phi graph for an illegal constant.
                 canBeIllegal = unbalancedIllegal(tagNode);
             } else {
-                // Regular phi node with constant: just check stamp.
+                // Regular node: just check stamp.
                 canBeIllegal = stampHasIllegal(tagStamp);
             }
 
@@ -240,11 +241,22 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
     }
 
     private class UnbalancedIllegalExplorer {
-        private boolean illegalSeen = false;
-        private boolean normalValueSeen = false;
-
         private final EconomicSet<ValueNode> visited = EconomicSet.create();
 
+        /*-
+         * Note that this is not a complete exploration of the values: We are relying on the fact
+         * that accesses to tags are only done through the provided methods of the
+         * FrameWithoutBoxing class.
+         *
+         * In particular, since these methods only ever puts constants in the tag slot, we will
+         * assume that a tag can either be:
+         * - A constant
+         * - A value with restricted stamp (Phi of constants, or ConditionalNode, for example)
+         * - A phi between constants and other such phis (loops may introduce phis with itself as
+         * input, yielding unrestricted stamps).
+         *
+         * Any other type of value will be considered a performance warning.
+         */
         private boolean explore(ValueNode node) {
             ValueNode toProcess = node;
             while (toProcess instanceof ValueProxyNode) {
@@ -252,17 +264,16 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
             }
             if (toProcess instanceof ConstantNode) {
                 assert toProcess.getStackKind() == JavaKind.Int;
-                boolean isIllegal = toProcess.asJavaConstant().asInt() == illegalTag;
-                return manageSeenValue(isIllegal);
+                return toProcess.asJavaConstant().asInt() == illegalTag;
             } else if (!toProcess.stamp(NodeView.DEFAULT).isUnrestricted()) {
                 assert toProcess.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp;
                 PrimitiveStamp stamp = (PrimitiveStamp) toProcess.stamp(NodeView.DEFAULT);
-                return manageSeenValue(stampHasIllegal(stamp));
+                return stampHasIllegal(stamp);
             } else if (toProcess instanceof ValuePhiNode) {
                 if (knownIllegals.contains(toProcess)) {
                     return true;
                 }
-                if (visited.contains(toProcess)) {
+                if (visited.contains(toProcess) || knownSafe.contains(toProcess)) {
                     return false;
                 }
                 visited.add(node);
@@ -272,26 +283,12 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
                         return true;
                     }
                 }
+                knownSafe.add(toProcess);
+                return false;
             } else {
                 /* tags 'should' only ever be constants or phi of tags. */
                 return true;
             }
-            return false;
-        }
-
-        private boolean manageSeenValue(boolean isIllegal) {
-            if (isIllegal) {
-                if (normalValueSeen) {
-                    return true;
-                }
-                illegalSeen = true;
-            } else {
-                if (illegalSeen) {
-                    return true;
-                }
-                normalValueSeen = true;
-            }
-            return isIllegal;
         }
     }
 
@@ -302,6 +299,7 @@ public class FrameClearPhase extends BasePhase<CoreProviders> {
         return new UnbalancedIllegalExplorer().explore(node);
     }
 
+    // Remaps virtual objects to their escaped states corresponding to the given frame state.
     private static EconomicMap<VirtualObjectNode, EscapeObjectState> getObjectStateMappings(FrameState fs) {
         EconomicMap<VirtualObjectNode, EscapeObjectState> objectStates = EconomicMap.create(Equivalence.IDENTITY);
         FrameState current = fs;

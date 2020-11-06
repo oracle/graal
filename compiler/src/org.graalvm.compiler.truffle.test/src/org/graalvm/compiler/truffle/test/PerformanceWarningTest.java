@@ -392,11 +392,12 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     private final class RootNodeClearFrameClass extends TestRootNode {
         final FrameSlot slot;
 
-        public RootNodeClearFrameClass(FrameDescriptor fd) {
+        RootNodeClearFrameClass(FrameDescriptor fd) {
             super(fd);
             this.slot = fd.addFrameSlot("test");
         }
 
+        @Override
         public Object execute(VirtualFrame frame) {
             Object[] args = frame.getArguments();
             if ((boolean) args[0]) {
