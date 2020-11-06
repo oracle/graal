@@ -42,6 +42,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
@@ -106,7 +107,7 @@ public final class LoadModulesNode extends LLVMRootNode {
     @Children DirectCallNode[] dependencies;
     final CallTarget[] callTargets;
     final List<Object> dependenciesSource;
-    final LLVMParserResult parserResult;
+    final LLVMParserRuntime parserRuntime;
     final LLVMLanguage language;
     private boolean hasInitialised;
     @CompilerDirectives.CompilationFinal private CachedMainFunction main;
@@ -134,7 +135,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         this.sourceName = name;
         this.source = source;
         this.bitcodeID = parserResult.getRuntime().getBitcodeID();
-        this.parserResult = parserResult;
+        this.parserRuntime = parserResult.getRuntime();
         this.dependenciesSource = dependenciesSource;
         this.language = language;
         this.callTargets = new CallTarget[dependenciesSource.size()];
@@ -142,9 +143,8 @@ public final class LoadModulesNode extends LLVMRootNode {
         this.hasInitialised = false;
         this.initContext = null;
         String moduleName = parserResult.getRuntime().getLibraryName();
-        this.initSymbols = new InitializeSymbolsNode(parserResult, parserResult.getRuntime().getNodeFactory(), lazyParsing,
-                        isInternalSulongLibrary, moduleName);
-        this.initScopes = new InitializeScopeNode(parserResult);
+        this.initSymbols = new InitializeSymbolsNode(parserResult, lazyParsing, isInternalSulongLibrary, moduleName);
+        this.initScopes = new InitializeScopeNode(parserRuntime);
         this.initExternals = new InitializeExternalNode(parserResult);
         this.initGlobals = new InitializeGlobalNode(parserResult, moduleName);
         this.initOverwrite = new InitializeOverwriteNode(parserResult);
@@ -198,7 +198,7 @@ public final class LoadModulesNode extends LLVMRootNode {
                         throw new IllegalStateException("Unknown dependency.");
                     }
                 }
-                LLVMFunction mainFunction = findMainFunction(parserResult);
+                LLVMFunction mainFunction = findMainFunction();
                 if (mainFunction != null) {
                     main = new CachedMainFunction(mainFunction);
                 } else {
@@ -263,7 +263,7 @@ public final class LoadModulesNode extends LLVMRootNode {
                     visited.set(bitcodeID);
                     addIDToLocalScope(localScope, bitcodeID);
                     initScopes.execute(context, localScope);
-                    resultScope.addMissingEntries(parserResult.getRuntime().getFileScope());
+                    resultScope.addMissingEntries(parserRuntime.getFileScope());
                     for (CallTarget callTarget : callTargets) {
                         if (callTarget != null) {
                             queAdd(que, callTarget);
@@ -466,9 +466,9 @@ public final class LoadModulesNode extends LLVMRootNode {
     /**
      * Retrieves the function for the main method.
      */
-    private static LLVMFunction findMainFunction(LLVMParserResult parserResult) {
+    private LLVMFunction findMainFunction() {
         // check if the freshly parsed code exports a main method
-        LLVMScope fileScope = parserResult.getRuntime().getFileScope();
+        LLVMScope fileScope = parserRuntime.getFileScope();
         LLVMSymbol mainSymbol = fileScope.get(MAIN_METHOD_NAME);
 
         if (mainSymbol != null && mainSymbol.isFunction()) {

@@ -29,15 +29,15 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
+import java.util.ArrayList;
+
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.parser.LLVMParserResult;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLocalScope;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-
-import java.util.ArrayList;
 
 /**
  * Initial the global scope and the local scope of the library. The scopes are allocated from the
@@ -53,8 +53,8 @@ public final class InitializeScopeNode extends LLVMNode {
     @Children final AllocScopeNode[] allocScopes;
     private final LLVMScope fileScope;
 
-    public InitializeScopeNode(LLVMParserResult result) {
-        this.fileScope = result.getRuntime().getFileScope();
+    public InitializeScopeNode(LLVMParserRuntime runtime) {
+        this.fileScope = runtime.getFileScope();
         ArrayList<AllocScopeNode> allocScopesList = new ArrayList<>();
         for (LLVMSymbol symbol : fileScope.values()) {
             // Only exported symbols are allocated into the scope

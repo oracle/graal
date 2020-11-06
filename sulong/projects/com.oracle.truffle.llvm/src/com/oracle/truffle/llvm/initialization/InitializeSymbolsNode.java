@@ -97,9 +97,9 @@ public final class InitializeSymbolsNode extends LLVMNode {
     private final int bitcodeID;
     private final int globalLength;
 
-    public InitializeSymbolsNode(LLVMParserResult result, NodeFactory nodeFactory, boolean lazyParsing, boolean isInternalSulongLibrary, String moduleName) throws Type.TypeOverflowException {
+    public InitializeSymbolsNode(LLVMParserResult result, boolean lazyParsing, boolean isInternalSulongLibrary, String moduleName) throws Type.TypeOverflowException {
         DataLayout dataLayout = result.getDataLayout();
-        this.nodeFactory = nodeFactory;
+        this.nodeFactory = result.getRuntime().getNodeFactory();
         this.fileScope = result.getRuntime().getFileScope();
         this.globalLength = result.getSymbolTableSize();
         this.bitcodeID = result.getRuntime().getBitcodeID();
