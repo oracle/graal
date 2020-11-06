@@ -121,7 +121,7 @@ public class Inflation extends BigBang {
     @Override
     protected void checkObjectGraph(ObjectScanner objectScanner) {
         universe.getFields().forEach(this::handleUnknownValueField);
-        universe.getTypes().forEach(this::checkType);
+        universe.getTypes().stream().filter(AnalysisType::isReachable).forEach(this::checkType);
 
         /* Scan hubs of all types that end up in the native image. */
         universe.getTypes().stream().filter(type -> type.isInstantiated() || type.isReachable() || type.isPrimitive()).forEach(type -> scanHub(objectScanner, type));
@@ -133,6 +133,7 @@ public class Inflation extends BigBang {
     }
 
     private void checkType(AnalysisType type) {
+        assert type.isReachable();
         DynamicHub hub = getHostVM().dynamicHub(type);
         if (hub.getGenericInfo() == null) {
             fillGenericInfo(type, hub);
@@ -142,7 +143,7 @@ public class Inflation extends BigBang {
         }
 
         if (type.getJavaKind() == JavaKind.Object) {
-            if (type.isArray() && (type.isInstantiated() || type.isReachable())) {
+            if (type.isArray()) {
                 hub.getComponentHub().setArrayHub(hub);
             }
 
@@ -191,7 +192,6 @@ public class Inflation extends BigBang {
                      * name.
                      */
                     AnalysisField found = null;
-                    type.registerAsReachable();
                     for (AnalysisField f : type.getStaticFields()) {
                         if (f.getName().endsWith("$VALUES")) {
                             if (found != null) {
@@ -217,7 +217,7 @@ public class Inflation extends BigBang {
                          */
                         enumConstants = (Enum<?>[]) type.getJavaClass().getEnumConstants();
                     } else {
-                        enumConstants = (Enum[]) SubstrateObjectConstant.asObject(getConstantReflectionProvider().readFieldValue(found, null));
+                        enumConstants = (Enum<?>[]) SubstrateObjectConstant.asObject(getConstantReflectionProvider().readFieldValue(found, null));
                         assert enumConstants != null;
                     }
                     hub.initEnumConstants(enumConstants);
@@ -253,7 +253,7 @@ public class Inflation extends BigBang {
         return annotationSubstitutionProcessor;
     }
 
-    class GenericInterfacesEncodingKey {
+    static class GenericInterfacesEncodingKey {
         final Type[] interfaces;
 
         GenericInterfacesEncodingKey(Type[] aInterfaces) {
@@ -305,7 +305,7 @@ public class Inflation extends BigBang {
         return result;
     }
 
-    class AnnotatedInterfacesEncodingKey {
+    static class AnnotatedInterfacesEncodingKey {
         final AnnotatedType[] interfaces;
 
         AnnotatedInterfacesEncodingKey(AnnotatedType[] aInterfaces) {
