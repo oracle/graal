@@ -97,45 +97,56 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
     private static StaticInitsNode createGlobalVariableInitializer(LLVMParserResult parserResult, Object moduleName) {
         LLVMParserRuntime runtime = parserResult.getRuntime();
         GetStackSpaceFactory stackFactory = GetStackSpaceFactory.createAllocaFactory();
-        final List<LLVMStatementNode> globalNodes = new ArrayList<>();
-        for (GlobalVariable global : parserResult.getDefinedGlobals()) {
-            final LLVMStatementNode store = createGlobalInitialization(runtime, stackFactory, global, parserResult.getDataLayout());
-            if (store != null) {
-                globalNodes.add(store);
-            }
-        }
-        LLVMStatementNode[] initNodes = globalNodes.toArray(LLVMStatementNode.NO_STATEMENTS);
-        return StaticInitsNodeGen.create(initNodes, "global variable initializers", moduleName);
-    }
-
-    private static LLVMStatementNode createGlobalInitialization(LLVMParserRuntime runtime, GetStackSpaceFactory stackFactory, GlobalVariable global, DataLayout dataLayout) {
-        if (global == null || global.getValue() == null) {
-            return null;
-        }
-        Constant value = global.getValue();
-        Type type = global.getType().getPointeeType();
-        long size;
+        List<GlobalVariable> globals = parserResult.getDefinedGlobals();
+        DataLayout dataLayout = parserResult.getDataLayout();
+        LLVMStatementNode initNode;
+        int totalSize = 0;
         try {
-            size = type.getSize(dataLayout);
-        } catch (TypeOverflowException e) {
-            return Type.handleOverflowStatement(e);
-        }
-        if (size == 0) {
-            return null;
-        }
+            int[] sizes = new int[globals.size()];
+            int nonEmptyGlobals = 0;
+            for (int i = 0; i < sizes.length; i++) {
+                GlobalVariable global = globals.get(i);
+                if (global == null || global.getValue() == null) {
+                    continue;
+                }
+                long size = globals.get(i).getType().getPointeeType().getSize(dataLayout);
+                if (size > Integer.MAX_VALUE || (totalSize + size) > Integer.MAX_VALUE) {
+                    throw new TypeOverflowException("globals section > 2GB is not supported");
+                }
+                if (size == 0) {
+                    continue;
+                }
+                sizes[i] = (int) size;
+                totalSize += (int) size;
+                nonEmptyGlobals++;
+            }
+            int[] bufferOffsets = new int[nonEmptyGlobals];
+            LLVMGlobal[] descriptors = new LLVMGlobal[nonEmptyGlobals];
+            Buffer buffer = new Buffer(totalSize, runtime, dataLayout);
+            int globalIndex = 0;
+            totalSize = 0;
+            for (int i = 0; i < sizes.length; i++) {
+                if (sizes[i] == 0) {
+                    continue;
+                }
+                GlobalVariable global = globals.get(i);
+                /*
+                 * For fetching the address of the global that we want to initialize, we must use
+                 * the file scope because we are initializing the globals of the current file.
+                 */
+                descriptors[globalIndex] = runtime.getFileScope().getGlobalVariable(global.getName());
+                assert descriptors[globalIndex] != null;
 
-        /*
-         * For fetching the address of the global that we want to initialize, we must use the file
-         * scope because we are initializing the globals of the current file.
-         */
-        LLVMGlobal globalDescriptor = runtime.getFileScope().getGlobalVariable(global.getName());
-        LLVMExpressionNode globalVarAddress = CommonNodeFactory.createLiteral(globalDescriptor, new PointerType(global.getType()));
-        assert globalDescriptor != null;
-        if (value.getType() instanceof PrimitiveType) {
-            return runtime.getNodeFactory().createStore(globalVarAddress, value.createNode(runtime, dataLayout, stackFactory), value.getType());
-        } else {
-            return createConstantInitialization(value, globalVarAddress, runtime, dataLayout, stackFactory);
+                bufferOffsets[globalIndex] = totalSize;
+                global.getValue().addToBuffer(buffer, runtime, dataLayout, stackFactory);
+                totalSize += sizes[i];
+                globalIndex++;
+            }
+            initNode = buffer.createNode(bufferOffsets, descriptors);
+        } catch (TypeOverflowException e) {
+            initNode = Type.handleOverflowStatement(e);
         }
+        return StaticInitsNodeGen.create(new LLVMStatementNode[]{initNode}, "global variable initializers", moduleName);
     }
 
     /**
@@ -154,14 +165,10 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
         private final ArrayList<Integer> valueOffsets = new ArrayList<>();
         private final ArrayList<Integer> valueSizes = new ArrayList<>();
 
-        Buffer(Type type, LLVMParserRuntime runtime, DataLayout dataLayout) throws TypeOverflowException {
+        Buffer(int size, LLVMParserRuntime runtime, DataLayout dataLayout) {
             this.runtime = runtime;
             this.dataLayout = dataLayout;
-            long size = type.getSize(dataLayout);
-            if (size != (int) size) {
-                throw new TypeOverflowException("constant > 2GB");
-            }
-            this.buffer = ByteBuffer.allocate((int) size);
+            this.buffer = ByteBuffer.allocate(size);
             this.buffer.order(ByteOrder.nativeOrder());
         }
 
@@ -183,7 +190,8 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
             }
         }
 
-        public LLVMStatementNode createNode(LLVMExpressionNode target) {
+        public LLVMStatementNode createNode(int[] bufferOffsets, LLVMGlobal[] descriptors) {
+            assert !buffer.hasRemaining();
             LLVMOffsetStoreNode[] stores = new LLVMOffsetStoreNode[valueStores.size()];
             int[] offsets = new int[valueStores.size() + 1];
             int[] sizes = new int[valueStores.size()];
@@ -193,19 +201,7 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
                 stores[i] = valueStores.get(i);
             }
             offsets[offsets.length - 1] = buffer.capacity();
-            return AggregateLiteralInPlaceNodeGen.create(buffer.array(), stores, offsets, sizes, target);
-        }
-    }
-
-    private static LLVMStatementNode createConstantInitialization(Constant constant, LLVMExpressionNode target, LLVMParserRuntime runtime, DataLayout dataLayout,
-                    GetStackSpaceFactory stackFactory) {
-        try {
-            Buffer buffer = new Buffer(constant.getType(), runtime, dataLayout);
-            constant.addToBuffer(buffer, runtime, dataLayout, stackFactory);
-
-            return buffer.createNode(target);
-        } catch (TypeOverflowException e) {
-            return Type.handleOverflowStatement(e);
+            return AggregateLiteralInPlaceNodeGen.create(buffer.array(), stores, offsets, sizes, bufferOffsets, descriptors);
         }
     }
 }

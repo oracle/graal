@@ -33,19 +33,21 @@ import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode.LLVMI8OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChild(type = LLVMExpressionNode.class)
 public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
 
     @Children private final LLVMOffsetStoreNode[] stores;
@@ -53,6 +55,8 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
     @CompilationFinal(dimensions = 1) private final byte[] data;
     @CompilationFinal(dimensions = 1) private final int[] offsets;
     @CompilationFinal(dimensions = 1) private final int[] sizes;
+    @CompilationFinal(dimensions = 1) private final int[] bufferOffsets;
+    @CompilationFinal(dimensions = 1) private final LLVMGlobal[] descriptors;
 
     private static final ByteArraySupport byteSupport = ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN ? ByteArraySupport.bigEndian() : ByteArraySupport.littleEndian();
 
@@ -62,44 +66,53 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
      * and i64 stores as appropriate), except for those covered by a node in {@code stores}. Every
      * store node has a corresponding entry in {@code offsets} and {@sizes}.
      */
-    public AggregateLiteralInPlaceNode(byte[] data, LLVMOffsetStoreNode[] stores, int[] offsets, int[] sizes) {
+    public AggregateLiteralInPlaceNode(byte[] data, LLVMOffsetStoreNode[] stores, int[] offsets, int[] sizes, int[] bufferOffsets, LLVMGlobal[] descriptors) {
         assert offsets.length == stores.length + 1 && stores.length == sizes.length;
         assert offsets[offsets.length - 1] == data.length : "offsets is expected to have a trailing entry with the overall size";
+        assert bufferOffsets.length == descriptors.length;
         this.data = data;
         this.stores = stores;
         this.sizes = sizes;
         this.offsets = offsets;
+        this.bufferOffsets = bufferOffsets;
+        this.descriptors = descriptors;
     }
 
     @ExplodeLoop
     @Specialization
-    protected void initialize(VirtualFrame frame, LLVMPointer address,
+    protected void initialize(VirtualFrame frame,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached LLVMI8OffsetStoreNode storeI8,
                     @Cached LLVMI64OffsetStoreNode storeI64) {
         int offset = 0;
         int nextStore = 0;
-        while (offset < data.length) {
-            int nextStoreOffset = offsets[nextStore];
-            offset = initializePrimitiveBlock(address, storeI8, storeI64, offset, nextStoreOffset);
-            if (nextStore < stores.length) {
-                stores[nextStore].executeWithTarget(frame, address, nextStoreOffset);
-                offset += sizes[nextStore++];
+        for (int i = 0; i < descriptors.length; i++) {
+            LLVMPointer address = LLVMAccessSymbolNode.getSymbol(context, descriptors[i], this);
+            int bufferOffset = bufferOffsets[i];
+            int bufferEnd = i == descriptors.length - 1 ? data.length : bufferOffsets[i + 1];
+            while (offset < bufferEnd) {
+                int nextStoreOffset = Math.min(offsets[nextStore], bufferEnd);
+                offset = initializePrimitiveBlock(address, storeI8, storeI64, offset, nextStoreOffset, bufferOffset);
+                if (offset < bufferEnd && nextStore < stores.length) {
+                    stores[nextStore].executeWithTarget(frame, address, nextStoreOffset - bufferOffset);
+                    offset += sizes[nextStore++];
+                }
             }
         }
     }
 
-    private int initializePrimitiveBlock(LLVMPointer address, LLVMI8OffsetStoreNode storeI8, LLVMI64OffsetStoreNode storeI64, int startOffset, int nextStoreOffset) {
+    private int initializePrimitiveBlock(LLVMPointer address, LLVMI8OffsetStoreNode storeI8, LLVMI64OffsetStoreNode storeI64, int startOffset, int nextStoreOffset, int bufferOffset) {
         int offset = startOffset;
         while (offset < nextStoreOffset && ((offset & 0x7) != 0)) {
-            storeI8.executeWithTarget(address, offset, data[offset]);
+            storeI8.executeWithTarget(address, offset - bufferOffset, data[offset]);
             offset++;
         }
         while (offset < (nextStoreOffset - 7)) {
-            storeI64.executeWithTarget(address, offset, byteSupport.getLong(data, offset));
+            storeI64.executeWithTarget(address, offset - bufferOffset, byteSupport.getLong(data, offset));
             offset += Long.BYTES;
         }
         while (offset < nextStoreOffset) {
-            storeI8.executeWithTarget(address, offset, data[offset]);
+            storeI8.executeWithTarget(address, offset - bufferOffset, data[offset]);
             offset++;
         }
         return offset;
