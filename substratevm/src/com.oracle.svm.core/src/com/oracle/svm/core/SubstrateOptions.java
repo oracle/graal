@@ -169,6 +169,9 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "The maximum number of lines in the stack trace for Java exceptions (0 means all)", type = OptionType.User)//
+    public static final RuntimeOptionKey<Integer> MaxJavaStackTraceDepth = new RuntimeOptionKey<>(1024);
+
     /* Same option name and specification as the Java HotSpot VM. */
     @Option(help = "Maximum total size of NIO direct-buffer allocations")//
     public static final RuntimeOptionKey<Long> MaxDirectMemorySize = new RuntimeOptionKey<>(0L);
