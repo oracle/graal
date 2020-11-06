@@ -70,7 +70,7 @@ public final class CacheExpression extends MessageContainer {
     private Message uncachedExpressionError;
     private boolean requiresBoundary;
     private boolean mergedLibrary;
-    private boolean guardForNull;
+    private boolean isWeakReferenceGet;
     private boolean isWeakReference;
     private boolean adopt = true;
 
@@ -307,12 +307,12 @@ public final class CacheExpression extends MessageContainer {
         return b.toString() + libraryName + "_";
     }
 
-    public void setGuardForNull(boolean b) {
-        this.guardForNull = b;
+    public void setWeakReferenceGet(boolean b) {
+        this.isWeakReferenceGet = b;
     }
 
-    public boolean isGuardForNull() {
-        return guardForNull;
+    public boolean isWeakReferenceGet() {
+        return isWeakReferenceGet;
     }
 
     public void setWeakReference(boolean ignoreInUncached) {

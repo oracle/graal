@@ -81,7 +81,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -732,7 +731,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
 
                 for (CacheExpression cache : specialization.getCaches()) {
-                    if (cache.isGuardForNull()) {
+                    if (cache.isWeakReferenceGet()) {
                         failed = true;
                         break;
                     }
@@ -2073,7 +2072,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     cache.setDefaultExpression(parsedDefaultExpression);
                     cache.setUncachedExpression(sourceExpression);
                     cache.setAlwaysInitialized(true);
-                    cache.setGuardForNull(true);
+                    cache.setWeakReferenceGet(true);
                 } else {
                     parseCached(cache, specialization, resolver, parameter);
                 }
@@ -2651,7 +2650,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         continue;
                     }
                     handledCaches.add(cache);
-                    if (cache.isGuardForNull()) {
+                    if (cache.isWeakReferenceGet()) {
                         newGuards.add(createWeakReferenceGuard(resolver, specialization, cache));
                     }
                 }
@@ -2660,7 +2659,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             newGuards.add(guard);
         }
         for (CacheExpression cache : specialization.getCaches()) {
-            if (cache.isGuardForNull()) {
+            if (cache.isWeakReferenceGet()) {
                 if (handledCaches.contains(cache)) {
                     continue;
                 }

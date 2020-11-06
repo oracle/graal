@@ -262,6 +262,22 @@ public class WeakCachedTest extends AbstractPolyglotTest {
 
     }
 
+    /*
+     * This tests that the implicit library accepts guard on a weak reference is not causing
+     * multiple instances. See GR-27293.
+     */
+    abstract static class CachedLibraryWeakValueNode extends Node {
+
+        public abstract int execute(Object arg);
+
+        @Specialization
+        static int doBoxed(Object arg,
+                        @Cached(value = "arg", weak = true) Object cachedArg,
+                        @CachedLibrary("cachedArg") InteropLibrary argLib) {
+            return 42;
+        }
+    }
+
     abstract static class ConsistentGuardAndSpecializationNode extends Node {
 
         final Semaphore waitForSpecialization = new Semaphore(0);
