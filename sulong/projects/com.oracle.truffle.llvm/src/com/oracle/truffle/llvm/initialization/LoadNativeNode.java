@@ -67,8 +67,10 @@ public final class LoadNativeNode extends RootNode {
         LoadModulesNode.LLVMLoadingPhase phase;
         if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LoadModulesNode.LLVMLoadingPhase)) {
             phase = (LoadModulesNode.LLVMLoadingPhase) frame.getArguments()[0];
+        } else if (frame.getArguments().length == 0) {
+            throw new LLVMParserException(this, "Toplevel executable %s does not contain bitcode", file.getPath());
         } else {
-            throw new LLVMParserException("LoadNativeNode is called with unexpected arguments");
+            throw new LLVMParserException(this, "LoadNativeNode is called either with unexpected arguments or as a toplevel");
         }
 
         if (LoadModulesNode.LLVMLoadingPhase.INIT_SYMBOLS.isActive(phase)) {
