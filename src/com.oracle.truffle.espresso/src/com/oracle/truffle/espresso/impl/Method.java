@@ -183,7 +183,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     Method(Method method) {
         super(method.getRawSignature(), method.getName());
         this.declaringKlass = method.declaringKlass;
-        this.splitMethod = false;
         this.methodVersion = new MethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getCodeAttribute());
 
         try {
@@ -205,7 +204,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private Method(Method method, CodeAttribute split) {
         super(method.getRawSignature(), method.getName());
-        this.splitMethod = true;
         this.declaringKlass = method.declaringKlass;
         this.methodVersion = new MethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), split);
 
@@ -231,7 +229,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
         super(rawSignature, linkedMethod.getName());
-        this.splitMethod = false;
         this.methodVersion = new MethodVersion(pool, linkedMethod, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
         this.declaringKlass = declaringKlass;
 
