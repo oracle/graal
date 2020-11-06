@@ -81,6 +81,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -2325,8 +2326,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 continue;
             }
 
-            LibraryParser parser = new LibraryParser();
-            LibraryData parsedLibrary = parser.parse(type);
+            Map<TypeElement, LibraryData> libraryCache = ProcessorContext.getInstance().getCacheMap(LibraryParser.class);
+            LibraryData parsedLibrary = libraryCache.computeIfAbsent(type, (t) -> new LibraryParser().parse(t));
+
             if (parsedLibrary == null || parsedLibrary.hasErrors()) {
                 cachedLibrary.addError("Library '%s' has errors. Please resolve them first.", getSimpleName(parameterType));
                 continue;
@@ -2514,19 +2516,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
         } else if (NodeCodeGenerator.isSpecializedNode(parameter.getType())) {
             // if it is a node try to parse with the node parser to find out whether we
             // should may use the generated create and getUncached methods.
-            NodeParser parser = NodeParser.createDefaultParser();
-            parser.nodeOnly = true; // make sure we cannot have cycles
-            TypeElement element = ElementUtils.castTypeElement(parameter.getType());
-            if (!nodeOnly) {
-                NodeData parsedNode = parser.parse(element);
-                if (parsedNode != null) {
-                    List<CodeExecutableElement> executables = NodeFactoryFactory.createFactoryMethods(parsedNode, ElementFilter.constructorsIn(element.getEnclosedElements()));
-                    TypeElement type = ElementUtils.castTypeElement(NodeCodeGenerator.factoryOrNodeType(parsedNode));
-                    for (CodeExecutableElement executableElement : executables) {
-                        executableElement.setEnclosingElement(type);
-                    }
-                    resolver = resolver.copy(executables);
-                }
+            List<CodeExecutableElement> executables = parseNodeFactoryMethods(parameter.getType());
+            if (executables != null) {
+                resolver = resolver.copy(executables);
             }
         }
 
@@ -2574,6 +2566,34 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
         }
         cache.setAdopt(getAnnotationValue(Boolean.class, cachedAnnotation, "adopt", true));
+    }
+
+    private static class FactoryMethodCacheKey {
+    }
+
+    private List<CodeExecutableElement> parseNodeFactoryMethods(TypeMirror nodeType) {
+        if (nodeOnly) {
+            return null;
+        }
+        Map<TypeMirror, List<CodeExecutableElement>> cache = ProcessorContext.getInstance().getCacheMap(FactoryMethodCacheKey.class);
+        if (cache.containsKey(nodeType)) {
+            return cache.get(nodeType);
+        }
+
+        NodeParser parser = NodeParser.createDefaultParser();
+        parser.nodeOnly = true; // make sure we cannot have cycles
+        TypeElement element = ElementUtils.castTypeElement(nodeType);
+        NodeData parsedNode = parser.parse(element);
+        List<CodeExecutableElement> executables = null;
+        if (parsedNode != null) {
+            executables = NodeFactoryFactory.createFactoryMethods(parsedNode, ElementFilter.constructorsIn(element.getEnclosedElements()));
+            TypeElement type = ElementUtils.castTypeElement(NodeCodeGenerator.factoryOrNodeType(parsedNode));
+            for (CodeExecutableElement executableElement : executables) {
+                executableElement.setEnclosingElement(type);
+            }
+        }
+        cache.put(nodeType, executables);
+        return executables;
     }
 
     private DSLExpression resolveCachedExpression(DSLExpressionResolver resolver, CacheExpression cache, TypeMirror targetType, DSLExpression expression, String originalString) {
