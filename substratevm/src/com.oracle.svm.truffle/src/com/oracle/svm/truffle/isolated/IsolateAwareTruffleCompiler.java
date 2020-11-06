@@ -47,6 +47,7 @@ import org.graalvm.nativeimage.Isolates;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.util.OptionsEncoder;
@@ -152,6 +153,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
             CompilerIsolateThread thread = IsolatedGraalUtils.createCompilationIsolate();
             isolate = Isolates.getIsolate(thread);
             if (sharedIsolate.compareAndSet(WordFactory.nullPointer(), isolate)) {
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> sharedIsolateShutdown(sharedIsolate.get())));
                 return thread; // (already attached)
             }
             Isolates.tearDownIsolate(thread); // lost the race
@@ -159,6 +161,17 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
             assert isolate.isNonNull();
         }
         return (CompilerIsolateThread) Isolates.attachCurrentThread(isolate);
+    }
+
+    protected void sharedIsolateShutdown(Isolate isolate) {
+        CompilerIsolateThread context = (CompilerIsolateThread) Isolates.attachCurrentThread(isolate);
+        sharedIsolateShutdown0(context);
+    }
+
+    @CEntryPoint
+    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    protected static void sharedIsolateShutdown0(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread context) {
+        VMRuntime.shutdown();
     }
 
     protected void afterCompilation(CompilerIsolateThread context) {
