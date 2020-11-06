@@ -1436,7 +1436,7 @@ class GraalVmJImage(mx.Project):
             logical_root = out_dir
             for root, _, files in os.walk(out_dir):
                 for name in files:
-                    yield join(root, name), name if root == logical_root else join(relpath(root, logical_root), name)
+                    yield join(root, name), relpath(join(root, name), logical_root)
 
 
 class GraalVmJImageBuildTask(mx.ProjectBuildTask):
