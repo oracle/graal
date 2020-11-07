@@ -2561,8 +2561,8 @@ public abstract class AArch64Assembler extends Assembler {
             return false;
         }
         // bits[61..54] are all set or all cleared.
-        long pattern = (bits >> 54) & NumUtil.getNbitNumberLong(7);
-        if (pattern != 0 && pattern != NumUtil.getNbitNumberLong(7)) {
+        long pattern = (bits >> 54) & NumUtil.getNbitNumberLong(8);
+        if (pattern != 0 && pattern != NumUtil.getNbitNumberLong(8)) {
             return false;
         }
         // bits[62] and bits[61] are opposites.
