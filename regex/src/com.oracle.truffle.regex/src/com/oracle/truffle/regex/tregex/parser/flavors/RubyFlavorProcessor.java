@@ -230,16 +230,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private static final CompilationFinalBitSet WHITESPACE = CompilationFinalBitSet.valueOf(' ', '\t', '\n', '\r', '\u000b', '\f');
 
     /**
-     * The (slightly modified) version of the XID_Start Unicode property used to check names of
-     * capture groups.
-     */
-    private static final CodePointSet XID_START = UnicodeProperties.getProperty("XID_Start").union(CodePointSet.create('_'));
-    /**
-     * The XID_Continue Unicode character property.
-     */
-    private static final CodePointSet XID_CONTINUE = UnicodeProperties.getProperty("XID_Continue");
-
-    /**
      * The source object of the input pattern.
      */
     private final RegexSource inSource;
@@ -1570,9 +1560,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      */
     private String parseGroupName(char terminator) {
         String groupName = getMany(c -> c != terminator);
-        if (groupName.isEmpty()) {
-            throw syntaxErrorHere("missing group name");
-        }
         if (!match(Character.toString(terminator))) {
             throw syntaxErrorAtRel("missing " + terminator + ", unterminated name", groupName.length());
         }
@@ -1586,12 +1573,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private void checkGroupName(String groupName) throws RegexSyntaxException {
         if (groupName.isEmpty()) {
             throw syntaxErrorAtRel("missing group name", 1);
-        }
-        for (int i = 0; i < groupName.length(); i = groupName.offsetByCodePoints(i, 1)) {
-            int ch = groupName.codePointAt(i);
-            if ((i == 0 && !XID_START.contains(ch)) || (i > 0 && !XID_CONTINUE.contains(ch))) {
-                throw syntaxErrorAtRel("bad character in group name " + groupName, groupName.length() + 1);
-            }
         }
     }
 
