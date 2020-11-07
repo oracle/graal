@@ -50,6 +50,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.sparc.SPARCGraphBuilderPlugins;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.code.Architecture;
@@ -73,7 +74,19 @@ public class SPARCHotSpotBackendFactory extends HotSpotBackendFactory {
 
     @Override
     public Class<? extends Architecture> getArchitecture() {
-        return SPARC.class;
+        try {
+            return SPARC.class;
+        } catch (NoClassDefFoundError e) {
+            if (JavaVersionUtil.JAVA_SPEC >= 15) {
+                // This should only occur in an mx based development setup where
+                // JAVA_HOME >= jdk15 and EXTRA_JAVA_HOMES < jdk15. In that
+                // environment, the Graal module will contain the SPARC classes
+                // but JAVA_HOME won't have JVMCI SPARC classes as SPARC support was
+                // removed in jdk15.
+                return null;
+            }
+            throw e;
+        }
     }
 
     @Override

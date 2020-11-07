@@ -129,8 +129,10 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
                 for (HotSpotBackendFactory backend : GraalServices.load(HotSpotBackendFactory.class)) {
                     if (backend.getName().equals(backendName)) {
                         Class<? extends Architecture> arch = backend.getArchitecture();
-                        HotSpotBackendFactory oldEntry = backends.put(arch, backend);
-                        assert oldEntry == null || oldEntry == backend : "duplicate Graal backend";
+                        if (arch != null) {
+                            HotSpotBackendFactory oldEntry = backends.put(arch, backend);
+                            assert oldEntry == null || oldEntry == backend : "duplicate Graal backend";
+                        }
                     }
                 }
             }
