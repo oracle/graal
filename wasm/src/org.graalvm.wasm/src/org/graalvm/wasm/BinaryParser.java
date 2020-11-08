@@ -336,15 +336,18 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void skipCodeSection() {
+        int numImportedFunctions = module.importedFunctions().size();
+        int expectedNumCodeEntries = module.numFunctions() - numImportedFunctions;
         int numCodeEntries = readVectorLength();
+        if (expectedNumCodeEntries != numCodeEntries) {
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "Unexpected number of code entries: %d (%d expected).", numCodeEntries, expectedNumCodeEntries);
+        }
         for (int entryIndex = 0; entryIndex != numCodeEntries; ++entryIndex) {
             int codeEntrySize = readUnsignedInt32();
+            int nextCodeEntryOffset = offset + codeEntrySize;
             if (moduleLimits != null) {
                 moduleLimits.checkFunctionSize(codeEntrySize);
-            }
-            int nextCodeEntryOffset = offset + codeEntrySize;
-            if (moduleLimits != null && entryIndex < module.numFunctions()) {
-                int localCount = readCodeEntryLocals().size() + module.function(entryIndex).numArguments();
+                int localCount = readCodeEntryLocals().size() + module.function(numImportedFunctions + entryIndex).numArguments();
                 moduleLimits.checkLocalCount(localCount);
             }
             offset = nextCodeEntryOffset;
