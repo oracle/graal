@@ -1632,7 +1632,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 namedCaptureGroups = new HashMap<>();
             }
             if (namedCaptureGroups.containsKey(name)) {
-                throw syntaxErrorAtRel(String.format("redefinition of group name '%s' as group %d; was group %d", name, groups, namedCaptureGroups.get(name)), name.length() + 1);
+                bailOut("different capture groups with the same name are not supported");
             }
             namedCaptureGroups.put(name, groups);
         });
