@@ -65,7 +65,6 @@ import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
@@ -451,6 +450,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
     }
 
+    private void mustMatch(String match) {
+        if (!match(match)) {
+            throw syntaxErrorHere("expected " + match);
+        }
+    }
+
     private boolean atEnd() {
         return position >= inPattern.length();
     }
@@ -812,6 +817,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             lastTerm = TermCategory.Atom;
             return;
         }
+        if (stringEscape()) {
+            lastTerm = TermCategory.Atom;
+            return;
+        }
         // characterEscape has to come after assertionEscape because of the ambiguity of \b, which
         // (outside of character classes) is resolved in the favor of the assertion.
         // characterEscape also has to come after backreference because of the ambiguity between
@@ -1057,6 +1066,28 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
     }
 
+    private boolean stringEscape() {
+        if (match("u{")) {
+            getMany(c -> WHITESPACE.get(c));
+            while (!match("}")) {
+                String code = getMany(RubyFlavorProcessor::isHexDigit);
+                try {
+                    int codePoint = Integer.parseInt(code, 16);
+                    if (codePoint > 0x10FFFF) {
+                        throw syntaxErrorHere("unicode escape value " + code + " outside of range 0-0x10FFFF");
+                    }
+                    emitChar(codePoint);
+                } catch (NumberFormatException e) {
+                    throw syntaxErrorHere("bad escape \\u" + code);
+                }
+                getMany(c -> WHITESPACE.get(c));
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     /**
      * Parses a character escape sequence. A character escape sequence can be one of the following:
      * <ul>
@@ -1121,39 +1152,27 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 String code = getUpTo(2, RubyFlavorProcessor::isHexDigit);
                 return Integer.parseInt(code, 16);
             }
-            case 'u':
-            case 'U':
-                // 'u' and 'U' escapes are supported only in 'str' patterns
-                if (!bytes) {
-                    char escapeLead = (char) ch;
-                    int escapeLength;
-                    switch (escapeLead) {
-                        case 'u':
-                            escapeLength = 4;
-                            break;
-                        case 'U':
-                            escapeLength = 8;
-                            break;
-                        default:
-                            throw Exceptions.shouldNotReachHere();
-                    }
-                    String code = getUpTo(escapeLength, RubyFlavorProcessor::isHexDigit);
-                    if (code.length() < escapeLength) {
-                        throw syntaxErrorAtRel("incomplete escape \\" + escapeLead + code, 2 + code.length());
-                    }
-                    try {
-                        int codePoint = Integer.parseInt(code, 16);
-                        if (codePoint > 0x10FFFF) {
-                            throw syntaxErrorAtRel("unicode escape value \\" + escapeLead + code + " outside of range 0-0x10FFFF", 2 + code.length());
-                        }
-                        return codePoint;
-                    } catch (NumberFormatException e) {
-                        throw syntaxErrorAtRel("bad escape \\" + escapeLead + code, 2 + code.length());
-                    }
+            case 'u': {
+                String code;
+                if (match("{")) {
+                    code = getMany(RubyFlavorProcessor::isHexDigit);
+                    mustMatch("}");
                 } else {
-                    // \\u or \\U in 'bytes' patterns
-                    throw syntaxErrorAtRel("bad escape \\" + curChar(), 1);
+                    code = getUpTo(4, RubyFlavorProcessor::isHexDigit);
+                    if (code.length() < 4) {
+                        throw syntaxErrorAtRel("incomplete escape \\u" + code, 2 + code.length());
+                    }
                 }
+                try {
+                    int codePoint = Integer.parseInt(code, 16);
+                    if (codePoint > 0x10FFFF) {
+                        throw syntaxErrorAtRel("unicode escape value \\u" + code + " outside of range 0-0x10FFFF", 2 + code.length());
+                    }
+                    return codePoint;
+                } catch (NumberFormatException e) {
+                    throw syntaxErrorAtRel("bad escape \\u" + code, 2 + code.length());
+                }
+            }
             default:
                 if (isOctDigit(ch)) {
                     retreat();
