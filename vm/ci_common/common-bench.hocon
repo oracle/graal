@@ -29,7 +29,7 @@ vm_bench_polybench_linux: ${vm_bench_common} ${vm_java_8} ${svm-common-linux-amd
     WABT_DIR: {name: wabt, version: "1.0.12", platformspecific: true},
   }
   setup: ${common_vm.setup} [
-    ${vm_bench_polybench_linux.base_cmd} [build, --all]
+    ${vm_bench_polybench_linux.base_cmd} [build]
   ]
   run: [
     ${vm_bench_polybench_linux.bench_cmd} ["--polybench-vm-config=jvm-interpreter"]

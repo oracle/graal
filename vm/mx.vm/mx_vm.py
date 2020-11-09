@@ -267,7 +267,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 subDir=join(_suite.dir, 'benchmarks', 'interpreter'),
                 theLicense=None,
                 testProject=True,
-                defaultBuild=False,
+                defaultBuild=True,
             ))
 
 
