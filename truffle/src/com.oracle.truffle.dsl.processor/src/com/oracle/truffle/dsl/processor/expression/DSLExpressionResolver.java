@@ -83,11 +83,18 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
     private final DSLExpressionResolver parent;
     private final TypeElement accessType;
 
+    private final List<? extends Element> unprocessedElements;
+    private boolean processed;
+
     private DSLExpressionResolver(ProcessorContext context, TypeElement accessType, DSLExpressionResolver parent, List<? extends Element> lookupElements) {
         this.context = context;
         this.parent = parent;
         this.accessType = accessType;
-        processElements(lookupElements);
+        this.unprocessedElements = new ArrayList<>(lookupElements);
+    }
+
+    public DSLExpressionResolver(ProcessorContext context, TypeElement accessType, List<? extends Element> lookupElements) {
+        this(context, accessType, null, lookupElements);
     }
 
     public TypeElement getAccessType() {
@@ -95,7 +102,15 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
     }
 
     public void addVariable(String variableName, VariableElement element) {
+        lazyProcess();
         variables.computeIfAbsent(variableName, (l) -> new ArrayList<>()).add(element);
+    }
+
+    private void lazyProcess() {
+        if (!processed) {
+            processElements(unprocessedElements);
+            processed = true;
+        }
     }
 
     private void processElements(List<? extends Element> lookupElements) {
@@ -114,10 +129,6 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                 variables.computeIfAbsent(simpleName, (l) -> new ArrayList<>()).add((VariableElement) element);
             }
         }
-    }
-
-    public DSLExpressionResolver(ProcessorContext context, TypeElement accessType, List<? extends Element> lookupElements) {
-        this(context, accessType, null, lookupElements);
     }
 
     public DSLExpressionResolver copy(List<? extends Element> prefixElements) {
@@ -174,6 +185,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
     }
 
     private ExecutableElement resolveCall(Call call) {
+        lazyProcess();
         List<ExecutableElement> methodsWithName = this.methods.get(call.getName());
         ExecutableElement foundWithName = null;
         if (methodsWithName != null) {
@@ -225,6 +237,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
             case "true":
                 return new CodeVariableElement(new CodeTypeMirror(TypeKind.BOOLEAN), "true");
             default:
+                lazyProcess();
                 List<VariableElement> vars = variables.get(name);
                 if (vars != null && vars.size() > 0) {
                     for (VariableElement var : vars) {

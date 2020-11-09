@@ -4450,7 +4450,7 @@ public class FlatNodeGenFactory {
 
         CodeTree assertion = null; // overrule with assertion
         if (mode.isFastPath() || mode.isGuardFallback()) {
-            if (!specialization.isDynamicParameterBound(expression, true)) {
+            if (!specialization.isDynamicParameterBound(expression, true) && !guard.isWeakReferenceGuard()) {
                 assertion = CodeTreeBuilder.createBuilder().startAssert().tree(expressionCode).end().build();
                 expressionCode = null;
             }
