@@ -273,11 +273,11 @@ public final class LLVMContext {
         LLVMScope fileScope = language.getInternalFileScopes("libsulong");
         LLVMSymbol contextFunction = fileScope.get(name);
         if (contextFunction != null && contextFunction.isFunction()) {
-            if (name.equalsIgnoreCase(SULONG_INIT_CONTEXT)) {
+            if (name.equals(SULONG_INIT_CONTEXT)) {
                 language.setSulongInitContext(contextFunction.asFunction());
-            } else if (name.equalsIgnoreCase(SULONG_DISPOSE_CONTEXT)) {
+            } else if (name.equals(SULONG_DISPOSE_CONTEXT)) {
                 language.setSulongDisposeContext(contextFunction.asFunction());
-            } else if (name.equalsIgnoreCase(START_METHOD_NAME)) {
+            } else if (name.equals(START_METHOD_NAME)) {
                 language.setStartFunctionCode(new LLVMFunctionCode(contextFunction.asFunction()));
             }
         } else {
