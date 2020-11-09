@@ -1462,7 +1462,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     private void referenceArrayStore(VirtualFrame frame, int top, int index, StaticObject array) {
         if (refArrayStoreNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            refArrayStoreNode = new EspressoReferenceArrayStoreNode(getContext());
+            refArrayStoreNode = insert(new EspressoReferenceArrayStoreNode(getContext()));
         }
         refArrayStoreNode.arrayStore(popObject(frame, top - 1), index, array);
     }

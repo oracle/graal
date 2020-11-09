@@ -769,21 +769,33 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (isInterface()) {
             return checkInterfaceSubclassing(other);
         }
-        return checkRegularClassSubclassing(other);
+        return checkOrdinaryClassSubclassing(other);
     }
 
-    public boolean checkRegularClassSubclassing(Klass other) {
+    /**
+     * Permorms type checking for non-interface, non-array classes.
+     * 
+     * @param other the class whose type is to be checked against {@code this}
+     * @return true if {@code other} is a subclass of {@code this}
+     */
+    public boolean checkOrdinaryClassSubclassing(Klass other) {
         int depth = getHierarchyDepth();
         return other.getHierarchyDepth() >= depth && other.getSuperTypes()[depth] == this;
     }
 
-    public final int getId() {
-        return id;
-    }
-
+    /**
+     * Permorms type checking for interface classes.
+     * 
+     * @param other the class whose type is to be checked against {@code this}
+     * @return true if {@code this} is a super interface of {@code other}
+     */
     public boolean checkInterfaceSubclassing(Klass other) {
         Klass[] interfaces = other.getTransitiveInterfacesList();
         return fastLookup(this, interfaces) >= 0;
+    }
+
+    public final int getId() {
+        return id;
     }
 
     public final Klass findLeastCommonAncestor(Klass other) {
