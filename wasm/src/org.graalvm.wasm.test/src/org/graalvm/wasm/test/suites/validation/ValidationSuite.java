@@ -284,6 +284,18 @@ public class ValidationSuite extends WasmFileSuite {
                                     "0061 736d 0100 0000 0606 017f 0041 010b 0606 017e 0042 000b 0706 0102 6731 0300 0706 0102 6732 0301"),
 
                     binaryCase(
+                                    "Code Section - more entries",
+                                    "Unexpected number of code entries: 1 (0 expected).",
+                                    // (func) but without function section
+                                    "0061 736d 0100 0000 0104 0160 0000 0a04 0102 000b"),
+
+                    binaryCase(
+                                    "Code Section - less entries",
+                                    "Unexpected number of code entries: 0 (1 expected).",
+                                    // (func) but with code section with 0 entries
+                                    "0061 736d 0100 0000 0104 0160 0000 0302 0100 0a01 00"),
+
+                    binaryCase(
                                     "Export name - overlong encoding",
                                     "Invalid UTF-8 encoding of the name at: 23",
                                     // (func (export \"\\F0\\82\\82\\AC\")

@@ -45,6 +45,7 @@ import java.util.HashMap;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -55,6 +56,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.wasm.ModuleLimits;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.api.ByteArrayBuffer;
 import org.graalvm.wasm.api.Dictionary;
@@ -74,6 +76,7 @@ import org.graalvm.wasm.api.TableDescriptor;
 import org.graalvm.wasm.api.TableKind;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.api.WebAssemblyInstantiatedSource;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
@@ -331,6 +334,26 @@ public class WasmJsApiSuite {
                 }
             } catch (InvalidArrayIndexException e) {
                 throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testModuleLimits() throws IOException {
+        runTest(context -> {
+            ModuleLimits limits = null;
+            context.readModule(binaryWithMixedExports, limits);
+
+            int noLimit = Integer.MAX_VALUE;
+            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+            context.readModule(binaryWithMixedExports, limits);
+
+            try {
+                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+                context.readModule(binaryWithMixedExports, limits);
+                Assert.fail("Should have failed - export count exceeds the limit");
+            } catch (WasmException ex) {
+                Assert.assertEquals("Parsing error expected", ExceptionType.PARSE_ERROR, ex.getExceptionType());
             }
         });
     }

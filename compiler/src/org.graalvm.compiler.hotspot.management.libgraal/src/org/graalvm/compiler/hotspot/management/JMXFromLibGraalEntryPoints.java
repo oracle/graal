@@ -28,7 +28,6 @@ import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFro
 import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal.Id.SignalRegistrationRequest;
 import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal.Id.Unregister;
 
-import org.graalvm.compiler.hotspot.management.LibGraalMBean.Factory;
 import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -43,11 +42,11 @@ public final class JMXFromLibGraalEntryPoints {
     }
 
     /**
-     * @see LibGraalMBean#getFactory()
+     * @see Factory#getInstance()
      */
     @JMXFromLibGraal(GetFactory)
     static Object getFactory() {
-        Factory factory = LibGraalMBean.getFactory();
+        Factory factory = Factory.getInstance();
         return factory;
     }
 
@@ -60,10 +59,10 @@ public final class JMXFromLibGraalEntryPoints {
     }
 
     /**
-     * @see Factory#unregister(long, java.lang.String[])
+     * @see Factory#unregister(long)
      */
     @JMXFromLibGraal(Unregister)
-    static void unregister(Object factory, long isolate, String[] objectIds) {
-        ((Factory) factory).unregister(isolate, objectIds);
+    static void unregister(Object factory, long isolate) {
+        ((Factory) factory).unregister(isolate);
     }
 }

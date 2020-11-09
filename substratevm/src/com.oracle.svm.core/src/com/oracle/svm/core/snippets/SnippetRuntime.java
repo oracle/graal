@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.snippets;
 
+import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_LOCATIONS;
+
 // Checkstyle: allow reflection
 
 import java.lang.reflect.Field;
@@ -45,7 +47,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SnippetRuntime {
-
     public static final SubstrateForeignCallDescriptor UNSUPPORTED_FEATURE = findForeignCall(SnippetRuntime.class, "unsupportedFeature", true, LocationIdentity.any());
 
     /* Implementation of runtime calls defined in a VM-independent way by Graal. */
@@ -84,20 +85,22 @@ public class SnippetRuntime {
         return result;
     }
 
-    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, LocationIdentity... killedLocations) {
-        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, killedLocations);
+    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, LocationIdentity... additionalKilledLocations) {
+        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, additionalKilledLocations);
     }
 
-    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo, LocationIdentity... killedLocations) {
-        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, needsDebugInfo, killedLocations);
+    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo,
+                    LocationIdentity... additionalKilledLocations) {
+        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, needsDebugInfo, additionalKilledLocations);
     }
 
-    private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, LocationIdentity... killedLocations) {
-        return findForeignCall(descriptorName, declaringClass, methodName, isReexecutable, true, killedLocations);
+    private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable,
+                    LocationIdentity... additionalKilledLocations) {
+        return findForeignCall(descriptorName, declaringClass, methodName, isReexecutable, true, additionalKilledLocations);
     }
 
     private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo,
-                    LocationIdentity... killedLocations) {
+                    LocationIdentity... additionalKilledLocations) {
         Method foundMethod = null;
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (method.getName().equals(methodName)) {
@@ -111,11 +114,41 @@ public class SnippetRuntime {
          * We cannot annotate methods from the JDK, but all other foreign call targets we want to be
          * annotated for documentation, and to avoid stripping.
          */
-        VMError.guarantee(declaringClass.getName().startsWith("java.lang") || DirectAnnotationAccess.isAnnotationPresent(foundMethod, SubstrateForeignCallTarget.class),
+        boolean isUninterruptible = DirectAnnotationAccess.isAnnotationPresent(foundMethod, Uninterruptible.class);
+        SubstrateForeignCallTarget foreignCallTargetAnnotation = DirectAnnotationAccess.getAnnotation(foundMethod, SubstrateForeignCallTarget.class);
+        VMError.guarantee(declaringClass.getName().startsWith("java.lang") || foreignCallTargetAnnotation != null,
                         "Add missing @SubstrateForeignCallTarget to " + declaringClass.getName() + "." + methodName);
 
-        boolean isGuaranteedSafepoint = needsDebugInfo && !DirectAnnotationAccess.isAnnotationPresent(foundMethod, Uninterruptible.class);
+        /*
+         * The safepoint slowpath needs to kill the TLAB locations (see note in Safepoint.java). We
+         * therefore assume that the TLAB locations must be killed by every foreign call that is not
+         * fully uninterruptible.
+         */
+        LocationIdentity[] killedLocations;
+        if (foreignCallTargetAnnotation != null && foreignCallTargetAnnotation.fullyUninterruptible()) {
+            VMError.guarantee(isUninterruptible, declaringClass.getName() + "." + methodName + " is marked as fullyUninterruptible but not annotated with @Uninterruptible.");
+            killedLocations = additionalKilledLocations;
+        } else if (additionalKilledLocations.length == 0 || additionalKilledLocations == TLAB_LOCATIONS) {
+            killedLocations = TLAB_LOCATIONS;
+        } else if (containsAny(additionalKilledLocations)) {
+            killedLocations = additionalKilledLocations;
+        } else {
+            killedLocations = new LocationIdentity[TLAB_LOCATIONS.length + additionalKilledLocations.length];
+            System.arraycopy(TLAB_LOCATIONS, 0, killedLocations, 0, TLAB_LOCATIONS.length);
+            System.arraycopy(additionalKilledLocations, 0, killedLocations, TLAB_LOCATIONS.length, additionalKilledLocations.length);
+        }
+
+        boolean isGuaranteedSafepoint = needsDebugInfo && !isUninterruptible;
         return new SubstrateForeignCallDescriptor(descriptorName, foundMethod, isReexecutable, killedLocations, needsDebugInfo, isGuaranteedSafepoint);
+    }
+
+    private static boolean containsAny(LocationIdentity[] locations) {
+        for (LocationIdentity location : locations) {
+            if (location.isAny()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static class SubstrateForeignCallDescriptor extends ForeignCallDescriptor {

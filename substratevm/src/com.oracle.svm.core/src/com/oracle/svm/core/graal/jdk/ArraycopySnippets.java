@@ -60,7 +60,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 
 public final class ArraycopySnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(ArraycopySnippets.class, "doArraycopy", false, LocationIdentity.ANY_LOCATION);
+    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(ArraycopySnippets.class, "doArraycopy", false, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{ARRAYCOPY};
 
     public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {

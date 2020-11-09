@@ -19,6 +19,16 @@ button:hover, button:focus {
 button:focus {
     outline: 1px solid var(--vscode-button-hoverBackground);
 }
+input {
+    border: var(--vscode-input-border);
+    padding: 6px 12px;
+    margin-right: 12px;
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+}
+input:focus {
+    outline-color: var(--vscode-focusBorder);
+}
 .section {
     display: flex;
     flex-flow: column nowrap;

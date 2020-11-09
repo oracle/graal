@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 #if defined(_WIN32)
-// Workaround for static linking. See comment in ffi.h, line 169.
+// Workaround for static linking. See comment in ffi.h, line 115.
 #define FFI_BUILDING
 #endif
 

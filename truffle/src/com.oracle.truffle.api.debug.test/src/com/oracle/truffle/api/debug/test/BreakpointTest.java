@@ -51,6 +51,10 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.net.URI;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -69,7 +73,10 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
+
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 
 public class BreakpointTest extends AbstractDebugTest {
 
@@ -1526,5 +1533,46 @@ public class BreakpointTest extends AbstractDebugTest {
             assertTrue((Boolean) ReflectionUtils.getField(session, "breakpointsUnresolvedEmpty"));
         }
         expectDone();
+    }
+
+    @Test
+    public void testBreakpointInRunningApp() throws Exception {
+        Source testSource = testSource("ROOT(DEFINE(test, ROOT(\n" +
+                        "STATEMENT,\n" +
+                        "STATEMENT,\n" +
+                        "STATEMENT)))");
+
+        final int numChecks = 1000;
+        try (Context context = Context.create()) {
+            Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
+            try (DebuggerSession session = debugger.startSession(event -> {
+            })) {
+                context.eval(testSource);
+                com.oracle.truffle.api.source.Source breakpointSource = getSourceImpl(testSource);
+                ExecutorService instrumentationExecutor = Executors.newSingleThreadExecutor();
+                for (int i = 0; i < numChecks; i++) {
+                    checkParallelBreakpoint(context, session, instrumentationExecutor, breakpointSource);
+                }
+            }
+        }
+    }
+
+    private static void checkParallelBreakpoint(Context context, DebuggerSession session, ExecutorService instrumentationExecutor, com.oracle.truffle.api.source.Source breakpointSource)
+                    throws Exception {
+        AtomicBoolean resolved = new AtomicBoolean(false);
+        Breakpoint breakpoint = Breakpoint.newBuilder(breakpointSource).lineIs(2).resolveListener((b, section) -> {
+            resolved.set(true);
+        }).build();
+        Future<?> instrumentFuture = instrumentationExecutor.submit(() -> {
+            session.install(breakpoint);
+            assertTrue(breakpoint.isResolved());
+        });
+        Value test = context.getBindings(InstrumentationTestLanguage.ID).getMember("test");
+        test.execute();
+        instrumentFuture.get();
+        instrumentationExecutor.submit(() -> {
+            breakpoint.dispose();
+        }).get();
+        assertTrue(resolved.get());
     }
 }

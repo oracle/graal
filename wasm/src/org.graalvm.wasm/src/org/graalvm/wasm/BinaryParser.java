@@ -101,18 +101,27 @@ public class BinaryParser extends BinaryStreamParser {
 
     private final WasmLanguage language;
     private final WasmModule module;
+    private final ModuleLimits moduleLimits;
     private final int[] limitsResult;
 
-    @CompilerDirectives.TruffleBoundary
     public BinaryParser(WasmLanguage language, WasmModule module) {
+        this(language, module, null);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    public BinaryParser(WasmLanguage language, WasmModule module, ModuleLimits moduleLimits) {
         super(module.data());
         this.language = language;
         this.module = module;
         this.limitsResult = new int[2];
+        this.moduleLimits = moduleLimits;
     }
 
     @CompilerDirectives.TruffleBoundary
     public void readModule() {
+        if (moduleLimits != null) {
+            moduleLimits.checkModuleSize(data.length);
+        }
         validateMagicNumberAndVersion();
         readSymbolSections();
     }
@@ -231,6 +240,9 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readTypeSection() {
         int numTypes = readVectorLength();
+        if (moduleLimits != null) {
+            moduleLimits.checkTypeCount(numTypes);
+        }
         for (int t = 0; t != numTypes; ++t) {
             byte type = read1();
             switch (type) {
@@ -247,6 +259,9 @@ public class BinaryParser extends BinaryStreamParser {
         Assert.assertIntEqual(module.symbolTable().maxGlobalIndex(), -1,
                         "The global index should be -1 when the import section is first read.", Failure.UNSPECIFIED_INVALID);
         int numImports = readVectorLength();
+        if (moduleLimits != null) {
+            moduleLimits.checkImportCount(numImports);
+        }
         for (int i = 0; i != numImports; ++i) {
             String moduleName = readName();
             String memberName = readName();
@@ -285,6 +300,9 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readFunctionSection() {
         int numFunctions = readVectorLength();
+        if (moduleLimits != null) {
+            moduleLimits.checkFunctionCount(numFunctions);
+        }
         for (int i = 0; i != numFunctions; ++i) {
             int functionTypeIndex = readUnsignedInt32();
             module.symbolTable().declareFunction(functionTypeIndex);
@@ -318,10 +336,21 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void skipCodeSection() {
+        int numImportedFunctions = module.importedFunctions().size();
+        int expectedNumCodeEntries = module.numFunctions() - numImportedFunctions;
         int numCodeEntries = readVectorLength();
+        if (expectedNumCodeEntries != numCodeEntries) {
+            throw WasmException.format(Failure.UNSPECIFIED_INVALID, null, "Unexpected number of code entries: %d (%d expected).", numCodeEntries, expectedNumCodeEntries);
+        }
         for (int entryIndex = 0; entryIndex != numCodeEntries; ++entryIndex) {
             int codeEntrySize = readUnsignedInt32();
-            offset += codeEntrySize;
+            int nextCodeEntryOffset = offset + codeEntrySize;
+            if (moduleLimits != null) {
+                moduleLimits.checkFunctionSize(codeEntrySize);
+                int localCount = readCodeEntryLocals().size() + module.function(numImportedFunctions + entryIndex).numArguments();
+                moduleLimits.checkLocalCount(localCount);
+            }
+            offset = nextCodeEntryOffset;
         }
     }
 
@@ -961,6 +990,9 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readElementSection() {
         int numElements = readVectorLength();
+        if (moduleLimits != null) {
+            moduleLimits.checkElementSegmentCount(numElements);
+        }
         for (int elemSegmentId = 0; elemSegmentId != numElements; ++elemSegmentId) {
             int tableIndex = readUnsignedInt32();
             // At the moment, WebAssembly (1.0, MVP) only supports one table instance, thus the only
@@ -1036,6 +1068,9 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readExportSection() {
         int numExports = readVectorLength();
+        if (moduleLimits != null) {
+            moduleLimits.checkExportCount(numExports);
+        }
         for (int i = 0; i != numExports; ++i) {
             String exportName = readName();
             byte exportType = readExportType();
@@ -1071,6 +1106,9 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readGlobalSection() {
         int numGlobals = readVectorLength();
+        if (moduleLimits != null) {
+            moduleLimits.checkGlobalCount(numGlobals);
+        }
         int startingGlobalIndex = module.symbolTable().maxGlobalIndex() + 1;
         for (int globalIndex = startingGlobalIndex; globalIndex != startingGlobalIndex + numGlobals; globalIndex++) {
             byte type = readValueType();
@@ -1133,6 +1171,9 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readDataSection(WasmContext linkedContext, WasmInstance linkedInstance) {
         int numDataSegments = readVectorLength();
+        if (moduleLimits != null) {
+            moduleLimits.checkDataSegmentCount(numDataSegments);
+        }
         for (int dataSegmentId = 0; dataSegmentId != numDataSegments; ++dataSegmentId) {
             int memIndex = readUnsignedInt32();
             // At the moment, WebAssembly only supports one memory instance, thus the only valid
@@ -1195,6 +1236,10 @@ public class BinaryParser extends BinaryStreamParser {
         int paramsLength = readVectorLength();
         int resultLength = peekUnsignedInt32(paramsLength);
         resultLength = (resultLength == 0x40) ? 0 : resultLength;
+        if (moduleLimits != null) {
+            moduleLimits.checkParamCount(paramsLength);
+            moduleLimits.checkReturnCount(resultLength);
+        }
         int idx = module.symbolTable().allocateFunctionType(paramsLength, resultLength);
         readParameterList(idx, paramsLength);
         readResultList(idx);
@@ -1296,11 +1341,13 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void readTableLimits(int[] out) {
-        readLimits(TABLE_MAX_SIZE, "initial table size", "max table size", out);
+        long upperBound = (moduleLimits == null) ? TABLE_MAX_SIZE : moduleLimits.getTableSizeLimit();
+        readLimits(upperBound, "initial table size", "max table size", out);
     }
 
     private void readMemoryLimits(int[] out) {
-        readLimits(MEMORY_MAX_PAGES, "initial memory size", "max memory size", out);
+        long upperBound = (moduleLimits == null) ? MEMORY_MAX_PAGES : moduleLimits.getMemorySizeLimit();
+        readLimits(upperBound, "initial memory size", "max memory size", out);
     }
 
     private void readLimits(long upperBound, String minName, String maxName, int[] out) {

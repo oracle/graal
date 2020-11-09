@@ -28,6 +28,7 @@ import java.util.Optional;
 
 @SuppressWarnings("unused")
 interface Metric {
+
     default void beforeIteration(boolean warmup, int iteration, Config config) {
     }
 

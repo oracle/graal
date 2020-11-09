@@ -397,7 +397,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             Class<?> castClass = language.contextClass;
             contextImpl = EngineAccessor.RUNTIME.unsafeCast(contextImpl, castClass, true, castClass != Void.class, true);
         }
-        assert language.contextClass == (contextImpl == null ? Void.class : contextImpl.getClass()) : "Instable context class";
+        assert language.contextClass == (contextImpl == null ? Void.class : contextImpl.getClass()) : "Instable context class: " + language.contextClass + " vs. " +
+                        (contextImpl == null ? Void.class : contextImpl.getClass());
         return contextImpl;
     }
 
@@ -1156,7 +1157,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             } else {
                 targetLanguageContext = getHostContext();
             }
-            return targetLanguageContext.asValue(targetLanguageContext.toGuestValue(hostValue));
+            return targetLanguageContext.asValue(targetLanguageContext.toGuestValue(null, hostValue));
         } catch (Throwable e) {
             throw PolyglotImpl.guestToHostException(this.getHostContext(), e);
         }
@@ -1811,9 +1812,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         EconomicSet<String> allowedLanguages = EconomicSet.create();
         allowedLanguages.addAll(engine.getLanguages().keySet());
         final PolyglotContextConfig config = new PolyglotContextConfig(engine,
-                        engine.out,
-                        engine.err,
-                        engine.in,
+                        System.out,
+                        System.err,
+                        System.in,
                         false,
                         PolyglotAccess.ALL, // TODO change this to NONE with GR-14657
                         false,

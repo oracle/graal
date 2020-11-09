@@ -47,6 +47,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -192,6 +193,8 @@ public class Breakpoint {
     private volatile Assumption conditionExistsUnchanged;
 
     private volatile EventBinding<? extends ExecutionEventNodeFactory> breakpointBinding;
+    private final AtomicBoolean breakpointBindingAttaching = new AtomicBoolean(false);
+    private volatile boolean breakpointBindingReady;
     private volatile Predicate<Source> sourcePredicate;
     private final AtomicReference<EventBinding<?>> sourceBinding = new AtomicReference<>();
 
@@ -355,21 +358,29 @@ public class Breakpoint {
      *
      * @since 0.9
      */
-    public synchronized void dispose() {
-        if (!disposed) {
-            setEnabled(false);
-            final EventBinding<?> binding = sourceBinding.getAndSet(null);
-            if (binding != null) {
-                binding.dispose();
+    public void dispose() {
+        DebuggerSession[] breakpointSessions = null;
+        Debugger breakpointDebugger = null;
+        synchronized (this) {
+            if (!disposed) {
+                setEnabled(false);
+                final EventBinding<?> binding = sourceBinding.getAndSet(null);
+                if (binding != null) {
+                    binding.dispose();
+                }
+                breakpointSessions = sessions.toArray(new DebuggerSession[sessions.size()]);
+                breakpointDebugger = debugger;
+                debugger = null;
+                disposed = true;
             }
-            for (DebuggerSession session : sessions) {
+        }
+        if (breakpointSessions != null) {
+            for (DebuggerSession session : breakpointSessions) {
                 session.disposeBreakpoint(this);
             }
-            if (debugger != null) {
-                debugger.disposeBreakpoint(this);
-                debugger = null;
-            }
-            disposed = true;
+        }
+        if (breakpointDebugger != null) {
+            breakpointDebugger.disposeBreakpoint(this);
         }
     }
 
@@ -462,18 +473,6 @@ public class Breakpoint {
     @Override
     public String toString() {
         return getClass().getSimpleName() + "@" + Integer.toHexString(hashCode());
-    }
-
-    DebuggerNode lookupNode(EventContext context) {
-        if (!isEnabled()) {
-            return null;
-        } else {
-            EventBinding<? extends ExecutionEventNodeFactory> binding = breakpointBinding;
-            if (binding != null) {
-                return (DebuggerNode) context.lookupExecutionEventNode(binding);
-            }
-            return null;
-        }
     }
 
     private synchronized Assumption getConditionUnchanged() {
@@ -592,13 +591,24 @@ public class Breakpoint {
     }
 
     private void assignBinding(SourceSectionFilter locationFilter) {
-        synchronized (this) {
-            if (breakpointBinding == null) {
-                EventBinding<BreakpointNodeFactory> binding = debugger.getInstrumenter().attachExecutionEventFactory(locationFilter, new BreakpointNodeFactory());
-                breakpointBinding = binding;
-                resolved = true;
-                for (DebuggerSession s : sessions) {
-                    s.allBindings.add(binding);
+        boolean attaching = breakpointBindingAttaching.getAndSet(true);
+        if (!attaching) {
+            EventBinding<? extends ExecutionEventNodeFactory> newBinding = null;
+            try {
+                breakpointBinding = newBinding = debugger.getInstrumenter().attachExecutionEventFactory(locationFilter, new BreakpointNodeFactory());
+            } finally {
+                breakpointBindingAttaching.set(false);
+                synchronized (this) {
+                    if (newBinding != null) {
+                        resolved = true;
+                        for (DebuggerSession s : sessions) {
+                            s.allBindings.add(newBinding);
+                        }
+                    }
+                    // If newBinding is null, attach has failed.
+                    // But we notify in any case, breakpoint node might have been installed.
+                    breakpointBindingReady = true;
+                    notifyAll();
                 }
             }
         }
@@ -661,6 +671,7 @@ public class Breakpoint {
         for (DebuggerSession s : sessions) {
             s.allBindings.remove(binding);
         }
+        breakpointBindingReady = false;
         if (binding != null) {
             binding.dispose();
         }
@@ -755,6 +766,17 @@ public class Breakpoint {
                     internalCompliant = caller != null && !caller.node.getRootNode().isInternal();
                 }
                 if (internalCompliant) {
+                    synchronized (this) {
+                        while (!breakpointBindingReady) {
+                            // We need to wait here till we have the binding ready.
+                            // DebuggerSession.collectDebuggerNodes() would not find the
+                            // breakpoint's node otherwise.
+                            try {
+                                wait();
+                            } catch (InterruptedException e) {
+                            }
+                        }
+                    }
                     DebugException de;
                     if (exception != null) {
                         de = new DebugException(session, exception, null, throwLocation, isCatchNodeComputed, catchLocation);
@@ -1329,11 +1351,6 @@ public class Breakpoint {
         @Override
         Breakpoint getBreakpoint() {
             return breakpoint;
-        }
-
-        @Override
-        EventBinding<?> getBinding() {
-            return breakpoint.breakpointBinding;
         }
 
         protected final Object onNode(VirtualFrame frame, boolean onEnter, Object result, Throwable exception) {

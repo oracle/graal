@@ -1242,6 +1242,13 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     void finalizeStore() {
         assert Thread.holdsLock(this.lock);
 
+        this.out = null;
+        this.err = null;
+        this.in = null;
+        this.logHandler = null;
+
+        INSTRUMENT.finalizeStoreInstrumentationHandler(instrumentationHandler);
+
         /*
          * If we store an engine we force initialize multi context to avoid language to do any
          * context related references in the AST, but after, at least for context bound engines we

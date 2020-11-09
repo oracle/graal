@@ -16,7 +16,7 @@ env:
   DB_USER: hibernate_orm_test
   DB_PASSWORD: hibernate_orm_test
   DB_NAME: hibernate_orm_test
-  NATIVE_TEST_MAVEN_OPTS: "-B --settings ${GITHUB_WORKSPACE}/quarkus/.github/mvn-settings.xml --fail-at-end -Dtest-postgresql -Dtest-elasticsearch -Dtest-keycloak -Dtest-amazon-services -Dtest-db2 -Dtest-mysql -Dtest-mariadb -Dmariadb.base_url='jdbc:mariadb://localhost:3308' -Dmariadb.url='jdbc:mariadb://localhost:3308/hibernate_orm_test'  -Dtest-mssql -Dtest-vault -Dtest-neo4j -Dtest-kafka -Dtest-redis -Dnative-image.xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install"
+  NATIVE_TEST_MAVEN_OPTS: "-B --settings ${GITHUB_WORKSPACE}/quarkus/.github/mvn-settings.xml --fail-at-end -Dquarkus.native.container-build=true -Dtest-postgresql -Dtest-elasticsearch -Delasticsearch.hosts='localhost:9200' -Dtest-keycloak -Dtest-amazon-services -Dtest-db2 -Dtest-mysql -Dtest-mariadb -Dmariadb.base_url='jdbc:mariadb://localhost:3308' -Dmariadb.url='jdbc:mariadb://localhost:3308/hibernate_orm_test'  -Dtest-mssql -Dtest-vault -Dtest-neo4j -Dtest-kafka -Dtest-redis -Dnative-image.xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install"
   MX_GIT_CACHE: refcache
 
 jobs:
@@ -163,6 +163,7 @@ jobs:
               hibernate-reactive-postgresql
           - category: Data6
             postgres: "true"
+            elasticsearch: "true"
             timeout: 40
             test-modules: >
               elasticsearch-rest-client
@@ -328,6 +329,12 @@ jobs:
               -Dkeycloak.profile.feature.upload_scripts=enabled" \
             -d quay.io/keycloak/keycloak:11.0.0
         if: matrix.keycloak
+      - name: Elasticsearch Service
+        run: |
+          docker run --rm --publish 9200:9200 --name build-elasticsearch \
+          -e discovery.type=single-node \
+          -d docker.elastic.co/elasticsearch/elasticsearch-oss:7.8.0
+        if: matrix.elasticsearch
       - name: Download GraalVM build
         uses: actions/download-artifact@v1
         with:

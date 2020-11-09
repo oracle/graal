@@ -94,7 +94,7 @@ public final class NativeImageHeapWriter {
             // the read-only static fields have been inlined into the code.
             writeStaticFields(buffer);
 
-            heap.getLayouter().writeMetadata(buffer.getByteBuffer());
+            heap.getLayouter().writeMetadata(buffer.getByteBuffer(), 0);
         }
         return sectionOffsetOfARelocatablePointer;
     }

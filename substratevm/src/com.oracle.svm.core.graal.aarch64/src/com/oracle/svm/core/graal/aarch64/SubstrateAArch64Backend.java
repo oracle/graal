@@ -277,9 +277,9 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         @Override
         public void emitCode(CompilationResultBuilder crb) {
-            /*
-             * We could add some code in debug builds here checking that it is really unreachable.
-             */
+            if (SubstrateUtil.assertionsEnabled()) {
+                ((AArch64MacroAssembler) crb.asm).brk(AArch64MacroAssembler.AArch64ExceptionCode.BREAKPOINT);
+            }
         }
     }
 

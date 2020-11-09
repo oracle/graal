@@ -48,6 +48,9 @@ import sun.util.resources.OpenListResourceBundle;
 @SuppressWarnings({"unused"})
 final class Target_java_util_ResourceBundle {
 
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias)//
+    private static ConcurrentMap<?, ?> cacheList = new ConcurrentHashMap<>();
+
     @Substitute
     private static ResourceBundle getBundle(String baseName) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, Locale.getDefault());

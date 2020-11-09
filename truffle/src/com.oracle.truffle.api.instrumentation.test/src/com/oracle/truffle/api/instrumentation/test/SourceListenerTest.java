@@ -76,6 +76,8 @@ import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
@@ -401,6 +403,52 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         assertEvents(impl.allEvents, source1);
         Truffle.getRuntime().createCallTarget(rootB).call();
         assertEvents(impl.allEvents, source1, source2, source3);
+    }
+
+    @Test
+    public void testExecutionAndSourceListeners() throws Exception {
+        context.initialize(InstrumentationTestLanguage.ID);
+        com.oracle.truffle.api.source.Source source1 = com.oracle.truffle.api.source.Source.newBuilder("", "line1\nline2", null).name("Name1").build();
+        com.oracle.truffle.api.source.Source source2 = com.oracle.truffle.api.source.Source.newBuilder("", "line3\nline4", null).name("Name2").build();
+        Node node1 = new SourceSectionFilterTest.SourceSectionNode(source1.createSection(1));
+        Node node2 = new SourceSectionFilterTest.SourceSectionNode(source2.createSection(1));
+        RootNode root1 = SourceSectionFilterTest.createRootNode(source1.createSection(1, 1, 2, 5), Boolean.FALSE, node1);
+        RootNode root2 = SourceSectionFilterTest.createRootNode(source2.createSection(1, 1, 2, 5), Boolean.FALSE, node2);
+        Truffle.getRuntime().createCallTarget(root1).call();
+        Truffle.getRuntime().createCallTarget(root2);
+        // source1 was loaded and executed, source 2 was loaded only
+
+        Set<String> executedSources = new TreeSet<>();
+        Set<String> loadedSources = new TreeSet<>();
+        instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, new ExecuteSourceListener() {
+            @Override
+            public void onExecute(ExecuteSourceEvent event) {
+                executedSources.add(event.getSource().getName());
+            }
+        }, true).dispose();
+        Assert.assertEquals("[Name1]", executedSources.toString());
+        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
+            @Override
+            public void onLoad(LoadSourceEvent event) {
+                loadedSources.add(event.getSource().getName());
+            }
+        }, true).dispose();
+        Assert.assertEquals("[Name1, Name2]", loadedSources.toString());
+        loadedSources.clear();
+        instrumentEnv.getInstrumenter().visitLoadedSourceSections(SourceSectionFilter.ANY, new LoadSourceSectionListener() {
+            @Override
+            public void onLoad(LoadSourceSectionEvent event) {
+                loadedSources.add(event.getSourceSection().getSource().getName());
+            }
+        });
+        Assert.assertEquals("[Name1, Name2]", loadedSources.toString());
+        instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, new ExecuteSourceListener() {
+            @Override
+            public void onExecute(ExecuteSourceEvent event) {
+                executedSources.add(event.getSource().getName());
+            }
+        }, true).dispose();
+        Assert.assertEquals("[Name1]", executedSources.toString());
     }
 
     @Test
