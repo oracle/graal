@@ -53,6 +53,11 @@ public interface ImageHeapLayouter {
      * Based on the layout decided during an earlier call to {@link #layout}, fill the image heap in
      * the supplied buffer with additional data structures, if any. At this time, the buffer already
      * contains the laid out objects, which are not meant to be modified in this step.
+     *
+     * @param imageHeapOffsetInBuffer The offset of the first byte of the laid out image heap in the
+     *            buffer. If a layouter subclass can be instructed to start laying out the image
+     *            heap at a specific non-zero offset, and the image heap is intended to start at the
+     *            same offset in the given buffer, the same offset must be specified to this method.
      */
-    void writeMetadata(ByteBuffer imageHeapBytes);
+    void writeMetadata(ByteBuffer imageHeapBytes, long imageHeapOffsetInBuffer);
 }
