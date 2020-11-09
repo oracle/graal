@@ -23,6 +23,18 @@
 
 package com.oracle.truffle.espresso.runtime;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
+
+import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.meta.EspressoError;
+
 /**
  * Utility class to provide version checking predicates for clarity in the code base. Avoids
  * cluttering {@link EspressoContext}.
@@ -30,6 +42,8 @@ package com.oracle.truffle.espresso.runtime;
  * Makes it harder to access the raw int version: please add new predicates instead.
  */
 public final class JavaVersion {
+    public static final int LATEST = 11;
+
     private final int version;
 
     JavaVersion(int version) {
@@ -63,6 +77,56 @@ public final class JavaVersion {
     public int classFileVersion() {
         return version + 44;
     }
+
+    // region version checks
+
+    private static final List<String> emptyExcluded = Collections.emptyList();
+    private static final List<String> excludedOptions8 = Arrays.asList(
+                    "java.Module",
+                    "java.ModulePath",
+                    "java.AddExports",
+                    "java.AddModules",
+                    "java.AddOpens",
+                    "java.AddReads");
+
+    void checkVersion(EspressoOptions.VersionType versionType) {
+        boolean b = false;
+        // @formatter:off
+        switch (versionType) {
+            case J8:     b = version == 8;      break;
+            case J11:    b = version == 11;     break;
+            case J17:    b = version == 17;     break;
+            case LATEST: b = version == LATEST; break;
+            case LAX:    b = true;              break;
+        }
+        //@formatter:on
+        EspressoError.guarantee(b,
+                        "Inconsistent versions. Requested version: %s, discovered java home version: %s", versionType.asString(), toString());
+    }
+
+    void checkOptions(OptionValues options) {
+        switch (version) {
+            case 8:
+                optionsCheck(excludedOptions8, options);
+                break;
+            default:
+                optionsCheck(emptyExcluded, options);
+                break;
+        }
+    }
+
+    private static void optionsCheck(List<String> list, OptionValues options) {
+        OptionDescriptors descriptors = options.getDescriptors();
+        for (String str : list) {
+            OptionDescriptor descriptor = descriptors.get(str);
+            if (descriptor != null) {
+                OptionKey<?> key = descriptor.getKey();
+                EspressoError.guarantee(!options.hasBeenSet(key), "unrecognized option: %s", descriptor.getName());
+            }
+        }
+    }
+
+    // endregion version checks
 
     @Override
     public String toString() {

@@ -58,18 +58,18 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         private String currentKey;
         private String currentArgument;
 
-        public Arguments(List<String> arguments) {
+        Arguments(List<String> arguments) {
             this.arguments = arguments;
         }
 
-        public String getArg() {
+        String getArg() {
             assert index < arguments.size();
             String val = arguments.get(index);
             assert val.startsWith(currentKey);
             return val;
         }
 
-        public String getKey() {
+        String getKey() {
             if (currentKey == null) {
                 assert index < arguments.size();
                 String arg = arguments.get(index);
@@ -87,7 +87,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             return currentKey;
         }
 
-        public String getValue(String err) {
+        String getValue(String err) {
             if (currentArgument == null) {
                 index++;
                 if (index < arguments.size()) {
@@ -99,14 +99,14 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             return currentArgument;
         }
 
-        public boolean next() {
+        boolean next() {
             index++;
             currentKey = null;
             currentArgument = null;
             return index < arguments.size();
         }
 
-        public void pushLeftoversArgs() {
+        void pushLeftoversArgs() {
             index += 1;
             if (index < arguments.size()) {
                 mainClassArgs.addAll(arguments.subList(index, arguments.size()));
@@ -424,8 +424,16 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 try {
                     context.eval("java", "<DestroyJavaVM>").execute();
                 } catch (PolyglotException e) {
-                    assert e.isExit();
-                    rc = e.getExitStatus();
+                    /*
+                     * If everything went well, an exit exception is expected here. Failure to see
+                     * an exit exception most likely means something went wrong during context
+                     * initialization.
+                     */
+                    if (e.isExit()) {
+                        rc = e.getExitStatus();
+                    } else {
+                        throw handleUnexpectedDestroy(e);
+                    }
                 }
             }
             /*
@@ -439,6 +447,17 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
              */
             System.exit(rc);
         }
+    }
+
+    private AbortException handleUnexpectedDestroy(PolyglotException e) {
+        String message = e.getMessage();
+        if (message != null) {
+            int colonIdx = message.indexOf(':');
+            if (colonIdx >= 0 && colonIdx + 1 < message.length()) {
+                throw abort(message.substring(colonIdx + 1));
+            }
+        }
+        throw abort(message);
     }
 
     private static void handleMainUncaught(Context context, PolyglotException e) {
