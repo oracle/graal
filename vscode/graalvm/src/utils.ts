@@ -197,7 +197,12 @@ export class MultiStepInput {
 						if (postProcess) {
 							input.enabled = false;
 							input.busy = true;
-							await postProcess(item);
+							try {
+								await postProcess(item);
+							} catch(e) {
+								reject(InputFlowAction.cancel);
+								vscode.window.showErrorMessage(e.message);
+							}
 							input.enabled = true;
 							input.busy = false;
 						}

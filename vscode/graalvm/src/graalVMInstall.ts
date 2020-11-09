@@ -26,9 +26,9 @@ const INSTALL: string = 'Install ';
 const OPTIONAL_COMPONENTS: string = 'Optional GraalVM Components';
 const GRAALVM_EE_LICENSE: string = 'GraalVM Enterprise Edition License';
 
-export async function installGraalVM(extensionPath: string): Promise<void> {
+export async function installGraalVM(context: vscode.ExtensionContext): Promise<void> {
     try {
-        const selected = await selectGraalVMRelease(extensionPath);
+        const selected = await selectGraalVMRelease(context);
         if (selected) {
             const downloadedFile = await dowloadGraalVMRelease(selected.url, selected.location);
             const targetDir = dirname(downloadedFile);
@@ -61,8 +61,8 @@ export async function removeGraalVMInstallation(homeFolder?: string): Promise<nu
     return utils.askYesNo(`Do you want to delete GraalVM installation files from: ${graalFolder}`, () => deleteFolder(graalFolder)).then(() => index);
 }
 
-export async function installGraalVMComponent(component: string | Component, homeFolder?: string, extensionPath?: string): Promise<void> {
-    _callIdGVMHome(component, homeFolder, extensionPath, _installGraalVMComponent);
+export async function installGraalVMComponent(component: string | Component, homeFolder?: string, context?: vscode.ExtensionContext): Promise<void> {
+    _callIdGVMHome(component, homeFolder, context, _installGraalVMComponent);
 }
 
 export async function uninstallGraalVMComponent(component: string | Component, homeFolder?: string): Promise<void> {
@@ -290,7 +290,7 @@ async function _selectInstalledGraalVM(filter?: (vm: {name: string, path: string
     return selected?.detail;
 }
 
-async function selectGraalVMRelease(extensionPath: string): Promise<{url: string, location: string} | undefined> {
+async function selectGraalVMRelease(context: vscode.ExtensionContext): Promise<{url: string, location: string} | undefined> {
 
     interface State {
 		graalVMDistribution: vscode.QuickPickItem;
@@ -357,7 +357,7 @@ async function selectGraalVMRelease(extensionPath: string): Promise<{url: string
         if (state.graalVMDistribution.label === 'Enterprise') {
             const license = await get(releaseInfos[state.graalVMVersion.label][state.javaVersion.label].license, /^text\/plain/);
             const licenseLabel = releaseInfos[state.graalVMVersion.label][state.javaVersion.label].licenseLabel;
-            accepted = await LicenseCheckPanel.show(extensionPath, licenseLabel, license.split('\n').join('<br>'));
+            accepted = await LicenseCheckPanel.show(context, licenseLabel, license.split('\n').join('<br>'));
         } else {
             accepted = true;
         }
@@ -461,29 +461,29 @@ async function extractGraalVM(downloadedFile: string, targetDir: string): Promis
     });
 }
 
-function _callIdGVMHome(component: string | Component, homeFolder: string | undefined, extensionPath: string | undefined, fnc: (id: string, graalVMHome: string, extensionPath?: string) => Promise<void>): Promise<void>{
+function _callIdGVMHome(component: string | Component, homeFolder: string | undefined, context: vscode.ExtensionContext | undefined, fnc: (id: string, graalVMHome: string, context?: vscode.ExtensionContext) => Promise<void>): Promise<void>{
     if (component instanceof Component) {
-        return fnc(component.componentId, component.installation.home, extensionPath);
+        return fnc(component.componentId, component.installation.home, context);
     } else {
-        return fnc(component, homeFolder || getGVMHome(), extensionPath);
+        return fnc(component, homeFolder || getGVMHome(), context);
     }
 }
 
-async function _installGraalVMComponent(componentId: string | undefined, graalVMHome: string, extensionPath?: string): Promise<void> {
-    changeGraalVMComponent(graalVMHome, componentId ? [componentId] : await selectAvailableComponents(graalVMHome), 'install', extensionPath);
+async function _installGraalVMComponent(componentId: string | undefined, graalVMHome: string, context?: vscode.ExtensionContext): Promise<void> {
+    changeGraalVMComponent(graalVMHome, componentId ? [componentId] : await selectAvailableComponents(graalVMHome), 'install', context);
 }
 
 async function _uninstallGraalVMComponent(componentId: string | undefined, graalVMHome: string): Promise<void> {
     changeGraalVMComponent(graalVMHome, componentId ? [componentId] : await selectInstalledComponents(graalVMHome), 'remove');
 }
 
-async function changeGraalVMComponent(graalVMHome: string, componentIds: string[], action: string, extensionPath?: string): Promise<void> {
+async function changeGraalVMComponent(graalVMHome: string, componentIds: string[], action: string, context?: vscode.ExtensionContext): Promise<void> {
     const executablePath = await getGU(graalVMHome);
     let accepted;
     const eeInfo: any = action === 'install' ? await getEEReleaseInfo(graalVMHome) : undefined;
-    if (eeInfo && extensionPath) {
+    if (eeInfo && context) {
         const license = await get(eeInfo.license, /^text\/plain/);
-        accepted = await LicenseCheckPanel.show(extensionPath, eeInfo.licenseLabel, license.split('\n').join('<br>'));
+        accepted = await LicenseCheckPanel.show(context, eeInfo.licenseLabel, license.split('\n').join('<br>'));
     } else {
         accepted = true;
     }
@@ -558,7 +558,9 @@ async function getGraalVMCEReleases(): Promise<any> {
     return Promise.all([
         getGraalVMReleaseURLs(GRAALVM_RELEASES_URL),
         getGraalVMReleaseURLs(GRAALVM_DEV_RELEASES_URL)
-    ]).then(urls => {
+    ]).catch(err => {
+        throw new Error('Cannot get data from server: ' + err.message);
+    }).then(urls => {
         const merged: string[] = Array.prototype.concat.apply([], urls);
         if (merged.length === 0) {
             throw new Error(`No GraalVM installable found for platform ${process.platform}`);
@@ -589,7 +591,9 @@ async function getGraalVMCEReleases(): Promise<any> {
 }
 
 async function getGraalVMEEReleases(): Promise<any> {
-    return get(GDS_URL, /^application\/json/).then(rawData => {
+    return get(GDS_URL, /^application\/json/).catch(err => {
+        throw new Error('Cannot get data from server: ' + err.message);
+    }).then(rawData => {
         const info = JSON.parse(rawData);
         let platform: string = process.platform;
         if (platform === 'win32') {

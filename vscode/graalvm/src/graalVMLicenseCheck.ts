@@ -15,27 +15,33 @@ export class LicenseCheckPanel {
 	public static readonly viewType: string = 'graalVMLicenseCheck';
 
 	private static readonly webviewsFolder: string = 'webviews';
+	private static readonly userEmail: string = 'userEmail';
 
 	private readonly _panel: vscode.WebviewPanel;
 	private _disposables: vscode.Disposable[] = [];
-	private static accepted: string[] = []
+	private static accepted: string[] = [];
 
-	public static show(extensionPath: string, licenseLabel: string, license: string): Promise<boolean> {
+	public static show(context: vscode.ExtensionContext, licenseLabel: string, license: string): Promise<boolean> {
 		if (this.accepted.includes(license)) {
 			return Promise.resolve(true);
 		}
 		return new Promise<boolean>(resolve => {
-			const lcp = new LicenseCheckPanel(extensionPath, licenseLabel, license, (message: any) => {
+			const lcp = new LicenseCheckPanel(context, licenseLabel, license, (message: any) => {
 				if (message.command === 'accepted') {
+					context.globalState.update(LicenseCheckPanel.userEmail, message.email);
 					this.accepted.push(license);
-					resolve(message.value);
 					lcp.dispose();
+					resolve(true);
+				} else {
+					lcp.dispose();
+					resolve(false);
 				}
 			});
 		});
 	}
 
-	private constructor(extensionPath: string, licenseLabel: string, license: string, messageHandler: (message: any) => any) {
+	private constructor(context: vscode.ExtensionContext, licenseLabel: string, license: string, messageHandler: (message: any) => any) {
+		const extensionPath = context.extensionPath;
 		this._panel = vscode.window.createWebviewPanel(LicenseCheckPanel.viewType, licenseLabel,
 			{ viewColumn: vscode.ViewColumn.One, preserveFocus: true },
 			{
@@ -49,7 +55,7 @@ export class LicenseCheckPanel {
 		};
 
 		// Set the webview's html content
-		this.setHtml(extensionPath, license);
+		this.setHtml(extensionPath, license, context.globalState.get(LicenseCheckPanel.userEmail) || '');
 
 		// Listen for when the panel is disposed
 		// This happens when the user closes the panel or when the panel is closed programatically
@@ -59,7 +65,7 @@ export class LicenseCheckPanel {
 		this._panel.onDidChangeViewState(
 			() => {
 				if (this._panel.visible) {
-					this.setHtml(extensionPath, license);
+					this.setHtml(extensionPath, license, context.globalState.get(LicenseCheckPanel.userEmail) || '');
 				}
 			},
 			null,
@@ -74,10 +80,11 @@ export class LicenseCheckPanel {
 		);
 	}
 
-	private setHtml(extensionPath: string, license: string) {
+	private setHtml(extensionPath: string, license: string, email: string) {
 		const templatePath = path.join(extensionPath, LicenseCheckPanel.webviewsFolder, 'licenseCheck.html');
 		this._panel.webview.html = mustache.render(fs.readFileSync(templatePath).toString(), {
 			cspSource: this._panel.webview.cspSource,
+			email,
 			license: license,
 			cssUri: this._panel.webview.asWebviewUri(vscode.Uri.file(path.join(extensionPath, LicenseCheckPanel.webviewsFolder, 'styles', 'licenseCheck.css'))),
 			jsUri: this._panel.webview.asWebviewUri(vscode.Uri.file(path.join(extensionPath, LicenseCheckPanel.webviewsFolder, 'scripts', 'licenseCheck.js')))
