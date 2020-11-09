@@ -55,8 +55,6 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMCheckSymbolNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMCheckSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -77,17 +75,21 @@ import com.oracle.truffle.llvm.runtime.types.Type;
  */
 public final class InitializeSymbolsNode extends LLVMNode {
 
+    final String moduleName;
+
     @Child LLVMAllocateNode allocRoSection;
     @Child LLVMAllocateNode allocRwSection;
 
-    @Children final AllocGlobalNode[] allocGlobals;
-    final String moduleName;
+    /**
+     * Contains the offsets of the {@link #globals} to be allocated. -1 represents a pointer type
+     * ({@link LLVMGlobalContainer}).
+     */
+    @CompilationFinal(dimensions = 1) final int[] globalOffsets;
+    @CompilationFinal(dimensions = 1) final boolean[] globalIsReadOnly;
+    @CompilationFinal(dimensions = 1) final LLVMSymbol[] globals;
 
     @Children final AllocSymbolNode[] allocFuncs;
-
-    @CompilationFinal(dimensions = 1) final LLVMSymbol[] globals;
     @CompilationFinal(dimensions = 1) final LLVMSymbol[] functions;
-    @Children final LLVMCheckSymbolNode[] checkGlobals;
 
     private final LLVMScope fileScope;
     private final NodeFactory nodeFactory;
@@ -107,27 +109,34 @@ public final class InitializeSymbolsNode extends LLVMNode {
         // one for read-only and one for read-write
         DataSection roSection = new DataSection(dataLayout);
         DataSection rwSection = new DataSection(dataLayout);
-        ArrayList<AllocGlobalNode> allocGlobalsList = new ArrayList<>();
-        ArrayList<LLVMSymbol> globalsList = new ArrayList<>();
-        ArrayList<LLVMCheckSymbolNode> checkGlobalsList = new ArrayList<>();
+        List<GlobalVariable> definedGlobals = result.getDefinedGlobals();
+        int globalsCount = definedGlobals.size();
+        this.globalOffsets = new int[globalsCount];
+        this.globalIsReadOnly = new boolean[globalsCount];
+        this.globals = new LLVMSymbol[globalsCount];
         LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
 
-        for (GlobalVariable global : result.getDefinedGlobals()) {
+        for (int i = 0; i < globalsCount; i++) {
+            GlobalVariable global = definedGlobals.get(i);
             Type type = global.getType().getPointeeType();
-            LLVMSymbol symbol = fileScope.get(global.getName());
             if (isSpecialGlobalSlot(type)) {
-                allocGlobalsList.add(new AllocPointerGlobalNode(global));
-                globalsList.add(symbol);
-                checkGlobalsList.add(LLVMCheckSymbolNodeGen.create(symbol));
+                globalOffsets[i] = -1; // pointer type
             } else {
                 // allocate at least one byte per global (to make the pointers unique)
                 if (type.getSize(dataLayout) == 0) {
                     type = PrimitiveType.getIntegerType(8);
                 }
-                allocGlobalsList.add(new AllocOtherGlobalNode(global, type, roSection, rwSection));
-                globalsList.add(symbol);
-                checkGlobalsList.add(LLVMCheckSymbolNodeGen.create(symbol));
+                globalIsReadOnly[i] = global.isReadOnly();
+                DataSection dataSection = globalIsReadOnly[i] ? roSection : rwSection;
+                long offset = dataSection.add(global, type);
+                assert offset >= 0;
+                if (offset > Integer.MAX_VALUE) {
+                    throw CompilerDirectives.shouldNotReachHere("globals section >2GB not supported");
+                }
+                globalOffsets[i] = (int) offset;
             }
+            LLVMSymbol symbol = fileScope.get(global.getName());
+            globals[i] = symbol;
         }
 
         /*
@@ -135,30 +144,26 @@ public final class InitializeSymbolsNode extends LLVMNode {
          * bitcode function, or eager llvm bitcode function.
          */
 
-        ArrayList<AllocSymbolNode> allocFuncsAndAliasesList = new ArrayList<>();
-        ArrayList<LLVMSymbol> functionsList = new ArrayList<>();
-        for (FunctionSymbol functionSymbol : result.getDefinedFunctions()) {
+        List<FunctionSymbol> definedFunctions = result.getDefinedFunctions();
+        int functionCount = definedFunctions.size();
+        this.functions = new LLVMSymbol[functionCount];
+        this.allocFuncs = new AllocSymbolNode[functionCount];
+        for (int i = 0; i < functionCount; i++) {
+            FunctionSymbol functionSymbol = definedFunctions.get(i);
             LLVMFunction function = fileScope.getFunction(functionSymbol.getName());
             LLVMFunctionCode functionCode = new LLVMFunctionCode(function);
             // Internal libraries in the llvm library path are allowed to have intriniscs.
             if (isInternalSulongLibrary && intrinsicProvider.isIntrinsified(function.getName())) {
-                allocFuncsAndAliasesList.add(new AllocIntrinsicFunctionNode(function, functionCode, nodeFactory, intrinsicProvider));
-                functionsList.add(function);
+                allocFuncs[i] = new AllocIntrinsicFunctionNode(function, functionCode, nodeFactory, intrinsicProvider);
             } else if (lazyParsing) {
-                allocFuncsAndAliasesList.add(new AllocLLVMFunctionNode(function, functionCode));
-                functionsList.add(function);
+                allocFuncs[i] = new AllocLLVMFunctionNode(function, functionCode);
             } else {
-                allocFuncsAndAliasesList.add(new AllocLLVMEagerFunctionNode(function, functionCode));
-                functionsList.add(function);
+                allocFuncs[i] = new AllocLLVMEagerFunctionNode(function, functionCode);
             }
+            functions[i] = function;
         }
         this.allocRoSection = roSection.getAllocateNode(nodeFactory, "roglobals_struct", true);
         this.allocRwSection = rwSection.getAllocateNode(nodeFactory, "rwglobals_struct", false);
-        this.allocGlobals = allocGlobalsList.toArray(AllocGlobalNode.EMPTY);
-        this.allocFuncs = allocFuncsAndAliasesList.toArray(AllocSymbolNode.EMPTY);
-        this.globals = globalsList.toArray(LLVMSymbol.EMPTY);
-        this.checkGlobals = checkGlobalsList.toArray(LLVMCheckSymbolNode.EMPTY);
-        this.functions = functionsList.toArray(LLVMSymbol.EMPTY);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -188,20 +193,25 @@ public final class InitializeSymbolsNode extends LLVMNode {
 
     @ExplodeLoop
     private void allocGlobals(LLVMContext context, LLVMPointer roBase, LLVMPointer rwBase) {
-        for (int i = 0; i < allocGlobals.length; i++) {
-            AllocGlobalNode allocGlobal = allocGlobals[i];
-            LLVMCheckSymbolNode checkSymbols = checkGlobals[i];
-            LLVMGlobal descriptor = fileScope.getGlobalVariable(allocGlobal.name);
+        for (int i = 0; i < globals.length; i++) {
+            LLVMSymbol allocGlobal = globals[i];
+            LLVMGlobal descriptor = fileScope.getGlobalVariable(allocGlobal.getName());
             if (descriptor == null) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(String.format("Global variable %s not found", allocGlobal.name));
+                throw new IllegalStateException(String.format("Global variable %s not found", allocGlobal.getName()));
             }
-            if (!checkSymbols.execute()) {
+            if (!LLVMAccessSymbolNode.checkSymbol(allocGlobal, context, this)) {
                 // because of our symbol overriding support, it can happen that the global was
                 // already bound before to a different target location
-                LLVMPointer ref = allocGlobal.allocate(context, roBase, rwBase);
+                LLVMPointer ref;
+                if (globalOffsets[i] == -1) {
+                    ref = LLVMManagedPointer.create(new LLVMGlobalContainer());
+                } else {
+                    LLVMPointer base = globalIsReadOnly[i] ? roBase : rwBase;
+                    ref = base.increment(globalOffsets[i]);
+                }
                 LLVMAccessSymbolNode.writeSymbol(globals[i], ref, context, this);
-                List<LLVMSymbol> list = new ArrayList<>();
+                List<LLVMSymbol> list = new ArrayList<>(1);
                 list.add(descriptor);
                 context.registerSymbolReverseMap(list, ref);
             }
@@ -214,7 +224,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
             AllocSymbolNode allocSymbol = allocFuncs[i];
             LLVMPointer pointer = allocSymbol.allocate(context);
             LLVMAccessSymbolNode.writeSymbol(functions[i], pointer, context, this);
-            List<LLVMSymbol> list = new ArrayList<>();
+            List<LLVMSymbol> list = new ArrayList<>(1);
             list.add(allocSymbol.symbol);
             context.registerSymbolReverseMap(list, pointer);
         }
@@ -370,56 +380,6 @@ public final class InitializeSymbolsNode extends LLVMNode {
         LLVMPointer allocate(LLVMContext context) {
             LLVMFunctionDescriptor functionDescriptor = createAndDefine(context);
             return LLVMManagedPointer.create(functionDescriptor);
-        }
-    }
-
-    abstract static class AllocGlobalNode extends LLVMNode {
-
-        static final AllocGlobalNode[] EMPTY = {};
-
-        final String name;
-
-        AllocGlobalNode(GlobalVariable global) {
-            this.name = global.getName();
-        }
-
-        abstract LLVMPointer allocate(LLVMContext context, LLVMPointer roBase, LLVMPointer rwBase);
-
-        @Override
-        public String toString() {
-            return "AllocGlobal: " + name;
-        }
-    }
-
-    static final class AllocPointerGlobalNode extends AllocGlobalNode {
-
-        AllocPointerGlobalNode(GlobalVariable global) {
-            super(global);
-        }
-
-        @Override
-        LLVMPointer allocate(LLVMContext context, LLVMPointer roBase, LLVMPointer rwBase) {
-            return LLVMManagedPointer.create(new LLVMGlobalContainer());
-        }
-    }
-
-    static final class AllocOtherGlobalNode extends AllocGlobalNode {
-
-        final boolean readOnly;
-        final long offset;
-
-        AllocOtherGlobalNode(GlobalVariable global, Type type, DataSection roSection, DataSection rwSection) throws Type.TypeOverflowException {
-            super(global);
-            this.readOnly = global.isReadOnly();
-
-            DataSection dataSection = readOnly ? roSection : rwSection;
-            this.offset = dataSection.add(global, type);
-        }
-
-        @Override
-        LLVMPointer allocate(LLVMContext context, LLVMPointer roBase, LLVMPointer rwBase) {
-            LLVMPointer base = readOnly ? roBase : rwBase;
-            return base.increment(offset);
         }
     }
 }

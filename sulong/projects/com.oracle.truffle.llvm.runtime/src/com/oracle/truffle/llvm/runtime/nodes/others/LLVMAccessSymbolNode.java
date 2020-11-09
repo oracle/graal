@@ -114,4 +114,26 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
             }
         }
     }
+
+    /**
+     * This method is only intended to be used during initialization of a Sulong library.
+     */
+    public static boolean checkSymbol(LLVMSymbol symbol, LLVMContext context, Node node) {
+        assert !symbol.isAlias();
+        CompilerAsserts.partialEvaluationConstant(symbol);
+        if (symbol.hasValidIndexAndID()) {
+            int bitcodeID = symbol.getBitcodeID(false);
+            if (context.symbolTableExists(bitcodeID)) {
+                AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(bitcodeID);
+                int index = symbol.getSymbolIndex(false);
+                AssumedValue<LLVMPointer> pointer = symbols[index];
+                if (pointer == null) {
+                    return false;
+                }
+                return pointer.get() != null;
+            }
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw new LLVMLinkerException(node, String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
+    }
 }
