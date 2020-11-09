@@ -103,7 +103,9 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
 
     private int initializePrimitiveBlock(LLVMPointer address, LLVMI8OffsetStoreNode storeI8, LLVMI64OffsetStoreNode storeI64, int startOffset, int nextStoreOffset, int bufferOffset) {
         int offset = startOffset;
-        while (offset < nextStoreOffset && ((offset & 0x7) != 0)) {
+        // This loop ensures that the target offset is aligned for the 64-bit write loop below.
+        // (the source offset might not be aligned)
+        while (offset < nextStoreOffset && (((offset - bufferOffset) & 0x7) != 0)) {
             storeI8.executeWithTarget(address, offset - bufferOffset, data[offset]);
             offset++;
         }
