@@ -488,7 +488,7 @@ final class ParserDriver {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         } else {
-            // check if the functions should be resolved eagerly or lazyly.
+            // check if the functions should be resolved eagerly or lazily.
             boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING);
             LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context.isInternalLibraryFile(parserResult.getRuntime().getFile()), dependencies, source, language);
             return Truffle.getRuntime().createCallTarget(loadModules);
