@@ -1172,7 +1172,6 @@ meth public static java.lang.String printCompactTreeToString(com.oracle.truffle.
 meth public static java.lang.String printSourceAttributionTree(com.oracle.truffle.api.nodes.Node)
 meth public static java.lang.String printSyntaxTags(java.lang.Object)
 meth public static java.lang.String printTreeToString(com.oracle.truffle.api.nodes.Node)
-meth public static java.util.Iterator<com.oracle.truffle.api.nodes.Node> makeRecursiveIterator(com.oracle.truffle.api.nodes.Node)
 meth public static java.util.List<com.oracle.truffle.api.nodes.Node> collectNodes(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
 meth public static java.util.List<com.oracle.truffle.api.nodes.Node> findNodeChildren(com.oracle.truffle.api.nodes.Node)
 meth public static void popEncapsulatingNode(com.oracle.truffle.api.nodes.Node)
