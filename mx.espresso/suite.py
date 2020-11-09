@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "5.273.10",
+    "mxversion": "5.275.5",
     "name": "espresso",
 
     # ------------- licenses
@@ -42,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "a145eed23fd5026c9cea83b77604a8aff6b58432",
+                "version": "3881c674263826047e4616a6e26f89e6f6cdf6eb",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -52,7 +52,16 @@ suite = {
                 "name": "tools",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "a145eed23fd5026c9cea83b77604a8aff6b58432",
+                "version": "3881c674263826047e4616a6e26f89e6f6cdf6eb",
+                "urls": [
+                    {"url": "https://github.com/graalvm/graal", "kind": "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            },
+            {
+                "name" : "java-benchmarks",
+                "subdir": True,
+                "version": "3881c674263826047e4616a6e26f89e6f6cdf6eb",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -60,7 +69,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "a72ca6e7f72a4f3b019630baf2a17423eec39072",
+                "version": "2930581daeeb0dca649476f721a9f6a5481841ce",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -82,15 +91,6 @@ suite = {
                     }
                 }
             },
-            {
-                "name" : "java-benchmarks",
-                "subdir": True,
-                "version": "bafb42f3bafdb907f0ad3495fef6cd197a1fc8b1",
-                "urls": [
-                    {"url": "https://github.com/graalvm/graal", "kind": "git"},
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ]
-            }
         ],
     },
     "libraries": {
