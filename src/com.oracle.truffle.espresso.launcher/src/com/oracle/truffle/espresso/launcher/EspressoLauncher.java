@@ -52,59 +52,106 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
     private VersionAction versionAction = VersionAction.None;
     private final Map<String, String> espressoOptions = new HashMap<>();
 
+    private final class Arguments {
+        private final List<String> arguments;
+        private int index = -1;
+        private String currentKey;
+        private String currentArgument;
+
+        public Arguments(List<String> arguments) {
+            this.arguments = arguments;
+        }
+
+        public String getArg() {
+            assert index < arguments.size();
+            String val = arguments.get(index);
+            assert val.startsWith(currentKey);
+            return val;
+        }
+
+        public String getKey() {
+            if (currentKey == null) {
+                assert index < arguments.size();
+                String arg = arguments.get(index);
+                if (arg.startsWith("--")) {
+                    int eqIdx = arg.indexOf('=');
+                    if (eqIdx >= 0) {
+                        currentKey = arg.substring(0, eqIdx);
+                        currentArgument = arg.substring(eqIdx + 1);
+                    }
+                }
+                if (currentKey == null) {
+                    currentKey = arg;
+                }
+            }
+            return currentKey;
+        }
+
+        public String getValue(String err) {
+            if (currentArgument == null) {
+                index++;
+                if (index < arguments.size()) {
+                    currentArgument = arguments.get(index);
+                } else {
+                    throw abort(err);
+                }
+            }
+            return currentArgument;
+        }
+
+        public boolean next() {
+            index++;
+            currentKey = null;
+            currentArgument = null;
+            return index < arguments.size();
+        }
+
+        public void pushLeftoversArgs() {
+            index += 1;
+            if (index < arguments.size()) {
+                mainClassArgs.addAll(arguments.subList(index, arguments.size()));
+            }
+        }
+    }
+
     @Override
     protected List<String> preprocessArguments(List<String> arguments, Map<String, String> unused) {
         String classpath = null;
         String jarFileName = null;
         ArrayList<String> unrecognized = new ArrayList<>();
-        int i = 0;
-        while (i < arguments.size()) {
-            String arg = arguments.get(i);
+        Arguments args = new Arguments(arguments);
+        while (args.next()) {
+            String arg = args.getKey();
             switch (arg) {
                 case "-cp":
                 case "-classpath":
-                    i += 1;
-                    if (i < arguments.size()) {
-                        classpath = arguments.get(i);
-                    } else {
-                        throw abort("Error: " + arg + " requires class path specification");
-                    }
+                    classpath = args.getValue("Error: " + arg + " requires class path specification");
                     break;
                 case "-p":
                 case "--module-path":
-                    parseSpecifiedOption(arguments, ++i, arg, "java.ModulePath", "module path");
+                    parseSpecifiedOption(args, "java.ModulePath", "module path");
                     break;
                 case "--add-modules":
-                    parseNumberedOption(arguments, ++i, arg, "java.AddModules", "module");
+                    parseNumberedOption(args, "java.AddModules", "module");
                     break;
                 case "--add-exports":
-                    parseNumberedOption(arguments, ++i, arg, "java.AddExports", "module");
+                    parseNumberedOption(args, "java.AddExports", "module");
                     break;
                 case "--add-opens":
-                    parseNumberedOption(arguments, ++i, arg, "java.AddOpens", "module");
+                    parseNumberedOption(args, "java.AddOpens", "module");
                     break;
                 case "--add-reads":
-                    parseNumberedOption(arguments, ++i, arg, "java.AddReads", "module");
+                    parseNumberedOption(args, "java.AddReads", "module");
                     break;
                 case "-m":
                 case "--module":
                     /* This arguments specifies in which module we find the main class. */
-                    i += 1;
-                    if (i < arguments.size()) {
-                        mainClassName = arguments.get(i);
-                        espressoOptions.put("java.Module", mainClassName);
-                        launchMode = LaunchMode.LM_MODULE;
-                    } else {
-                        throw abort("Error: " + arg + " requires class path specification");
-                    }
+                    mainClassName = args.getValue("Error: " + arg + " requires class path specification");
+                    espressoOptions.put("java.Module", mainClassName);
+                    launchMode = LaunchMode.LM_MODULE;
                     break;
                 case "-jar":
-                    i += 1;
-                    if (i < arguments.size()) {
-                        jarFileName = arguments.get(i);
-                    } else {
-                        throw abort("Error: " + arg + " requires jar file specification");
-                    }
+                    jarFileName = args.getValue("Error: " + arg + " requires jar file specification");
                     break;
                 case "-version":
                     versionAction = VersionAction.PrintAndExit;
@@ -192,7 +239,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                     } else if (!arg.startsWith("-")) {
                         mainClassName = arg;
                     } else {
-                        unrecognized.add(arg);
+                        unrecognized.add(args.getArg());
                     }
                     break;
             }
@@ -204,13 +251,9 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
                     mainClassName = getMainClassName(jarFileName);
                 }
-                i += 1;
-                if (i < arguments.size()) {
-                    mainClassArgs.addAll(arguments.subList(i, arguments.size()));
-                }
+                args.pushLeftoversArgs();
                 break;
             }
-            i++;
         }
 
         // classpath provenance order:
@@ -233,25 +276,17 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         return unrecognized;
     }
 
-    private void parseNumberedOption(List<String> arguments, int index, String arg, String property, String type) {
-        if (index < arguments.size()) {
-            espressoOptions.merge(property, arguments.get(index), new BiFunction<String, String, String>() {
-                @Override
-                public String apply(String a, String b) {
-                    return a + File.pathSeparator + b;
-                }
-            });
-        } else {
-            throw abort("Error: " + arg + " requires " + type + " specification");
-        }
+    private void parseNumberedOption(Arguments arguments, String property, String type) {
+        espressoOptions.merge(property, arguments.getValue("Error: " + arguments.getKey() + " requires " + type + " specification"), new BiFunction<String, String, String>() {
+            @Override
+            public String apply(String a, String b) {
+                return a + File.pathSeparator + b;
+            }
+        });
     }
 
-    private void parseSpecifiedOption(List<String> arguments, int index, String arg, String property, String type) {
-        if (index < arguments.size()) {
-            espressoOptions.put(property, arguments.get(index));
-        } else {
-            throw abort("Error: " + arg + " requires " + type + " specification");
-        }
+    private void parseSpecifiedOption(Arguments arguments, String property, String type) {
+        espressoOptions.put(property, arguments.getValue("Error: " + arguments.getKey() + " requires " + type + " specification"));
     }
 
     private static String usage() {
