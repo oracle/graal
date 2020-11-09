@@ -26,6 +26,7 @@ import com.oracle.truffle.espresso.classfile.ClassNameFromBytesException;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
+import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -263,6 +264,7 @@ public final class InnerClassRedefiner {
             classLoaderRules = new HashMap<>(4);
             renamingRules.put(classLoader, classLoaderRules);
         }
+        JDWPLogger.log("Renaming inner class: %s to: %s", JDWPLogger.LogLevel.REDEFINE, originalName, newName);
         // TODO(Gregersen) - are the below rules enough to cover all cases for anonymous inner classes?
         // add simple class names
         classLoaderRules.put(originalName, newName);
