@@ -23,6 +23,9 @@
 
 package com.oracle.truffle.espresso.nodes.helper;
 
+import java.util.Arrays;
+import java.util.List;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
@@ -38,10 +41,9 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * This node has 3 stages of specialization:
  * <ul>
  * <li>Trivial: When the node has seen only cases which are trivial to check, only check for those.
- * <li>Cached: The first time the node sees a non-trivial check, invalidate trivial check and start
- * using a cache.
- * <li>When the cache overflows, invalidate it, restore the trivial cases, and start specializing
- * for the general case (interface, array, regular class...)
+ * <li>Cached: The first time the node sees a non-trivial check start using a cache.
+ * <li>When the cache overflows, invalidate it and start specializing for the general case
+ * (interface, array, regular class...)
  * </ul>
  * <p>
  * Note that this node can be used even if the type to check is known to be a constant, as all
@@ -57,6 +59,17 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
 
     public TypeCheckNode(EspressoContext context) {
         this.context = context;
+        assert checkConsistency();
+    }
+
+    private boolean checkConsistency() {
+        ObjectKlass[] arrayInterfaces = getMeta().java_lang_Object_array.getSuperInterfaces();
+        assert arrayInterfaces != null : "Null interface array for array types.";
+        assert arrayInterfaces.length == 2 : "Unexpected number of interfaces for array types";
+        List<ObjectKlass> interfaceList = Arrays.asList(arrayInterfaces);
+        assert interfaceList.contains(getMeta().java_io_Serializable) : "j.l.Serializable removed from array superinterfaces";
+        assert interfaceList.contains(getMeta().java_lang_Cloneable) : "j.l.Cloneable removed from array superinterfaces";
+        return true;
     }
 
     @Specialization(guards = "typeToCheck == k")
