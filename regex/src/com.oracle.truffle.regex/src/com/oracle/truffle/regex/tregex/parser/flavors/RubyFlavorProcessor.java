@@ -1125,7 +1125,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      */
     private boolean stringEscape() {
         if (match("u{")) {
-            getMany(c -> WHITESPACE.get(c));
+            getMany(c ->  ASCII_POSIX_CHAR_CLASSES.get("space").contains(c));
             while (!match("}")) {
                 String code = getMany(RubyFlavorProcessor::isHexDigit);
                 try {
@@ -1230,8 +1230,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             default:
                 if (isOctDigit(ch)) {
                     retreat();
-                    String code = getUpTo(curChar() == '0' ? 2 : 3, RubyFlavorProcessor::isOctDigit);
-                    return Integer.parseInt(code, 8);
+                    String code = getUpTo(3, RubyFlavorProcessor::isOctDigit);
+                    int codePoint = Integer.parseInt(code, 8);
+                    if (codePoint > 0xFF) {
+                        syntaxError("too big number");
+                    }
+                    return codePoint;
                 } else {
                     return ch;
                 }
