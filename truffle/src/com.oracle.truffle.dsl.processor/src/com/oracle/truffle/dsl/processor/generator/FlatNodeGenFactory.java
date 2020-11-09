@@ -3073,7 +3073,7 @@ public class FlatNodeGenFactory {
                 innerBuilder = extractInBoundaryMethod(builder, frameState, specialization);
 
                 for (NodeExecutionData execution : specialization.getNode().getChildExecutions()) {
-                    int index = forType.getVarArgsIndex(execution.getIndex());
+                    int index = forType.getVarArgsIndex(forType.getParameterIndex(execution.getIndex()));
                     if (index != -1) {
                         LocalVariable var = innerFrameState.getValue(execution);
                         innerFrameState.set(execution, var.accessWith(CodeTreeBuilder.singleString(var.getName())));
