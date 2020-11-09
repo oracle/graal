@@ -1037,11 +1037,11 @@ public class SubstrateGraphBuilderPlugins {
      */
     private static void registerAWTPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, GraphicsEnvironment.class);
-        boolean isHeadless = GraphicsEnvironment.isHeadless();
         r.register0("isHeadless", new InvocationPlugin() {
             @SuppressWarnings("unchecked")
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                boolean isHeadless = GraphicsEnvironment.isHeadless();
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isHeadless));
                 return true;
             }
