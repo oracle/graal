@@ -110,9 +110,9 @@ public abstract class SystemPropertiesSupport {
         initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
 
         if (OS.getCurrent() == OS.LINUX && JavaVersionUtil.JAVA_SPEC >= 11) {
-            initializeProperty("awt.toolkit", "sun.awt.X11.XToolkit");
-            initializeProperty("java.awt.graphicsenv", "sun.awt.X11GraphicsEnvironment");
-            initializeProperty("java.awt.printerjob", "sun.print.PSPrinterJob");
+            initializeProperty("awt.toolkit", System.getProperty("awt.toolkit"));
+            initializeProperty("java.awt.graphicsenv", System.getProperty("java.awt.graphicsenv"));
+            initializeProperty("java.awt.printerjob", System.getProperty("java.awt.printerjob"));
         }
 
         lazyRuntimeValues = new HashMap<>();
