@@ -204,6 +204,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
             # We are currently not using the Emscripten projects to compile C files,
             # but we may start building the benchmarks from source in the future.
+            # pylint: disable=unused-variable
             class GraalVmEmscriptenProject(mx_wasm.EmscriptenProject):
                 def getSourceDir(self):
                     return self.subDir
@@ -267,7 +268,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 subDir=join(_suite.dir, 'benchmarks', 'interpreter'),
                 theLicense=None,
                 testProject=True,
-                defaultBuild=True,
+                defaultBuild=False,
             ))
 
 
