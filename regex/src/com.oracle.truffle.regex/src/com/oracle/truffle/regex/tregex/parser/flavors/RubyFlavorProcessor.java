@@ -186,10 +186,14 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      */
     private enum TermCategory {
         /**
-         * A lookahead, lookbehind, beginning-of-string/line, end-of-string/line or
+         * A lookahead or lookbehind assertion.
+         */
+        LookAroundAssertion,
+        /**
+         * An assertion other than lookahead or lookbehind, e.g. beginning-of-string/line, end-of-string/line or
          * (non)-word-boundary assertion.
          */
-        Assertion,
+        OtherAssertion,
         /**
          * A literal character, a character class or a group.
          */
@@ -407,6 +411,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     }
 
     private void advance() {
+        if (atEnd()) {
+            throw syntaxError("unexpected end of pattern");
+        }
         advance(1);
     }
 
@@ -435,12 +442,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
     private boolean atEnd() {
         return position >= inPattern.length();
-    }
-
-    private void mustHaveMore() {
-        if (atEnd()) {
-            throw syntaxError("unexpected end of pattern");
-        }
     }
 
     /// Emitting the translated regular expression
@@ -609,13 +610,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             switch (consumeChar()) {
                 case '\\':
                     // skip control escape sequences, \\cX, \\C-X or \\M-X, which can be nested
-                    while (curChar() == 'c' || curChar() == 'C' || curChar() == 'M') {
-                        if (curChar() == 'c') {
-                            advance(1);
-                        } else {
-                            advance(2);
-                        }
-                    }
+                    while (match("c") || match("C-") || match("M-")) {}
                     // skip escaped char; if it includes a group name, skip that too
                     int c = consumeChar();
                     switch (c) {
@@ -708,6 +703,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
             if (match("|")) {
                 emitSnippet("|");
+                lastTerm = TermCategory.None;
             } else {
                 break;
             }
@@ -780,11 +776,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 break;
             case '^':
                 emitSnippet("(?:^|(?<=[\\n])(?=.))");
-                lastTerm = TermCategory.Assertion;
+                lastTerm = TermCategory.OtherAssertion;
                 break;
             case '$':
                 emitSnippet("(?:$|(?=[\\n]))");
-                lastTerm = TermCategory.Assertion;
+                lastTerm = TermCategory.OtherAssertion;
                 break;
             default:
                 emitChar(ch);
@@ -827,7 +823,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      */
     private void escape() {
         if (assertionEscape()) {
-            lastTerm = TermCategory.Assertion;
+            lastTerm = TermCategory.OtherAssertion;
         } else if (categoryEscape(false)) {
             lastTerm = TermCategory.Atom;
         } else if (backreference()) {
@@ -839,7 +835,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         } else if (extendedGraphemeCluster()) {
             lastTerm = TermCategory.Atom;
         } else if (keepCommand()) {
-            lastTerm = TermCategory.Assertion;
+            lastTerm = TermCategory.OtherAssertion;
         } else if (subexpressionCall()) {
             lastTerm = TermCategory.Atom;
         } else if (stringEscape()) {
@@ -872,13 +868,13 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         int restorePosition = position;
         switch (consumeChar()) {
             case 'A':
-                emitSnippet("^");
+                emitSnippet("(?:^)");
                 return true;
             case 'Z':
                 emitSnippet("(?:$|(?=[\\r\\n]$))");
                 return true;
             case 'z':
-                emitSnippet("$");
+                emitSnippet("(?:$)");
                 return true;
             case 'G':
                 bailOut("\\G escape sequence is not supported");
@@ -1513,6 +1509,14 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * Parses a quantifier whose first character is the argument {@code ch}.
      */
     private void quantifier(int ch) {
+        switch (lastTerm) {
+            case None:
+                throw syntaxError("nothing to repeat");
+            case Quantifier:
+                throw syntaxError("multiple repeat");
+                // TODO: Nested quantifiers should be supported.
+        }
+
         int start = position - 1;
         if (ch == '{') {
             if (match("}") || match(",}")) {
@@ -1556,24 +1560,35 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     emitSnippet(inPattern.substring(start + 2, position));
                 }
             }
+            if (match("?")) {
+                emitSnippet("?");
+            }
         } else {
             emitRawCodepoint(ch);
+            if (match("?")) {
+                emitSnippet("?");
+            } else if (match("+")) {
+                bailOut("possessive quantifiers not supported");
+            }
         }
 
         switch (lastTerm) {
             case None:
-            case Assertion:
                 throw syntaxError("nothing to repeat");
             case Quantifier:
                 throw syntaxError("multiple repeat");
                 // TODO: Nested quantifiers should be supported.
+            case LookAroundAssertion:
+                // A lookaround assertion might contain capture groups and thus have side effects. ECMAScript regular
+                // expressions do not accept extraneous empty matches. Therefore, an expression like /(?:(?=(a)))?/
+                // would capture the 'a' in a capture group in Ruby but it would not do so in ECMAScript. To avoid
+                // this, we bail out on quantifiers on complex assertions (i.e. lookaround assertions), which might
+                // contain capture groups.
+                // NB: This could be made more specific. We could target only lookaround assertions which contain
+                // capture groups and only when the quantifier is actually optional (min = 0, such as ?, *, or {,x}).
+                bailOut("quantifiers on lookaround assertions not supported");
+            case OtherAssertion:
             case Atom:
-                if (match("?")) {
-                    emitSnippet("?");
-                }
-                else if (ch != '{' && match("+")) {
-                    bailOut("possessive quantifiers not supported");
-                }
                 lastTerm = TermCategory.Quantifier;
         }
     }
@@ -1598,7 +1613,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             throw syntaxError("missing ), unterminated subpattern");
         }
         if (match("?")) {
-            mustHaveMore();
             final int ch1 = consumeChar();
             switch (ch1) {
                 case ':':
@@ -1610,7 +1624,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     break;
 
                 case '<': {
-                    mustHaveMore();
                     final int ch2 = consumeChar();
                     switch (ch2) {
                         case '=':
@@ -1727,17 +1740,17 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      */
     private void lookahead(boolean positive) {
         if (positive) {
-            emitSnippet("(?=");
+            emitSnippet("(?:(?=");
         } else {
-            emitSnippet("(?!");
+            emitSnippet("(?:(?!");
         }
         disjunction();
         if (match(")")) {
-            emitSnippet(")");
+            emitSnippet("))");
         } else {
             throw syntaxError("missing ), unterminated subpattern");
         }
-        lastTerm = TermCategory.Assertion;
+        lastTerm = TermCategory.LookAroundAssertion;
     }
 
     /**
@@ -1745,19 +1758,19 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      */
     private void lookbehind(boolean positive) {
         if (positive) {
-            emitSnippet("(?<=");
+            emitSnippet("(?:(?<=");
         } else {
-            emitSnippet("(?<!");
+            emitSnippet("(?:(?<!");
         }
         lookbehindDepth++;
         disjunction();
         lookbehindDepth--;
         if (match(")")) {
-            emitSnippet(")");
+            emitSnippet("))");
         } else {
             throw syntaxError("missing ), unterminated subpattern");
         }
-        lastTerm = TermCategory.Assertion;
+        lastTerm = TermCategory.LookAroundAssertion;
     }
 
     /**
@@ -1856,6 +1869,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
     private void openEndedLocalFlags(RubyFlags newFlags) {
         setLocalFlags(newFlags);
+        lastTerm = TermCategory.None;
         // Using "open-ended" flag modifiers, e.g. /a(?i)b|c/, makes Ruby wrap the continuation
         // of the flag modifier in parentheses, so that the above regex is equivalent to
         // /a(?i:b|c)/.
