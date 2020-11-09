@@ -817,7 +817,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * <li>character class escapes</li>
      * <li>backreferences</li>
      * <li>named backreferences</li>
+     * <li>line breaks</li>
      * <li>extended grapheme clusters</li>
+     * <li>keep commands</li>
      * <li>subexpression calls</li>
      * <li>string escapes</li>
      * <li>character escapes</li>
@@ -832,8 +834,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             lastTerm = TermCategory.Atom;
         } else if (namedBackreference()) {
             lastTerm = TermCategory.Atom;
+        } else if (lineBreak()) {
+            lastTerm = TermCategory.Atom;
         } else if (extendedGraphemeCluster()) {
             lastTerm = TermCategory.Atom;
+        } else if (keepCommand()) {
+            lastTerm = TermCategory.Assertion;
         } else if (subexpressionCall()) {
             lastTerm = TermCategory.Atom;
         } else if (stringEscape()) {
@@ -1141,6 +1147,21 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     }
 
     /**
+     * Parses a line-break matcher. We do not support this because it entails support for atomic expressions,
+     * i.e. cuts in the backtracking.
+     * @return true if parsed correctly
+     */
+    private boolean lineBreak() {
+        if (curChar() == 'R') {
+            advance();
+            bailOut("line break escape not supported");
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
      * Parses an extended grapheme cluster. We do not support this because it entails support for atomic expressions,
      * i.e. cuts in the backtracking.
      * @return true if parsed correctly
@@ -1149,6 +1170,21 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         if (curChar() == 'X') {
             advance();
             bailOut("extended grapheme cluster escape not supported");
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Parses a keep command. This instructs the regex engine to trim the current match to the current position.
+     * ECMAScript regular expressions don't have support for anything of this sort.
+     * @return true if parsed correctly
+     */
+    private boolean keepCommand() {
+        if (curChar() == 'K') {
+            advance();
+            bailOut("keep command not supported");
             return true;
         } else {
             return false;
