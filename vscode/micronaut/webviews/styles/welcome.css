@@ -1,0 +1,228 @@
+body, html {
+	height: 100%;
+}
+
+.welcomePageContainer {
+	align-items: center;
+	display: flex;
+	justify-content: center;
+	min-width: 100%;
+	min-height: 100%;
+}
+
+.welcomePage {
+	width: 90%;
+	max-width: 1200px;
+	font-size: 10px;
+}
+
+.welcomePage .content {
+	display: flex;
+	flex-flow: row;
+}
+
+.welcomePage .content .section {
+	overflow: hidden;
+}
+
+.welcomePage .content .links {
+	overflow: hidden;
+}
+
+.welcomePage .content .docs {
+	overflow: hidden;
+}
+
+.welcomePage .content .docs .list {
+	overflow: hidden;
+}
+
+@media (max-height:530px) {
+	.welcomePage .title {
+		display: none;
+	}
+}
+
+.welcomePage .title {
+	margin-top: 1em;
+	margin-bottom: 3em;
+	flex: 1 100%;
+}
+
+.welcomePage .subtitle {
+	margin-top: .8em;
+	font-size: 2.6em;
+	display: block;
+}
+
+.welcomePage .links,
+.welcomePage .docs {
+	flex: 1 1 0;
+}
+
+.welcomePage .links .section {
+	margin-bottom: 2em;
+}
+
+.welcomePage .links ul {
+	margin: 0;
+	font-size: 1.3em;
+	list-style: none;
+	padding: 0;
+}
+
+.welcomePage .links li {
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.welcomePage .links .title {
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.welcomePage .docs .list {
+	list-style: none;
+	padding: 0;
+}
+
+.welcomePage .docs .item {
+	margin: 7px 0px;
+}
+
+.welcomePage .docs .item .button {
+	border: none;
+	margin: 1px;
+	padding: 12px 10px;
+	font-size: 1.3em;
+	text-align: left;
+	cursor: pointer;
+	white-space: nowrap;
+	font-family: inherit;
+	background: rgba(0, 0, 0, .04);
+}
+
+.welcomePage .docs .item a.button:hover {
+	background: rgba(0, 0, 0, .1);
+}
+
+.welcomePage .docs .item .button .detail {
+	color: var(--vscode-descriptionForeground);
+}
+
+.welcomePage .docs .item .button > span {
+	display: inline-block;
+	width: 100%;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.welcomePage .docs .item .button h3 {
+	color: var(--vscode-foreground);
+	font-weight: normal;
+	font-size: 1em;
+	margin: 0;
+	margin-bottom: .25em;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.welcomePage .footer .showOnStartup {
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.welcomePage .footer {
+	padding-top: 1em;
+}
+
+.welcomePage .footer .showOnStartup > .checkbox {
+	vertical-align: bottom;
+}
+
+.welcomePage .footer .showOnStartup > .checkbox:focus {
+	outline: 1px solid;
+	outline-color: var(--vscode-focusBorder);
+}
+
+
+.welcomePage p {
+	font-size: 1.3em;
+}
+
+.welcomePage a {
+	text-decoration: none;
+}
+
+.button {
+	display: block;
+	height: auto;
+	width: auto;
+}
+
+.welcomePage a:focus {
+	outline: 1px solid;
+	outline-offset: -1px;
+	outline-color: var(--vscode-focusBorder);
+}
+
+.welcomePage h1 {
+	padding: 0;
+	margin: 0;
+	border: none;
+	font-weight: normal;
+	font-size: 3.6em;
+	white-space: nowrap;
+}
+
+.welcomePage h2 {
+	font-weight: 200;
+	margin-top: 17px;
+	margin-bottom: 5px;
+	font-size: 1.9em;
+	line-height: initial;
+}
+
+
+.vscode-dark .welcomePage .docs .item .button {
+	color: var(--vscode-foreground);
+	background: rgba(0, 0, 0, .2);
+}
+
+.vscode-dark .welcomePage .docs .item a.button:hover {
+	background: rgba(255, 255, 255, .1);
+}
+
+
+.vscode-high-contrast .welcomePage .docs .item .button > h3 {
+	color: var(--vscode-foreground);
+	font-weight: bold;
+}
+
+.vscode-high-contrast .welcomePage .docs .item .button {
+	color: var(--vscode-foreground);
+	border-width: 1px;
+	border-style: solid;
+	border-color: var(--vscode-contrastBorder);
+}
+
+.vscode-high-contrast .welcomePage .docs .item a.button:hover {
+	outline-width: 1px;
+	outline-style: dashed;
+	outline-offset: -5px;
+	outline-color: var(--vscode-focusBorder);
+}
+
+.vscode-high-contrast .welcomePage a:focus {
+	outline-color: var(--vscode-focusBorder);
+}

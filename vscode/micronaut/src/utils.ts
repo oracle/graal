@@ -5,7 +5,47 @@
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
  */
 
-import * as vscode from "vscode";
+import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+
+export async function micronautProjectExists(): Promise<boolean> {
+	return (await vscode.workspace.findFiles('**/micronaut-cli.yml', '**/node_modules/**')).length > 0;
+}
+
+export function getJavaHome(): string {
+	let javaHome: string = vscode.workspace.getConfiguration('graalvm').get('home') as string;
+	if (javaHome) {
+		return javaHome;
+	}
+	javaHome = process.env['GRAALVM_HOME'] as string;
+	if (javaHome) {
+		return javaHome;
+	}
+	javaHome = vscode.workspace.getConfiguration('java').get('home') as string;
+	if (javaHome) {
+		return javaHome;
+	}
+	javaHome = process.env['JAVA_HOME'] as string;
+	return javaHome;
+}
+
+export function findExecutable(program: string, home: string): string | undefined {
+    if (home) {
+        let executablePath = path.join(home, 'bin', program);
+        if (process.platform === 'win32') {
+            if (fs.existsSync(executablePath + '.cmd')) {
+                return executablePath + '.cmd';
+            }
+            if (fs.existsSync(executablePath + '.exe')) {
+                return executablePath + '.exe';
+            }
+        } else if (fs.existsSync(executablePath)) {
+            return executablePath;
+        }
+    }
+    return undefined;
+}
 
 class InputFlowAction {
 	static back = new InputFlowAction();
@@ -96,6 +136,7 @@ export class MultiStepInput {
 					...(this.steps.length > 1 ? [vscode.QuickInputButtons.Back] : []),
 					...(buttons || [])
 				];
+				input.ignoreFocusOut = true;
 				disposables.push(
 					input.onDidTriggerButton(item => {
 						if (item === vscode.QuickInputButtons.Back) {
@@ -139,6 +180,7 @@ export class MultiStepInput {
 					...(this.steps.length > 1 ? [vscode.QuickInputButtons.Back] : []),
 					...(buttons || [])
 				];
+				input.ignoreFocusOut = true;
 				let validating = validate('');
 				disposables.push(
 					input.onDidTriggerButton(item => {
