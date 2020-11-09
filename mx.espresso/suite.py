@@ -363,12 +363,12 @@ suite = {
         "com.oracle.truffle.espresso.dacapo": {
             "subDir": "src",
             "sourceDirs": ["src"],
-            "testProject": True,
             "dependencies": [
                 "java-benchmarks:DACAPO_SCALA",
             ],
             "javaCompliance": "8+",
             "checkstyle": "com.oracle.truffle.espresso",
+            "testProject" : True,
         },
     },
 
@@ -539,6 +539,7 @@ suite = {
                 "com.oracle.truffle.espresso.dacapo",
                 "java-benchmarks:DACAPO_SCALA",
             ],
+            "testDistribution": True,
             "manifestEntries" : {
                     "Manifest-Version": "1.0",
                     "Build-Timestamp": "2012-02-16T11:12:52",
