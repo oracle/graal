@@ -25,23 +25,18 @@
 package com.oracle.svm.agent.restrict;
 
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
-import static com.oracle.svm.jvmtiagentbase.Support.clearException;
 import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
-import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOrNull;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.lang.reflect.Modifier;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.configure.config.ConfigurationMethod;
@@ -51,33 +46,96 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-import com.oracle.svm.jvmtiagentbase.Support;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 
-import jdk.vm.ci.meta.MetaUtil;
-
 public class TypeAccessChecker {
-    private final Set<String> exposedInnerClasses = ConcurrentHashMap.newKeySet();
     private final TypeConfiguration configuration;
 
     public TypeAccessChecker(TypeConfiguration configuration) {
         this.configuration = configuration;
     }
 
+    /**
+     * @return true iff the class is a part of the config or is an inner class exposed by it's
+     *         declaring class
+     */
     public boolean isClassAccessible(String classname) {
-        return configuration.get(classname) != null || exposedInnerClasses.contains(classname);
-    }
-
-    public boolean isClassAccessible(JNIEnvironment env, JNIObjectHandle clazz) {
-        if (getType(clazz) != null) {
+        if (configuration.get(classname) != null) {
             return true;
         }
-        String classname = getClassNameOrNull(env, clazz);
-        return classname != null && exposedInnerClasses.contains(classname);
+
+        String declaringClassname = getDeclaringClassOf(classname);
+        if (declaringClassname == null) {
+            return false;
+        }
+        ConfigurationType declaringClass = configuration.get(declaringClassname);
+        return declaringClass != null && (declaringClass.haveAllDeclaredClasses() || (declaringClass.haveAllPublicClasses() && isPublic(classname)));
+    }
+
+    private String getDeclaringClassOf(String classname) {
+        int split = classname.lastIndexOf("$");
+        if (split == -1) {
+            return null;
+        }
+        return classname.substring(0, split);
+    }
+
+    private boolean isPublic(String classname) {
+        // todo load the class and check
+        return true;
+    }
+
+    /**
+     *
+     * @return true iff the class is a part of the config or is an inner class exposed by any class
+     *         on the path from the caller class to the declaring class
+     */
+    public boolean isInnerClassAccessible(JNIEnvironment env, JNIObjectHandle queriedClass, JNIObjectHandle innerClass, JNIObjectHandle declaringClass) {
+        if (getType(queriedClass) != null) { // todo the class has to be explicitly specified now,
+                                             // allow for inner lookup?
+            return false;
+        }
+
+        ConfigurationType declaringType = getType(declaringClass);
+        if (declaringType != null) {
+            if (declaringType.haveAllDeclaredClasses()) {
+                return true;
+            }
+        }
+
+        CIntPointer modifiers = StackValue.get(CIntPointer.class);
+        if (jvmtiFunctions().GetClassModifiers().invoke(jvmtiEnv(), innerClass, modifiers) == JvmtiError.JVMTI_ERROR_NONE) {
+            // Checkstyle: allow reflection
+            boolean isPublic = (modifiers.read() & Modifier.PUBLIC) != 0;
+            if (isPublic) {
+                if (declaringType != null && declaringType.haveAllPublicClasses()) {
+                    return true;
+                }
+
+                if (declaringClass.notEqual(queriedClass)) {
+                    JNIObjectHandle current = queriedClass;
+                    do {
+                        ConfigurationType currentType = getType(current);
+                        if (currentType != null && currentType.haveAllPublicClasses()) {
+                            return true;
+                        }
+
+                        if (testInterfacesBetween(env, declaringClass, current, ConfigurationType::haveAllPublicClasses)) {
+                            return true;
+                        }
+
+                        current = jniFunctions().getGetSuperclass().invoke(env, current);
+                    } while (current.notEqual(nullHandle()) && jniFunctions().getIsAssignableFrom().invoke(env, current, declaringClass));
+                }
+            }
+        }
+
+        return false;
     }
 
     public boolean isFieldAccessible(JNIEnvironment env, JNIObjectHandle clazz, Supplier<String> name, JNIFieldId field, JNIObjectHandle declaring) {
-        if (!isClassAccessible(env, clazz)) { // queried class must be registered
+        if (getType(clazz) != null) { // queried class must be registered todo use isAccessible or
+                                      // not?
             return false;
         }
         ConfigurationType declaringType = getType(declaring);
@@ -123,7 +181,8 @@ public class TypeAccessChecker {
     }
 
     public boolean isMethodAccessible(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIMethodId method, JNIObjectHandle declaring) {
-        if (!isClassAccessible(env, clazz)) { // queried class must be registered
+        if (getType(clazz) != null) { // queried class must be registered todo use isAccessible or
+                                      // not?
             return false;
         }
         boolean isConstructor = ConfigurationMethod.CONSTRUCTOR_NAME.equals(name);
@@ -207,46 +266,5 @@ public class TypeAccessChecker {
             }
         }
         return false;
-    }
-
-    public void collectInnerClasses(JNIEnvironment env, JNIMethodId publicClassesHandle, JNIMethodId declaredClassesHandle) {
-        for (ConfigurationType type : configuration.getTypes()) {
-            if (type.haveAllPublicClasses() || type.haveAllDeclaredClasses()) {
-                String internalName = MetaUtil.toInternalName(type.getQualifiedJavaName());
-                try (CTypeConversion.CCharPointerHolder cCharPointerHolder = Support.toCString(internalName)) {
-                    JNIObjectHandle clazz = jniFunctions().getFindClass().invoke(env, cCharPointerHolder.get());
-                    if (clearException(env)) {
-                        System.err.println("Could not find class " + type.getQualifiedJavaName() + " to access its inner classes");
-                        continue;
-                    }
-
-                    if (type.haveAllPublicClasses()) {
-                        collectInnerClassesOf(env, clazz, publicClassesHandle);
-                    }
-                    if (type.haveAllDeclaredClasses()) {
-                        collectInnerClassesOf(env, clazz, declaredClassesHandle);
-                    }
-
-                }
-            }
-        }
-    }
-
-    private void collectInnerClassesOf(JNIEnvironment env, JNIObjectHandle handle, JNIMethodId method) {
-        JNIObjectHandle array = Support.callObjectMethod(env, handle, method);
-        if (!clearException(env)) {
-            int length = jniFunctions().getGetArrayLength().invoke(env, array);
-            if (length > 0 && !clearException(env)) {
-                for (int i = 0; i < length; i++) {
-                    JNIObjectHandle elem = jniFunctions().getGetObjectArrayElement().invoke(env, array, i);
-                    if (!clearException(env)) {
-                        String classname = getClassNameOrNull(env, elem);
-                        if (classname != null) {
-                            exposedInnerClasses.add(classname);
-                        }
-                    }
-                }
-            }
-        }
     }
 }

@@ -419,6 +419,10 @@ public final class Support {
         T get();
     }
 
+    public interface WordFunction<T extends WordBase, R extends WordBase> {
+        R apply(T t);
+    }
+
     private Support() {
     }
 }

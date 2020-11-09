@@ -60,6 +60,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaLangInvokeMemberNameIsConstructor;
     public final JNIMethodId javaLangClassGetClasses;
     public final JNIMethodId javaLangClassGetDeclaredClasses;
+    public final JNIMethodId javaLangClassGetDeclaringClass;
 
     // HotSpot crashes when looking these up eagerly
     private JNIObjectHandle javaLangReflectField;
@@ -84,6 +85,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
         javaLangClassGetClasses = getMethodId(env, javaLangClass, "getClasses", "()[Ljava/lang/Class;", false);
         javaLangClassGetDeclaredClasses = getMethodId(env, javaLangClass, "getDeclaredClasses", "()[Ljava/lang/Class;", false);
+        javaLangClassGetDeclaringClass = getMethodId(env, javaLangClass, "getDeclaringClass", "()Ljava/lang/Class;", false);
 
         JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
         javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);

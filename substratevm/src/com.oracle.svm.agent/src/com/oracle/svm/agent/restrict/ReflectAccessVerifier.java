@@ -50,6 +50,7 @@ import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.Support.WordFunction;
 import com.oracle.svm.jvmtiagentbase.Support.WordSupplier;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 
@@ -139,12 +140,13 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         return method.isNull() || typeAccessChecker.isMethodAccessible(env, clazz, name, signature, method, declaring);
     }
 
-    public JNIObjectHandle filterGetClasses(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle array, WordSupplier<JNIObjectHandle> elementClass, JNIObjectHandle callerClass) {
-        if (shouldApproveWithoutChecks(env, clazz, callerClass)) {
+    public JNIObjectHandle filterGetClasses(JNIEnvironment env, JNIObjectHandle queriedClass, JNIObjectHandle array, WordSupplier<JNIObjectHandle> elementClass, JNIObjectHandle callerClass,
+                    WordFunction<JNIObjectHandle, JNIObjectHandle> getDeclaringClass, boolean declaredOnly) {
+        if (shouldApproveWithoutChecks(env, queriedClass, callerClass)) {
             return array;
         }
 
-        WordPredicate<JNIObjectHandle> predicate = c -> typeAccessChecker.isClassAccessible(env, c);
+        WordPredicate<JNIObjectHandle> predicate = c -> typeAccessChecker.isInnerClassAccessible(env, queriedClass, c, declaredOnly ? queriedClass : getDeclaringClass.apply(c));
         return filterArray(env, array, elementClass, predicate);
     }
 

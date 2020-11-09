@@ -289,14 +289,14 @@ final class BreakpointInterceptor {
     }
 
     private static boolean getClasses(JNIEnvironment jni, Breakpoint bp) {
-        return handleGetClasses(jni, bp, () -> agent.handles().javaLangClass);
+        return handleGetClasses(jni, bp, false, () -> agent.handles().javaLangClass);
     }
 
     private static boolean getDeclaredClasses(JNIEnvironment jni, Breakpoint bp) {
-        return handleGetClasses(jni, bp, () -> agent.handles().javaLangClass);
+        return handleGetClasses(jni, bp, true, () -> agent.handles().javaLangClass);
     }
 
-    private static boolean handleGetClasses(JNIEnvironment jni, Breakpoint bp, WordSupplier<JNIObjectHandle> elementClass) {
+    private static boolean handleGetClasses(JNIEnvironment jni, Breakpoint bp, boolean declaredOnly, WordSupplier<JNIObjectHandle> elementClass) {
         JNIObjectHandle callerClass = getDirectCallerClass();
         JNIObjectHandle self = getObjectArgument(0);
         JNIObjectHandle returnResult = nullHandle();
@@ -306,7 +306,8 @@ final class BreakpointInterceptor {
                 returnResult = nullHandle();
             }
             if (returnResult.notEqual(nullHandle())) {
-                returnResult = accessVerifier.filterGetClasses(jni, self, returnResult, elementClass, callerClass);
+                returnResult = accessVerifier.filterGetClasses(jni, self, returnResult, elementClass, callerClass,
+                                c -> Support.callObjectMethod(jni, c, agent.handles().javaLangClassGetDeclaringClass), declaredOnly);
             }
         }
         traceBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, null);
