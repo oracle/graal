@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.test.TruffleExceptionTest.createAST;
 import static com.oracle.truffle.api.test.TruffleExceptionTest.createContext;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -53,8 +54,11 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.TruffleExceptionTest.BlockNode;
+import com.oracle.truffle.api.test.TruffleExceptionTest.TestRootNode;
+import com.oracle.truffle.api.test.TruffleExceptionTest.ThrowNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.Before;
@@ -120,6 +124,24 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
         assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class, (e) -> {
             Assert.assertTrue(e.isCancelled());
             Assert.assertNotNull(e.getGuestObject());
+        });
+    }
+
+    @Test
+    public void testPolyglotStackTrace() {
+        setupEnv(Context.create(), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                ThrowNode throwNode = new ThrowNode((n) -> {
+                    return new LegacyCatchableException("Test exception", n);
+                });
+                return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test", null, throwNode));
+            }
+        });
+        assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class, (pe) -> {
+            TruffleExceptionTest.verifyStackTrace(pe,
+                            "<proxyLanguage> test",
+                            "(org.graalvm.sdk/)?org.graalvm.polyglot.Context.eval");
         });
     }
 
