@@ -47,17 +47,14 @@ import com.oracle.truffle.regex.RegexSource;
  */
 public final class RubyFlavor implements RegexFlavor {
 
-    public static final RubyFlavor INSTANCE = new RubyFlavor(false);
+    public static final RubyFlavor INSTANCE = new RubyFlavor();
 
-    private final boolean bytes;
-
-    private RubyFlavor(boolean bytes) {
-        this.bytes = bytes;
+    private RubyFlavor() {
     }
 
     @Override
     public RegexFlavorProcessor forRegex(RegexSource source) {
-        return new RubyFlavorProcessor(source, bytes);
+        return new RubyFlavorProcessor(source);
     }
 
 }
