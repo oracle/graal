@@ -40,7 +40,7 @@ _native_image_vm_registry = mx_benchmark.VmRegistry('NativeImage', 'ni-vm')
 _gu_vm_registry = mx_benchmark.VmRegistry('GraalUpdater', 'gu-vm')
 _polybench_vm_registry = mx_benchmark.VmRegistry('PolyBench', 'polybench-vm')
 _polybench_modes = [
-    ('default', ['--mode=default']),
+    ('standard', ['--mode=standard']),
     ('interpreter', ['--mode=interpreter']),
 ]
 
@@ -686,7 +686,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         if len(benchmarks) != 1:
             mx.abort("Can only specify one benchmark at a time.")
         benchmark_path = os.path.join(_suite.dir, "benchmarks", benchmarks[0])
-        return ["--metric=peak-time", "--path=" + benchmark_path]
+        return ["--path=" + benchmark_path]
 
     def get_vm_registry(self):
         return _polybench_vm_registry
