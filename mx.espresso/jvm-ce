@@ -1,4 +1,4 @@
-# mx --dy /vm,/compiler --disable-polyglot graalvm-show
+# mx --dy /vm,/compiler --components="Espresso,GraalVM compiler" --disable-polyglot graalvm-show
 
 DYNAMIC_IMPORTS=/vm,/compiler
 COMPONENTS=Espresso,GraalVM compiler
