@@ -60,6 +60,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
+    private static String javaRuntimeVersion = System.getProperty("java.runtime.version");
+
     @Override
     public boolean consume(Queue<String> args) {
         String headArg = args.peek();
@@ -82,7 +84,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (!NativeImage.graalvmConfig.isEmpty()) {
                     message += " " + NativeImage.graalvmConfig;
                 }
-                message += " (Java Version " + System.getProperty("java.runtime.version") + ")";
+                message += " (Java Version " + javaRuntimeVersion + ")";
                 nativeImage.showMessage(message);
                 System.exit(0);
                 return true;
