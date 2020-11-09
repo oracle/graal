@@ -1028,16 +1028,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             if (lookbehindDepth > 0) {
                 throw syntaxError("invalid pattern in look-behind");
             }
-            if (groupNumber > groupIndex) {
-                // forward reference
-                if (groupNumber >= 10) {
-                    // forward references >= 10 are interpreted as octal escapes instead
-                    position = restorePosition;
-                    return false;
-                }
-                // TODO: figure out if we can support forward references in cases like these
-                // {@code /(?:(\2)|(.))+/.match("aa")}
-                bailOut("forward references are not supported");
+            if (groupNumber > groupIndex && groupNumber >= 10) {
+                // forward references >= 10 are interpreted as octal escapes instead
+                position = restorePosition;
+                return false;
             }
             emitBackreference(groupNumber);
             return true;
