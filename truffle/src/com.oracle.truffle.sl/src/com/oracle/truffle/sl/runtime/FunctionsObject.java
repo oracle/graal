@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.runtime;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
@@ -129,7 +130,7 @@ final class FunctionsObject implements TruffleObject {
     @ExportLibrary(InteropLibrary.class)
     static final class FunctionNamesObject implements TruffleObject {
 
-        private final Object[] names;
+        @CompilationFinal(dimensions = 1) private final Object[] names;
 
         FunctionNamesObject(Object[] names) {
             this.names = names;
