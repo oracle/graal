@@ -25,14 +25,14 @@ package com.oracle.truffle.espresso.analysis.liveness.actions;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
 public final class MultiAction extends LocalVariableAction {
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final int[] actions;
+    @CompilationFinal(dimensions = 1) private final int[] actions;
 
     public MultiAction(int[] actions) {
         this.actions = actions;

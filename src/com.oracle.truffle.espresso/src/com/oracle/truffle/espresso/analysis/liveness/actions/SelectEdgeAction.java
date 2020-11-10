@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.analysis.liveness.actions;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.analysis.liveness.EdgeAction;
@@ -31,9 +31,9 @@ import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
 public class SelectEdgeAction implements EdgeAction {
-    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    @CompilationFinal(dimensions = 1) //
     private final int[] from;
-    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    @CompilationFinal(dimensions = 1) //
     private final LocalVariableAction[] actions;
 
     public SelectEdgeAction(int[] from, LocalVariableAction[] actions) {
