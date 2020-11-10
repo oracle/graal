@@ -1611,7 +1611,7 @@ def maven_plugin_test(args):
         maven_opts.append('--add-exports=java.base/jdk.internal.module=ALL-UNNAMED')
     env['MAVEN_OPTS'] = ' '.join(maven_opts)
     config = graalvm_config()
-    with native_image_context(IMAGE_ASSERTION_FLAGS, config=config) as native_image:
+    with native_image_context(IMAGE_ASSERTION_FLAGS, config=config):
         env['JAVA_HOME'] = _vm_home(config)
         mx.run_maven(['-e', 'package'], cwd=proj_dir, env=env)
     mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])
