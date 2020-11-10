@@ -30,7 +30,6 @@ import java.util.BitSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.analysis.BlockIterator;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.GraphBuilder;
 import com.oracle.truffle.espresso.analysis.Util;
@@ -125,8 +124,8 @@ public class LivenessAnalysis {
             // load/stores.
             LoadStoreFinder loadStoreClosure;
             try (DebugCloseable loadStore = LOADSTORE_TIMER.scope(scope)) {
-                loadStoreClosure = new LoadStoreFinder(graph);
-                BlockIterator.analyze(method, graph, loadStoreClosure);
+                loadStoreClosure = new LoadStoreFinder(graph, method);
+                loadStoreClosure.analyze();
             }
 
             // Computes the entry/end live sets for each variable for each block.

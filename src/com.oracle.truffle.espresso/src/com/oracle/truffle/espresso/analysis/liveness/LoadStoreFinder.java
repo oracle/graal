@@ -68,24 +68,35 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.RET;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.isLoad;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.isStore;
 
-import com.oracle.truffle.espresso.analysis.AnalysisProcessor;
-import com.oracle.truffle.espresso.analysis.BlockIterator;
-import com.oracle.truffle.espresso.analysis.BlockIteratorClosure;
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.impl.Method;
 
 /**
  * Examines each block's opodes to find all relevant history for Liveness analysis (ie: finds LOADs,
  * STOREs and IINCs).
  */
-public final class LoadStoreFinder extends BlockIteratorClosure {
+public final class LoadStoreFinder {
 
+    private final Graph<? extends LinkedBlock> graph;
     private final History[] blockHistory;
+    private final BytecodeStream bs;
 
-    @Override
-    public BlockIterator.BlockProcessResult processBlock(LinkedBlock b, BytecodeStream bs, AnalysisProcessor processor) {
+    public LoadStoreFinder(Graph<? extends LinkedBlock> graph, Method method) {
+        this.graph = graph;
+        this.blockHistory = new History[graph.totalBlocks()];
+        this.bs = new BytecodeStream(method.getCode());
+    }
+
+    public void analyze() {
+        for (int i = 0; i < graph.totalBlocks(); i++) {
+            processBlock(graph.get(i));
+        }
+    }
+
+    public void processBlock(LinkedBlock b) {
         History history = new History();
         int bci = b.start();
         while (bci <= b.end()) {
@@ -110,7 +121,6 @@ public final class LoadStoreFinder extends BlockIteratorClosure {
             bci = bs.nextBCI(bci);
         }
         blockHistory[b.id()] = history;
-        return BlockIterator.BlockProcessResult.DONE;
     }
 
     private static int findLocalIndex(BytecodeStream bs, int bci, int opcode) {
@@ -168,10 +178,6 @@ public final class LoadStoreFinder extends BlockIteratorClosure {
             default:
                 return bs.readLocalIndex(bci);
         }
-    }
-
-    public LoadStoreFinder(Graph<? extends LinkedBlock> graph) {
-        this.blockHistory = new History[graph.totalBlocks()];
     }
 
     public History[] result() {
