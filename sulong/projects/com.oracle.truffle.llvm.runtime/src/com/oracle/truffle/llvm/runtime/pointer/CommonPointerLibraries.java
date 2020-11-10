@@ -290,7 +290,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static void writeMember(LLVMPointerImpl receiver, String ident, Object value, @Cached LLVMInteropWriteMemberNode write)
-                    throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+                    throws UnsupportedMessageException, UnknownIdentifierException {
         write.execute(receiver, ident, value, receiver.getExportType());
     }
 

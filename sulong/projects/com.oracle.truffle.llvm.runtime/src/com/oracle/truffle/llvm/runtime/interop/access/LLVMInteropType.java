@@ -36,6 +36,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -287,7 +289,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
     }
 
-    public static final class ClazzInheritance {
+    public static final class ClazzInheritance implements Comparable<ClazzInheritance> {
         public final Clazz superClass;
         public final long offset;
         public final boolean virtual;
@@ -297,12 +299,21 @@ public abstract class LLVMInteropType implements TruffleObject {
             this.offset = offset;
             this.virtual = virtual;
         }
+
+        @Override
+        public int compareTo(ClazzInheritance other) {
+            if (this.virtual == other.virtual) {
+                return Long.compare(this.offset, other.offset);
+            } else {
+                return this.virtual ? 1 : -1;
+            }
+        }
     }
 
     public static final class Clazz extends Struct {
 
         @CompilationFinal(dimensions = 1) final Method[] methods;
-        private HashSet<ClazzInheritance> superclasses;
+        private SortedSet<ClazzInheritance> superclasses;
         private VTable vtable;
         private Boolean virtualMethods;
 
@@ -311,7 +322,7 @@ public abstract class LLVMInteropType implements TruffleObject {
             this.methods = methods;
             this.vtable = null;
             this.virtualMethods = null;
-            this.superclasses = new HashSet<>();
+            this.superclasses = new TreeSet<>((a, b) -> a.compareTo(b));
         }
 
         public void addSuperClass(Clazz superclass, long offset, boolean virtual) {
