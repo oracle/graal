@@ -38,6 +38,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.maven.artifact.Artifact;
@@ -96,6 +98,16 @@ public class NativeImageMojo extends AbstractMojo {
         return System.getProperty("os.name").contains("Windows");
     }
 
+    private final Pattern majorMinorPattern = Pattern.compile("(\\d+\\.\\d+)\\.");
+
+    private String attemptMajorMinor(String input) {
+        Matcher matcher = majorMinorPattern.matcher(input);
+        if (!matcher.find()) {
+            return input;
+        }
+        return matcher.group(1);
+    }
+
     public void execute() throws MojoExecutionException {
         if (skip) {
             getLog().info("Skipping native-image generation (parameter 'skip' is true).");
@@ -117,7 +129,7 @@ public class NativeImageMojo extends AbstractMojo {
         }
 
         String nativeImageExecutableVersion = "Unknown";
-        Process versionCheckProcess = null;
+        Process versionCheckProcess;
         try {
             ProcessBuilder processBuilder = new ProcessBuilder(nativeImageExecutable.toString(), "--version");
             versionCheckProcess = processBuilder.start();
@@ -141,8 +153,8 @@ public class NativeImageMojo extends AbstractMojo {
             throw new MojoExecutionException("Probing version info of native-image executable " + nativeImageExecutable + " failed", e);
         }
 
-        if (!nativeImageExecutableVersion.equals(plugin.getVersion())) {
-            getLog().warn("Version mismatch between " + plugin.getArtifactId() + " (" + plugin.getVersion() + ") and native-image executable (" + nativeImageExecutableVersion + ")");
+        if (!attemptMajorMinor(nativeImageExecutableVersion).equals(attemptMajorMinor(plugin.getVersion()))) {
+            getLog().warn("Major.Minor version mismatch between " + plugin.getArtifactId() + " (" + plugin.getVersion() + ") and native-image executable (" + nativeImageExecutableVersion + ")");
         }
 
         try {
