@@ -26,6 +26,8 @@ package com.oracle.svm.agent.restrict;
 
 import static com.oracle.svm.configure.trace.LazyValueUtils.lazyGet;
 import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
+import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
+import static com.oracle.svm.jvmtiagentbase.Support.clearException;
 import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
 import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOr;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
@@ -36,6 +38,7 @@ import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
@@ -84,13 +87,23 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         if (shouldApproveWithoutChecks(javaName, lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
-        if (javaName.get() != null && typeAccessChecker.isClassAccessible(env, javaName.get())) {
+        if (javaName.get() != null && typeAccessChecker.isClassAccessible(env, javaName.get(), () -> loadClass(env, javaName.get()))) {
             return true;
         }
         try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to class: " + javaName.get())) {
             jniFunctions().getThrowNew().invoke(env, agent.handles().javaLangNoClassDefFoundError, message.get());
         }
         return false;
+    }
+
+    private static JNIObjectHandle loadClass(JNIEnvironment env, String classname) {
+        try (CTypeConversion.CCharPointerHolder cname = toCString(classname.replace(".", "/"))) {
+            JNIObjectHandle clazz = jniFunctions().getFindClass().invoke(env, cname.get());
+            if (nullHandle().equal(clazz) || clearException(env)) {
+                return nullHandle();
+            }
+            return clazz;
+        }
     }
 
     private static LazyValue<String> lazyConvertFindClassName(CCharPointer name) {

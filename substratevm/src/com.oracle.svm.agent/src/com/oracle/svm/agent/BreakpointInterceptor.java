@@ -184,9 +184,9 @@ final class BreakpointInterceptor {
         JNIObjectHandle callerClass = getDirectCallerClass();
         JNIObjectHandle name = getObjectArgument(0);
         String className = fromJniString(jni, name);
-        boolean allowed = (accessVerifier == null || accessVerifier.verifyForName(jni, callerClass, className));
-        Object result = false;
-        if (allowed) {
+
+        WordSupplier<JNIObjectHandle> loadClass = () -> {
+            JNIObjectHandle loadedClass = nullHandle();
             boolean classLoaderValid = true;
             WordPointer classLoaderPtr = StackValue.get(WordPointer.class);
             if (bp.method == agent.handles().javaLangClassForName3) {
@@ -202,17 +202,27 @@ final class BreakpointInterceptor {
                     classLoaderValid = (jvmtiFunctions().GetClassLoader().invoke(jvmtiEnv(), callerClass, classLoaderPtr) == JvmtiError.JVMTI_ERROR_NONE);
                 }
             }
-            result = TraceWriter.UNKNOWN_VALUE;
             if (classLoaderValid) {
                 /*
                  * Even if the original call requested class initialization, disable it because
                  * recursion checks keep us from seeing events of interest during initialization.
                  */
                 int initialize = 0;
-                result = nullHandle().notEqual(Support.callStaticObjectMethodLIL(jni, bp.clazz, agent.handles().javaLangClassForName3, name, initialize, classLoaderPtr.read()));
+                loadedClass = Support.callStaticObjectMethodLIL(jni, bp.clazz, agent.handles().javaLangClassForName3, name, initialize, classLoaderPtr.read());
                 if (clearException(jni)) {
-                    result = false;
+                    loadedClass = nullHandle();
                 }
+            }
+            return loadedClass;
+        };
+
+        boolean allowed = (accessVerifier == null || accessVerifier.verifyForName(jni, callerClass, className, loadClass));
+        Object result = false;
+        if (allowed) {
+            result = TraceWriter.UNKNOWN_VALUE;
+            if (loadClass.get().equal(nullHandle())) {
+                // todo how to set success?
+                result = false;
             }
         }
         traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, result, className);
@@ -871,13 +881,17 @@ final class BreakpointInterceptor {
         JNIObjectHandle self = getObjectArgument(0);
         JNIObjectHandle name = getObjectArgument(1);
         String className = fromJniString(jni, name);
-        boolean allowed = (accessVerifier == null || accessVerifier.verifyLoadClass(jni, callerClass, className));
+        WordSupplier<JNIObjectHandle> onLoadClass = () -> {
+            JNIObjectHandle clazz = Support.callObjectMethodL(jni, self, bp.method, name);
+            if (clearException(jni)) {
+                clazz = nullHandle();
+            }
+            return clazz;
+        };
+        boolean allowed = (accessVerifier == null || accessVerifier.verifyLoadClass(jni, callerClass, className, onLoadClass));
         Object result = false;
         if (allowed) {
-            result = nullHandle().notEqual(Support.callObjectMethodL(jni, self, bp.method, name));
-            if (clearException(jni)) {
-                result = false;
-            }
+            result = onLoadClass.get().notEqual(nullHandle());
         }
         traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, result, className);
         if (!allowed) {
