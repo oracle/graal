@@ -55,8 +55,13 @@ import java.util.regex.Pattern;
 
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.ProcessProperties;
-import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
+import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
+import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
 import com.oracle.svm.agent.restrict.JniAccessVerifier;
 import com.oracle.svm.agent.restrict.ProxyAccessVerifier;
 import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
@@ -76,12 +81,7 @@ import com.oracle.svm.driver.NativeImage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIJavaVM;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
-import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
-import com.oracle.svm.jvmtiagentbase.Support;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
+import org.graalvm.nativeimage.hosted.Feature;
 
 public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHandleSet> {
     private static final String AGENT_NAME = "native-image-agent";
@@ -311,8 +311,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         try {
             JniAccessVerifier verifier = null;
             if (!restrictConfigs.getJniConfigPaths().isEmpty()) {
-                TypeAccessChecker jniAccessChecker = new TypeAccessChecker(restrictConfigs.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
-                verifier = new JniAccessVerifier(jniAccessChecker, reflectAccessChecker, accessAdvisor, this);
+                TypeAccessChecker accessChecker = new TypeAccessChecker(restrictConfigs.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
+                verifier = new JniAccessVerifier(accessChecker, reflectAccessChecker, accessAdvisor, this);
             }
             JniCallInterceptor.onLoad(traceWriter, verifier, this);
         } catch (Throwable t) {
