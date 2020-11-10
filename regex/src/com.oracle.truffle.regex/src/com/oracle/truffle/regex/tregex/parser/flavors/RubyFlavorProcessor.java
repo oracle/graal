@@ -222,6 +222,44 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
     }
 
+    private static final class Quantifier {
+        public static final int INFINITY = -1;
+
+        public int lower;
+        public int upper;
+        public boolean greedy;
+
+        Quantifier(int lower, int upper, boolean greedy) {
+            this.lower = lower;
+            this.upper = upper;
+            this.greedy = greedy;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder output = new StringBuilder();
+            if (lower == 0 && upper == INFINITY) {
+                output.append("*");
+            } else if (lower == 1 && upper == INFINITY) {
+                output.append("+");
+            } else if (lower == 0 && upper == 1) {
+                output.append("?");
+            } else {
+                output.append("{");
+                output.append(lower);
+                output.append(",");
+                if (upper != INFINITY) {
+                    output.append(upper);
+                }
+                output.append("}");
+            }
+            if (greedy) {
+                output.append("?");
+            }
+            return output.toString();
+        }
+    }
+
     /**
      * Characters considered as whitespace in Ruby's regex verbose mode.
      */
@@ -1529,7 +1567,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * Parses a quantifier whose first character is the argument {@code ch}.
      */
     private void quantifier(int ch) {
-        StringBuilder quantifier = new StringBuilder();
+        Quantifier quantifier;
         int start = position - 1;
         if (ch == '{') {
             if (match("}") || match(",}")) {
@@ -1561,26 +1599,38 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
                     throw syntaxError("min repeat greater than max repeat");
                 }
-                if (lowerBound.isPresent()) {
-                    quantifier.append(inPattern.subSequence(start, position));
-                } else {
-                    // {,upperBound} is invalid in ECMAScript in unicode mode, but always valid in Ruby,
-                    // so we insert an explicit lower bound 0
-                    quantifier.append("{0,");
-                    assert inPattern.charAt(start) == '{' && inPattern.charAt(start + 1) == ',';
-                    quantifier.append(inPattern.subSequence(start + 2, position));
-                }
-            }
-            if (match("?")) {
-                quantifier.append("?");
+                quantifier = new Quantifier(lowerBound.orElse(BigInteger.ZERO).intValue(),
+                                            upperBound.orElse(BigInteger.valueOf(Quantifier.INFINITY)).intValue(),
+                                            match("?"));
             }
         } else {
-            quantifier.appendCodePoint(ch);
-            if (match("?")) {
-                quantifier.append("?");
-            } else if (match("+")) {
-                bailOut("possessive quantifiers not supported");
+            int lower, upper;
+            switch (ch) {
+                case '*':
+                    lower = 0;
+                    upper = Quantifier.INFINITY;
+                    break;
+                case '+':
+                    lower = 1;
+                    upper = Quantifier.INFINITY;
+                    break;
+                case '?':
+                    lower = 0;
+                    upper = 1;
+                    break;
+                default:
+                    throw new IllegalStateException("should not reach here");
             }
+            boolean greedy;
+            if (match("?")) {
+                greedy = true;
+            } else {
+                greedy = false;
+                if (match("+")) {
+                    bailOut("possessive quantifiers not supported");
+                }
+            }
+            quantifier = new Quantifier(lower, upper, greedy);
         }
 
         switch (lastTerm) {
@@ -1600,7 +1650,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 bailOut("quantifiers on lookaround assertions not supported");
             case OtherAssertion:
             case Atom:
-                emitSnippet(quantifier);
+                emitSnippet(quantifier.toString());
                 lastTerm = TermCategory.Quantifier;
                 // lastTermOutPosition stays the same: the term with its quantifier is considered as the last term
         }
