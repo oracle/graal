@@ -1,17 +1,20 @@
-# GraalVM Support for VS Code <!-- omit in toc -->
+# GraalVM Support for VS Code
 
-A VS Code extension providing the basic support for editing and debugging programs running on [GraalVM](http://www.graalvm.org). As of version 0.0.8 this extension replaces the original [GraalVM Python](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-python), [GraalVM R](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-r), [GraalVM Ruby](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-ruby), and [GraalVM Extension Pack](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-complete) extensions so those can be safely uninstalled from your VS Code. 
+A VS Code extension providing the basic support for editing and debugging programs running on [GraalVM](http://www.graalvm.org). As of version 0.0.8 this extension replaces the original [GraalVM Python](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-python), [GraalVM R](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-r), [GraalVM Ruby](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-ruby), and [GraalVM Extension Pack](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-complete) extensions so those can be safely uninstalled from your VS Code.
 The extension is Technology Preview.
 
-#### Table of contents  <!-- omit in toc -->
+#### Table of contents
 - [Features](#features)
   - [GraalVM Installation and Setup](#graalvm-installation-and-setup)
-  - [JavaScript and Node.js Debugging](#javascript-and-nodejs-debugging)
   - [Polyglot Applications Debugging](#polyglot-applications-debugging)
+  - [Java Debugging](#java-debugging)
+  - [JavaScript and Node.js Debugging](#javascript-and-nodejs-debugging)
   - [Python Debugging](#python-debugging)
   - [R Debugging](#r-debugging)
   - [Ruby Debugging](#ruby-debugging)
   - [Language Server Integration](#language-server-integration)
+  - [Java Language Server](#java-language-server)
+  - [Python Language Server](#python-language-server)
   - [R Language Server](#r-language-server)
   - [Ruby Language Server](#ruby-language-server)
   - [Additional Editor Features](#additional-editor-features)
