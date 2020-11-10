@@ -456,7 +456,7 @@ def svm_gate_body(args, tasks):
 
     with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
         if t:
-            maven_plugin_install(["--deploy-dependencies"])
+            maven_plugin_install([])
             maven_plugin_test([])
 
 
@@ -1555,40 +1555,7 @@ def maven_plugin_install(args):
     svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
 
     if parsed.deploy_dependencies:
-        deploy_args = [
-            '--suppress-javadoc',
-            '--all-distribution-types',
-            '--validate=full',
-            '--all-suites',
-            '--tags=default',
-        ]
-        if parsed.licenses:
-            deploy_args += ["--licenses", parsed.licenses]
-        if parsed.gpg:
-            deploy_args += ["--gpg"]
-        if parsed.gpg_keyid:
-            deploy_args += ["--gpg-keyid", parsed.gpg_keyid]
-        if parsed.repository_id:
-            deploy_args += [parsed.repository_id]
-            if parsed.url:
-                deploy_args += [parsed.url]
-        suites = set()
-
-        def collect_imports(s):
-            if s.name not in suites:
-                suites.add(s.name)
-                s.visit_imports(visitor)
-
-        def visitor(_, suite_import):
-            collect_imports(mx.suite(suite_import.name))
-
-        collect_imports(suite)
-        new_env = os.environ.copy()
-        if 'DYNAMIC_IMPORTS' in new_env:
-            del new_env['DYNAMIC_IMPORTS']
-        if 'MX_ENV_PATH' in new_env:
-            del new_env['MX_ENV_PATH']
-        mx.run_mx(['--suite=' + s for s in suites] + ['maven-deploy'] + deploy_args, suite, env=new_env)
+        mx.warn("native-image-maven-plugin does not have GraalVM maven dependencies anymore. --deploy-dependencies is obsolete.")
 
     mvn_out = None
     mvn_err = None
