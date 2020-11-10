@@ -514,6 +514,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return !isValid() && shouldCompileImpl(this.callCount, this.callAndLoopCount);
     }
 
+    public final boolean wasExecuted() {
+        return this.callCount > 0 || this.callAndLoopCount > 0;
+    }
+
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object profiledPERoot(Object[] originalArguments) {
         Object[] args = originalArguments;
@@ -1511,8 +1515,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     public final boolean prepareForAOT() {
-        if (isInitialized()) {
-            throw new IllegalStateException("Cannot prepare for AOT if call target is already initialized.");
+        if (wasExecuted()) {
+            throw new IllegalStateException("Cannot prepare for AOT if call target was already executed.");
         }
         /*
          * We do not validate the call target as we are not technically entered in any context when
@@ -1528,6 +1532,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // call profile already initialized
             return true;
         }
+
         assert returnProfile == null : "return profile already initialized";
         assert argumentsProfile == null : "argument profile already initialized";
 
