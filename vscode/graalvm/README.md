@@ -1,23 +1,26 @@
-# GraalVM Support for VS Code
+# GraalVM Visual Studio Code Extension
 
-A VS Code extension providing the basic support for editing and debugging programs running on [GraalVM](http://www.graalvm.org). As of version 0.0.8 this extension replaces the original [GraalVM Python](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-python), [GraalVM R](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-r), [GraalVM Ruby](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-ruby), and [GraalVM Extension Pack](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-complete) extensions so those can be safely uninstalled from your VS Code.
+
+[GraalVM Extension for Visual Visual Studio Code (VS Code)](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) provides the basic support for editing and debugging programs running on [GraalVM](http://www.graalvm.org). As of version 0.0.8 this extension replaces the original [GraalVM Python](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-python), [GraalVM R](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-r), [GraalVM Ruby](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-ruby), and [GraalVM Extension Pack](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-complete) extensions so those can be safely uninstalled from your VS Code.
 The extension is Technology Preview.
+
+The major goal of creating GraalVM VS Code Extension was to enable a polyglot environment in VS Code, to make it suitable and convenient to work with GraalVM from an integrated development environment, to allow VS Code users to edit and debug applications written in any of the GraalVM supported languages (Java, JS, Ruby, R, and Python).
 
 #### Table of contents
 - [Features](#features)
-  - [GraalVM Installation and Setup](#graalvm-installation-and-setup)
-  - [Polyglot Applications Debugging](#polyglot-applications-debugging)
-  - [Java Debugging](#java-debugging)
-  - [JavaScript and Node.js Debugging](#javascript-and-nodejs-debugging)
-  - [Python Debugging](#python-debugging)
-  - [R Debugging](#r-debugging)
-  - [Ruby Debugging](#ruby-debugging)
-  - [Language Server Integration](#language-server-integration)
-  - [Java Language Server](#java-language-server)
-  - [Python Language Server](#python-language-server)
-  - [R Language Server](#r-language-server)
-  - [Ruby Language Server](#ruby-language-server)
-  - [Additional Editor Features](#additional-editor-features)
+- [GraalVM Installation and Setup](#graalvm-installation-and-setup)
+- [Polyglot Applications Debugging](#polyglot-applications-debugging)
+- [Java Debugging](#java-debugging)
+- [JavaScript and Node.js Debugging](#javascript-and-nodejs-debugging)
+- [Python Debugging](#python-debugging)
+- [R Debugging](#r-debugging)
+- [Ruby Debugging](#ruby-debugging)
+- [Language Server Integration](#language-server-integration)
+- [Java Language Server](#java-language-server)
+- [Python Language Server](#python-language-server)
+- [R Language Server](#r-language-server)
+- [Ruby Language Server](#ruby-language-server)
+- [Additional Editor Features](#additional-editor-features)
 - [Extension Settings](#extension-settings)
 - [Requirements](#requirements)
 - [Feedback](#feedback)
@@ -25,7 +28,27 @@ The extension is Technology Preview.
 
 ## Features
 
-### GraalVM Installation and Setup
+GraalVM VS Code Extension installation wizzard simplifies setting up GraalVM development environment.
+You can download and install any available GraalVM distribution right from the user interface, or, alternatively, you can select an existing GraalVM installation from your local disk.
+
+GraalVM VS Code Extension provides editing and debugging capabilities for JavaScript and Node.js applications, Python, R, and Ruby programs running on GraalVM by default.
+
+GraalVM VS Code Extension also brings editing and debugging of Java code right after the extension installation.
+
+GraalVM VS Code Extension future development should also support generating native executables right from the VS Code console.
+
+GraalVM VS Code Extension is a prerequisite for the [Micronaut support in VS Code](#), which brings many more possibilities for Java developers.
+
+The development team is actively working on further improvements and focus on GraalVM Extension providing high usability to developers.
+
+## GraalVM Installation and Setup
+
+When installed, the extension should display a dialog with the following choices:
+The GUI part of the extension adds a new Activity "G" and a new Activity Bar GraalVM Installations to manage the local GraalVM instances:
+
+Download GraalVM (invokes Download & Install GraalVM... action)
+Select GraalVM (invokes Add Existing GraalVM... action)
+Documentation (link to https://www.graalvm.org/docs/getting-started-with-graalvm/ or some kind of GraalVM Extension Getting Started)
 
 Upon the extension installation, the user is requested to provide a path to the GraalVM home directory.
 
@@ -62,6 +85,8 @@ The folowing command can be used to install any missing GraalVM component manua
 All three commands can be invoked at any time from the Command Palette (Ctrl+Shift+P)
 
 ![Image Command Palette](images/command-palette.png)
+
+## Features
 
 ### JavaScript and Node.js Debugging
 
