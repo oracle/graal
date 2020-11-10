@@ -126,7 +126,7 @@ public class TypeAccessChecker {
      *         on the path from the caller class to the declaring class
      */
     public boolean isInnerClassAccessible(JNIEnvironment env, JNIObjectHandle queriedClass, JNIObjectHandle innerClass, JNIObjectHandle declaringClass) {
-        if (!isClassAccessible(env, queriedClass)) {
+        if (!isClassAccessible(env, queriedClass)) { // queried class must be registered
             return false;
         }
 
@@ -163,7 +163,7 @@ public class TypeAccessChecker {
     }
 
     public boolean isFieldAccessible(JNIEnvironment env, JNIObjectHandle clazz, Supplier<String> name, JNIFieldId field, JNIObjectHandle declaring) {
-        if (!isClassAccessible(env, clazz)) {
+        if (!isClassAccessible(env, clazz)) { // queried class must be registered
             return false;
         }
         ConfigurationType declaringType = getType(declaring);
@@ -209,7 +209,7 @@ public class TypeAccessChecker {
     }
 
     public boolean isMethodAccessible(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIMethodId method, JNIObjectHandle declaring) {
-        if (!isClassAccessible(env, clazz)) {
+        if (!isClassAccessible(env, clazz)) { // queried class must be registered
             return false;
         }
         boolean isConstructor = ConfigurationMethod.CONSTRUCTOR_NAME.equals(name);

@@ -248,5 +248,4 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         }
         return false;
     }
-
 }

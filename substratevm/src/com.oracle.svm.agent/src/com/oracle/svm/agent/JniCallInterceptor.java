@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.agent;
 
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
 import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
@@ -39,6 +38,7 @@ import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.testException;
 import static com.oracle.svm.jvmtiagentbase.Support.toCString;
+import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import org.graalvm.nativeimage.StackValue;
@@ -49,6 +49,10 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
+import com.oracle.svm.jvmtiagentbase.AgentIsolate;
+import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.agent.restrict.JniAccessVerifier;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -68,10 +72,6 @@ import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ToReflectedMethodFun
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeInterface;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-import com.oracle.svm.jvmtiagentbase.AgentIsolate;
-import com.oracle.svm.jvmtiagentbase.Support;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 
 final class JniCallInterceptor {
     private static TraceWriter traceWriter;
@@ -397,5 +397,4 @@ final class JniCallInterceptor {
 
     private static final CEntryPointLiteral<NewObjectArrayFunctionPointer> newObjectArrayLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
                     "newObjectArray", JNIEnvironment.class, int.class, JNIObjectHandle.class, JNIObjectHandle.class);
-
 }
