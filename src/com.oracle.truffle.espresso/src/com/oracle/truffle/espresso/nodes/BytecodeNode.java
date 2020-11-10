@@ -1215,7 +1215,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         continue loop; // skip bs.next()
                     } else {
                         if (instrument != null) {
-                            instrument.notifyExceptionAt(frame, e, statementIndex);
+                            instrument.notifyExceptionAt(frame, wrappedException, statementIndex);
                         }
                         throw e;
                     }
