@@ -95,17 +95,16 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 if os.path.exists(bench_out_dir):
                     shutil.rmtree(bench_out_dir)
                 os.makedirs(bench_out_dir)
-                os.chdir(bench_out_dir)
 
                 # benchmark source dir
                 bench_src_dir = os.path.join(benchmarks_dir, benchnames[0])
+                os.chdir(bench_src_dir)
 
-                env = os.environ.copy()
-                env['VPATH'] = bench_src_dir
-                env = vm.prepare_env(env)
+                # prepare_env adds CC, CXX, CFLAGS, etc... and we copy the environment to avoid modifying the default one.
+                env = vm.prepare_env(os.environ.copy())
 
                 out = os.path.join(bench_out_dir, vm.out_file())
-                cmdline = ['make', '-f', '{}/Makefile'.format(bench_src_dir), 'TOPLEVEL_DIR={}'.format(benchmarks_dir)]
+                cmdline = ['make', 'TARGET_DIR={}'.format(bench_out_dir)]
                 if mx._opts.verbose:
                     # The Makefiles should have logic to disable the @ sign
                     # so that all executed commands are visible.
