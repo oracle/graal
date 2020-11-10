@@ -23,54 +23,35 @@
 
 package com.oracle.truffle.espresso.analysis;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
-import com.oracle.truffle.espresso.analysis.graph.Block;
+import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 
-public final class WorkingQueue<T extends Block> {
-    private Element<T> first;
+public final class BlockStack {
 
-    public static class Element<U> {
+    private static final int DEFAULT_SIZE = 4;
 
-        private final U block;
-        private Element<U> next;
+    private LinkedBlock[] stack = new LinkedBlock[DEFAULT_SIZE];
+    private int pos = 0;
 
-        public Element(U block, Element<U> next) {
-            this.block = block;
-            this.next = next;
+    public void push(LinkedBlock block) {
+        if (pos == stack.length) {
+            stack = Arrays.copyOf(stack, stack.length << 1);
         }
-
+        stack[pos++] = block;
     }
 
-    public void push(T block) {
-        first = new Element<>(block, first);
-    }
-
-    public T pop() {
+    public LinkedBlock pop() {
         assert !isEmpty();
-        T res = first.block;
-        first = first.next;
-        return res;
+        return stack[--pos];
     }
 
-    public T peek() {
-        return first.block;
+    public LinkedBlock peek() {
+        assert !isEmpty();
+        return stack[pos - 1];
     }
 
     public boolean isEmpty() {
-        return first == null;
-    }
-
-    public List<T> findLoop(int entry) {
-        List<T> res = new ArrayList<>();
-        Element<T> current = first;
-        while (current.block.id() != entry) {
-            res.add(current.block);
-            current = current.next;
-            assert current != null;
-        }
-        res.add(current.block);
-        return res;
+        return pos == 0;
     }
 }

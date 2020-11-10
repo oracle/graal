@@ -24,7 +24,6 @@
 package com.oracle.truffle.espresso.analysis;
 
 import java.util.BitSet;
-import java.util.List;
 
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
@@ -46,7 +45,7 @@ public class BlockIterator implements AnalysisProcessor {
     private final BitSet enqueued;
     protected final BitSet done;
 
-    protected final WorkingQueue<LinkedBlock> queue = new WorkingQueue<>();
+    protected final BlockStack stack = new BlockStack();
 
     protected final BlockIteratorClosure closure;
 
@@ -78,7 +77,7 @@ public class BlockIterator implements AnalysisProcessor {
 
     protected final void analyze() {
         push(closure.getEntry(graph));
-        while (!queue.isEmpty()) {
+        while (!stack.isEmpty()) {
             LinkedBlock b = peek();
             BlockProcessResult result = closure.processBlock(b, bs, this);
             processResult(b, result);
@@ -100,19 +99,19 @@ public class BlockIterator implements AnalysisProcessor {
             return false;
         }
         enqueued.set(block.id());
-        queue.push(block);
+        stack.push(block);
         return true;
     }
 
     protected final LinkedBlock pop() {
-        LinkedBlock res = queue.pop();
+        LinkedBlock res = stack.pop();
         assert isEnqueued(res);
         enqueued.clear(res.id());
         return res;
     }
 
     protected final LinkedBlock peek() {
-        return queue.peek();
+        return stack.peek();
     }
 
     private boolean isDone(LinkedBlock block) {
@@ -132,11 +131,6 @@ public class BlockIterator implements AnalysisProcessor {
     @Override
     public final LinkedBlock idToBlock(int id) {
         return graph.get(id);
-    }
-
-    @Override
-    public final List<LinkedBlock> findLoop(int block) {
-        return queue.findLoop(block);
     }
 
     private boolean isEnqueued(LinkedBlock block) {

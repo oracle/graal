@@ -23,8 +23,6 @@
 
 package com.oracle.truffle.espresso.analysis;
 
-import java.util.List;
-
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 
 public interface AnalysisProcessor {
@@ -33,6 +31,4 @@ public interface AnalysisProcessor {
     boolean isInProcess(int b);
 
     LinkedBlock idToBlock(int id);
-
-    List<LinkedBlock> findLoop(int block);
 }
