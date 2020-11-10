@@ -424,7 +424,7 @@ public final class SVMHost implements HostVM {
 
     void notifyClassReachabilityListener(AnalysisUniverse universe, DuringAnalysisAccess access) {
         for (AnalysisType type : universe.getTypes()) {
-            if ((type.isReachable() || type.isInstantiated()) && !type.getReachabilityListenerNotified()) {
+            if (type.isReachable() && !type.getReachabilityListenerNotified()) {
                 type.setReachabilityListenerNotified(true);
 
                 for (BiConsumer<DuringAnalysisAccess, Class<?>> listener : classReachabilityListeners) {

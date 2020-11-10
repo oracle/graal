@@ -226,7 +226,7 @@ public class ClassInitializationFeature implements GraalFeature {
         classInitializationSupport.checkDelayedInitialization();
 
         for (AnalysisType type : access.getUniverse().getTypes()) {
-            if (type.isReachable() || type.isInstantiated()) {
+            if (type.isReachable()) {
                 DynamicHub hub = access.getHostVM().dynamicHub(type);
                 if (hub.getClassInitializationInfo() == null) {
                     buildClassInitializationInfo(access, type, hub);

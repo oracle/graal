@@ -1478,7 +1478,7 @@ public class NativeImageGenerator {
                 }
             }
             for (AnalysisType type : aUniverse.getTypes()) {
-                if ((type.isInstantiated() || type.isReachable())) {
+                if (type.isReachable()) {
                     checkName(type.toJavaName(true), null);
                 }
             }
