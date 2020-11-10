@@ -128,7 +128,6 @@ public final class RubyFlags extends AbstractConstantKeysObject {
         return hasFlag('u');
     }
 
-
     public RubyFlags addFlag(int flagChar) {
         if (isTypeFlag(flagChar)) {
             return new RubyFlags(this.value, Mode.fromFlagChar(flagChar));
