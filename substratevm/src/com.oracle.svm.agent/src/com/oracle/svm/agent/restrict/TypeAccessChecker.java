@@ -93,7 +93,7 @@ public class TypeAccessChecker {
         return declaringClass.haveAllPublicClasses() && (clazz.notEqual(nullHandle()) ? isClassPublic(clazz) : isClassPublic(env, classname));
     }
 
-    private String getDeclaringClassOf(String classname) {
+    private static String getDeclaringClassOf(String classname) {
         int split = classname.lastIndexOf("$");
         if (split == -1) {
             return null;
@@ -101,7 +101,7 @@ public class TypeAccessChecker {
         return classname.substring(0, split);
     }
 
-    private boolean isClassPublic(JNIEnvironment env, String classname) {
+    private static boolean isClassPublic(JNIEnvironment env, String classname) {
         try (CTypeConversion.CCharPointerHolder cname = toCString(classname)) {
             JNIObjectHandle clazz = jniFunctions().getFindClass().invoke(env, cname.get());
             if (nullHandle().equal(clazz) || clearException(env)) {
@@ -111,7 +111,7 @@ public class TypeAccessChecker {
         }
     }
 
-    private boolean isClassPublic(JNIObjectHandle clazz) {
+    private static boolean isClassPublic(JNIObjectHandle clazz) {
         CIntPointer modifiers = StackValue.get(CIntPointer.class);
         if (jvmtiFunctions().GetClassModifiers().invoke(jvmtiEnv(), clazz, modifiers) != JvmtiError.JVMTI_ERROR_NONE) {
             return false;
