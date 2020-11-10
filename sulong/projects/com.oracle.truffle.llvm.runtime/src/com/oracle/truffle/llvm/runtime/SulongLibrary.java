@@ -31,8 +31,8 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -105,7 +105,7 @@ public final class SulongLibrary implements TruffleObject {
          * @param name
          * @see #execute(SulongLibrary, String)
          */
-        @Specialization(guards = {"library == cachedLibrary", "name.equals(cachedName)"})
+        @Specialization(guards = {"library == cachedLibrary", "name.equals(cachedName)"}, assumptions = "singleContextAssumption()")
         LLVMFunctionDescriptor doCached(SulongLibrary library, String name,
                         @Cached("library") @SuppressWarnings("unused") SulongLibrary cachedLibrary,
                         @Cached("name") @SuppressWarnings("unused") String cachedName,
