@@ -25,10 +25,12 @@
 package com.oracle.svm.agent.restrict;
 
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
+import static com.oracle.svm.jvmtiagentbase.Support.clearException;
 import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
+import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.lang.reflect.Modifier;
@@ -37,6 +39,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.configure.config.ConfigurationMethod;
@@ -46,6 +49,7 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jvmtiagentbase.Support;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 
 public class TypeAccessChecker {
@@ -56,10 +60,21 @@ public class TypeAccessChecker {
     }
 
     /**
-     * @return true iff the class is a part of the config or is an inner class exposed by it's
-     *         declaring class
+     * Checks whether given class should be accessible via reflection and jni.
+     *
+     * @return true iff the class is explicitly mentioned in the config or is an inner class exposed
+     *         by it's declaring class
      */
-    public boolean isClassAccessible(String classname) {
+    public boolean isClassAccessible(JNIEnvironment env, String classname) {
+        return checkAccessibilityOf(env, classname, nullHandle());
+    }
+
+    public boolean isClassAccessible(JNIEnvironment env, JNIObjectHandle clazz) {
+        String classname = Support.getClassNameOrNull(env, clazz);
+        return classname != null && checkAccessibilityOf(env, classname, clazz);
+    }
+
+    private boolean checkAccessibilityOf(JNIEnvironment env, String classname, JNIObjectHandle clazz) {
         if (configuration.get(classname) != null) {
             return true;
         }
@@ -69,7 +84,13 @@ public class TypeAccessChecker {
             return false;
         }
         ConfigurationType declaringClass = configuration.get(declaringClassname);
-        return declaringClass != null && (declaringClass.haveAllDeclaredClasses() || (declaringClass.haveAllPublicClasses() && isPublic(classname)));
+        if (declaringClass == null) {
+            return false;
+        }
+        if (declaringClass.haveAllDeclaredClasses()) {
+            return true;
+        }
+        return declaringClass.haveAllPublicClasses() && (clazz.notEqual(nullHandle()) ? isClassPublic(clazz) : isClassPublic(env, classname));
     }
 
     private String getDeclaringClassOf(String classname) {
@@ -80,9 +101,23 @@ public class TypeAccessChecker {
         return classname.substring(0, split);
     }
 
-    private boolean isPublic(String classname) {
-        // todo load the class and check
-        return true;
+    private boolean isClassPublic(JNIEnvironment env, String classname) {
+        try (CTypeConversion.CCharPointerHolder cname = toCString(classname)) {
+            JNIObjectHandle clazz = jniFunctions().getFindClass().invoke(env, cname.get());
+            if (nullHandle().equal(clazz) || clearException(env)) {
+                return false;
+            }
+            return isClassPublic(clazz);
+        }
+    }
+
+    private boolean isClassPublic(JNIObjectHandle clazz) {
+        CIntPointer modifiers = StackValue.get(CIntPointer.class);
+        if (jvmtiFunctions().GetClassModifiers().invoke(jvmtiEnv(), clazz, modifiers) != JvmtiError.JVMTI_ERROR_NONE) {
+            return false;
+        }
+        // Checkstyle: allow reflection
+        return (modifiers.read() & Modifier.PUBLIC) != 0;
     }
 
     /**
@@ -91,8 +126,7 @@ public class TypeAccessChecker {
      *         on the path from the caller class to the declaring class
      */
     public boolean isInnerClassAccessible(JNIEnvironment env, JNIObjectHandle queriedClass, JNIObjectHandle innerClass, JNIObjectHandle declaringClass) {
-        if (getType(queriedClass) != null) { // todo the class has to be explicitly specified now,
-                                             // allow for inner lookup?
+        if (!isClassAccessible(env, queriedClass)) {
             return false;
         }
 
@@ -103,30 +137,25 @@ public class TypeAccessChecker {
             }
         }
 
-        CIntPointer modifiers = StackValue.get(CIntPointer.class);
-        if (jvmtiFunctions().GetClassModifiers().invoke(jvmtiEnv(), innerClass, modifiers) == JvmtiError.JVMTI_ERROR_NONE) {
-            // Checkstyle: allow reflection
-            boolean isPublic = (modifiers.read() & Modifier.PUBLIC) != 0;
-            if (isPublic) {
-                if (declaringType != null && declaringType.haveAllPublicClasses()) {
-                    return true;
-                }
+        if (isClassPublic(innerClass)) {
+            if (declaringType != null && declaringType.haveAllPublicClasses()) {
+                return true;
+            }
 
-                if (declaringClass.notEqual(queriedClass)) {
-                    JNIObjectHandle current = queriedClass;
-                    do {
-                        ConfigurationType currentType = getType(current);
-                        if (currentType != null && currentType.haveAllPublicClasses()) {
-                            return true;
-                        }
+            if (declaringClass.notEqual(queriedClass)) {
+                JNIObjectHandle current = queriedClass;
+                do {
+                    ConfigurationType currentType = getType(current);
+                    if (currentType != null && currentType.haveAllPublicClasses()) {
+                        return true;
+                    }
 
-                        if (testInterfacesBetween(env, declaringClass, current, ConfigurationType::haveAllPublicClasses)) {
-                            return true;
-                        }
+                    if (testInterfacesBetween(env, declaringClass, current, ConfigurationType::haveAllPublicClasses)) {
+                        return true;
+                    }
 
-                        current = jniFunctions().getGetSuperclass().invoke(env, current);
-                    } while (current.notEqual(nullHandle()) && jniFunctions().getIsAssignableFrom().invoke(env, current, declaringClass));
-                }
+                    current = jniFunctions().getGetSuperclass().invoke(env, current);
+                } while (current.notEqual(nullHandle()) && jniFunctions().getIsAssignableFrom().invoke(env, current, declaringClass));
             }
         }
 
@@ -134,8 +163,7 @@ public class TypeAccessChecker {
     }
 
     public boolean isFieldAccessible(JNIEnvironment env, JNIObjectHandle clazz, Supplier<String> name, JNIFieldId field, JNIObjectHandle declaring) {
-        if (getType(clazz) != null) { // queried class must be registered todo use isAccessible or
-                                      // not?
+        if (!isClassAccessible(env, clazz)) {
             return false;
         }
         ConfigurationType declaringType = getType(declaring);
@@ -181,8 +209,7 @@ public class TypeAccessChecker {
     }
 
     public boolean isMethodAccessible(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIMethodId method, JNIObjectHandle declaring) {
-        if (getType(clazz) != null) { // queried class must be registered todo use isAccessible or
-                                      // not?
+        if (!isClassAccessible(env, clazz)) {
             return false;
         }
         boolean isConstructor = ConfigurationMethod.CONSTRUCTOR_NAME.equals(name);
