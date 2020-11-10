@@ -51,12 +51,12 @@ export async function ask(question: string, options: {option: string, fnc?: (() 
 const YES: string = 'Yes';
 const NO: string = 'No';
 export async function askYesNo(question: string, ifYes: (() => any) | undefined, ifNo?: (() => any), otherwise?: (() => any)): Promise<any> {
-	ask(question, [{option: YES, fnc: ifYes}, {option: NO, fnc: ifNo}], otherwise);
+	return ask(question, [{option: YES, fnc: ifYes}, {option: NO, fnc: ifNo}], otherwise);
 }
 
 const INSTALL: string = 'Install';
 async function askInstall(question: string, ifYes: (() => any) | undefined, otherwise?: (() => any)): Promise<any> {
-	ask(question, [{option: INSTALL, fnc: ifYes}], otherwise);
+	return ask(question, [{option: INSTALL, fnc: ifYes}], otherwise);
 }
 
 export async function runInTerminal(command: string) {
