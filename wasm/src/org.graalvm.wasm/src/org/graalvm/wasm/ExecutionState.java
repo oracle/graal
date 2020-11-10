@@ -45,6 +45,7 @@ import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.collection.LongArrayList;
 import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.nodes.WasmBlockNode;
 
 import java.util.ArrayList;
@@ -55,11 +56,7 @@ public class ExecutionState {
     private final IntArrayList intConstants;
     private final LongArrayList longConstants;
     private final ArrayList<int[]> branchTables;
-
-    /**
-     * Current number of values on the stack.
-     */
-    private int stackSize;
+    private final ByteArrayList stack;
 
     /**
      * Maximum number of values ever pushed on the stack during this execution.
@@ -87,7 +84,7 @@ public class ExecutionState {
     private boolean reachable;
 
     public ExecutionState() {
-        this.stackSize = 0;
+        this.stack = new ByteArrayList();
         this.maxStackSize = 0;
         this.profileCount = 0;
         this.byteConstants = new ByteArrayList();
@@ -108,33 +105,38 @@ public class ExecutionState {
         this.reachable = reachable;
     }
 
-    public void push() {
-        stackSize++;
-        maxStackSize = Math.max(stackSize, maxStackSize);
+    public void push(byte type) {
+        stack.push(type);
+        maxStackSize = Math.max(stack.size(), maxStackSize);
     }
 
-    public void push(int n) {
-        stackSize += n;
-        maxStackSize = Math.max(stackSize, maxStackSize);
+    public byte pop() {
+        final int blockStackSize = stack.size() - getStackSize(0);
+        if (!isReachable() && blockStackSize == 0) {
+            return -1;
+        }
+        Assert.assertIntGreater(blockStackSize, 0, "Cannot pop from the stack", Failure.EMPTY_STACK);
+        return stack.pop();
     }
 
-    public void pop() {
-        pop(1);
+    public void popChecked(byte expectedType) {
+        if (!isReachable()) {
+            return;
+        }
+        assertTypesEqual(expectedType, pop());
     }
 
-    public void pop(int n) {
-        assertStackSizeGreaterOrEqual(n);
-        stackSize -= n;
-    }
-
-    public void assertStackSizeGreaterOrEqual(int n) {
-        if (isReachable()) {
-            Assert.assertIntGreaterOrEqual(stackSize - getStackSize(0), n, "Cannot pop " + n + " operand(s) from the stack", Failure.EMPTY_STACK);
+    private static void assertTypesEqual(byte expectedType, byte actualType) {
+        if (expectedType != actualType) {
+            throw WasmException.format(Failure.UNEXPECTED_TYPE, "Expected type %s but got %s.", WasmType.toString(expectedType), WasmType.toString(actualType));
         }
     }
 
-    public void setStackSize(int stackSize) {
-        this.stackSize = stackSize;
+    public void unwindStack(int size) {
+        Assert.assertIntLessOrEqual(size, stackSize(), Failure.INVALID_STACK_SHRINK_SIZE);
+        while (stackSize() > size) {
+            stack.pop();
+        }
     }
 
     public void useByteConstant(byte constant) {
@@ -159,7 +161,7 @@ public class ExecutionState {
     public void startBlock(WasmBlockNode block, boolean isLoopBody) {
         ancestors.add(block);
         ancestorsIsLoop.add(isLoopBody);
-        ancestorsStackSizes.add(stackSize);
+        ancestorsStackSizes.add(stackSize());
     }
 
     public void endBlock() {
@@ -176,11 +178,26 @@ public class ExecutionState {
      * a normal block or the body of a condition, or t1 ({@link WasmBlockNode#inputLength()}) if it
      * is the body of a loop.
      */
-    public int getContinuationLength(int offset) {
-        final int index = depth() - 1 - offset;
+    public int getContinuationLength(int unwindLevel) {
+        final int index = depth() - 1 - unwindLevel;
         final boolean isLoop = ancestorsIsLoop.get(index);
         final WasmBlockNode block = ancestors.get(index);
         return isLoop ? block.inputLength() : block.returnLength();
+    }
+
+    public void checkContinuationType(int unwindLevel) {
+        final int index = depth() - 1 - unwindLevel;
+        final boolean isLoop = ancestorsIsLoop.get(index);
+        final WasmBlockNode block = ancestors.get(index);
+        if (isLoop) {
+            Assert.assertIntEqual(block.inputLength(), 0, "A loop should not have parameters", Failure.LOOP_INPUT);
+        } else {
+            Assert.assertIntLessOrEqual(block.returnLength(), 1, "A block cannot return more than one value", Failure.MULTIPLE_RETURN_VALUES);
+            if (block.returnLength() == 1) {
+                popChecked(block.returnTypeId());
+                push(block.returnTypeId());
+            }
+        }
     }
 
     public int getRootBlockReturnLength() {
@@ -188,7 +205,7 @@ public class ExecutionState {
     }
 
     public int stackSize() {
-        return stackSize;
+        return stack.size();
     }
 
     public int maxStackSize() {
