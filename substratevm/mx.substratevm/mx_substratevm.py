@@ -770,7 +770,7 @@ def native_image_context_run(func, func_args=None, config=None, build_if_missing
 
 def pom_from_template(proj_dir, svmVersion):
     # Create native-image-maven-plugin pom with correct version info from template
-    dom = parse(join(proj_dir, 'pom_template.xml'))
+    dom = parse(join(proj_dir, 'template-pom.xml'))
     for svmVersionElement in dom.getElementsByTagName('svmVersion'):
         svmVersionElement.parentNode.replaceChild(dom.createTextNode(svmVersion), svmVersionElement)
     with open(join(proj_dir, 'pom.xml'), 'w') as pom_file:
