@@ -201,65 +201,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     if not forBuild and os.path.exists(output_dir):
                         mx.rmtree(output_dir)
 
-
-            # We are currently not using the Emscripten projects to compile C files,
-            # but we may start building the benchmarks from source in the future.
-            # pylint: disable=unused-variable
-            class GraalVmEmscriptenProject(mx_wasm.EmscriptenProject):
-                def getSourceDir(self):
-                    return self.subDir
-
-                def getProgramSources(self):
-                    for root, _, files in os.walk(self.getSourceDir()):
-                        for filename in files:
-                            if filename.endswith(".c"):
-                                yield (root, filename)
-
-                def getBuildTask(self, args):
-                    output_base = self.get_output_base()
-                    return GraalVmEmscriptenBuildTask(self, args, output_base)
-
-                def isBenchmarkProject(self):
-                    return self.name.startswith("benchmarks.")
-
-            class GraalVmEmscriptenBuildTask(mx_wasm.EmscriptenBuildTask):
-                def needsBuild(self, newestInput):
-                    is_needed, reason = super(GraalVmEmscriptenBuildTask, self).needsBuild(newestInput)
-                    if is_needed:
-                        return is_needed, reason
-                    for root, filename in self.subject.getProgramSources():
-                        f = join(root, mx_wasm.remove_extension(filename) + ".wasm")
-                        if not os.path.exists(f):
-                            return True, "symlink '{}' does not exist".format(f)
-                    return False, ''
-
-                def benchmark_methods(self):
-                    return polybench_benchmark_methods
-
-                def build(self):
-                    super(GraalVmEmscriptenBuildTask, self).build()
-                    output_dir = self.subject.getOutputDir()
-                    for root, filename in self.subject.getProgramSources():
-                        src = join(output_dir, mx_wasm.remove_extension(filename) + ".wasm")
-                        dst = join(root, mx_wasm.remove_extension(filename) + ".wasm")
-                        if mx.is_windows():
-                            mx.copyfile(src, dst)
-                        else:
-                            os.symlink(src, dst)
-
-                def clean(self, forBuild=False):
-                    super(GraalVmEmscriptenBuildTask, self).build()
-                    for root, filename in self.subject.getProgramSources():
-                        f = join(root, mx_wasm.remove_extension(filename) + ".wasm")
-                        if os.path.exists(f):
-                            if os.path.islink(f):
-                                os.unlink(f)
-                            else:
-                                mx.rmtree(f)
-                    output_dir = self.subject.getOutputDir()
-                    if not forBuild and os.path.exists(output_dir):
-                        mx.rmtree(output_dir)
-
             register_project(GraalVmWatProject(
                 suite=_suite,
                 name='benchmarks.interpreter.wasm',
