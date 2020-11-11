@@ -1212,6 +1212,9 @@ public class NativeImage {
         }
         if (shouldTraceObjectInstantiation) {
             String objectsToTrace = getListArgumentValue(oHTraceObjectInstantiation);
+            if (!agentOptions.isEmpty()) {
+                agentOptions += ",";
+            }
             agentOptions += getAgentOptions(objectsToTrace, "o");
         }
 
