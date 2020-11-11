@@ -158,6 +158,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetLowerableMemoryNode.SnippetLowering;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import org.graalvm.compiler.replacements.nodes.IdentityHashCodeNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.word.LocationIdentity;
 
@@ -192,6 +193,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     private BoxingSnippets.Templates boxingSnippets;
     private ConstantStringIndexOfSnippets.Templates indexOfSnippets;
+    protected IdentityHashCodeSnippets.Templates identityHashCodeSnippets;
 
     public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
@@ -316,6 +318,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerVolatileWrite(((VolatileWriteNode) n), tool);
             } else if (n instanceof RegisterFinalizerNode) {
                 return;
+            } else if (n instanceof IdentityHashCodeNode) {
+                identityHashCodeSnippets.lower((IdentityHashCodeNode) n, tool);
             } else {
                 throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
             }

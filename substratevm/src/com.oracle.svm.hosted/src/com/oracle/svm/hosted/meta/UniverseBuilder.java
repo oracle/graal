@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,13 +34,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinTask;
 
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
-import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -53,8 +50,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
-import com.oracle.graal.pointsto.flow.MethodTypeFlow;
-import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
@@ -64,7 +59,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
-import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -82,6 +76,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -134,6 +129,16 @@ public class UniverseBuilder {
             for (AnalysisType aType : aUniverse.getTypes()) {
                 makeType(aType);
             }
+            for (AnalysisType aType : aUniverse.getTypes()) {
+                /*
+                 * Set enclosing type lazily to avoid cyclic dependency between interfaces and
+                 * enclosing types. For example, in Scala an interface can extends its inner type.
+                 */
+                if (aType.getEnclosingType() != null) {
+                    lookupType(aType).setEnclosingType(Objects.requireNonNull(lookupType(aType.getEnclosingType())));
+                }
+            }
+
             for (AnalysisField aField : aUniverse.getFields()) {
                 makeField(aField);
             }
@@ -156,7 +161,6 @@ public class UniverseBuilder {
 
             collectDeclaredMethods();
             collectMonitorFieldInfo(bb);
-            collectHashCodeFieldInfo(bb);
 
             layoutInstanceFields();
             layoutStaticFields();
@@ -173,6 +177,10 @@ public class UniverseBuilder {
             Collections.sort(hUniverse.orderedFields);
             profilingInformationBuildTask.join();
         }
+    }
+
+    private HostedType lookupType(AnalysisType aType) {
+        return Objects.requireNonNull(hUniverse.types.get(aType));
     }
 
     private HostedType makeType(AnalysisType aType) {
@@ -227,36 +235,41 @@ public class UniverseBuilder {
 
             hType = new HostedArrayClass(hUniverse, aType, kind, storageKind, superType, sInterfaces, componentType);
 
-            int dimension = hType.getArrayDimension();
-            if (hType.getBaseType().getSuperclass() != null) {
-                makeType(hType.getBaseType().getSuperclass().getArrayClass(dimension - 1).getWrapped().getArrayClass());
-            }
-            if (hType.getBaseType().isInterface()) {
-                makeType(hUniverse.getObjectClass().getArrayClass(dimension - 1).getWrapped().getArrayClass());
-            }
-            for (HostedInterface interf : hType.getBaseType().getInterfaces()) {
-                makeType(interf.getArrayClass(dimension - 1).getWrapped().getArrayClass());
-            }
-
         } else {
-            throw shouldNotReachHere();
+            throw VMError.shouldNotReachHere();
         }
 
-        hUniverse.types.put(aType, hType);
-        /*
-         * Set enclosing type lazily to avoid cyclic dependency between interfaces and enclosing
-         * types. For example, in Scala an interface can extends its inner type.
-         */
-        if (aType.getEnclosingType() != null) {
-            hType.setEnclosingType(makeType(aType.getEnclosingType()));
+        HostedType existing = hUniverse.types.put(aType, hType);
+        if (existing != null) {
+            throw VMError.shouldNotReachHere("Overwriting existing type: " + hType + " != " + existing);
         }
 
+        DynamicHub hub = hType.getHub();
+        Class<?> hostedJavaClass = hub.getHostedJavaClass();
+        AnalysisType aTypeChecked = aMetaAccess.lookupJavaType(hostedJavaClass);
+        HostedType hTypeChecked = hMetaAccess.lookupJavaType(hostedJavaClass);
+        if (!sameObject(aType, aTypeChecked) || !sameObject(hTypeChecked, hType)) {
+            throw VMError.shouldNotReachHere("Type mismatch when performing round-trip HostedType/AnalysisType -> DynamicHub -> java.lang.Class -> HostedType/AnalysisType: " + System.lineSeparator() +
+                            hType + " @ " + Integer.toHexString(System.identityHashCode(hType)) +
+                            " / " + aType + " @ " + Integer.toHexString(System.identityHashCode(aType)) + System.lineSeparator() +
+                            " -> " + hub + " -> " + hostedJavaClass + System.lineSeparator() +
+                            " -> " + hTypeChecked + " @ " + Integer.toHexString(System.identityHashCode(hTypeChecked)) +
+                            " / " + aTypeChecked + " @ " + Integer.toHexString(System.identityHashCode(aTypeChecked)));
+        }
         return hType;
+    }
+
+    /*
+     * Normally types need to be compared with equals, and there is a gate check enforcing this.
+     * Using a separate method hides the comparison from the checker.
+     */
+    private static boolean sameObject(Object x, Object y) {
+        return x == y;
     }
 
     private void makeMethod(AnalysisMethod aMethod) {
         HostedType holder;
-        holder = makeType(aMethod.getDeclaringClass());
+        holder = lookupType(aMethod.getDeclaringClass());
         Signature signature = makeSignature(aMethod.getSignature(), holder);
         ConstantPool constantPool = makeConstantPool(aMethod.getConstantPool(), holder);
 
@@ -266,7 +279,7 @@ public class UniverseBuilder {
             ExceptionHandler h = aHandlers[i];
             JavaType catchType = h.getCatchType();
             if (h.getCatchType() instanceof AnalysisType) {
-                catchType = makeType((AnalysisType) catchType);
+                catchType = lookupType((AnalysisType) catchType);
             } else {
                 assert catchType == null || catchType instanceof UnresolvedJavaType;
             }
@@ -301,9 +314,9 @@ public class UniverseBuilder {
             hUniverse.signatures.put(aSignature, hSignature);
 
             for (int i = 0; i < aSignature.getParameterCount(false); i++) {
-                makeType((AnalysisType) aSignature.getParameterType(i, null));
+                lookupType((AnalysisType) aSignature.getParameterType(i, null));
             }
-            makeType((AnalysisType) aSignature.getReturnType(null));
+            lookupType((AnalysisType) aSignature.getReturnType(null));
         }
         return hSignature;
     }
@@ -318,12 +331,12 @@ public class UniverseBuilder {
     }
 
     private void makeField(AnalysisField aField) {
-        HostedType holder = makeType(aField.getDeclaringClass());
+        HostedType holder = lookupType(aField.getDeclaringClass());
         /*
          * If the field is never written, or only assigned null, then we might not have a type for
          * it yet.
          */
-        HostedType type = makeType(aField.getType());
+        HostedType type = lookupType(aField.getType());
 
         HostedField hField = new HostedField(hUniverse, hMetaAccess, aField, holder, type, staticAnalysisResultsBuilder.makeTypeProfile(aField));
         assert !hUniverse.fields.containsKey(aField);
@@ -556,67 +569,6 @@ public class UniverseBuilder {
         }
     }
 
-    // @formatter:off
-//    /**
-//     * New version of the method that uses the static analysis results collected by the static
-//     * analysis results builder instead of accessing the type states directly.
-//     */
-//    @SuppressWarnings("try")
-//    private void collectHashCodeFieldInfo() {
-//
-//        AnalysisMethod method = null;
-//        try {
-//            method = aMetaAccess.lookupJavaMethod(System.class.getMethod("identityHashCode", Object.class));
-//        } catch (NoSuchMethodException | SecurityException e) {
-//            throw shouldNotReachHere();
-//        }
-//        if (method == null) {
-//            return;
-//        }
-//
-//        try (Indent indent = Debug.logAndIndent("check types for which identityHashCode is invoked")) {
-//
-//            // Check which types may be a parameter of System.identityHashCode (which is invoked by
-//            // Object.hashCode).
-//
-//            HostedMethod hMethod = hUniverse.methods.get(method);
-//            JavaTypeProfile paramProfile = hMethod.getProfilingInfo().getParameterTypeProfile(0);
-//
-//            if (paramProfile == null) {
-//
-//                // This is the case if the identityHashCode parameter type is unknown. So all
-//                // classes get the hashCode field.
-//                // But this is only a fail-safe, because it cannot happen in the current
-//                // implementation of the analysis pass.
-//
-//                Debug.log("all types need a hashCode field");
-//                for (HostedType hType : hUniverse.getTypes()) {
-//                    if (hType.isInstanceClass()) {
-//                        ((HostedInstanceClass) hType).setNeedHashCodeField();
-//                    }
-//                }
-//                hUniverse.getObjectClass().setNeedHashCodeField();
-//            } else {
-//
-//                // Mark all paramter types of System.identityHashCode to have a hash-code field.
-//
-//                for (ProfiledType type : paramProfile.getTypes()) {
-//                    Debug.log("type %s is argument to identityHashCode", type);
-//
-//                    /*
-//                     * Array types get a hash-code field by default. So we only have to deal with
-//                     * instance types here.
-//                     */
-//                    if (type.getType().isInstanceClass()) {
-//                        HostedInstanceClass hType = (HostedInstanceClass) hUniverse.lookup(type.getType());
-//                        hType.setNeedHashCodeField();
-//                    }
-//                }
-//            }
-//        }
-//    }
-    // @formatter:on
-
     /**
      * We want these types to be immutable so that they can be in the read-only part of the image
      * heap. Those types that contain relocatable pointers *must* be in the read-only relocatables
@@ -651,66 +603,6 @@ public class UniverseBuilder {
 
     public static boolean isKnownImmutableType(Class<?> clazz) {
         return IMMUTABLE_TYPES.contains(clazz);
-    }
-
-    /** These classes must never have a separate hash code field. */
-    private static final Class<?>[] CLASSES_WITHOUT_HASH_CODE_FIELD = new Class<?>[]{
-                    FillerObject.class, // for size reasons, instances should never be accessed
-    };
-
-    @SuppressWarnings("try")
-    private void collectHashCodeFieldInfo(BigBang bb) {
-
-        AnalysisMethod method;
-        try {
-            method = aMetaAccess.lookupJavaMethod(System.class.getMethod("identityHashCode", Object.class));
-        } catch (NoSuchMethodException | SecurityException e) {
-            throw shouldNotReachHere();
-        }
-        if (method == null) {
-            return;
-        }
-
-        DebugContext debug = bb.getDebug();
-        try (Indent ignore = debug.logAndIndent("check types for which identityHashCode is invoked")) {
-            EconomicSet<HostedType> typesWithoutHashCodeField = EconomicSet.create();
-            for (Class<?> type : CLASSES_WITHOUT_HASH_CODE_FIELD) {
-                Optional<HostedType> hType = hMetaAccess.optionalLookupJavaType(type);
-                hType.ifPresent(typesWithoutHashCodeField::add);
-            }
-
-            // Check which types may be a parameter of System.identityHashCode (which is invoked by
-            // Object.hashCode).
-            MethodTypeFlow methodFlow = method.getTypeFlow();
-            TypeFlow<?> paramFlow = methodFlow.getParameterFlow(0);
-            TypeState thisParamState = methodFlow.getParameterTypeState(bb, 0);
-            assert thisParamState != null;
-            Iterable<AnalysisType> typesNeedHashCode = thisParamState.types();
-            if (typesNeedHashCode == null || thisParamState.isUnknown() || methodFlow.isSaturated(bb, paramFlow)) {
-                /*
-                 * If the identityHashCode parameter type is unknown or it is saturated then all
-                 * classes need to get the hashCode field.
-                 */
-                debug.log("all types need a hashCode field");
-                for (HostedType hType : hUniverse.getTypes()) {
-                    maybeSetNeedHashCodeField(hType, typesWithoutHashCodeField);
-                }
-                maybeSetNeedHashCodeField(hUniverse.getObjectClass(), typesWithoutHashCodeField);
-            } else {
-                // Mark all parameter types of System.identityHashCode to have a hash-code field.
-                for (AnalysisType type : typesNeedHashCode) {
-                    debug.log("type %s is argument to identityHashCode", type);
-                    maybeSetNeedHashCodeField(hUniverse.lookup(type), typesWithoutHashCodeField);
-                }
-            }
-        }
-    }
-
-    private static void maybeSetNeedHashCodeField(HostedType hType, UnmodifiableEconomicSet<HostedType> typesWithoutHashCodeField) {
-        // Array types get a hash code field by default, so we only have to deal with instance types
-        if (hType.isInstanceClass() && !typesWithoutHashCodeField.contains(hType)) {
-            ((HostedInstanceClass) hType).setNeedHashCodeField();
-        }
     }
 
     private void layoutInstanceFields() {
@@ -783,12 +675,6 @@ public class UniverseBuilder {
          * size, but not in the offset passed to subclasses.
          *
          * TODO: Should there be a list of synthetic fields for a class?
-         *
-         * I am putting the 8-byte aligned reference fields before the 4-byte aligned hashcode field
-         * to avoid unnecessary padding.
-         *
-         * TODO: The code for aligning the fields assumes that the alignment and the size are the
-         * same.
          */
 
         // A reference to a {@link java.util.concurrent.locks.ReentrantLock for "synchronized" or
@@ -800,27 +686,13 @@ public class UniverseBuilder {
             nextOffset += referenceFieldAlignmentAndSize;
         }
 
-        // An int to hold the result for System.identityHashCode.
-        if (ConfigurationValues.getObjectLayout().useExplicitIdentityHashCodeField()) {
-            if (clazz.needHashCodeField()) {
-                int intFieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
-                nextOffset = NumUtil.roundUp(nextOffset, intFieldSize);
-                clazz.setHashCodeFieldOffset(nextOffset);
-                nextOffset += intFieldSize;
-            }
-        } else {
-            int offset = ConfigurationValues.getObjectLayout().getInstanceIdentityHashCodeOffset();
-            assert offset >= 0;
-            clazz.setHashCodeFieldOffset(offset);
-        }
-
         clazz.instanceFields = orderedFields.toArray(new HostedField[orderedFields.size()]);
         clazz.instanceSize = ConfigurationValues.getObjectLayout().alignUp(nextOffset);
 
         for (HostedType subClass : clazz.subTypes) {
             if (subClass.isInstanceClass()) {
                 /*
-                 * Derived classes ignore the hashCode field of the super-class and start the layout
+                 * Derived classes ignore the monitor field of the super-class and start the layout
                  * of their fields right after the instance fields of the super-class. This is
                  * possible because each class that needs a synthetic field gets its own synthetic
                  * field at the end of its instance fields.
@@ -1193,7 +1065,6 @@ public class UniverseBuilder {
         for (HostedType type : hUniverse.orderedTypes) {
             int layoutHelper;
             int monitorOffset = 0;
-            int hashCodeOffset = 0;
             if (type.isInstanceClass()) {
                 HostedInstanceClass instanceClass = (HostedInstanceClass) type;
                 if (instanceClass.isAbstract()) {
@@ -1207,18 +1078,16 @@ public class UniverseBuilder {
                     layoutHelper = LayoutEncoding.forInstance(type, ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
-                hashCodeOffset = instanceClass.getHashCodeFieldOffset();
             } else if (type.isArray()) {
                 JavaKind storageKind = type.getComponentType().getStorageKind();
                 boolean isObject = (storageKind == JavaKind.Object);
                 layoutHelper = LayoutEncoding.forArray(type, isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind));
-                hashCodeOffset = ol.getArrayIdentityHashcodeOffset();
             } else if (type.isInterface()) {
                 layoutHelper = LayoutEncoding.forInterface();
             } else if (type.isPrimitive()) {
                 layoutHelper = LayoutEncoding.forPrimitive();
             } else {
-                throw shouldNotReachHere();
+                throw VMError.shouldNotReachHere();
             }
 
             /*
@@ -1242,7 +1111,7 @@ public class UniverseBuilder {
 
             DynamicHub hub = type.getHub();
             if (SubstrateOptions.UseLegacyTypeCheck.getValue()) {
-                hub.setData(layoutHelper, type.getTypeID(), monitorOffset, hashCodeOffset, type.getAssignableFromMatches(), type.instanceOfBits, vtable, referenceMapIndex, type.isInstantiated());
+                hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getAssignableFromMatches(), type.instanceOfBits, vtable, referenceMapIndex, type.isInstantiated());
             } else {
                 short[] typeCheckSlots;
                 if (type.getWrapped().isReachable()) {
@@ -1253,7 +1122,7 @@ public class UniverseBuilder {
                     }
                     typeCheckSlots = emptySlots;
                 }
-                hub.setData(layoutHelper, type.getTypeID(), monitorOffset, hashCodeOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), typeCheckSlots,
+                hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), typeCheckSlots,
                                 vtable, referenceMapIndex, type.isInstantiated());
             }
         }

@@ -372,10 +372,7 @@ public final class NativeImageHeapWriter {
                     writeField(buffer, info, field, con, info);
                 }
             }
-            DynamicHub hub = clazz.getHub();
-            if (hub.getHashCodeOffset() != 0) {
-                bufferBytes.putInt(info.getIndexInBuffer(hub.getHashCodeOffset()), info.getIdentityHashCode());
-            }
+            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getIdentityHashCodeOffset()), info.getIdentityHashCode());
             if (hybridArray != null) {
                 /*
                  * Write the hybrid array length and the array elements.
@@ -395,7 +392,7 @@ public final class NativeImageHeapWriter {
             Object array = info.getObject();
             int length = Array.getLength(array);
             bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
-            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayIdentityHashcodeOffset()), info.getIdentityHashCode());
+            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getIdentityHashCodeOffset()), info.getIdentityHashCode());
             if (array instanceof Object[]) {
                 Object[] oarray = (Object[]) array;
                 assert oarray.length == length;

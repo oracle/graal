@@ -27,8 +27,6 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readHub;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,14 +46,11 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.impl.InternalPlatform;
-import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
@@ -83,6 +78,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(java.lang.Object.class)
+@SuppressWarnings("static-method")
 final class Target_java_lang_Object {
 
     @Substitute
@@ -100,13 +96,7 @@ final class Target_java_lang_Object {
     @Substitute
     @TargetElement(name = "hashCode")
     private int hashCodeSubst() {
-        return System.identityHashCode(this);
-    }
-
-    @Substitute
-    @TargetElement(name = "toString")
-    private String toStringSubst() {
-        return getClass().getName() + "@" + Long.toHexString(Word.objectToUntrackedPointer(this).rawValue());
+        throw VMError.shouldNotReachHere("Intrinsified in SubstrateGraphBuilderPlugins");
     }
 
     @Substitute
@@ -274,6 +264,7 @@ final class Target_java_lang_Runtime {
 }
 
 @TargetClass(java.lang.System.class)
+@SuppressWarnings("unused")
 final class Target_java_lang_System {
 
     @Alias private static PrintStream out;
@@ -297,18 +288,7 @@ final class Target_java_lang_System {
 
     @Substitute
     private static int identityHashCode(Object obj) {
-        if (obj == null) {
-            return 0;
-        }
-
-        int hashCodeOffset = IdentityHashCodeSupport.getHashCodeOffset(obj);
-        UnsignedWord hashCodeOffsetWord = WordFactory.unsigned(hashCodeOffset);
-        int hashCode = ObjectAccess.readInt(obj, hashCodeOffsetWord, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
-        if (probability(FAST_PATH_PROBABILITY, hashCode != 0)) {
-            return hashCode;
-        }
-
-        return IdentityHashCodeSupport.generateIdentityHashCode(obj, hashCodeOffset);
+        throw VMError.shouldNotReachHere("Intrinsified in SubstrateGraphBuilderPlugins");
     }
 
     /* Ensure that we do not leak the full set of properties from the image generator. */

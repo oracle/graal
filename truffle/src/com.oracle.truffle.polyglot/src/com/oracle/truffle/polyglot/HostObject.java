@@ -1314,7 +1314,6 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
     static int identityHashCode(HostObject receiver) {
         return System.identityHashCode(receiver.obj);
     }

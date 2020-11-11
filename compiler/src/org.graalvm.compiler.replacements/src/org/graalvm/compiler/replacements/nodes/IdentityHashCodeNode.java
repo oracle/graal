@@ -22,11 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.replacements;
+package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -42,28 +40,21 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
 
-@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public class IdentityHashCodeNode extends AbstractStateSplit implements Canonicalizable, Lowerable, SingleMemoryKill, DeoptBciSupplier {
+@NodeInfo
+public abstract class IdentityHashCodeNode extends AbstractStateSplit implements Canonicalizable, Lowerable, SingleMemoryKill, DeoptBciSupplier {
 
     public static final NodeClass<IdentityHashCodeNode> TYPE = NodeClass.create(IdentityHashCodeNode.class);
 
     @Input ValueNode object;
     private int bci;
 
-    public IdentityHashCodeNode(ValueNode object, int bci) {
-        super(TYPE, StampFactory.forInteger(32));
+    protected IdentityHashCodeNode(NodeClass<? extends IdentityHashCodeNode> c, ValueNode object, int bci) {
+        super(c, StampFactory.forInteger(32));
         this.object = object;
         this.bci = bci;
-    }
-
-    @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        return HotSpotReplacementsUtil.MARK_WORD_LOCATION;
     }
 
     public ValueNode object() {
@@ -88,15 +79,17 @@ public class IdentityHashCodeNode extends AbstractStateSplit implements Canonica
             if (ImmutableCode.getValue(tool.getOptions())) {
                 return this;
             }
-            JavaConstant identityHashCode = null;
-            if (c.isNull()) {
-                identityHashCode = JavaConstant.forInt(0);
-            } else {
-                identityHashCode = JavaConstant.forInt(((HotSpotObjectConstant) c).getIdentityHashCode());
-            }
 
-            return new ConstantNode(identityHashCode, StampFactory.forConstant(identityHashCode));
+            int identityHashCode;
+            if (c.isNull()) {
+                identityHashCode = 0;
+            } else {
+                identityHashCode = getIdentityHashCode(c);
+            }
+            return ConstantNode.forInt(identityHashCode);
         }
         return this;
     }
+
+    protected abstract int getIdentityHashCode(JavaConstant constant);
 }

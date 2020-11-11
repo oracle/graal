@@ -71,5 +71,5 @@ public abstract class ObjectHeader {
     public abstract DynamicHub readDynamicHubFromPointer(Pointer ptr);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public abstract void initializeHeaderOfNewObject(Pointer objectPointer, Word objectHeader, boolean isArray);
+    public abstract void initializeHeaderOfNewObject(Pointer objectPointer, Word objectHeader);
 }
