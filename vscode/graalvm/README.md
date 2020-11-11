@@ -20,9 +20,8 @@ The major goal of creating GraalVM VS Code Extension was to enable a polyglot en
 - [Ruby Language Server](#ruby-language-server)
 - [Additional Editor Features](#additional-editor-features)
 - [Extension Settings](#extension-settings)
-- [Requirements](#requirements)
+- [Extension Requirements](#extension-requirements)
 - [Feedback](#feedback)
-- [Privacy Policy](#privacy-policy)
 
 ## Features
 
@@ -109,22 +108,35 @@ This installation model much simplifies setting up GraalVM development environme
 
 The "Download & Install GraalVM" action is a preferable way, as it eliminates the fuss around setting up environment variables and prepares the GraalVM runtime in VS Code for you.
 
-## Java Debugging
+## Java Development and Debugging
 
-To enable support for Java development with GraalVM in VS Code, you have to install [NetBeans Language Server Extension](http://100.107.237.88:8080/jenkins/job/vscode-java.lsp.server/), which produces the same code as Apache NetBeans Language Server.
+To enable support for Java development with GraalVM in VS Code, you have to install [NetBeans Language Server Extension](http://100.107.237.88:8080/jenkins/job/vscode-java.lsp.server/), which produces the same code as Apache NetBeans Language Server. Reload will be requried.
 
 Upon NetBeans Language Server Extension installation, the "Configure Java Runtime" window opens.
 To start developping or debugging Java applications, ensure GraalVM is used as your Java runtime in VS Code.
 If the current path is not pointing to the GraalVM folder, go to User Settings window and edit `java.home` value in _settings.json_ file. This configuration is then used to launch the Java Language Server.
 
-![Set Java Runtime](java_home_settings.png )
+![Set Java Runtime](java_home_settings.png)
+
+Simultaneously "Java Overview" window opens which gives you a possibility to create a project from scrach.
+The project you create or a Java project you open in VS Code will run in the GraalVM runtime.
+
+![Java Overview](java_overview_window.png)
+
+To debug a Java application running on GraalVM, creating a launch configuration for the application is necessary.
+Having opened the file to be debugged or run in VS Code, switch to the Debug view by clicking on the "bug" icon in the left side panel. The newly opened window will suggest to create a _launch.json_ file:
+
+![Create Launch Configuration for Java](images/create_java_launch_configuration.png)
+
+Select the preferable Java environment.
+To add more lunch configurations, navigate to Run > Add Configuration. To start debugging, press F5.
 
 ## JavaScript and Node.js Debugging
 
 To debug a JavaScript or Node.js application running on GraalVM, creating a launch configuration for the application is necessary.
-To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel, and then select Configure (the "gear" icon) on the Debug view top bar.
+To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel. The newly opened window will suggest to create a _launch.json_ file:
 
-![Create Lauch Configuration](images/create_lauch_config.png)
+![Create Launch Configuration for JavaScript and Node.js](images/create_lauch_config.png)
 
 If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets.
 
@@ -172,7 +184,7 @@ Alternatively, you can run your configuration through the Command Palette (_Ctrl
 ## Python Debugging
 
 To debug a Python application running on GraalVM, creating a launch configuration for the application is necessary.
-To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel, and then select Configure (the "gear" icon) on the Debug view top bar.
+To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel. The newly opened window will suggest to create a _launch.json_ file.
 If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets.
 Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
 * Use IntelliSense if your cursor is located inside the configurations array.
@@ -214,7 +226,7 @@ Alternatively, you can run your configuration through the Command Palette (_Ctrl
 ## R Debugging
 
 To debug an R application running on GraalVM, creating a launch configuration for the application is necessary.
-To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel, and then select Configure (the "gear" icon) on the Debug view top bar.
+To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel. The newly opened window will suggest to create a _launch.json_ file.
 If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets.
 Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
 * Use IntelliSense if your cursor is located inside the configurations array.
@@ -257,7 +269,7 @@ Alternatively, you can run your configuration through the Command Palette (_Ctrl
 ## Ruby Debugging
 
 To debug a Ruby application running on GraalVM, creating a launch configuration for the application is necessary.
-To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel, and then select Configure (the "gear" icon) on the Debug view top bar.
+To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel. The newly opened window will suggest to create a _launch.json_ file.
 If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets.
 Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
 * Use IntelliSense if your cursor is located inside the configurations array.
@@ -303,7 +315,7 @@ The `polyglot` launcher does not require the `--polyglot` option, it is enabled 
 For more information see the [GraalVM polyglot documentation](https://www.graalvm.org/reference-manual/polyglot-programming/).
 
 To debug a polyglot application on GraalVM in VS Code, creating a launch configuration for the application is necessary.
-To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel, and then select Configure (the "gear" icon) on the Debug view top bar.
+To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel. The newly opened window will suggest to create a _launch.json_ file.
 If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets.
 Once the `launch.json` file is opened in the editor, one of the following techniques can be used to add a new configuration:
 * Use IntelliSense if your cursor is located inside the configurations array.
@@ -426,12 +438,13 @@ This extension contributes the following settings:
 * __graalvm.languageServer.startRLanguageServer__ - Start the R Language Server.
 * __graalvm.languageServer.startRubyLanguageServer__ - Start the Ruby Language Server.
 
-## Requirements
+## Extension Requirements
 
 This extension depends on the following extensions:
 * [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) - The Python language support
-* [R](https://marketplace.visualstudio.com/items?itemName=Ikuyadeu.r) - The basic support for R
-* [Ruby](https://marketplace.visualstudio.com/items?itemName=rebornix.Ruby) - THe Ruby language support
+* [R](https://marketplace.visualstudio.com/items?itemName=Ikuyadeu.r) - A basic support for the R language
+* [Ruby](https://marketplace.visualstudio.com/items?itemName=rebornix.Ruby) - The Ruby language support
+* [NetBeans Language Server Extension](http://100.107.237.88:8080/jenkins/job/vscode-java.lsp.server/) - The Java language support
 
 ## Feedback
 
@@ -439,6 +452,6 @@ This extension depends on the following extensions:
 * [File a bug](https://github.com/oracle/graal/issues/new?assignees=&labels=bug,agent&template=5_issues_other.md&title=).
 * [Discuss with us](https://github.com/oracle/graal/discussions).
 
-## Privacy Policy
+### Privacy Policy
 
 Read the [Oracle Privacy Policy](https://www.oracle.com/legal/privacy/privacy-policy.html) to learn more.
