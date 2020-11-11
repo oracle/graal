@@ -63,16 +63,16 @@ public class TypeAccessChecker {
      * @return true iff the class is explicitly mentioned in the config or is an inner class exposed
      *         by its declaring class
      */
-    public boolean isClassAccessible(JNIEnvironment env, String classname, WordSupplier<JNIObjectHandle> loadClass) {
-        return checkClassAccessibility(env, classname, loadClass);
+    public boolean isClassAccessible(String classname, WordSupplier<JNIObjectHandle> loadClass) {
+        return checkClassAccessibility(classname, loadClass);
     }
 
     public boolean isClassAccessible(JNIEnvironment env, JNIObjectHandle clazz) {
         String classname = Support.getClassNameOrNull(env, clazz);
-        return classname != null && checkClassAccessibility(env, classname, () -> clazz);
+        return classname != null && checkClassAccessibility(classname, () -> clazz);
     }
 
-    private boolean checkClassAccessibility(JNIEnvironment env, String classname, WordSupplier<JNIObjectHandle> loadClass) {
+    private boolean checkClassAccessibility(String classname, WordSupplier<JNIObjectHandle> loadClass) {
         if (configuration.get(classname) != null) {
             return true;
         }

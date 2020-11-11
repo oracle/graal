@@ -72,7 +72,7 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         if (shouldApproveWithoutChecks(lazyValue(className), lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
-        return className == null || typeAccessChecker.isClassAccessible(env, className, loadClass);
+        return className == null || typeAccessChecker.isClassAccessible(className, loadClass);
     }
 
     public boolean verifyLoadClass(JNIEnvironment env, JNIObjectHandle callerClass, String className, WordSupplier<JNIObjectHandle> loadClass) {
@@ -84,7 +84,7 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         if (accessAdvisor.shouldIgnoreLoadClass(lazyName, callerClassName)) {
             return true;
         }
-        return className == null || typeAccessChecker.isClassAccessible(env, className, loadClass);
+        return className == null || typeAccessChecker.isClassAccessible(className, loadClass);
     }
 
     public boolean verifyGetField(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle name, JNIObjectHandle result, JNIObjectHandle declaring, JNIObjectHandle callerClass) {

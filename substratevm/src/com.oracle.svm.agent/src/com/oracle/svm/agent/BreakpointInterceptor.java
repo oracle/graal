@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
@@ -185,6 +186,8 @@ final class BreakpointInterceptor {
         JNIObjectHandle name = getObjectArgument(0);
         String className = fromJniString(jni, name);
 
+        AtomicReference<Object> result = new AtomicReference<>(false);
+
         WordSupplier<JNIObjectHandle> loadClass = () -> {
             JNIObjectHandle loadedClass = nullHandle();
             boolean classLoaderValid = true;
@@ -202,6 +205,7 @@ final class BreakpointInterceptor {
                     classLoaderValid = (jvmtiFunctions().GetClassLoader().invoke(jvmtiEnv(), callerClass, classLoaderPtr) == JvmtiError.JVMTI_ERROR_NONE);
                 }
             }
+            result.set(TraceWriter.UNKNOWN_VALUE);
             if (classLoaderValid) {
                 /*
                  * Even if the original call requested class initialization, disable it because
@@ -212,20 +216,16 @@ final class BreakpointInterceptor {
                 if (clearException(jni)) {
                     loadedClass = nullHandle();
                 }
+                result.set(loadedClass.notEqual(nullHandle()));
             }
             return loadedClass;
         };
 
         boolean allowed = (accessVerifier == null || accessVerifier.verifyForName(jni, callerClass, className, loadClass));
-        Object result = false;
         if (allowed) {
-            result = TraceWriter.UNKNOWN_VALUE;
-            if (loadClass.get().equal(nullHandle())) {
-                // todo how to set success?
-                result = false;
-            }
+            loadClass.get();
         }
-        traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, result, className);
+        traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, result.get(), className);
         if (!allowed) {
             try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to class: " + className)) {
                 jniFunctions().getThrowNew().invoke(jni, agent.handles().javaLangClassNotFoundException, message.get());
