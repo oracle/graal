@@ -72,7 +72,7 @@ public interface ThreadsActivationListener {
      * multiple times per thread. This method is executed frequently and must be designed for
      * compilation. If this method throws an
      * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
-     * messages may be executed without context being entered.
+     * messages may be executed without a context being entered.
      *
      * @param context the context being entered on the current thread
      * @since 20.3

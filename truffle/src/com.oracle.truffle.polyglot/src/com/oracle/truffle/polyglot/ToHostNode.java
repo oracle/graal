@@ -588,7 +588,7 @@ abstract class ToHostNode extends Node {
         } catch (ThreadDeath e) {
             throw e;
         } catch (Throwable e) {
-            return PolyglotImpl.guestToHostException(languageContext, e);
+            return PolyglotImpl.guestToHostException(languageContext, e, true);
         }
     }
 

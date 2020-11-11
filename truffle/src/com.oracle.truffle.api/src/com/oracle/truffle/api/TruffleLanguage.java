@@ -963,7 +963,7 @@ public abstract class TruffleLanguage<C> {
      * implementation denies access to more than one thread at the same time. The
      * {@link Thread#currentThread() current thread} may differ from the passed thread. If this
      * method throws an {@link com.oracle.truffle.api.exception.AbstractTruffleException} the
-     * exception interop messages may be executed without context being entered.
+     * exception interop messages may be executed without a context being entered.
      * <p>
      * <b>Example multi-threaded language implementation:</b>
      * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
@@ -984,7 +984,7 @@ public abstract class TruffleLanguage<C> {
      * multiple threads at the same time. All initialized languages must allow multi-threading for
      * this method to be invoked. If this method throws an
      * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
-     * messages may be executed without context being entered.
+     * messages may be executed without a context being entered.
      * <p>
      * <b>Example multi-threaded language implementation:</b>
      * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
@@ -1007,7 +1007,7 @@ public abstract class TruffleLanguage<C> {
      * The {@link Thread#currentThread() current thread} may differ from the initialized thread.
      * <p>
      * If this method throws an {@link com.oracle.truffle.api.exception.AbstractTruffleException}
-     * the exception interop messages may be executed without context being entered.
+     * the exception interop messages may be executed without a context being entered.
      * <p>
      * <b>Example multi-threaded language implementation:</b>
      * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
@@ -1759,7 +1759,7 @@ public abstract class TruffleLanguage<C> {
          * thread local must always return the same {@link Object#getClass() class}, even for
          * multiple instances of the same {@link TruffleLanguage}. If this method throws an
          * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
-         * messages may be executed without context being entered.
+         * messages may be executed without a context being entered.
          *
          * @see TruffleLanguage#createContextLocal(ContextLocalFactory)
          * @since 20.3
@@ -1783,7 +1783,7 @@ public abstract class TruffleLanguage<C> {
          * {@link Object#getClass() class}, even for multiple instances of the same
          * {@link TruffleLanguage}. If this method throws an
          * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
-         * messages may be executed without context being entered.
+         * messages may be executed without a context being entered.
          *
          * @see TruffleLanguage#createContextThreadLocal(ContextThreadLocalFactory)
          * @since 20.3

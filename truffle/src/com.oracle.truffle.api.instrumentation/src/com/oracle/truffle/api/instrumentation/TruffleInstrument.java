@@ -149,7 +149,7 @@ public abstract class TruffleInstrument {
      * {@codesnippet DebuggerExample}
      * <p>
      * If this method throws an {@link com.oracle.truffle.api.exception.AbstractTruffleException}
-     * the exception interop messages are executed without context being entered.
+     * the exception interop messages are executed without a context being entered.
      *
      * @param env environment information for the instrument
      *
@@ -408,7 +408,7 @@ public abstract class TruffleInstrument {
          * thread local must always return the same {@link Object#getClass() class}, even for
          * multiple instances of the same {@link TruffleInstrument}. If this method throws an
          * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
-         * messages may be executed without context being entered.
+         * messages may be executed without a context being entered.
          *
          * @see TruffleInstrument#createContextLocal(ContextLocalFactory)
          * @since 20.3
@@ -431,7 +431,7 @@ public abstract class TruffleInstrument {
          * {@link Object#getClass() class}, even for multiple instances of the same
          * {@link TruffleInstrument}. If this method throws an
          * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
-         * messages may be executed without context being entered.
+         * messages may be executed without a context being entered.
          *
          * @see TruffleInstrument#createContextThreadLocal(ContextThreadLocalFactory)
          * @since 20.3

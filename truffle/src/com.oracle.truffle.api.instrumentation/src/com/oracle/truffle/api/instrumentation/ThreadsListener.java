@@ -64,7 +64,7 @@ public interface ThreadsListener {
      * Notifies about initialization of a thread to be used for a guest language execution in a
      * {@link TruffleContext}. If this method throws an
      * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
-     * messages may be executed without context being entered.
+     * messages may be executed without a context being entered.
      *
      * @param context the context the thread is initialized in
      * @param thread the initialized thread
