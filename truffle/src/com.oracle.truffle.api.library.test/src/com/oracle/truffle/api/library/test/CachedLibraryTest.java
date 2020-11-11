@@ -46,11 +46,13 @@ import static org.junit.Assert.fail;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Introspectable;
+import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.Frame;
@@ -65,6 +67,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.AssumptionNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.BoundaryFallthroughNodeGen;
+import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.CachedLibraryWithVarArgsExecuteNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.ConstantLimitNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.ConstantNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.DoubleNodeGen;
@@ -546,6 +549,93 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         node.execute(3);
         node.execute(3);
         node.execute(5);
+    }
+
+    @Test
+    public void testCachedLibraryWithVarArgsExecute() {
+        CachedLibraryWithVarArgsExecute node = adoptNode(CachedLibraryWithVarArgsExecuteNodeGen.create(new ArgumentNode[]{
+                        new ArgumentNode(), new ArgumentNode(), new ArgumentNode()
+        })).get();
+
+        // test execute with nodes
+        assertEquals(3, node.execute());
+        assertEquals(2, node.execute(0));
+        assertEquals(1, node.execute(0, 0));
+        assertEquals(0, node.execute(0, 0, 0));
+
+        // test execute with varargs
+        assertEquals(3, node.executeVarArgs(new Object[]{1, 1, 1}));
+        assertEquals(2, node.executeVarArgs(0, new Object[]{1, 1}));
+        assertEquals(1, node.executeVarArgs(0, 0, new Object[]{1}));
+        assertEquals(0, node.executeVarArgs(0, 0, 0, new Object[]{}));
+
+        // test with varargs and frame
+        VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], node.getRootNode().getFrameDescriptor());
+
+        assertEquals(3, node.executeWithFrame(frame, new Object[]{1, 1, 1}));
+        assertEquals(2, node.executeWithFrame(frame, 0, new Object[]{1, 1}));
+        assertEquals(1, node.executeWithFrame(frame, 0, 0, new Object[]{1}));
+        assertEquals(0, node.executeWithFrame(frame, 0, 0, 0, new Object[]{}));
+
+    }
+
+    public static class ArgumentNode extends Node {
+
+        public Object execute() {
+            return 1;
+        }
+
+    }
+
+    /*
+     * Test for GR-27335.
+     */
+    @NodeChild(value = "arguments", type = ArgumentNode[].class)
+    abstract static class CachedLibraryWithVarArgsExecute extends Node {
+
+        abstract Object executeWithFrame(VirtualFrame frame, Object... arguments);
+
+        abstract Object executeWithFrame(VirtualFrame frame, Object arg0, Object... arguments);
+
+        abstract Object executeWithFrame(VirtualFrame frame, Object arg0, Object arg1, Object... arguments);
+
+        abstract Object executeWithFrame(VirtualFrame frame, Object arg0, Object arg1, Object arg2, Object... arguments);
+
+        abstract Object executeWithFrame(VirtualFrame frame);
+
+        abstract Object executeVarArgs(Object... arguments);
+
+        abstract Object executeVarArgs(Object arg0, Object... arguments);
+
+        abstract Object executeVarArgs(Object arg0, Object arg1, Object... arguments);
+
+        abstract Object executeVarArgs(Object arg0, Object arg1, Object arg2, Object... arguments);
+
+        abstract Object execute();
+
+        abstract Object execute(Object arg0);
+
+        abstract Object execute(Object arg0, Object arg1);
+
+        abstract Object execute(Object arg0, Object arg1, Object arg2);
+
+        static int LIMIT = 0;
+
+        /*
+         * We don't use a constant limit to avoid optimizations in the DSL.
+         */
+        @Specialization(limit = "LIMIT")
+        @SuppressWarnings("unused")
+        protected static final int doExecute(Object arg0, Object arg1, Object arg2,
+                        @CachedLibrary("arg0") final InteropLibrary interop0,
+                        @CachedLibrary("arg1") final InteropLibrary interop1,
+                        @CachedLibrary("arg2") final InteropLibrary interop2) {
+            try {
+                return interop0.asInt(arg0) + interop1.asInt(arg1) + interop2.asInt(arg2);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
     }
 
     @SuppressWarnings("unused")
