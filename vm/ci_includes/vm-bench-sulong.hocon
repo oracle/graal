@@ -19,9 +19,6 @@ sulong_logs: [
     "*/svmbuild/*.log"
     "*/svmbuild/images/*.log"
 ]
-sulong_logs_bc: ${sulong_logs} [
-    "../sulong-benchmarks/*/*/*.bc"
-]
 
 bench-llvm-linux: ${sulong_linux}  ${x52.default} ${oraclejdk8} {
   capabilities: ${x52.default.capabilities} [tmpfs25g]
@@ -103,6 +100,6 @@ builds += [
       JVM_CONFIG: jvm
     }
     name: "bench-sulong-graalvm-ce-jvm-csuite-upload-bitcode-files"
-    logs: ${sulong_logs_bc}
+    logs: ${sulong_logs}
   }
 ]
