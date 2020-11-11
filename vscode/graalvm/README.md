@@ -59,6 +59,8 @@ The Download & Install GraalVM action prompts to:
 * Pick a Java version: 8, 11
 * Select the destination folder
 
+![Download and Install GraalVM](images/download_install_graalvm_view.png)
+
 If you prefer GraalVM Community Edition, the installation wizzard will download the package from [Github](https://github.com/graalvm/graalvm-ce-builds/releases) in the background and display the progress.
 
 If you select GraalVM Enterprise Editon, you are prompted to accept the Oracle License Agreement and requested to enter your email address. This is required per session.
@@ -75,7 +77,7 @@ Upon completion, the "Set as Default Java" action is invoked. At the same time, 
 Once you confirm, you are taken to the selection list:
 ![Select Components to Install](images/install_components_view.png)
 
-Please be informed, you can download and install multiple GraalVM distributions and components at the same time.
+Note: You can download and install multiple GraalVM distributions and components at the same time.
 
 ### Add Existing GraalVM
 
@@ -89,12 +91,8 @@ Alternatively, you can invoke the same actions from the View > Command Palette (
 
 ![Command Palette](images/command-palette.png)
 
-The GraalVM Installations panel will display each registered GraalVM instance, placing the active one on top. By unfolding the installation, available optional components are listed.
-Components are either installed or available for download.
-
-![Select Components to Install](images/install_components_view.png)
-
 Each registered GraalVM instance displays its installation location and all its available components.
+The active one is placed on top.
 Components are either installed or available for download -- the context actions to install (the plus icon) or remove (the bucket icon) are displayed when hovering over the component name.
 
 ![Available GraalVM Installations and Components](images/available_instances.png)
@@ -135,8 +133,6 @@ To add more lunch configurations, navigate to Run > Add Configuration. To start 
 
 To debug a JavaScript or Node.js application running on GraalVM, creating a launch configuration for the application is necessary.
 To do so, open the application project folder in VS Code (File > Open Folder), switch to the Debug view by clicking on the "bug" icon in the left side panel. The newly opened window will suggest to create a _launch.json_ file:
-
-![Create Launch Configuration for JavaScript and Node.js](images/create_lauch_config.png)
 
 If debugging is not yet configured (no `launch.json` has been created), select `GraalVM` from the list of available debug environmnets.
 
