@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallMmapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
@@ -57,8 +58,8 @@ final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<Darwin
     }
 
     @Override
-    public Object createVAListStorage() {
-        return new LLVMX86_64VaListStorage();
+    public Object createVAListStorage(RootNode rootNode) {
+        return new LLVMX86_64VaListStorage(rootNode);
     }
 
     @Override
@@ -67,8 +68,8 @@ final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<Darwin
     }
 
     @Override
-    public Object createNativeVAListWrapper(LLVMNativePointer vaListPtr) {
-        return new LLVMX86_64VaListStorage.NativeVAListWrapper(vaListPtr);
+    public Object createNativeVAListWrapper(LLVMNativePointer vaListPtr, RootNode rootNode) {
+        return new LLVMX86_64VaListStorage.NativeVAListWrapper(vaListPtr, rootNode);
     }
 
 }

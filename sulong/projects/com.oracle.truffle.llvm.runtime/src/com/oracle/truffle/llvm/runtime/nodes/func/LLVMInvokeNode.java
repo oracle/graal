@@ -41,7 +41,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNodeFactory.LLVMInvokeNodeImplNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMValueProfilingNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
@@ -60,7 +59,6 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
 
         @Child protected LLVMStatementNode normalPhiNode;
         @Child protected LLVMStatementNode unwindPhiNode;
-        @Child protected LLVMValueProfilingNode returnValueProfile;
 
         @Children private final LLVMExpressionNode[] argumentNodes;
         @Child private LLVMDispatchNode dispatchNode;
@@ -80,7 +78,6 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
             this.type = type;
             this.normalPhiNode = normalPhiNode;
             this.unwindPhiNode = unwindPhiNode;
-            this.returnValueProfile = (LLVMValueProfilingNode) LLVMValueProfilingNode.create(null, type.getReturnType());
 
             this.argumentNodes = argumentNodes;
             this.dispatchNode = LLVMDispatchNodeGen.create(type);
