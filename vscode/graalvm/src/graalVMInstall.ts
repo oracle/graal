@@ -182,25 +182,26 @@ export function getInstallConfigurations(): ConfigurationPickItem[] {
     ret.push(new ConfigurationPickItem(
         'Set as default Java',
         '(java.home)',
-        graalVMHome => {
-            if (!vscode.extensions.getExtension('redhat.java')) {
-                return false;
-            }
-            return getConf('java').get('home') !== graalVMHome;
-        }, 
-        async graalVMHome => {
-            getConf('java').update('home', graalVMHome, true);
-        })
+        _graalVMHome => vscode.extensions.getExtension('redhat.java') !== undefined,
+        graalVMHome => getConf('java').get('home') === graalVMHome,
+        async graalVMHome => getConf('java').update('home', graalVMHome, true),
+        async _graalVMHome => getConf('java').update('home', undefined, true))
     );
     
     let section: string = `${TERMINAL_INTEGRATED}.env.${dist()}`;
     ret.push(new ConfigurationPickItem(
         'Set as Java for Terminal',
         `(JAVA_HOME in ${section})`,
-        graalVMHome => getTerminalEnv().JAVA_HOME !== graalVMHome, 
+        _graalVMHome => true,
+        graalVMHome => getTerminalEnv().JAVA_HOME === graalVMHome,
         async graalVMHome => {
             const env: any = getTerminalEnv();
             env.JAVA_HOME = graalVMHome;
+            return setTerminalEnv(env);
+        },
+        async _graalVMHome => {
+            const env: any = getTerminalEnv();
+            env.JAVA_HOME = undefined;
             return setTerminalEnv(env);
         }
     ));
@@ -208,11 +209,12 @@ export function getInstallConfigurations(): ConfigurationPickItem[] {
     ret.push(new ConfigurationPickItem(
         'Set as Java for Terminal',
         `(PATH in ${section})`,
+        _graalVMHome => true,
         graalVMHome => {
             const env: any = getTerminalEnv();
             const path = env.PATH as string;
-            return !path?.startsWith(join(graalVMHome, 'bin'));
-        }, 
+            return path?.startsWith(join(graalVMHome, 'bin'));
+        },
         async graalVMHome => {
             const env: any = getTerminalEnv();
             const path = env.PATH as string;
@@ -231,20 +233,55 @@ export function getInstallConfigurations(): ConfigurationPickItem[] {
                 env.PATH = `${graalVMPath}${delimiter}${process.env.PATH}`;
             }
             return setTerminalEnv(env);
+        },
+        async graalVMHome => {
+            const env: any = getTerminalEnv();
+            const path = env.PATH as string;
+            const graalVMPath = join(graalVMHome, 'bin');
+            if (path) {
+                const paths = path.split(delimiter);
+                const index = paths.indexOf(graalVMPath);
+                if (index >= 0) {
+                    paths.splice(index, 1);
+                    env.PATH = paths.join(delimiter);
+                }
+            }
+            return setTerminalEnv(env);
         }
     ));
 
     ret.push(new ConfigurationPickItem(
         'Set as Java for Maven',
         '(JAVA_HOME in maven.terminal.customEnv)',
+        _graalVMHome => vscode.extensions.getExtension('vscjava.vscode-maven') !== undefined, 
         graalVMHome => {
-            if (!vscode.extensions.getExtension('vscjava.vscode-maven')) {
-                return false;
-            }
             const envs = getConf('maven').get('terminal.customEnv') as [];
-            return envs ? envs.find(env => env["environmentVariable"] === "JAVA_HOME" && env["value"] === graalVMHome) === undefined : true;
-        }, 
-        async graalVMHome => getConf('maven').update('terminal.customEnv', [{environmentVariable: "JAVA_HOME", value: graalVMHome}], true))
+            return envs ? envs.find(env => env["environmentVariable"] === "JAVA_HOME" && env["value"] === graalVMHome) !== undefined : false;
+        },
+        async graalVMHome => {
+            const envs: any[] = getConf('maven').get('terminal.customEnv') as [];
+            if (envs) {
+                const env: any = envs.find(env => env["environmentVariable"] === "JAVA_HOME");
+                if (env) {
+                    env.value = graalVMHome;
+                } else {
+                    envs.push({environmentVariable: "JAVA_HOME", value: graalVMHome});
+                }
+                return getConf('maven').update('terminal.customEnv', envs, true);
+            }
+            return getConf('maven').update('terminal.customEnv', [{environmentVariable: "JAVA_HOME", value: graalVMHome}], true);
+        },
+        async graalVMHome => {
+            const envs: any[] = getConf('maven').get('terminal.customEnv') as [];
+            if (envs) {
+                const env: any = envs.find(env => env["environmentVariable"] === "JAVA_HOME" && env["value"] === graalVMHome);
+                if (env) {
+                    envs.splice(envs.indexOf(env), 1);
+                    return getConf('maven').update('terminal.customEnv', envs, true);                    
+                }
+            }
+            return;
+        })
     );
     return ret;
 }

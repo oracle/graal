@@ -74,17 +74,27 @@ export async function configureGraalVMHome(graalVMHome: string, nonInteractive?:
 async function configureInteractive(graalVMHome: string) {
     checkForMissingComponents(graalVMHome);
     gatherConfigurations();
-    const toShow = configurations.filter(conf => conf.show(graalVMHome));
+    const toShow: ConfigurationPickItem[] = configurations.filter(conf => {
+        const show = conf.show(graalVMHome);
+        if (show) {
+            conf.picked = conf.setted(graalVMHome);
+        }
+        return show;
+    });
     if (toShow.length > 0) {
         const selected: ConfigurationPickItem[] = await vscode.window.showQuickPick(
             toShow, {
                 canPickMany: true,
                 placeHolder: 'Configure active GraalVM'
             }) || [];
-
-        for (const select of selected) {
+        
+        for (const shown of toShow) {
             try {
-                await select.set(graalVMHome);
+                if (selected.includes(shown)) {
+                    await shown.set(graalVMHome);
+                } else {
+                    await shown.unset(graalVMHome);
+                }
             } catch (error) {
                 vscode.window.showErrorMessage(error?.message);
             }
@@ -135,6 +145,8 @@ export class ConfigurationPickItem implements vscode.QuickPickItem {
         public readonly label: string,
         public readonly description: string,
         public readonly show: (graalVMHome: string) => boolean,
-        public readonly set: ((graalVMHome: string) => Promise<any>)
+        public readonly setted: (graalVMHome: string) => boolean,
+        public readonly set: ((graalVMHome: string) => Promise<any>),
+        public readonly unset: ((graalVMHome: string) => Promise<any>)
 	) {}
 }
