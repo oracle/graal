@@ -24,16 +24,19 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
+import java.awt.GraphicsEnvironment;
+import java.io.FilenameFilter;
+import java.util.function.BooleanSupplier;
+
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.awt.GraphicsEnvironment;
-import java.io.FilenameFilter;
-import java.util.function.BooleanSupplier;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
 
 @Platforms(Platform.LINUX_AMD64.class)
 @SuppressWarnings({"static-method", "unused"})
@@ -107,6 +110,126 @@ public final class JavaAWTSubstitutions {
         public boolean foundOsSpecificFile() {
             return false;
         }
+
+        // Original method throws an exception if java.home is null
+        @Substitute
+        private void findFontConfigFile() {
+        }
+
+        // Called from Target_sun_font_FcFontConfiguration#init() - original method is protected
+        @Alias
+        protected native void setFontConfiguration();
+    }
+
+    // Used in Target_sun_font_FcFontConfiguration#init()
+    @TargetClass(className = "sun.font.FontConfigManager", innerClass = "FcCompFont", onlyWith = JDK11OrLater.class)
+    static final class Target_sun_font_FontConfigManager_FcCompFont {
+    }
+
+    // Used in Target_sun_font_FcFontConfiguration#init()
+    @TargetClass(className = "sun.font.SunFontManager", onlyWith = JDK11OrLater.class)
+    static final class Target_sun_font_SunFontManager {
+    }
+
+    // Used in Target_sun_font_FcFontConfiguration#init()
+    @TargetClass(className = "sun.awt.FcFontManager", onlyWith = JDK11OrLater.class)
+    static final class Target_sun_awt_FcFontManager {
+        // Called from Target_sun_font_FcFontConfiguration#init()
+        @Alias
+        public synchronized native Target_sun_font_FontConfigManager getFontConfigManager();
+    }
+
+    // Used in Target_sun_font_FcFontConfiguration#init()
+    @TargetClass(className = "sun.font.FontConfigManager", onlyWith = JDK11OrLater.class)
+    static final class Target_sun_font_FontConfigManager {
+        // Called from Target_sun_font_FcFontConfiguration#init() - original method not visible
+        @Alias
+        native Target_sun_font_FontConfigManager_FcCompFont[] loadFontConfig();
+
+        // Called from Target_sun_font_FcFontConfiguration#init() - original method not visible
+        @Alias
+        native void populateFontConfig(Target_sun_font_FontConfigManager_FcCompFont[] fcInfo);
+    }
+
+    // Used in Target_sun_font_FcFontConfiguration#init()
+    @TargetClass(className = "sun.font.FontUtilities", onlyWith = JDK11OrLater.class)
+    static final class Target_sun_font_FontUtilities {
+        // Called from Target_sun_font_FcFontConfiguration#init()
+        @Alias
+        public static native boolean debugFonts();
+    }
+
+    @TargetClass(className = "sun.font.FcFontConfiguration", onlyWith = JDK11OrLater.class)
+    static final class Target_sun_font_FcFontConfiguration {
+        // Accessed from #init() - original field is private
+        @Alias//
+        private Target_sun_font_FontConfigManager_FcCompFont[] fcCompFonts;
+
+        // Accessed from #init() - original field is protected
+        @Alias//
+        protected Target_sun_font_SunFontManager fontManager;
+
+        // Called from #init() - original method is private
+        @Alias
+        private native void readFcInfo();
+
+        // Called from #init() - original method is private
+        @Alias
+        private native void writeFcInfo();
+
+        // Called from #init() - original method is private
+        @Alias
+        private native static void warning(String msg);
+
+        // Original method throws an exception if java.home is null
+        @Substitute
+        public synchronized boolean init() {
+            if (fcCompFonts != null) {
+                return true;
+            }
+
+            SubstrateUtil.cast(this, Target_sun_awt_FontConfiguration.class).setFontConfiguration();
+            readFcInfo();
+            Target_sun_awt_FcFontManager fm = SubstrateUtil.cast(fontManager, Target_sun_awt_FcFontManager.class);
+            Target_sun_font_FontConfigManager fcm = fm.getFontConfigManager();
+            if (fcCompFonts == null) {
+                fcCompFonts = fcm.loadFontConfig();
+                if (fcCompFonts != null) {
+                    try {
+                        writeFcInfo();
+                    } catch (Exception e) {
+                        if (Target_sun_font_FontUtilities.debugFonts()) {
+                            warning("Exception writing fcInfo " + e);
+                        }
+                    }
+                } else if (Target_sun_font_FontUtilities.debugFonts()) {
+                    warning("Failed to get info from libfontconfig");
+                }
+            } else {
+                fcm.populateFontConfig(fcCompFonts);
+            }
+
+            // @formatter:off
+            /*
+            The below code was part of the original method but has been removed in the substitution. In a native-image,
+            java.home is set to null, so executing it would result in an exception.
+            The #getInstalledFallbackFonts method is in charge of installing fallback fonts shipped with the JDK. If the
+            fallback font directory does not exist, it is a no-op. As we do not have a JDK available at native-image
+            runtime, we can safely remove the call.
+
+            // NB already in a privileged block from SGE
+            String javaHome = System.getProperty("java.home");
+            if (javaHome == null) {
+                throw new Error("java.home property not set");
+            }
+            String javaLib = javaHome + File.separator + "lib";
+            getInstalledFallbackFonts(javaLib);
+             */
+            // @formatter:on
+
+            return fcCompFonts != null; // couldn't load fontconfig.
+        }
+
     }
 
     /*
