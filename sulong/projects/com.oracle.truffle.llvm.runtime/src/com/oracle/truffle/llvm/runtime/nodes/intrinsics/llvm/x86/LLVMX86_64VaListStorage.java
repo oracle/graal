@@ -75,6 +75,7 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMGetStackSpaceInstruction;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
@@ -693,7 +694,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
         @Specialization(guards = {"vaList.isNativized()"})
         static void initializeNativized(LLVMX86_64VaListStorage vaList, Object[] realArgs, int numOfExpArgs,
-                        @Cached(value = "vaList.createLLVMNativeVarargsAreaStackAllocationNode()", uncached = "vaList.createLLVMNativeVarargsAreaStackAllocationNodeUncached()") LLVMNativeVarargsAreaStackAllocationNode stackAllocationNode,
+                        @Cached NativeAllocaInstruction stackAllocationNode,
                         @Cached LLVMI64StoreNode i64RegSaveAreaStore,
                         @Cached LLVMI32StoreNode i32RegSaveAreaStore,
                         @Cached LLVM80BitFloatStoreNode fp80bitRegSaveAreaStore,
@@ -865,18 +866,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         return llvmCtx.getLanguage().getActiveConfiguration().createNodeFactory(llvmCtx.getLanguage(), dataLayout).createVarargsAreaStackAllocation();
     }
 
-    @SuppressWarnings("static-method")
-    LLVMNativeVarargsAreaStackAllocationNode createLLVMNativeVarargsAreaStackAllocationNode() {
-        return LLVMNativeVarargsAreaStackAllocationNodeGen.create();
-    }
-
-    @SuppressWarnings("static-method")
-    LLVMNativeVarargsAreaStackAllocationNode createLLVMNativeVarargsAreaStackAllocationNodeUncached() {
-        LLVMNativeVarargsAreaStackAllocationNode node = LLVMNativeVarargsAreaStackAllocationNodeGen.create();
-        node.setStackAccess(rootNode.getStackAccess());
-        return node;
-    }
-
     private static DataLayout getDataLayout() {
         RootCallTarget rootCallTarget = (RootCallTarget) Truffle.getRuntime().getCurrentFrame().getCallTarget();
         DataLayout dataLayout = (((LLVMHasDatalayoutNode) rootCallTarget.getRootNode())).getDatalayout();
@@ -888,7 +877,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     @TruffleBoundary
     void toNative(@SuppressWarnings("unused") @CachedLanguage() LLVMLanguage language,
                     @Cached(value = "this.createAllocaNode(language)", uncached = "this.createAllocaNodeUncached(language)") LLVMExpressionNode allocaNode,
-                    @Cached(value = "this.createLLVMNativeVarargsAreaStackAllocationNode()", uncached = "this.createLLVMNativeVarargsAreaStackAllocationNodeUncached()") LLVMNativeVarargsAreaStackAllocationNode stackAllocationNode,
+                    @Cached NativeAllocaInstruction stackAllocationNode,
                     @Cached LLVMI64StoreNode i64RegSaveAreaStore,
                     @Cached LLVMI32StoreNode i32RegSaveAreaStore,
                     @Cached LLVM80BitFloatStoreNode fp80bitRegSaveAreaStore,
@@ -937,10 +926,10 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
                         pointerOverflowArgAreaStore, memMove);
     }
 
-    private LLVMPointer allocateNativeAreas(VarargsAreaStackAllocationNode stackAllocationNode, LLVMStoreNode gpOffsetStore, LLVMStoreNode fpOffsetStore, LLVMStoreNode overflowArgAreaStore,
+    private LLVMPointer allocateNativeAreas(NativeAllocaInstruction stackAllocationNode, LLVMStoreNode gpOffsetStore, LLVMStoreNode fpOffsetStore, LLVMStoreNode overflowArgAreaStore,
                     LLVMStoreNode regSaveAreaStore, VirtualFrame frame) {
-        LLVMPointer regSaveAreaNativePtr = stackAllocationNode.executeWithTarget(frame, X86_64BitVarArgs.FP_LIMIT);
-        this.overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(frame, overflowArgArea.overflowAreaSize);
+        LLVMPointer regSaveAreaNativePtr = stackAllocationNode.executeWithTarget(frame, X86_64BitVarArgs.FP_LIMIT, rootNode.getStackAccess());
+        this.overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(frame, overflowArgArea.overflowAreaSize, rootNode.getStackAccess());
 
         Object p = nativized.increment(X86_64BitVarArgs.GP_OFFSET);
         gpOffsetStore.executeWithTarget(p, gpOffset);
@@ -1881,4 +1870,44 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             return PointerConversionHelperNodeGen.create();
         }
     }
+
+    public abstract static class NativeAllocaInstruction extends LLVMNode {
+
+        public static NativeAllocaInstruction create() {
+            return new NativeAllocaInstructionCached();
+        }
+
+        public static NativeAllocaInstruction getUncached() {
+            return NativeAllocaInstructionUncached.UNCACHED;
+        }
+
+        public abstract LLVMPointer executeWithTarget(VirtualFrame frame, long sizeInBytes, LLVMStackAccess stackAccess);
+
+    }
+
+    public static final class NativeAllocaInstructionCached extends NativeAllocaInstruction {
+
+        @Child private LLVMNativeVarargsAreaStackAllocationNode nativeAllocaNode = LLVMNativeVarargsAreaStackAllocationNodeGen.create();
+
+        @Override
+        public LLVMPointer executeWithTarget(VirtualFrame frame, long sizeInBytes, LLVMStackAccess stackAccess) {
+            return nativeAllocaNode.executeWithTarget(frame, sizeInBytes);
+        }
+
+    }
+
+    public static final class NativeAllocaInstructionUncached extends NativeAllocaInstruction {
+
+        private static final long size = 1;
+        private static final int alignment = 8;
+
+        static final NativeAllocaInstructionUncached UNCACHED = new NativeAllocaInstructionUncached();
+
+        @Override
+        public LLVMPointer executeWithTarget(VirtualFrame frame, long sizeInBytes, LLVMStackAccess stackAccess) {
+            return stackAccess.executeAllocate(frame, size * sizeInBytes, alignment);
+        }
+
+    }
+
 }
