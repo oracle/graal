@@ -65,7 +65,15 @@ export function activate(context: vscode.ExtensionContext) {
 		setupProxy();
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.removeInstallation', (path?: string | Installation) => {
-		removeGraalVMInstallation(path instanceof Installation ? path.home : path);
+		if (path instanceof Installation) {
+			if (path.fromConf) {
+				removeGraalVMInstallation(path.home);
+			} else {
+				vscode.window.showWarningMessage('This GraalVM installation was detected automatically from system environment and cannot be removed. Unselect Settings / Detect system GraalVM installations to disable automatic GraalVM detection.');
+			}
+		} else {
+			removeGraalVMInstallation(path);
+		}
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.runVisualVMForPID', (pid?: number) => {
 		runVisualVMForPID(pid);
@@ -87,7 +95,7 @@ export function activate(context: vscode.ExtensionContext) {
 				setupGraalVM();
 			}
 			stopLanguageServer().then(() => startLanguageServer(getGVMHome()));
-		} else if (e.affectsConfiguration('graalvm.installations')) {
+		} else if (e.affectsConfiguration('graalvm.installations') || e.affectsConfiguration('graalvm.systemDetect')) {
 			vscode.commands.executeCommand('extension.graalvm.refreshInstallations');
 		} else if (e.affectsConfiguration('graalvm.languageServer.currentWorkDir') || e.affectsConfiguration('graalvm.languageServer.inProcessServer')) {
 			stopLanguageServer().then(() => startLanguageServer(getGVMHome()));

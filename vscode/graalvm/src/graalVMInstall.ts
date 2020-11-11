@@ -106,17 +106,19 @@ export async function findGraalVMs(): Promise<{name: string, path: string}[]> {
     addPathToJava(normalize(getGVMHome()), paths);
     const installations = getGVMInsts().map(inst => normalize(inst));
     installations.forEach(installation => addPathToJava(installation, paths, true));
-    addPathsToJavaIn('/opt', paths);
-    if (process.env.GRAALVM_HOME) {
-        addPathToJava(normalize(process.env.GRAALVM_HOME), paths);
-    }
-    if (process.env.JAVA_HOME) {
-        addPathToJava(normalize(process.env.JAVA_HOME), paths);
-    }
-    if (process.env.PATH) {
-        process.env.PATH.split(delimiter)
-            .filter(p => basename(p) === 'bin')
-            .forEach(p => addPathToJava(dirname(p), paths));
+    if (getConf('graalvm').get('systemDetect')) {
+        addPathsToJavaIn('/opt', paths);
+        if (process.env.GRAALVM_HOME) {
+            addPathToJava(normalize(process.env.GRAALVM_HOME), paths);
+        }
+        if (process.env.JAVA_HOME) {
+            addPathToJava(normalize(process.env.JAVA_HOME), paths);
+        }
+        if (process.env.PATH) {
+            process.env.PATH.split(delimiter)
+                .filter(p => basename(p) === 'bin')
+                .forEach(p => addPathToJava(dirname(p), paths));
+        }
     }
     const vms: {name: string, path: string}[] = [];
     for (let i = 0; i < paths.length; i++) {
@@ -950,7 +952,7 @@ export class Installation extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly home: string,
         private readonly active: boolean,
-        private readonly fromConf: boolean
+        public readonly fromConf: boolean
 	) {
         super(label, collapsibleState);
         if (active) {
@@ -959,7 +961,7 @@ export class Installation extends vscode.TreeItem {
 	}
 
     iconPath = new vscode.ThemeIcon(this.active ? "vm-active" : "vm");
-    contextValue = this.fromConf ? this.active ? 'graalvmInstallationActive' : 'graalvmInstallation' : 'graalvmInstallationOut';
+    contextValue = this.active ? 'graalvmInstallationActive' : 'graalvmInstallation';
 }
 
 export class Component extends vscode.TreeItem {
