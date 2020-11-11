@@ -34,20 +34,20 @@ default: bin/${SONAME}
 
 CLANG?=clang
 
-CFLAGS+=-g -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.graalvm.llvm
+CFLAGS+=-gdwarf-5 -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.graalvm.llvm
 CPPFLAGS+=-I${VPATH}/include
 
 ifeq ($(OS), darwin)
 CLANG_PREFIX=/usr/bin/xcrun
-LDFLAGS=-dynamiclib -g
+LDFLAGS=-dynamiclib -gdwarf-5
 LDFLAGS+=-Wl,-install_name,@rpath/$(notdir $@)
 else
 CLANG_PREFIX=
-LDFLAGS=-shared -g -Wl,-soname,$(notdir $@)
+LDFLAGS=-shared -gdwarf-5 -Wl,-soname,$(notdir $@)
 endif
 
 LDFLAGS+= ${EXTRA_LDFLAGS}
-CFLAGS=-g -fPIC -DPIC -O3 ${EXTRA_CFLAGS}
+CFLAGS=-gdwarf-5 -fPIC -DPIC -O3 ${EXTRA_CFLAGS}
 
 bin/${SONAME}: bin/common.o bin/handles.o bin/polyglot.o bin/toolchain-api.o bin/truffle-compat.o
 	$(QUIETLY) $(CLANG) ${LDFLAGS} -o $@ $+
