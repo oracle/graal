@@ -69,6 +69,11 @@
 					"type": "boolean",
 					"default": false,
 					"description": "Start Ruby Language Server"
+				},
+				"graalvm.systemDetect": {
+					"type": "boolean",
+					"default": true,
+					"description": "Detect system GraalVM installations"
 				}
 			}
 		},
