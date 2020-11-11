@@ -1,6 +1,5 @@
 # GraalVM Visual Studio Code Extension
 
-
 [GraalVM Extension for Visual Visual Studio Code (VS Code)](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) provides the basic support for editing and debugging programs running on [GraalVM](http://www.graalvm.org). As of version 0.0.8 this extension replaces the original [GraalVM Python](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-python), [GraalVM R](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-r), [GraalVM Ruby](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-ruby), and [GraalVM Extension Pack](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-complete) extensions so those can be safely uninstalled from your VS Code.
 The extension is Technology Preview.
 
@@ -45,7 +44,7 @@ Search for "GraalVM" in the search field.
 Once found, press Install. That action will install GraalVM Extention from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm). Reload will be requried.
 
 When installed, notice the "Gr" icon in the left-hand side Activity Bar.
-By clicking on the icon, a dialog with the following choices should display:
+By clicking on the icon, a dialog with the following choices displays:
 * Download & Install GraalVM
 * Add Existing GraalVM
 
@@ -104,7 +103,7 @@ This installation model much simplifies setting up GraalVM development environme
 - it allows an easy switch from one runtime version to another;
 - it enables quick removals of unnecessary GraalVM installations from VS Code global storage or even from your local disk.
 
-The "Download & Install GraalVM" action is a preferable way, as it eliminates the fuss around setting up environment variables and prepares the GraalVM runtime in VS Code for you.
+The "Download & Install GraalVM" action is a preferable way, as it eliminates the fuss around setting up environment variables and prepares the GraalVM runtime in VS Code for you. 
 
 ## Java Development and Debugging
 
