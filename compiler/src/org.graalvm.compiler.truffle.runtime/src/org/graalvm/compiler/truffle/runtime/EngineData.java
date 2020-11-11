@@ -79,6 +79,7 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 
 /**
  * Class used to store data used by the compiler in the Engine. Enables "global" compiler state per
@@ -409,6 +410,11 @@ public final class EngineData {
 
     public TruffleLogger getLogger(String loggerId) {
         return loggerFactory.apply(loggerId);
+    }
+
+    @SuppressWarnings("static-method")
+    public void mergeLoadedSources(Source[] sources) {
+        GraalRuntimeAccessor.SOURCE.mergeLoadedSources(sources);
     }
 
 }
