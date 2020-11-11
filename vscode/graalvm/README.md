@@ -30,7 +30,7 @@ You can download and install any available GraalVM distribution right from the u
 
 GraalVM VS Code Extension provides editing and debugging capabilities for JavaScript and Node.js applications, Python, R, and Ruby programs running on GraalVM by default.
 
-GraalVM VS Code Extension also brings editing and debugging of Java code right after the extension installation.
+GraalVM VS Code Extension also brings support for Java prjects development and debugging.
 
 GraalVM VS Code Extension future development should also support generating native executables right from the VS Code console.
 
@@ -440,7 +440,7 @@ This extension depends on the following extensions:
 * [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) - The Python language support
 * [R](https://marketplace.visualstudio.com/items?itemName=Ikuyadeu.r) - A basic support for the R language
 * [Ruby](https://marketplace.visualstudio.com/items?itemName=rebornix.Ruby) - The Ruby language support
-* [NetBeans Language Server Extension](http://100.107.237.88:8080/jenkins/job/vscode-java.lsp.server/) - The Java language support
+* [NetBeans Language Server](http://100.107.237.88:8080/jenkins/job/vscode-java.lsp.server/) - The Java language support
 
 ## Feedback
 
