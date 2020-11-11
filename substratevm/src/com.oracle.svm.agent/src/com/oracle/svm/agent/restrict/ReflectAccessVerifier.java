@@ -146,7 +146,10 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
             return array;
         }
 
-        WordPredicate<JNIObjectHandle> predicate = c -> typeAccessChecker.isInnerClassAccessible(env, queriedClass, c, declaredOnly ? queriedClass : getDeclaringClass.apply(c));
+        WordPredicate<JNIObjectHandle> predicate = innerClass -> {
+            JNIObjectHandle declaringClass = declaredOnly ? queriedClass : getDeclaringClass.apply(innerClass);
+            return typeAccessChecker.isInnerClassAccessible(env, queriedClass, innerClass, declaringClass);
+        };
         return filterArray(env, array, elementClass, predicate);
     }
 

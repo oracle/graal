@@ -26,6 +26,7 @@ package com.oracle.svm.agent;
 
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
+import static com.oracle.svm.jvmtiagentbase.Support.LazyWordValue;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
 import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
@@ -46,6 +47,7 @@ import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.testException;
 import static com.oracle.svm.jvmtiagentbase.Support.toCString;
+import static com.oracle.svm.jvmtiagentbase.Support.LazyWordValue.lazyGet;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_PREPARE;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_NATIVE_METHOD_BIND;
@@ -60,7 +62,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
@@ -186,9 +187,9 @@ final class BreakpointInterceptor {
         JNIObjectHandle name = getObjectArgument(0);
         String className = fromJniString(jni, name);
 
-        AtomicReference<Object> result = new AtomicReference<>(false);
+        Object[] resultBox = {false};
 
-        WordSupplier<JNIObjectHandle> loadClass = () -> {
+        LazyWordValue<JNIObjectHandle> loadClass = lazyGet(() -> {
             JNIObjectHandle loadedClass = nullHandle();
             boolean classLoaderValid = true;
             WordPointer classLoaderPtr = StackValue.get(WordPointer.class);
@@ -205,7 +206,7 @@ final class BreakpointInterceptor {
                     classLoaderValid = (jvmtiFunctions().GetClassLoader().invoke(jvmtiEnv(), callerClass, classLoaderPtr) == JvmtiError.JVMTI_ERROR_NONE);
                 }
             }
-            result.set(TraceWriter.UNKNOWN_VALUE);
+            resultBox[0] = TraceWriter.UNKNOWN_VALUE;
             if (classLoaderValid) {
                 /*
                  * Even if the original call requested class initialization, disable it because
@@ -216,16 +217,17 @@ final class BreakpointInterceptor {
                 if (clearException(jni)) {
                     loadedClass = nullHandle();
                 }
-                result.set(loadedClass.notEqual(nullHandle()));
+                resultBox[0] = loadedClass.notEqual(nullHandle());
             }
             return loadedClass;
-        };
+        });
 
         boolean allowed = (accessVerifier == null || accessVerifier.verifyForName(jni, callerClass, className, loadClass));
         if (allowed) {
+            // ensures that resultBox is initialized
             loadClass.get();
         }
-        traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, result.get(), className);
+        traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, resultBox[0], className);
         if (!allowed) {
             try (CCharPointerHolder message = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to class: " + className)) {
                 jniFunctions().getThrowNew().invoke(jni, agent.handles().javaLangClassNotFoundException, message.get());
@@ -881,13 +883,13 @@ final class BreakpointInterceptor {
         JNIObjectHandle self = getObjectArgument(0);
         JNIObjectHandle name = getObjectArgument(1);
         String className = fromJniString(jni, name);
-        WordSupplier<JNIObjectHandle> onLoadClass = () -> {
+        LazyWordValue<JNIObjectHandle> onLoadClass = lazyGet(() -> {
             JNIObjectHandle clazz = Support.callObjectMethodL(jni, self, bp.method, name);
             if (clearException(jni)) {
                 clazz = nullHandle();
             }
             return clazz;
-        };
+        });
         boolean allowed = (accessVerifier == null || accessVerifier.verifyLoadClass(jni, callerClass, className, onLoadClass));
         Object result = false;
         if (allowed) {

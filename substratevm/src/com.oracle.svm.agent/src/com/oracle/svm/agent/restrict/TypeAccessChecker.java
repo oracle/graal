@@ -142,10 +142,6 @@ public class TypeAccessChecker {
                         return true;
                     }
 
-                    if (testInterfacesBetween(env, declaringClass, current, ConfigurationType::haveAllPublicClasses)) {
-                        return true;
-                    }
-
                     current = jniFunctions().getGetSuperclass().invoke(env, current);
                 } while (current.notEqual(nullHandle()) && jniFunctions().getIsAssignableFrom().invoke(env, current, declaringClass));
             }
