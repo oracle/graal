@@ -321,7 +321,7 @@ public final class EspressoOptions {
     public static final OptionKey<Boolean> SoftExit = new OptionKey<>(false);
 
     @Option(help = "Enables espresso runtime timers.", //
-                    category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
+                    category = OptionCategory.INTERNAL, stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> EnableTimers = new OptionKey<>(false);
 
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");

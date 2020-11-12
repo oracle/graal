@@ -23,33 +23,59 @@
 
 package com.oracle.truffle.espresso.perf;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.TruffleLogger;
 
 class TimerCollectionImpl extends TimerCollection {
-    Map<String, DebugTimer.DebugTimerImpl> mapping = new ConcurrentHashMap<>();
+    private Map<DebugTimer, DebugTimer.DebugTimerImpl> mapping = new ConcurrentHashMap<>();
 
     @Override
     DebugCloseable scope(DebugTimer timer) {
-        String key = timer.name;
-        DebugTimer.DebugTimerImpl impl = mapping.get(key);
+        DebugTimer.DebugTimerImpl impl = mapping.get(timer);
         if (impl == null) {
             DebugTimer.DebugTimerImpl created = DebugTimer.spawn();
-            impl = mapping.putIfAbsent(key, created);
+            impl = mapping.putIfAbsent(timer, created);
             if (impl == null) {
                 impl = created;
             }
         }
+        impl.enter();
         return DebugTimer.AutoTimer.scope(impl);
     }
 
     @Override
     public void report(TruffleLogger logger) {
-        for (Map.Entry<String, DebugTimer.DebugTimerImpl> entry : mapping.entrySet()) {
-            entry.getValue().report(logger, entry.getKey());
+        Set<DebugTimer> visited = new HashSet<>();
+        report(mapping.keySet(), logger, visited, "");
+    }
+
+    private void report(Iterable<DebugTimer> timers, TruffleLogger logger, Set<DebugTimer> visited, String prefix) {
+        for (DebugTimer timer : timers) {
+            if (shouldProcess(visited, timer)) {
+                visited.add(timer);
+                mapping.get(timer).report(logger, prefix + timer.name);
+                if (timer.children() != null) {
+                    report(timer.children(), logger, visited, prefix + "    ");
+                }
+            }
         }
+    }
+
+    private static boolean shouldProcess(Set<DebugTimer> visited, DebugTimer timer) {
+        if (visited.contains(timer)) {
+            return false;
+        }
+        if (timer.parent() == null) {
+            return true;
+        }
+        if (visited.contains(timer.parent())) {
+            return true;
+        }
+        return false;
     }
 
     static final class NoTimer extends TimerCollection {

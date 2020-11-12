@@ -31,6 +31,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.perf.DebugCloseable;
+import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -56,6 +58,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * as a whole, while allowing multiple threads to do constraint checking on different types.
  */
 final class LoadingConstraints implements ContextAccess {
+    private static DebugTimer CONSTRAINTS = DebugTimer.create("constraints");
+
     private static final int NULL_KLASS_ID = -1;
     static final int INVALID_LOADER_ID = -1;
 
@@ -70,9 +74,11 @@ final class LoadingConstraints implements ContextAccess {
      * Checks that loader1 and loader2 resolve type as the same Klass instance.
      */
     void checkConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
-        Klass k1 = getContext().getRegistries().findLoadedClass(type, loader1);
-        Klass k2 = getContext().getRegistries().findLoadedClass(type, loader2);
-        checkOrAdd(type, getKlassID(k1), getKlassID(k2), getLoaderID(loader1, getMeta()), getLoaderID(loader2, getMeta()));
+        try (DebugCloseable constraints = CONSTRAINTS.scope(getContext().getTimers())) {
+            Klass k1 = getContext().getRegistries().findLoadedClass(type, loader1);
+            Klass k2 = getContext().getRegistries().findLoadedClass(type, loader2);
+            checkOrAdd(type, getKlassID(k1), getKlassID(k2), getLoaderID(loader1, getMeta()), getLoaderID(loader2, getMeta()));
+        }
     }
 
     /**

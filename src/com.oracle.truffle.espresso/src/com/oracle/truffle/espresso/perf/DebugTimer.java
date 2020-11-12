@@ -23,21 +23,34 @@
 
 package com.oracle.truffle.espresso.perf;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 public final class DebugTimer {
-    static final boolean DEBUG_TIMER_ENABLED = true;
-
     final String name;
+    private List<DebugTimer> children = null;
+    private final DebugTimer parent;
 
-    private DebugTimer(String name) {
+    private DebugTimer(String name, DebugTimer parent) {
         this.name = name;
+        this.parent = parent;
     }
 
     public static DebugTimer create(String name) {
-        return new DebugTimer(name);
+        return create(name, null);
+    }
+
+    public static DebugTimer create(String name, DebugTimer parent) {
+        DebugTimer timer = new DebugTimer(name, parent);
+        if (parent != null) {
+            parent.registerChild(timer);
+        }
+        return timer;
     }
 
     public DebugCloseable scope(TimerCollection timers) {
@@ -48,20 +61,55 @@ public final class DebugTimer {
         return new Default();
     }
 
-    static abstract class DebugTimerImpl {
+    private void registerChild(DebugTimer child) {
+        if (children == null) {
+            children = new ArrayList<>();
+        }
+        children.add(child);
+    }
+
+    List<DebugTimer> children() {
+        return children;
+    }
+
+    DebugTimer parent() {
+        return parent;
+    }
+
+    @Override
+    public int hashCode() {
+        return name.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof DebugTimer && ((DebugTimer) obj).name.equals(name);
+    }
+
+    abstract static class DebugTimerImpl {
         abstract void tick(long tick);
 
         abstract void report(TruffleLogger logger, String name);
+
+        abstract void enter();
     }
 
     private static final class Default extends DebugTimerImpl {
         private final AtomicLong clock = new AtomicLong();
         private final AtomicLong counter = new AtomicLong();
+        private final ThreadLocal<Boolean> entered = ThreadLocal.withInitial(new Supplier<Boolean>() {
+            @Override
+            public Boolean get() {
+                return false;
+            }
+        });
 
         @Override
         void tick(long tick) {
+            EspressoError.guarantee(entered.get(), "Not entered scope.");
             counter.getAndIncrement();
             clock.getAndAdd(tick);
+            entered.set(false);
         }
 
         @Override
@@ -69,8 +117,27 @@ public final class DebugTimer {
             if (counter.get() == 0) {
                 logger.info(name + ": " + 0);
             } else {
-                logger.info(name + ": " + (clock.get() / counter.get()));
+                logger.info(name + " total : " + getAsMillis(total()) + " | avg : " + getAsMillis(avg()));
             }
+        }
+
+        @Override
+        void enter() {
+            // Ensure we are not counting twice.
+            EspressoError.guarantee(!entered.get(), "Counting twice for timer.");
+            entered.set(true);
+        }
+
+        private long total() {
+            return clock.get();
+        }
+
+        private long avg() {
+            return (counter.get() == 0) ? 0L : (total() / counter.get());
+        }
+
+        private static double getAsMillis(long value) {
+            return (value / 1_000L) / 1_000d;
         }
     }
 

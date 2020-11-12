@@ -47,11 +47,11 @@ import com.oracle.truffle.espresso.perf.TimerCollection;
 public class LivenessAnalysis {
 
     public static final DebugTimer LIVENESS_TIMER = DebugTimer.create("liveness");
-    public static final DebugTimer BUILDER_TIMER = DebugTimer.create("builder");
-    public static final DebugTimer LOADSTORE_TIMER = DebugTimer.create("loadStore");
-    public static final DebugTimer STATE_TIMER = DebugTimer.create("state");
-    public static final DebugTimer PROPAGATE_TIMER = DebugTimer.create("propagation");
-    public static final DebugTimer ACTION_TIMER = DebugTimer.create("action");
+    public static final DebugTimer BUILDER_TIMER = DebugTimer.create("builder", LIVENESS_TIMER);
+    public static final DebugTimer LOADSTORE_TIMER = DebugTimer.create("loadStore", LIVENESS_TIMER);
+    public static final DebugTimer STATE_TIMER = DebugTimer.create("state", LIVENESS_TIMER);
+    public static final DebugTimer PROPAGATE_TIMER = DebugTimer.create("propagation", LIVENESS_TIMER);
+    public static final DebugTimer ACTION_TIMER = DebugTimer.create("action", LIVENESS_TIMER);
 
     public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis() {
         @Override
