@@ -26,10 +26,10 @@ package com.oracle.svm.agent;
 
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 
-import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
 
 public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
@@ -58,11 +58,14 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaLangInvokeMemberNameIsMethod;
     final JNIMethodId javaLangInvokeMemberNameIsField;
     final JNIMethodId javaLangInvokeMemberNameIsConstructor;
+    final JNIMethodId javaLangClassGetDeclaringClass;
 
     // HotSpot crashes when looking these up eagerly
     private JNIObjectHandle javaLangReflectField;
     private JNIObjectHandle javaLangReflectMethod;
     private JNIObjectHandle javaLangReflectConstructor;
+
+    final JNIObjectHandle javaLangClass;
 
     private JNIObjectHandle javaUtilCollections;
     private JNIMethodId javaUtilCollectionsEmptyEnumeration;
@@ -72,12 +75,13 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
-        JNIObjectHandle javaLangClass = findClass(env, "java/lang/Class");
+        javaLangClass = newClassGlobalRef(env, "java/lang/Class");
         javaLangClassForName3 = getMethodId(env, javaLangClass, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;", true);
         javaLangClassGetDeclaredMethod = getMethodId(env, javaLangClass, "getDeclaredMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;", false);
         javaLangClassGetDeclaredConstructor = getMethodId(env, javaLangClass, "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", false);
         javaLangClassGetDeclaredField = getMethodId(env, javaLangClass, "getDeclaredField", "(Ljava/lang/String;)Ljava/lang/reflect/Field;", false);
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
+        javaLangClassGetDeclaringClass = getMethodId(env, javaLangClass, "getDeclaringClass", "()Ljava/lang/Class;", false);
 
         JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
         javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);

@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.agent.restrict;
 
+import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.lang.reflect.Modifier;
@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.TypeConfiguration;
@@ -47,6 +46,9 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.Support.WordSupplier;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 
 public class TypeAccessChecker {
     private final TypeConfiguration configuration;
@@ -55,12 +57,101 @@ public class TypeAccessChecker {
         this.configuration = configuration;
     }
 
-    public TypeConfiguration getConfiguration() {
-        return configuration;
+    /**
+     * Checks whether given class is accessible according to the configuration.
+     *
+     * @return true iff the class is explicitly mentioned in the config or is an inner class exposed
+     *         by its declaring class
+     */
+    public boolean isClassAccessible(String classname, WordSupplier<JNIObjectHandle> loadClass) {
+        return checkClassAccessibility(classname, loadClass);
+    }
+
+    public boolean isClassAccessible(JNIEnvironment env, JNIObjectHandle clazz) {
+        String classname = Support.getClassNameOrNull(env, clazz);
+        return classname != null && checkClassAccessibility(classname, () -> clazz);
+    }
+
+    private boolean checkClassAccessibility(String classname, WordSupplier<JNIObjectHandle> loadClass) {
+        if (configuration.get(classname) != null) {
+            return true;
+        }
+
+        String declaringClassname = getDeclaringClassOf(classname);
+        if (declaringClassname == null) {
+            return false;
+        }
+        ConfigurationType declaringClass = configuration.get(declaringClassname);
+        if (declaringClass == null) {
+            return false;
+        }
+        if (declaringClass.haveAllDeclaredClasses()) {
+            return true;
+        }
+        if (declaringClass.haveAllPublicClasses()) {
+            JNIObjectHandle clazz = loadClass.get();
+            return clazz.notEqual(nullHandle()) && isClassPublic(clazz);
+        }
+        return false;
+    }
+
+    private static String getDeclaringClassOf(String classname) {
+        int split = classname.lastIndexOf("$");
+        if (split == -1) {
+            return null;
+        }
+        return classname.substring(0, split);
+    }
+
+    private static boolean isClassPublic(JNIObjectHandle clazz) {
+        CIntPointer modifiers = StackValue.get(CIntPointer.class);
+        if (jvmtiFunctions().GetClassModifiers().invoke(jvmtiEnv(), clazz, modifiers) != JvmtiError.JVMTI_ERROR_NONE) {
+            return false;
+        }
+        // Checkstyle: allow reflection
+        return (modifiers.read() & Modifier.PUBLIC) != 0;
+    }
+
+    /**
+     *
+     * @return true iff the class is a part of the config or is an inner class exposed by any class
+     *         on the path from the caller class to the declaring class
+     */
+    public boolean isInnerClassAccessible(JNIEnvironment env, JNIObjectHandle queriedClass, JNIObjectHandle innerClass, JNIObjectHandle declaringClass) {
+        if (!isClassAccessible(env, queriedClass)) { // queried class must be registered
+            return false;
+        }
+
+        ConfigurationType declaringType = getType(declaringClass);
+        if (declaringType != null) {
+            if (declaringType.haveAllDeclaredClasses()) {
+                return true;
+            }
+        }
+
+        if (isClassPublic(innerClass)) {
+            if (declaringType != null && declaringType.haveAllPublicClasses()) {
+                return true;
+            }
+
+            if (declaringClass.notEqual(queriedClass)) {
+                JNIObjectHandle current = queriedClass;
+                do {
+                    ConfigurationType currentType = getType(current);
+                    if (currentType != null && currentType.haveAllPublicClasses()) {
+                        return true;
+                    }
+
+                    current = jniFunctions().getGetSuperclass().invoke(env, current);
+                } while (current.notEqual(nullHandle()) && jniFunctions().getIsAssignableFrom().invoke(env, current, declaringClass));
+            }
+        }
+
+        return false;
     }
 
     public boolean isFieldAccessible(JNIEnvironment env, JNIObjectHandle clazz, Supplier<String> name, JNIFieldId field, JNIObjectHandle declaring) {
-        if (getType(clazz) == null) { // queried class must be registered
+        if (!isClassAccessible(env, clazz)) { // queried class must be registered
             return false;
         }
         ConfigurationType declaringType = getType(declaring);
@@ -106,7 +197,7 @@ public class TypeAccessChecker {
     }
 
     public boolean isMethodAccessible(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIMethodId method, JNIObjectHandle declaring) {
-        if (getType(clazz) == null) { // queried class must be registered
+        if (!isClassAccessible(env, clazz)) { // queried class must be registered
             return false;
         }
         boolean isConstructor = ConfigurationMethod.CONSTRUCTOR_NAME.equals(name);

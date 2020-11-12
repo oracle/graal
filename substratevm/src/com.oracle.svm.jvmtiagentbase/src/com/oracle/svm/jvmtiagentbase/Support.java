@@ -37,7 +37,9 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.ComparableWord;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
@@ -417,6 +419,31 @@ public final class Support {
 
     public interface WordSupplier<T extends WordBase> {
         T get();
+    }
+
+    public interface WordFunction<T extends WordBase, R extends WordBase> {
+        R apply(T t);
+    }
+
+    public static class LazyWordValue<T extends ComparableWord> implements WordSupplier<T> {
+        private final WordSupplier<T> supplier;
+        private T value = WordFactory.zero(); // nullHandle() caused warnings
+
+        public static <T extends ComparableWord> LazyWordValue<T> lazyGet(WordSupplier<T> supplier) {
+            return new LazyWordValue<>(supplier);
+        }
+
+        public LazyWordValue(WordSupplier<T> supplier) {
+            this.supplier = supplier;
+        }
+
+        @Override
+        public T get() {
+            if (value.equal(nullHandle())) {
+                value = supplier.get();
+            }
+            return value;
+        }
     }
 
     private Support() {

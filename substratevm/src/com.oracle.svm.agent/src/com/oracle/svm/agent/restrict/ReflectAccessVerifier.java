@@ -42,9 +42,6 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.agent.NativeImageAgent;
-import com.oracle.svm.jvmtiagentbase.Support;
-import com.oracle.svm.jvmtiagentbase.Support.WordSupplier;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.core.util.WordPredicate;
@@ -52,6 +49,10 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.Support.WordFunction;
+import com.oracle.svm.jvmtiagentbase.Support.WordSupplier;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 
 /**
  * In restriction mode, decides whether to permit or deny individual reflective accesses, using
@@ -67,14 +68,14 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         this.agent = agent;
     }
 
-    public boolean verifyForName(JNIEnvironment env, JNIObjectHandle callerClass, String className) {
+    public boolean verifyForName(JNIEnvironment env, JNIObjectHandle callerClass, String className, WordSupplier<JNIObjectHandle> loadClass) {
         if (shouldApproveWithoutChecks(lazyValue(className), lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
-        return className == null || typeAccessChecker.getConfiguration().get(className) != null;
+        return className == null || typeAccessChecker.isClassAccessible(className, loadClass);
     }
 
-    public boolean verifyLoadClass(JNIEnvironment env, JNIObjectHandle callerClass, String className) {
+    public boolean verifyLoadClass(JNIEnvironment env, JNIObjectHandle callerClass, String className, WordSupplier<JNIObjectHandle> loadClass) {
         LazyValue<String> lazyName = lazyValue(className);
         LazyValue<String> callerClassName = lazyClassNameOrNull(env, callerClass);
         if (shouldApproveWithoutChecks(lazyName, callerClassName)) {
@@ -83,7 +84,7 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         if (accessAdvisor.shouldIgnoreLoadClass(lazyName, callerClassName)) {
             return true;
         }
-        return className == null || typeAccessChecker.getConfiguration().get(className) != null;
+        return className == null || typeAccessChecker.isClassAccessible(className, loadClass);
     }
 
     public boolean verifyGetField(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle name, JNIObjectHandle result, JNIObjectHandle declaring, JNIObjectHandle callerClass) {
@@ -137,6 +138,19 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
 
     private boolean verifyGetMethod0(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIMethodId method, JNIObjectHandle declaring) {
         return method.isNull() || typeAccessChecker.isMethodAccessible(env, clazz, name, signature, method, declaring);
+    }
+
+    public JNIObjectHandle filterGetClasses(JNIEnvironment env, JNIObjectHandle queriedClass, JNIObjectHandle array, WordSupplier<JNIObjectHandle> elementClass, JNIObjectHandle callerClass,
+                    WordFunction<JNIObjectHandle, JNIObjectHandle> getDeclaringClass, boolean declaredOnly) {
+        if (shouldApproveWithoutChecks(env, queriedClass, callerClass)) {
+            return array;
+        }
+
+        WordPredicate<JNIObjectHandle> predicate = innerClass -> {
+            JNIObjectHandle declaringClass = declaredOnly ? queriedClass : getDeclaringClass.apply(innerClass);
+            return typeAccessChecker.isInnerClassAccessible(env, queriedClass, innerClass, declaringClass);
+        };
+        return filterArray(env, array, elementClass, predicate);
     }
 
     public JNIObjectHandle filterGetFields(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle array, boolean declaredOnly, JNIObjectHandle callerClass) {
