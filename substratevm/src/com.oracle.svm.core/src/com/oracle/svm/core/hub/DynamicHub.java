@@ -49,14 +49,12 @@ import java.net.URL;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.security.cert.Certificate;
-import java.util.BitSet;
 import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -234,8 +232,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     private Object interfacesEncoding;
 
-    private int[] assignableFromMatches;
-
     /**
      * Reference to a list of enum values for subclasses of {@link Enum}; null otherwise.
      */
@@ -290,19 +286,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      * Classloader used for loading this class during image-build time.
      */
     private final ClassLoader classLoader;
-
-    /**
-     * Bits used for instance-of checks. A bit is set for each type, which an object with this HUB
-     * is an instance of.
-     * <p>
-     * This set only includes types for which no trivial type-ID range check can be done, i.e.
-     * interface types, which are "distributed" over the type hierarchy. Therefore this bit-set is
-     * relatively small (usually < 64 bits).
-     * <p>
-     * This bit-set is directly located in the layout of {@link DynamicHub} (see {@link Hybrid}). It
-     * is accessed in the instance-of snippet with {@link ObjectAccess}.
-     */
-    @Hybrid.Bitset private BitSet instanceOfBits;
 
     /**
      * Array containing this type's type check id information. During a type check, a requested
@@ -408,23 +391,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.typeCheckRange = typeCheckRange;
         this.typeCheckSlot = typeCheckSlot;
         this.typeCheckSlots = typeCheckSlots;
-        this.vtable = vtable;
-
-        if ((int) referenceMapIndex != referenceMapIndex) {
-            throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");
-        }
-        this.referenceMapIndex = (int) referenceMapIndex;
-        this.isInstantiated = isInstantiated;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(int layoutEncoding, int typeID, int monitorOffset, int[] assignableFromMatches, BitSet instanceOfBits,
-                    CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated) {
-        this.layoutEncoding = layoutEncoding;
-        this.typeID = typeID;
-        this.monitorOffset = monitorOffset;
-        this.assignableFromMatches = assignableFromMatches;
-        this.instanceOfBits = instanceOfBits;
         this.vtable = vtable;
 
         if ((int) referenceMapIndex != referenceMapIndex) {
@@ -606,10 +572,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     public DynamicHub getArrayHub() {
         return arrayHub;
-    }
-
-    public int[] getAssignableFromMatches() {
-        return assignableFromMatches;
     }
 
     public int getReferenceMapIndex() {

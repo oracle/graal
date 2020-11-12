@@ -187,7 +187,6 @@ import com.oracle.svm.core.graal.snippets.DeoptHostedSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptRuntimeSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
-import com.oracle.svm.core.graal.snippets.LegacyTypeSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.TypeSnippets;
 import com.oracle.svm.core.graal.stackvalue.StackValuePhase;
@@ -1246,11 +1245,7 @@ public class NativeImageGenerator {
 
             Iterable<DebugHandlersFactory> factories = runtimeConfig != null ? runtimeConfig.getDebugHandlersFactories() : Collections.singletonList(new GraalDebugHandlersFactory(snippetReflection));
             lowerer.setConfiguration(runtimeConfig, options, factories, providers, snippetReflection);
-            if (SubstrateOptions.UseLegacyTypeCheck.getValue()) {
-                LegacyTypeSnippets.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
-            } else {
-                TypeSnippets.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
-            }
+            TypeSnippets.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
             ExceptionSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
 
             if (hosted) {
@@ -1603,8 +1598,8 @@ public class NativeImageGenerator {
                 System.out.print("reachable  ");
             }
 
-            System.out.format("assignableFrom %s  ", matchesToString(type.getAssignableFromMatches()));
-            System.out.format("instanceOf typeID %d, # %d  ", type.getInstanceOfFromTypeID(), type.getInstanceOfNumTypeIDs());
+            System.out.format("type check start %d range %d slot # %d ", type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot());
+            System.out.format("type check slots %s  ", slotsToString(type.getTypeCheckSlots()));
             // if (type.findLeafConcreteSubtype() != null) {
             // System.out.format("unique %d %s ", type.findLeafConcreteSubtype().getTypeID(),
             // type.findLeafConcreteSubtype().toJavaName(false));
@@ -1682,13 +1677,13 @@ public class NativeImageGenerator {
         System.out.println("]");
     }
 
-    private static String matchesToString(int[] matches) {
-        if (matches == null) {
+    private static String slotsToString(short[] slots) {
+        if (slots == null) {
             return "null";
         }
         StringBuilder result = new StringBuilder();
-        for (int i = 0; i < matches.length; i += 2) {
-            result.append("[").append(matches[i]).append(", ").append(matches[i] + matches[i + 1] - 1).append("] ");
+        for (int i = 0; i < slots.length; i += 2) {
+            result.append("[").append(slots[i]).append(", ").append(slots[i] + slots[i + 1] - 1).append("] ");
         }
         return result.toString();
     }
