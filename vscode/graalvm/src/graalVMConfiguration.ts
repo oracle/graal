@@ -153,21 +153,22 @@ async function configureInteractive(graalVMHome: string) {
         return show;
     });
     if (toShow.length > 0) {
-        const selected: ConfigurationPickItem[] = await vscode.window.showQuickPick(
+        const selected: ConfigurationPickItem[] | undefined = await vscode.window.showQuickPick(
             toShow, {
                 canPickMany: true,
                 placeHolder: 'Configure active GraalVM'
-            }) || [];
-        
-        for (const shown of toShow) {
-            try {
-                if (selected.includes(shown)) {
-                    await shown.set(graalVMHome);
-                } else {
-                    await shown.unset(graalVMHome);
+            });
+        if (selected) {
+            for (const shown of toShow) {
+                try {
+                    if (selected.includes(shown)) {
+                        await shown.set(graalVMHome);
+                    } else {
+                        await shown.unset(graalVMHome);
+                    }
+                } catch (error) {
+                    vscode.window.showErrorMessage(error?.message);
                 }
-            } catch (error) {
-                vscode.window.showErrorMessage(error?.message);
             }
         }
     }
