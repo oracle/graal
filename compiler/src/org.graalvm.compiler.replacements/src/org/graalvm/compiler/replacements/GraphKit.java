@@ -325,6 +325,10 @@ public class GraphKit implements GraphBuilderTool {
      *             {@code method}
      */
     public boolean checkArgs(ResolvedJavaMethod method, ValueNode... args) {
+        if (IS_IN_NATIVE_IMAGE) {
+            // The dynamic lookup needed for this code is unsupported
+            return true;
+        }
         Signature signature = method.getSignature();
         boolean isStatic = method.isStatic();
         if (signature.getParameterCount(!isStatic) != args.length) {
