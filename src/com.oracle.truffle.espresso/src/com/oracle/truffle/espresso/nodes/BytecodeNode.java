@@ -358,7 +358,7 @@ public final class BytecodeNode extends EspressoMethodNode {
      * bytecode is a single byte long, so we cannot quicken it, and it is far too common to pay for
      * spawning the sparse nodes array.
      */
-    @Child private EspressoReferenceArrayStoreNode refArrayStoreNode;
+    @Child private volatile EspressoReferenceArrayStoreNode refArrayStoreNode;
 
     @CompilationFinal(dimensions = 1) //
     private final FrameSlot[] locals;
