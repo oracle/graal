@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.OperandStack;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -86,17 +87,16 @@ public abstract class InvokeVirtualNode extends QuickNode {
     }
 
     @Override
-    public final int execute(final VirtualFrame frame) {
+    public final int execute(VirtualFrame frame, final OperandStack stack) {
         // Method signature does not change across methods.
         // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
         // signature from the lookup.
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        BytecodeNode root = getBytecodesNode();
         // TODO(peterssen): IsNull Node?.
-        Object[] args = root.peekAndReleaseArguments(frame, top, true, resolutionSeed.getParsedSignature());
+        Object[] args = BytecodeNode.popArguments(stack, top, true, resolutionSeed.getParsedSignature());
         StaticObject receiver = nullCheck((StaticObject) args[0]);
         Object result = executeVirtual(receiver, args);
-        return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, resolutionSeed.getReturnKind());
+        return (getResultAt() - top) + BytecodeNode.putKind(stack, getResultAt(), result, resolutionSeed.getReturnKind());
     }
 
     @Override
@@ -105,8 +105,8 @@ public abstract class InvokeVirtualNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
-        return resolutionSeed.getReturnKind().isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
+    public boolean producedForeignObject(OperandStack stack) {
+        return resolutionSeed.getReturnKind().isObject() && BytecodeNode.peekObject(stack, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {

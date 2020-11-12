@@ -29,6 +29,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.OperandStack;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class CheckCastNode extends QuickNode {
@@ -65,21 +66,20 @@ public abstract class CheckCastNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
+    public boolean producedForeignObject(OperandStack stack) {
         return false;
     }
 
     @Override
-    public final int execute(final VirtualFrame frame) {
-        BytecodeNode root = getBytecodesNode();
-        StaticObject receiver = root.peekObject(frame, top - 1);
+    public final int execute(VirtualFrame frame, final OperandStack stack) {
+        StaticObject receiver = BytecodeNode.peekObject(stack, top - 1);
         if (StaticObject.isNull(receiver) || executeCheckCast(receiver.getKlass())) {
             return 0;
         }
         enterExceptionProfile();
         Meta meta = typeToCheck.getMeta();
         throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                        getExceptionMessage(root, receiver));
+                        getExceptionMessage(getBytecodesNode(), receiver));
     }
 
     @TruffleBoundary

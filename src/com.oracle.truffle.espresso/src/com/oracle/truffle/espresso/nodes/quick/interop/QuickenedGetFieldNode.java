@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.nodes.quick.interop;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.OperandStack;
 import com.oracle.truffle.espresso.nodes.helper.AbstractGetFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -44,14 +45,14 @@ public final class QuickenedGetFieldNode extends QuickNode {
     }
 
     @Override
-    public int execute(final VirtualFrame frame) {
+    public int execute(VirtualFrame frame, final OperandStack stack) {
         BytecodeNode root = getBytecodesNode();
-        StaticObject receiver = nullCheck(root.popObject(frame, top - 1));
-        return getFieldNode.getField(frame, root, receiver, top - 1, statementIndex) - 1; // -receiver
+        StaticObject receiver = nullCheck(BytecodeNode.popObject(stack, top - 1));
+        return getFieldNode.getField(frame, stack, root, receiver, top - 1, statementIndex) - 1; // -receiver
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
-        return field.getKind().isObject() && getBytecodesNode().peekObject(frame, top - 1).isForeignObject();
+    public boolean producedForeignObject(OperandStack stack) {
+        return field.getKind().isObject() && BytecodeNode.peekObject(stack, top - 1).isForeignObject();
     }
 }

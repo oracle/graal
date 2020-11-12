@@ -29,6 +29,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.OperandStack;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class InstanceOfNode extends QuickNode {
@@ -65,17 +66,16 @@ public abstract class InstanceOfNode extends QuickNode {
     }
 
     @Override
-    public final int execute(final VirtualFrame frame) {
+    public final int execute(VirtualFrame frame, final OperandStack stack) {
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        BytecodeNode root = getBytecodesNode();
-        StaticObject receiver = root.popObject(frame, top - 1);
+        StaticObject receiver = BytecodeNode.popObject(stack, top - 1);
         boolean result = StaticObject.notNull(receiver) && executeInstanceOf(receiver.getKlass());
-        root.putKind(frame, top - 1, result, JavaKind.Boolean);
+        BytecodeNode.putKind(stack, top - 1, result, JavaKind.Boolean);
         return 0; // stack effect -> pop receiver, push boolean
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
+    public boolean producedForeignObject(OperandStack stack) {
         return false;
     }
 }
