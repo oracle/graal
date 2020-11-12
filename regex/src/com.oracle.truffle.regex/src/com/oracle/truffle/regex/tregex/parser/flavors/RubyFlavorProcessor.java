@@ -1041,8 +1041,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                         advance();
                     }
                     boolean caret = propertySpec.startsWith("^");
-                    boolean negative = (capitalP || caret) && (!capitalP && !caret);
-                    if (negative) {
+                    boolean negative = (capitalP || caret) && (!capitalP || !caret);
+                    if (caret) {
                         propertySpec = propertySpec.substring(1);
                     }
                     CodePointSet property;
