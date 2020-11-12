@@ -199,6 +199,10 @@ abstract class ToHostNode extends Node {
                 return convertedValue;
             }
         }
+        if (HostObject.isJavaInstance(targetType, value)) {
+            return HostObject.valueOf(value);
+        }
+
         if (useCustomTargetTypes) {
             convertedValue = targetMapping.execute(value, targetType, languageContext, interop, false, STRICT + 1, LOOSE);
             if (convertedValue != TargetMappingNode.NO_RESULT) {
@@ -293,20 +297,6 @@ abstract class ToHostNode extends Node {
         }
         if (HostObject.isJavaInstance(targetType, value)) {
             return true;
-        } else if (targetType == LocalDate.class) {
-            return interop.isDate(value);
-        } else if (targetType == LocalTime.class) {
-            return interop.isTime(value);
-        } else if (targetType == LocalDateTime.class) {
-            return interop.isDate(value) && interop.isTime(value);
-        } else if (targetType == ZonedDateTime.class || targetType == Date.class || targetType == Instant.class) {
-            return interop.isInstant(value);
-        } else if (targetType == ZoneId.class) {
-            return interop.isTimeZone(value);
-        } else if (targetType == Duration.class) {
-            return interop.isDuration(value);
-        } else if (targetType == PolyglotException.class) {
-            return interop.isException(value);
         }
 
         if (priority <= STRICT) {
@@ -324,6 +314,20 @@ abstract class ToHostNode extends Node {
             return interop.hasMembers(value);
         } else if (targetType.isArray()) {
             return interop.hasArrayElements(value);
+        } else if (targetType == LocalDate.class) {
+            return interop.isDate(value);
+        } else if (targetType == LocalTime.class) {
+            return interop.isTime(value);
+        } else if (targetType == LocalDateTime.class) {
+            return interop.isDate(value) && interop.isTime(value);
+        } else if (targetType == ZonedDateTime.class || targetType == Date.class || targetType == Instant.class) {
+            return interop.isInstant(value);
+        } else if (targetType == ZoneId.class) {
+            return interop.isTimeZone(value);
+        } else if (targetType == Duration.class) {
+            return interop.isDuration(value);
+        } else if (targetType == PolyglotException.class) {
+            return interop.isException(value);
         }
 
         if (value instanceof TruffleObject) {
