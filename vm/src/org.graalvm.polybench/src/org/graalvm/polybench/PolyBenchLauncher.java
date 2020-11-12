@@ -138,6 +138,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
+        // Add the default arguments.
+        polyglotOptions.put("wasm.Builtins", "wasi_snapshot_preview1");
+
         try {
             this.config = PARSER.parse(arguments);
         } catch (IllegalArgumentException e) {
