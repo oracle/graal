@@ -124,6 +124,7 @@ suite = {
             "dependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
+                "tools:TRUFFLE_PROFILER",
                 "com.oracle.truffle.espresso.jdwp"
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
