@@ -63,6 +63,12 @@ questions.
                         <phase>package</phase>
                     </execution>
                 </executions>
+                <configuration>
+                    <buildArgs>
+                        --no-fallback
+                    </buildArgs>
+                    <skip>false</skip>
+                </configuration>
             </plugin>
         </plugins>
     </build>
