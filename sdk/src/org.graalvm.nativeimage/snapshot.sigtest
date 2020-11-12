@@ -209,28 +209,49 @@ CLSS public abstract interface org.graalvm.nativeimage.Platform
 fld public final static java.lang.String PLATFORM_PROPERTY_NAME = "svm.platform"
 innr public abstract interface static AARCH64
 innr public abstract interface static AMD64
+innr public abstract interface static ANDROID
 innr public abstract interface static DARWIN
+innr public abstract interface static IOS
 innr public abstract interface static LINUX
 innr public abstract interface static WINDOWS
+innr public final static ANDROID_AARCH64
 innr public final static DARWIN_AARCH64
+innr public final static DARWIN_AMD64
 innr public final static HOSTED_ONLY
+innr public final static IOS_AARCH64
 innr public final static LINUX_AARCH64
-innr public static DARWIN_AMD64
+innr public final static WINDOWS_AMD64
 innr public static LINUX_AMD64
-innr public static WINDOWS_AMD64
+meth public java.lang.String getArchitecture()
+meth public java.lang.String getOS()
 meth public static boolean includedIn(java.lang.Class<? extends org.graalvm.nativeimage.Platform>)
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$AARCH64
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform
+meth public java.lang.String getArchitecture()
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$AMD64
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform
+meth public java.lang.String getArchitecture()
+
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$ANDROID
+ outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.Platform$LINUX
+meth public java.lang.String getOS()
+
+CLSS public final static org.graalvm.nativeimage.Platform$ANDROID_AARCH64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$AARCH64
+intf org.graalvm.nativeimage.Platform$ANDROID
+supr java.lang.Object
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$DARWIN
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
+meth public java.lang.String getOS()
 
 CLSS public final static org.graalvm.nativeimage.Platform$DARWIN_AARCH64
  outer org.graalvm.nativeimage.Platform
@@ -239,7 +260,7 @@ intf org.graalvm.nativeimage.Platform$AARCH64
 intf org.graalvm.nativeimage.Platform$DARWIN
 supr java.lang.Object
 
-CLSS public static org.graalvm.nativeimage.Platform$DARWIN_AMD64
+CLSS public final static org.graalvm.nativeimage.Platform$DARWIN_AMD64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AMD64
@@ -251,9 +272,22 @@ CLSS public final static org.graalvm.nativeimage.Platform$HOSTED_ONLY
 intf org.graalvm.nativeimage.Platform
 supr java.lang.Object
 
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$IOS
+ outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.Platform$DARWIN
+meth public java.lang.String getOS()
+
+CLSS public final static org.graalvm.nativeimage.Platform$IOS_AARCH64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$AARCH64
+intf org.graalvm.nativeimage.Platform$IOS
+supr java.lang.Object
+
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$LINUX
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
+meth public java.lang.String getOS()
 
 CLSS public final static org.graalvm.nativeimage.Platform$LINUX_AARCH64
  outer org.graalvm.nativeimage.Platform
@@ -272,8 +306,9 @@ supr java.lang.Object
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
+meth public java.lang.String getOS()
 
-CLSS public static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
+CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AMD64

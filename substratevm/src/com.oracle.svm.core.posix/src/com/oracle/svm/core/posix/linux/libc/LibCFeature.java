@@ -24,7 +24,11 @@
  */
 package com.oracle.svm.core.posix.linux.libc;
 
+import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -45,8 +49,22 @@ public class LibCFeature implements Feature {
 
     public static class LibCOptions {
         @APIOption(name = "libc")//
-        @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl")//
-        public static final HostedOptionKey<String> UseLibC = new HostedOptionKey<>("glibc");
+        @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
+        public static final HostedOptionKey<String> UseLibC = new HostedOptionKey<String>(null) {
+            @Override
+            public String getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+                if (!values.containsKey(this)) {
+                    return Platform.includedIn(Platform.ANDROID.class) ? "bionic" : "glibc";
+                }
+                return (String) values.get(this);
+            }
+
+            @Override
+            public String getValue(OptionValues values) {
+                assert checkDescriptorExists();
+                return getValueOrDefault(values.getMap());
+            }
+        };
     }
 
     @Override

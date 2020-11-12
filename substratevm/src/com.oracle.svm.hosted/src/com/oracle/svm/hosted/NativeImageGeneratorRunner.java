@@ -173,7 +173,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
          */
         NativeImageGenerator.setSystemPropertiesForImageEarly();
 
-        return new ImageClassLoader(NativeImageGenerator.defaultPlatform(nativeImageClassLoader), nativeImageClassLoaderSupport);
+        return new ImageClassLoader(NativeImageGenerator.getTargetPlatform(nativeImageClassLoader), nativeImageClassLoaderSupport);
     }
 
     public static List<String> extractDriverArguments(List<String> args) {

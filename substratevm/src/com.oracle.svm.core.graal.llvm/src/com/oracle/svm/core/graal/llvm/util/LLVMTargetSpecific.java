@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm.util;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -35,7 +36,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import java.util.Arrays;
 
 /**
  * LLVM target-specific inline assembly snippets and information.
@@ -222,7 +222,13 @@ class LLVMAArch64TargetSpecificFeature implements Feature {
 
             @Override
             public List<String> getLLCAdditionalOptions() {
-                return Arrays.asList("--frame-pointer=all", "--aarch64-frame-record-on-top");
+                List<String> list = new ArrayList<>();
+                list.add("--frame-pointer=all");
+                list.add("--aarch64-frame-record-on-top");
+                if (Platform.includedIn(Platform.IOS.class)) {
+                    list.add("-mtriple=arm64-ios");
+                }
+                return list;
             }
 
             @Override

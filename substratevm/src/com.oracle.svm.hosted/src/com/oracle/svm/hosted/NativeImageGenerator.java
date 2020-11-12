@@ -54,6 +54,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.core.OS;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -155,7 +156,6 @@ import com.oracle.svm.core.ClassLoaderQuery;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.LinkerInvocation;
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
@@ -314,56 +314,58 @@ public class NativeImageGenerator {
         optionProvider.getRuntimeValues().put(GraalOptions.EagerSnippets, true);
     }
 
-    public static Platform defaultPlatform(ClassLoader classLoader) {
+    public static Platform loadPlatform(ClassLoader classLoader, String platformClassName) throws ClassNotFoundException {
+        Class<?> platformClass;
+
+        platformClass = classLoader.loadClass(platformClassName);
+
+        Object result;
+        try {
+            result = ReflectionUtil.newInstance(platformClass);
+        } catch (ReflectionUtilError ex) {
+            throw UserError.abort(ex.getCause(), "Could not instantiate platform class %s. Ensure the class is not abstract and has a no-argument constructor.", platformClassName);
+        }
+
+        if (!(result instanceof Platform)) {
+            throw UserError.abort("Platform class %s does not implement %s", platformClassName, Platform.class.getTypeName());
+        }
+        return (Platform) result;
+    }
+
+    public static Platform getTargetPlatform(ClassLoader classLoader) {
         /*
          * We cannot use a regular hosted option for the platform class: The code that instantiates
          * the platform class runs before options are parsed, because option parsing depends on the
          * platform (there can be platform-specific options). So we need to use a regular system
          * property to specify a platform class explicitly on the command line.
          */
+
         String platformClassName = System.getProperty(Platform.PLATFORM_PROPERTY_NAME);
         if (platformClassName != null) {
-            Class<?> platformClass;
             try {
-                platformClass = classLoader.loadClass(platformClassName);
+                return loadPlatform(classLoader, platformClassName);
             } catch (ClassNotFoundException ex) {
                 throw UserError.abort("Could not find platform class %s that was specified explicitly on the command line using the system property %s",
                                 platformClassName, Platform.PLATFORM_PROPERTY_NAME);
             }
-
-            Object result;
-            try {
-                result = ReflectionUtil.newInstance(platformClass);
-            } catch (ReflectionUtilError ex) {
-                throw UserError.abort(ex.getCause(), "Could not instantiate platform class %s. Ensure the class is not abstract and has a no-argument constructor.", platformClassName);
-            }
-
-            if (!(result instanceof Platform)) {
-                throw UserError.abort("Platform class %s does not implement %s", platformClassName, Platform.class.getTypeName());
-            }
-            return (Platform) result;
         }
 
-        final Architecture hostedArchitecture = GraalAccess.getOriginalTarget().arch;
-        final OS currentOs = OS.getCurrent();
-        if (hostedArchitecture instanceof AMD64) {
-            if (currentOs == OS.LINUX) {
-                return new Platform.LINUX_AMD64();
-            } else if (currentOs == OS.DARWIN) {
-                return new Platform.DARWIN_AMD64();
-            } else if (currentOs == OS.WINDOWS) {
-                return new Platform.WINDOWS_AMD64();
-            } else {
-                throw VMError.shouldNotReachHere("Unsupported architecture/operating system: " + hostedArchitecture.getName() + "/" + currentOs.className);
-            }
-        } else if (hostedArchitecture instanceof AArch64) {
-            if (OS.getCurrent() == OS.LINUX) {
-                return new Platform.LINUX_AARCH64();
-            } else {
-                throw VMError.shouldNotReachHere("Unsupported architecture/operating system: " + hostedArchitecture.getName() + "/" + currentOs.className);
-            }
-        } else {
-            throw VMError.shouldNotReachHere("Unsupported architecture: " + hostedArchitecture.getClass().getSimpleName());
+        String os = System.getProperty("svm.targetPlatformOS");
+        if (os == null) {
+            os = OS.getCurrent().className.toLowerCase();
+        }
+
+        String arch = System.getProperty("svm.targetPlatformArch");
+        if (arch == null) {
+            arch = SubstrateUtil.getArchitectureName();
+        }
+
+        platformClassName = "org.graalvm.nativeimage.Platform$" + os.toUpperCase() + "_" + arch.toUpperCase();
+        try {
+            return loadPlatform(classLoader, platformClassName);
+        } catch (ClassNotFoundException ex) {
+            throw UserError.abort("Platform specified as " + os + "-" + arch +
+                            " isn't supported.");
         }
     }
 
