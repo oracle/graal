@@ -18,7 +18,7 @@ The following commands are available for Micronaut project development:
 
   * `Micronaut: Show Micronaut Tools Page`: Show Micronaut Tools Page
   * `Micronaut: Create Micronaut Project`: Create a Micronaut Project based on https://micronaut.io/launch
-  * `Micronaut: Build Project`: Build a Micronaut Project
+  * `Micronaut: Build ...`: Build a Micronaut Project with the user selected goal/target
   * `Micronaut: Build Native Image`: Build a native image of a Micronaut Project
 
 ## Requirements
@@ -29,7 +29,7 @@ This extension depends on the following extension:
 ## Extension Settings
 
 This extension contributes the following settings:
-* __micronaut.mn__ - Optional path to Micronaut CLI 'mn' executable.
+* __micronaut.home__ - Optional path to Micronaut CLI installation.
 * __micronaut.showWelcomePage__ - Show Micronaut Tools page on extension activation.
 
 ## Privacy Policy
