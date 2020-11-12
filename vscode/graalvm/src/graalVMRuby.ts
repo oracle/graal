@@ -19,31 +19,27 @@ export function getRubyConfigurations(): ConfigurationPickItem[] {
     ret.push(new ConfigurationPickItem(
         'Set as Ruby runtime',
         '(ruby.interpreter.commandPath)',
-        graalVMHome => {
-            const executable = utils.findExecutable('ruby', graalVMHome);
-            if (executable) {
-                return utils.checkRecommendedExtension('rebornix.Ruby', 'Ruby Language') && executable !== getConf('ruby').get('interpreter.commandPath');
-            }
-            return false;
-        }, 
+        graalVMHome => utils.findExecutable('ruby', graalVMHome) !== undefined && utils.checkRecommendedExtension('rebornix.Ruby', 'Ruby Language'),
+        graalVMHome => utils.findExecutable('ruby', graalVMHome) === getConf('ruby').get('interpreter.commandPath'), 
         async graalVMHome => {
             const executable = utils.findExecutable('ruby', graalVMHome);
             if (executable) {
                 return setConfig('interpreter.commandPath', executable);
             }
-        })
+        }, 
+        async _graalVMHome => setConfig('interpreter.commandPath', undefined))
     );
     return ret;
 }
 
-function setConfig(section: string, path: string) {
+function setConfig(section: string, path?: string) {
 	const config = getConf('ruby');
 	const term = config.inspect(section);
 	if (term) {
 		config.update(section, path, true);
 	}
 	const startRLS = getGVMConfig().get('languageServer.startRubyLanguageServer') as boolean;
-	if (startRLS) {
+	if (path && startRLS) {
 		if (!isRubyGemInstalled(RUBY_LANGUAGE_SERVER_GEM_NAME)) {
 			vscode.window.showInformationMessage('Solargraph gem is not installed in your GraalVM Ruby.', INSTALL_RUBY_LANGUAGE_SERVER).then(value => {
 				switch (value) {
