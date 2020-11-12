@@ -32,6 +32,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
+import com.oracle.truffle.espresso.nodes.OperandStack;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -51,7 +52,7 @@ public final class InvokeStaticNode extends QuickNode {
     }
 
     @Override
-    public int execute(final VirtualFrame frame) {
+    public int execute(VirtualFrame frame, final OperandStack stack) {
         if (!method.getAssumption().isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             directCallNode = null;
@@ -66,8 +67,7 @@ public final class InvokeStaticNode extends QuickNode {
             // stack frame iteration will see this node as parent
             directCallNode = insert(DirectCallNode.create(method.getMethod().getCallTarget()));
         }
-        BytecodeNode root = getBytecodesNode();
-        Object[] args = root.peekAndReleaseArguments(frame, top, false, method.getMethod().getParsedSignature());
+        Object[] args = BytecodeNode.popArguments(stack, top, false, method.getMethod().getParsedSignature());
 
         // Support for AccessController.doPrivileged*.
         if (callsDoPrivileged) {
@@ -79,12 +79,12 @@ public final class InvokeStaticNode extends QuickNode {
         }
 
         Object result = directCallNode.call(args);
-        return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, method.getMethod().getReturnKind());
+        return (getResultAt() - top) + BytecodeNode.putKind(stack, getResultAt(), result, method.getMethod().getReturnKind());
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
-        return method.getMethod().getReturnKind().isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
+    public boolean producedForeignObject(OperandStack stack) {
+        return method.getMethod().getReturnKind().isObject() && BytecodeNode.peekObject(stack, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {

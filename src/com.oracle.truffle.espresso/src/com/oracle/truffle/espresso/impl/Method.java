@@ -856,8 +856,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         FrameDescriptor frameDescriptor = initFrameDescriptor(result.getMaxLocals() + result.getMaxStackSize());
 
         // BCI slot is always the latest.
+        FrameSlot stackSlot = frameDescriptor.addFrameSlot("stack", FrameSlotKind.Object);
         FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
-        EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor, bciSlot));
+        EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor, stackSlot, bciSlot));
         result.getMethodVersion().callTarget = Truffle.getRuntime().createCallTarget(root);
 
         return result;
@@ -1159,11 +1160,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                                                 "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                             }
 
-                            FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
+                            FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals());
 
                             // BCI slot is always the latest.
+                            FrameSlot stackSlot = frameDescriptor.addFrameSlot("stack", FrameSlotKind.Object);
                             FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
-                            EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor, bciSlot));
+                            EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor, stackSlot, bciSlot));
                             callTarget = Truffle.getRuntime().createCallTarget(rootNode);
                         }
                     }

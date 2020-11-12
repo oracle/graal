@@ -28,6 +28,7 @@ import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.OperandStack;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.nodes.helper.AbstractSetFieldNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -71,17 +72,17 @@ public class InlinedSetterNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, OperandStack stack) {
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(root.popObject(frame, top - 1 - slotCount));
-        setFieldNode.setField(frame, root, receiver, top, statementIndex);
+                        : nullCheck(BytecodeNode.popObject(stack, top - 1 - slotCount));
+        setFieldNode.setField(frame, stack, root, receiver, top, statementIndex);
         return -slotCount + stackEffect;
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
+    public boolean producedForeignObject(OperandStack stack) {
         return false;
     }
 
