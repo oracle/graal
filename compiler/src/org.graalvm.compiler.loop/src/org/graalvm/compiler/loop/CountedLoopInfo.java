@@ -151,7 +151,6 @@ public class CountedLoopInfo {
      */
     public boolean loopMightBeEntered() {
         Stamp stamp = iv.valueNode().stamp(NodeView.DEFAULT);
-        StructuredGraph graph = iv.valueNode().graph();
 
         ValueNode max;
         ValueNode min;
@@ -164,7 +163,10 @@ public class CountedLoopInfo {
             min = end;
         }
         if (oneOff) {
-            max = add(graph, max, ConstantNode.forIntegerStamp(stamp, 1), NodeView.DEFAULT);
+            // Ensure the constant is value numbered in the graph. Don't add other nodes to the
+            // graph, they will be dead code.
+            StructuredGraph graph = iv.valueNode().graph();
+            max = add(max, ConstantNode.forIntegerStamp(stamp, 1, graph), NodeView.DEFAULT);
         }
 
         LogicNode entryCheck = getCounterIntegerHelper().createCompareNode(min, max, NodeView.DEFAULT);
