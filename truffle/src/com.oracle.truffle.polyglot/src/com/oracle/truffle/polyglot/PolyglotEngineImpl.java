@@ -1639,8 +1639,15 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
 
             if (!replayEvents) { // is new context
-                synchronized (context) {
-                    context.initializeContextLocals();
+                try {
+                    synchronized (context) {
+                        context.initializeContextLocals();
+                    }
+                } catch (Throwable t) {
+                    synchronized (this.lock) {
+                        removeContext(context);
+                    }
+                    throw t;
                 }
             }
 

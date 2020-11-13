@@ -559,29 +559,30 @@ public class ResourceLimitsTest {
 
     @Test
     public void testStatementLimitNoLimitCombination() {
-        Engine engine = Engine.create();
-        ResourceLimits limits = ResourceLimits.newBuilder().//
-                        statementLimit(50, s -> !s.isInternal()).//
-                        build();
+        try (Engine engine = Engine.create()) {
+            ResourceLimits limits = ResourceLimits.newBuilder().//
+                            statementLimit(50, s -> !s.isInternal()).//
+                            build();
 
-        try (Context context = Context.newBuilder().engine(engine).resourceLimits(limits).build()) {
-            context.eval(statements(50));
-            try {
-                context.eval(statements(1));
-                fail();
-            } catch (PolyglotException e) {
-                assertStatementCountLimit(context, e, 50);
+            try (Context context = Context.newBuilder().engine(engine).resourceLimits(limits).build()) {
+                context.eval(statements(50));
+                try {
+                    context.eval(statements(1));
+                    fail();
+                } catch (PolyglotException e) {
+                    assertStatementCountLimit(context, e, 50);
+                }
             }
-        }
 
-        ResourceLimits limitsNoLimits = ResourceLimits.newBuilder().build();
+            ResourceLimits limitsNoLimits = ResourceLimits.newBuilder().build();
 
-        try (Context context = Context.newBuilder().engine(engine).resourceLimits(limitsNoLimits).build()) {
-            context.eval(statements(100));
-        }
+            try (Context context = Context.newBuilder().engine(engine).resourceLimits(limitsNoLimits).build()) {
+                context.eval(statements(100));
+            }
 
-        try (Context context = Context.newBuilder().engine(engine).build()) {
-            context.eval(statements(100));
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                context.eval(statements(100));
+            }
         }
     }
 
