@@ -266,7 +266,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             EngineAccessor.LANGUAGE.configureLoggers(this, config.logLevels, getAllLoggers(engine));
         }
         this.subProcesses = new HashSet<>();
-        this.statementLimit = config.limits != null ? config.limits.statementLimit : Long.MAX_VALUE - 1;
+        this.statementLimit = config.limits != null && config.limits.statementLimit != 0 ? config.limits.statementLimit : Long.MAX_VALUE - 1;
         this.statementCounter = statementLimit;
         this.volatileStatementCounter.set(statementLimit);
 

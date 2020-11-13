@@ -40,7 +40,6 @@
  */
 package org.graalvm.polyglot;
 
-import java.time.Duration;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -111,8 +110,6 @@ public final class ResourceLimits {
 
         long statementLimit;
         Predicate<Source> statementLimitSourceFilter;
-        Duration timeLimit;
-        Duration timeLimitAccuracy;
         Consumer<ResourceLimitEvent> onLimit;
 
         Builder() {
