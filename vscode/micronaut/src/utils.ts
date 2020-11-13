@@ -13,6 +13,15 @@ export async function micronautProjectExists(): Promise<boolean> {
 	return (await vscode.workspace.findFiles('**/micronaut-cli.yml', '**/node_modules/**')).length > 0;
 }
 
+export function getMicronautHome(): string {
+	let micronautHome: string = vscode.workspace.getConfiguration('micronaut').get('home') as string;
+	if (micronautHome) {
+		return micronautHome;
+	}
+	micronautHome = process.env['MICRONAUT_HOME'] as string;
+	return micronautHome;
+}
+
 export function getJavaHome(): string {
 	let javaHome: string = vscode.workspace.getConfiguration('graalvm').get('home') as string;
 	if (javaHome) {
