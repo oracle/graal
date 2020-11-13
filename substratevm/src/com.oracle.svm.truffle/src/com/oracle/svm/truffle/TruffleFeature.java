@@ -63,9 +63,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory;
-import org.graalvm.compiler.hotspot.EconomyCompilerConfigurationFactory;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -78,7 +75,6 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.compiler.CommunityPartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.EconomyPartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
