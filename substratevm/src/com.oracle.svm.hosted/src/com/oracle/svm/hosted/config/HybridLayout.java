@@ -32,10 +32,9 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Defines the layout for a hybrid class.
@@ -47,15 +46,15 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class HybridLayout<T> {
 
-    public static boolean isHybrid(ResolvedJavaType clazz) {
+    public static boolean isHybrid(HostedType clazz) {
         return ImageSingletons.lookup(HybridLayoutSupport.class).isHybrid(clazz);
     }
 
-    public static boolean isHybridField(ResolvedJavaField field) {
+    public static boolean isHybridField(HostedField field) {
         return ImageSingletons.lookup(HybridLayoutSupport.class).isHybridField(field);
     }
 
-    public static boolean canHybridFieldsBeDuplicated(ResolvedJavaType clazz) {
+    public static boolean canHybridFieldsBeDuplicated(HostedType clazz) {
         return ImageSingletons.lookup(HybridLayoutSupport.class).canHybridFieldsBeDuplicated(clazz);
     }
 
