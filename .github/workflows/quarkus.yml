@@ -35,7 +35,9 @@ jobs:
         path: mx
     - name: Get latest quarkus release
       run: |
-        curl --output quarkus.tgz -sL $(curl -sL https://api.github.com/repos/quarkusio/quarkus/releases/latest | jq -r .tarball_url)
+        export QUARKUS_VERSION=$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
+        echo Getting Quarkus $QUARKUS_VERSION
+        curl --output quarkus.tgz -sL https://api.github.com/repos/quarkusio/quarkus/tarball/$QUARKUS_VERSION
         mkdir ${GITHUB_WORKSPACE}/quarkus
         tar xf quarkus.tgz -C ${GITHUB_WORKSPACE}/quarkus --strip-components=1
     - uses: actions/cache@v1
@@ -345,7 +347,9 @@ jobs:
         run: tar -xzvf graaljdk.tgz -C ${GITHUB_WORKSPACE}
       - name: Get latest quarkus release
         run: |
-          curl --output quarkus.tgz -sL $(curl -sL https://api.github.com/repos/quarkusio/quarkus/releases/latest | jq -r .tarball_url)
+          export QUARKUS_VERSION=$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
+          echo Getting Quarkus $QUARKUS_VERSION
+          curl --output quarkus.tgz -sL https://api.github.com/repos/quarkusio/quarkus/tarball/$QUARKUS_VERSION
           mkdir ${GITHUB_WORKSPACE}/quarkus
           tar xf quarkus.tgz -C ${GITHUB_WORKSPACE}/quarkus --strip-components=1
       - name: Reclaim Disk Space
