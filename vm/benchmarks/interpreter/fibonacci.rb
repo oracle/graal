@@ -31,16 +31,15 @@ def fibonacci(n)
   return fibonacci(n - 1) + fibonacci(n - 2)
 end
 
-def run()
+def run
   number = 37
-  fiboIs = 24157817
+  answer = 24157817
 
   fibo = fibonacci(number)
 
-  if fibo != fiboIs
-    puts "Wrong result: " + fibo.to_s
+  if fibo != answer
+    raise "Unexpected result: #{fibo}"
   end
 
   return fibo
 end
-
