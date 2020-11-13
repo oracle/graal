@@ -305,6 +305,9 @@ public class CountedLoopInfo {
     }
 
     public boolean counterNeverOverflows() {
+        if (loop.loopBegin().isCanNeverOverflow()) {
+            return true;
+        }
         /*
          * The checks in here and in createOverFlowGuard are pessimistic, i.e., they assume a worst
          * case scenario being that the last valid checked iteration value of the phi is end - 1,
@@ -380,7 +383,7 @@ public class CountedLoopInfo {
     public static final CounterKey overflowSpeculationNotTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_NotTaken");
 
     public static boolean canSpeculateThatCountedLoopNeverOverflows(LoopBeginNode lb, CountedLoopInfo cf) {
-        if (lb.getOverflowGuard() != null || cf.counterNeverOverflows()) {
+        if (lb.getOverflowGuard() != null || cf.counterNeverOverflows() || lb.isCanNeverOverflow()) {
             return true;
         }
         StructuredGraph graph = lb.graph();
@@ -388,7 +391,7 @@ public class CountedLoopInfo {
         if (speculationLog != null) {
             int bci = lb.getBci();
             if (bci == -1) {
-                assert lb.stateAfter() != null;
+                assert lb.stateAfter() != null : "If loop begin " + lb + " has no state it must have a bci set";
                 bci = lb.stateAfter().bci;
             }
             SpeculationLog.SpeculationReason speculationReason = LOOP_OVERFLOW_DEOPT.createSpeculationReason(graph.method(), bci);

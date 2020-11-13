@@ -58,6 +58,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected boolean osrLoop;
     protected int bci = -1;
     protected boolean disableCounted;
+    protected boolean canNeverOverflow;
 
     public enum LoopType {
         SIMPLE_LOOP,
@@ -80,6 +81,14 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         this.canEndsSafepoint = true;
         loopType = LoopType.SIMPLE_LOOP;
         unrollFactor = 1;
+    }
+
+    public boolean isCanNeverOverflow() {
+        return canNeverOverflow;
+    }
+
+    public void setCanNeverOverflow(boolean canNeverOverflow) {
+        this.canNeverOverflow = canNeverOverflow;
     }
 
     public boolean isDisableCounted() {
