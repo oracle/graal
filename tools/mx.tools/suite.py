@@ -37,7 +37,6 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "TRUFFLE_COVERAGE",
                 "TRUFFLE_PROFILER",
                 "NanoHTTPD",
                 "NanoHTTPD-WebSocket",
@@ -350,7 +349,6 @@ suite = {
             "dependencies": ["com.oracle.truffle.tools.chromeinspector"],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
-                "TRUFFLE_COVERAGE",
                 "TRUFFLE_PROFILER",
             ],
             "maven" : {
