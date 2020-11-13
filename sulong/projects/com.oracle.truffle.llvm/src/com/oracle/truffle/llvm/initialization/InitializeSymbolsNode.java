@@ -34,7 +34,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
@@ -75,21 +75,21 @@ import com.oracle.truffle.llvm.runtime.types.Type;
  */
 public final class InitializeSymbolsNode extends LLVMNode {
 
-    final String moduleName;
+    private final String moduleName;
 
-    @Child LLVMAllocateNode allocRoSection;
-    @Child LLVMAllocateNode allocRwSection;
+    @Child private LLVMAllocateNode allocRoSection;
+    @Child private LLVMAllocateNode allocRwSection;
 
     /**
      * Contains the offsets of the {@link #globals} to be allocated. -1 represents a pointer type
      * ({@link LLVMGlobalContainer}).
      */
-    @CompilationFinal(dimensions = 1) final int[] globalOffsets;
-    @CompilationFinal(dimensions = 1) final boolean[] globalIsReadOnly;
-    @CompilationFinal(dimensions = 1) final LLVMSymbol[] globals;
+    @CompilationFinal(dimensions = 1) private final int[] globalOffsets;
+    @CompilationFinal(dimensions = 1) private final boolean[] globalIsReadOnly;
+    @CompilationFinal(dimensions = 1) private final LLVMSymbol[] globals;
 
-    @Children final AllocSymbolNode[] allocFuncs;
-    @CompilationFinal(dimensions = 1) final LLVMSymbol[] functions;
+    @Children private final AllocSymbolNode[] allocFuncs;
+    @CompilationFinal(dimensions = 1) private final LLVMSymbol[] functions;
 
     private final LLVMScope fileScope;
     private final NodeFactory nodeFactory;
@@ -191,7 +191,6 @@ public final class InitializeSymbolsNode extends LLVMNode {
         return roBase; // needed later to apply memory protection after initialization
     }
 
-    @ExplodeLoop
     private void allocGlobals(LLVMContext context, LLVMPointer roBase, LLVMPointer rwBase) {
         for (int i = 0; i < globals.length; i++) {
             LLVMSymbol allocGlobal = globals[i];
@@ -218,7 +217,6 @@ public final class InitializeSymbolsNode extends LLVMNode {
         }
     }
 
-    @ExplodeLoop
     private void allocFunctions(LLVMContext context) {
         for (int i = 0; i < allocFuncs.length; i++) {
             AllocSymbolNode allocSymbol = allocFuncs[i];
@@ -318,7 +316,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
             this.functionCode = functionCode;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private LLVMFunctionDescriptor createAndResolve(LLVMContext context) {
             return context.createFunctionDescriptor(symbol.asFunction(), functionCode);
         }
@@ -339,7 +337,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
             this.functionCode = functionCode;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private LLVMFunctionDescriptor createAndResolve(LLVMContext context) {
             LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), functionCode);
             functionDescriptor.getFunctionCode().resolveIfLazyLLVMIRFunction();
@@ -366,7 +364,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
             this.intrinsicProvider = intrinsicProvider;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private LLVMFunctionDescriptor createAndDefine(LLVMContext context) {
             LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), functionCode);
             if (intrinsicProvider.isIntrinsified(symbol.getName())) {

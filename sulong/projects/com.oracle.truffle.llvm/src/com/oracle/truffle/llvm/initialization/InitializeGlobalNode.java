@@ -67,8 +67,8 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
 
     private final DataLayout dataLayout;
 
-    @Child StaticInitsNode globalVarInit;
-    @Child LLVMMemoryOpNode protectRoData;
+    @Child private StaticInitsNode globalVarInit;
+    @Child private LLVMMemoryOpNode protectRoData;
 
     public InitializeGlobalNode(LLVMParserResult parserResult, String moduleName) {
         this.dataLayout = parserResult.getDataLayout();

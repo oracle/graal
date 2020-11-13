@@ -85,7 +85,7 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
     private final RootCallTarget destructor;
     private final DataLayout dataLayout;
 
-    @Child StaticInitsNode constructor;
+    @Child private StaticInitsNode constructor;
 
     public InitializeModuleNode(LLVMLanguage language, LLVMParserResult parserResult, String moduleName) {
         this.destructor = createDestructor(parserResult, moduleName, language);

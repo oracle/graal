@@ -78,12 +78,16 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
         this.descriptors = descriptors;
     }
 
-    @ExplodeLoop
     @Specialization
     protected void initialize(VirtualFrame frame,
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached LLVMI8OffsetStoreNode storeI8,
                     @Cached LLVMI64OffsetStoreNode storeI64) {
+        writePrimitives(context, storeI8, storeI64);
+        writeObjects(frame, context);
+    }
+
+    private void writePrimitives(LLVMContext context, LLVMI8OffsetStoreNode storeI8, LLVMI64OffsetStoreNode storeI64) {
         int offset = 0;
         int nextStore = 0;
         for (int i = 0; i < descriptors.length; i++) {
@@ -94,7 +98,24 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
                 int nextStoreOffset = Math.min(offsets[nextStore], bufferEnd);
                 offset = initializePrimitiveBlock(address, storeI8, storeI64, offset, nextStoreOffset, bufferOffset);
                 if (offset < bufferEnd && nextStore < stores.length) {
-                    stores[nextStore].executeWithTarget(frame, address, nextStoreOffset - bufferOffset);
+                    offset += sizes[nextStore++];
+                }
+            }
+        }
+    }
+
+    @ExplodeLoop
+    private void writeObjects(VirtualFrame frame, LLVMContext context) {
+        int offset = 0;
+        int nextStore = 0;
+        for (int i = 0; i < descriptors.length; i++) {
+            LLVMPointer address = LLVMAccessSymbolNode.getSymbol(context, descriptors[i], this);
+            int bufferOffset = bufferOffsets[i];
+            int bufferEnd = i == descriptors.length - 1 ? data.length : bufferOffsets[i + 1];
+            while (offset < bufferEnd) {
+                offset = Math.min(offsets[nextStore], bufferEnd);
+                if (offset < bufferEnd && nextStore < stores.length) {
+                    stores[nextStore].executeWithTarget(frame, address, offset - bufferOffset);
                     offset += sizes[nextStore++];
                 }
             }

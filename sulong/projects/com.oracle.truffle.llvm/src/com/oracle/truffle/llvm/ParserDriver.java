@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -167,7 +167,7 @@ final class ParserDriver {
         return createLibraryCallTarget(source.getName(), result, source);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private TruffleFile createNativeTruffleFile(String libName, String libPath) {
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
         if (nfiContextExtension != null) {

@@ -31,8 +31,8 @@ package com.oracle.truffle.llvm.initialization;
 
 import java.util.ArrayList;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNodeFactory.AllocExistingLocalSymbolsNodeGen.AllocExistingGlobalSymbolsNodeGen.AllocExternalFunctionNodeGen;
 import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNodeFactory.AllocExistingLocalSymbolsNodeGen.AllocExistingGlobalSymbolsNodeGen.AllocExternalGlobalNodeGen;
@@ -81,8 +81,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
  * @see InitializeOverwriteNode
  */
 public final class InitializeExternalNode extends LLVMNode {
-    @Children AllocExternalSymbolNode[] allocExternalSymbols;
-    @CompilationFinal(dimensions = 1) final LLVMSymbol[] symbols;
+    @Children private final AllocExternalSymbolNode[] allocExternalSymbols;
+    @CompilationFinal(dimensions = 1) private final LLVMSymbol[] symbols;
 
     private final NodeFactory nodeFactory;
 
@@ -128,7 +128,7 @@ public final class InitializeExternalNode extends LLVMNode {
         // functions and globals
         for (int i = 0; i < allocExternalSymbols.length; i++) {
             AllocExternalSymbolNode function = allocExternalSymbols[i];
-            LLVMPointer pointer = function.execute(localScope, globalScope, intrinsicProvider, nfiContextExtension);
+            LLVMPointer pointer = function.execute(localScope, globalScope, intrinsicProvider, nfiContextExtension, context);
             // skip allocating fallbacks
             if (pointer == null) {
                 continue;
@@ -137,7 +137,7 @@ public final class InitializeExternalNode extends LLVMNode {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static NFIContextExtension getNfiContextExtension(LLVMContext context) {
         return context.getContextExtensionOrNull(NFIContextExtension.class);
     }
