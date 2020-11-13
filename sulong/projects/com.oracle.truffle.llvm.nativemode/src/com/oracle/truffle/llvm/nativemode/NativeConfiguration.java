@@ -27,9 +27,10 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm;
+package com.oracle.truffle.llvm.nativemode;
 
-import com.oracle.truffle.llvm.NativeConfigurationFactory.Key;
+import com.oracle.truffle.llvm.DefaultLoader;
+import com.oracle.truffle.llvm.nativemode.NativeConfigurationFactory.Key;
 import com.oracle.truffle.llvm.parser.factories.BasicIntrinsicsProvider;
 import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
 import com.oracle.truffle.llvm.parser.factories.BasicPlatformCapability;

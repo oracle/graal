@@ -27,9 +27,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm;
+package com.oracle.truffle.llvm.nativemode;
 
-import com.oracle.truffle.llvm.NativeConfigurationFactory.Key;
+import com.oracle.truffle.llvm.nativemode.NativeConfigurationFactory.Key;
 import java.util.List;
 
 import org.graalvm.options.OptionDescriptor;
