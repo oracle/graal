@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 @ServiceProvider(PartialEvaluatorConfiguration.class)
@@ -33,13 +32,5 @@ public class EconomyPartialEvaluatorConfiguration implements PartialEvaluatorCon
     @Override
     public String name() {
         return "economy";
-    }
-
-    @Override
-    public void registerGraphBuilderInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
-    }
-
-    @Override
-    public void registerGraphDecoderInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
     }
 }

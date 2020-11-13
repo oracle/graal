@@ -150,7 +150,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         // graphs are cached across compilations.
                         .withEagerResolving(true);
 
-        this.partialEvaluator = createPartialEvaluator();
+        this.partialEvaluator = createPartialEvaluator(config);
     }
 
     private ResolvedJavaType[] getSkippedExceptionTypes(TruffleCompilerRuntime runtime) {
@@ -185,7 +185,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     /**
      * Creates the partial evaluator used by this compiler.
      */
-    protected abstract PartialEvaluator createPartialEvaluator();
+    protected abstract PartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration config);
 
     public static final TimerKey PartialEvaluationTime = DebugContext.timer("PartialEvaluationTime").doc("Total time spent in the Truffle tier.");
     public static final TimerKey CompilationTime = DebugContext.timer("CompilationTime");

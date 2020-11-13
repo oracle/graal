@@ -198,9 +198,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
-    protected HotSpotPartialEvaluator createPartialEvaluator() {
-        // return new HotSpotPartialEvaluator(lastTierProviders, config, snippetReflection, backend.getTarget().arch);
-        return new HotSpotPartialEvaluator(config.lastTier().providers(), builderConfig, getSnippetReflection(), config.lastTier().backend().getTarget().arch);
+    protected HotSpotPartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration config) {
+        return new HotSpotPartialEvaluator(config, builderConfig);
     }
 
     @Override

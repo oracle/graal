@@ -217,8 +217,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             return new SubstrateOptimizedCallTarget(sourceCallTarget, rootNode);
         }
 
-        public SubstratePartialEvaluator createPartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture) {
-            return new SubstratePartialEvaluator(providers, configForRoot, snippetReflection, architecture);
+        public SubstratePartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration graphBuilderConfigForRoot) {
+            return new SubstratePartialEvaluator(config, graphBuilderConfigForRoot);
         }
 
         @SuppressWarnings("unused")

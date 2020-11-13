@@ -24,10 +24,18 @@
  */
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
-import jdk.vm.ci.code.Architecture;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.phases.util.Providers;
 
-public interface TruffleInvocationPluginProvider {
-    void registerInvocationPlugins(Providers providers, Architecture architecture, InvocationPlugins plugins, boolean canDelayIntrinsification);
+import jdk.vm.ci.code.Architecture;
+
+/**
+ * Registers invocation plugins that are specific to a particular compiler configuration.
+ *
+ * These plugins are invoked when the partial evaluator decodes the graphs, and they can decide
+ * whether they should be registered for the compiler configuration of the respective compilation
+ * tier.
+ */
+public interface GraphDecoderInvocationPluginProvider {
+    void registerInvocationPlugins(Providers providers, Architecture architecture, String compilerConfiguration, InvocationPlugins plugins, boolean canDelayIntrinsification);
 }

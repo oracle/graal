@@ -49,7 +49,7 @@ public final class TruffleTierConfiguration {
         this.lirSuites = lirSuites;
     }
 
-    public PartialEvaluatorConfiguration getConfiguration() {
+    public PartialEvaluatorConfiguration partialEvaluator() {
         return configuration;
     }
 

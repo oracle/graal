@@ -65,8 +65,8 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    protected PartialEvaluator createPartialEvaluator() {
-        return TruffleFeature.getSupport().createPartialEvaluator(config.lastTier().providers(), builderConfig, config.snippetReflection(), config.lastTier().backend().getTarget().arch);
+    protected PartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration config) {
+        return TruffleFeature.getSupport().createPartialEvaluator(config, builderConfig);
     }
 
     @Override

@@ -30,15 +30,15 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
+import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@ServiceProvider(TruffleInvocationPluginProvider.class)
-public class TruffleAMD64InvocationPlugins implements TruffleInvocationPluginProvider {
+@ServiceProvider(GraphBuilderInvocationPluginProvider.class)
+public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPluginProvider {
 
     @Override
     public void registerInvocationPlugins(Providers providers, Architecture architecture, InvocationPlugins plugins, boolean canDelayIntrinsification) {
