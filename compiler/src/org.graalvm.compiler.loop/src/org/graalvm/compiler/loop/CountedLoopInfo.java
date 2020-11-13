@@ -32,13 +32,17 @@ import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.sub;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.util.UnsignedLong;
+import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -48,9 +52,11 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
 import org.graalvm.compiler.nodes.util.SignedIntegerHelper;
 import org.graalvm.compiler.nodes.util.UnsignedIntegerHelper;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public class CountedLoopInfo {
@@ -299,6 +305,13 @@ public class CountedLoopInfo {
     }
 
     public boolean counterNeverOverflows() {
+        /*
+         * The checks in here and in createOverFlowGuard are pessimistic, i.e., they assume a worst
+         * case scenario being that the last valid checked iteration value of the phi is end - 1,
+         * and checks that against an overflow. This means that loops that for which the effective
+         * phi val reaches a value in its last iteration in range of [MAX-stride,MAX] will be
+         * assumed to deopt.
+         */
         if (iv.isConstantStride() && abs(iv.constantStride()) == 1) {
             return true;
         }
@@ -343,12 +356,54 @@ public class CountedLoopInfo {
                 cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(end, v1, NodeView.DEFAULT));
             }
             assert graph.getGuardsStage().allowsFloatingGuards();
+
+            SpeculationLog speculationLog = graph.getSpeculationLog();
+            SpeculationLog.Speculation speculation = SpeculationLog.NO_SPECULATION;
+            if (speculationLog != null) {
+                SpeculationLog.SpeculationReason speculationReason = LOOP_OVERFLOW_DEOPT.createSpeculationReason(graph.method(), iv.loop.loopBegin().stateAfter().bci);
+                if (speculationLog.maySpeculate(speculationReason)) {
+                    speculation = speculationLog.speculate(speculationReason);
+                    overflowSpeculationTaken.increment(graph.getDebug());
+                } else {
+                    GraalError.shouldNotReachHere("Must not create overflow guard for a loop where the speculation guard already failed, this can create deopt loops");
+                }
+            }
+
             overflowGuard = graph.unique(new GuardNode(cond, AbstractBeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true,
-                            SpeculationLog.NO_SPECULATION, null)); // TODO gd: use speculation
+                            speculation, null));
             loop.loopBegin().setOverflowGuard(overflowGuard);
             return overflowGuard;
         }
     }
+
+    public static final CounterKey overflowSpeculationTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_Taken");
+    public static final CounterKey overflowSpeculationNotTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_NotTaken");
+
+    public static boolean canSpeculateThatCountedLoopNeverOverflows(LoopBeginNode lb, CountedLoopInfo cf) {
+        if (lb.getOverflowGuard() != null || cf.counterNeverOverflows()) {
+            return true;
+        }
+        StructuredGraph graph = lb.graph();
+        SpeculationLog speculationLog = graph.getSpeculationLog();
+        if (speculationLog != null) {
+            int bci = lb.getBci();
+            if (bci == -1) {
+                assert lb.stateAfter() != null;
+                bci = lb.stateAfter().bci;
+            }
+            SpeculationLog.SpeculationReason speculationReason = LOOP_OVERFLOW_DEOPT.createSpeculationReason(graph.method(), bci);
+            if (speculationLog.maySpeculate(speculationReason)) {
+                overflowSpeculationTaken.increment(graph.getDebug());
+                return true;
+            }
+            overflowSpeculationNotTaken.increment(graph.getDebug());
+            return false;
+        }
+        // Be optimistic, if there is no speculation log
+        return true;
+    }
+
+    private static final SpeculationReasonGroup LOOP_OVERFLOW_DEOPT = new SpeculationReasonGroup("LoopOverflowDeopt", ResolvedJavaMethod.class, int.class);
 
     public IntegerStamp getStamp() {
         return (IntegerStamp) iv.valueNode().stamp(NodeView.DEFAULT);
