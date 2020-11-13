@@ -136,7 +136,7 @@ public class DeclarativeSubstitutionProcessor extends AnnotationSubstitutionProc
             }
             ClassDescriptor classDescriptor = new ClassDescriptor(classDescriptorData);
 
-            Class<?> annotatedClass = imageClassLoader.findClassByName(classDescriptor.annotatedClass());
+            Class<?> annotatedClass = imageClassLoader.findClassOrFail(classDescriptor.annotatedClass());
 
             if (annotatedClasses.contains(annotatedClass)) {
                 throw UserError.abort("Target class already registered using explicit @TargetClass annotation: %s", annotatedClass);
@@ -196,7 +196,7 @@ public class DeclarativeSubstitutionProcessor extends AnnotationSubstitutionProc
     private Executable findMethod(Class<?> declaringClass, String methodName, String[] parameterTypeNames) {
         Class<?>[] parameterTypes = new Class<?>[parameterTypeNames.length];
         for (int i = 0; i < parameterTypes.length; i++) {
-            parameterTypes[i] = imageClassLoader.findClassByName(parameterTypeNames[i]);
+            parameterTypes[i] = imageClassLoader.findClassOrFail(parameterTypeNames[i]);
         }
         try {
             if (methodName.equals(TargetElement.CONSTRUCTOR_NAME)) {
@@ -387,7 +387,7 @@ class PlatformsDescriptor extends DataObject {
             List<String> platforms = platforms();
             Class<?>[] result = new Class<?>[platforms.size()];
             for (int i = 0; i < result.length; i++) {
-                result[i] = loader.findClassByName(platforms.get(i));
+                result[i] = loader.findClassOrFail(platforms.get(i));
             }
             return cast(result);
         }
@@ -590,7 +590,7 @@ class FieldDescriptor extends ElementDescriptor {
         @Override
         public Class<?> value() {
             assert injectAccessors() != null;
-            return loader.findClassByName(injectAccessors());
+            return loader.findClassOrFail(injectAccessors());
         }
     }
 }

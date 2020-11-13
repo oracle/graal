@@ -150,7 +150,7 @@ public class ReflectionPlugins {
                     ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, boolean analysis, boolean hosted) {
         if (name.isConstant()) {
             String className = snippetReflection.asObject(String.class, name.asJavaConstant());
-            Class<?> clazz = imageClassLoader.findClassByName(className, false);
+            Class<?> clazz = imageClassLoader.findClass(className).get();
             if (clazz == null) {
                 Method intrinsic = getIntrinsic(analysis, hosted, b, ExceptionSynthesizer.throwClassNotFoundExceptionMethod);
                 if (intrinsic == null) {

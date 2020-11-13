@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.ClassLoaderQuery;
+import com.oracle.svm.core.TypeResult;
 
 public final class ImageClassLoader {
 
@@ -223,40 +224,60 @@ public final class ImageClassLoader {
         return classLoaderSupport.getClassLoader().getResourceAsStream(resource);
     }
 
+    /**
+     * @deprecated use {@link #findClassOrFail(String)} instead.
+     */
+    @Deprecated
     public Class<?> findClassByName(String name) {
         return findClassByName(name, true);
     }
 
+    /**
+     * @deprecated use {@link #findClass(String)} or {@link #findClassOrFail(String)} instead.
+     */
+    @Deprecated
     public Class<?> findClassByName(String name, boolean failIfClassMissing) {
+        TypeResult<Class<?>> result = findClass(name);
+        if (failIfClassMissing) {
+            return result.getOrFail();
+        } else {
+            return result.get();
+        }
+    }
+
+    /** Find class or fail if exception occurs. */
+    public Class<?> findClassOrFail(String name) {
+        return findClass(name).getOrFail();
+    }
+
+    /** Find class, return result encoding class or failure reason. */
+    public TypeResult<Class<?>> findClass(String name) {
         try {
             if (name.indexOf('.') == -1) {
                 switch (name) {
                     case "boolean":
-                        return boolean.class;
+                        return TypeResult.forClass(boolean.class);
                     case "char":
-                        return char.class;
+                        return TypeResult.forClass(char.class);
                     case "float":
-                        return float.class;
+                        return TypeResult.forClass(float.class);
                     case "double":
-                        return double.class;
+                        return TypeResult.forClass(double.class);
                     case "byte":
-                        return byte.class;
+                        return TypeResult.forClass(byte.class);
                     case "short":
-                        return short.class;
+                        return TypeResult.forClass(short.class);
                     case "int":
-                        return int.class;
+                        return TypeResult.forClass(int.class);
                     case "long":
-                        return long.class;
+                        return TypeResult.forClass(long.class);
                     case "void":
-                        return void.class;
+                        return TypeResult.forClass(void.class);
                 }
             }
-            return forName(name);
-        } catch (ClassNotFoundException | NoClassDefFoundError ex) {
-            if (failIfClassMissing) {
-                throw shouldNotReachHere("class " + name + " not found");
-            }
-            return null;
+            return TypeResult.forClass(forName(name));
+        } catch (ClassNotFoundException | LinkageError ex) {
+            return TypeResult.forException(name, ex);
         }
     }
 
