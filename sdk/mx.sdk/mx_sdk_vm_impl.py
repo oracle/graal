@@ -2682,8 +2682,8 @@ def graalvm_vendor_version(graalvm_dist):
     vendor_version += ' {}'.format(graalvm_version())
     return vendor_version
 
-mx.add_argument('--components', action='store', help='Comma-separated list of component names to build. Only those components and their dependencies are built.')
-mx.add_argument('--exclude-components', action='store', help='Comma-separated list of component names to be excluded from the build.')
+mx.add_argument('--components', action='store', help='Comma-separated list of component names to build. Only those components and their dependencies are built. suite:NAME can be used to exclude all components of a suite.')
+mx.add_argument('--exclude-components', action='store', help='Comma-separated list of component names to be excluded from the build. suite:NAME can be used to exclude all components of a suite.')
 mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project.')
 mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project.')
 mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu.'
@@ -2753,14 +2753,30 @@ def _components_include_list():
     included = _parse_cmd_arg('components', parse_bool=False, default_value=None)
     if included is None:
         return None
-    return [mx_sdk.graalvm_component_by_name(name) for name in included]
+    components = []
+    for name in included:
+        if name.startswith('suite:'):
+            suite_name = name[len('suite:'):]
+            components.extend([c for c in mx_sdk_vm.graalvm_components() if c.suite.name == suite_name])
+        else:
+            components.append(mx_sdk.graalvm_component_by_name(name))
+    return components
 
 
 def _excluded_components():
     excluded = _parse_cmd_arg('exclude_components', parse_bool=False, default_value='')
     if mx.get_opts().disable_polyglot or _env_var_to_bool('DISABLE_POLYGLOT'):
         excluded.append('poly')
-    return excluded
+
+    expanded = []
+    for name in excluded:
+        if name.startswith('suite:'):
+            suite_name = name[len('suite:'):]
+            expanded.extend([c.name for c in mx_sdk_vm.graalvm_components() if c.suite.name == suite_name])
+        else:
+            expanded.append(name)
+
+    return expanded
 
 
 def _extra_image_builder_args(image):
