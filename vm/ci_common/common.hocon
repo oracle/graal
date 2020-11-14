@@ -252,8 +252,11 @@ full_vm_build_darwin: ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin
 
 libgraal_build: [mx,
     --env, ${libgraal_env},
+    # enable all asserts in the image building code
     "--extra-image-builder-argument=-J-esa",
     "--extra-image-builder-argument=-J-ea",
+    # enable all asserts in the generated libgraal
+    "--extra-image-builder-argument=-esa",
     "--extra-image-builder-argument=-ea",
     build
 ]

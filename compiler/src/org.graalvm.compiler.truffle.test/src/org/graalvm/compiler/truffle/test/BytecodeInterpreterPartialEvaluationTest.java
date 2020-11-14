@@ -609,7 +609,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
             times[i] = duration;
             Map<MetricKey, Long> metrics = lastDebug.getMetricsSnapshot();
             List<Map.Entry<MetricKey, Long>> entries = new ArrayList<>(metrics.entrySet());
-            entries.sort((o1, o2) -> ((int) (o2.getValue() - o1.getValue())));
+            entries.sort((o1, o2) -> (o2.getValue().compareTo(o1.getValue())));
             int printed = 0;
             Formatter buf = new Formatter();
             for (Map.Entry<MetricKey, Long> e : entries) {
