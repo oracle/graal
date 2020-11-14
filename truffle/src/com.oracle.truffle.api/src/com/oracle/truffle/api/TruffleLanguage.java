@@ -961,7 +961,9 @@ public abstract class TruffleLanguage<C> {
      * Returns <code>true</code> if code of this language is allowed to be executed on this thread.
      * The method returns <code>false</code> to deny execution on this thread. The default
      * implementation denies access to more than one thread at the same time. The
-     * {@link Thread#currentThread() current thread} may differ from the passed thread.
+     * {@link Thread#currentThread() current thread} may differ from the passed thread. If this
+     * method throws an {@link com.oracle.truffle.api.exception.AbstractTruffleException} the
+     * exception interop messages may be executed without a context being entered.
      * <p>
      * <b>Example multi-threaded language implementation:</b>
      * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
@@ -980,7 +982,9 @@ public abstract class TruffleLanguage<C> {
      * languages to perform actions that are required to support multi-threading. It will never be
      * invoked if {@link #isThreadAccessAllowed(Thread, boolean)} is implemented to deny access from
      * multiple threads at the same time. All initialized languages must allow multi-threading for
-     * this method to be invoked.
+     * this method to be invoked. If this method throws an
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
+     * messages may be executed without a context being entered.
      * <p>
      * <b>Example multi-threaded language implementation:</b>
      * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
@@ -1001,6 +1005,9 @@ public abstract class TruffleLanguage<C> {
      * {@link WeakReference} to avoid leaking thread objects.
      * <p>
      * The {@link Thread#currentThread() current thread} may differ from the initialized thread.
+     * <p>
+     * If this method throws an {@link com.oracle.truffle.api.exception.AbstractTruffleException}
+     * the exception interop messages may be executed without a context being entered.
      * <p>
      * <b>Example multi-threaded language implementation:</b>
      * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
@@ -1750,7 +1757,9 @@ public abstract class TruffleLanguage<C> {
          * Returns a new value for a context local of a language. The returned value must not be
          * <code>null</code> and must return a stable and exact type per registered language. A
          * thread local must always return the same {@link Object#getClass() class}, even for
-         * multiple instances of the same {@link TruffleLanguage}.
+         * multiple instances of the same {@link TruffleLanguage}. If this method throws an
+         * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
+         * messages may be executed without a context being entered.
          *
          * @see TruffleLanguage#createContextLocal(ContextLocalFactory)
          * @since 20.3
@@ -1772,7 +1781,9 @@ public abstract class TruffleLanguage<C> {
          * returned value must not be <code>null</code> and must return a stable and exact type per
          * TruffleLanguage subclass. A thread local must always return the same
          * {@link Object#getClass() class}, even for multiple instances of the same
-         * {@link TruffleLanguage}.
+         * {@link TruffleLanguage}. If this method throws an
+         * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
+         * messages may be executed without a context being entered.
          *
          * @see TruffleLanguage#createContextThreadLocal(ContextThreadLocalFactory)
          * @since 20.3

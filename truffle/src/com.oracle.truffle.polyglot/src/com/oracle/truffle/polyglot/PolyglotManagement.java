@@ -479,7 +479,7 @@ final class PolyglotManagement extends AbstractManagementImpl {
 
         @TruffleBoundary(allowInlining = true)
         protected final void invokeExceptionAllocate(List<Value> inputValues, Throwable e) {
-            PolyglotException ex = e != null ? PolyglotImpl.guestToHostException(language.getCurrentLanguageContext(), e) : null;
+            PolyglotException ex = e != null ? PolyglotImpl.guestToHostException(language.getCurrentLanguageContext(), e, true) : null;
             config.onReturn.accept(config.management.newExecutionEvent(new DynamicEvent(this, inputValues, null, ex)));
         }
 

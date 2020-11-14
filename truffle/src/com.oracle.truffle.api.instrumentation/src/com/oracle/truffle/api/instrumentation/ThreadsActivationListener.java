@@ -70,7 +70,9 @@ public interface ThreadsActivationListener {
      * Notified when a context is entered on the {@link Thread#currentThread() current thread}.
      * Entering a thread indicates that the context is currently active. A context maybe entered
      * multiple times per thread. This method is executed frequently and must be designed for
-     * compilation.
+     * compilation. If this method throws an
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
+     * messages may be executed without a context being entered.
      *
      * @param context the context being entered on the current thread
      * @since 20.3

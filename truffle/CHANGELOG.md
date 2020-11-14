@@ -3,6 +3,13 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 21.0.0
+* If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the excepion interop messages are executed without a context being entered. The event listeners called during the context enter are:
+    * `ThreadsActivationListener.onEnterThread(TruffleContext)`
+    * `ThreadsListener.onThreadInitialized(TruffleContext, Thread)`
+    * `TruffleInstrument.onCreate(Env)`
+    * `TruffleLanguage.isThreadAccessAllowed(Thread, boolean)`
+    * `TruffleLanguage.initializeMultiThreading(Object)`
+    * `TruffleLanguage.initializeThread(Object, Thread)`
 
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.

@@ -120,7 +120,7 @@ interface HostWrapper {
             return receiverLib.isIdentical(receiver, obj, objLib);
         } catch (Throwable t) {
             // propagate errors in languages they should be reported.
-            throw PolyglotImpl.guestToHostException(languageContext, t);
+            throw PolyglotImpl.guestToHostException(languageContext, t, true);
         } finally {
             try {
                 PolyglotValue.hostLeave(languageContext, prev);
@@ -153,7 +153,7 @@ interface HostWrapper {
             }
         } catch (Throwable t) {
             // propagate errors in languages they should be reported.
-            throw PolyglotImpl.guestToHostException(languageContext, t);
+            throw PolyglotImpl.guestToHostException(languageContext, t, true);
         } finally {
             try {
                 PolyglotValue.hostLeave(languageContext, prev);
