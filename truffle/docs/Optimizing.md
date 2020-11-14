@@ -521,6 +521,10 @@ Files are put into a `graal_dumps` directory which you should then open in the C
 THe `--vm.XX:+UnlockDiagnosticVMOptions --vm.XX:+PrintAssembly` commands combination prints assembly code.
 You will need to install `hsdis` using `mx hsdis` in `graal/compiler`, or manually install it into the current directory from [here](https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis/intel/).
 
+Typical usage is `--vm.Dgraal.Dump --vm.Dgraal.PrintBackendCFG=true`. Files are
+put into a `graal_dumps` directory which you should then open in the
+C1 Visualizer.
+
 Combine with `--vm.XX:TieredStopAtLevel=0` to disable compilation of runtime routines so that it's easier to find your guest-language method.
 
 Note: You can also look at assembly code in the C1 Visualizer.
