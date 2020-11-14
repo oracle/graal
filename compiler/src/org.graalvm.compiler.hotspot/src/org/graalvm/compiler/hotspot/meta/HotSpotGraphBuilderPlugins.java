@@ -71,9 +71,9 @@ import org.graalvm.compiler.hotspot.replacements.DigestBaseSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotArraySubstitutions;
 import org.graalvm.compiler.hotspot.replacements.HotSpotClassSubstitutions;
+import org.graalvm.compiler.hotspot.replacements.HotSpotIdentityHashCodeNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotReflectionGetCallerClassNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
-import org.graalvm.compiler.hotspot.replacements.IdentityHashCodeNode;
 import org.graalvm.compiler.hotspot.replacements.ObjectCloneNode;
 import org.graalvm.compiler.hotspot.replacements.ReflectionSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.ThreadSubstitutions;
@@ -275,7 +275,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
-                b.addPush(JavaKind.Int, new IdentityHashCodeNode(object, b.bci()));
+                b.addPush(JavaKind.Int, new HotSpotIdentityHashCodeNode(object, b.bci()));
                 return true;
             }
 
@@ -425,7 +425,7 @@ public class HotSpotGraphBuilderPlugins {
         r.register1("identityHashCode", Object.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
-                b.addPush(JavaKind.Int, new IdentityHashCodeNode(object, b.bci()));
+                b.addPush(JavaKind.Int, new HotSpotIdentityHashCodeNode(object, b.bci()));
                 return true;
             }
 

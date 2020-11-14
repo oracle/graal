@@ -69,8 +69,8 @@ public final class DirectSubstrateObjectConstant extends SubstrateObjectConstant
     }
 
     @Override
-    protected int getIdentityHashCode() {
-        return System.identityHashCode(object);
+    public int getIdentityHashCode() {
+        return computeIdentityHashCode(object);
     }
 
     @Override

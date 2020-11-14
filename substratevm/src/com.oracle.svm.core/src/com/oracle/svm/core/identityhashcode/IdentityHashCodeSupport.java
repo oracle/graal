@@ -22,27 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.identityhashcode;
 
 import java.util.SplittableRandom;
 
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import jdk.vm.ci.code.TargetDescription;
 
 public final class IdentityHashCodeSupport {
     public static final LocationIdentity IDENTITY_HASHCODE_LOCATION = NamedLocationIdentity.mutable("identityHashCode");
@@ -57,34 +56,20 @@ public final class IdentityHashCodeSupport {
         new SplittableRandom().nextInt();
     }
 
-    public static int generateIdentityHashCode(Object obj, int hashCodeOffset) {
-        UnsignedWord hashCodeOffsetWord = WordFactory.unsigned(hashCodeOffset);
+    public static IdentityHashCodeSnippets.Templates createSnippetTemplates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, TargetDescription target) {
+        return new IdentityHashCodeSnippets.Templates(new SubstrateIdentityHashCodeSnippets(), options, factories, providers, target, IDENTITY_HASHCODE_LOCATION);
+    }
+
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
+    private static int generateIdentityHashCode(Object obj) {
 
         // generate a new hashcode and try to store it into the object
         int newHashCode = generateHashCode();
-        if (!GraalUnsafeAccess.getUnsafe().compareAndSwapInt(obj, hashCodeOffset, 0, newHashCode)) {
-            newHashCode = ObjectAccess.readInt(obj, hashCodeOffsetWord, IDENTITY_HASHCODE_LOCATION);
+        if (!GraalUnsafeAccess.getUnsafe().compareAndSwapInt(obj, ConfigurationValues.getObjectLayout().getIdentityHashCodeOffset(), 0, newHashCode)) {
+            newHashCode = ObjectAccess.readInt(obj, ConfigurationValues.getObjectLayout().getIdentityHashCodeOffset(), IDENTITY_HASHCODE_LOCATION);
         }
         VMError.guarantee(newHashCode != 0, "Missing identity hash code");
         return newHashCode;
-    }
-
-    public static int getHashCodeOffset(Object obj) {
-        // Try to fold the identity hashcode offset to a constant.
-        int hashCodeOffset;
-        ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        if (layout.getInstanceIdentityHashCodeOffset() >= 0 && layout.getInstanceIdentityHashCodeOffset() == layout.getArrayIdentityHashcodeOffset()) {
-            hashCodeOffset = layout.getInstanceIdentityHashCodeOffset();
-        } else {
-            DynamicHub hub = KnownIntrinsics.readHub(obj);
-            hashCodeOffset = hub.getHashCodeOffset();
-        }
-
-        if (probability(LUDICROUSLY_SLOW_PATH_PROBABILITY, hashCodeOffset == 0)) {
-            throw VMError.shouldNotReachHere("identityHashCode called on illegal object");
-        }
-
-        return hashCodeOffset;
     }
 
     private static int generateHashCode() {

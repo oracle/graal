@@ -128,6 +128,7 @@ import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -197,9 +198,9 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerSystemPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, System.class);
         if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
-            Registration proxyRegistration = new Registration(plugins, System.class);
-            proxyRegistration.register0("getSecurityManager", new InvocationPlugin() {
+            r.register0("getSecurityManager", new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                     /* System.getSecurityManager() always returns null. */
@@ -208,6 +209,14 @@ public class SubstrateGraphBuilderPlugins {
                 }
             });
         }
+
+        r.register1("identityHashCode", Object.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
+                b.addPush(JavaKind.Int, new SubstrateIdentityHashCodeNode(object, b.bci()));
+                return true;
+            }
+        });
     }
 
     private static void registerReflectionPlugins(InvocationPlugins plugins, Replacements replacements, boolean analysis) {
@@ -493,6 +502,15 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
                 b.addPush(JavaKind.Object, objectCloneNode(MacroParams.of(b, targetMethod, object), b.parsingIntrinsic()).asNode());
+                return true;
+            }
+        });
+
+        r.register1("hashCode", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                ValueNode object = receiver.get();
+                b.addPush(JavaKind.Int, new SubstrateIdentityHashCodeNode(object, b.bci()));
                 return true;
             }
         });

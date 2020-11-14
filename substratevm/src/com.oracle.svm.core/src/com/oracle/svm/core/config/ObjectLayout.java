@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.config;
 
-import com.oracle.svm.core.hub.DynamicHub;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -54,16 +53,14 @@ public final class ObjectLayout {
     private final int firstFieldOffset;
     private final int arrayLengthOffset;
     private final int arrayBaseOffset;
-    private final boolean useExplicitIdentityHashCodeField;
-    private final int instanceIdentityHashCodeOffset;
-    private final int arrayIdentityHashcodeOffset;
+    private final int identityHashCodeOffset;
 
     public ObjectLayout(SubstrateTargetDescription target, int referenceSize, int objectAlignment, int hubOffset, int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset,
-                    boolean useExplicitIdentityHashCodeField, int instanceIdentityHashCodeOffset, int arrayIdentityHashcodeOffset) {
+                    int identityHashCodeOffset) {
         assert CodeUtil.isPowerOf2(referenceSize);
         assert CodeUtil.isPowerOf2(objectAlignment);
         assert hubOffset < firstFieldOffset && hubOffset < arrayLengthOffset;
-        assert arrayIdentityHashcodeOffset > 0;
+        assert identityHashCodeOffset > 0 && identityHashCodeOffset < arrayLengthOffset;
 
         this.target = target;
         this.referenceSize = referenceSize;
@@ -73,9 +70,7 @@ public final class ObjectLayout {
         this.firstFieldOffset = firstFieldOffset;
         this.arrayLengthOffset = arrayLengthOffset;
         this.arrayBaseOffset = arrayBaseOffset;
-        this.useExplicitIdentityHashCodeField = useExplicitIdentityHashCodeField;
-        this.instanceIdentityHashCodeOffset = instanceIdentityHashCodeOffset;
-        this.arrayIdentityHashcodeOffset = arrayIdentityHashcodeOffset;
+        this.identityHashCodeOffset = identityHashCodeOffset;
     }
 
     /** The minimum alignment of objects (instances and arrays). */
@@ -151,31 +146,11 @@ public final class ObjectLayout {
     }
 
     /**
-     * Whether instance objects should have an additional (optional) field for the identity hashcode
-     * appended after instance fields.
-     *
-     * @return {@code true} if an identity hashcode field should be placed after instance fields if
-     *         necessary, or {@code false} if the identity hashcode is mandatory and already has a
-     *         set location.
+     * Returns the offset of the identity hash code field.
      */
-    public boolean useExplicitIdentityHashCodeField() {
-        return useExplicitIdentityHashCodeField;
-    }
-
-    /**
-     * The offset of the identity hashcode field for instance objects.
-     *
-     * @return The (>= 0) offset of the identity hashcode field if it is known, or < 0 if the offset
-     *         should be queried from the hub (see {@link DynamicHub#getHashCodeOffset()}).
-     */
-    public int getInstanceIdentityHashCodeOffset() {
-        return instanceIdentityHashCodeOffset;
-    }
-
-    /** The offset of the identity hashcode field for array objects. */
     @Fold
-    public int getArrayIdentityHashcodeOffset() {
-        return arrayIdentityHashcodeOffset;
+    public int getIdentityHashCodeOffset() {
+        return identityHashCodeOffset;
     }
 
     public int getArrayBaseOffset(JavaKind kind) {

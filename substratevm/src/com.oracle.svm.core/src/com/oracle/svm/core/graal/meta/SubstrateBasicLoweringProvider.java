@@ -74,6 +74,7 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
@@ -108,6 +109,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     public void setConfiguration(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
                     SnippetReflectionProvider snippetReflection) {
         this.runtimeConfig = runtimeConfig;
+        this.identityHashCodeSnippets = IdentityHashCodeSupport.createSnippetTemplates(options, factories, providers, target);
         initialize(options, factories, Group.NullFactory, providers, snippetReflection);
     }
 

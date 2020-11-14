@@ -283,17 +283,7 @@ public final class NativeImageHeap implements ImageHeap {
             throw reportIllegalType(original, reason);
         }
 
-        int identityHashCode;
-        if (original instanceof DynamicHub) {
-            /*
-             * We need to use the identity hash code of the original java.lang.Class object and not
-             * of the DynamicHub, so that hash maps that are filled during image generation and use
-             * Class keys still work at run time.
-             */
-            identityHashCode = System.identityHashCode(universe.hostVM().lookupType((DynamicHub) original).getJavaClass());
-        } else {
-            identityHashCode = System.identityHashCode(original);
-        }
+        int identityHashCode = SubstrateObjectConstant.computeIdentityHashCode(original);
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
 
         if (original instanceof String) {

@@ -49,7 +49,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
 
@@ -62,7 +61,6 @@ import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.jdk.IdentityHashCodeSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
@@ -129,11 +127,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             ArraycopySnippets.primitiveCopyForward(thisObj, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(primitiveDataSize));
             curOffset += primitiveDataSize;
 
-            // reset hash code and monitor to uninitialized values
-            int hashCodeOffset = IdentityHashCodeSupport.getHashCodeOffset(result);
-            if (hashCodeOffset != 0) {
-                ObjectAccess.writeInt(result, hashCodeOffset, 0, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
-            }
+            // reset monitor to uninitialized values
             int monitorOffset = hub.getMonitorOffset();
             if (monitorOffset != 0) {
                 BarrieredAccess.writeObject(result, monitorOffset, null);

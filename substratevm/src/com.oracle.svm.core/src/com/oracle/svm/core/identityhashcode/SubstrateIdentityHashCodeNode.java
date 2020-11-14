@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.meta;
+package com.oracle.svm.core.identityhashcode;
 
-import org.graalvm.compiler.word.WordTypes;
-import org.graalvm.word.WordBase;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.replacements.nodes.IdentityHashCodeNode;
+import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
 import jdk.vm.ci.meta.JavaConstant;
 
-public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionProvider {
+@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_8)
+public final class SubstrateIdentityHashCodeNode extends IdentityHashCodeNode {
 
-    public HostedSnippetReflectionProvider(WordTypes wordTypes) {
-        super(wordTypes);
+    public static final NodeClass<SubstrateIdentityHashCodeNode> TYPE = NodeClass.create(SubstrateIdentityHashCodeNode.class);
+
+    public SubstrateIdentityHashCodeNode(ValueNode object, int bci) {
+        super(TYPE, object, bci);
     }
 
     @Override
-    public JavaConstant forObject(Object object) {
-        if (object instanceof WordBase) {
-            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), ((WordBase) object).rawValue());
-        }
-        return super.forObject(object);
+    public LocationIdentity getKilledLocationIdentity() {
+        return IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION;
     }
 
     @Override
-    public <T> T asObject(Class<T> type, JavaConstant constant) {
-        if ((type == Class.class || type == Object.class) && constant instanceof SubstrateObjectConstant) {
-            Object objectValue = SubstrateObjectConstant.asObject(constant);
-            if (objectValue instanceof DynamicHub) {
-                return type.cast(((DynamicHub) objectValue).getHostedJavaClass());
-            }
-        }
-        return super.asObject(type, constant);
+    protected int getIdentityHashCode(JavaConstant constant) {
+        return ((SubstrateObjectConstant) constant).getIdentityHashCode();
     }
 }
