@@ -54,6 +54,7 @@ import org.junit.Test;
 import java.io.IOException;
 
 import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
+import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 public class WasmPolyglotTestSuite {
     @Test
@@ -70,7 +71,7 @@ public class WasmPolyglotTestSuite {
     public void test42() throws IOException {
         Context.Builder contextBuilder = Context.newBuilder("wasm");
         Source.Builder sourceBuilder = Source.newBuilder("wasm",
-                        ByteSequence.create(binary),
+                        ByteSequence.create(binaryReturnConst),
                         "main");
         Source source = sourceBuilder.build();
         Context context = contextBuilder.build();
@@ -84,7 +85,7 @@ public class WasmPolyglotTestSuite {
     public void unsafeMemoryFreed() throws IOException {
         Context.Builder contextBuilder = Context.newBuilder("wasm");
         Source.Builder sourceBuilder = Source.newBuilder("wasm",
-                        ByteSequence.create(binary),
+                        ByteSequence.create(binaryReturnConst),
                         "main");
         Source source = sourceBuilder.build();
         contextBuilder.allowExperimentalOptions(true);
@@ -99,7 +100,19 @@ public class WasmPolyglotTestSuite {
         Assert.assertTrue("Memory should have been allocated.", !memory.freed());
         context.close();
         Assert.assertTrue("Memory should have been freed.", memory.freed());
+    }
 
+    @Test
+    public void overwriteElement() throws IOException, InterruptedException {
+        final ByteSequence test = ByteSequence.create(compileWat("test", textOverwriteElement));
+        Context.Builder contextBuilder = Context.newBuilder("wasm");
+        Source.Builder sourceBuilder = Source.newBuilder("wasm", test, "main");
+        Source source = sourceBuilder.build();
+        Context context = contextBuilder.build();
+        context.eval(source);
+        Value mainFunction = context.getBindings("wasm").getMember("main").getMember("main");
+        Value result = mainFunction.execute();
+        Assert.assertEquals("Should be equal: ", 11, result.asInt());
     }
 
     // (module
@@ -117,7 +130,7 @@ public class WasmPolyglotTestSuite {
     // (export "memory" (memory 0))
     // (export "__heap_base" (global 1))
     // (export "__data_end" (global 2)))
-    private static final byte[] binary = hexStringToByteArray(
+    private static final byte[] binaryReturnConst = hexStringToByteArray(
                     "0061736d010000000108026000006000",
                     "017f0303020001040501700101010503",
                     "0100010615037f01418088040b7f0041",
@@ -126,4 +139,22 @@ public class WasmPolyglotTestSuite {
                     "686561705f6261736503010a5f5f6461",
                     "74615f656e6403020a090202000b0400",
                     "412a0b");
+
+    private static final String textOverwriteElement = "(module" +
+                    "  (table 10 funcref)\n" +
+                    "  (type (func (result i32)))\n" +
+                    "  (func $f (result i32)\n" +
+                    "    i32.const 7)\n" +
+                    "  (func $g (result i32)\n" +
+                    "    i32.const 11)\n" +
+                    "  (func (result i32)\n" +
+                    "    i32.const 3\n" +
+                    "    call_indirect (type 0))\n" +
+                    "  (export \"main\" (func 2))\n" +
+                    "  (elem (i32.const 0) $f)\n" +
+                    "  (elem (i32.const 3) $f)\n" +
+                    "  (elem (i32.const 7) $f)\n" +
+                    "  (elem (i32.const 5) $f)\n" +
+                    "  (elem (i32.const 3) $g)\n" +
+                    ")";
 }

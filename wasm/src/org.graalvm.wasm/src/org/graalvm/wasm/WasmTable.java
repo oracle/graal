@@ -86,9 +86,6 @@ public final class WasmTable {
     }
 
     public void initialize(int i, WasmFunctionInstance function) {
-        if (elements[i] != null) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Table already has an element at index " + i + ".");
-        }
         elements[i] = function;
     }
 
