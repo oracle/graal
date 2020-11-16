@@ -117,6 +117,23 @@ suite = {
                 "sdk:LAUNCHER_COMMON",
             ],
         },
+        "org.graalvm.polybench.jdk11" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "org.graalvm.polybench",
+            ],
+            "requires" : [
+                "java.logging",
+                "jdk.jfr",
+            ],
+            "javaCompliance" : "11+",
+            "license" : "GPLv2-CPE",
+            "checkstyle": "org.graalvm.component.installer",
+            "checkPackagePrefix" : "false",
+      		"overlayTarget" : "org.graalvm.polybench",
+      		"multiReleaseJarVersion" : "11",
+        },
     },
 
     "distributions": {

@@ -98,6 +98,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                     case "none":
                         config.metric = new NoMetric();
                         break;
+                    case "compilation-time":
+                        config.metric = new CompilationTimeMetric();
+                        break;
                     default:
                         throw new IllegalArgumentException("Unknown metric: " + value);
                 }
