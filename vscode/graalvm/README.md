@@ -20,7 +20,7 @@ The major goal of creating GraalVM VS Code Extension was to enable a polyglot en
 - [Ruby Language Server](#ruby-language-server)
 - [Additional Editor Features](#additional-editor-features)
 - [Extension Settings](#extension-settings)
-- [Extension Requirements](#extension-requirements)
+- [Recommendations](#recommendations)
 - [Feedback](#feedback)
 
 ## Features
@@ -28,7 +28,7 @@ The major goal of creating GraalVM VS Code Extension was to enable a polyglot en
 GraalVM VS Code Extension installation wizzard simplifies setting up GraalVM development environment.
 You can download and install any available GraalVM distribution right from the user interface, or, alternatively, you can select an existing GraalVM installation from your local disk.
 
-GraalVM VS Code Extension provides editing and debugging capabilities for JavaScript and Node.js applications, Python, R, and Ruby programs running on GraalVM by default.
+GraalVM VS Code Extension provides editing and debugging capabilities for Java, JavaScript and Node.js, Python, R, and Ruby applications running on GraalVM by default.
 
 GraalVM VS Code Extension also brings support for Java prjects development and debugging.
 
@@ -55,7 +55,7 @@ By clicking on the icon, a dialog with the following choices displays:
 
 The Download & Install GraalVM action prompts to:
 * Pick the GraalVM distribution: Community (Free for all purposes) or Enterprise (Free for evaluation and development)
-* Pick the GraalVM version: Current (20.2), Annual (19.3), Latest Snapshot (Nightly Build 20.1)
+* Pick the GraalVM version: Current (20.3), Annual (19.3), Latest Snapshot (Nightly Build 21.0-dev)
 * Pick a Java version: 8, 11
 * Select the destination folder
 
@@ -69,12 +69,14 @@ If you select GraalVM Enterprise Editon, you are prompted to accept the Oracle L
 
 The installation wizzard will download the package from [Oracle Software Downloads](https://www.oracle.com/downloads/graalvm-downloads.html) in the background and display the progress.
 
-If you are behind a proxy, do not forget to setup your proxy configuration in `File -> Preferences -> Settings`, or run your VS Code instance with the `http_proxy` and `https_proxy` environment variables exported.
+If you are behind a proxy, setup your proxy configuration by the "Setup Proxy" command or by overriding the `http_proxy` and `https_proxy` environment variables.
 
 Upon completion, the "Set as Default Java" action is invoked. At the same time, the "Install Optional GraalVM Components" window pops up:
+
 ![Install Optional GraalVM Components](images/install_optional_components_popup.png)
 
 Once you confirm, you are taken to the selection list:
+
 ![Select Components to Install](images/install_components_view.png)
 
 Note: You can download and install multiple GraalVM distributions and components at the same time.
@@ -84,7 +86,12 @@ Note: You can download and install multiple GraalVM distributions and components
 The "Add Existing GraalVM" action allows to select the existing GraalVM installation from your local disk.
 As in the previous installation scenario, you are prompted to set the GraalVM installation as default, and to install optional components, if not already installed.
 
-Alternatively, you can invoke the same actions from the View > Command Palette (_Ctrl+Shift+P_  hot keys combination  or _Command+Shift+P_ for macOS):
+Adding existing GraalVM action can also be invoked by using an icon on the side of the "GRAALVM: INSTALLATIONS" panel.
+To make a newly added GraalVM active, you can use a "home" icon by the side of the installation.
+
+![Action icons](images/available_action_icons.png)
+
+Alternatively, you can invoke the same actions from the View > Command Palette (Command Palette can be also opened by pressing F1, or _Ctrl+Shift+P_  hot keys combination for Linux and _Command+Shift+P_ for macOS):
 * GraalVM: Download & Install GraalVM
 * GraalVM: Install GraalVM Component
 * GraalVM: Set Active GraalVM Installation
@@ -115,12 +122,10 @@ To start developping or debugging Java applications, ensure GraalVM is used as y
 If the current path is not pointing to the GraalVM folder, go to User Settings window and edit `netbeans.jdkhome` value in _settings.json_ file.
 This configuration is then used to launch the Java Language Server.
 
-![Set Java Runtime](java_home_settings.png)
-
 Simultaneously the "Java Overview" window opens which gives you a possibility to create a project from scrach.
 The project you create or a Java project you open in VS Code will run in the GraalVM runtime.
 
-![Java Overview](java_overview_window.png)
+![Java Overview](images/java_overview_window.png)
 
 To debug a Java application running on GraalVM, creating a launch configuration for the application is necessary.
 Having opened the file to be debugged or run in VS Code, switch to the Debug view by clicking on the "bug" icon in the left-hand side panel.
@@ -209,7 +214,7 @@ For example, to connect to the open Debug Adapter Protocol port, the content of 
 
 In order to start a debug session, first select the proper configuration using the Configuration drop-down in the Debug view.
 Once you have your launch configuration set, start your debug session with F5.
-Alternatively, you can run your configuration through the Command Palette (_Ctrl+Shift+P_ or _Command+Shift+P_ on macOS), by filtering on Debug: Select and Start Debugging or typing "debug", and selecting the configuration you want to debug.
+Alternatively, you can run your configuration through the Command Palette (Command Palette can be also opened by pressing F1, or _Ctrl+Shift+P_  hot keys combination for Linux and _Command+Shift+P_ for macOS), by filtering on Debug: Select and Start Debugging or typing "debug", and selecting the configuration you want to debug.
 
 ## Python Debugging
 
@@ -223,7 +228,7 @@ Once the `launch.json` file is opened in the editor, one of the following techni
 
 ![Image Debug Configurations](images/debug-config-python.png)
 
-The GraalVM Pyton extension provides the following debug configuration that can be used to debug a Python applications/scripts running on GraalVM:
+The GraalVM Python extension provides the following debug configuration that can be used to debug a Python applications/scripts running on GraalVM:
 * __Launch Python Script__ - Launches a Python script using GraalVM in a debug mode.
 
 You now have the possibility to choose which debugging protocol to use ([Debug Adapter Protocol](https://www.graalvm.org/tools/dap/) or [Chrome Dev Tools protocol](https://www.graalvm.org/tools/chrome-debugger/)) by setting the `protocol` attribute in the corresponding debug configuration to either `chromeDevTools` or `debugAdapter`.
@@ -251,7 +256,7 @@ Hover help is also available for all attributes.
 
 In order to start a debug session, first select the proper configuration using the Configuration drop-down in the Debug view.
 Once you have your launch configuration set, start your debug session with F5.
-Alternatively, you can run your configuration through the Command Palette (_Ctrl+Shift+P_ or _Command+Shift+P_ on macOS), by filtering on Debug: Select and Start Debugging or typing "debug", and selecting the configuration you want to debug.
+Alternatively, you can run your configuration through the Command Palette (Command Palette can be also opened by pressing F1, or _Ctrl+Shift+P_  hot keys combination for Linux and _Command+Shift+P_ for macOS), by filtering on Debug: Select and Start Debugging or typing "debug", and selecting the configuration you want to debug.
 
 ## R Debugging
 
@@ -294,7 +299,7 @@ Hover help is also available for all attributes.
 
 In order to start a debug session, first select the proper configuration using the Configuration drop-down in the Debug view.
 Once you have your launch configuration set, start your debug session with F5.
-Alternatively, you can run your configuration through the Command Palette (_Ctrl+Shift+P_ or _Command+Shift+P_ on macOS), by filtering on Debug: Select and Start Debugging or typing "debug", and selecting the configuration you want to debug.
+Alternatively, you can run your configuration through the Command Palette (Command Palette can be also opened by pressing F1, or _Ctrl+Shift+P_  hot keys combination for Linux and _Command+Shift+P_ for macOS), by filtering on Debug: Select and Start Debugging or typing "debug", and selecting the configuration you want to debug.
 
 ## Ruby Debugging
 
@@ -336,7 +341,7 @@ Hover help is also available for all attributes.
 
 In order to start a debug session, first select the proper configuration using the Configuration drop-down in the Debug view.
 Once you have your launch configuration set, start your debug session with F5.
-Alternatively, you can run your configuration through the Command Palette (_Ctrl+Shift+P_ or _Command+Shift+P_ on macOS), by filtering on Debug: Select and Start Debugging or typing "debug", and selecting the configuration you want to debug.
+Alternatively, you can run your configuration through the Command Palette (Command Palette can be also opened by pressing F1, or _Ctrl+Shift+P_  hot keys combination for Linux and _Command+Shift+P_ for macOS), by filtering on Debug: Select and Start Debugging or typing "debug", and selecting the configuration you want to debug.
 
 ## Polyglot Applications Debugging
 
@@ -470,13 +475,13 @@ This extension contributes the following settings:
 * __graalvm.languageServer.startRLanguageServer__ - Start the R Language Server.
 * __graalvm.languageServer.startRubyLanguageServer__ - Start the Ruby Language Server.
 
-## Extension Requirements
+## Recommendations
 
-This extension depends on the following extensions:
+GraalVM Extension for VS Code recommends the following extensions:
 * [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) - The Python language support
 * [R](https://marketplace.visualstudio.com/items?itemName=Ikuyadeu.r) - A basic support for the R language
 * [Ruby](https://marketplace.visualstudio.com/items?itemName=rebornix.Ruby) - The Ruby language support
-* [NetBeans Language Server](http://100.107.237.88:8080/jenkins/job/vscode-java.lsp.server/) - The Java language support
+* [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java) - The Java 8+ language support
 
 ## Feedback
 
