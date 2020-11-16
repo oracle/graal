@@ -451,17 +451,15 @@ def svm_gate_body(args, tasks):
 
 
 def native_unittests_task():
-    with tempfile.NamedTemporaryFile(mode='w') as blacklist:
-        if svm_java8():
-            blacklist_args = []
-        else:
-            # Currently not working on Java > 8
-            blacklist.write('com.oracle.svm.test.ServiceLoaderTest')
-            blacklist.flush()
-            blacklist_args = ['--blacklist', blacklist.name]
+    if not svm_java8():
+        # Currently not working on Java > 8
+        mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ServiceLoaderTest')
+    if mx.is_windows():
+        # GR-24075
+        mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
 
-        # We need the -H:+EnableAllSecurityServices for com.oracle.svm.test.SecurityServiceTest
-        native_unittest(['--build-args', _native_unittest_features, '-H:+EnableAllSecurityServices'] + blacklist_args)
+    # We need the -H:+EnableAllSecurityServices for com.oracle.svm.test.SecurityServiceTest
+    native_unittest(['--build-args', _native_unittest_features, '-H:+EnableAllSecurityServices'])
 
 
 def javac_image_command(javac_path):
