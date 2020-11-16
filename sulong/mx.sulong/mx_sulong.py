@@ -1166,26 +1166,53 @@ _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULO
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
-    name='Sulong',
-    short_name='slg',
+    name='LLVM Runtime Core',
+    short_name='llic',
     dir_name='llvm',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle', 'Truffle NFI'],
-    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_NATIVE', 'sulong:SULONG_API'],
+    dependencies=['Truffle'],
+    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API'],
     support_distributions=[
         'sulong:SULONG_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
     ],
     launcher_configs=[
-        mx_sdk_vm.LanguageLauncherConfig(
-            destination='bin/<exe:lli>',
-            jar_distributions=['sulong:SULONG_LAUNCHER'],
-            main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
-            build_args=[],
-            language='llvm',
-        ),
-    ] + _suite.toolchain.get_launcher_configs(),
+                         mx_sdk_vm.LanguageLauncherConfig(
+                             destination='bin/<exe:lli>',
+                             jar_distributions=['sulong:SULONG_LAUNCHER'],
+                             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
+                             build_args=[],
+                             language='llvm',
+                         ),
+                     ],
+    installable=False,
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='LLVM Runtime Native',
+    short_name='llin',
+    dir_name='llvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['LLVM Runtime Core'],
+    truffle_jars=['sulong:SULONG_NATIVE'],
+    support_distributions=[],
+    launcher_configs=_suite.toolchain.get_launcher_configs(),
+    installable=False,
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='Sulong',
+    short_name='slg',
+    dir_name='llvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['LLVM Runtime Core', 'LLVM Runtime Native'],
+    truffle_jars=[],
+    support_distributions=[],
     installable=False,
 ))
 
