@@ -29,12 +29,16 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -50,12 +54,8 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-import org.graalvm.collections.EconomicMap;
 
-import java.util.ArrayList;
-import java.util.List;
-
-public final class NFIContextExtension implements ContextExtension {
+public final class NFIContextExtension extends NativeContextExtension {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
@@ -63,7 +63,7 @@ public final class NFIContextExtension implements ContextExtension {
     private boolean internalLibrariesAdded = false;
     private final List<Object> libraryHandles = new ArrayList<>();
     private final EconomicMap<TruffleFile, CallTarget> visited = EconomicMap.create();
-    private final TruffleLanguage.Env env;
+    private final Env env;
 
     public NFIContextExtension(Env env) {
         assert env.getOptions().get(SulongEngineOption.ENABLE_NFI);
@@ -92,22 +92,7 @@ public final class NFIContextExtension implements ContextExtension {
         return defaultLibraryHandle != null;
     }
 
-    public static class UnsupportedNativeTypeException extends Exception {
-
-        private static final long serialVersionUID = 1L;
-
-        private final Type type;
-
-        UnsupportedNativeTypeException(Type type) {
-            super("unsupported type " + type + " in native interop");
-            this.type = type;
-        }
-
-        public Type getType() {
-            return type;
-        }
-    }
-
+    @Override
     public NativePointerIntoLibrary getNativeHandle(String name) {
         CompilerAsserts.neverPartOfCompilation();
         try {
@@ -122,6 +107,7 @@ public final class NFIContextExtension implements ContextExtension {
         }
     }
 
+    @Override
     @TruffleBoundary
     public Object createNativeWrapper(LLVMFunction function, LLVMFunctionCode code) {
         Object wrapper = null;
@@ -140,6 +126,7 @@ public final class NFIContextExtension implements ContextExtension {
         return wrapper;
     }
 
+    @Override
     public synchronized void addLibraryHandles(Object library) {
         CompilerAsserts.neverPartOfCompilation();
         if (!libraryHandles.contains(library)) {
@@ -147,6 +134,7 @@ public final class NFIContextExtension implements ContextExtension {
         }
     }
 
+    @Override
     public synchronized CallTarget parseNativeLibrary(TruffleFile file, LLVMContext context) throws UnsatisfiedLinkError {
         CompilerAsserts.neverPartOfCompilation();
         try {
@@ -279,6 +267,7 @@ public final class NFIContextExtension implements ContextExtension {
         return types;
     }
 
+    @Override
     public synchronized NativeLookupResult getNativeFunctionOrNull(String name) {
         CompilerAsserts.neverPartOfCompilation();
         Object[] cursor = libraryHandles.toArray();
@@ -338,6 +327,7 @@ public final class NFIContextExtension implements ContextExtension {
         }
     }
 
+    @Override
     public Object getNativeFunction(String name, String signature) {
         CompilerAsserts.neverPartOfCompilation();
         NativeLookupResult result = getNativeFunctionOrNull(name);
@@ -347,6 +337,7 @@ public final class NFIContextExtension implements ContextExtension {
         throw new LLVMLinkerException(String.format("External function %s cannot be found.", name));
     }
 
+    @Override
     public String getNativeSignature(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException {
         CompilerAsserts.neverPartOfCompilation();
         // TODO varargs
@@ -369,27 +360,4 @@ public final class NFIContextExtension implements ContextExtension {
         return sb.toString();
     }
 
-    public static final class NativeLookupResult {
-        private final Object object;
-
-        public NativeLookupResult(Object object) {
-            this.object = object;
-        }
-
-        public Object getObject() {
-            return object;
-        }
-    }
-
-    public static final class NativePointerIntoLibrary {
-        private final long address;
-
-        public NativePointerIntoLibrary(long address) {
-            this.address = address;
-        }
-
-        public long getAddress() {
-            return address;
-        }
-    }
 }

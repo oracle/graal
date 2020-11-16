@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLocalScope;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -124,11 +124,11 @@ public final class InitializeExternalNode extends LLVMNode {
     public void execute(LLVMContext context, LLVMLocalScope localScope) {
         LLVMScope globalScope = context.getGlobalScope();
         LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-        NFIContextExtension nfiContextExtension = getNfiContextExtension(context);
+        NativeContextExtension nativeContextExtension = getNativeContextExtension(context);
         // functions and globals
         for (int i = 0; i < allocExternalSymbols.length; i++) {
             AllocExternalSymbolNode function = allocExternalSymbols[i];
-            LLVMPointer pointer = function.execute(localScope, globalScope, intrinsicProvider, nfiContextExtension, context);
+            LLVMPointer pointer = function.execute(localScope, globalScope, intrinsicProvider, nativeContextExtension, context);
             // skip allocating fallbacks
             if (pointer == null) {
                 continue;
@@ -138,7 +138,7 @@ public final class InitializeExternalNode extends LLVMNode {
     }
 
     @TruffleBoundary
-    private static NFIContextExtension getNfiContextExtension(LLVMContext context) {
-        return context.getContextExtensionOrNull(NFIContextExtension.class);
+    private static NativeContextExtension getNativeContextExtension(LLVMContext context) {
+        return context.getContextExtensionOrNull(NativeContextExtension.class);
     }
 }

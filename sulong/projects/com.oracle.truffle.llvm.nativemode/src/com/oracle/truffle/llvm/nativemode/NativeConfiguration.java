@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
@@ -60,7 +61,7 @@ public class NativeConfiguration implements Configuration {
         intrinsicProvider = new BasicIntrinsicsProvider(language);
         platformCapability = BasicPlatformCapability.create(key.loadCxxLibraries);
         if (key.enableNFI) {
-            ctxExtRegistry.register(NFIContextExtension.class, NFIContextExtension::new);
+            ctxExtRegistry.register(NativeContextExtension.class, NFIContextExtension::new);
         }
     }
 

@@ -188,9 +188,9 @@ public class LLVMFunctionCode {
             LLVMContext context = LLVMLanguage.getContext();
             Object wrapper = null;
             LLVMNativePointer pointer = null;
-            NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-            if (nfiContextExtension != null) {
-                wrapper = nfiContextExtension.createNativeWrapper(descriptor.getLLVMFunction(), descriptor.getFunctionCode());
+            NativeContextExtension nativeContextExtension = context.getContextExtensionOrNull(NativeContextExtension.class);
+            if (nativeContextExtension != null) {
+                wrapper = nativeContextExtension.createNativeWrapper(descriptor.getLLVMFunction(), descriptor.getFunctionCode());
                 if (wrapper != null) {
                     try {
                         pointer = LLVMNativePointer.create(InteropLibrary.getFactory().getUncached().asPointer(wrapper));
