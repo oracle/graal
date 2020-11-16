@@ -185,8 +185,18 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
             if (contexts != null) {
                 for (PolyglotContextImpl context : contexts) {
                     synchronized (context) {
-                        context.invokeContextLocalsFactory(context.contextLocals, contextLocalLocations);
-                        context.invokeContextThreadLocalFactory(contextThreadLocalLocations);
+                        if (context.closed || context.invalid) {
+                            continue;
+                        }
+                        /*
+                         * contextLocals might not be initialized yet, in which case the context
+                         * local factory for this instrument will be invoked during contextLocals
+                         * initialization.
+                         */
+                        if (context.contextLocals != null) {
+                            context.invokeContextLocalsFactory(context.contextLocals, contextLocalLocations);
+                            context.invokeContextThreadLocalFactory(contextThreadLocalLocations);
+                        }
                     }
                 }
             }
